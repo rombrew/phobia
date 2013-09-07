@@ -1,0 +1,6 @@
+syntax: glob
+*.d
+*.o
+fw/build
+fw/tags
+fw/scope
