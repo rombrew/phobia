@@ -1,9 +1,26 @@
+/*
+   Phobia DC Motor Controller for RC and robotics.
+   Copyright (C) 2013 Roman Belov <romblv@gmail.com>
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <stdlib.h>
 #include <math.h>
 
 #include "plant.h"
 #include "lib.h"
-#include "hal/hal.h"
 
 #define PWM_FAST_SOLVER			1
 
@@ -72,7 +89,7 @@ void plant_enable()
 	}
 
 	plant.tsim = 0.0; /* Simulation time (Second) */
-        plant.tdel = -1.0; /* Delta */
+        plant.tdel = 1.0 / 20e+3; /* Delta */
 	plant.pwmf = 1000; /* PWM resolution */
 
         plant.x[0] = 0.0; /* Phase A current (Ampere) */
@@ -80,6 +97,7 @@ void plant_enable()
         plant.x[2] = 0.0; /* Electrical speed (Radian/Sec) */
         plant.x[3] = 0.0; /* Electrical position (Radian) */
         plant.x[4] = 20.0; /* Temperature (Celsius) */
+	plant.x[5] = 0.0; /* Consumed energy (Joule) */
 
 	/* Winding resistance at 20 C. (Ohm)
          * */
@@ -118,7 +136,7 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 		const double x[PLANT_STATE_SIZE])
 {
 	double		R, L, E, U, Z, J;
-	double		e[3], bemf[3], Uz, Mt, Ml, s;
+	double		e[3], bemf[3], Uz, Mt, Ml, s, Is;
 
 	R = plant.const_R * (1.0 + 4.28e-3 * (x[4] - 20.0));
 	L = plant.const_L;
@@ -135,13 +153,13 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 	bemf[1] = x[2] * E * e[1];
 	bemf[2] = x[2] * E * e[2];
 
-	Uz = (plant.u[0] + plant.u[1] + plant.u[2]) * U / 3.0
+	Uz = (plant.i[0] + plant.i[1] + plant.i[2]) * U / 3.0
 		- (bemf[0] + bemf[1] + bemf[2]) / 3.0;
 
 	/* Electrical equations.
 	 * */
-	dx[0] = ((plant.u[0] * U - Uz) - x[0] * R - bemf[0]) / L;
-	dx[1] = ((plant.u[1] * U - Uz) - x[1] * R - bemf[1]) / L;
+	dx[0] = ((plant.i[0] * U - Uz) - x[0] * R - bemf[0]) / L;
+	dx[1] = ((plant.i[1] * U - Uz) - x[1] * R - bemf[1]) / L;
 
 	Mt = Z * E * (x[0] * e[0] + x[1] * e[1]
 			- (x[0] + x[1]) * e[2]);
@@ -160,6 +178,12 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 	/* Thermal equation.
 	 * */
 	dx[4] = 0.0;
+
+	/* Energy equation.
+	 * */
+	Is = plant.i[0] * x[0] + plant.i[1] * x[1]
+		- plant.i[2] * (x[0] + x[1]);
+	dx[5] = U * Is;
 }
 
 static void
@@ -196,6 +220,12 @@ plant_bridge_solve(double tdel)
 	int		j, ton[3], a, pm[3];
 	double		pwmdt, dt, sa[2], u, uref, du;
 
+	/* Save temporary variables.
+	 * */
+	plant.x5 = plant.x[5];
+
+	/* Prepare to solve.
+	 * */
 	pwmdt = tdel / plant.pwmf / 2.0;
 	uref = 3.3;
 
@@ -263,11 +293,6 @@ plant_bridge_solve(double tdel)
 		dt = pwmdt * (plant.pwmf - ton[pm[2]]);
 		plant_solve(dt);
 
-		/* Current sampling.
-		 * */
-		sa[0] = plant.x[0];
-		sa[1] = - plant.x[0] - plant.x[1];
-
 		/* Count Down.
 		 * */
 		dt = pwmdt * (plant.pwmf - ton[pm[2]]);
@@ -306,11 +331,6 @@ plant_bridge_solve(double tdel)
 			plant_solve(pwmdt);
 		}
 
-		/* Current sampling.
-		 * */
-		sa[0] = plant.x[0];
-		sa[1] = - plant.x[0] - plant.x[1];
-
 		/* Count Down.
 		 * */
 		for (j = plant.pwmf; j > 0; --j) {
@@ -322,6 +342,11 @@ plant_bridge_solve(double tdel)
 			plant_solve(pwmdt);
 		}
 	}
+
+	/* Current sampling.
+	 * */
+	sa[0] = plant.x[0];
+	sa[1] = - plant.x[0] - plant.x[1];
 
 	/* Output voltage of the current sensor A.
 	 * */
@@ -350,27 +375,7 @@ plant_bridge_solve(double tdel)
 
 void plant_update()
 {
-	if (plant.tdel > 0.0) {
-
-		plant_bridge_solve(plant.tdel);
-		irq_bridge(plant.z);
-
-		plant.tsim += plant.tdel;
-	}
-	else {
-		plant.tsim += 1e-3;
-	}
-}
-
-void hal_bridge_config(float freq)
-{
-	plant.tdel = 1.0 / (double) freq;
-}
-
-void hal_bridge_dc(const float dc[3])
-{
-	plant.u[0] = dc[0];
-	plant.u[1] = dc[1];
-	plant.u[2] = dc[2];
+	plant_bridge_solve(plant.tdel);
+	plant.tsim += plant.tdel;
 }
 

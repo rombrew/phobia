@@ -5,7 +5,7 @@
 static inline void *
 ptr_round_up(void *p)
 {
-	return ((u32_t) p + 7UL) & ~7UL;
+	return (void *) (((u32_t) p + 7UL) & ~7UL);
 }
 
 static inline void *
@@ -24,15 +24,15 @@ heap_t *heap_init(void *beg, void *end)
 {
 }
 
-void *halloc(int sz, int n)
+void *halloc(heap_t *h, int sz)
 {
 	heap_block_t	*l, *blk;
 
-	sz = PTR_ROUND_UP(sz);
+	sz = ptr_round_up(sz);
 
-	list_for_each(&heap.free, l) {
+	list_for_each(&h->free, l) {
 
-		if (block->size >)
+		//if (block->size >)
 	}
 }
 

@@ -11,7 +11,7 @@ typedef struct {
 
 	/* Input variables.
 	 * */
-	double		u[3];
+	float		u[3];
 	int		i[3];
 
 	/* State variabes.

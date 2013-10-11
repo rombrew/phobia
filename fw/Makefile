@@ -2,7 +2,9 @@
 TARGET	= phobia
 
 HAL	?= stm32
+REV	?= 1
 LDS	?= ram
+FW	?= bl
 SIM	?= sim_bldc
 
 CROSS	?= arm-none-eabi-
@@ -18,33 +20,36 @@ HOST_CC	= gcc
 HOST_LD	= gcc
 
 CFLAGS  = -std=gnu99 -pipe -Wall -O2
-CFLAGS  += -I. -DHALINL=\"hal/$(HAL)/halinl.h\"
+CFLAGS  += -I. -DHWREV=$(REV) -DHWINL=\"hal/$(HAL)/hwinl.h\"
 CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-builtin
 AFLAGS	= -mcpu=cortex-m4 -mthumb
 LFLAGS  = -T ld/$(LDS).ld
 HOST_CFLAGS	= -std=gnu99 -pipe -Wall -O2
-HOST_CFLAGS	+= -I. -DHALINL=\"hal/$(SIM)/halinl.h\"
-HOST_LFLAGS	= -lm
+HOST_CFLAGS	+= -I. -DHWINL=\"hal/$(SIM)/hwinl.h\"
+HOST_LFLAGS	= -lm -pthread
 
-#SRCDIR	= lib rt
+SRCDIR	= $(FW) cm lib
 SEARCH	= $(sort $(addprefix $(2)/,		\
 		$(patsubst %.s, %.o, $(wildcard		\
 			$(addsuffix /*.s, $(1))))	\
 		$(patsubst %.c, %.o, $(wildcard		\
 			$(addsuffix /*.c, $(1))))))
 
-BUILD	= build/$(HAL)
+BUILD	= ../build/$(HAL)
 DIRS	= hal/$(HAL) $(SRCDIR)
 OBJS	= $(call SEARCH, $(DIRS), $(BUILD))
 
-HOST_BUILD	= build/$(SIM)
+HOST_BUILD	= ../build/$(SIM)
 HOST_DIRS	= hal/$(SIM) $(SRCDIR)
 HOST_OBJS	= $(call SEARCH, $(HOST_DIRS), $(HOST_BUILD))
 
 TTY	= /dev/ttyUSB0
 
-all: $(BUILD)/$(TARGET) $(HOST_BUILD)/$(TARGET)
+all: $(HOST_BUILD)/$(TARGET) $(BUILD)/$(TARGET)
+
+hal: $(BUILD)/$(TARGET)
+sim: $(HOST_BUILD)/$(TARGET)
 
 $(BUILD)/%.o: %.s
 	@ echo "  AS    " $<

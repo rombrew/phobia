@@ -1,25 +1,30 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
-/* Include HAL-specific inline routines.
+/* Include hardware specific inline routines.
  * */
-#include HALINL
-
-int hal_exclusive_load(void *addr);
-int hal_exclusive_store(void *addr, int val);
-void hal_memory_barrier();
-
-void hal_rt_irq_enable();
-void hal_rt_irq_disable();
-void hal_rt_irq_request();
-
-void rt_tick();
-void rt_schedule();
-
-void *hal_stack_init(void *sp, void *entry);
-void hal_cpu_relax();
+#include HWINL
 
 int hal_reset_reason();
+
+void irq_startup();
+void irq_systick();
+void irq_bridge(const int adc[2]);
+void irq_network(unsigned char pkg[10]);
+void irq_serial(int sym);
+void irq_worker();
+
+void hal_irq_mask(int mask);
+
+void hal_bridge_config(float freq);
+void hal_bridge_dc(const float dc[3]);
+void hal_network_config(int baud);
+void hal_serial_config(int baud);
+void hal_serial_send(int sym);
+void hal_worker_request();
+
+void hal_adc_read(const int adc[4]);
+void hal_led_ctl(int i);
 
 #endif /* _H_HAL_ */
 

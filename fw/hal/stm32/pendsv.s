@@ -11,7 +11,7 @@
 
 irq_pendsv:
 
-	bl rt_task_shedule
+	bl	irq_schedule
 
 	bx	lr
 

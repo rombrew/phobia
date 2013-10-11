@@ -22,51 +22,19 @@
 #include <errno.h>
 #include <math.h>
 
-#include <unistd.h>
-#include <poll.h>
-
 #include "plant.h"
 #include "lib.h"
-#include "hal/hal.h"
 
-void hal_serial_config(int baud)
-{
-	/* Do nothing */
-}
-
-static void
-serial_poll_recv()
-{
-	struct pollfd	fds[1];
-	int		rc, sym;
-
-	fds[0].fd = 0;
-	fds[0].events = POLLIN;
-
-	rc = poll(fds, 1, 0);
-
-	if (rc > 0) {
-
-		rc = read(0, (void *) &sym, 1);
-
-		if (rc == 1)
-			irq_serial(sym);
-	}
-}
-
-void hal_serial_send(int sym)
-{
-	fputc(sym, stdout);
-	fflush(stdout);
-}
+#include "kalf.h"
 
 static void
 sim(double tend)
 {
-	int		tel, tl, ts = 0;
+	int		tel = 1, tl, ts = 0;
 	FILE		*fd;
 
 	plant_enable();
+	kalf_enable(plant.tdel);
 
 	fd = fopen("TEL", "w");
 
@@ -84,37 +52,32 @@ sim(double tend)
 
 		/* ----------------------------- */
 
-		tl = ts;
-		ts = (int) (plant.tsim * 1e+2);
-
-		if (tl < ts) {
-
-			/* 100 Hz.
-			 * */
-			irq_systick();
-			serial_poll_recv();
-		}
+		kalf_update(plant.z);
 
 		/* ----------------------------- */
-
-		//irq_network();
-
-		/* ----------------------------- */
-
-		tel = (plant.tdel > 0.0);
 
 		if (tel) {
 
 			fprintf(fd, "%2.6lf ", plant.tsim);
-			fprintf(fd, "%2.3lf %2.3lf %5.4lf %1.4lf %2.2lf ",
-					plant.x[0], plant.x[1],
-					plant.x[2], plant.x[3], plant.x[4]);
+			fprintf(fd, "%2.3lf %2.3lf %5.4lf %1.4lf %2.2lf %3.4lf ",
+					plant.x[0], - plant.x[0] - plant.x[1],
+					plant.x[2], plant.x[3], plant.x[4],
+					plant.x[5] - plant.x5);
 			fprintf(fd, "%i %i ",
 					plant.z[0], plant.z[1]);
 			fputs("\n", fd);
 		}
 
 		/* ----------------------------- */
+
+		tl = ts;
+		ts = (int) (plant.tsim * 1e+1);
+
+		if (tl < ts) {
+
+			printf("\rtsim = %2.1lf", plant.tsim);
+			fflush(stdout);
+		}
 	}
 
 	fclose(fd);

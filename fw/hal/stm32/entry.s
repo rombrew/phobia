@@ -113,7 +113,7 @@
 
 irq_default:
 
-	b.n irq_default
+	b.n	irq_default
 
 
 .global irq_reset
