@@ -23,18 +23,42 @@
 #include <math.h>
 
 #include "plant.h"
+#include "blc.h"
 #include "lib.h"
 
-#include "kalf.h"
+void bridge_dc(const float dc[3])
+{
+	plant.u[0] = (double) dc[0];
+	plant.u[1] = (double) dc[1];
+	plant.u[2] = (double) dc[2];
+}
+
+static void
+test(double t)
+{
+	if (t < 0.1) {
+
+		bl.mode = BLC_MODE_IDLE;
+	}
+	else if (t < 1.0) {
+
+		bl.mode = BLC_MODE_ALIGN;
+	}
+	else {
+
+		bl.mode = BLC_MODE_RUN;
+	}
+}
 
 static void
 sim(double tend)
 {
+	double		x5;
 	int		tel = 1, tl, ts = 0;
 	FILE		*fd;
 
 	plant_enable();
-	kalf_enable(plant.tdel);
+	blc_enable(plant.tdel);
 
 	fd = fopen("TEL", "w");
 
@@ -46,25 +70,36 @@ sim(double tend)
 
 	while (plant.tsim < tend) {
 
+		/* Automate test update.
+		 * */
+		test(plant.tsim);
+
 		/* Plant model update.
 		 * */
+		x5 = plant.x[5];
 		plant_update();
 
 		/* ----------------------------- */
 
-		kalf_update(plant.z);
+		/* BLC update.
+		 * */
+		blc_update(plant.z);
 
 		/* ----------------------------- */
 
 		if (tel) {
 
 			fprintf(fd, "%2.6lf ", plant.tsim);
-			fprintf(fd, "%2.3lf %2.3lf %5.4lf %1.4lf %2.2lf %3.4lf ",
+			fprintf(fd, "%2.4lf %2.4lf %2.4lf %5.4lf %1.4lf %2.2lf %3.4lf ",
 					plant.x[0], - plant.x[0] - plant.x[1],
-					plant.x[2], plant.x[3], plant.x[4],
-					plant.x[5] - plant.x5);
+					plant.x[1], plant.x[2], plant.x[3], plant.x[4],
+					(plant.x[5] - x5) / plant.tdel);
+			fprintf(fd, "%1.4lf %1.4lf %1.4lf ",
+				plant.u[0], plant.u[1], plant.u[2]);
 			fprintf(fd, "%i %i ",
 					plant.z[0], plant.z[1]);
+			fprintf(fd, "%f %f ",
+					bl.c.aD, bl.c.cD);
 			fputs("\n", fd);
 		}
 
@@ -86,7 +121,7 @@ sim(double tend)
 
 int main(int argc, char *argv[])
 {
-	double		tend = 5.0;
+	double		tend = 3.0;
 
 	lib_enable();
 	sim(tend);

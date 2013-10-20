@@ -29,16 +29,12 @@ typedef struct {
 
 	/* Input variables.
 	 * */
-	float		u[3];
+	double		u[3];
 	int		i[3];
 
 	/* State variabes.
 	 * */
 	double		x[PLANT_STATE_SIZE];
-
-	/* BEMF waveform shape table.
-	 * */
-	double		tab_E_shape[361];
 
 	/* Constants.
 	 * */
@@ -53,10 +49,6 @@ typedef struct {
 	/* Output variables.
 	 * */
 	int		z[2];
-
-	/* Temporary variables.
-	 * */
-	double		x5;
 }
 plant_t;
 

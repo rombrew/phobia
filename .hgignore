@@ -1,6 +1,8 @@
 syntax: glob
 *.d
 *.o
-fw/build
-fw/tags
-fw/scope
+blsim/bl
+blsim/sim
+tags
+scope
+TEL

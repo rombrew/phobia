@@ -32,6 +32,13 @@ plant_bemf_shape(double x)
 	const double	PI3 = M_PI / 3.0;
 	double		s1, s2;
 
+	/* Wrap the argument.
+	 * */
+	x /= (2.0 * M_PI);
+	x = x - (double) (int) x;
+	x = (x < 0.0) ? x + 1.0 : x;
+	x *= (2.0 * M_PI);
+
 	/* Sinusoidal shape.
 	 * */
 	s1 = sin(x - M_PI / 2.0);
@@ -50,43 +57,10 @@ plant_bemf_shape(double x)
 	return x;
 }
 
-static double
-plant_bemf_shape_lookup(double x)
-{
-	double		e, a;
-	int		j;
-
-	/* Obtain index and scalar.
-	 * */
-	x *= 180.0 / M_PI;
-	j = (int) x;
-	a = x - (double) j;
-
-	/* Wrap the index.
-	 * */
-	j = (j < 0) ? j + 360 : (j > 360)
-		? j - 360 : j;
-
-	/* Linear interpolated.
-	 * */
-	e = plant.tab_E_shape[j];
-	e += (plant.tab_E_shape[j + 1] - e) * a;
-
-	return e;
-}
-
 void plant_enable()
 {
 	double		x;
 	int		j;
-
-	/* BEMF waveform shape table.
-	 * */
-	for (j = 0; j < 361; ++j) {
-
-		x = plant_bemf_shape(j * M_PI / 180.0);
-		plant.tab_E_shape[j] = x;
-	}
 
 	plant.tsim = 0.0; /* Simulation time (Second) */
         plant.tdel = 1.0 / 20e+3; /* Delta */
@@ -126,7 +100,7 @@ void plant_enable()
 	/* Load torque constants.
 	 * */
 	plant.const_M[0] = 0.0;
-	plant.const_M[1] = 0.0;
+	plant.const_M[1] = 1e-2;
 	plant.const_M[2] = 0.0;
 	plant.const_M[3] = 0.0;
 }
@@ -145,9 +119,9 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 	Z = plant.const_Z;
 	J = plant.const_J;
 
-	e[0] = plant_bemf_shape_lookup(x[3]);
-	e[1] = plant_bemf_shape_lookup(x[3] - 2.0 * M_PI / 3.0);
-	e[2] = plant_bemf_shape_lookup(x[3] + 2.0 * M_PI / 3.0);
+	e[0] = plant_bemf_shape(x[3]);
+	e[1] = plant_bemf_shape(x[3] - 2.0 * M_PI / 3.0);
+	e[2] = plant_bemf_shape(x[3] + 2.0 * M_PI / 3.0);
 
 	bemf[0] = x[2] * E * e[0];
 	bemf[1] = x[2] * E * e[1];
@@ -220,11 +194,7 @@ plant_bridge_solve(double tdel)
 	int		j, ton[3], a, pm[3];
 	double		pwmdt, dt, sa[2], u, uref, du;
 
-	/* Save temporary variables.
-	 * */
-	plant.x5 = plant.x[5];
-
-	/* Prepare to solve.
+	/* Prepare variables.
 	 * */
 	pwmdt = tdel / plant.pwmf / 2.0;
 	uref = 3.3;

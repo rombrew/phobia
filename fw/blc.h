@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_KALF_
-#define _H_KALF_
+#ifndef _H_BLC_
+#define _H_BLC_
 
 typedef struct {
 
@@ -36,14 +36,18 @@ typedef struct {
 	float		iL;
 	float		E;
 	float		U;
-	float		Z;
+	int		Z;
 	float		iJ;
 }
-kalf_const_t;
+blc_const_t;
 
 typedef struct {
 
 	float		tdel;
+
+	/* FSM variables.
+	 * */
+	int		mode;
 
 	/* Control signal.
 	 * */
@@ -60,19 +64,36 @@ typedef struct {
 
 	/* Noise variance.
 	 * */
-	float		qq[6];
+	float		qq[5];
 	float		rr[2];
 
 	/* Constants of the plant.
 	 * */
-	kalf_const_t	c;
+	blc_const_t	c;
+
+	/* Zero drift identifier.
+	 * */
+	float		zdk[3];
+
+	/* Curret control loop.
+	 * */
+	float		ccl_sp;
+	float		ccl_k[4];
+	float		ccl_x[2];
 }
-kalf_t;
+blc_t;
 
-extern kalf_t	kf;
+enum {
+	BLC_MODE_IDLE		= 0,
+	BLC_MODE_ALIGN,
+	BLC_MODE_RUN,
+};
 
-void kalf_enable(float tdel);
-void kalf_update(int i[2]);
+extern blc_t		bl;
 
-#endif /* _H_KALF_ */
+void blc_enable(float tdel);
+void blc_update(const int i[2]);
+void bridge_dc(const float dc[3]);
+
+#endif /* _H_BLC_ */
 
