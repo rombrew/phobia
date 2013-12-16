@@ -18,12 +18,12 @@
 
 #include "blc.h"
 
+#define KPI		3.14159265f
+
 blc_t			bl;
 
-float sqrtf(float x);
-
 inline float
-satf(float x, float h, float l)
+clamp(float x, float h, float l)
 {
 	x = (x > h) ? h : (x < l) ? l : x;
 
@@ -31,29 +31,151 @@ satf(float x, float h, float l)
 }
 
 static void
-abc2dq(const float abc[3], const float e[2], float dq[2])
+abc2dq(const float abc[3], const float x[2], float dq[2])
 {
 	float		xy[2];
 
 	xy[0] = abc[0];
 	xy[1] = 0.57735027f * abc[0] + 1.1547005f * abc[1];
 
-	dq[0] = e[0] * xy[0] + e[1] * xy[1];
-	dq[1] = -e[1] * xy[0] + e[0] * xy[1];
+	dq[0] = x[1] * xy[0] + x[0] * xy[1];
+	dq[1] = -x[0] * xy[0] + x[1] * xy[1];
 }
 
 static void
-dq2abc(const float dq[2], const float e[2], float abc[3])
+dq2abc(const float dq[2], const float x[2], float abc[3])
 {
 	float		xy[2];
 
-	xy[0] = e[0] * dq[0] - e[1] * dq[1];
-	xy[1] = e[1] * dq[0] + e[0] * dq[1];
+	xy[0] = x[1] * dq[0] - x[0] * dq[1];
+	xy[1] = x[0] * dq[0] + x[1] * dq[1];
 
 	abc[0] = xy[0];
 	abc[1] = -0.5f * xy[0] + 0.86602540f * xy[1];
 	abc[2] = -(abc[0] + abc[1]);
 }
+
+static void
+ksincosf(float a, float x[2])
+{
+	static float	l[8] = {
+
+		-1.37729499e-04f,
+		-2.04509846e-04f,
+		8.63928854e-03f,
+		-2.43287243e-04f,
+		-1.66562291e-01f,
+		-2.23787462e-05f,
+		1.00000193e+00f,
+		-3.55250780e-08f,
+	};
+
+	float		u;
+	int		m = 0;
+
+	if (a < 0.0) {
+
+		m += 1;
+		a = -a;
+	}
+
+	if (a > (KPI / 2.0f)) {
+
+		m += 2;
+		a = KPI - a;
+	}
+
+	u = l[1] + l[0] * a;
+	u = l[2] + u * a;
+	u = l[3] + u * a;
+	u = l[4] + u * a;
+	u = l[5] + u * a;
+	u = l[6] + u * a;
+	u = l[7] + u * a;
+	x[0] = (m & 1) ? -u : u;
+
+	a = (KPI / 2.0f) - a;
+	u = l[1] + l[0] * a;
+	u = l[2] + u * a;
+	u = l[3] + u * a;
+	u = l[4] + u * a;
+	u = l[5] + u * a;
+	u = l[6] + u * a;
+	u = l[7] + u * a;
+	x[1] = (m & 2) ? -u : u;
+}
+
+static void
+mclr(float *c, int m, int n)
+{
+	int		i, j;
+
+	for (i = 0; i < m; ++i)
+		for (j = 0; j < n; ++j) {
+
+			c[i * n + j] = 0.0f;
+		}
+}
+
+static void
+msub(float *a, const float *b, int m, int n)
+{
+	int		i, j;
+
+	for (i = 0; i < m; ++i)
+		for (j = 0; j < n; ++j) {
+
+			a[i * n + j] += - b[i * n + j];
+		}
+}
+
+static void
+mtra(const float *a, float *c, int m, int n)
+{
+	int		i, j;
+
+	for (i = 0; i < m; ++i)
+		for (j = 0; j < n; ++j) {
+
+			c[i * n + j] = a[j * m + i];
+		}
+}
+
+static void
+mmul(const float *a, const float *b, float *c, int m, int n, int k)
+{
+	int		i, j, l;
+
+	for (i = 0; i < m; ++i)
+		for (j = 0; j < n; ++j) {
+
+			c[i * n + j] = 0.0f;
+			for (l = 0; l < k; ++l)
+				c[i * n + j] += a[i * k + l] * b[l * n + j];
+		}
+}
+
+static void
+mprt(const char *name, const float *a, int m, int n)
+{
+	int		i, j;
+
+	printf("%s = \n", name);
+
+	for (i = 0; i < m; ++i) {
+		for (j = 0; j < n; ++j) {
+
+			printf("%.9f ", a[i * n + j]);
+		}
+
+		printf("\n");
+	}
+
+	printf("\n\n");
+}
+
+static void
+kccl_u(const float u[2]);
 
 static void
 kalf_kgain();
@@ -71,40 +193,43 @@ void blc_enable(float tdel)
 	bl.u[0] = 0.0f;
 	bl.u[1] = 0.0f;
 
+	/* Post this control.
+	 * */
+	kccl_u(bl.u);
+
 	/* Initial state.
 	 * */
 	bl.x[0] = 0.0f;
 	bl.x[1] = 0.0f;
 	bl.x[2] = 0.0f;
-	bl.x[3] = 1.0f;
+	bl.x[3] = 0.0f;
 	bl.x[4] = 0.0f;
-	bl.x[5] = 0.0f;
 
 	/* Initial covariance.
 	 * */
-	bl.pp[0] = 5e+2f;
-	bl.pp[1] = 0.0f;
-	bl.pp[2] = 0.0f;
-	bl.pp[3] = 0.0f;
-	bl.pp[4] = 0.0f;
-	bl.pp[5] = 5e+2f;
-	bl.pp[6] = 0.0f;
-	bl.pp[7] = 0.0f;
-	bl.pp[8] = 0.0f;
-	bl.pp[9] = 9e+6f;
-	bl.pp[10] = 0.0f;
-	bl.pp[11] = 0.0f;
-	bl.pp[12] = 4e+1f;
-	bl.pp[13] = 0.0f;
-	bl.pp[14] = 5e+0f;
+	mclr(bl.pp, 5, 5);
+	bl.pp[0] = 1e+2f;
+	bl.pp[6] = 1e+2f;
+	bl.pp[12] = 2e+2f;
+	bl.pp[18] = 3e-2f;
+	bl.pp[24] = 3e-4f;
+
+	/* Initial NoFT.
+	 * */
+	bl.noft = 0;
+
+	/* Initial DQ.
+	 * */
+	bl.dq[0] = 0.0f;
+	bl.dq[1] = 1.0f;
 
 	/* Initial noise variance.
 	 * */
-	bl.qq[0] = 1e-2f;
-	bl.qq[1] = 1e-2f;
-	bl.qq[2] = 1e-4f;
-	bl.qq[3] = 1e-5f;
-	bl.qq[4] = 1e-5f;
+	bl.qq[0] = 1e-4f;
+	bl.qq[1] = 1e-4f;
+	bl.qq[2] = 1e-2f;
+	bl.qq[3] = 1e-2f;
+	bl.qq[4] = 1e-2f;
 	bl.rr[0] = 1e-4f;
 	bl.rr[1] = 1e-4f;
 
@@ -114,7 +239,6 @@ void blc_enable(float tdel)
 
 	/* Initial constants.
 	 * */
-	bl.c.gI = 0.014663f;
 	bl.c.aD = 0.0f;
 	bl.c.cD = 0.0f;
 	bl.c.R = 147e-3f;
@@ -126,40 +250,17 @@ void blc_enable(float tdel)
 
 	/* Initial zero drift Kalman filter.
 	 * */
-	bl.zdk[0] = 1.0f;
-	bl.zdk[1] = 1e-9f;
-	bl.zdk[2] = 1e-4f;
+	bl.i.zp = 1e+0f;
+	bl.i.zq = 1e-10f;
+	bl.i.zr = 1e-4f;
 
 	/* Initial current control loop.
 	 * */
-	bl.ccl_sp = 1.0f;
-	bl.ccl_k[0] = 0.03f;
-	bl.ccl_k[1] = 0.005f;
-}
-
-static void
-kadd(float x[2], float a)
-{
-	float		s1[2], s2[2];
-	float		x2[2], il;
-
-	a = satf(a, 1.0f, -1.0f);
-
-	s1[0] = -x[1] * a;
-	s1[1] = x[0] * a;
-
-	x2[0] = x[0] + s1[0];
-	x2[1] = x[1] + s1[1];
-
-	s2[0] = -x2[1] * a;
-	s2[1] = x2[0] * a;
-
-	x[0] += 0.5f * (s1[0] + s2[0]);
-	x[1] += 0.5f * (s1[1] + s2[1]);
-
-	il = 1.0f / sqrtf(x[0] * x[0] + x[1] * x[1]);
-	x[0] *= il;
-	x[1] *= il;
+	bl.ccl.sp = 10.0f;
+	bl.ccl.k[0] = 0.03f;
+	bl.ccl.k[1] = 0.005f;
+	bl.ccl.x[0] = 0.0f;
+	bl.ccl.x[1] = 0.0f;
 }
 
 static void
@@ -186,22 +287,89 @@ kalf_predict()
 	x2[0] = bl.x[0];
 	x2[1] = bl.x[1];
 	x2[2] = bl.x[2];
-	x2[3] = bl.x[5];
+	x2[3] = bl.x[4];
 
 	kequation(s1, x2);
 
-	x2[0] = bl.x[0] + s1[0] * T;
-	x2[1] = bl.x[1] + s1[1] * T;
-	x2[2] = bl.x[2] + s1[2] * T;
+	x2[0] += s1[0] * T;
+	x2[1] += s1[1] * T;
+	x2[2] += s1[2] * T;
 
 	kequation(s2, x2);
 
 	bl.x[0] += 0.5f * (s1[0] + s2[0]) * T;
 	bl.x[1] += 0.5f * (s1[1] + s2[1]) * T;
 	bl.x[2] += 0.5f * (s1[2] + s2[2]) * T;
-	kadd(bl.x + 3, (s1[3] + s2[3]) * T * 0.5f);
+	bl.x[3] += 0.5f * (s1[3] + s2[3]) * T;
 }
 
+static void
+kalf_predict_cov()
+{
+	float		aa[25], aat[25], T;
+	float		aapp[25];
+
+	T = bl.tdel;
+
+	mclr(aa, 5, 5);
+	aa[0] = 1.0f - bl.c.iL * bl.c.R * T;
+	aa[1] = bl.x[2] * T;
+	aa[2] = bl.x[1] * T;
+	aa[5] = - bl.x[2] * T;
+	aa[6] = 1.0f - bl.c.iL * bl.c.R * T;
+	aa[7] = -(bl.c.iL * bl.c.E + bl.x[0]) * T;
+	aa[11] = 1.5f * bl.c.E * bl.c.iJ * bl.c.Z * bl.c.Z * T;
+	aa[12] = 1.0f;
+	aa[14] = - bl.c.iJ * bl.c.Z * T;
+	aa[17] = T;
+	aa[18] = 1.0f;
+	aa[24] = 1.0f;
+
+	mmul(aa, bl.pp, aapp, 5, 5, 5);
+	mtra(aa, aat, 5, 5);
+	mmul(aapp, aat, bl.pp, 5, 5, 5);
+
+	bl.pp[0] += bl.qq[0];
+	bl.pp[6] += bl.qq[1];
+	bl.pp[12] += bl.qq[2];
+	bl.pp[18] += bl.qq[3];
+	bl.pp[24] += bl.qq[4];
+}
+
+static void
+kalf_kgain()
+{
+	float		cc[10], cct[10];
+	float		ccpp[10], ss[4], inv, iss[4];
+	float		ppcc[10], kcp[25];
+
+	static int 	n;
+
+	mclr(cc, 2, 5);
+	cc[0] = 1.0f;
+	cc[6] = 1.0f;
+
+	mmul(cc, bl.pp, ccpp, 2, 5, 5);
+	mtra(cc, cct, 5, 2);
+	mmul(ccpp, cct, ss, 2, 2, 5);
+
+	ss[0] += bl.rr[0];
+	ss[3] += bl.rr[1];
+
+	inv = 1.0f / (ss[0] * ss[3] - ss[1] * ss[2]);
+	iss[0] = ss[3] * inv;
+	iss[1] = -ss[2] * inv;
+	iss[2] = -ss[1] * inv;
+	iss[3] = ss[0] * inv;
+
+	mtra(ccpp, ppcc, 5, 2);
+	mmul(ppcc, iss, bl.kk, 5, 2, 2);
+
+	mmul(bl.kk, ccpp, kcp, 5, 5, 2);
+	msub(bl.pp, kcp, 5, 5);
+}
+
+#if 0
 static void
 kalf_predict_cov()
 {
@@ -355,6 +523,41 @@ kalf_kgain()
 	bl.pp[13] -= kcp[13];
 	bl.pp[14] -= kcp[14];
 }
+#endif
+
+static void
+kali_zd(const float e[2], const float dq[2])
+{
+	float		eabc[3], k;
+
+	/* Get error back to ABC axes.
+	 * */
+	dq2abc(e, dq, eabc);
+
+	/* Kalman filter.
+	 * */
+	bl.i.zp += bl.i.zq;
+	k = bl.i.zp / (bl.i.zp + bl.i.zr);
+	bl.c.aD += k * eabc[0];
+	bl.c.cD += k * eabc[2];
+	bl.i.zp -= k * bl.i.zp;
+}
+
+static void
+kali_plant(const float e[2], const float dq[2], const float x[5])
+{
+	float		cc[10], ppcc[10], ss[3];
+
+	cc[0] = 0;
+	cc[9] = 0;
+
+	ppcc[0] = bl.i.pp[0] * cc[0] + bl.i.pp[1] * cc[1]
+		+ bl.i.pp[2] * cc[2] + bl.i.pp[3] * cc[3]
+		+ bl.i.pp[4] * cc[4];
+	ppcc[1] = bl.i.pp[0] * cc[0] + bl.i.pp[1] * cc[1]
+		+ bl.i.pp[2] * cc[2] + bl.i.pp[3] * cc[3]
+		+ bl.i.pp[4] * cc[4];
+}
 
 static void
 kccl_u(const float u[2])
@@ -363,7 +566,7 @@ kccl_u(const float u[2])
 
 	/* Transform to ABC axes.
 	 * */
-	dq2abc(u, bl.x + 3, dc);
+	dq2abc(u, bl.dq, dc);
 
 	/* Convert to DC.
 	 * */
@@ -388,16 +591,16 @@ kccl_update(const float x[2], float spd, float spq)
 
 	/* DQ current regulator.
 	 * */
-	bl.ccl_x[0] += bl.ccl_k[1] * e[0];
-	bl.ccl_x[0] = satf(bl.ccl_x[0], 1.0f, -1.0f);
-	u[0] = bl.ccl_k[0] * e[0] + bl.ccl_x[0];
+	bl.ccl.x[0] += bl.ccl.k[1] * e[0];
+	bl.ccl.x[0] = clamp(bl.ccl.x[0], 1.0f, -1.0f);
+	u[0] = bl.ccl.k[0] * e[0] + bl.ccl.x[0];
 
-	bl.ccl_x[1] += bl.ccl_k[1] * e[1];
-	bl.ccl_x[1] = satf(bl.ccl_x[1], 1.0f, -1.0f);
-	u[1] = bl.ccl_k[0] * e[1] + bl.ccl_x[1];
+	bl.ccl.x[1] += bl.ccl.k[1] * e[1];
+	bl.ccl.x[1] = clamp(bl.ccl.x[1], 1.0f, -1.0f);
+	u[1] = bl.ccl.k[0] * e[1] + bl.ccl.x[1];
 
-	u[0] = satf(u[0], 1.0f, -1.0f);
-	u[1] = satf(u[1], 1.0f, -1.0f);
+	u[0] = clamp(u[0], 1.0f, -1.0f);
+	u[1] = clamp(u[1], 1.0f, -1.0f);
 
 	/* Store control signal.
 	 * */
@@ -406,54 +609,36 @@ kccl_update(const float x[2], float spd, float spq)
 
 	/* Post this control.
 	 * */
-	kccl_u(u);
+	kccl_u(bl.u);
 }
 
-static void
-kzdi_update(const float e[2], const float x[2])
+void blc_update(const float z[2])
 {
-	float		eabc[3], k;
+	float		zabc[3], zdq[2], e[2];
 
-	/* Get error back to ABC axes.
+	/* Zero drift cancelation.
 	 * */
-	dq2abc(e, x, eabc);
-
-	/* Kalman filter.
-	 * */
-	bl.zdk[0] += bl.zdk[1];
-	k = bl.zdk[0] / (bl.zdk[0] + bl.zdk[2]);
-	bl.c.aD -= k * eabc[0];
-	bl.c.cD -= k * eabc[2];
-	bl.zdk[0] -= k * bl.zdk[0];
-}
-
-void blc_update(const int i[2])
-{
-	float		z[3], zdq[2], e[2];
-
-	/* Prepare measured signals.
-	 * */
-	z[0] = (float) (i[0] - 2048) * bl.c.gI + bl.c.aD;
-	z[2] = (float) (i[1] - 2048) * bl.c.gI + bl.c.cD;
-	z[1] = -(z[0] + z[2]);
+	zabc[0] = z[0] - bl.c.aD;
+	zabc[2] = z[1] - bl.c.cD;
+	zabc[1] = -(zabc[0] + zabc[2]);
 
 	/* Transform to DQ frame.
 	 * */
-	abc2dq(z, bl.x + 3, zdq);
+	abc2dq(zabc, bl.dq, zdq);
 
 	/* -------------------------------------------- */
 
-	if (bl.mode == BLC_MODE_IDLE) {
+	if (bl.mode == BLC_MODE_DRIFT) {
 
 		/* Identify zero drift.
 		 * */
-		kzdi_update(zdq, bl.x + 3);
+		kali_zd(zdq, bl.dq);
 	}
 	else if (bl.mode == BLC_MODE_ALIGN) {
 
 		/* Open loop control to align the rotor.
 		 * */
-		kccl_update(zdq, bl.ccl_sp, 0.0f);
+		kccl_update(zdq, bl.ccl.sp, 0.0f);
 	}
 	else if (bl.mode == BLC_MODE_RUN) {
 
@@ -462,27 +647,50 @@ void blc_update(const int i[2])
 		e[0] = zdq[0] - bl.x[0];
 		e[1] = zdq[1] - bl.x[1];
 
+		/* Observer innovation.
+		 * */
+		bl.e[0] = bl.kk[0] * e[0] + bl.kk[1] * e[1];
+		bl.e[1] = bl.kk[2] * e[0] + bl.kk[3] * e[1];
+		bl.e[2] = bl.kk[4] * e[0] + bl.kk[5] * e[1];
+		bl.e[3] = bl.kk[6] * e[0] + bl.kk[7] * e[1];
+		bl.e[4] = bl.kk[8] * e[0] + bl.kk[9] * e[1];
+
 		/* Update state estimate.
 		 * */
-		bl.x[0] += bl.kk[0] * e[0] + bl.kk[1] * e[1];
-		bl.x[1] += bl.kk[2] * e[0] + bl.kk[3] * e[1];
-		bl.x[2] += bl.kk[4] * e[0] + bl.kk[5] * e[1];
-		kadd(bl.x + 3, bl.kk[6] * e[0] + bl.kk[7] * e[1]);
-		bl.x[5] += bl.kk[8] * e[0] + bl.kk[9] * e[1];
+		bl.x[0] += bl.e[0];
+		bl.x[1] += bl.e[1];
+		bl.x[2] += bl.e[2];
+		bl.x[3] += bl.e[3];
+		bl.x[4] += bl.e[4];
 
 		/* Predict state.
 		 * */
 		kalf_predict();
 
+		/* Wrap angular position.
+		 * */
+		if (bl.x[3] < -KPI) {
+
+			bl.x[3] += 2.0f * KPI;
+			bl.noft += 1;
+		}
+		else if (bl.x[3] > KPI) {
+
+			bl.x[3] -= 2.0f * KPI;
+			bl.noft += 1;
+		}
+
+		/* Clamp angular position.
+		 * */
+		bl.x[3] = clamp(bl.x[3], KPI, -KPI);
+
+		/* Update DQ frame axes.
+		 * */
+		ksincosf(bl.x[3], bl.dq);
+
 		/* Update control.
 		 * */
-		kccl_update(bl.x, 0.0f, bl.ccl_sp);
-
-		/*printf("-> %f %f %f %f %f %f \n",
-			bl.x[0], bl.x[1], bl.x[2], bl.x[3], bl.x[4], bl.x[5]);
-		printf("-> %f %f\n",
-			bl.u[0], bl.u[1]);
-		system("read");*/
+		kccl_update(bl.x, 0.0f, bl.ccl.sp);
 
 		/* -------------------------------------------- */
 
@@ -496,8 +704,10 @@ void blc_update(const int i[2])
 
 		/* -------------------------------------------- */
 
-		/* FIXME: Identify
+		/* Update identifier.
 		 * */
+		//kali_zd(e, bl.dq);
+		//kali_plant(e, bl.x);
 	}
 }
 

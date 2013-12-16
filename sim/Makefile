@@ -4,7 +4,6 @@ TARGET	= sim
 CC	= gcc
 LD	= gcc
 RM      = rm -f
-LN	= ln -s
 
 CFLAGS	= -std=gnu99 -pipe -Wall -O2 -g3
 LFLAGS	= -lm -g3

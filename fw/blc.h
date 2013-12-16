@@ -21,10 +21,6 @@
 
 typedef struct {
 
-	/* Conversion gain.
-	 * */
-	float		gI;
-
 	/* Zero drift.
 	 * */
 	float		aD;
@@ -38,11 +34,47 @@ typedef struct {
 	float		U;
 	int		Z;
 	float		iJ;
+	float		M1;
+	float		M2;
 }
 blc_const_t;
 
 typedef struct {
 
+	/* Zero drift filter.
+	 * */
+	float		zp;
+	float		zq;
+	float		zr;
+
+	/* Plant filter.
+	 * */
+	float		pp[15];
+	float		qq[5];
+	float		rr[3];
+}
+blc_kali_t;
+
+typedef struct {
+
+	/* Current control loop.
+	 * */
+	float		sp;
+	float		k[4];
+	float		x[2];
+}
+blc_ccl_t;
+
+typedef struct {
+
+	float		stub;
+}
+blc_scl_t;
+
+typedef struct {
+
+	/* Delta.
+	 * */
 	float		tdel;
 
 	/* FSM variables.
@@ -55,8 +87,20 @@ typedef struct {
 
 	/* State and covariance.
 	 * */
-	float		x[6];
-	float		pp[15];
+	float		x[5];
+	float		pp[25];
+
+	/* Number of full turns.
+	 * */
+	int		noft;
+
+	/* DQ frame.
+	 * */
+	float		dq[2];
+
+	/* Observer innovation.
+	 * */
+	float		e[5];
 
 	/* Kalman gain.
 	 * */
@@ -71,20 +115,23 @@ typedef struct {
 	 * */
 	blc_const_t	c;
 
-	/* Zero drift identifier.
+	/* Plant identifier.
 	 * */
-	float		zdk[3];
+	blc_kali_t	i;
 
-	/* Curret control loop.
+	/* Current control loop.
 	 * */
-	float		ccl_sp;
-	float		ccl_k[4];
-	float		ccl_x[2];
+	blc_ccl_t	ccl;
+
+	/* Speed control loop.
+	 * */
+	blc_scl_t	scl;
 }
 blc_t;
 
 enum {
 	BLC_MODE_IDLE		= 0,
+	BLC_MODE_DRIFT,
 	BLC_MODE_ALIGN,
 	BLC_MODE_RUN,
 };
@@ -92,7 +139,7 @@ enum {
 extern blc_t		bl;
 
 void blc_enable(float tdel);
-void blc_update(const int i[2]);
+void blc_update(const float z[2]);
 void bridge_dc(const float dc[3]);
 
 #endif /* _H_BLC_ */

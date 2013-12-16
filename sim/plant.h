@@ -19,7 +19,7 @@
 #ifndef _H_PLANT_
 #define _H_PLANT_
 
-#define PLANT_STATE_SIZE	6
+#define PLANT_STATE_SIZE	7
 
 typedef struct {
 
@@ -29,6 +29,7 @@ typedef struct {
 
 	/* Input variables.
 	 * */
+	double		ub[3];
 	double		u[3];
 	int		i[3];
 

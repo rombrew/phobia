@@ -42,7 +42,6 @@ void lib_enable()
 	for (j = 0; j < 55; ++j) {
 
 		r = r * 17317 + 1;
-
 		rseed[j] = (double) r / (double) UINT_MAX;
 	}
 }

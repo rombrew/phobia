@@ -29,49 +29,32 @@ plant_t			plant;
 static double
 plant_bemf_shape(double x)
 {
-	const double	PI3 = M_PI / 3.0;
-	double		s1, s2;
+	double		s1;
 
-	/* Wrap the argument.
+	/* Phase align.
 	 * */
-	x /= (2.0 * M_PI);
-	x = x - (double) (int) x;
-	x = (x < 0.0) ? x + 1.0 : x;
-	x *= (2.0 * M_PI);
+	x = -x;
 
 	/* Sinusoidal shape.
 	 * */
-	s1 = sin(x - M_PI / 2.0);
+	s1 = sin(x);
 
-	/* Trapezoidal shape.
-	 * */
-	s2 = (x < PI3) ? -1.0 :
-		(x < 2.0 * PI3) ? 2.0 / PI3 * x - 3.0:
-		(x < 4.0 * PI3) ? 1.0 :
-		(x < 5.0 * PI3) ? -2.0 / PI3 * x + 9.0 : -1.0;
-
-	/* Mixed output.
-	 * */
-	x = s1 + (s2 - s1) * 0.5;
-
-	return x;
+	return s1;
 }
 
 void plant_enable()
 {
-	double		x;
-	int		j;
-
 	plant.tsim = 0.0; /* Simulation time (Second) */
         plant.tdel = 1.0 / 20e+3; /* Delta */
 	plant.pwmf = 1000; /* PWM resolution */
 
         plant.x[0] = 0.0; /* Phase A current (Ampere) */
 	plant.x[1] = 0.0; /* Phase B current (Ampere) */
-        plant.x[2] = 0.0; /* Electrical speed (Radian/Sec) */
-        plant.x[3] = 0.0; /* Electrical position (Radian) */
+        plant.x[2] = 0.0; /* Electrical Speed (Radian/Sec) */
+        plant.x[3] = -1.0; /* Electrical Position (Radian) */
         plant.x[4] = 20.0; /* Temperature (Celsius) */
-	plant.x[5] = 0.0; /* Consumed energy (Joule) */
+	plant.x[5] = 0.0; /* Consumed Energy (Joule) */
+	plant.x[6] = 0.0; /* Produced Energy (Joule) */
 
 	/* Winding resistance at 20 C. (Ohm)
          * */
@@ -100,8 +83,8 @@ void plant_enable()
 	/* Load torque constants.
 	 * */
 	plant.const_M[0] = 0.0;
-	plant.const_M[1] = 1e-2;
-	plant.const_M[2] = 0.0;
+	plant.const_M[1] = 2e-4;
+	plant.const_M[2] = 3e-5;
 	plant.const_M[3] = 0.0;
 }
 
@@ -139,10 +122,11 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 			- (x[0] + x[1]) * e[2]);
 
 	s = fabs(x[2] / Z);
-	Ml = plant.const_M[1] * s
+	Ml = plant.const_M[0]
+		+ plant.const_M[1] * s
 		+ plant.const_M[2] * s * s
 		+ plant.const_M[3] * s * s * s;
-	Ml = plant.const_M[0] + (x[2] < 0.0 ? Ml : -Ml);
+	Ml = (x[2] < 0.0 ? Ml : -Ml);
 
 	/* Mechanical equations.
 	 * */
@@ -153,11 +137,12 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 	 * */
 	dx[4] = 0.0;
 
-	/* Energy equation.
+	/* Energy equations.
 	 * */
 	Is = plant.i[0] * x[0] + plant.i[1] * x[1]
 		- plant.i[2] * (x[0] + x[1]);
 	dx[5] = U * Is;
+	dx[6] = Mt * (x[2] / Z);
 }
 
 static void
@@ -202,6 +187,10 @@ plant_bridge_solve(double tdel)
 	ton[0] = (int) (plant.u[0] * plant.pwmf);
 	ton[1] = (int) (plant.u[1] * plant.pwmf);
 	ton[2] = (int) (plant.u[2] * plant.pwmf);
+
+	plant.u[0] = plant.ub[0];
+	plant.u[1] = plant.ub[1];
+	plant.u[2] = plant.ub[2];
 
 	if (PWM_FAST_SOLVER) {
 
@@ -316,7 +305,7 @@ plant_bridge_solve(double tdel)
 	/* Current sampling.
 	 * */
 	sa[0] = plant.x[0];
-	sa[1] = - plant.x[0] - plant.x[1];
+	sa[1] = -(plant.x[0] + plant.x[1]);
 
 	/* Output voltage of the current sensor A.
 	 * */
