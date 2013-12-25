@@ -67,17 +67,32 @@ if (N == 7) {
 if (N == 8) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Current innovation (Ampere)'
-	plot    'TEL' using 1:24 title 'D' with lines, \
-		'TEL' using 1:25 title 'Q' with lines
-}
-
-if (N == 9) {
-
-	set xlabel 'Time (Sec)'
 	set ylabel 'Number of full turns'
 	plot    'TEL' using 1:16 title 'Plant' with lines
 }
+
+if (N == 10) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Winding resistance (Ohm)'
+	plot    'TEL' using 1:19 title 'Estimated' with lines
+}
+
+if (N == 11) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Winding inductance (uH)'
+	plot    'TEL' using 1:20 title 'Estimated' with lines
+}
+
+
+if (N == 12) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Motor constant'
+	plot    'TEL' using 1:21 title 'Estimated' with lines
+}
+
 
 pause mouse close
 

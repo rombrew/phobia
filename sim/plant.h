@@ -29,7 +29,6 @@ typedef struct {
 
 	/* Input variables.
 	 * */
-	double		ub[3];
 	double		u[3];
 	int		i[3];
 
@@ -49,7 +48,7 @@ typedef struct {
 
 	/* Output variables.
 	 * */
-	int		z[2];
+	int		z[3];
 }
 plant_t;
 

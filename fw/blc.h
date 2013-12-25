@@ -34,24 +34,34 @@ typedef struct {
 	float		U;
 	int		Z;
 	float		iJ;
-	float		M1;
-	float		M2;
 }
 blc_const_t;
 
 typedef struct {
 
-	/* Zero drift filter.
+	/* Zero drift.
 	 * */
 	float		zp;
 	float		zq;
 	float		zr;
 
-	/* Plant filter.
+	/* U.
 	 * */
-	float		pp[15];
-	float		qq[5];
-	float		rr[3];
+	float		up;
+	float		uq;
+	float		ur;
+
+	/* R iL E.
+	 * */
+	float		pp[9];
+	float		qq[3];
+	float		rr[2];
+
+	/* iJ.
+	 * */
+	float		jp;
+	float		jq;
+	float		jr;
 }
 blc_kali_t;
 
@@ -90,6 +100,11 @@ typedef struct {
 	float		x[5];
 	float		pp[25];
 
+	/* Noise variance.
+	 * */
+	float		qq[5];
+	float		rr[2];
+
 	/* Number of full turns.
 	 * */
 	int		noft;
@@ -98,18 +113,9 @@ typedef struct {
 	 * */
 	float		dq[2];
 
-	/* Observer innovation.
-	 * */
-	float		e[5];
-
 	/* Kalman gain.
 	 * */
 	float		kk[10];
-
-	/* Noise variance.
-	 * */
-	float		qq[5];
-	float		rr[2];
 
 	/* Constants of the plant.
 	 * */
@@ -139,7 +145,7 @@ enum {
 extern blc_t		bl;
 
 void blc_enable(float tdel);
-void blc_update(const float z[2]);
+void blc_update(const float z[2], float zv);
 void bridge_dc(const float dc[3]);
 
 #endif /* _H_BLC_ */

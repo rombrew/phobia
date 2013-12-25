@@ -82,9 +82,9 @@ void plant_enable()
 
 	/* Load torque constants.
 	 * */
-	plant.const_M[0] = 0.0;
-	plant.const_M[1] = 2e-4;
-	plant.const_M[2] = 3e-5;
+	plant.const_M[0] = 1e-3;
+	plant.const_M[1] = 1e-5;
+	plant.const_M[2] = 2e-5;
 	plant.const_M[3] = 0.0;
 }
 
@@ -174,23 +174,71 @@ plant_solve(double dt)
 }
 
 static void
+plant_bridge_sample()
+{
+	double		sa[2], u, uref, du;
+	int		a;
+
+	/* ADC reference voltage.
+	 * */
+	uref = 3.3;
+
+	/* Current sampling.
+	 * */
+	sa[0] = plant.x[0];
+	sa[1] = -(plant.x[0] + plant.x[1]);
+
+	/* Output voltage of the current sensor A.
+	 * */
+	u = sa[0] * 55e-3 + uref / 2.0;
+	du = gauss() * 3e-3 + 0e-3;
+	u += du;
+
+	/* ADC conversion.
+	 * */
+	a = (int) (u / uref * 4096);
+	a = a < 0 ? 0 : a > 4095 ? 4095 : a;
+	plant.z[0] = a;
+
+	/* Output voltage of the current sensor C.
+	 * */
+	u = sa[1] * 55e-3 + uref / 2.0;
+	du = gauss() * 3e-3 - 0e-3;
+	u += du;
+
+	/* ADC conversion.
+	 * */
+	a = (int) (u / uref * 4096);
+	a = a < 0 ? 0 : a > 4095 ? 4095 : a;
+	plant.z[1] = a;
+
+	/* Voltage sampling.
+	 * */
+	sa[0] = plant.const_U;
+
+	u = sa[0] / 9.0;
+	du = gauss() * 3e-3 + 0e-3;
+	u += du;
+
+	/* ADC conversion.
+	 * */
+	a = (int) (u / uref * 4096);
+	a = a < 0 ? 0 : a > 4095 ? 4095 : a;
+	plant.z[2] = a;
+}
+
+static void
 plant_bridge_solve(double tdel)
 {
-	int		j, ton[3], a, pm[3];
-	double		pwmdt, dt, sa[2], u, uref, du;
+	int		j, ton[3], pm[3];
+	double		pwmdt, dt;
 
 	/* Prepare variables.
 	 * */
 	pwmdt = tdel / plant.pwmf / 2.0;
-	uref = 3.3;
-
 	ton[0] = (int) (plant.u[0] * plant.pwmf);
 	ton[1] = (int) (plant.u[1] * plant.pwmf);
 	ton[2] = (int) (plant.u[2] * plant.pwmf);
-
-	plant.u[0] = plant.ub[0];
-	plant.u[1] = plant.ub[1];
-	plant.u[2] = plant.ub[2];
 
 	if (PWM_FAST_SOLVER) {
 
@@ -301,39 +349,11 @@ plant_bridge_solve(double tdel)
 			plant_solve(pwmdt);
 		}
 	}
-
-	/* Current sampling.
-	 * */
-	sa[0] = plant.x[0];
-	sa[1] = -(plant.x[0] + plant.x[1]);
-
-	/* Output voltage of the current sensor A.
-	 * */
-	u = sa[0] * 55e-3 + uref / 2.0;
-	du = gauss() * 3e-3 + 37e-3;
-	u += du;
-
-	/* ADC conversion.
-	 * */
-	a = (int) (u / uref * 4096);
-	a = a < 0 ? 0 : a > 4095 ? 4095 : a;
-	plant.z[0] = a;
-
-	/* Output voltage of the current sensor C.
-	 * */
-	u = sa[1] * 55e-3 + uref / 2.0;
-	du = gauss() * 3e-3 - 11e-3;
-	u += du;
-
-	/* ADC conversion.
-	 * */
-	a = (int) (u / uref * 4096);
-	a = a < 0 ? 0 : a > 4095 ? 4095 : a;
-	plant.z[1] = a;
 }
 
 void plant_update()
 {
+	plant_bridge_sample();
 	plant_bridge_solve(plant.tdel);
 	plant.tsim += plant.tdel;
 }

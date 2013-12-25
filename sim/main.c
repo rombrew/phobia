@@ -28,9 +28,9 @@
 
 void bridge_dc(const float dc[3])
 {
-	plant.ub[0] = (double) dc[0];
-	plant.ub[1] = (double) dc[1];
-	plant.ub[2] = (double) dc[2];
+	plant.u[0] = (double) dc[0];
+	plant.u[1] = (double) dc[1];
+	plant.u[2] = (double) dc[2];
 }
 
 static void
@@ -81,8 +81,8 @@ sim(double tend)
 	const int	shsz = 50;
 	double		shb[shsz][2], dsdx[2];
 	int		shi = 0;
-	double		xs[7], dq[2];
-	float		blz[2];
+	double		dq[2];
+	float		blz[3];
 	int		tel = 1, tl, ts = 0;
 	FILE		*fd;
 
@@ -107,25 +107,14 @@ sim(double tend)
 		 * */
 		plant_update();
 
-		/* ----------------------------- */
-
-		/* Get estimated signals now.
-		 * */
-		xs[0] = (double) bl.x[0];
-		xs[1] = (double) bl.x[1];
-		xs[2] = (double) bl.x[2];
-		xs[3] = (double) bl.x[3];
-		xs[4] = (double) bl.x[4];
-		xs[5] = (double) bl.u[0];
-		xs[6] = (double) bl.u[1];
-
 		/* BLC update.
 		 * */
-		blz[0] = (float) (plant.z[0] - 2048) * 0.014663f;
-		blz[1] = (float) (plant.z[1] - 2048) * 0.014663f;
-		blc_update(blz);
-
-		/* ----------------------------- */
+		blz[0] = (float) (plant.z[0] - 2048) * 1.464843e-02;
+		blz[1] = (float) (plant.z[1] - 2048) * 1.464843e-02;
+		blz[2] = (float) plant.z[2] * 7.250976e-03;
+		blz[0] = (float) plant.x[0];
+		blz[1] = (float) -(plant.x[0] + plant.x[1]);
+		blc_update(blz, blz[2]);
 
 		if (tel) {
 
@@ -153,17 +142,14 @@ sim(double tend)
 			 * */
 			fprintf(fd, "%.4f %.4f %.4f %.4f %.4f "
 					" %.4f %.4f %i ",
-					xs[0], xs[1], xs[2],
-					xs[3], xs[4], xs[5],
-					xs[6], bl.noft);
-			fprintf(fd, "%.4f %.4f %.4f %.6f %.4f "
-					"%.4f %.6f ",
+					bl.x[0], bl.x[1], bl.x[2],
+					bl.x[3], bl.x[4], bl.u[0],
+					bl.u[1], bl.noft);
+			fprintf(fd, "%.6f %.6f %.6f %.6f %.9f "
+					"%.6f %.6f ",
 					bl.c.aD, bl.c.cD,
-					bl.c.R, 1.0f / bl.c.iL, bl.c.E,
-					bl.c.U, 1.0f / bl.c.iJ);
-			fprintf(fd, "%.4f %.4f %.4f %.4f %.4f ",
-					bl.e[0], bl.e[1], bl.e[2],
-					bl.e[3], bl.e[4]);
+					bl.c.R, 1e+6 / bl.c.iL, bl.c.E,
+					bl.c.U, 1e+6 / bl.c.iJ);
 			fputs("\n", fd);
 		}
 

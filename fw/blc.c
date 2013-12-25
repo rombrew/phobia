@@ -205,7 +205,7 @@ void blc_enable(float tdel)
 	bl.x[3] = 0.0f;
 	bl.x[4] = 0.0f;
 
-	/* Initial covariance.
+	/* Initial observer KF.
 	 * */
 	mclr(bl.pp, 5, 5);
 	bl.pp[0] = 1e+2f;
@@ -213,6 +213,17 @@ void blc_enable(float tdel)
 	bl.pp[12] = 2e+2f;
 	bl.pp[18] = 3e-2f;
 	bl.pp[24] = 3e-4f;
+	bl.qq[0] = 1e-4f;
+	bl.qq[1] = 1e-4f;
+	bl.qq[2] = 1e-2f;
+	bl.qq[3] = 1e-2f;
+	bl.qq[4] = 1e-2f;
+	bl.rr[0] = 1e-1f;
+	bl.rr[1] = 1e-1f;
+
+	/* Setup Kalman gain.
+	 * */
+	kalf_kgain();
 
 	/* Initial NoFT.
 	 * */
@@ -222,20 +233,6 @@ void blc_enable(float tdel)
 	 * */
 	bl.dq[0] = 0.0f;
 	bl.dq[1] = 1.0f;
-
-	/* Initial noise variance.
-	 * */
-	bl.qq[0] = 1e-4f;
-	bl.qq[1] = 1e-4f;
-	bl.qq[2] = 1e-2f;
-	bl.qq[3] = 1e-2f;
-	bl.qq[4] = 1e-2f;
-	bl.rr[0] = 1e-4f;
-	bl.rr[1] = 1e-4f;
-
-	/* Setup Kalman gain.
-	 * */
-	kalf_kgain();
 
 	/* Initial constants.
 	 * */
@@ -248,11 +245,29 @@ void blc_enable(float tdel)
 	bl.c.Z = 11;
 	bl.c.iJ = 1.0f / 10e-5f;
 
-	/* Initial zero drift Kalman filter.
+	/* Initial zero drift KF.
 	 * */
 	bl.i.zp = 1e+0f;
 	bl.i.zq = 1e-10f;
 	bl.i.zr = 1e-4f;
+
+	/* Initial U KF.
+	 * */
+	bl.i.up = 1e+4f;
+	bl.i.uq = 1e-9f;
+	bl.i.ur = 1e-6f;
+
+	/* Initial R iL E KF.
+	 * */
+	mclr(bl.i.pp, 3, 3);
+	bl.i.pp[0] = 1e-2f;
+	bl.i.pp[4] = 1e-2f;
+	bl.i.pp[8] = 1e-2f;
+	bl.i.qq[0] = 0e+0;
+	bl.i.qq[1] = 0e+0;
+	bl.i.qq[2] = 0e+0;
+	bl.i.rr[0] = 1e-4f;
+	bl.i.rr[1] = 1e-4f;
 
 	/* Initial current control loop.
 	 * */
@@ -544,19 +559,95 @@ kali_zd(const float e[2], const float dq[2])
 }
 
 static void
-kali_plant(const float e[2], const float dq[2], const float x[5])
+kali_uv(float zv)
 {
-	float		cc[10], ppcc[10], ss[3];
+	float		e, k;
 
-	cc[0] = 0;
-	cc[9] = 0;
+	/* Obtain the error.
+	 * */
+	e = zv - bl.c.U;
 
-	ppcc[0] = bl.i.pp[0] * cc[0] + bl.i.pp[1] * cc[1]
-		+ bl.i.pp[2] * cc[2] + bl.i.pp[3] * cc[3]
-		+ bl.i.pp[4] * cc[4];
-	ppcc[1] = bl.i.pp[0] * cc[0] + bl.i.pp[1] * cc[1]
-		+ bl.i.pp[2] * cc[2] + bl.i.pp[3] * cc[3]
-		+ bl.i.pp[4] * cc[4];
+	/* Kalman filter.
+	 * */
+	bl.i.up += bl.i.uq;
+	k = bl.i.up / (bl.i.up + bl.i.ur);
+	bl.c.U += k * e;
+	bl.i.up -= k * bl.i.up;
+}
+
+static void
+kali_rile(const float e[2], const float x[5], const float u[2])
+{
+	/*float		cc[6], ppcc[6], ccpp[6], cct[6], ss[4], T;
+	float		inv, iss[4], kk[6], kcp[9];
+
+	T = bl.tdel;
+
+	mclr(cc, 2, 3);
+	cc[0] = - x[0] * bl.c.iL * T;
+	cc[1] = (bl.c.U * u[0] * 0.5f - x[0] * bl.c.R) * T;
+	cc[3] = - x[1] * bl.c.iL * T;
+	cc[4] = (bl.c.U * u[1] * 0.5f - x[1] * bl.c.R - x[2] * bl.c.E) * T;
+	cc[5] = - x[2] * bl.c.iL * T;
+	//cc[10] = 1.5f * bl.c.Z * bl.c.Z * bl.c.iJ * x[1] * T;
+	//cc[11] = bl.c.Z * (1.5f * x[1] * bl.c.Z * bl.c.E - x[4]) * T;
+
+	mmul(cc, bl.i.pp, ccpp, 2, 3, 3);
+	mtra(cc, cct, 3, 2);
+	mmul(ccpp, cct, ss, 2, 2, 3);
+
+	ss[0] += bl.i.rr[0];
+	ss[3] += bl.i.rr[1];
+
+	inv = 1.0f / (ss[0] * ss[3] - ss[1] * ss[2]);
+	iss[0] = ss[3] * inv;
+	iss[1] = -ss[2] * inv;
+	iss[2] = -ss[1] * inv;
+	iss[3] = ss[0] * inv;
+
+	mtra(ccpp, ppcc, 3, 2);
+	mmul(ppcc, iss, kk, 3, 2, 2);
+
+	mmul(kk, ccpp, kcp, 3, 3, 2);
+	msub(bl.i.pp, kcp, 3, 3);
+
+	bl.c.R += (kk[0] * e[0] + kk[1] * e[1]) * 1e-1f;
+	bl.c.iL += (kk[2] * e[0] + kk[3] * e[1]) * 1e-1f;
+	bl.c.E += (kk[4] * e[0] + kk[5] * e[1]) * 1e-1f;*/
+
+	//float		cc[2], T;
+
+	/*T = bl.tdel * 1e-6f;
+	cc[0] = - x[0] * bl.c.iL * T;
+	cc[1] = - x[1] * bl.c.iL * T;
+	bl.c.R += cc[0] * e[0] + cc[1] * e[1];*/
+
+	/*T = bl.tdel * 1e+3f;
+	cc[0] = (bl.c.U * u[0] * 0.5f - x[0] * bl.c.R) * T;
+	cc[1] = (bl.c.U * u[1] * 0.5f - x[1] * bl.c.R - x[2] * bl.c.E) * T;
+	bl.c.iL += cc[0] * e[0] + cc[1] * e[1];*/
+
+	/*T = bl.tdel * 1e-9f;
+	cc[1] = - x[2] * bl.c.iL * T;
+	bl.c.E += cc[1] * e[1];*/
+}
+
+static void
+kali_r(const float e[2], const float x[5])
+{
+	float		cc[2], T;
+
+	T = bl.tdel * 1e-6;
+
+	cc[0] = - x[0] * bl.c.iL * T;
+	cc[1] = - x[1] * bl.c.iL * T;
+
+	bl.c.R += cc[0] * e[0] + cc[1] * e[1];
+}
+
+static void
+kali_ij(float e, const float x[5])
+{
 }
 
 static void
@@ -612,11 +703,12 @@ kccl_update(const float x[2], float spd, float spq)
 	kccl_u(bl.u);
 }
 
-void blc_update(const float z[2])
+void blc_update(const float z[2], float zv)
 {
-	float		zabc[3], zdq[2], e[2];
+	float		zabc[3], zdq[2], e[3];
+	float		kdq[2], kx[5], ku[2];
 
-	/* Zero drift cancelation.
+	/* Zero drift cancellation.
 	 * */
 	zabc[0] = z[0] - bl.c.aD;
 	zabc[2] = z[1] - bl.c.cD;
@@ -626,19 +718,25 @@ void blc_update(const float z[2])
 	 * */
 	abc2dq(zabc, bl.dq, zdq);
 
-	/* -------------------------------------------- */
-
 	if (bl.mode == BLC_MODE_DRIFT) {
 
 		/* Identify zero drift.
 		 * */
 		kali_zd(zdq, bl.dq);
+
+		/* Identify supply voltage.
+		 * */
+		kali_uv(zv);
 	}
 	else if (bl.mode == BLC_MODE_ALIGN) {
 
 		/* Open loop control to align the rotor.
 		 * */
 		kccl_update(zdq, bl.ccl.sp, 0.0f);
+
+		/* Identify supply voltage.
+		 * */
+		kali_uv(zv);
 	}
 	else if (bl.mode == BLC_MODE_RUN) {
 
@@ -647,21 +745,17 @@ void blc_update(const float z[2])
 		e[0] = zdq[0] - bl.x[0];
 		e[1] = zdq[1] - bl.x[1];
 
-		/* Observer innovation.
+		/* Obtain the pseudo error (innovation).
 		 * */
-		bl.e[0] = bl.kk[0] * e[0] + bl.kk[1] * e[1];
-		bl.e[1] = bl.kk[2] * e[0] + bl.kk[3] * e[1];
-		bl.e[2] = bl.kk[4] * e[0] + bl.kk[5] * e[1];
-		bl.e[3] = bl.kk[6] * e[0] + bl.kk[7] * e[1];
-		bl.e[4] = bl.kk[8] * e[0] + bl.kk[9] * e[1];
+		e[2] = bl.kk[4] * e[0] + bl.kk[5] * e[1];
 
 		/* Update state estimate.
 		 * */
-		bl.x[0] += bl.e[0];
-		bl.x[1] += bl.e[1];
-		bl.x[2] += bl.e[2];
-		bl.x[3] += bl.e[3];
-		bl.x[4] += bl.e[4];
+		bl.x[0] += bl.kk[0] * e[0] + bl.kk[1] * e[1];
+		bl.x[1] += bl.kk[2] * e[0] + bl.kk[3] * e[1];
+		bl.x[2] += e[2];
+		bl.x[3] += bl.kk[6] * e[0] + bl.kk[7] * e[1];
+		bl.x[4] += bl.kk[8] * e[0] + bl.kk[9] * e[1];
 
 		/* Predict state.
 		 * */
@@ -688,11 +782,19 @@ void blc_update(const float z[2])
 		 * */
 		ksincosf(bl.x[3], bl.dq);
 
+		/* Keep control signal.
+		 * */
+		ku[0] = bl.u[0];
+		ku[1] = bl.u[1];
+
 		/* Update control.
 		 * */
 		kccl_update(bl.x, 0.0f, bl.ccl.sp);
 
-		/* -------------------------------------------- */
+		/* -----------------------------------------------------------
+		 * First barrier, control signal must already be updated at
+		 * this point. ADC-PWM exchange could happen after this.
+		 * */
 
 		/* Calculate predicted covariance.
 		 * */
@@ -702,12 +804,37 @@ void blc_update(const float z[2])
 		 * */
 		kalf_kgain();
 
-		/* -------------------------------------------- */
-
-		/* Update identifier.
+		/* Keep DQ frame axes.
 		 * */
-		//kali_zd(e, bl.dq);
-		//kali_plant(e, bl.x);
+		kdq[0] = bl.dq[0];
+		kdq[1] = bl.dq[1];
+
+		/* Keep state estimate.
+		 * */
+		kx[0] = bl.x[0];
+		kx[1] = bl.x[1];
+		kx[2] = bl.x[2];
+		kx[3] = bl.x[3];
+		kx[4] = bl.x[4];
+
+		/* -----------------------------------------------------------
+		 * Second barrier, all regular (observer) jobs must be done at
+		 * this point. New instance of this function could be invoked
+		 * after this barrier.
+		 * */
+
+		/* Identify zero drift.
+		 * */
+		kali_zd(e, kdq);
+
+		/* Identify supply voltage.
+		 * */
+		kali_uv(zv);
+
+		/* Identify electrical plant constants.
+		 * */
+		kali_rile(e, kx, ku);
+		//kali_r(e, kx);
 	}
 }
 
