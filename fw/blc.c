@@ -218,8 +218,8 @@ void blc_enable(float tdel)
 	bl.qq[2] = 1e-2f;
 	bl.qq[3] = 1e-2f;
 	bl.qq[4] = 1e-2f;
-	bl.rr[0] = 1e-1f;
-	bl.rr[1] = 1e-1f;
+	bl.rr[0] = 1e-4f;
+	bl.rr[1] = 1e-4f;
 
 	/* Setup Kalman gain.
 	 * */
@@ -279,38 +279,39 @@ void blc_enable(float tdel)
 }
 
 static void
-kequation(float dx[4], float x[4])
+kequation(float dx[4], const float x[5], const float u[2])
 {
-	dx[0] = (bl.u[0] * bl.c.U * 0.5f - x[0] * bl.c.R) * bl.c.iL
+	dx[0] = (u[0] * bl.c.U * 0.5f - x[0] * bl.c.R) * bl.c.iL
 		+ x[2] * x[1];
-	dx[1] = (bl.u[1] * bl.c.U * 0.5f - x[1] * bl.c.R - x[2] * bl.c.E)
+	dx[1] = (u[1] * bl.c.U * 0.5f - x[1] * bl.c.R - x[2] * bl.c.E)
 		* bl.c.iL - x[2] * x[0];
-	dx[2] = bl.c.Z * bl.c.iJ * (1.5f * bl.c.Z * bl.c.E * x[1] - x[3]);
+	dx[2] = bl.c.Z * bl.c.iJ * (1.5f * bl.c.Z * bl.c.E * x[1] - x[4]);
 	dx[3] = x[2];
 }
 
 static void
 kalf_predict()
 {
-	float		s1[4], s2[4], x2[4], T;
+	float		s1[4], s2[4], x2[5], u2[2], r[2], T;
 
 	T = bl.tdel;
 
 	/* Second-order ODE solver.
 	 * */
 
-	x2[0] = bl.x[0];
-	x2[1] = bl.x[1];
-	x2[2] = bl.x[2];
-	x2[3] = bl.x[4];
+	kequation(s1, bl.x, bl.u);
 
-	kequation(s1, x2);
+	x2[0] = bl.x[0] + s1[0] * T;
+	x2[1] = bl.x[1] + s1[1] * T;
+	x2[2] = bl.x[2] + s1[2] * T;
+	x2[4] = bl.x[4];
 
-	x2[0] += s1[0] * T;
-	x2[1] += s1[1] * T;
-	x2[2] += s1[2] * T;
+	ksincosf(s1[3] * T, r);
 
-	kequation(s2, x2);
+	u2[0] = bl.u[0] * r[1] + bl.u[1] * r[0];
+	u2[1] = bl.u[1] * r[1] - bl.u[0] * r[0];
+
+	kequation(s2, x2, u2);
 
 	bl.x[0] += 0.5f * (s1[0] + s2[0]) * T;
 	bl.x[1] += 0.5f * (s1[1] + s2[1]) * T;
@@ -615,19 +616,19 @@ kali_rile(const float e[2], const float x[5], const float u[2])
 	bl.c.iL += (kk[2] * e[0] + kk[3] * e[1]) * 1e-1f;
 	bl.c.E += (kk[4] * e[0] + kk[5] * e[1]) * 1e-1f;*/
 
-	//float		cc[2], T;
+	float		cc[2], T;
 
-	/*T = bl.tdel * 1e-6f;
+	T = bl.tdel * 1e-6f;
 	cc[0] = - x[0] * bl.c.iL * T;
 	cc[1] = - x[1] * bl.c.iL * T;
-	bl.c.R += cc[0] * e[0] + cc[1] * e[1];*/
+	bl.c.R += cc[0] * e[0] + cc[1] * e[1];
 
 	/*T = bl.tdel * 1e+3f;
 	cc[0] = (bl.c.U * u[0] * 0.5f - x[0] * bl.c.R) * T;
 	cc[1] = (bl.c.U * u[1] * 0.5f - x[1] * bl.c.R - x[2] * bl.c.E) * T;
 	bl.c.iL += cc[0] * e[0] + cc[1] * e[1];*/
 
-	/*T = bl.tdel * 1e-9f;
+	/*T = bl.tdel * 1e-10f;
 	cc[1] = - x[2] * bl.c.iL * T;
 	bl.c.E += cc[1] * e[1];*/
 }

@@ -56,7 +56,7 @@ script(double t)
 	}
 	else {
 
-		bl.ccl.sp = 15.0f;
+		bl.ccl.sp = 20.0f;
 	}
 }
 
@@ -112,8 +112,8 @@ sim(double tend)
 		blz[0] = (float) (plant.z[0] - 2048) * 1.464843e-02;
 		blz[1] = (float) (plant.z[1] - 2048) * 1.464843e-02;
 		blz[2] = (float) plant.z[2] * 7.250976e-03;
-		blz[0] = (float) plant.x[0];
-		blz[1] = (float) -(plant.x[0] + plant.x[1]);
+		//blz[0] = (float) plant.x[0];
+		//blz[1] = (float) -(plant.x[0] + plant.x[1]);
 		blc_update(blz, blz[2]);
 
 		if (tel) {
