@@ -50,38 +50,27 @@ script(double t)
 		bl.mode = BLC_MODE_RUN;
 		bl.ccl.sp = 10.0f;
 	}
-	else if (t < 2.0) {
-
-		bl.ccl.sp = 4.0f;
-	}
-	else {
-
-		bl.ccl.sp = 20.0f;
-	}
 }
 
 static void
-abc2dq(const double ab[2], const double a, double dq[2])
+abc2dq(const double ab[2], const double x, double dq[2])
 {
-	double		xy[2], x[2];
+	double		xy[2], r[2];
 
 	xy[0] = ab[0];
 	xy[1] = 0.57735027f * ab[0] + 1.1547005f * ab[1];
 
-	x[0] = sin(a);
-	x[1] = cos(a);
+	r[0] = sin(x);
+	r[1] = cos(x);
 
-	dq[0] = x[1] * xy[0] + x[0] * xy[1];
-	dq[1] = -x[0] * xy[0] + x[1] * xy[1];
+	dq[0] = r[1] * xy[0] + r[0] * xy[1];
+	dq[1] = r[1] * xy[1] - r[0] * xy[0];
 }
 
 static void
 sim(double tend)
 {
-	const int	shsz = 50;
-	double		shb[shsz][2], dsdx[2];
-	int		shi = 0;
-	double		dq[2];
+	double		dqx[2];
 	float		blz[3];
 	int		tel = 1, tl, ts = 0;
 	FILE		*fd;
@@ -112,31 +101,20 @@ sim(double tend)
 		blz[0] = (float) (plant.z[0] - 2048) * 1.464843e-02;
 		blz[1] = (float) (plant.z[1] - 2048) * 1.464843e-02;
 		blz[2] = (float) plant.z[2] * 7.250976e-03;
-		//blz[0] = (float) plant.x[0];
-		//blz[1] = (float) -(plant.x[0] + plant.x[1]);
 		blc_update(blz, blz[2]);
 
 		if (tel) {
 
-			/* Signal shift and differentiation.
-			 * */
-			dsdx[0] = plant.x[5] - shb[shi][0];
-			dsdx[1] = plant.x[6] - shb[shi][1];
-			dsdx[0] /= plant.tdel * (double) shsz;
-			dsdx[1] /= plant.tdel * (double) shsz;
-			shb[shi][0] = plant.x[5];
-			shb[shi][1] = plant.x[6];
-			shi = (shi < (shsz - 1)) ? shi + 1 : 0;
-
 			/* Base plant telemetry.
 			 * */
 			fprintf(fd, "%.6lf ", plant.tsim);
-			abc2dq(plant.x + 0, plant.x[3], dq);
+			abc2dq(plant.x, plant.x[3], dqx);
 			fprintf(fd, "%.4lf %.4lf %.4lf %.4lf "
-					"%.2lf %.2lf %.2lf ",
-					dq[0], dq[1],
+					"%.4lf %.4lf %.4lf ",
+					dqx[0], dqx[1],
 					plant.x[2], plant.x[3],
-					plant.x[4], dsdx[0], dsdx[1]);
+					plant.x[4], plant.x[5],
+					plant.x[6]);
 
 			/* Estimated variables.
 			 * */
@@ -145,15 +123,14 @@ sim(double tend)
 					bl.x[0], bl.x[1], bl.x[2],
 					bl.x[3], bl.x[4], bl.u[0],
 					bl.u[1], bl.noft);
-			fprintf(fd, "%.6f %.6f %.6f %.6f %.9f "
+			fprintf(fd, "%.6f %.6f %.6f %.6f %.6f "
 					"%.6f %.6f ",
 					bl.c.aD, bl.c.cD,
-					bl.c.R, 1e+6 / bl.c.iL, bl.c.E,
-					bl.c.U, 1e+6 / bl.c.iJ);
+					1e+3 * bl.c.R, 1e+6 / bl.c.iL,
+					1e+6 * bl.c.E, bl.c.U,
+					1e+6 / bl.c.iJ);
 			fputs("\n", fd);
 		}
-
-		/* ----------------------------- */
 
 		tl = ts;
 		ts = (int) (plant.tsim * 1e+1);

@@ -44,41 +44,27 @@ if (N == 4) {
 if (N == 5) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Power (Watt)'
-	plot    'TEL' using 1:7 title 'Consumption' with lines, \
-		'TEL' using 1:8 title 'Production' with lines
-}
-
-if (N == 6) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Efficiency (%)'
-	plot    'TEL' using 1:($8/$7*100) title 'Plant' with lines, \
-}
-
-if (N == 7) {
-
-	set xlabel 'Time (Sec)'
 	set ylabel 'Duty Cycle (%)'
 	plot    'TEL' using 1:($14*100) title 'D' with lines, \
 		'TEL' using 1:($15*100) title 'Q' with lines
 }
 
-if (N == 8) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Number of full turns'
-	plot    'TEL' using 1:16 title 'Plant' with lines
-}
-
 if (N == 10) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding resistance (Ohm)'
-	plot    'TEL' using 1:19 title 'Estimated' with lines
+	set ylabel 'Zero drift (Ampere)'
+	plot    'TEL' using 1:17 title 'Estimated' with lines, \
+		'TEL' using 1:18 title 'Estimated' with lines
 }
 
 if (N == 11) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Winding resistance (mOhm)'
+	plot    'TEL' using 1:19 title 'Estimated' with lines
+}
+
+if (N == 12) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Winding inductance (uH)'
@@ -86,10 +72,10 @@ if (N == 11) {
 }
 
 
-if (N == 12) {
+if (N == 13) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Motor constant'
+	set ylabel 'Motor constant (uV/RpS)'
 	plot    'TEL' using 1:21 title 'Estimated' with lines
 }
 

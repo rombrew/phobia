@@ -240,7 +240,7 @@ void blc_enable(float tdel)
 	bl.c.cD = 0.0f;
 	bl.c.R = 147e-3f;
 	bl.c.iL = 1.0f / 44e-6f;
-	bl.c.E = 1.2e-3f;
+	bl.c.E = 6.67e-4f;
 	bl.c.U = 12.0f;
 	bl.c.Z = 11;
 	bl.c.iJ = 1.0f / 10e-5f;

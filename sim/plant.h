@@ -19,8 +19,6 @@
 #ifndef _H_PLANT_
 #define _H_PLANT_
 
-#define PLANT_STATE_SIZE	7
-
 typedef struct {
 
 	double		tsim;
@@ -34,7 +32,7 @@ typedef struct {
 
 	/* State variabes.
 	 * */
-	double		x[PLANT_STATE_SIZE];
+	double		x[7];
 
 	/* Constants.
 	 * */
@@ -42,6 +40,7 @@ typedef struct {
 	double		const_L;
 	double		const_E;
 	double		const_U;
+	double		const_uR;
 	double		const_Z;
 	double		const_J;
 	double		const_M[4];

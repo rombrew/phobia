@@ -44,6 +44,8 @@ plant_bemf_shape(double x)
 
 void plant_enable()
 {
+	double		Kv;
+
 	plant.tsim = 0.0; /* Simulation time (Second) */
         plant.tdel = 1.0 / 20e+3; /* Delta */
 	plant.pwmf = 1000; /* PWM resolution */
@@ -64,17 +66,22 @@ void plant_enable()
          * */
 	plant.const_L = 44e-6;
 
-	/* BEMF and Torque constant.
-         * */
-        plant.const_E = 1.2e-3;
-
 	/* Source voltage. (Volt)
 	 * */
 	plant.const_U = 12.0;
 
+	/* Source internal resistance. (Ohm)
+	 * */
+	plant.const_uR = 0e-3;
+
 	/* Number of the rotor pole pairs.
 	 * */
 	plant.const_Z = 11.0;
+
+	/* BEMF constant. (Volt/RadianPerSecond)
+         * */
+	Kv = 650; /* total RPM per volt */
+        plant.const_E = 30.0 / (Kv * 2.0 * M_PI) / plant.const_Z;
 
 	/* Moment of inertia. (Kg/m^2)
 	 * */
@@ -83,14 +90,14 @@ void plant_enable()
 	/* Load torque constants.
 	 * */
 	plant.const_M[0] = 1e-3;
-	plant.const_M[1] = 1e-5;
-	plant.const_M[2] = 2e-5;
-	plant.const_M[3] = 0.0;
+	plant.const_M[1] = 0e-0;
+	plant.const_M[2] = 1e-9;
+	plant.const_M[3] = 0e-0;
 }
 
 static void
-plant_equation(double dx[PLANT_STATE_SIZE],
-		const double x[PLANT_STATE_SIZE])
+plant_equation(double dx[7],
+		const double x[7])
 {
 	double		R, L, E, U, Z, J;
 	double		e[3], bemf[3], Uz, Mt, Ml, s, Is;
@@ -148,9 +155,9 @@ plant_equation(double dx[PLANT_STATE_SIZE],
 static void
 plant_solve(double dt)
 {
-	double		s1[PLANT_STATE_SIZE];
-	double		s2[PLANT_STATE_SIZE];
-	double		x2[PLANT_STATE_SIZE];
+	double		s1[7];
+	double		s2[7];
+	double		x2[7];
 	int		j;
 
 	/* Second-order ODE solver.
@@ -158,12 +165,12 @@ plant_solve(double dt)
 
 	plant_equation(s1, plant.x);
 
-	for (j = 0; j < PLANT_STATE_SIZE; ++j)
+	for (j = 0; j < 7; ++j)
 		x2[j] = plant.x[j] + s1[j] * dt;
 
 	plant_equation(s2, x2);
 
-	for (j = 0; j < PLANT_STATE_SIZE; ++j)
+	for (j = 0; j < 7; ++j)
 		plant.x[j] += (s1[j] + s2[j]) * dt / 2.0;
 
 	/* Wrap the angular position.
