@@ -91,7 +91,7 @@ void plant_enable()
 	 * */
 	plant.const_M[0] = 1e-3;
 	plant.const_M[1] = 0e-0;
-	plant.const_M[2] = 1e-9;
+	plant.const_M[2] = 1e-5;
 	plant.const_M[3] = 0e-0;
 }
 
@@ -199,7 +199,7 @@ plant_bridge_sample()
 	 * */
 	u = sa[0] * 55e-3 + uref / 2.0;
 	du = gauss() * 3e-3 + 0e-3;
-	u += du;
+	//u += du;
 
 	/* ADC conversion.
 	 * */
@@ -211,7 +211,7 @@ plant_bridge_sample()
 	 * */
 	u = sa[1] * 55e-3 + uref / 2.0;
 	du = gauss() * 3e-3 - 0e-3;
-	u += du;
+	//u += du;
 
 	/* ADC conversion.
 	 * */
@@ -225,7 +225,7 @@ plant_bridge_sample()
 
 	u = sa[0] / 9.0;
 	du = gauss() * 3e-3 + 0e-3;
-	u += du;
+	//u += du;
 
 	/* ADC conversion.
 	 * */

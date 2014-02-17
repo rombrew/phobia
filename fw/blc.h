@@ -39,25 +39,34 @@ blc_const_t;
 
 typedef struct {
 
+	/* Known signals.
+	 * */
+	float		x[7];
+
+	/* FSM variables.
+	 * */
+	int		n;
+	int		decn;
+
 	/* Zero drift.
 	 * */
 	float		zp;
 	float		zq;
 	float		zr;
 
-	/* U.
+	/* Suply voltage.
 	 * */
 	float		up;
 	float		uq;
 	float		ur;
 
-	/* R iL E.
+	/* Electrical.
 	 * */
 	float		pp[9];
 	float		qq[3];
 	float		rr[2];
 
-	/* iJ.
+	/* Mechanical.
 	 * */
 	float		jp;
 	float		jq;

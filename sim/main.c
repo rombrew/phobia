@@ -50,6 +50,10 @@ script(double t)
 		bl.mode = BLC_MODE_RUN;
 		bl.ccl.sp = 10.0f;
 	}
+	else {
+
+		bl.ccl.sp = 5.0f;
+	}
 }
 
 static void
@@ -129,7 +133,17 @@ sim(double tend)
 					1e+3 * bl.c.R, 1e+6 / bl.c.iL,
 					1e+6 * bl.c.E, bl.c.U,
 					1e+6 / bl.c.iJ);
+
+			/* External.
+			 * */
+			fprintf(fd, "%.4lf %.4lf %.4lf %.4lf ",
+					plant.x[0],
+					-(plant.x[0] + plant.x[1]),
+					plant.u[0] - 0.5,
+					plant.u[2] - 0.5);
+
 			fputs("\n", fd);
+
 		}
 
 		tl = ts;
@@ -148,7 +162,7 @@ sim(double tend)
 
 int main(int argc, char *argv[])
 {
-	double		tend = 3.0;
+	double		tend = 5.0;
 
 	lib_enable();
 	sim(tend);
