@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2013 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,13 +16,14 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#ifndef _H_UART_
+#define _H_UART_
 
-void lib_enable();
-double rand1();
-double rand2();
-double gauss();
+void uartEnable(int baudR);
+void uartDisable();
 
-#endif /* _H_LIB_ */
+int uartReceive();
+void uartSend(char xC);
+
+#endif /* _H_UART_ */
 

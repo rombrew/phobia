@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2013 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,45 +16,11 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PLANT_
-#define _H_PLANT_
+#ifndef _H_LIB_
+#define _H_LIB_
 
-typedef struct {
+void putc(char c);
+void printf(const char *fmt, ...);
 
-	double		tsim;
-	double		tdel;
-	int		pwmf;
-
-	/* Input variables.
-	 * */
-	double		u[3];
-	int		i[3];
-
-	/* State variabes.
-	 * */
-	double		x[7];
-
-	/* Constants.
-	 * */
-	double		const_R;
-	double		const_L;
-	double		const_E;
-	double		const_U;
-	double		const_uR;
-	double		const_Z;
-	double		const_J;
-	double		const_M[4];
-
-	/* Output variables.
-	 * */
-	int		z[3];
-}
-plant_t;
-
-extern plant_t		plant;
-
-void plant_enable();
-void plant_update();
-
-#endif /* _H_PLANT_ */
+#endif /* _H_LIB_ */
 

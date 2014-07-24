@@ -16,14 +16,50 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#ifndef _H_BLM_
+#define _H_BLM_
 
-void libEnable();
+typedef struct {
 
-double rand1();
-double rand2();
-double gauss();
+	double		Tsim;
+	double		dT, sT;
+	int		PWMR;
 
-#endif /* _H_LIB_ */
+	/* Duty Cycle (Input).
+	 * */
+	int		uA;
+	int		uB;
+	int		uC;
+
+	/* State of the FETs.
+	 * */
+	int		sF[3];
+
+	/* State variabes.
+	 * */
+	double		X[7];
+
+	/* Constants.
+	 * */
+	double		R;
+	double		Q;
+	double		L;
+	double		E;
+	double		U;
+	int		Zp;
+	double		J;
+	double		M[4];
+
+	/* Output variables.
+	 * */
+	int		iA;
+	int		iB;
+	int		uS;
+}
+blm_t;
+
+void blmEnable(blm_t *m);
+void blmUpdate(blm_t *m);
+
+#endif /* _H_BLDC_ */
 

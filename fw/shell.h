@@ -16,14 +16,12 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#ifndef _H_SHELL_
+#define _H_SHELL_
 
-void libEnable();
+typedef void (* pfunc_t) (void *args[]);
 
-double rand1();
-double rand2();
-double gauss();
+void shellTask();
 
-#endif /* _H_LIB_ */
+#endif /* _H_SHELL_ */
 

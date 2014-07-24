@@ -16,14 +16,23 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#include "hal/hal.h"
+#include "lib.h"
+#include "shell.h"
 
-void libEnable();
+void halTick()
+{
+}
 
-double rand1();
-double rand2();
-double gauss();
+void halMain()
+{
+	halLED(LED_BLUE);
+	uartEnable(57600UL);
 
-#endif /* _H_LIB_ */
+	do {
+		shellTask();
+		halWFI();
+	}
+	while (1);
+}
 

@@ -1,8 +1,8 @@
 syntax: glob
 *.d
 *.o
-blsim/bl
-blsim/sim
+fw/fw
+sim/sim
+sim/TEL
 tags
 scope
-TEL

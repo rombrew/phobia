@@ -3,6 +3,9 @@
 set terminal x11
 set grid
 
+set macros
+TEL = "\"TEL\" binary format=\"%40float\""
+
 system "echo -n Number:"
 N = int(system("read N; echo $N"))
 
@@ -10,10 +13,10 @@ if (N == 1) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Current (Ampere)'
-	plot    'TEL' using 1:2 title 'Plant D' with lines, \
-		'TEL' using 1:3 title 'Plant Q' with lines, \
-		'TEL' using 1:9 title 'Estimated D' with lines, \
-		'TEL' using 1:10 title 'Estimated Q' with lines
+	plot    @TEL using 1:2 title 'Plant D' with lines, \
+		@TEL using 1:3 title 'Plant Q' with lines
+#		@TEL using 1:10 title 'Sense D' with lines, \
+#		@TEL using 1:11 title 'Sense Q' with lines
 }
 
 if (N == 2) {
@@ -28,8 +31,8 @@ if (N == 3) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Electrical Position (Degree)'
-	plot    'TEL' using 1:($5/pi*180) title 'Plant' with lines, \
-		'TEL' using 1:($12/pi*180) title 'Estimated' with lines
+	plot	@TEL using 1:($5*180/pi) title 'Plant' with lines, \
+		@TEL using 1:($12*180/pi) title 'Estimated' with lines
 }
 
 if (N == 4) {
@@ -45,8 +48,8 @@ if (N == 5) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Duty Cycle (%)'
-	plot    'TEL' using 1:($14*100) title 'D' with lines, \
-		'TEL' using 1:($15*100) title 'Q' with lines
+	plot	@TEL using 1:($7*100) title 'D' with lines, \
+		@TEL using 1:($8*100) title 'Q' with lines
 }
 
 if (N == 10) {
@@ -78,7 +81,6 @@ if (N == 13) {
 	set ylabel 'Motor constant (uV/RpS)'
 	plot    'TEL' using 1:21 title 'Estimated' with lines
 }
-
 
 pause mouse close
 

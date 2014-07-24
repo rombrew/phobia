@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2013 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,13 +25,7 @@
 
 static double rseed[55];
 
-static double
-sqd(double x)
-{
-        return x * x;
-}
-
-void lib_enable()
+void libEnable()
 {
 	unsigned int	r;
 	int		j;
@@ -66,7 +60,7 @@ double rand1()
 
 double rand2()
 {
-	return 2.0 * rand1() - 1.0;
+	return 2. * rand1() - 1.;
 }
 
 double gauss()
@@ -74,12 +68,13 @@ double gauss()
 	double		s, x;
 
 	do {
+		s = rand2();
 		x = rand2();
-		s = sqd(x) + sqd(rand2());
+		s = s * s + x * x;
 	}
-	while (s >= 1.0);
+	while (s >= 1.);
 
-	x *= sqrt(-2.0 * log(s) / s);
+	x *= sqrt(-2. * log(s) / s);
 
 	return x;
 }

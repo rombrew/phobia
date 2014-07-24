@@ -16,14 +16,32 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#ifndef _H_PWM_
+#define _H_PWM_
 
-void libEnable();
+typedef struct {
 
-double rand1();
-double rand2();
-double gauss();
+	/* Frequency (Hz).
+	 * */
+	int		hzF;
 
-#endif /* _H_LIB_ */
+	/* Resolution.
+	 * */
+	short int	R;
+
+	/* Dead Time (ns).
+	 * */
+	short int	nsD;
+}
+halPWM_TypeDef;
+
+extern halPWM_TypeDef		halPWM;
+
+void pwmEnable(int hzF, int nsD);
+void pwmDisable();
+
+void pwmDC(int uA, int uB, int uC);
+void pwmZ(int Z);
+
+#endif /* _H_BRIDGE_ */
 

@@ -1,30 +1,27 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
-/* Include hardware specific inline routines.
- * */
-#include HWINL
+#include "pwm.h"
+#include "uart.h"
 
-int hal_reset_reason();
+#define FREQ_AHB_HZ		(168000000UL)
+#define FREQ_APB1_HZ		(FREQ_AHB_HZ / 4UL)
+#define FREQ_APB2_HZ		(FREQ_AHB_HZ / 2UL)
 
-void irq_startup();
-void irq_systick();
-void irq_bridge(const int adc[2]);
-void irq_network(unsigned char pkg[10]);
-void irq_serial(int sym);
-void irq_worker();
+enum {
+	LED_GREEN		= 0x0001,
+	LED_ORANGE		= 0x0002,
+	LED_RED			= 0x0004,
+	LED_BLUE		= 0x0008
+};
 
-void hal_irq_mask(int mask);
+void halStart();
+int halResetReason();
+void halWFI();
+void halLED(int F);
 
-void hal_bridge_config(float freq);
-void hal_bridge_dc(const float dc[3]);
-void hal_network_config(int baud);
-void hal_serial_config(int baud);
-void hal_serial_send(int sym);
-void hal_worker_request();
-
-void hal_adc_read(const int adc[4]);
-void hal_led_ctl(int i);
+extern void halMain();
+extern void halTick();
 
 #endif /* _H_HAL_ */
 
