@@ -17,93 +17,33 @@
 */
 
 #include "blc.h"
+#include "math.h"
 
-inline int
-SSAT(int x, int m)
+void blcEnable(blc_t *bl)
 {
-	m = (1 << m) - 1;
-
-	return (x < 0) ? x | ~m : x & m;
-}
-
-inline int
-USAT(int x, int m)
-{
-	m = (1 << m) - 1;
-
-	return (x < 0) ? 0 : x & m;
+	bl->iKP = (500 << 5) + 13;
+	bl->iKI = (500 << 5) + 13;
 }
 
 static void
-iFB(struct blc *bl, int iX, int iY)
-{
-	int		eD, eQ, uD, uQ, uX, uY;
-	int		uA, uB, uC;
-
-	eD = (bl->dqX * iX + bl->dqY * iY) >> 14;
-	eQ = (bl->dqX * iY - bl->dqY * iX) >> 14;
-
-	eD = bl->iSPD - eD;
-	eQ = bl->iSPQ - eQ;
-
-	bl->iXD += (bl->iKI >> 5) * eD;
-	uD = (bl->iKP >> 5) * eD >> (bl->iKP & 0x1F);
-	bl->iXD = SSAT(bl->iXD, 14 + (bl->iKI & 0x1F));
-	uD += bl->iXD >> (bl->iKI & 0x1F);
-
-	bl->iXQ += 4200 * eQ;
-	uQ = 5200 * eQ >> 16;
-	bl->iXQ = SSAT(bl->iXQ, 30);
-	uQ += bl->iXQ >> 16;
-
-	uD = SSAT(uD, 14);
-	uQ = SSAT(uQ, 14);
-
-	uX = (bl->dqX * uD - bl->dqY * uQ) >> 14;
-	uY = (bl->dqY * uD + bl->dqX * uQ) >> 14;
-
-	uA = uX;
-	uB = (-32768 * uX + 56756 * uY) >> 16;
-	uC = (-32768 * uX - 56756 * uY) >> 16;
-
-	uA = USAT(uA + 16384, 15);
-	uB = USAT(uB + 16384, 15);
-	uC = USAT(uC + 16384, 15);
-
-	uA = (bl->pwmR * uA + 16384) >> 15;
-	uB = (bl->pwmR * uB + 16384) >> 15;
-	uC = (bl->pwmR * uC + 16384) >> 15;
-
-	bl->pDC(uA, uB, uC);
-
-	uC = bl->pwmR >> 1;
-	uA = bl->U * (uA - uC) / bl->pwmR;
-	uB = bl->U * (uB - uC) / bl->pwmR;
-
-	uX = uA;
-	uY = (9459 * uA + 18919 * uB) >> 14;
-
-	bl->uX = uX;
-	bl->uY = uY;
-}
-
-void blcEnable(struct blc *bl)
-{
-}
-
-static void
-bFSM()
+bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 {
 	switch (bl->fST1) {
 
-		case BLC_ST1_IDLE:
+		case BLC_STATE_IDLE:
+
+			if (bl->fREQ & (BLC_REQUEST_CALIBRATE | BLC_REQUEST_SPINUP)) {
+
+				bl->fST1 = BLC_STATE_DRIFT;
+				bl->fST2 = 0;
+			}
 			break;
 
-		case BLC_ST1_DRIFT:
+		case BLC_STATE_DRIFT:
 
 			if (bl->fST2 == 0) {
 
-				bl->fMode = 0;
+				bl->fMOF = 0;
 
 				bl->tempA = 0;
 				bl->tempB = 0;
@@ -115,6 +55,8 @@ bFSM()
 				bl->fST2++;
 			}
 			else {
+				/* Zero Drift */
+
 				bl->tempA += iA;
 				bl->tempB += iB;
 				bl->tempU += uS - bl->U;
@@ -139,117 +81,126 @@ bFSM()
 						bl->fST2++;
 					}
 					else {
-						if (bl->fsmReq & BLC_REQ_CALIBRATE)
-							bl->fsmMode = BLC_MODE_CALIBRATE;
+						if (bl->fREQ & BLC_REQUEST_CALIBRATE)
+							bl->fST1 = BLC_STATE_CALIBRATE;
 						else
-							bl->fsmMode = BLC_MODE_ALIGN;
+							bl->fST1 = BLC_STATE_ALIGN;
 
 						bl->fST2 = 0;
 					}
 				}
 			}
 			break;
-	}
 
-	if (bl->fsmMode == BLC_MODE_RUNING) {
+		case BLC_STATE_ALIGN:
 
+			if (bl->fST2 == 0) {
 
-	}
-	else if (bl->fsmMode == BLC_MODE_SPINUP) {
-	}
-	else if (bl->fsmMode == BLC_MODE_BREAK) {
-	}
-	else if (bl->fsmMode == BLC_MODE_ESTIMATE_R) {
-	}
-	else if (bl->fsmMode == BLC_MODE_ESTIMATE_L) {
-	}
-	else if (bl->fsmMode == BLC_MODE_ALIGN) {
+				bl->fMOF = BLC_MODE_CURRENT_LOOP;
 
-		if (bl->fsmStage == 0) {
+				bl->iSPD = 0;
+				bl->iSPQ = 0;
 
-			bl->dqX = 16384;
-			bl->dqY = 0;
+				bl->dqX = 16384;
+				bl->dqY = 0;
 
-			bl->timVal = 0;
-			bl->timEnd = bl->hzF * bl->sT1 / 1000;
-
-			bl->fsmStage++;
-		}
-		else if (bl->fsmStage == 1) {
-
-			/* Ramp Up Stage */
-
-			bl->iSP = 1000 * bl->timVal / bl->timEnd;
-
-			iFB(bl, iX, iY, bl->iSP, 0);
-
-			bl->timVal++;
-
-			if (bl->timVal < bl->timEnd) ;
-			else {
 				bl->timVal = 0;
-				bl->timEnd = bl->hzF * bl->sT2 / 1000;
+				bl->timEnd = bl->hzF * bl->sT1 / 1000;
 
-				bl->fsmStage++;
+				bl->fST2++;
 			}
-		}
-		else if (bl->fsmStage == 2) {
+			else if (bl->fST2 == 1) {
 
-			/* Hold Stage */
+				/* Ramp Up Stage */
 
-			iFB(bl, iX, iY, bl->iSP, 0);
+				bl->iSPD = 1000 * bl->timVal / bl->timEnd;
+				bl->iSPQ = 0;
 
-			bl->timVal++;
+				bl->timVal++;
 
-			if (bl->timVal < bl->timEnd) ;
-			else {
-				bl->fsmMode = BLC_MODE_ESTIMATE_R;
-				bl->fsmStage = 0;
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					bl->timVal = 0;
+					bl->timEnd = bl->hzF * bl->sT2 / 1000;
+
+					bl->fST2++;
+				}
 			}
-		}
-	}
-	else if (bl->fsmMode == BLC_MODE_DRIFT) {
+			else if (bl->fST2 == 2) {
 
-		bl->uDC(0, 0, 0);
+				/* Hold Stage */
 
+				bl->timVal++;
 
-	}
-	else if (bl->fsmMode == BLC_MODE_END) {
-
-		iFB(bl, iX, iY, 0, 0);
-
-		if (bl->fsmStage == 0) {
-
-			bl->timVal = 0;
-			bl->timEnd = bl->hzF * bl->sT0 / 1000;
-
-			bl->fsmStage++;
-		}
-		else if (bl->fsmStage == 1) {
-
-			bl->timVal++;
-
-			if (bl->timVal < bl->timEnd) ;
-			else {
-
-				bl->fsmMode = BLC_MODE_IDLE;
-				bl->fsmReq = 0;
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					bl->fST1 = BLC_STATE_ESTIMATE_R;
+					bl->fST2 = 0;
+				}
 			}
-		}
-	}
-	else if (bl->fsmMode == BLC_MODE_IDLE) {
+			break;
 
-		bl->uDC(0, 0, 0);
-
-		if (bl->fsmReq & (BLC_REQ_CALIBRATE | BLC_REQ_SPINUP)) {
-
-			bl->fsmMode = BLC_MODE_DRIFT;
-			bl->fsmStage = 0;
-		}
+		case BLC_STATE_ESTIMATE_R:
+			break;
 	}
 }
 
-void blcFeedBack(struct blc *bl, int iA, int iB, int uS)
+static void
+iFB(blc_t *bl, int iX, int iY)
+{
+	int		eD, eQ, uD, uQ, R;
+	int		uA, uB, uC, uX, uY;
+
+	eD = (bl->dqX * iX + bl->dqY * iY) >> 14;
+	eQ = (bl->dqX * iY - bl->dqY * iX) >> 14;
+
+	eD = bl->iSPD - eD;
+	eQ = bl->iSPQ - eQ;
+
+	bl->iXD += (bl->iKI >> 5) * eD;
+	uD = (bl->iKP >> 5) * eD >> (bl->iKP & 0x1F);
+	bl->iXD = ssat(bl->iXD, 14 + (bl->iKI & 0x1F));
+	uD += bl->iXD >> (bl->iKI & 0x1F);
+
+	bl->iXQ += (bl->iKI >> 5) * eQ;
+	uQ = (bl->iKP >> 5) * eQ >> (bl->iKP & 0x1F);
+	bl->iXQ = ssat(bl->iXQ, 14 + (bl->iKI & 0x1F));
+	uQ += bl->iXQ >> (bl->iKI & 0x1F);
+
+	uD = __SSAT(uD, 14);
+	uQ = __SSAT(uQ, 14);
+
+	uX = (bl->dqX * uD - bl->dqY * uQ) >> 14;
+	uY = (bl->dqY * uD + bl->dqX * uQ) >> 14;
+
+	uA = uX;
+	uB = (-32768 * uX + 56756 * uY) >> 16;
+	uC = (-32768 * uX - 56756 * uY) >> 16;
+
+	uA = __USAT(uA + 16384, 15);
+	uB = __USAT(uB + 16384, 15);
+	uC = __USAT(uC + 16384, 15);
+
+	R = bl->pwmR;
+
+	uA = (R * uA + 16384) >> 15;
+	uB = (R * uB + 16384) >> 15;
+	uC = (R * uC + 16384) >> 15;
+
+	bl->pDC(uA, uB, uC);
+
+	uC = R >> 1;
+	uA = bl->U * (uA - uC) / R;
+	uB = bl->U * (uB - uC) / R;
+
+	uX = uA;
+	uY = (9459 * uA + 18919 * uB) >> 14;
+
+	bl->uX = uX;
+	bl->uY = uY;
+}
+
+void blcFeedBack(blc_t *bl, int iA, int iB, int uS)
 {
 	int		iX, iY;
 
@@ -257,7 +208,7 @@ void blcFeedBack(struct blc *bl, int iA, int iB, int uS)
 	 * */
 	iA = (60000 + bl->cA1) * (iA - 2048) >> 12;
 	iB = (60000 + bl->cB1) * (iB - 2048) >> 12;
-	uS = (40000 + bl->cU1) * uS >> 12;
+	uS = (30000 + bl->cU1) * uS >> 12;
 
 	/* Zero Drift cancellation.
 	 * */
@@ -270,13 +221,13 @@ void blcFeedBack(struct blc *bl, int iA, int iB, int uS)
 	iX = iA;
 	iY = (9459 * iA + 18919 * iB) >> 14;
 
-	if (bl->fStat & 0) {
+	if (bl->fMOF & BLC_MODE_FLUX_OBSERVER) {
+
+		if (bl->fMOF & BLC_MODE_FLUX_LOCK) {
+		}
 	}
 
-	if (bl->fStat & 0) {
-	}
-
-	if (bl->fStat & BLC_STAT_ILOOP) {
+	if (bl->fMOF & BLC_MODE_CURRENT_LOOP) {
 
 		iFB(bl, iX, iY);
 	}
@@ -284,9 +235,12 @@ void blcFeedBack(struct blc *bl, int iA, int iB, int uS)
 		bl->pDC(0, 0, 0);
 	}
 
-	if (bl->fStat & BLC_STAT_WLOOP) {
+	if (bl->fMOF & BLC_MODE_VOLTAGE_ESTIMATE) {
 	}
 
-	bFSM(bl, iX, iY, uS);
+	if (bl->fMOF & BLC_MODE_SPEED_LOOP) {
+	}
+
+	bFSM(bl, iA, iB, iX, iY, uS);
 }
 

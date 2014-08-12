@@ -8,12 +8,13 @@ LD      = $(CROSS)ld
 OC      = $(CROSS)objcopy
 OD      = $(CROSS)objdump
 MKDIR	= mkdir -p
-RM      = rm -rf
+RM      = rm -f
 
 CFLAGS  = -std=gnu99 -pipe -Wall -O2
 CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
+CFLAGS  += -D_MATH_NATIVE
 AFLAGS	= -mcpu=cortex-m4 -mthumb
 LFLAGS  = -T hal/ram.ld
 

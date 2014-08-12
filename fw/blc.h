@@ -20,14 +20,15 @@
 #define _H_BLC_
 
 enum {
-	BLC_MODE_		= 0x0002,
-	BLC_MODE_2		= 0x0002,
-	BLC_MODE_FLAG_ILOOP	= 0x0002,
-	BLC_MODE_FLAG_WLOOP	= 0x0002,
+	BLC_MODE_FLUX_OBSERVER		= 0x0002,
+	BLC_MODE_FLUX_LOCK		= 0x0004,
+	BLC_MODE_VOLTAGE_ESTIMATE	= 0x0008,
+	BLC_MODE_CURRENT_LOOP		= 0x0010,
+	BLC_MODE_SPEED_LOOP		= 0x0020,
 };
 
 enum {
-	BLC_STATE_IDLE		= 0,
+	BLC_STATE_IDLE			= 0,
 	BLC_STATE_DRIFT,
 	BLC_STATE_CALIBRATE,
 	BLC_STATE_ALIGN,
@@ -41,11 +42,11 @@ enum {
 };
 
 enum {
-	BLC_REQUEST_CALIBRATE	= 0x0002,
-	BLC_REQUEST_ESTIMATE_R	= 0x0004,
-	BLC_REQUEST_ESTIMATE_L	= 0x0008,
-	BLC_REQUEST_SPINUP	= 0x0010,
-	BLC_REQUEST_BREAK	= 0x0020,
+	BLC_REQUEST_CALIBRATE		= 0x0002,
+	BLC_REQUEST_ESTIMATE_R		= 0x0004,
+	BLC_REQUEST_ESTIMATE_L		= 0x0008,
+	BLC_REQUEST_SPINUP		= 0x0010,
+	BLC_REQUEST_BREAK		= 0x0020,
 };
 
 typedef struct {
@@ -83,8 +84,7 @@ typedef struct {
 
 	/* Control signal.
 	 * */
-	int		uX;
-	int		uY;
+	short int	uX, uY;
 
 	/* Flux estimation.
 	 * */
@@ -106,18 +106,14 @@ typedef struct {
 
 	/* DQ frame.
 	 * */
-	int		dqX, dqY;
-
-	/*
-	 * */
-	float		gainZD;
+	short int	dqX, dqY;
 
 	/* Plant constants.
 	 * */
-	float		R;
-	float		L;
-	float		K;
-	int		U;
+	short int	R;
+	short int	L;
+	float		E;
+	short int	U;
 
 	/*
 	 * */
@@ -151,8 +147,6 @@ blc_t;
 
 void blcEnable(blc_t *bl);
 void blcFeedBack(blc_t *bl, int iA, int iB, int uS);
-
-int blcReq(blc_t *bl, int reQ);
 
 #endif /* _H_BLC_ */
 

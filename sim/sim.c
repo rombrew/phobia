@@ -38,9 +38,7 @@ blmDC(int uA, int uB, int uC)
 }
 
 static void
-blmZ(int Z)
-{
-}
+blmZ(int Z) { }
 
 static void
 simScript(double T)
@@ -77,7 +75,7 @@ simF(double Tend)
 	if (fdTel == NULL) {
 
 		fprintf(stderr, "fopen: %s", strerror(errno));
-		exit(1);
+		exit(errno);
 	}
 
 	pTel = Tel - 1;
@@ -90,24 +88,24 @@ simF(double Tend)
 
 		/* Plant model update.
 		 * */
-		blmUpdate(m);
+		blmUpdate(&m);
 
 		/* Base plant telemetry.
 		 * */
-		simABtoDQ(m->X[0], m->X[1], m->X[3], &D, &Q);
-		pTel[1] = m->Tsim;
+		simABtoDQ(m.X[0], m.X[1], m.X[3], &D, &Q);
+		pTel[1] = m.Tsim;
 		pTel[2] = D;
 		pTel[3] = Q;
-		pTel[4] = m->X[2];
-		pTel[5] = m->X[3];
-		pTel[6] = m->X[4];
+		pTel[4] = m.X[2];
+		pTel[5] = m.X[3];
+		pTel[6] = m.X[4];
 
-		A = m->uA / (double) m->PWMR;
-		B = m->uB / (double) m->PWMR;
-		C = m->uC / (double) m->PWMR;
+		A = m.uA / (double) m.PWMR;
+		B = m.uB / (double) m.PWMR;
+		C = m.uC / (double) m.PWMR;
 		Q = (A + B + C) / 3.;
 
-		simABtoDQ(A - Q, B - Q, m->X[3], &D, &Q);
+		simABtoDQ(A - Q, B - Q, m.X[3], &D, &Q);
 
 		pTel[7] = D;
 		pTel[8] = Q;
@@ -122,16 +120,16 @@ simF(double Tend)
 
 		/* BLC update.
 		 * */
-		blcFeedBack(bl, m->iA, m->iB, m->uS);
+		blcFeedBack(&bl, m.iA, m.iB, m.uS);
 
 		/* Progress indication.
 		 * */
 		tl = ts;
-		ts = (int) (m->Tsim * 1e+1);
+		ts = (int) (m.Tsim * 1e+1);
 
 		if (tl < ts) {
 
-			printf("\rTsim = %2.1lf", m->Tsim);
+			printf("\rTsim = %2.1lf", m.Tsim);
 			fflush(stdout);
 		}
 	}
@@ -142,7 +140,7 @@ simF(double Tend)
 
 int main(int argc, char *argv[])
 {
-	double		Tend = 5.0;
+	double		Tend = 5.;
 
 	blmEnable(&m);
 
@@ -163,7 +161,7 @@ int main(int argc, char *argv[])
 	bl.pDC = &blmDC;
 	bl.pZ = &blmZ;
 
-	bl.fRQ = BLC_REQ_SPINUP;
+	bl.fREQ = BLC_REQUEST_SPINUP;
 
 	blcEnable(&bl);
 
