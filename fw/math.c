@@ -16,49 +16,29 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_MATH_
-#define _H_MATH_
+#include "math.h"
 
-#ifdef __TARGET_SIM
-#define __SSAT(x, q)	ssat((x), (q))
-#define __USAT(x, q)	usat((x), (q))
-#define __SMULL(a, b)	smull((a), (b))
-#define __CLZ(x)	clz((x))
-#else
-#include "hal/hal.h"
-#endif /* __TARGET_SIM */
-
-inline int
-clamp(int x, int h, int l)
+short int x115divi(int a, int d)
 {
-	return (x > h) ? h : (x < l) ? l : x;
+	int		x, e;
+
+	x = clx(a) - 1;
+	x = (x < 0) ? 0 : x;
+	a <<= x, e = x;
+
+	x = 21 - clx(d);
+	x = (x < 0) ? 0 : x;
+	d >>= x, e += x;
+
+	a /= d;
+
+	x = 22 - clx(a);
+	x = (x < 0) ? 0 : x;
+	a >>= x, e -= x;
+
+	e = __USAT(e, 5);
+	a = (a << 5) + e;
+
+	return a;
 }
-
-inline int
-ssat(int x, int q)
-{
-	return clamp(x, (1UL << q) - 1, -(1UL << q));
-}
-
-inline int
-usat(int x, int q)
-{
-	return clamp(x, (1UL << q) - 1, 0);
-}
-
-inline long long int
-smull(int a, int b)
-{
-	return (long long int) a * (long long int) b;
-}
-
-inline int
-clz(int x) { return __builtin_clz(x); }
-
-inline int
-clx(int x) { return (x < 0) ? __CLZ(-x) : __CLZ(x); }
-
-short int x115divi(int a, int d);
-
-#endif /* _H_MATH_ */
 

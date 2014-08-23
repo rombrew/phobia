@@ -138,6 +138,7 @@ simF(double Tend)
 	puts("\n");
 }
 
+#include "math.h"
 int main(int argc, char *argv[])
 {
 	double		Tend = 5.;
@@ -150,6 +151,7 @@ int main(int argc, char *argv[])
 	bl.sT0 = 100;
 	bl.sT1 = 400;
 	bl.sT2 = 700;
+	bl.sT3 = 200;
 
 	bl.cA1 = 0;
 	bl.cB1 = 0;

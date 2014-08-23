@@ -28,6 +28,8 @@ void blcEnable(blc_t *bl)
 static void
 bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 {
+	int		dU;
+
 	switch (bl->fST1) {
 
 		case BLC_STATE_IDLE:
@@ -96,7 +98,7 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 
 			if (bl->fST2 == 0) {
 
-				bl->fMOF = BLC_MODE_CURRENT_LOOP;
+				bl->fMOF |= BLC_MODE_CURRENT_LOOP;
 
 				bl->iSPD = 0;
 				bl->iSPQ = 0;
@@ -141,6 +143,51 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 			break;
 
 		case BLC_STATE_ESTIMATE_R:
+
+			if (bl->fST2 == 0) {
+
+				bl->timVal = 0;
+				bl->timEnd = 64;
+
+				bl->tempA = 0;
+				bl->tempB = 0;
+
+				bl->fST2++;
+			}
+			else if (bl->fST2 == 1) {
+
+				bl->tempA += bl->uX;
+				bl->timVal++;
+
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					bl->tempA /= bl->timEnd;
+
+					bl->timVal = 0;
+					bl->timEnd = bl->hzF * bl->sT3 / 1000;
+
+					bl->fST2++;
+				}
+			}
+			else if (bl->fST2 == 2) {
+
+				bl->tempB += bl->uX - bl->tempA;
+				bl->timVal++;
+
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					dU = 1000 * bl->tempB / bl->timEnd
+						+ 1000 * bl->tempA;
+					bl->R = x115divi(dU, 1000 * bl->iSPD);
+
+					bl->fST1 = BLC_STATE_ESTIMATE_L;
+					bl->fST2 = 0;
+				}
+			}
+			break;
+
+		case BLC_STATE_ESTIMATE_L:
+
 			break;
 	}
 }
@@ -177,15 +224,15 @@ iFB(blc_t *bl, int iX, int iY)
 	uB = (-32768 * uX + 56756 * uY) >> 16;
 	uC = (-32768 * uX - 56756 * uY) >> 16;
 
-	uA = __USAT(uA + 16384, 15);
-	uB = __USAT(uB + 16384, 15);
-	uC = __USAT(uC + 16384, 15);
+	uA = __USAT(uA + (1UL << 14), 15);
+	uB = __USAT(uB + (1UL << 14), 15);
+	uC = __USAT(uC + (1UL << 14), 15);
 
 	R = bl->pwmR;
 
-	uA = (R * uA + 16384) >> 15;
-	uB = (R * uB + 16384) >> 15;
-	uC = (R * uC + 16384) >> 15;
+	uA = (R * uA + (1UL << 14)) >> 15;
+	uB = (R * uB + (1UL << 14)) >> 15;
+	uC = (R * uC + (1UL << 14)) >> 15;
 
 	bl->pDC(uA, uB, uC);
 

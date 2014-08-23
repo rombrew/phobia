@@ -15,16 +15,14 @@ if (N == 1) {
 	set ylabel 'Current (Ampere)'
 	plot    @TEL using 1:2 title 'Plant D' with lines, \
 		@TEL using 1:3 title 'Plant Q' with lines
-#		@TEL using 1:10 title 'Sense D' with lines, \
-#		@TEL using 1:11 title 'Sense Q' with lines
 }
 
 if (N == 2) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Electrical Speed (RPM)'
-	plot    'TEL' using 1:($4/pi*30) title 'Plant' with lines, \
-		'TEL' using 1:($11/pi*30) title 'Estimated' with lines
+	plot    @TEL using 1:($4*30/pi) title 'Plant' with lines, \
+		@TEL using 1:($4*30/pi) title 'Estimated' with lines
 }
 
 if (N == 3) {
