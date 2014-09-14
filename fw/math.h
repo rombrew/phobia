@@ -19,14 +19,14 @@
 #ifndef _H_MATH_
 #define _H_MATH_
 
-#ifdef __TARGET_SIM
+#ifdef __MATH_C
 #define __SSAT(x, q)	ssat((x), (q))
 #define __USAT(x, q)	usat((x), (q))
 #define __SMULL(a, b)	smull((a), (b))
 #define __CLZ(x)	clz((x))
 #else
 #include "hal/hal.h"
-#endif /* __TARGET_SIM */
+#endif /* __MATH_C */
 
 inline int
 clamp(int x, int h, int l)
@@ -55,10 +55,10 @@ smull(int a, int b)
 inline int
 clz(int x) { return __builtin_clz(x); }
 
-inline int
-clx(int x) { return (x < 0) ? __CLZ(-x) : __CLZ(x); }
+short int xsdivi(int a, int d);
 
-short int x115divi(int a, int d);
+char *itoa(char *s, int x);
+char *etoa(char *s, int x, int e);
 
 #endif /* _H_MATH_ */
 

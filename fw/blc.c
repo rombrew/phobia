@@ -21,15 +21,32 @@
 
 void blcEnable(blc_t *bl)
 {
+	bl->sT0 = 100;		/* Zero Drift */
+	bl->sT1 = 400;		/* Ramp Up */
+	bl->sT2 = 700;
+	bl->sT3 = 500;
+	bl->sT4 = 80;
+	bl->sT5 = 20;
+
+	bl->sISP = 1000;
+	bl->sLN = 40;
+
+	bl->cA1 = 0;
+	bl->cB1 = 0;
+	bl->cA0 = 0;
+	bl->cB0 = 0;
+	bl->cU1 = 0;
+	bl->cU0 = 0;
+
 	bl->iKP = (500 << 5) + 13;
 	bl->iKI = (500 << 5) + 13;
+
+	
 }
 
 static void
-bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
+bFSM(blc_t *bl, int iA, int iB, int uS)
 {
-	int		dU;
-
 	switch (bl->fST1) {
 
 		case BLC_STATE_IDLE:
@@ -49,7 +66,7 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 
 				bl->tempA = 0;
 				bl->tempB = 0;
-				bl->tempU = 0;
+				bl->tempC = 0;
 
 				bl->timVal = 0;
 				bl->timEnd = 64;
@@ -57,25 +74,25 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 				bl->fST2++;
 			}
 			else {
-				/* Zero Drift */
-
 				bl->tempA += iA;
 				bl->tempB += iB;
-				bl->tempU += uS - bl->U;
+				bl->tempC += uS - bl->U;
 
 				bl->timVal++;
 
 				if (bl->timVal < bl->timEnd) ;
 				else {
+					/* Zero Drift */
+
 					bl->cA0 -= bl->tempA / bl->timEnd;
 					bl->cB0 -= bl->tempB / bl->timEnd;
-					bl->U += bl->tempU / bl->timEnd;
+					bl->U += bl->tempC / bl->timEnd;
 
 					if (bl->fST2 == 1) {
 
 						bl->tempA = 0;
 						bl->tempB = 0;
-						bl->tempU = 0;
+						bl->tempC = 0;
 
 						bl->timVal = 0;
 						bl->timEnd = bl->hzF * bl->sT0 / 1000;
@@ -83,6 +100,10 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 						bl->fST2++;
 					}
 					else {
+						bl->fMOF |= BLC_MODE_VOLTAGE_ESTIMATE;
+
+						printf("\n\tZab = %i %i\n", bl->cA0, bl->cB0);
+
 						if (bl->fREQ & BLC_REQUEST_CALIBRATE)
 							bl->fST1 = BLC_STATE_CALIBRATE;
 						else
@@ -103,7 +124,7 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 				bl->iSPD = 0;
 				bl->iSPQ = 0;
 
-				bl->dqX = 16384;
+				bl->dqX = 1UL << 14;
 				bl->dqY = 0;
 
 				bl->timVal = 0;
@@ -115,9 +136,7 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 
 				/* Ramp Up Stage */
 
-				bl->iSPD = 1000 * bl->timVal / bl->timEnd;
-				bl->iSPQ = 0;
-
+				bl->iSPD = bl->sISP * bl->timVal / bl->timEnd;
 				bl->timVal++;
 
 				if (bl->timVal < bl->timEnd) ;
@@ -176,9 +195,13 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 
 				if (bl->timVal < bl->timEnd) ;
 				else {
-					dU = 1000 * bl->tempB / bl->timEnd
-						+ 1000 * bl->tempA;
-					bl->R = x115divi(dU, 1000 * bl->iSPD);
+					/* Resistance */
+
+					bl->R = xsdivi((bl->tempB << 6) / bl->timEnd
+							+ (bl->tempA << 6), bl->iSPD << 6);
+
+					printf("\n\tR = %lf mOhm\n", 1e+3 * (double) (bl->R >> 5)
+						/ (double) (1UL << (bl->R & 0x1F)));
 
 					bl->fST1 = BLC_STATE_ESTIMATE_L;
 					bl->fST2 = 0;
@@ -188,6 +211,73 @@ bFSM(blc_t *bl, int iA, int iB, int iX, int iY, int uS)
 
 		case BLC_STATE_ESTIMATE_L:
 
+			if (bl->fST2 == 0) {
+
+				bl->timVal = 0;
+				bl->timEnd = bl->hzF * bl->sT4 / 1000;
+
+				bl->tempA = 0;
+				bl->tempB = 0;
+				bl->tempC = 0;
+
+				bl->fST2++;
+			}
+			else if (bl->fST2 < 40) {
+
+				if (bl->fST2 & 1) {
+
+					bl->iSPD = (bl->fST2 & 2) ? bl->sISP * bl->timVal
+						/ bl->timEnd : bl->sISP
+						* (bl->timEnd - bl->timVal) / bl->timEnd;
+				}
+
+				bl->tempA += bl->uX - (bl->iSPD * (bl->R >> 5) >> (bl->R & 0x1F));
+				bl->timVal++;
+
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					if (bl->fST2 & 1) {
+
+						bl->timVal = 0;
+						bl->timEnd = bl->hzF * bl->sT5 / 1000;
+					}
+					else {
+						bl->timVal = 0;
+						bl->timEnd = bl->hzF * bl->sT4 / 1000;
+
+						bl->tempB += (bl->fST2 & 2) ? -bl->tempA : bl->tempA;
+						bl->tempC += 1;
+						bl->tempA = 0;
+					}
+
+					bl->fST2++;
+				}
+			}
+			else {
+				/* Inductance */
+
+				bl->L = xsdivi(bl->tempB, bl->tempC * bl->hzF * bl->sISP);
+
+				printf("\n\tL = %lf uH\n", 1e+6 * (double) (bl->L >> 5)
+						/ (double) (1UL << (bl->L & 0x1F)));
+
+				bl->fST1 = BLC_STATE_SPINUP;
+				bl->fST2 = 0;
+			}
+			break;
+
+		case BLC_STATE_SPINUP:
+
+			if (bl->fST2 == 0) {
+
+				bl->timVal = 0;
+				bl->timEnd = 64;
+
+				bl->tempA = 0;
+				bl->tempB = 0;
+
+				bl->fST2++;
+			}
 			break;
 	}
 }
@@ -278,9 +368,8 @@ void blcFeedBack(blc_t *bl, int iA, int iB, int uS)
 
 		iFB(bl, iX, iY);
 	}
-	else {
+	else
 		bl->pDC(0, 0, 0);
-	}
 
 	if (bl->fMOF & BLC_MODE_VOLTAGE_ESTIMATE) {
 	}
@@ -288,6 +377,6 @@ void blcFeedBack(blc_t *bl, int iA, int iB, int uS)
 	if (bl->fMOF & BLC_MODE_SPEED_LOOP) {
 	}
 
-	bFSM(bl, iA, iB, iX, iY, uS);
+	bFSM(bl, iA, iB, uS);
 }
 

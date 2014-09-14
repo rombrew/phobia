@@ -18,21 +18,24 @@
 
 #include "math.h"
 
-short int x115divi(int a, int d)
+short int xsdivi(int a, int d)
 {
 	int		x, e;
 
-	x = clx(a) - 1;
+	/* FIXME: Negative inputs are not handled correctly by CLZ.
+	 * */
+
+	x = __CLZ(a) - 1;
 	x = (x < 0) ? 0 : x;
 	a <<= x, e = x;
 
-	x = 21 - clx(d);
+	x = 21 - __CLZ(d);
 	x = (x < 0) ? 0 : x;
 	d >>= x, e += x;
 
 	a /= d;
 
-	x = 22 - clx(a);
+	x = 22 - __CLZ(a);
 	x = (x < 0) ? 0 : x;
 	a >>= x, e -= x;
 
@@ -40,5 +43,33 @@ short int x115divi(int a, int d)
 	a = (a << 5) + e;
 
 	return a;
+}
+
+char *itoa(char *s, int x)
+{
+	char		*p;
+
+	x = (x < 0) ? *s++ = '-', -x : x;
+
+	p = s + 14;
+	*--p = 0;
+
+	do {
+		*--p = '0' + x % 10;
+		x /= 10;
+	}
+	while (x);
+
+	while ((*s++ = *p++));
+
+	return s;
+}
+
+char *etoa(char *s, int x, int e)
+{
+	int		d = 0;
+
+	while (e > 0) {
+	}
 }
 

@@ -26,6 +26,8 @@
 #include "blc.h"
 #include "lib.h"
 
+#define TEL_FILE	"/tmp/TEL"
+
 static blm_t	m;
 static blc_t	bl;
 
@@ -70,7 +72,7 @@ simF(double Tend)
 	double		A, B, C, D, Q;
 	int		tl, ts = 0;
 
-	fdTel = fopen("TEL", "wb");
+	fdTel = fopen(TEL_FILE, "wb");
 
 	if (fdTel == NULL) {
 
@@ -147,18 +149,6 @@ int main(int argc, char *argv[])
 
 	bl.hzF = (int) (1. / m.dT);
 	bl.pwmR = m.PWMR;
-
-	bl.sT0 = 100;
-	bl.sT1 = 400;
-	bl.sT2 = 700;
-	bl.sT3 = 200;
-
-	bl.cA1 = 0;
-	bl.cB1 = 0;
-	bl.cA0 = 0;
-	bl.cB0 = 0;
-	bl.cU1 = 0;
-	bl.cU0 = 0;
 
 	bl.pDC = &blmDC;
 	bl.pZ = &blmZ;

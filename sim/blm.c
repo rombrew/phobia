@@ -198,7 +198,7 @@ blmBridgeSample(blm_t *m)
 	 * */
 	U = s1 * 55e-3 + Uref / 2.;
 	dU = gauss() * 3e-3 + 27e-3;
-	U += dU;
+	//U += dU;
 
 	/* ADC conversion.
 	 * */
@@ -210,7 +210,7 @@ blmBridgeSample(blm_t *m)
 	 * */
 	U = s2 * 55e-3 + Uref / 2.;
 	dU = gauss() * 3e-3 - 11e-3;
-	U += dU;
+	//U += dU;
 
 	/* ADC conversion.
 	 * */
@@ -224,7 +224,7 @@ blmBridgeSample(blm_t *m)
 
 	U = s1 / 9.;
 	dU = gauss() * 3e-3 + 0e-3;
-	U += dU;
+	//U += dU;
 
 	/* ADC conversion.
 	 * */

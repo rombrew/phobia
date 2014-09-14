@@ -4,7 +4,7 @@ set terminal x11
 set grid
 
 set macros
-TEL = "\"TEL\" binary format=\"%40float\""
+TEL = "\"/tmp/TEL\" binary format=\"%40float\""
 
 system "echo -n Number:"
 N = int(system("read N; echo $N"))

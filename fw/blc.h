@@ -71,10 +71,18 @@ typedef struct {
 	int		timVal;
 	int		timEnd;
 
-	/* Stage durations (millisecond).
+	/* Stages duration (ms).
 	 * */
 	short int	sT0, sT1, sT2;
-	short int	sT3;
+	short int	sT3, sT4, sT5;
+
+	/* Current SetPoint (mA).
+	 * */
+	short int	sISP;
+
+	/* Triangle wave length.
+	 * */
+	short int	sLN;
 
 	/* Conversion constants.
 	 * */
@@ -84,7 +92,7 @@ typedef struct {
 
 	/* Control signal.
 	 * */
-	short int	uX, uY;
+	int		uX, uY;
 
 	/* Flux estimation.
 	 * */
@@ -141,7 +149,7 @@ typedef struct {
 	 * */
 	int		tempA;
 	int		tempB;
-	int		tempU;
+	int		tempC;
 }
 blc_t;
 
