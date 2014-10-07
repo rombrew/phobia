@@ -53,7 +53,7 @@ simABtoDQ(double A, double B, double R, double *D, double *Q)
 	double		X, Y, rS, rC;
 
 	X = A;
-	Y = 0.577350269189626 * A + 1.15470053837925 * B;
+	Y = .577350269189626 * A + 1.15470053837925 * B;
 
 	rS = sin(R);
 	rC = cos(R);
@@ -63,13 +63,45 @@ simABtoDQ(double A, double B, double R, double *D, double *Q)
 }
 
 static void
+simTel(float *pTel)
+{
+	double		A, B, C, D, Q;
+
+	simABtoDQ(m.X[0], m.X[1], m.X[3], &D, &Q);
+
+	/* Model.
+	 * */
+	pTel[1] = m.Tsim;
+	pTel[2] = D;
+	pTel[3] = Q;
+	pTel[4] = m.X[2];
+	pTel[5] = m.X[3];
+	pTel[6] = m.X[4];
+
+	A = m.uA / (double) m.PWMR;
+	B = m.uB / (double) m.PWMR;
+	C = m.uC / (double) m.PWMR;
+	Q = (A + B + C) / 3.;
+
+	simABtoDQ(A - Q, B - Q, m.X[3], &D, &Q);
+
+	/* Duty cycle.
+	 * */
+	pTel[7] = D;
+	pTel[8] = Q;
+
+	/* Estimated variables.
+	 * */
+	pTel[10] = 0;
+}
+
+static void
 simF(double Tend)
 {
 	const int	szTel = 40;
 	float		Tel[szTel], *pTel;
 	FILE		*fdTel;
 
-	double		A, B, C, D, Q;
 	int		tl, ts = 0;
 
 	fdTel = fopen(TEL_FILE, "wb");
@@ -92,29 +124,9 @@ simF(double Tend)
 		 * */
 		blmUpdate(&m);
 
-		/* Base plant telemetry.
+		/* Collect telemetry.
 		 * */
-		simABtoDQ(m.X[0], m.X[1], m.X[3], &D, &Q);
-		pTel[1] = m.Tsim;
-		pTel[2] = D;
-		pTel[3] = Q;
-		pTel[4] = m.X[2];
-		pTel[5] = m.X[3];
-		pTel[6] = m.X[4];
-
-		A = m.uA / (double) m.PWMR;
-		B = m.uB / (double) m.PWMR;
-		C = m.uC / (double) m.PWMR;
-		Q = (A + B + C) / 3.;
-
-		simABtoDQ(A - Q, B - Q, m.X[3], &D, &Q);
-
-		pTel[7] = D;
-		pTel[8] = Q;
-
-		/* Estimated variables.
-		 * */
-		pTel[10] = 0;
+		simTel(pTel);
 
 		/* Dump telemetry array.
 		 * */
@@ -122,7 +134,7 @@ simF(double Tend)
 
 		/* BLC update.
 		 * */
-		blcFeedBack(&bl, m.iA, m.iB, m.uS);
+		blcFeedBack(&bl, m.xA, m.xB, m.xU);
 
 		/* Progress indication.
 		 * */
@@ -140,22 +152,22 @@ simF(double Tend)
 	puts("\n");
 }
 
-#include "math.h"
 int main(int argc, char *argv[])
 {
 	double		Tend = 5.;
 
 	blmEnable(&m);
 
-	bl.hzF = (int) (1. / m.dT);
+	bl.hzF = (float) (1. / m.dT);
 	bl.pwmR = m.PWMR;
 
 	bl.pDC = &blmDC;
 	bl.pZ = &blmZ;
 
-	bl.fREQ = BLC_REQUEST_SPINUP;
-
 	blcEnable(&bl);
+
+	bl.fMOF = BLC_MODE_ESTIMATE_RL;
+	bl.fST1 = BLC_STATE_DRIFT;
 
 	libEnable();
 	simF(Tend);

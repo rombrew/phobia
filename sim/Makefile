@@ -8,11 +8,9 @@ MK	= mkdir -p
 RM      = rm -rf
 
 CFLAGS	= -std=gnu99 -pipe -Wall -O2 -g3
-CFLAGS  += -D__MATH_C
 LFLAGS	= -lm -g3
 
 OBJS	= lib.o blm.o sim.o
-OBJS	+= math.o
 OBJS	+= blc.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))

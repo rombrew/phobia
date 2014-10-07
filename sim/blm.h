@@ -50,11 +50,11 @@ typedef struct {
 	double		J;
 	double		M[4];
 
-	/* Output variables.
+	/* ADC codes.
 	 * */
-	int		iA;
-	int		iB;
-	int		uS;
+	int		xA;
+	int		xB;
+	int		xU;
 }
 blm_t;
 

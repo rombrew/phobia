@@ -25,6 +25,8 @@ enum {
 	BLC_MODE_VOLTAGE_ESTIMATE	= 0x0008,
 	BLC_MODE_CURRENT_LOOP		= 0x0010,
 	BLC_MODE_SPEED_LOOP		= 0x0020,
+	BLC_MODE_CALIBRATE		= 0x0100,
+	BLC_MODE_ESTIMATE_RL		= 0x0200,
 };
 
 enum {
@@ -41,58 +43,46 @@ enum {
 	BLC_STATE_END
 };
 
-enum {
-	BLC_REQUEST_CALIBRATE		= 0x0002,
-	BLC_REQUEST_ESTIMATE_R		= 0x0004,
-	BLC_REQUEST_ESTIMATE_L		= 0x0008,
-	BLC_REQUEST_SPINUP		= 0x0010,
-	BLC_REQUEST_BREAK		= 0x0020,
-};
-
 typedef struct {
 
 	/* Frequency (Hz).
 	 * */
-	int		hzF;
+	float		hzF;
+	float		dT;
 
 	/* PWM resolution.
 	 * */
-	short int	pwmR;
+	int		pwmR;
 
 	/* FSM variables.
 	 * */
-	short int	fMOF;
-	short int	fST1;
-	short int	fST2;
-	short int	fREQ;
+	int		fMOF;
+	int		fST1;
+	int		fST2;
 
 	/* Timer variables.
 	 * */
 	int		timVal;
 	int		timEnd;
 
-	/* Stages duration (ms).
+	/* Startup configuration.
 	 * */
-	short int	sT0, sT1, sT2;
-	short int	sT3, sT4, sT5;
-
-	/* Current SetPoint (mA).
-	 * */
-	short int	sISP;
-
-	/* Triangle wave length.
-	 * */
-	short int	sLN;
+	float		sT0, sT1, sT2;
+	float		sT3, sT4, sT5;
+	float		sT6;
+	int		sN1;
+	float		sISP;
+	float		sAq;
 
 	/* Conversion constants.
 	 * */
-	short int	cA1, cB1;
-	short int	cA0, cB0;
-	short int	cU0, cU1;
+	float		cA0, cA1;
+	float		cB0, cB1;
+	float		cU0, cU1;
 
-	/* Control signal.
+	/* Control voltage (mV).
 	 * */
-	int		uX, uY;
+	float		uX, uY;
 
 	/* Flux estimation.
 	 * */
@@ -118,10 +108,10 @@ typedef struct {
 
 	/* Plant constants.
 	 * */
-	short int	R;
-	short int	L;
+	float		R;
+	float		L;
 	float		E;
-	short int	U;
+	float		U;
 
 	/*
 	 * */
@@ -129,12 +119,12 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
-	int		iSPD;		/* INPUT (mA) */
-	int		iSPQ;
-	int		iXD;
-	int		iXQ;
-	short int	iKP;
-	short int	iKI;
+	float		iSPD;		/* INPUT (mA) */
+	float		iSPQ;
+	float		iXD;
+	float		iXQ;
+	float		iKP;
+	float		iKI;
 
 	/* Speed control loop.
 	 * */
@@ -147,14 +137,14 @@ typedef struct {
 
 	/* Temporal storage.
 	 * */
-	int		tempA;
-	int		tempB;
-	int		tempC;
+	float		tempA;
+	float		tempB;
+	float		tempC;
 }
 blc_t;
 
 void blcEnable(blc_t *bl);
-void blcFeedBack(blc_t *bl, int iA, int iB, int uS);
+void blcFeedBack(blc_t *bl, int xA, int xB, int xU);
 
 #endif /* _H_BLC_ */
 

@@ -182,7 +182,7 @@ blmSolveSplit(blm_t *m, double dT)
 static void
 blmBridgeSample(blm_t *m)
 {
-	double		s1, s2, U, Uref, dU;
+	double		S1, S2, U, Uref, dU;
 	int		ADC;
 
 	/* ADC reference voltage.
@@ -191,12 +191,12 @@ blmBridgeSample(blm_t *m)
 
 	/* Current sampling.
 	 * */
-	s1 = m->X[0];
-	s2 = m->X[1];
+	S1 = m->X[0];
+	S2 = m->X[1];
 
 	/* Output voltage of the current sensor A.
 	 * */
-	U = s1 * 55e-3 + Uref / 2.;
+	U = S1 * 55e-3 + Uref / 2.;
 	dU = gauss() * 3e-3 + 27e-3;
 	//U += dU;
 
@@ -204,11 +204,11 @@ blmBridgeSample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->iA = ADC;
+	m->xA = ADC;
 
 	/* Output voltage of the current sensor B.
 	 * */
-	U = s2 * 55e-3 + Uref / 2.;
+	U = S2 * 55e-3 + Uref / 2.;
 	dU = gauss() * 3e-3 - 11e-3;
 	//U += dU;
 
@@ -216,13 +216,13 @@ blmBridgeSample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->iB = ADC;
+	m->xB = ADC;
 
 	/* Voltage sampling.
 	 * */
-	s1 = m->U;
+	S1 = m->U;
 
-	U = s1 / 9.;
+	U = S1 / 9.;
 	dU = gauss() * 3e-3 + 0e-3;
 	//U += dU;
 
@@ -230,7 +230,7 @@ blmBridgeSample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->uS = ADC;
+	m->xU = ADC;
 }
 
 static void
