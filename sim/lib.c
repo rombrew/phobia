@@ -17,59 +17,91 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <limits.h>
 #include <math.h>
 #include <time.h>
 
 #include "lib.h"
 
-static double rseed[55];
+#define FSEED_FILE		"/tmp/fseed"
 
-void libEnable()
+typedef struct {
+
+	double		seed[55];
+	int		ra, rb;
+}
+lib_t;
+
+static lib_t		lib;
+
+void libStart()
 {
-	unsigned int	r;
+	FILE		*fseed;
+	unsigned int	r = 0;
 	int		j;
 
-	r = (unsigned int) time(NULL);
-	r = r * 17317 + 1;
+	fseed = fopen(FSEED_FILE, "rb");
 
-	for (j = 0; j < 55; ++j) {
+	if (fseed != NULL) {
 
+		r = fread(&lib, sizeof(lib_t), 1, fseed);
+		fclose(fseed);
+	}
+	
+	if (r != 1) {
+
+		r = (unsigned int) time(NULL);
 		r = r * 17317 + 1;
-		rseed[j] = (double) r / (double) UINT_MAX;
+
+		for (j = 0; j < 55; ++j) {
+
+			r = r * 17317 + 1;
+			lib.seed[j] = (double) r / (double) UINT_MAX;
+		}
+
+		lib.ra = 0;
+		lib.rb = 31;
 	}
 }
 
-double rand1()
+void libStop()
 {
-	static int	ra = 0, rb = 31;
+	FILE		*fseed;
+
+	fseed = fopen(FSEED_FILE, "wb");
+
+	if (fseed != NULL) {
+
+		fwrite(&lib, sizeof(lib_t), 1, fseed);
+		fclose(fseed);
+	}
+}
+
+double libRand()
+{
 	double		x, a, b;
 
-	a = rseed[ra];
-	b = rseed[rb];
+	a = lib.seed[lib.ra];
+	b = lib.seed[lib.rb];
 
-	x = (a < b) ? a - b + 1.0 : a - b;
+	x = (a < b) ? a - b + 1. : a - b;
 
-	rseed[ra] = x;
+	lib.seed[lib.ra] = x;
 
-	ra = (ra < 54) ? ra + 1 : 0;
-	rb = (rb < 54) ? rb + 1 : 0;
+	lib.ra = (lib.ra < 54) ? lib.ra + 1 : 0;
+	lib.rb = (lib.rb < 54) ? lib.rb + 1 : 0;
 
 	return x;
 }
 
-double rand2()
-{
-	return 2. * rand1() - 1.;
-}
-
-double gauss()
+double libGauss()
 {
 	double		s, x;
 
 	do {
-		s = rand2();
-		x = rand2();
+		s = 2. * libRand() - 1.;
+		x = 2. * libRand() - 1.;
 		s = s * s + x * x;
 	}
 	while (s >= 1.);

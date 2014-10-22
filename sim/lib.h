@@ -19,11 +19,11 @@
 #ifndef _H_LIB_
 #define _H_LIB_
 
-void libEnable();
+void libStart();
+void libStop();
 
-double rand1();
-double rand2();
-double gauss();
+double libRand();
+double libGauss();
 
 #endif /* _H_LIB_ */
 

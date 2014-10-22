@@ -96,13 +96,12 @@ simTel(float *pTel)
 }
 
 static void
-simF(double Tend)
+simF(double Tend, int Verb)
 {
 	const int	szTel = 40;
 	float		Tel[szTel], *pTel;
+	double		Tin;
 	FILE		*fdTel;
-
-	int		tl, ts = 0;
 
 	fdTel = fopen(TEL_FILE, "wb");
 
@@ -113,6 +112,7 @@ simF(double Tend)
 	}
 
 	pTel = Tel - 1;
+	Tin = m.Tsim;
 
 	while (m.Tsim < Tend) {
 
@@ -138,10 +138,9 @@ simF(double Tend)
 
 		/* Progress indication.
 		 * */
-		tl = ts;
-		ts = (int) (m.Tsim * 1e+1);
+		if (Verb && Tin < m.Tsim) {
 
-		if (tl < ts) {
+			Tin += .1;
 
 			printf("\rTsim = %2.1lf", m.Tsim);
 			fflush(stdout);
@@ -149,12 +148,26 @@ simF(double Tend)
 	}
 
 	fclose(fdTel);
-	puts("\n");
+}
+
+static void
+simReport(FILE *fout)
+{
+	fprintf(fout, "\n-----------------------------------------\n");
+	fprintf(fout, "U = %.3E \tVolt \t%.2f%%\n", bl.U,
+			100.f * (bl.U - m.U) / m.U);
+	fprintf(fout, "R = %.3E \tOhm \t%.2f%%\n", bl.R,
+			100.f * (bl.R - m.R) / m.R);
+	fprintf(fout, "L = %.3E \tHenry \t%.2f%%\n", bl.L,
+			100.f * (bl.L - m.L) / m.L);
+	fprintf(fout, "\n-----------------------------------------\n");
 }
 
 int main(int argc, char *argv[])
 {
 	double		Tend = 5.;
+
+	libStart();
 
 	blmEnable(&m);
 
@@ -169,8 +182,11 @@ int main(int argc, char *argv[])
 	bl.fMOF = BLC_MODE_ESTIMATE_RL;
 	bl.fST1 = BLC_STATE_DRIFT;
 
-	libEnable();
-	simF(Tend);
+	simF(Tend, 0);
+
+	simReport(stdout);
+
+	libStop();
 
 	return 0;
 }

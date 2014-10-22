@@ -34,8 +34,7 @@ enum {
 	BLC_STATE_DRIFT,
 	BLC_STATE_CALIBRATE,
 	BLC_STATE_ALIGN,
-	BLC_STATE_ESTIMATE_R,
-	BLC_STATE_ESTIMATE_L,
+	BLC_STATE_ESTIMATE_RL,
 	BLC_STATE_SPINUP,
 	BLC_STATE_BREAK,
 	BLC_STATE_ESTIMATE_Q,
@@ -69,10 +68,7 @@ typedef struct {
 	 * */
 	float		sT0, sT1, sT2;
 	float		sT3, sT4, sT5;
-	float		sT6;
-	int		sN1;
-	float		sISP;
-	float		sAq;
+	float		sISP, sFq, sAq;
 
 	/* Conversion constants.
 	 * */
@@ -80,14 +76,17 @@ typedef struct {
 	float		cB0, cB1;
 	float		cU0, cU1;
 
-	/* Control voltage (mV).
+	/* Measured current.
+	 * */
+	float		iX, iY;
+
+	/* Control voltage.
 	 * */
 	float		uX, uY;
 
 	/* Flux estimation.
 	 * */
-	float		fluxX;
-	float		fluxY;
+	float		fluxX, fluxY;
 
 	/* Flux observer tunables.
 	 * */
@@ -104,14 +103,14 @@ typedef struct {
 
 	/* DQ frame.
 	 * */
-	short int	dqX, dqY;
+	float		dqX, dqY;
 
-	/* Plant constants.
+	/* Electrical constants.
 	 * */
+	float		U;
 	float		R;
 	float		L;
 	float		E;
-	float		U;
 
 	/*
 	 * */
@@ -119,7 +118,7 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
-	float		iSPD;		/* INPUT (mA) */
+	float		iSPD;		/* INPUT */
 	float		iSPQ;
 	float		iXD;
 	float		iXQ;
@@ -137,9 +136,12 @@ typedef struct {
 
 	/* Temporal storage.
 	 * */
-	float		tempA;
-	float		tempB;
-	float		tempC;
+	struct {
+
+		float		re;
+		float		im;
+	}
+	tA, tB, tC, tD;
 }
 blc_t;
 

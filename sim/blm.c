@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 44e-6;
+	m->L = 94e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -197,8 +197,8 @@ blmBridgeSample(blm_t *m)
 	/* Output voltage of the current sensor A.
 	 * */
 	U = S1 * 55e-3 + Uref / 2.;
-	dU = gauss() * 3e-3 + 27e-3;
-	//U += dU;
+	dU = libGauss() * 3e-3 + 27e-3;
+	U += dU;
 
 	/* ADC conversion.
 	 * */
@@ -209,8 +209,8 @@ blmBridgeSample(blm_t *m)
 	/* Output voltage of the current sensor B.
 	 * */
 	U = S2 * 55e-3 + Uref / 2.;
-	dU = gauss() * 3e-3 - 11e-3;
-	//U += dU;
+	dU = libGauss() * 3e-3 - 11e-3;
+	U += dU;
 
 	/* ADC conversion.
 	 * */
@@ -223,8 +223,8 @@ blmBridgeSample(blm_t *m)
 	S1 = m->U;
 
 	U = S1 / 9.;
-	dU = gauss() * 3e-3 + 0e-3;
-	//U += dU;
+	dU = libGauss() * 3e-3 + 0e-3;
+	U += dU;
 
 	/* ADC conversion.
 	 * */
