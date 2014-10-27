@@ -45,6 +45,10 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
+	if (T > 3.) {
+
+		bl.iSPQ = 10.f;
+	}
 }
 
 static void
@@ -90,9 +94,28 @@ simTel(float *pTel)
 	pTel[7] = D;
 	pTel[8] = Q;
 
-	/* Estimated variables.
+	simABtoDQ(bl.iX, bl.iY, m.X[3], &D, &Q);
+
+	/* Measured current.
 	 * */
-	pTel[10] = 0;
+	pTel[10] = D;
+	pTel[11] = Q;
+
+	D = cos(m.X[3]);
+	Q = sin(m.X[3]);
+	A = D * bl.pX + Q * bl.pY;
+	B = D * bl.pY - Q * bl.pX;
+	C = atan2(B, A);
+
+	/* Estimated position.
+	 * */
+	pTel[12] = atan2(bl.pY, bl.pX);
+	pTel[13] = C;
+
+	/*
+	 * */
+	pTel[14] = bl.fK;
+	pTel[15] = sqrt(bl.pX * bl.pX + bl.pY * bl.pY);
 }
 
 static void
@@ -124,6 +147,10 @@ simF(double Tend, int Verb)
 		 * */
 		blmUpdate(&m);
 
+		/* BLC update.
+		 * */
+		blcFeedBack(&bl, m.xA, m.xB, m.xU);
+
 		/* Collect telemetry.
 		 * */
 		simTel(pTel);
@@ -131,10 +158,6 @@ simF(double Tend, int Verb)
 		/* Dump telemetry array.
 		 * */
 		fwrite(Tel, sizeof(float), szTel, fdTel);
-
-		/* BLC update.
-		 * */
-		blcFeedBack(&bl, m.xA, m.xB, m.xU);
 
 		/* Progress indication.
 		 * */
@@ -177,9 +200,13 @@ int main(int argc, char *argv[])
 	bl.pDC = &blmDC;
 	bl.pZ = &blmZ;
 
+	bl.R = 74e-3 * (1.f + .0f);
+	bl.L = 44e-6 * (1.f + .0f);
+	bl.E = 66e-5 * (1.f + .0f);
+
 	blcEnable(&bl);
 
-	bl.fMOF = BLC_MODE_ESTIMATE_RL;
+	bl.fMOF = 0;
 	bl.fST1 = BLC_STATE_DRIFT;
 
 	simF(Tend, 0);

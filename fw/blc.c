@@ -39,7 +39,7 @@ void blcEnable(blc_t *bl)
 	bl->sT5 = .0f;		/*  */
 	bl->sISP = 1.f;		/* Current SetPoint */
 	bl->sFq = 20.f;		/* Frequency (Hz)*/
-	bl->sAq = 1e-3f;	/* Acceleration */
+	bl->sAq = 75.f;		/* Acceleration */
 
 	bl->cA0 = 0.f;
 	bl->cA1 = .01464844f;
@@ -48,14 +48,47 @@ void blcEnable(blc_t *bl)
 	bl->cU0 = 0.f;
 	bl->cU1 = .00725098f;
 
-	bl->iKP = 3e-2f;
-	bl->iKI = 1e-2f;
+	bl->iKP = 2e-2f;
+	bl->iKI = 5e-3f;
+
+	bl->gainF = .01f;
+	bl->gainK = .001f;
+	bl->gainR = .0f;
+	bl->gainU = .011f;
+}
+
+static void
+fFB(blc_t *bl, float iX, float iY)
+{
+	float		pX, pY, eF;
+
+	bl->fX += (bl->uX - iX * bl->R) * bl->dT;
+	bl->fY += (bl->uY - iY * bl->R) * bl->dT;
+
+	pX = bl->fX - iX * bl->L;
+	pY = bl->fY - iY * bl->L;
+
+	eF = 1.f - bl->fK * bl->fK * (pX * pX + pY * pY);
+
+	bl->fX += pX * eF * bl->gainF;
+	bl->fY += pY * eF * bl->gainF;
+	bl->fK += bl->fK * eF * bl->gainK;
+
+	pX = (bl->fX - iX * bl->L) * bl->fK;
+	pY = (bl->fY - iY * bl->L) * bl->fK;
+
+	eF = (3.f - pX * pX - pY * pY) / 2.f;
+	pX *= eF;
+	pY *= eF;
+
+	bl->pX = pX;
+	bl->pY = pY;
 }
 
 static void
 iFB(blc_t *bl, float iX, float iY)
 {
-	float		eD, eQ, uD, uQ;
+	float		eD, eQ, uD, uQ, Q;
 	float		uA, uB, uC, uX, uY;
 	int		xA, xB, xC;
 
@@ -85,14 +118,20 @@ iFB(blc_t *bl, float iX, float iY)
 
 	bl->pDC(xA, xB, xC);
 
-	uA = xA * bl->U / bl->pwmR - .5f * bl->U;
-	uB = xB * bl->U / bl->pwmR - .5f * bl->U;
+	Q = .33333333f * (xA + xB + xC);
+	uA = (xA - Q) * bl->U / bl->pwmR;
+	uB = (xB - Q) * bl->U / bl->pwmR;
 
 	uX = uA;
 	uY = .57735027f * uA + 1.1547005f * uB;
 
 	bl->uX = uX;
 	bl->uY = uY;
+}
+
+static void
+wFB(blc_t *bl)
+{
 }
 
 static void
@@ -274,38 +313,54 @@ bFSM(blc_t *bl, float iA, float iB, float uS, float iX, float iY)
 			}
 			break;
 
-			/*case BLC_STATE_SPINUP:
+		case BLC_STATE_SPINUP:
 
-			  if (bl->fST2 == 0) {
+			if (bl->fST2 == 0) {
 
-			  bl->timVal = 0;
-			  bl->timEnd = bl->hzF * bl->sT4;
+				bl->fMOF |= BLC_MODE_FLUX_OBSERVER;
 
-			  bl->tempA = 0.f;
+				bl->fK = 1.f / bl->E;
+				bl->fX = iX * bl->L + bl->E;
+				bl->fY = iY * bl->L;
 
-			  bl->fST2++;
-			  }
-			  else if (bl->fST2 == 1) {
+				bl->tA.re = 0.f;
 
-			  dW = bl->sAq * bl->dT;
-			  L = (bl->tempA + .5f * dW) * bl->dT;
-			  bl->tempA += dW;
+				bl->timVal = 0;
+				bl->timEnd = bl->hzF * bl->sT4;
 
-			  bl->dqX += bl->dqX * L;
-			  bl->dqY += -bl->dqY * L;
+				bl->fST2++;
+			}
+			else if (bl->fST2 == 1) {
 
-			  L = (3.f - bl->dqX * bl->dqX - bl->dqY * bl->dqY) * .5f;
+				P = bl->sAq * bl->dT;
+				L = (bl->tA.re + .5f * P) * bl->dT;
+				bl->tA.re += P;
 
-			  bl->dqX *= L;
-			  bl->dqY *= L;
+				bl->dqX += -bl->dqY * L;
+				bl->dqY += bl->dqX * L;
 
-			  bl->timVal++;
+				L = (3.f - bl->dqX * bl->dqX - bl->dqY * bl->dqY) * .5f;
 
-			  if (bl->timVal < bl->timEnd) ;
-			  else {
-			  }
-			  }
-			  break;*/
+				bl->dqX *= L;
+				bl->dqY *= L;
+
+				bl->timVal++;
+
+				if (bl->timVal < bl->timEnd) ;
+				else {
+					bl->iSPD = 0.f;
+					bl->iSPQ = bl->sISP;
+
+					bl->fMOF |= BLC_MODE_FLUX_LOCK;
+
+					bl->fST1 = BLC_STATE_IDLE;
+					bl->fST2 = 0;
+				}
+			}
+			break;
+
+		case BLC_STATE_END:
+			break;
 	}
 }
 
@@ -333,7 +388,12 @@ void blcFeedBack(blc_t *bl, int xA, int xB, int xU)
 	 * */
 	if (bl->fMOF & BLC_MODE_FLUX_OBSERVER) {
 
+		fFB(bl, iX, iY);
+
 		if (bl->fMOF & BLC_MODE_FLUX_LOCK) {
+
+			bl->dqX = bl->pX;
+			bl->dqY = bl->pY;
 		}
 	}
 
@@ -341,7 +401,7 @@ void blcFeedBack(blc_t *bl, int xA, int xB, int xU)
 	 * */
 	if (bl->fMOF & BLC_MODE_VOLTAGE_ESTIMATE) {
 
-		bl->U += (uS - bl->U) * .017f;
+		bl->U += (uS - bl->U) * bl->gainU;
 	}
 
 	/* Current control loop.

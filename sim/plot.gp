@@ -37,9 +37,7 @@ if (N == 4) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Electrical Position (Degree)'
-	plot    'TEL' using 1:(atan2(sin($5)*cos($12) - cos($5)*sin($12), \
-		sin($5)*sin($12) + cos($5)*cos($12))/pi*180) title \
-		'Error' with lines
+	plot    @TEL using 1:($13*180/pi) title 'Error' with lines
 }
 
 if (N == 5) {
@@ -48,6 +46,20 @@ if (N == 5) {
 	set ylabel 'Duty Cycle (%)'
 	plot	@TEL using 1:($7*100) title 'D' with lines, \
 		@TEL using 1:($8*100) title 'Q' with lines
+}
+
+if (N == 6) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'K ()'
+	plot	@TEL using 1:14 title 'K' with lines 
+}
+
+if (N == 7) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'K ()'
+	plot	@TEL using 1:15 title 'K' with lines 
 }
 
 if (N == 10) {

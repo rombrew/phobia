@@ -86,22 +86,30 @@ typedef struct {
 
 	/* Flux estimation.
 	 * */
-	float		fluxX, fluxY;
+	float		fX, fY;
+
+	/* Flux module inversed.
+	 * */
+	float		fK;
 
 	/* Flux observer tunables.
 	 * */
 	float		gainF;
 	float		gainK;
 
+	/* Position estimation.
+	 * */
+	float		pX, pY;
+
 	/* Speed estimation.
 	 * */
 	float		wR;
 
-	/* Speed observer tunables.
+	/* Position observer tunables.
 	 * */
-	float		gainW;
+	float		gainR;
 
-	/* DQ frame.
+	/* DQ frame (for current loop).
 	 * */
 	float		dqX, dqY;
 
@@ -112,7 +120,7 @@ typedef struct {
 	float		L;
 	float		E;
 
-	/*
+	/* Voltage observer tunable.
 	 * */
 	float		gainU;
 

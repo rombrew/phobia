@@ -55,7 +55,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding resistance at 20 C. (Ohm)
          * */
-	m->R = 72e-3;
+	m->R = 74e-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 94e-6;
+	m->L = 44e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -86,7 +86,7 @@ void blmEnable(blm_t *m)
 	 * */
 	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 1e-5;
+	m->M[2] = 2e-7;
 	m->M[3] = 0e-0;
 }
 
