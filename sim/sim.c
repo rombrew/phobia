@@ -23,13 +23,13 @@
 #include <math.h>
 
 #include "blm.h"
-#include "blc.h"
+#include "pmc.h"
 #include "lib.h"
 
 #define TEL_FILE	"/tmp/TEL"
 
 static blm_t	m;
-static blc_t	bl;
+static pmc_t	pm;
 
 static void
 blmDC(int uA, int uB, int uC)
@@ -47,7 +47,7 @@ simScript(double T)
 {
 	if (T > 3.) {
 
-		bl.iSPQ = 10.f;
+		pm.iSPQ = 2.f;
 	}
 }
 
@@ -94,7 +94,7 @@ simTel(float *pTel)
 	pTel[7] = D;
 	pTel[8] = Q;
 
-	simABtoDQ(bl.iX, bl.iY, m.X[3], &D, &Q);
+	simABtoDQ(pm.X[0], pm.X[1], m.X[3], &D, &Q);
 
 	/* Measured current.
 	 * */
@@ -103,19 +103,19 @@ simTel(float *pTel)
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * bl.pX + Q * bl.pY;
-	B = D * bl.pY - Q * bl.pX;
+	A = D * pm.pX + Q * pm.pY;
+	B = D * pm.pY - Q * pm.pX;
 	C = atan2(B, A);
 
 	/* Estimated position.
 	 * */
-	pTel[12] = atan2(bl.pY, bl.pX);
+	pTel[12] = atan2(pm.pY, pm.pX);
 	pTel[13] = C;
 
 	/*
 	 * */
-	pTel[14] = bl.fK;
-	pTel[15] = sqrt(bl.pX * bl.pX + bl.pY * bl.pY);
+	pTel[14] = pm.X[4];
+	pTel[15] = pm.X[5];
 }
 
 static void
@@ -147,9 +147,9 @@ simF(double Tend, int Verb)
 		 * */
 		blmUpdate(&m);
 
-		/* BLC update.
+		/* PMC update.
 		 * */
-		blcFeedBack(&bl, m.xA, m.xB, m.xU);
+		pmcFeedBack(&pm, m.xA, m.xB, m.xU);
 
 		/* Collect telemetry.
 		 * */
@@ -177,12 +177,12 @@ static void
 simReport(FILE *fout)
 {
 	fprintf(fout, "\n-----------------------------------------\n");
-	fprintf(fout, "U = %.3E \tVolt \t%.2f%%\n", bl.U,
-			100.f * (bl.U - m.U) / m.U);
-	fprintf(fout, "R = %.3E \tOhm \t%.2f%%\n", bl.R,
-			100.f * (bl.R - m.R) / m.R);
-	fprintf(fout, "L = %.3E \tHenry \t%.2f%%\n", bl.L,
-			100.f * (bl.L - m.L) / m.L);
+	fprintf(fout, "U = %.3E \tVolt \t%.2f%%\n", pm.U,
+			100.f * (pm.U - m.U) / m.U);
+	fprintf(fout, "R = %.3E \tOhm \t%.2f%%\n", pm.R,
+			100.f * (pm.R - m.R) / m.R);
+	fprintf(fout, "L = %.3E \tHenry \t%.2f%%\n", 1. / pm.IL,
+			100.f * (1. / pm.IL - m.L) / m.L);
 	fprintf(fout, "\n-----------------------------------------\n");
 }
 
@@ -194,20 +194,23 @@ int main(int argc, char *argv[])
 
 	blmEnable(&m);
 
-	bl.hzF = (float) (1. / m.dT);
-	bl.pwmR = m.PWMR;
+	pm.hzF = (float) (1. / m.dT);
+	pm.pwmR = m.PWMR;
 
-	bl.pDC = &blmDC;
-	bl.pZ = &blmZ;
+	pm.pDC = &blmDC;
+	pm.pZ = &blmZ;
 
-	bl.R = 74e-3 * (1.f + .0f);
-	bl.L = 44e-6 * (1.f + .0f);
-	bl.E = 66e-5 * (1.f + .0f);
+	pm.R = 74e-3 * (1. + .0);
+	pm.IL = 1. / (44e-6 * (1. + .0));
+	pm.E = 66e-5 * (1. + .0);
 
-	blcEnable(&bl);
+	pm.Zp = 11;
+	pm.IJ = 1. / 10e-5;
 
-	bl.fMOF = 0;
-	bl.fST1 = BLC_STATE_DRIFT;
+	pmcEnable(&pm);
+
+	pm.fMOF = 0;
+	pm.fST1 = PMC_STATE_DRIFT;
 
 	simF(Tend, 0);
 

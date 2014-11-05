@@ -22,7 +22,7 @@ if (N == 2) {
 	set xlabel 'Time (Sec)'
 	set ylabel 'Electrical Speed (RPM)'
 	plot    @TEL using 1:($4*30/pi) title 'Plant' with lines, \
-		@TEL using 1:($4*30/pi) title 'Estimated' with lines
+		@TEL using 1:($14*30/pi) title 'Estimated' with lines
 }
 
 if (N == 3) {
@@ -51,8 +51,8 @@ if (N == 5) {
 if (N == 6) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'K ()'
-	plot	@TEL using 1:14 title 'K' with lines 
+	set ylabel 'M'
+	plot	@TEL using 1:15 title 'M' with lines 
 }
 
 if (N == 7) {

@@ -16,30 +16,29 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_BLC_
-#define _H_BLC_
+#ifndef _H_PMC_
+#define _H_PMC_
 
 enum {
-	BLC_MODE_FLUX_OBSERVER		= 0x0002,
-	BLC_MODE_FLUX_LOCK		= 0x0004,
-	BLC_MODE_VOLTAGE_ESTIMATE	= 0x0008,
-	BLC_MODE_CURRENT_LOOP		= 0x0010,
-	BLC_MODE_SPEED_LOOP		= 0x0020,
-	BLC_MODE_CALIBRATE		= 0x0100,
-	BLC_MODE_ESTIMATE_RL		= 0x0200,
+	PMC_MODE_OBSERVER		= 0x0002,
+	PMC_MODE_VOLTAGE_ESTIMATE	= 0x0008,
+	PMC_MODE_CURRENT_LOOP		= 0x0010,
+	PMC_MODE_SPEED_LOOP		= 0x0020,
+	PMC_MODE_CALIBRATE		= 0x0100,
+	PMC_MODE_ESTIMATE_RL		= 0x0200,
 };
 
 enum {
-	BLC_STATE_IDLE			= 0,
-	BLC_STATE_DRIFT,
-	BLC_STATE_CALIBRATE,
-	BLC_STATE_ALIGN,
-	BLC_STATE_ESTIMATE_RL,
-	BLC_STATE_SPINUP,
-	BLC_STATE_BREAK,
-	BLC_STATE_ESTIMATE_Q,
-	BLC_STATE_ESTIMATE_J,
-	BLC_STATE_END
+	PMC_STATE_IDLE			= 0,
+	PMC_STATE_DRIFT,
+	PMC_STATE_CALIBRATE,
+	PMC_STATE_ALIGN,
+	PMC_STATE_ESTIMATE_RL,
+	PMC_STATE_SPINUP,
+	PMC_STATE_BREAK,
+	PMC_STATE_ESTIMATE_Q,
+	PMC_STATE_ESTIMATE_J,
+	PMC_STATE_END
 };
 
 typedef struct {
@@ -76,49 +75,29 @@ typedef struct {
 	float		cB0, cB1;
 	float		cU0, cU1;
 
-	/* Measured current.
-	 * */
-	float		iX, iY;
-
 	/* Control voltage.
 	 * */
 	float		uX, uY;
 
-	/* Flux estimation.
+	/* State estimate.
 	 * */
-	float		fX, fY;
+	float		X[6];
 
-	/* Flux module inversed.
-	 * */
-	float		fK;
-
-	/* Flux observer tunables.
-	 * */
-	float		gainF;
-	float		gainK;
-
-	/* Position estimation.
+	/* Final DQ frame.
 	 * */
 	float		pX, pY;
-
-	/* Speed estimation.
-	 * */
-	float		wR;
-
-	/* Position observer tunables.
-	 * */
-	float		gainR;
-
-	/* DQ frame (for current loop).
-	 * */
-	float		dqX, dqY;
 
 	/* Electrical constants.
 	 * */
 	float		U;
 	float		R;
-	float		L;
+	float		IL;
 	float		E;
+
+	/* Mechanical constants.
+	 * */
+	int		Zp;
+	float		IJ;
 
 	/* Voltage observer tunable.
 	 * */
@@ -126,7 +105,7 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
-	float		iSPD;		/* INPUT */
+	float		iSPD;
 	float		iSPQ;
 	float		iXD;
 	float		iXQ;
@@ -135,7 +114,7 @@ typedef struct {
 
 	/* Speed control loop.
 	 * */
-	float		wSP;		/* INPUT */
+	float		wSP;
 
 	/* Control interface.
 	 * */
@@ -151,10 +130,10 @@ typedef struct {
 	}
 	tA, tB, tC, tD;
 }
-blc_t;
+pmc_t;
 
-void blcEnable(blc_t *bl);
-void blcFeedBack(blc_t *bl, int xA, int xB, int xU);
+void pmcEnable(pmc_t *pm);
+void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU);
 
-#endif /* _H_BLC_ */
+#endif /* _H_PMC_ */
 

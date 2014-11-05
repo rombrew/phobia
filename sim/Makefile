@@ -11,7 +11,7 @@ CFLAGS	= -std=gnu99 -pipe -Wall -O2 -g3
 LFLAGS	= -lm -g3
 
 OBJS	= lib.o blm.o sim.o
-OBJS	+= blc.o
+OBJS	+= pmc.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
