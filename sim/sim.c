@@ -47,7 +47,7 @@ simScript(double T)
 {
 	if (T > 3.) {
 
-		pm.iSPQ = 2.f;
+		pm.iSPQ = 20.f;
 	}
 }
 
@@ -94,12 +94,10 @@ simTel(float *pTel)
 	pTel[7] = D;
 	pTel[8] = Q;
 
-	simABtoDQ(pm.X[0], pm.X[1], m.X[3], &D, &Q);
-
 	/* Measured current.
 	 * */
-	pTel[10] = D;
-	pTel[11] = Q;
+	pTel[10] = pm.kX[0];
+	pTel[11] = pm.kX[1];
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
@@ -114,8 +112,8 @@ simTel(float *pTel)
 
 	/*
 	 * */
-	pTel[14] = pm.X[4];
-	pTel[15] = pm.X[5];
+	pTel[14] = pm.kX[4];
+	pTel[15] = pm.kX[5];
 }
 
 static void

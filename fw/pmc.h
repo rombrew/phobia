@@ -79,9 +79,13 @@ typedef struct {
 	 * */
 	float		uX, uY;
 
-	/* State estimate.
+	/* Kalman filter.
 	 * */
-	float		X[6];
+	float		kX[6];
+	float		kP[25];
+	float		kQ[5];
+	float		kR;
+	float		kK[10];
 
 	/* Final DQ frame.
 	 * */

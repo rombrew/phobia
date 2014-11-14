@@ -14,7 +14,9 @@ if (N == 1) {
 	set xlabel 'Time (Sec)'
 	set ylabel 'Current (Ampere)'
 	plot    @TEL using 1:2 title 'Plant D' with lines, \
-		@TEL using 1:3 title 'Plant Q' with lines
+		@TEL using 1:3 title 'Plant Q' with lines, \
+		@TEL using 1:10 title 'Estimated D' with lines, \
+		@TEL using 1:11 title 'Estimated Q' with lines
 }
 
 if (N == 2) {
@@ -51,14 +53,14 @@ if (N == 5) {
 if (N == 6) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'M'
-	plot	@TEL using 1:15 title 'M' with lines 
+	set ylabel 'W'
+	plot	@TEL using 1:14 title 'M' with lines 
 }
 
 if (N == 7) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'K ()'
+	set ylabel 'M ()'
 	plot	@TEL using 1:15 title 'K' with lines 
 }
 
