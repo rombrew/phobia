@@ -17,93 +17,34 @@
 */
 
 #include "pmc.h"
-#include "ukf.h"
 
-static ukfT		*ukf;
-static pmc_t		*gpm;
+#include <stdio.h>
+#include <math.h>
+
+#define KPI			3.1415927f
 
 inline float
-clamp(float x, float h, float l)
+klamp(float x, float h, float l)
 {
 	return (x > h) ? h : (x < l) ? l : x;
 }
 
-static void
-dEq(pmc_t *pm, float D[], float X[])
+static float
+ksin(float x)
 {
-	float		uD, uQ;
-
-	uD = X[2] * pm->uX + X[3] * pm->uY;
-	uQ = X[2] * pm->uY - X[3] * pm->uX;
-
-	D[0] = pm->IL * (uD - X[0] * pm->R) + X[4] * X[1];
-	D[1] = pm->IL * (uQ - X[1] * pm->R - X[4] * pm->E) - X[4] * X[0];
-	D[2] = -X[3] * X[4];
-	D[3] = X[2] * X[4];
-	D[4] = pm->Zp * pm->IJ * (1.5f * pm->E * pm->Zp * X[1] - X[5]);
+	return sin(x);
 }
 
-static void
-pmcF(double *Y, double *X, double *U)
+static float
+kcos(float x)
 {
-	float		Xf[5];
-	float		D1[5], D2[5], X2[6];
-	float		dT, L;
-
-	Xf[0] = X[0];
-	Xf[1] = X[1];
-	Xf[2] = X[2];
-	Xf[3] = X[3];
-	Xf[4] = X[4];
-	Xf[5] = X[5];
-
-	dEq(gpm, D1, Xf);
-	dT = gpm->dT;
-
-	X2[0] = Xf[0] + D1[0] * dT;
-	X2[1] = Xf[1] + D1[1] * dT;
-	X2[2] = Xf[2] + D1[2] * dT;
-	X2[3] = Xf[3] + D1[3] * dT;
-	X2[4] = Xf[4] + D1[4] * dT;
-	X2[5] = Xf[5];
-
-	L = (3.f - X2[2] * X2[2] - X2[3] * X2[3]) * .5f;
-	X2[2] *= L;
-	X2[3] *= L;
-
-	dEq(gpm, D2, X2);
-	dT *= .5f;
-
-	Y[0] = X[0] + (D1[0] + D2[0]) * dT;
-	Y[1] = X[1] + (D1[1] + D2[1]) * dT;
-	Y[2] = X[2] + (D1[2] + D2[2]) * dT;
-	Y[3] = X[3] + (D1[3] + D2[3]) * dT;
-	Y[4] = X[4] + (D1[4] + D2[4]) * dT;
-	Y[5] = X[5];
-
-	L = (3.f - Y[2] * Y[2] - Y[3] * Y[3]) * .5f;
-	Y[2] *= L;
-	Y[3] *= L;
-}
-
-static void
-pmcH(double *Z, double *X)
-{
-	float		iX, iY, iD, iQ;
-
-	iX = X[2] * X[0] - X[3] * X[1];
-	iY = X[3] * X[0] + X[2] * X[1];
-
-	Z[0] = iX;
-	Z[1] = iY;
+	return cos(x);
 }
 
 void pmcEnable(pmc_t *pm)
 {
 	pm->dT = 1.f / pm->hzF;
 
-	/* Default config.
-	 * */
 	pm->sT0 = .1f;		/* Zero Drift */
 	pm->sT1 = .4f;		/* Ramp Up */
 	pm->sT2 = .7f;		/* Hold */
@@ -124,36 +65,37 @@ void pmcEnable(pmc_t *pm)
 	pm->iKP = 2e-2f;
 	pm->iKI = 5e-3f;
 
-	pm->kQ[0] = 1e-8;
-	pm->kQ[1] = 1e-8;
-	pm->kQ[2] = 1e-8;
-	pm->kQ[3] = 1e-8;
-	pm->kQ[4] = 1e-2;
+	pm->kQ[0] = 1e-4;
+	pm->kQ[1] = 1e-4;
+	pm->kQ[2] = 1e-6;
+	pm->kQ[3] = 1e-6;
+	pm->kQ[4] = 1e-4;
 	pm->kR = 1e-2;
+}
 
-	gpm = pm;
-	ukf = ukfAlloc(malloc(1048576), 6, 2);
+static void
+dEq(pmc_t *pm, float D[], float X[])
+{
+	float		pX, pY, uD, uQ;
 
-	ukf->pF = &pmcF;
-	ukf->pH = &pmcH;
+	pX = kcos(X[2]);
+	pY = ksin(X[2]);
 
-	LOW(ukf->Q, 0, 0) = pm->kQ[0];
-	LOW(ukf->Q, 1, 1) = pm->kQ[1];
-	LOW(ukf->Q, 2, 2) = pm->kQ[2];
-	LOW(ukf->Q, 3, 3) = pm->kQ[2];
-	LOW(ukf->Q, 4, 4) = pm->kQ[3];
-	LOW(ukf->Q, 5, 5) = pm->kQ[4];
+	uD = pX * pm->uX + pY * pm->uY;
+	uQ = pX * pm->uY - pY * pm->uX;
 
-	LOW(ukf->R, 0, 0) = pm->kR;
-	LOW(ukf->R, 1, 1) = pm->kR;
+	D[0] = pm->IL * (uD - X[0] * pm->R) + X[3] * X[1];
+	D[1] = pm->IL * (uQ - X[1] * pm->R - X[3] * pm->E) - X[3] * X[0];
+	D[2] = X[3];
+	D[3] = pm->Zp * pm->IJ * (1.5f * pm->E * pm->Zp * X[1] - X[4]);
 }
 
 static void
 sFC(pmc_t *pm)
 {
 	float		*X = pm->kX;
-	float		D1[5], D2[5], X2[6];
-	float		dT, L;
+	float		D1[4], D2[4], X2[5];
+	float		dT;
 
 	dEq(pm, D1, X);
 	dT = pm->dT;
@@ -162,12 +104,9 @@ sFC(pmc_t *pm)
 	X2[1] = X[1] + D1[1] * dT;
 	X2[2] = X[2] + D1[2] * dT;
 	X2[3] = X[3] + D1[3] * dT;
-	X2[4] = X[4] + D1[4] * dT;
-	X2[5] = X[5];
+	X2[4] = X[4];
 
-	L = (3.f - X2[2] * X2[2] - X2[3] * X2[3]) * .5f;
-	X2[2] *= L;
-	X2[3] *= L;
+	X2[2] = (X2[2] < -KPI) ? X2[2] + 2.f * KPI : (X2[2] > KPI) ? X2[2] - 2.f * KPI : X2[2];
 
 	dEq(pm, D2, X2);
 	dT *= .5f;
@@ -176,66 +115,37 @@ sFC(pmc_t *pm)
 	X[1] += (D1[1] + D2[1]) * dT;
 	X[2] += (D1[2] + D2[2]) * dT;
 	X[3] += (D1[3] + D2[3]) * dT;
-	X[4] += (D1[4] + D2[4]) * dT;
 
-	L = (3.f - X[2] * X[2] - X[3] * X[3]) * .5f;
-	X[2] *= L;
-	X[3] *= L;
+	X[2] = (X[2] < -KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
 }
 
 static void
 sFB(pmc_t *pm, float iX, float iY)
 {
-	/*float		*X = pm->kX, *K = pm->kK;
-	float		zX, zY, eX, eY;
-	float		L, dR;
+	float		*X = pm->kX, *K = pm->kK;
+	float		pX, pY, hX, hY, eX, eY;
 
-	zX = X[2] * X[0] - X[3] * X[1];
-	zY = X[3] * X[0] + X[2] * X[1];
+	pX = kcos(X[2]);
+	pY = ksin(X[2]);
 
-	eX = iX - zX;
-	eY = iY - zY;
+	hX = pX * X[0] - pY * X[1];
+	hY = pY * X[0] + pX * X[1];
+
+	eX = iX - hX;
+	eY = iY - hY;
 
 	X[0] += K[0] * eX + K[1] * eY;
 	X[1] += K[2] * eX + K[3] * eY;
-	dR = clamp(K[4] * eX + K[5] * eY, .5f, -.5f);
-	X[2] += -X[3] * dR;
-	X[3] += X[2] * dR;
-	X[4] += K[6] * eX + K[7] * eY;
-	X[5] += K[8] * eX + K[9] * eY;
+	X[2] += K[4] * eX + K[5] * eY;
+	X[3] += K[6] * eX + K[7] * eY;
+	X[4] += K[8] * eX + K[9] * eY;
 
-	L = (3.f - X[2] * X[2] - X[3] * X[3]) * .5f;
-	X[2] *= L;
-	X[3] *= L;
+	X[2] = (X[2] < -KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
 
-	sFC(pm);*/
+	/* FIXME */
+	pm->E += (- pY * eX + pX * eY) * -1e-5f;
 
-	double		*X = ukf->X;
-	double		L, Z[2];
-
-	Z[0] = iX;
-	Z[1] = iY;
-
-	ukfCorrect(ukf, Z);
-
-	L = (3.f - X[2] * X[2] - X[3] * X[3]) * .5f;
-	X[2] *= L;
-	X[3] *= L;
-	
-	ukfForecast(ukf, 0);
-
-	L = (3.f - X[2] * X[2] - X[3] * X[3]) * .5f;
-	X[2] *= L;
-	X[3] *= L;
-
-	ukfUpdate(ukf);
-	
-	pm->kX[0] = X[0];
-	pm->kX[1] = X[1];
-	pm->kX[2] = X[2];
-	pm->kX[3] = X[3];
-	pm->kX[4] = X[4];
-	pm->kX[5] = X[5];
+	sFC(pm);
 }
 
 static void
@@ -292,18 +202,6 @@ mZero(float *X, int M, int N)
 }
 
 static void
-mSymm(float *X, int N)
-{
-	int		i, j;
-
-	for (i = 0; i < N; ++i)
-		for (j = i; j < N; ++j) {
-
-			X[j * N + i] = X[i * N + j];
-		}
-}
-
-static void
 mPrt(const char *title, const float *X, int M, int N)
 {
 	int		i, j;
@@ -329,17 +227,21 @@ sKF(pmc_t *pm)
 	float		A[25], C[10], AT[25], AP[25];
 	float		CP[10], CT[10], S[4], IS[4];
 	float		PC[10], KCP[25];
+	float		pX, pY;
 	float		Sd, dT = pm->dT;
 
+	pX = kcos(X[2]);
+	pY = ksin(X[2]);
+
 	A[0*5 + 0] = 1.f - pm->R * pm->IL * dT;
-	A[0*5 + 1] = X[4] * dT;
-	A[0*5 + 2] = 0.f;
+	A[0*5 + 1] = X[3] * dT;
+	A[0*5 + 2] = - pY * pm->uX + pX * pm->uY;
 	A[0*5 + 3] = X[1] * dT;
 	A[0*5 + 4] = 0.f;
 
-	A[1*5 + 0] = - X[4] * dT;
+	A[1*5 + 0] = - X[3] * dT;
 	A[1*5 + 1] = 1.f - pm->R * pm->IL * dT;
-	A[1*5 + 2] = 0.f;
+	A[1*5 + 2] = - pX * pm->uX - pY * pm->uY;
 	A[1*5 + 3] = - (pm->E * pm->IL + X[0]) * dT;
 	A[1*5 + 4] = 0.f;
 
@@ -361,17 +263,58 @@ sKF(pmc_t *pm)
 	A[4*5 + 3] = 0.f;
 	A[4*5 + 4] = 1.f;
 
-	C[0*5 + 0] = X[2];
-	C[0*5 + 1] = - X[3];
-	C[0*5 + 2] = 0;//- X[3] * X[0] - X[2] * X[1];
+	C[0*5 + 0] = pX;
+	C[0*5 + 1] = - pY;
+	C[0*5 + 2] = - pY * X[0] - pX * X[1];
 	C[0*5 + 3] = 0.f;
 	C[0*5 + 4] = 0.f;
 
-	C[1*5 + 0] = X[3];
-	C[1*5 + 1] = X[2];
-	C[1*5 + 2] = 0;//X[2] * X[0] - X[3] * X[1];
+	C[1*5 + 0] = pY;
+	C[1*5 + 1] = pX;
+	C[1*5 + 2] = pX * X[0] - pY * X[1];
 	C[1*5 + 3] = 0.f;
 	C[1*5 + 4] = 0.f;
+
+	/*mPrt("_X", X, 5, 1);
+	mPrt("_A", A, 5, 5);
+	mPrt("_C", C, 2, 5);*/
+	
+	/*{
+		double		Y0[5], X0[5], Y[5], X[5], Z0[2], Z[2], dX;
+		int		i, j;
+
+		X0[0] = pm->kX[0];
+		X0[1] = pm->kX[1];
+		X0[2] = pm->kX[2];
+		X0[3] = pm->kX[3];
+		X0[4] = pm->kX[4];
+
+		pmF(Y0, X0, 0);
+		pmH(Z0, X0);
+
+		dX = 1e-3;
+
+		for (i = 0; i < 5; ++i) {
+
+			for (j = 0; j < 5; ++j)
+				X[j] = X0[j];
+
+			X[i] += dX;
+
+			pmF(Y, X, 0);
+			pmH(Z, X);
+
+			for (j = 0; j < 5; ++j)
+				A[j * 5 + i] = (Y[j] - Y0[j]) / dX;
+
+			for (j = 0; j < 2; ++j)
+				C[j * 5 + i] = (Z[j] - Z0[j]) / dX;
+		}
+	}*/
+
+	/*mPrt("A", A, 5, 5);
+	mPrt("C", C, 2, 5);
+	exit(0);*/
 
 	mTrans(AT, A, 5, 5);
 	mMul(AP, A, P, 5, 5, 5);
@@ -404,28 +347,19 @@ sKF(pmc_t *pm)
 }
 
 static void
-iFB(pmc_t *pm, float iX, float iY)
+iFB(pmc_t *pm)
 {
-	float		iD, iQ, eD, eQ, uD, uQ, Q;
+	float		eD, eQ, uD, uQ, Q;
 	float		uA, uB, uC, uX, uY;
 	int		xA, xB, xC;
 
-	iD = pm->pX * iX + pm->pY * iY;
-	iQ = pm->pX * iY - pm->pY * iX;
+	eD = pm->iSPD - pm->kX[0];
+	eQ = pm->iSPQ - pm->kX[1];
 
-	if (pm->fMOF & PMC_MODE_OBSERVER) {
-
-		iD = pm->kX[0];
-		iQ = pm->kX[1];
-	}
-
-	eD = pm->iSPD - iD;
-	eQ = pm->iSPQ - iQ;
-
-	pm->iXD = clamp(pm->iXD + pm->iKI * eD, 1.f, -1.f);
+	pm->iXD = klamp(pm->iXD + pm->iKI * eD, 1.f, -1.f);
 	uD = pm->iXD + pm->iKP * eD;
 
-	pm->iXQ = clamp(pm->iXQ + pm->iKI * eQ, 1.f, -1.f);
+	pm->iXQ = klamp(pm->iXQ + pm->iKI * eQ, 1.f, -1.f);
 	uQ = pm->iXQ + pm->iKP * eQ;
 
 	uX = pm->pX * uD - pm->pY * uQ;
@@ -435,9 +369,9 @@ iFB(pmc_t *pm, float iX, float iY)
 	uB = -.5f * uX + .8660254f * uY;
 	uC = -.5f * uX - .8660254f * uY;
 
-	uA = clamp(.5f * uA + .5f, 1.f, 0.f);
-	uB = clamp(.5f * uB + .5f, 1.f, 0.f);
-	uC = clamp(.5f * uC + .5f, 1.f, 0.f);
+	uA = klamp(.5f * uA + .5f, 1.f, 0.f);
+	uB = klamp(.5f * uB + .5f, 1.f, 0.f);
+	uC = klamp(.5f * uC + .5f, 1.f, 0.f);
 
 	xA = (int) (pm->pwmR * uA + .5f);
 	xB = (int) (pm->pwmR * uB + .5f);
@@ -676,7 +610,6 @@ bFSM(pmc_t *pm, float iA, float iB, float uS, float iX, float iY)
 					pm->kX[2] = 0.f;
 					pm->kX[3] = 0.f;
 					pm->kX[4] = 0.f;
-					pm->kX[5] = 0.f;
 
 					mZero(pm->kP, 5, 5);
 
@@ -685,25 +618,6 @@ bFSM(pmc_t *pm, float iA, float iB, float uS, float iX, float iY)
 					pm->kP[2*5 + 2] = 1e-2;
 					pm->kP[3*5 + 3] = 1e-2;
 					pm->kP[4*5 + 4] = 1e-2;
-
-					LOW(ukf->P, 0, 0) = pm->kP[0*5 + 0];
-					LOW(ukf->P, 1, 1) = pm->kP[1*5 + 1];
-					LOW(ukf->P, 2, 2) = pm->kP[2*5 + 2];
-					LOW(ukf->P, 3, 3) = pm->kP[2*5 + 2];
-					LOW(ukf->P, 4, 4) = pm->kP[3*5 + 3];
-					LOW(ukf->P, 5, 5) = pm->kP[4*5 + 4];
-
-					{
-						double		*X = ukf->X, L;
-
-						ukfForecast(ukf, 0);
-
-						L = (3.f - X[2] * X[2] - X[3] * X[3]) * .5f;
-						X[2] *= L;
-						X[3] *= L;
-
-						ukfUpdate(ukf);
-					}
 
 					sKF(pm);
 
@@ -744,8 +658,12 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		sFB(pm, iX, iY);
 
-		pm->pX = pm->kX[2];
-		pm->pY = pm->kX[3];
+		pm->pX = kcos(pm->kX[2]);
+		pm->pY = ksin(pm->kX[2]);
+	}
+	else {
+		pm->kX[0] = pm->pX * iX + pm->pY * iY;
+		pm->kX[1] = pm->pX * iY - pm->pY * iX;
 	}
 
 	/* Source voltage estimate.
@@ -759,7 +677,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	if (pm->fMOF & PMC_MODE_CURRENT_LOOP) {
 
-		iFB(pm, iX, iY);
+		iFB(pm);
 
 		/* Speed control loop.
 		 * */

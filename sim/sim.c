@@ -112,8 +112,9 @@ simTel(float *pTel)
 
 	/*
 	 * */
-	pTel[14] = pm.kX[4];
-	pTel[15] = pm.kX[5];
+	pTel[14] = pm.kX[3];
+	pTel[15] = pm.kX[4];
+	pTel[16] = pm.E;
 }
 
 static void
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
 	pm.pZ = &blmZ;
 
 	pm.R = 74e-3 * (1. + .0);
-	pm.IL = 1. / (44e-6 * (1. + .0));
+	pm.IL = 1. / (54e-6 * (1. + .0));
 	pm.E = 66e-5 * (1. + .0);
 
 	pm.Zp = 11;

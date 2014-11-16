@@ -53,8 +53,8 @@ if (N == 5) {
 if (N == 6) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'W'
-	plot	@TEL using 1:14 title 'M' with lines 
+	set ylabel 'E'
+	plot	@TEL using 1:16 title 'M' with lines 
 }
 
 if (N == 7) {

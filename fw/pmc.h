@@ -81,13 +81,13 @@ typedef struct {
 
 	/* Kalman filter.
 	 * */
-	float		kX[6];
+	float		kX[5];
 	float		kP[25];
 	float		kQ[5];
 	float		kR;
 	float		kK[10];
 
-	/* Final DQ frame.
+	/* DQ frame.
 	 * */
 	float		pX, pY;
 
