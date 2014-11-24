@@ -46,52 +46,44 @@ if (N == 5) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Duty Cycle (%)'
-	plot	@TEL using 1:($7*100) title 'D' with lines, \
-		@TEL using 1:($8*100) title 'Q' with lines
+	plot	@TEL using 1:($7*100) title 'A' with lines, \
+		@TEL using 1:($8*100) title 'B' with lines, \
+		@TEL using 1:($9*100) title 'C' with lines
 }
 
 if (N == 6) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'E'
-	plot	@TEL using 1:16 title 'M' with lines 
+	set ylabel 'Load Torque'
+	plot	@TEL using 1:15 title 'Load Torque' with lines 
 }
 
 if (N == 7) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'M ()'
-	plot	@TEL using 1:15 title 'K' with lines 
+	set ylabel 'Supply Voltage'
+	plot	@TEL using 1:16 title 'U' with lines 
+}
+
+if (N == 8) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Winding Resiatance (Ohm)'
+	plot	@TEL using 1:17 title 'R' with lines 
+}
+
+if (N == 9) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Winding Inductance (Henry)'
+	plot	@TEL using 1:(1/$18) title 'L' with lines 
 }
 
 if (N == 10) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Zero drift (Ampere)'
-	plot    'TEL' using 1:17 title 'Estimated' with lines, \
-		'TEL' using 1:18 title 'Estimated' with lines
-}
-
-if (N == 11) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Winding resistance (mOhm)'
-	plot    'TEL' using 1:19 title 'Estimated' with lines
-}
-
-if (N == 12) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Winding inductance (uH)'
-	plot    'TEL' using 1:20 title 'Estimated' with lines
-}
-
-
-if (N == 13) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Motor constant (uV/RpS)'
-	plot    'TEL' using 1:21 title 'Estimated' with lines
+	set ylabel 'BEMF Constant (Kv)'
+	plot	@TEL using 1:(60/($19*4*pi*$20)) title 'Kv' with lines 
 }
 
 pause mouse close

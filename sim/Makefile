@@ -12,7 +12,6 @@ LFLAGS	= -lm -g3
 
 OBJS	= lib.o blm.o sim.o
 OBJS	+= pmc.o
-OBJS	+= ukf.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

@@ -123,27 +123,24 @@ static void
 sFB(pmc_t *pm, float iX, float iY)
 {
 	float		*X = pm->kX, *K = pm->kK;
-	float		pX, pY, hX, hY, eX, eY;
+	float		iD, iQ, eD, eQ;
 
-	pX = kcos(X[2]);
-	pY = ksin(X[2]);
+	iD = pm->pX * iX + pm->pY * iY;
+	iQ = pm->pX * iY - pm->pY * iX;
 
-	hX = pX * X[0] - pY * X[1];
-	hY = pY * X[0] + pX * X[1];
+	eD = iD - X[0];
+	eQ = iQ - X[1];
 
-	eX = iX - hX;
-	eY = iY - hY;
-
-	X[0] += K[0] * eX + K[1] * eY;
-	X[1] += K[2] * eX + K[3] * eY;
-	X[2] += K[4] * eX + K[5] * eY;
-	X[3] += K[6] * eX + K[7] * eY;
-	X[4] += K[8] * eX + K[9] * eY;
+	X[0] += K[0] * eD + K[1] * eQ;
+	X[1] += K[2] * eD + K[3] * eQ;
+	X[2] += K[4] * eD + K[5] * eQ;
+	X[3] += K[6] * eD + K[7] * eQ;
+	X[4] += K[8] * eD + K[9] * eQ;
 
 	X[2] = (X[2] < -KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
 
 	/* FIXME */
-	pm->E += (- pY * eX + pX * eY) * -1e-5f;
+	pm->E += (eQ) * -1e-5f;
 
 	sFC(pm);
 }
@@ -230,18 +227,15 @@ sKF(pmc_t *pm)
 	float		pX, pY;
 	float		Sd, dT = pm->dT;
 
-	pX = kcos(X[2]);
-	pY = ksin(X[2]);
-
 	A[0*5 + 0] = 1.f - pm->R * pm->IL * dT;
 	A[0*5 + 1] = X[3] * dT;
-	A[0*5 + 2] = - pY * pm->uX + pX * pm->uY;
+	A[0*5 + 2] = - pm->pY * pm->uX + pm->pX * pm->uY;
 	A[0*5 + 3] = X[1] * dT;
 	A[0*5 + 4] = 0.f;
 
 	A[1*5 + 0] = - X[3] * dT;
 	A[1*5 + 1] = 1.f - pm->R * pm->IL * dT;
-	A[1*5 + 2] = - pX * pm->uX - pY * pm->uY;
+	A[1*5 + 2] = - pm->pX * pm->uX - pm->pY * pm->uY;
 	A[1*5 + 3] = - (pm->E * pm->IL + X[0]) * dT;
 	A[1*5 + 4] = 0.f;
 
@@ -263,58 +257,17 @@ sKF(pmc_t *pm)
 	A[4*5 + 3] = 0.f;
 	A[4*5 + 4] = 1.f;
 
-	C[0*5 + 0] = pX;
-	C[0*5 + 1] = - pY;
-	C[0*5 + 2] = - pY * X[0] - pX * X[1];
+	C[0*5 + 0] = 1.f;
+	C[0*5 + 1] = 0.f;
+	C[0*5 + 2] = - X[1];
 	C[0*5 + 3] = 0.f;
 	C[0*5 + 4] = 0.f;
 
-	C[1*5 + 0] = pY;
-	C[1*5 + 1] = pX;
-	C[1*5 + 2] = pX * X[0] - pY * X[1];
+	C[1*5 + 0] = 0.f;
+	C[1*5 + 1] = 1.f;
+	C[1*5 + 2] = X[0];
 	C[1*5 + 3] = 0.f;
 	C[1*5 + 4] = 0.f;
-
-	/*mPrt("_X", X, 5, 1);
-	mPrt("_A", A, 5, 5);
-	mPrt("_C", C, 2, 5);*/
-	
-	/*{
-		double		Y0[5], X0[5], Y[5], X[5], Z0[2], Z[2], dX;
-		int		i, j;
-
-		X0[0] = pm->kX[0];
-		X0[1] = pm->kX[1];
-		X0[2] = pm->kX[2];
-		X0[3] = pm->kX[3];
-		X0[4] = pm->kX[4];
-
-		pmF(Y0, X0, 0);
-		pmH(Z0, X0);
-
-		dX = 1e-3;
-
-		for (i = 0; i < 5; ++i) {
-
-			for (j = 0; j < 5; ++j)
-				X[j] = X0[j];
-
-			X[i] += dX;
-
-			pmF(Y, X, 0);
-			pmH(Z, X);
-
-			for (j = 0; j < 5; ++j)
-				A[j * 5 + i] = (Y[j] - Y0[j]) / dX;
-
-			for (j = 0; j < 2; ++j)
-				C[j * 5 + i] = (Z[j] - Z0[j]) / dX;
-		}
-	}*/
-
-	/*mPrt("A", A, 5, 5);
-	mPrt("C", C, 2, 5);
-	exit(0);*/
 
 	mTrans(AT, A, 5, 5);
 	mMul(AP, A, P, 5, 5, 5);

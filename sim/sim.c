@@ -82,19 +82,13 @@ simTel(float *pTel)
 	pTel[5] = m.X[3];
 	pTel[6] = m.X[4];
 
-	A = m.uA / (double) m.PWMR;
-	B = m.uB / (double) m.PWMR;
-	C = m.uC / (double) m.PWMR;
-	Q = (A + B + C) / 3.;
-
-	simABtoDQ(A - Q, B - Q, m.X[3], &D, &Q);
-
 	/* Duty cycle.
 	 * */
-	pTel[7] = D;
-	pTel[8] = Q;
+	pTel[7] = m.uA / (double) m.PWMR;
+	pTel[8] = m.uB / (double) m.PWMR;
+	pTel[9] = m.uC / (double) m.PWMR;
 
-	/* Measured current.
+	/* Estimated current.
 	 * */
 	pTel[10] = pm.kX[0];
 	pTel[11] = pm.kX[1];
@@ -107,14 +101,22 @@ simTel(float *pTel)
 
 	/* Estimated position.
 	 * */
-	pTel[12] = atan2(pm.pY, pm.pX);
+	pTel[12] = pm.kX[2];
 	pTel[13] = C;
 
-	/*
+	/* Speed and load torque.
 	 * */
 	pTel[14] = pm.kX[3];
 	pTel[15] = pm.kX[4];
-	pTel[16] = pm.E;
+
+	/* Plant constants.
+	 * */
+	pTel[16] = pm.U;
+	pTel[17] = pm.R;
+	pTel[18] = pm.IL;
+	pTel[19] = pm.E;
+	pTel[20] = pm.Zp;
+	pTel[21] = pm.IJ;
 }
 
 static void
@@ -200,7 +202,7 @@ int main(int argc, char *argv[])
 	pm.pZ = &blmZ;
 
 	pm.R = 74e-3 * (1. + .0);
-	pm.IL = 1. / (54e-6 * (1. + .0));
+	pm.IL = 1. / (54e-6 * (1. - .0));
 	pm.E = 66e-5 * (1. + .0);
 
 	pm.Zp = 11;
