@@ -19,6 +19,7 @@ void halStart();
 int halResetReason();
 void halWFI();
 void halLED(int F);
+int halSysTick();
 
 extern void halMain();
 extern void halTick();

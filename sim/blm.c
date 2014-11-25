@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 54e-6;
+	m->L = 254e-6;
 
 	/* Source voltage. (Volt)
 	 * */

@@ -128,7 +128,7 @@ cortexStart()
 
 	/* Configure SysTick (1000 Hz).
 	 * */
-	SysTick_Config(FREQ_AHB_HZ / 1000UL);
+	SysTick_Config(FREQ_AHB_HZ / 100UL);
 
 	/* Enable interrupts.
 	 * */
@@ -178,6 +178,11 @@ int halResetReason()
 void halWFI()
 {
 	__WFI();
+}
+
+int halSysTick()
+{
+	SysTick->VAL;
 }
 
 void halLED(int F)

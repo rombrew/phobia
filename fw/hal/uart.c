@@ -128,7 +128,7 @@ void uartSend(char xC)
 	/* Wait for TXE.
 	 * */
 	while (!(USART3->SR & USART_SR_TXE))
-		__WFI();
+		/*__WFI()*/;
 
 	USART3->DR = xC;
 }

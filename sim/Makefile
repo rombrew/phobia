@@ -1,5 +1,5 @@
 
-BUILD	?= /tmp/build
+BUILD	?= /tmp/sim
 TARGET	= $(BUILD)/sim
 
 CC	= gcc

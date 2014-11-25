@@ -1,16 +1,18 @@
 
-TARGET	= fw
+BUILD	?= /tmp/fw
+TARGET	= $(BUILD)/fw
 
 CROSS	?= arm-none-eabi-
 CC      = $(CROSS)gcc
+#CC	= clang -target arm-none-eabi -mcpu=cortex-m4 -mthumb
 AS      = $(CROSS)as
 LD      = $(CROSS)ld
 OC      = $(CROSS)objcopy
 OD      = $(CROSS)objdump
-MKDIR	= mkdir -p
-RM      = rm -f
+MK	= mkdir -p
+RM      = rm -rf
 
-CFLAGS  = -std=gnu99 -pipe -Wall -O2
+CFLAGS  = -std=gnu99 -pipe -Wall -Os
 CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
@@ -29,35 +31,39 @@ OBJS	+= fw.o \
 	lib.o \
 	shell.o
 
+LIST	= $(addprefix $(BUILD)/, $(OBJS))
+
 all: $(TARGET)
 
-%.o: %.s
+$(BUILD)/%.o: %.s
 	@ echo "  AS    " $<
+	@ $(MK) $(dir $@)
 	@ $(AS) $(AFLAGS) -o $@ $<
 
-%.o: %.c
+$(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
+	@ $(MK) $(dir $@)
 	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET): $(OBJS)
-	@ echo "  LD    " $@
+$(TARGET): $(LIST)
+	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(LFLAGS) -o $@ $^
 	@ $(OC) -j .text -j .data -O binary $@
 
 flash: $(TARGET)
-	@ echo "  FLASH " $^
+	@ echo "  FLASH " $(notdir $^)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
 	@ picocom -l -b $(BAUD) -pe $(TTY)
 
-ctags:
+tags:
 	@ echo "  CTAGS "
-	@ ctags --c-kinds=+px --fields=+Sn -R .
-	@ cscope -b -k -f scope -R -s .
+	@ $(MK) $(BUILD)
+	@ ctags --c-kinds=+px --fields=+Sn -R -f $(BUILD)/tags .
+	@ cscope -b -k -R -f $(BUILD)/scope -s .
 
 clean:
 	@ echo "  CLEAN "
-	@ $(RM) $(TARGET) $(OBJS) $(patsubst %.o, %.d, $(OBJS))
-	@ $(RM) tags scope
+	@ $(RM) $(BUILD)
 
-include $(wildcard *.d)
+include $(wildcard $(BUILD)/*.d)
 
