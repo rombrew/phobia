@@ -1,8 +1,1 @@
 syntax: glob
-*.d
-*.o
-fw/fw
-sim/sim
-sim/TEL
-tags
-scope

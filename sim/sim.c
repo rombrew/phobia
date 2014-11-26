@@ -201,12 +201,12 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = 74e-3 * (1. + .0);
-	pm.IL = 1. / (54e-6 * (1. - .0));
-	pm.E = 66e-5 * (1. + .0);
+	pm.R = m.R * (1. + .0);
+	pm.IL = 1. / (m.L * (1. - .0));
+	pm.E = m.E * (1. + .0);
 
 	pm.Zp = 11;
-	pm.IJ = 1. / 10e-5;
+	pm.IJ = 1. / m.J;
 
 	pmcEnable(&pm);
 
