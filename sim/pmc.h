@@ -1,1 +1,1 @@
-../fw/pmc.h
+#include "../fw/pmc.h"

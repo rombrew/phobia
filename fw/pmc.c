@@ -229,13 +229,13 @@ sKF(pmc_t *pm)
 
 	A[0*5 + 0] = 1.f - pm->R * pm->IL * dT;
 	A[0*5 + 1] = X[3] * dT;
-	A[0*5 + 2] = - pm->pY * pm->uX + pm->pX * pm->uY;
+	A[0*5 + 2] = - pm->IL * (pm->pY * pm->uX + pm->pX * pm->uY) * dT;
 	A[0*5 + 3] = X[1] * dT;
 	A[0*5 + 4] = 0.f;
 
 	A[1*5 + 0] = - X[3] * dT;
 	A[1*5 + 1] = 1.f - pm->R * pm->IL * dT;
-	A[1*5 + 2] = - pm->pX * pm->uX - pm->pY * pm->uY;
+	A[1*5 + 2] = - pm->IL * (pm->pX * pm->uX - pm->pY * pm->uY) * dT;
 	A[1*5 + 3] = - (pm->E * pm->IL + X[0]) * dT;
 	A[1*5 + 4] = 0.f;
 

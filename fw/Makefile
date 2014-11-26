@@ -17,7 +17,7 @@ CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
 AFLAGS	= -mcpu=cortex-m4 -mthumb
-LFLAGS  = -T hal/ram.ld
+LFLAGS  = -T hal/flash.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
@@ -52,7 +52,8 @@ $(TARGET): $(LIST)
 
 flash: $(TARGET)
 	@ echo "  FLASH " $(notdir $^)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
+#	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
 	@ picocom -l -b $(BAUD) -pe $(TTY)
 
 tags:
