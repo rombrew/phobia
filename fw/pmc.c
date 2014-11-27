@@ -63,13 +63,13 @@ void pmcEnable(pmc_t *pm)
 	pm->cU1 = .00725098f;
 
 	pm->iKP = 2e-2f;
-	pm->iKI = 5e-3f;
+	pm->iKI = 5e-4f;
 
-	pm->kQ[0] = 1e-4;
-	pm->kQ[1] = 1e-4;
+	pm->kQ[0] = 1e-6;
+	pm->kQ[1] = 1e-6;
 	pm->kQ[2] = 1e-6;
 	pm->kQ[3] = 1e-6;
-	pm->kQ[4] = 1e-4;
+	pm->kQ[4] = 1e-6;
 	pm->kR = 1e-2;
 }
 
@@ -138,9 +138,6 @@ sFB(pmc_t *pm, float iX, float iY)
 	X[4] += K[8] * eD + K[9] * eQ;
 
 	X[2] = (X[2] < -KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
-
-	/* FIXME */
-	pm->E += (eQ) * -1e-5f;
 
 	sFC(pm);
 }

@@ -29,7 +29,7 @@ blmBEMFShape(double x)
 
 	/* Sinusoidal shape.
 	 * */
-	s1 = -sin(x);
+	s1 = - (sin(x) + sin(x * 3.) * .5);
 
 	return s1;
 }
@@ -53,7 +53,7 @@ void blmEnable(blm_t *m)
         m->X[3] = -1.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 
-	/* Winding resistance at 20 C. (Ohm)
+	/* Winding resistance. (Ohm)
          * */
 	m->R = 74e-3;
 
@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 754e-6;
+	m->L = 24e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -95,25 +95,27 @@ blmEquation(const blm_t *m, const double X[7], double dX[7])
 {
 	double		EA, EB, EC, IA, IB, IC;
 	double		BEMFA, BEMFB, BEMFC;
-	double		Rw, Uz, Mt, Ml, w;
+	double		R, L, E, Uz, Mt, Ml, w;
 
-	Rw = m->R * (1. + 4.28e-3 * (X[4] - 20.));
+	R = m->R * (1. + 4.28e-3 * (X[4] - 20.));
+	L = m->L * (1. + 0. * (X[4] - 20.));
+	E = m->E * (1. + 1.21e-3 * (X[4] - 20.));
 
 	EA = blmBEMFShape(X[3]);
 	EB = blmBEMFShape(X[3] - 2. * M_PI / 3.);
 	EC = blmBEMFShape(X[3] + 2. * M_PI / 3.);
 
-	BEMFA = X[2] * m->E * EA;
-	BEMFB = X[2] * m->E * EB;
-	BEMFC = X[2] * m->E * EC;
+	BEMFA = X[2] * E * EA;
+	BEMFB = X[2] * E * EB;
+	BEMFC = X[2] * E * EC;
 
 	Uz = (m->sF[0] + m->sF[1] + m->sF[2]) * m->U / 3.
 		- (BEMFA + BEMFB + BEMFC) / 3.;
 
 	/* Electrical equations.
 	 * */
-	dX[0] = ((m->sF[0] * m->U - Uz) - X[0] * Rw - BEMFA) / m->L;
-	dX[1] = ((m->sF[1] * m->U - Uz) - X[1] * Rw - BEMFB) / m->L;
+	dX[0] = ((m->sF[0] * m->U - Uz) - X[0] * R - BEMFA) / L;
+	dX[1] = ((m->sF[1] * m->U - Uz) - X[1] * R - BEMFB) / L;
 
 	IA = X[0] - BEMFA / m->Q;
 	IB = X[1] - BEMFB / m->Q;

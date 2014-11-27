@@ -45,9 +45,15 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
-	if (T > 3.) {
+	if (T > 2.) {
 
-		pm.iSPQ = 20.f;
+		pm.iSPQ = 5.f;
+	}
+
+	if (T > 1.5) {
+
+		//m.R = pm.R * (1. + .4);
+		//m.L = 1. / pm.IL * (1. - .2);
 	}
 }
 
