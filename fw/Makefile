@@ -4,7 +4,7 @@ TARGET	= $(BUILD)/fw
 
 CROSS	?= arm-none-eabi-
 CC      = $(CROSS)gcc
-#CC	= clang -target arm-none-eabi -mcpu=cortex-m4 -mthumb
+#CC	= clang -target arm-none-eabi
 AS      = $(CROSS)as
 LD      = $(CROSS)ld
 OC      = $(CROSS)objcopy
@@ -12,7 +12,7 @@ OD      = $(CROSS)objdump
 MK	= mkdir -p
 RM      = rm -rf
 
-CFLAGS  = -std=gnu99 -pipe -Wall -Os
+CFLAGS  = -std=gnu99 -pipe -Wall -O3
 CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
