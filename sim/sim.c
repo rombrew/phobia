@@ -50,10 +50,26 @@ simScript(double T)
 		pm.iSPQ = 5.f;
 	}
 
-	if (T > 1.5) {
+	if (T > 5.) {
+
+		pm.iSPQ = 10.f;
+	}
+
+	if (T > 7.) {
+
+		pm.iSPQ = -5.f;
+	}
+
+	if (T > 3.) {
 
 		//m.R = pm.R * (1. + .4);
-		//m.L = 1. / pm.IL * (1. - .2);
+		m.L = (1. / pm.IL) * (1. - .2);
+	}
+
+	if (T > 6.) {
+
+		//m.R = pm.R * (1. + .4);
+		//m.L = 474e-6;
 	}
 }
 
@@ -118,9 +134,9 @@ simTel(float *pTel)
 	/* Plant constants.
 	 * */
 	pTel[16] = pm.U;
-	pTel[17] = pm.R;
-	pTel[18] = pm.IL;
-	pTel[19] = pm.E;
+	pTel[17] = pm.kX[5];
+	pTel[18] = pm.kX[6];
+	pTel[19] = pm.kX[7];
 	pTel[20] = pm.Zp;
 	pTel[21] = pm.IJ;
 }
@@ -195,7 +211,7 @@ simReport(FILE *fout)
 
 int main(int argc, char *argv[])
 {
-	double		Tend = 5.;
+	double		Tend = 10.;
 
 	libStart();
 

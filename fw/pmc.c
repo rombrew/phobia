@@ -62,14 +62,17 @@ void pmcEnable(pmc_t *pm)
 	pm->cU0 = 0.f;
 	pm->cU1 = .00725098f;
 
-	pm->iKP = 2e-2f;
-	pm->iKI = 5e-4f;
+	pm->iKP = 1e-2f;
+	pm->iKI = 1e-3f;
 
-	pm->kQ[0] = 1e-6;
-	pm->kQ[1] = 1e-6;
-	pm->kQ[2] = 1e-6;
-	pm->kQ[3] = 1e-6;
-	pm->kQ[4] = 1e-6;
+	pm->kQ[0] = 1e-8;
+	pm->kQ[1] = 1e-8;
+	pm->kQ[2] = 1e-8;
+	pm->kQ[3] = 1e-8;
+	pm->kQ[4] = 1e-8;
+	pm->kQ[5] = 0e-8;
+	pm->kQ[6] = 1e-2;
+	pm->kQ[7] = 0e-12;
 	pm->kR = 1e-2;
 }
 
@@ -84,17 +87,17 @@ dEq(pmc_t *pm, float D[], float X[])
 	uD = pX * pm->uX + pY * pm->uY;
 	uQ = pX * pm->uY - pY * pm->uX;
 
-	D[0] = pm->IL * (uD - X[0] * pm->R) + X[3] * X[1];
-	D[1] = pm->IL * (uQ - X[1] * pm->R - X[3] * pm->E) - X[3] * X[0];
+	D[0] = X[6] * (uD - X[0] * X[5]) + X[3] * X[1];
+	D[1] = X[6] * (uQ - X[1] * X[5] - X[3] * X[7]) - X[3] * X[0];
 	D[2] = X[3];
-	D[3] = pm->Zp * pm->IJ * (1.5f * pm->E * pm->Zp * X[1] - X[4]);
+	D[3] = pm->Zp * pm->IJ * (1.5f * X[7] * pm->Zp * X[1] - X[4]);
 }
 
 static void
 sFC(pmc_t *pm)
 {
 	float		*X = pm->kX;
-	float		D1[4], D2[4], X2[5];
+	float		D1[4], D2[4], X2[8];
 	float		dT;
 
 	dEq(pm, D1, X);
@@ -105,6 +108,9 @@ sFC(pmc_t *pm)
 	X2[2] = X[2] + D1[2] * dT;
 	X2[3] = X[3] + D1[3] * dT;
 	X2[4] = X[4];
+	X2[5] = X[5];
+	X2[6] = X[6];
+	X2[7] = X[7];
 
 	X2[2] = (X2[2] < -KPI) ? X2[2] + 2.f * KPI : (X2[2] > KPI) ? X2[2] - 2.f * KPI : X2[2];
 
@@ -131,11 +137,17 @@ sFB(pmc_t *pm, float iX, float iY)
 	eD = iD - X[0];
 	eQ = iQ - X[1];
 
+	pm->eD = eD;
+	pm->eQ = eQ;
+
 	X[0] += K[0] * eD + K[1] * eQ;
 	X[1] += K[2] * eD + K[3] * eQ;
 	X[2] += K[4] * eD + K[5] * eQ;
 	X[3] += K[6] * eD + K[7] * eQ;
 	X[4] += K[8] * eD + K[9] * eQ;
+	X[5] += K[10] * eD + K[11] * eQ;
+	X[6] += K[12] * eD + K[13] * eQ;
+	X[7] += K[14] * eD + K[15] * eQ;
 
 	X[2] = (X[2] < -KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
 
@@ -218,67 +230,117 @@ sKF(pmc_t *pm)
 {
 	float		*X = pm->kX, *P = pm->kP;
 	float		*Q = pm->kQ, *K = pm->kK;
-	float		A[25], C[10], AT[25], AP[25];
-	float		CP[10], CT[10], S[4], IS[4];
-	float		PC[10], KCP[25];
-	float		pX, pY;
+	float		A[64], C[16], AT[64], AP[64];
+	float		CP[16], CT[16], S[4], IS[4];
+	float		PC[16], KCP[64];
 	float		Sd, dT = pm->dT;
 
-	A[0*5 + 0] = 1.f - pm->R * pm->IL * dT;
-	A[0*5 + 1] = X[3] * dT;
-	A[0*5 + 2] = pm->IL * (- pm->pY * pm->uX + pm->pX * pm->uY) * dT;
-	A[0*5 + 3] = X[1] * dT;
-	A[0*5 + 4] = 0.f;
+	A[0*8 + 0] = 1.f - X[5] * X[6] * dT;
+	A[0*8 + 1] = X[3] * dT;
+	A[0*8 + 2] = X[6] * (- pm->pY * pm->uX + pm->pX * pm->uY) * dT;
+	A[0*8 + 3] = X[1] * dT;
+	A[0*8 + 4] = 0.f;
+	A[0*8 + 5] = - X[0] * X[6] * dT;
+	A[0*8 + 6] = (pm->pX * pm->uX + pm->pY * pm->uY - X[0] * X[5]) * dT;
+	A[0*8 + 7] = 0.f;
 
-	A[1*5 + 0] = - X[3] * dT;
-	A[1*5 + 1] = 1.f - pm->R * pm->IL * dT;
-	A[1*5 + 2] = pm->IL * (- pm->pX * pm->uX - pm->pY * pm->uY) * dT;
-	A[1*5 + 3] = - (pm->E * pm->IL + X[0]) * dT;
-	A[1*5 + 4] = 0.f;
+	A[1*8 + 0] = - X[3] * dT;
+	A[1*8 + 1] = 1.f - X[5] * X[6] * dT;
+	A[1*8 + 2] = X[6] * (- pm->pX * pm->uX - pm->pY * pm->uY) * dT;
+	A[1*8 + 3] = - (X[7] * X[6] + X[0]) * dT;
+	A[1*8 + 4] = 0.f;
+	A[1*8 + 5] = - X[1] * X[6] * dT;
+	A[1*8 + 6] = (pm->pX * pm->uY - pm->pY * pm->uX - X[1] * X[5] - X[3] * X[7]) * dT;
+	A[1*8 + 7] = - X[3] * X[6] * dT;
 
-	A[2*5 + 0] = 0.f;
-	A[2*5 + 1] = 0.f;
-	A[2*5 + 2] = 1.f;
-	A[2*5 + 3] = dT;
-	A[2*5 + 4] = 0.f;
+	A[2*8 + 0] = 0.f;
+	A[2*8 + 1] = 0.f;
+	A[2*8 + 2] = 1.f;
+	A[2*8 + 3] = dT;
+	A[2*8 + 4] = 0.f;
+	A[2*8 + 5] = 0.f;
+	A[2*8 + 6] = 0.f;
+	A[2*8 + 7] = 0.f;
 
-	A[3*5 + 0] = 0.f;
-	A[3*5 + 1] = 1.5f * pm->Zp * pm->Zp * pm->IJ * pm->E * dT;
-	A[3*5 + 2] = 0.f;
-	A[3*5 + 3] = 1.f;
-	A[3*5 + 4] = - pm->Zp * pm->IJ * dT;
+	A[3*8 + 0] = 0.f;
+	A[3*8 + 1] = 1.5f * pm->Zp * pm->Zp * pm->IJ * X[7] * dT;
+	A[3*8 + 2] = 0.f;
+	A[3*8 + 3] = 1.f;
+	A[3*8 + 4] = - pm->Zp * pm->IJ * dT;
+	A[3*8 + 5] = 0.f;
+	A[3*8 + 6] = 0.f;
+	A[3*8 + 7] = 1.5f * pm->Zp * pm->Zp * pm->IJ * X[1] * dT;
 
-	A[4*5 + 0] = 0.f;
-	A[4*5 + 1] = 0.f;
-	A[4*5 + 2] = 0.f;
-	A[4*5 + 3] = 0.f;
-	A[4*5 + 4] = 1.f;
+	A[4*8 + 0] = 0.f;
+	A[4*8 + 1] = 0.f;
+	A[4*8 + 2] = 0.f;
+	A[4*8 + 3] = 0.f;
+	A[4*8 + 4] = 1.f;
+	A[4*8 + 5] = 0.f;
+	A[4*8 + 6] = 0.f;
+	A[4*8 + 7] = 0.f;
 
-	C[0*5 + 0] = 1.f;
-	C[0*5 + 1] = 0.f;
-	C[0*5 + 2] = - X[1];
-	C[0*5 + 3] = 0.f;
-	C[0*5 + 4] = 0.f;
+	A[5*8 + 0] = 0.f;
+	A[5*8 + 1] = 0.f;
+	A[5*8 + 2] = 0.f;
+	A[5*8 + 3] = 0.f;
+	A[5*8 + 4] = 0.f;
+	A[5*8 + 5] = 1.f;
+	A[5*8 + 6] = 0.f;
+	A[5*8 + 7] = 0.f;
 
-	C[1*5 + 0] = 0.f;
-	C[1*5 + 1] = 1.f;
-	C[1*5 + 2] = X[0];
-	C[1*5 + 3] = 0.f;
-	C[1*5 + 4] = 0.f;
+	A[6*8 + 0] = 0.f;
+	A[6*8 + 1] = 0.f;
+	A[6*8 + 2] = 0.f;
+	A[6*8 + 3] = 0.f;
+	A[6*8 + 4] = 0.f;
+	A[6*8 + 5] = 0.f;
+	A[6*8 + 6] = 1.f;
+	A[6*8 + 7] = 0.f;
 
-	mTrans(AT, A, 5, 5);
-	mMul(AP, A, P, 5, 5, 5);
-	mMul(P, AP, AT, 5, 5, 5);
+	A[7*8 + 0] = 0.f;
+	A[7*8 + 1] = 0.f;
+	A[7*8 + 2] = 0.f;
+	A[7*8 + 3] = 0.f;
+	A[7*8 + 4] = 0.f;
+	A[7*8 + 5] = 0.f;
+	A[7*8 + 6] = 0.f;
+	A[7*8 + 7] = 1.f;
 
-	P[0*5 + 0] += Q[0];
-	P[1*5 + 1] += Q[1];
-	P[2*5 + 2] += Q[2];
-	P[3*5 + 3] += Q[3];
-	P[4*5 + 4] += Q[4];
+	C[0*8 + 0] = 1.f;
+	C[0*8 + 1] = 0.f;
+	C[0*8 + 2] = - X[1];
+	C[0*8 + 3] = 0.f;
+	C[0*8 + 4] = 0.f;
+	C[0*8 + 5] = 0.f;
+	C[0*8 + 6] = 0.f;
+	C[0*8 + 7] = 0.f;
 
-	mTrans(CT, C, 2, 5);
-	mMul(CP, C, P, 2, 5, 5);
-	mMul(S, CP, CT, 2, 2, 5);
+	C[1*8 + 0] = 0.f;
+	C[1*8 + 1] = 1.f;
+	C[1*8 + 2] = X[0];
+	C[1*8 + 3] = 0.f;
+	C[1*8 + 4] = 0.f;
+	C[1*8 + 5] = 0.f;
+	C[1*8 + 6] = 0.f;
+	C[1*8 + 7] = 0.f;
+
+	mTrans(AT, A, 8, 8);
+	mMul(AP, A, P, 8, 8, 8);
+	mMul(P, AP, AT, 8, 8, 8);
+
+	P[0*8 + 0] += Q[0];
+	P[1*8 + 1] += Q[1];
+	P[2*8 + 2] += Q[2];
+	P[3*8 + 3] += Q[3];
+	P[4*8 + 4] += Q[4];
+	P[5*8 + 5] += Q[5];
+	P[6*8 + 6] += Q[6];
+	P[7*8 + 7] += Q[7];
+
+	mTrans(CT, C, 2, 8);
+	mMul(CP, C, P, 2, 8, 8);
+	mMul(S, CP, CT, 2, 2, 8);
 
 	S[0] += pm->kR;
 	S[3] += pm->kR;
@@ -289,11 +351,11 @@ sKF(pmc_t *pm)
 	IS[2] = -S[2] / Sd;
 	IS[3] = S[0] / Sd;
 
-	mMul(PC, P, CT, 5, 2, 5);
-	mMul(K, PC, IS, 5, 2, 2);
+	mMul(PC, P, CT, 8, 2, 8);
+	mMul(K, PC, IS, 8, 2, 2);
 
-	mMul(KCP, K, CP, 5, 5, 2);
-	mSub(P, KCP, 5, 5);
+	mMul(KCP, K, CP, 8, 8, 2);
+	mSub(P, KCP, 8, 8);
 }
 
 static void
@@ -560,14 +622,20 @@ bFSM(pmc_t *pm, float iA, float iB, float uS, float iX, float iY)
 					pm->kX[2] = 0.f;
 					pm->kX[3] = 0.f;
 					pm->kX[4] = 0.f;
+					pm->kX[5] = pm->R;
+					pm->kX[6] = pm->IL;
+					pm->kX[7] = pm->E;
 
-					mZero(pm->kP, 5, 5);
+					mZero(pm->kP, 8, 8);
 
-					pm->kP[0*5 + 0] = 1e+2;
-					pm->kP[1*5 + 1] = 1e+2;
-					pm->kP[2*5 + 2] = 1e-2;
-					pm->kP[3*5 + 3] = 1e-2;
-					pm->kP[4*5 + 4] = 1e-2;
+					pm->kP[0*8 + 0] = 1e+2;
+					pm->kP[1*8 + 1] = 1e+2;
+					pm->kP[2*8 + 2] = 1e-2;
+					pm->kP[3*8 + 3] = 1e-2;
+					pm->kP[4*8 + 4] = 1e-2;
+					pm->kP[5*8 + 5] = 0.f;
+					pm->kP[6*8 + 6] = 0.f;
+					pm->kP[7*8 + 7] = 0.f;
 
 					sKF(pm);
 
@@ -606,7 +674,13 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	if (pm->fMOF & PMC_MODE_OBSERVER) {
 
+		static 		j = 0;
+
 		sFB(pm, iX, iY);
+
+	//	pm->iSPD = ksin((float) j * 10.f / 20e+3);
+
+		j++;
 
 		pm->pX = kcos(pm->kX[2]);
 		pm->pY = ksin(pm->kX[2]);

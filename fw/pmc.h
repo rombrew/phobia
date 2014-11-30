@@ -81,11 +81,11 @@ typedef struct {
 
 	/* Kalman filter.
 	 * */
-	float		kX[5];
-	float		kP[25];
-	float		kQ[5];
+	float		kX[8];
+	float		kP[64];
+	float		kQ[8];
 	float		kR;
-	float		kK[10];
+	float		kK[16];
 
 	/* DQ frame.
 	 * */
@@ -133,6 +133,8 @@ typedef struct {
 		float		im;
 	}
 	tA, tB, tC, tD;
+
+	float		eD, eQ;
 }
 pmc_t;
 

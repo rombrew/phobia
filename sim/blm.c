@@ -29,7 +29,7 @@ blmBEMFShape(double x)
 
 	/* Sinusoidal shape.
 	 * */
-	s1 = - (sin(x) + sin(x * 3.) * .5);
+	s1 = - (sin(x) + sin(x * 3.) * 4e-2);
 
 	return s1;
 }
@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 24e-6;
+	m->L = 85e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -86,7 +86,7 @@ void blmEnable(blm_t *m)
 	 * */
 	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 1e-9;
+	m->M[2] = 1e-6;
 	m->M[3] = 0e-0;
 }
 
@@ -98,8 +98,8 @@ blmEquation(const blm_t *m, const double X[7], double dX[7])
 	double		R, L, E, Uz, Mt, Ml, w;
 
 	R = m->R * (1. + 4.28e-3 * (X[4] - 20.));
-	L = m->L * (1. + 0. * (X[4] - 20.));
-	E = m->E * (1. + 1.21e-3 * (X[4] - 20.));
+	L = m->L * (1. - 0.11e-3 * (X[4] - 20.));
+	E = m->E * (1. - 1.21e-3 * (X[4] - 20.));
 
 	EA = blmBEMFShape(X[3]);
 	EB = blmBEMFShape(X[3] - 2. * M_PI / 3.);
