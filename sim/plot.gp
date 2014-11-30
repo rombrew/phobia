@@ -68,15 +68,15 @@ if (N == 7) {
 if (N == 8) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Resiatance (Ohm)'
-	plot	@TEL using 1:17 title 'R' with lines 
+	set ylabel 'Winding Resiatance (mOhm)'
+	plot	@TEL using 1:($17*1e+3) title 'R' with lines 
 }
 
 if (N == 9) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Inductance (Henry)'
-	plot	@TEL using 1:(1/$18) title 'L' with lines 
+	set ylabel 'Winding Inductance (uH)'
+	plot	@TEL using 1:(1e+6/$18) title 'L' with lines 
 }
 
 if (N == 10) {

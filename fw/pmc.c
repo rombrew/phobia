@@ -62,17 +62,17 @@ void pmcEnable(pmc_t *pm)
 	pm->cU0 = 0.f;
 	pm->cU1 = .00725098f;
 
-	pm->iKP = 1e-2f;
-	pm->iKI = 1e-3f;
+	pm->iKP = 1e-5f;
+	pm->iKI = 2e-3f;
 
 	pm->kQ[0] = 1e-8;
 	pm->kQ[1] = 1e-8;
 	pm->kQ[2] = 1e-8;
 	pm->kQ[3] = 1e-8;
-	pm->kQ[4] = 1e-8;
+	pm->kQ[4] = 1e-6;
 	pm->kQ[5] = 0e-8;
-	pm->kQ[6] = 1e-2;
-	pm->kQ[7] = 0e-12;
+	pm->kQ[6] = 0e-0;
+	pm->kQ[7] = 0e-15;
 	pm->kR = 1e-2;
 }
 
@@ -374,6 +374,9 @@ iFB(pmc_t *pm)
 	pm->iXQ = klamp(pm->iXQ + pm->iKI * eQ, 1.f, -1.f);
 	uQ = pm->iXQ + pm->iKP * eQ;
 
+	uD = .0;
+	uQ = .2;
+
 	uX = pm->pX * uD - pm->pY * uQ;
 	uY = pm->pY * uD + pm->pX * uQ;
 
@@ -633,9 +636,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS, float iX, float iY)
 					pm->kP[2*8 + 2] = 1e-2;
 					pm->kP[3*8 + 3] = 1e-2;
 					pm->kP[4*8 + 4] = 1e-2;
-					pm->kP[5*8 + 5] = 0.f;
-					pm->kP[6*8 + 6] = 0.f;
-					pm->kP[7*8 + 7] = 0.f;
+					pm->kP[5*8 + 5] = 0.f + 0e-4;
+					pm->kP[6*8 + 6] = 0.f + 0e+6;
+					pm->kP[7*8 + 7] = 0.f + 0e-8;
 
 					sKF(pm);
 
@@ -674,13 +677,17 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	if (pm->fMOF & PMC_MODE_OBSERVER) {
 
-		static 		j = 0;
+		/*static int j = 0;
+
+		++j;
+
+		if (j > 20000 * 3) {
+
+			pm->iSPD = ksin((float) j * 5.f / 20e+3);
+			pm->iSPQ = 2.f + kcos((float) j * 5.f / 20e+3);
+		}*/
 
 		sFB(pm, iX, iY);
-
-	//	pm->iSPD = ksin((float) j * 10.f / 20e+3);
-
-		j++;
 
 		pm->pX = kcos(pm->kX[2]);
 		pm->pY = ksin(pm->kX[2]);

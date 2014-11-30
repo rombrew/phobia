@@ -55,15 +55,20 @@ simScript(double T)
 		pm.iSPQ = 10.f;
 	}
 
+	if (T > 6.) {
+
+		//pm.cA0 += .01;
+	}
+
 	if (T > 7.) {
 
-		pm.iSPQ = -5.f;
+		pm.iSPQ = 2.f;
 	}
 
 	if (T > 3.) {
 
 		//m.R = pm.R * (1. + .4);
-		m.L = (1. / pm.IL) * (1. - .2);
+		//m.L = (1. / pm.IL) * (1. - .05);
 	}
 
 	if (T > 6.) {
