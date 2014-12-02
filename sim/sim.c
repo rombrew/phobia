@@ -45,6 +45,8 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
+	static int 	sT = 0;
+
 	if (T > 2.) {
 
 		pm.iSPQ = 5.f;
@@ -55,20 +57,22 @@ simScript(double T)
 		pm.iSPQ = 10.f;
 	}
 
-	if (T > 6.) {
-
-		//pm.cA0 += .01;
-	}
-
 	if (T > 7.) {
 
-		pm.iSPQ = 2.f;
+		pm.iSPQ = 2.f + sin(T * 100.);
 	}
 
 	if (T > 3.) {
 
-		//m.R = pm.R * (1. + .4);
-		//m.L = (1. / pm.IL) * (1. - .05);
+		//m.R = pm.R * (1. + .2);
+		//m.E = pm.E * (1. + .1);
+		m.L = (1. / pm.IL) * (1. - .05);
+
+		if (sT == 0) {
+
+			pm.cA0 += .1f;
+			sT = 1;
+		}
 	}
 
 	if (T > 6.) {
@@ -143,7 +147,8 @@ simTel(float *pTel)
 	pTel[18] = pm.kX[6];
 	pTel[19] = pm.kX[7];
 	pTel[20] = pm.Zp;
-	pTel[21] = pm.IJ;
+	pTel[21] = pm.kX[8];
+	pTel[22] = -.5f * pm.kX[8] + .8660254f * pm.kX[9];
 }
 
 static void
