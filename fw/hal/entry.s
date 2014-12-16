@@ -41,14 +41,14 @@
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
+	.word	irqADC
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
-	.word	irqDefault
-	.word	irqDefault
+	.word	irqTIM1_UP_TIM10
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault

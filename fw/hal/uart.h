@@ -19,11 +19,27 @@
 #ifndef _H_UART_
 #define _H_UART_
 
-void uartEnable(int baudR);
+#define UART_RXBUF_SZ		40
+#define UART_TXBUF_SZ		40
+
+typedef struct {
+
+	char		rBuf[UART_RXBUF_SZ];
+	int		rN;
+
+	char		tBuf[UART_TXBUF_SZ];
+
+}
+halUART_TypeDef;
+
+extern halUART_TypeDef		halUART;
+
+void uartEnable(unsigned long int bR);
 void uartDisable();
 
-int uartReceive();
-void uartSend(char xC);
+int uartRX();
+char *uartTryTX();
+void uartTX(int N);
 
 #endif /* _H_UART_ */
 

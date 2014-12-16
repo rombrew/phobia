@@ -21,6 +21,8 @@
 
 extern int ldSvectors;
 
+halBASE_TypeDef			halBASE;
+
 void irqNMI() { }
 void irqHardFault() { }
 void irqMemoryFault() { }
@@ -101,15 +103,22 @@ clockStart()
 		/* Wait till PLL is used.
 		 * */
 		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
+
+		/* Declare clock frequency.
+		 * */
+		halBASE.hzAHB = 168000000UL;
+		halBASE.hzAPB1 = halBASE.hzAHB / 4UL;
+		halBASE.hzAPB2 = halBASE.hzAHB / 2UL;
 	}
 	else {
 		/* HSE fails to start up.
 		 * */
+		halBASE.hzAHB = 0UL;
 	}
 }
 
 static void
-cortexStart()
+boardStart()
 {
 	/* Enable FPU.
 	 * */
@@ -126,18 +135,6 @@ cortexStart()
 	 * */
 	NVIC_SetPriorityGrouping(4);
 
-	/* Configure SysTick (1000 Hz).
-	 * */
-	SysTick_Config(FREQ_AHB_HZ / 100UL);
-
-	/* Enable interrupts.
-	 * */
-	__enable_irq();
-}
-
-static void
-boardStart()
-{
 	/* Enable Programmable voltage detector.
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
@@ -161,28 +158,40 @@ boardStart()
 			| GPIO_MODER_MODER14 | GPIO_MODER_MODER15,
 			GPIO_MODER_MODER12_0 | GPIO_MODER_MODER13_0
 			| GPIO_MODER_MODER14_0 | GPIO_MODER_MODER15_0);
+
+	/* If clock fails to start up.
+	 * */
+	if (halBASE.hzAHB == 0UL) {
+	}
+
+	/* If BOR reset occurs.
+	 * */
+	if (RCC->CSR & RCC_CSR_BORRSTF) {
+	}
+
+	/* If VDD is lower than thr threshold.
+	 * */
+	if (PWR->CSR & PWR_CSR_PVDO) {
+	}
+
+	/* Configure SysTick (1000 Hz).
+	 * */
+	SysTick_Config(halBASE.hzAHB / 1000UL);
+
+	/* Enable interrupts.
+	 * */
+	__enable_irq();
 }
 
 void halStart()
 {
 	clockStart();
-	cortexStart();
 	boardStart();
-}
-
-int halResetReason()
-{
-	return RCC->CSR >> 25;
 }
 
 void halWFI()
 {
 	__WFI();
-}
-
-int halSysTick()
-{
-	SysTick->VAL;
 }
 
 void halLED(int F)

@@ -16,12 +16,36 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_SHELL_
-#define _H_SHELL_
+#ifndef _H_ADC_
+#define _H_ADC_
 
-typedef void (* pfunc_t) (void *args[]);
+typedef struct {
 
-void shellTask();
+	/* Current sensors.
+	 * */
+	int		xA;
+	int		xB;
 
-#endif /* _H_SHELL_ */
+	/* Supply voltage.
+	 * */
+	int		xU;
+
+	/* Thermal sensor.
+	 * */
+	int		xT;
+
+	/* Reference voltage.
+	 * */
+	int		xR;
+}
+halADC_TypeDef;
+
+extern halADC_TypeDef		halADC;
+
+void adcEnable();
+void adcDisable();
+
+extern void adcIRQ();
+
+#endif /* _H_ADC_ */
 

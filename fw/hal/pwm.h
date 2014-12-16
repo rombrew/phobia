@@ -19,6 +19,12 @@
 #ifndef _H_PWM_
 #define _H_PWM_
 
+enum {
+	PWM_A			= 1,
+	PWM_B			= 2,
+	PWM_C			= 4,
+};
+
 typedef struct {
 
 	/* Frequency (Hz).
@@ -27,11 +33,11 @@ typedef struct {
 
 	/* Resolution.
 	 * */
-	short int	R;
+	int		R;
 
 	/* Dead Time (ns).
 	 * */
-	short int	nsD;
+	int		nsD;
 }
 halPWM_TypeDef;
 

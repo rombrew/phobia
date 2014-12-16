@@ -19,11 +19,85 @@
 #include <stdarg.h>
 
 #include "lib.h"
-#include "hal/hal.h"
+#include "sh.h"
 
-#define PUTC(c)				uartSend(c)
+#define PUTC(c)				shSend(c)
+
+char strcmp(const char *s, const char *p)
+{
+	char		c;
+
+	do {
+		c = *s - *p;
+
+		if (c || !*s)
+			break;
+
+		++s;
+		++p;
+	}
+	while (1);
+
+	return c;
+}
+
+char strpcmp(const char *s, const char *p)
+{
+	char		c;
+
+	do {
+		if (!*s)
+			return 0;
+
+		c = *s - *p;
+
+		if (c)
+			break;
+
+		++s;
+		++p;
+	}
+	while (1);
+
+	return c;
+}
+
+char *strcpy(char *d, const char *s)
+{
+	do {
+		if (!(*d = *s))
+			break;
+
+		++d;
+		++s;
+	}
+	while (1);
+
+	return d;
+}
+
+int strlen(const char *s)
+{
+	int		len = 0;
+
+	do {
+		if (!*s)
+			break;
+
+		++s;
+		++len;
+	}
+	while (1);
+
+	return len;
+}
 
 void putc(char c) { PUTC(c); }
+
+void puts(const char *s)
+{
+	while (*s) PUTC(*s++);
+}
 
 static void
 fmt_int(int x)
@@ -48,6 +122,11 @@ fmt_int(int x)
 	while (x);
 
 	while (*p) PUTC(*p++);
+}
+
+static void
+fmt_float(float x)
+{
 }
 
 void printf(const char *fmt, ...)
@@ -87,5 +166,17 @@ void printf(const char *fmt, ...)
         }
 
         va_end(ap);
+}
+
+void *malloc(unsigned long int usz)
+{
+	static char	*pHeap = (void *) 0x10000000;
+	void		*p;
+
+	usz = (usz + 7UL) & ~7UL;
+	p = pHeap;
+	pHeap += usz;
+
+	return p;
 }
 

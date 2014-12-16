@@ -16,10 +16,23 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "shell.h"
-#include "lib.h"
+#ifndef _H_SH_
+#define _H_SH_
 
-void shellTask()
-{
+typedef struct {
+
+	const char		*iD;
+	void			(* pF) (void *);
 }
+shCMD_t;
+
+int shRecv();
+void shSend(int xC);
+
+int shExRecv();
+void shExSend(int xC);
+
+void shTask();
+
+#endif /* _H_SH_ */
 

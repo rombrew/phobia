@@ -4,7 +4,6 @@ TARGET	= $(BUILD)/fw
 
 CROSS	?= arm-none-eabi-
 CC      = $(CROSS)gcc
-#CC	= clang -target arm-none-eabi
 AS      = $(CROSS)as
 LD      = $(CROSS)ld
 OC      = $(CROSS)objcopy
@@ -17,19 +16,22 @@ CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
 AFLAGS	= -mcpu=cortex-m4 -mthumb
-LFLAGS  = -T hal/flash.ld
+LFLAGS  = -T hal/ram.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
 
 OBJS	= hal/entry.o \
+	hal/adc.o \
+	hal/can.o \
 	hal/hal.o \
 	hal/pwm.o \
 	hal/uart.o
 
-OBJS	+= fw.o \
+OBJS	+= task.o \
 	lib.o \
-	shell.o
+	sh.o \
+	cml.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
@@ -52,8 +54,8 @@ $(TARGET): $(LIST)
 
 flash: $(TARGET)
 	@ echo "  FLASH " $(notdir $^)
-#	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
+#	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
 	@ picocom -l -b $(BAUD) -pe $(TTY)
 
 tags:

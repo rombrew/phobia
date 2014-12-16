@@ -19,8 +19,17 @@
 #ifndef _H_LIB_
 #define _H_LIB_
 
+#define NULL			((void *) 0L)
+#define EOL			"\r\n"
+
+char strcmp(const char *s, const char *p);
+char strpcmp(const char *s, const char *p);
+char *strcpy(char *d, const char *s);
+int strlen(const char *s);
 void putc(char c);
+void puts(const char *s);
 void printf(const char *fmt, ...);
+void *malloc(unsigned long int usz);
 
 #endif /* _H_LIB_ */
 
