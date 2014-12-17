@@ -16,37 +16,35 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "hal/hal.h"
-#include "sh.h"
-#include "lib.h"
+#ifndef _H_TASK_
+#define _H_TASK_
 
-void led(void *pARG)
-{
-	halLED(LED_RED);
+typedef struct {
+
+	/* Time from power up (ms).
+	 * */
+	unsigned long int	mTIM;
+
+	/* Pending flags.
+	 * */
+	unsigned char		xIN;
+	unsigned char		xOUT;
+	unsigned char		xSH;
+
+	/* Use bxCAN transport.
+	 * */
+	unsigned char		xCAN;
+
+	/* Busy mask.
+	 * */
+	int			mBUSY;
+
 }
+taskDATA_t;
 
-void prt(void *pARG)
-{
-	int		x;
+extern taskDATA_t		td;
 
-	halLED(LED_GREEN);
-	x = 123456789;
+void taskYield();
 
-	printf("1: long long string %i %i %i \r\n", x, x, x);
-	printf("2: long long string %i %i %i \r\n", x, x, x);
-	printf("3: long long string %i %i %i \r\n", x, x, x);
-	printf("4: long long string %i %i %i \r\n", x, x, x);
-	printf("5: long long string %i %i %i \r\n", x, x, x);
-	printf("6: long long string %i %i %i \r\n", x, x, x);
-	printf("7: long long string %i %i %i \r\n", x, x, x);
-	printf("8: long long string %i %i %i \r\n", x, x, x);
-	printf("9: long long string %i %i %i \r\n", x, x, x);
-}
-
-shCMD_t		cmList[] = {
-
-	{"led", &led},
-	{"prt", &prt},
-	{NULL, NULL},
-};
+#endif /* _H_TASK_ */
 

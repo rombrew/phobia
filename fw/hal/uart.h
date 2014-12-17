@@ -19,7 +19,7 @@
 #ifndef _H_UART_
 #define _H_UART_
 
-#define UART_RXBUF_SZ		40
+#define UART_RXBUF_SZ		20
 #define UART_TXBUF_SZ		40
 
 typedef struct {
@@ -38,7 +38,7 @@ void uartEnable(unsigned long int bR);
 void uartDisable();
 
 int uartRX();
-char *uartTryTX();
+char *uartGetTX();
 void uartTX(int N);
 
 #endif /* _H_UART_ */

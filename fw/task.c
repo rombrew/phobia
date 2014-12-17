@@ -17,35 +17,26 @@
 */
 
 #include "hal/hal.h"
-#include "lib.h"
+#include "task.h"
 #include "sh.h"
+#include "lib.h"
 
-typedef struct {
-
-	int		mBUSY;
-	void		(* listTF[4]) ();
-
-	int		shCAN;
-}
-task_t;
-
-static task_t		ts;
+taskDATA_t			td;
 
 void halTick()
 {
+	td.mTIM++;
 }
 
 void adcIRQ()
 {
 }
 
-extern void taskYield();
-
 void taskIN()
 {
 	int		xC;
 
-	if (ts.shCAN) {
+	if (td.xCAN) {
 
 		/* TODO */
 	}
@@ -67,41 +58,36 @@ void taskOUT()
 	int		xC, xN;
 	char		*pX;
 
-	if (ts.shCAN) {
+	if (td.xCAN) {
 
 		/* TODO */
 	}
 	else {
-		do {
-			xC = shExRecv();
+		pX = uartGetTX();
 
-			if (xC < 0)
-				break;
-			else {
-				while ((pX = uartTryTX()) == NULL)
-					taskYield();
+		if (pX != NULL) {
 
-				*pX++ = xC;
-				xN = 1;
+			xN = 0;
 
-				do {
-					xC = shExRecv();
+			do {
+				xC = shExRecv();
 
-					if (xC < 0)
-						break;
-					else
-						*pX++ = xC,
-						xN++;
+				if (xC < 0)
+					break;
+				else
+					*pX++ = (char) xC,
+					xN++;
 
-					if (xN >= (UART_TXBUF_SZ - 1))
-						break;
-				}
-				while (1);
+				if (xN >= (UART_TXBUF_SZ - 1))
+					break;
+			}
+			while (1);
+
+			if (xN > 0) {
 
 				uartTX(xN);
 			}
 		}
-		while (1);
 	}
 }
 
@@ -111,23 +97,24 @@ void taskCAN()
 
 void taskYield()
 {
-	void		(** pTF) ();
-	int		tsID;
+	if (td.xIN) {
 
-	pTF = ts.listTF;
-	tsID = 1;
+		td.xIN = 0;
+		taskIN();
+	}
 
-	while (* pTF) {
+	if (td.xOUT) {
 
-		if (!(ts.mBUSY & tsID)) {
+		td.xOUT = 0;
+		taskOUT();
+	}
 
-			ts.mBUSY |= tsID;
-			(* pTF) ();
-			ts.mBUSY &= ~tsID;
-		}
+	if (td.xSH && !(td.mBUSY & 1UL)) {
 
-		pTF++;
-		tsID <<= 1;
+		td.xSH = 0;
+		td.mBUSY |= 1UL;
+		shTask();
+		td.mBUSY &= ~1UL;
 	}
 
 	halWFI();
@@ -137,10 +124,6 @@ void halMain()
 {
 	halLED(LED_BLUE);
 	uartEnable(57600UL);
-
-	ts.listTF[0] = &taskIN;
-	ts.listTF[1] = &taskOUT;
-	ts.listTF[2] = &shTask;
 
 	do {
 		taskYield();

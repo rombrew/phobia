@@ -61,7 +61,7 @@ void adcEnable()
 
 	/* Enable IRQ.
 	 * */
-	NVIC_SetPriority(ADC_IRQn, 1);
+	NVIC_SetPriority(ADC_IRQn, 5);
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 

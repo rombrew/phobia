@@ -17,11 +17,14 @@
 */
 
 #include "sh.h"
+#include "task.h"
 #include "lib.h"
 
 #define SH_RXBUF_SZ			40
 #define SH_TXBUF_SZ			80
 #define SH_CLINE_SZ			80
+
+#define FIFO_INC(I, SZ)			(((I) < ((SZ) - 1)) ? (I) + 1 : 0)
 
 static const char SH_PROMPT[] = "# ";
 static const char SH_BACKSPACE[] = "\b \b";
@@ -40,14 +43,11 @@ typedef struct {
 
 	char		*pARG;
 	int		cMD, cEON, cIT;
-	
 }
-sh_t;
+shTASK_t;
 
-static sh_t		sh;
+static shTASK_t		sh;
 extern shCMD_t		cmList[];
-
-extern void taskYield();
 
 int shRecv()
 {
@@ -56,7 +56,7 @@ int shRecv()
 	if (sh.rR != sh.rT) {
 
 		xC = sh.rBuf[sh.rR];
-		sh.rR = (sh.rR < (SH_RXBUF_SZ - 1)) ? sh.rR + 1 : 0;
+		sh.rR = FIFO_INC(sh.rR, SH_RXBUF_SZ);
 	}
 	else
 		xC = -1;
@@ -68,13 +68,15 @@ void shSend(int xC)
 {
 	int	tT;
 
-	tT = (sh.tT < (SH_TXBUF_SZ - 1)) ? sh.tT + 1 : 0;
+	tT = FIFO_INC(sh.tT, SH_TXBUF_SZ);
 
 	while (sh.tR == tT)
 		taskYield();
 
 	sh.tBuf[sh.tT] = (char) xC;
 	sh.tT = tT;
+
+	td.xOUT = 1;
 }
 
 int shExRecv()
@@ -84,7 +86,7 @@ int shExRecv()
 	if (sh.tR != sh.tT) {
 
 		xC = sh.tBuf[sh.tR];
-		sh.tR = (sh.tR < (SH_TXBUF_SZ - 1)) ? sh.tR + 1 : 0;
+		sh.tR = FIFO_INC(sh.tR, SH_TXBUF_SZ);
 	}
 	else
 		xC = -1;
@@ -94,15 +96,10 @@ int shExRecv()
 
 void shExSend(int xC)
 {
-	int	rT;
-
-	rT = (sh.rT < (SH_RXBUF_SZ - 1)) ? sh.rT + 1 : 0;
-
-	while (sh.rR == rT)
-		taskYield();
-
 	sh.rBuf[sh.rT] = (char) xC;
-	sh.rT = rT;
+	sh.rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
+
+	td.xSH = 1;
 }
 
 static inline char

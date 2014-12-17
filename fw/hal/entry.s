@@ -37,7 +37,7 @@
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
-	.word	irqDefault
+	.word	irqDMA1_Stream3
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault

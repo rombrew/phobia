@@ -19,9 +19,17 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
+#include "../task.h"
+
 halUART_TypeDef			halUART;
 
-void irqUSART3() { }
+void irqUSART3() { td.xIN = 1; }
+
+void irqDMA1_Stream3()
+{
+	DMA1->LIFCR |= DMA_LIFCR_CTCIF3;
+	td.xOUT = 1;
+}
 
 void uartEnable(unsigned long int bR)
 {
@@ -44,7 +52,7 @@ void uartEnable(unsigned long int bR)
 	 * */
 	USART3->BRR = halBASE.hzAPB1 / bR;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
-		| USART_CR1_TE | USART_CR1_RE;
+		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
 	USART3->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;
 
@@ -70,11 +78,23 @@ void uartEnable(unsigned long int bR)
 	DMA1_Stream3->NDTR = 0;
 	DMA1_Stream3->FCR = 0;
 	DMA1_Stream3->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
-		| DMA_SxCR_DIR_0;
+		| DMA_SxCR_DIR_0 | DMA_SxCR_TCIE;
+
+	/* Enable IRQs.
+	 * */
+	NVIC_SetPriority(DMA1_Stream3_IRQn, 11);
+	NVIC_SetPriority(USART3_IRQn, 11);
+	NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+	NVIC_EnableIRQ(USART3_IRQn);
 }
 
 void uartDisable()
 {
+	/* Disable IRQs.
+	 * */
+	NVIC_DisableIRQ(DMA1_Stream3_IRQn);
+	NVIC_DisableIRQ(USART3_IRQn);
+
 	/* Disable DMA.
 	 * */
 	DMA1_Stream1->CR = 0;
@@ -116,7 +136,7 @@ int uartRX()
 	return xC;
 }
 
-char *uartTryTX()
+char *uartGetTX()
 {
 	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : halUART.tBuf;
 }
