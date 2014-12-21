@@ -22,7 +22,7 @@
 typedef struct {
 
 	const char		*iD;
-	void			(* pF) (void *);
+	void			(* pF) (char *);
 }
 shCMD_t;
 

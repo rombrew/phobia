@@ -18,14 +18,33 @@
 
 #include "hal/hal.h"
 #include "sh.h"
+#include "task.h"
 #include "lib.h"
 
-void led(void *pARG)
+void uptime(char *s)
 {
-	halLED(LED_RED);
+	int		Day, Hour, Min, Sec;
+
+	Sec = td.uTICK / 100;
+
+	Day = Sec / 86400;
+	Sec -= Day * 86400;
+	Hour = Sec / 3600;
+	Sec -= Hour * 3600;
+	Min = Sec / 60;
+	Sec -= Min * 60;
+
+	printf("%id %ih %im %is" EOL,
+			Day, Hour, Min, Sec);
 }
 
-void prt(void *pARG)
+
+void led(char *s)
+{
+	halLED(LED_BLUE);
+}
+
+void prt(char *s)
 {
 	int		x;
 
@@ -43,10 +62,15 @@ void prt(void *pARG)
 	printf("9: long long string %i %i %i \r\n", x, x, x);
 }
 
-shCMD_t		cmList[] = {
+extern void shHistoryShow();
+
+const shCMD_t		cmList[] = {
+
+	{"uptime", &uptime},
 
 	{"led", &led},
 	{"prt", &prt},
+	
 	{NULL, NULL},
 };
 

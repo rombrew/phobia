@@ -169,14 +169,14 @@ boardStart()
 	if (RCC->CSR & RCC_CSR_BORRSTF) {
 	}
 
-	/* If VDD is lower than thr threshold.
+	/* If VDD is lower than threshold.
 	 * */
 	if (PWR->CSR & PWR_CSR_PVDO) {
 	}
 
-	/* Configure SysTick (1000 Hz).
+	/* Configure SysTick (100 Hz).
 	 * */
-	SysTick_Config(halBASE.hzAHB / 1000UL);
+	SysTick_Config(halBASE.hzAHB / 100UL);
 
 	/* Enable interrupts.
 	 * */

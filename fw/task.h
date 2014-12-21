@@ -21,24 +21,25 @@
 
 typedef struct {
 
-	/* Time from power up (ms).
+	/* Ticks from power up.
 	 * */
-	unsigned long int	mTIM;
-
-	/* Pending flags.
-	 * */
-	unsigned char		xIN;
-	unsigned char		xOUT;
-	unsigned char		xSH;
-
-	/* Use bxCAN transport.
-	 * */
-	unsigned char		xCAN;
+	unsigned long int	uTICK;
 
 	/* Busy mask.
 	 * */
 	int			mBUSY;
 
+	/* Pending flags.
+	 * */
+	int			xIN;
+	int			xOUT;
+	int			xSH;
+
+	/* Use bxCAN transport.
+	 * */
+	int			xCAN;
+
+	
 }
 taskDATA_t;
 

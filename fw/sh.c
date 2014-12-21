@@ -23,26 +23,49 @@
 #define SH_RXBUF_SZ			40
 #define SH_TXBUF_SZ			80
 #define SH_CLINE_SZ			80
+#define SH_HISTORY_SZ			240
+
+#define K_SO				0x0E
+#define K_DLE				0x10
+#define K_ESC				0x1B
 
 #define FIFO_INC(I, SZ)			(((I) < ((SZ) - 1)) ? (I) + 1 : 0)
+#define FIFO_DEC(I, SZ)			(((I) > 0) ? (I) - 1 : (SZ) - 1)
 
 static const char SH_PROMPT[] = "# ";
 static const char SH_BACKSPACE[] = "\b \b";
 
+enum {
+	DIR_UP,
+	DIR_DOWN
+};
+
 typedef struct {
 
+	/* Incoming FIFO.
+	 * */
 	char		rBuf[SH_RXBUF_SZ];
 	int		rR, rT;
 
+	/* Outgoing FIFO.
+	 * */
 	char		tBuf[SH_TXBUF_SZ];
 	int		tR, tT;
 
+	/* Base SH data.
+	 * */
 	char		cLine[SH_CLINE_SZ];
-	char		cHist[SH_CLINE_SZ];
-	int		nEOL;
-
+	int		nEOL, xESC;
 	char		*pARG;
+
+	/* Completion block.
+	 * */
 	int		cMD, cEON, cIT;
+
+	/* History block.
+	 * */
+	char		cHist[SH_HISTORY_SZ];
+	int		hMD, hHEAD, hTAIL, hBACK, hIT;
 }
 shTASK_t;
 
@@ -98,6 +121,12 @@ void shExSend(int xC)
 {
 	sh.rBuf[sh.rT] = (char) xC;
 	sh.rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
+
+	if (sh.rR == sh.rT) {
+
+		/* FIXME: Incoming FIFO overrun.
+		 * */
+	}
 
 	td.xSH = 1;
 }
@@ -192,6 +221,91 @@ shCyclicMatch()
 	sh.cIT = (pCMD - cmList) + 1;
 }
 
+static int
+shHistoryMove(int xIT, int xDIR)
+{
+	if (xDIR == DIR_UP) {
+
+		if (xIT != sh.hHEAD) {
+
+			/* Get previous line.
+			 * */
+			xIT = FIFO_DEC(xIT, SH_HISTORY_SZ);
+
+			do {
+				xIT = FIFO_DEC(xIT, SH_HISTORY_SZ);
+
+				if (sh.cHist[xIT] == 0)
+					break;
+			}
+			while (1);
+
+			xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
+		}
+	}
+	else {
+		if (xIT != sh.hTAIL) {
+
+			/* Get next line.
+			 * */
+			do {
+				xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
+
+				if (sh.cHist[xIT] == 0)
+					break;
+			}
+			while (1);
+
+			xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
+		}
+	}
+
+	return xIT;
+}
+
+static void
+shHistoryPut(const char *xS)
+{
+	int			xPREV;
+
+	if (sh.hHEAD != sh.hTAIL) {
+
+		xPREV = shHistoryMove(sh.hTAIL, DIR_UP);
+
+		if (strcmp(xS, sh.cHist + xPREV) == 0)
+
+			/* Do not put the same line again.
+			 * */
+			return ;
+	}
+
+	do {
+		sh.cHist[sh.hTAIL] = *xS;
+		sh.hTAIL = FIFO_INC(sh.hTAIL, SH_HISTORY_SZ);
+
+		if (sh.hTAIL == sh.hHEAD) {
+
+			/* Forget old lines.
+			 * */
+			do {
+				sh.hHEAD = FIFO_INC(sh.hHEAD, SH_HISTORY_SZ);
+
+				if (sh.cHist[sh.hHEAD] == 0)
+					break;
+			}
+			while (1);
+
+			sh.hHEAD = FIFO_INC(sh.hHEAD, SH_HISTORY_SZ);
+		}
+
+		if (*xS == 0)
+			break;
+		else
+			xS++;
+	}
+	while (1);
+}
+
 static void
 shEval()
 {
@@ -199,15 +313,22 @@ shEval()
 
 	pC = sh.cLine;
 
-	/* Parse the command line.
-	 * */
-	while (*pC && *pC != ' ') ++pC;
-	while (*pC && *pC == ' ') *pC++ = 0;
-	sh.pARG = pC;
+	if (*pC != 0) {
 
-	/* Search for specific command to execute.
-	 * */
-	shExactMatch();
+		/* Put the line in history.
+		 * */
+		shHistoryPut(pC);
+
+		/* Parse the command line.
+		 * */
+		while (*pC && *pC != ' ') ++pC;
+		while (*pC && *pC == ' ') *pC++ = 0;
+		sh.pARG = pC;
+
+		/* Search for specific command to execute.
+		 * */
+		shExactMatch();
+	}
 }
 
 static void
@@ -216,7 +337,7 @@ shComplete()
 	char			*pC;
 	int			N;
 
-	if (!sh.cMD) {
+	if (sh.cMD == 0) {
 
 		pC = sh.cLine;
 
@@ -232,7 +353,7 @@ shComplete()
 
 		N = sh.nEOL;
 
-		/* Enter the iteration mode.
+		/* Enter completion mode.
 		 * */
 		sh.cMD = 1;
 		sh.cEON = N;
@@ -246,11 +367,70 @@ shComplete()
 	 * */
 	shCyclicMatch();
 
-	/* Update command line.
+	/* Update the command line.
 	 * */
 	shErase(sh.nEOL - N);
 	sh.nEOL = strlen(sh.cLine);
 	puts(sh.cLine + N);
+
+	sh.hMD = 0;
+}
+
+static void
+shHistory(int xDIR)
+{
+	int			xIT;
+
+	if (sh.hMD == 0) {
+
+		/* Enter history mode.
+		 * */
+		sh.hIT = sh.hTAIL;
+		sh.hBACK = sh.hTAIL;
+		sh.hMD = 1;
+
+		/* Save current line.
+		 * */
+		shHistoryPut(sh.cLine);
+		sh.hTAIL = sh.hBACK;
+	}
+
+	if (xDIR == DIR_UP) {
+
+		xIT = shHistoryMove(sh.hIT, DIR_UP);
+
+		if (xIT != sh.hIT) {
+
+			strcpy(sh.cLine, sh.cHist + xIT);
+		}
+	}
+	else {
+		xIT = shHistoryMove(sh.hIT, DIR_DOWN);
+
+		/* Do not move over.
+		 * */
+		if (xIT != sh.hTAIL) {
+
+			strcpy(sh.cLine, sh.cHist + xIT);
+		}
+		else if (sh.hIT != sh.hTAIL) {
+
+			strcpy(sh.cLine, sh.cHist + sh.hBACK);
+		}
+	}
+
+	if (xIT != sh.hIT) {
+
+		sh.hIT = xIT;
+
+		/* Update the command line.
+		 * */
+		shErase(sh.nEOL);
+		sh.nEOL = strlen(sh.cLine);
+		puts(sh.cLine);
+	}
+
+	sh.cMD = 0;
 }
 
 static void
@@ -266,6 +446,7 @@ shLinePutC(char xC)
 		putc(xC);
 
 		sh.cMD = 0;
+		sh.hMD = 0;
 	}
 }
 
@@ -281,6 +462,7 @@ shLineBS()
 		puts(SH_BACKSPACE);
 
 		sh.cMD = 0;
+		sh.hMD = 0;
 	}
 }
 
@@ -294,6 +476,7 @@ shLineNULL()
 	puts(SH_PROMPT);
 
 	sh.cMD = 0;
+	sh.hMD = 0;
 }
 
 void shTask()
@@ -302,31 +485,64 @@ void shTask()
 
 	while ((xC = shRecv()) >= 0) {
 
-		if (isChar(xC) || isDigit(xC)
-				|| (xC == ' ')
-				|| (xC == '_')
-				|| (xC == '.')
-				|| (xC == '-')
-				|| (xC == '%')) {
+		if (sh.xESC == 0) {
 
-			shLinePutC(xC);
+			if (isChar(xC) || isDigit(xC)
+					|| (xC == ' ')
+					|| (xC == '_')
+					|| (xC == '.')
+					|| (xC == '-')
+					|| (xC == '%')) {
+
+				shLinePutC(xC);
+			}
+			else if (xC == '\r') {
+
+				/* Echo.
+				 * */
+				puts(EOL);
+
+				shEval();
+				shLineNULL();
+			}
+			else if (xC == '\b') {
+
+				shLineBS();
+			}
+			else if (xC == '\t') {
+
+				shComplete();
+			}
+			else if (xC == K_DLE) {
+
+				shHistory(DIR_UP);
+			}
+			else if (xC == K_SO) {
+
+				shHistory(DIR_DOWN);
+			}
+			else if (xC == K_ESC) {
+
+				sh.xESC = 1;
+			}
 		}
-		else if (xC == '\r') {
+		else {
+			if (sh.xESC == 1) {
 
-			/* Echo.
-			 * */
-			puts(EOL);
+				sh.xESC = (xC == '[') ? 2 : 0;
+			}
+			else {
+				if (xC == 'A') {
 
-			shEval();
-			shLineNULL();
-		}
-		else if (xC == '\b') {
+					shHistory(DIR_UP);
+				}
+				else if (xC == 'B') {
 
-			shLineBS();
-		}
-		else if (xC == '\t') {
+					shHistory(DIR_DOWN);
+				}
 
-			shComplete();
+				sh.xESC = 0;
+			}
 		}
 	}
 }

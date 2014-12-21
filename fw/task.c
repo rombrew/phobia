@@ -25,7 +25,7 @@ taskDATA_t			td;
 
 void halTick()
 {
-	td.mTIM++;
+	td.uTICK++;
 }
 
 void adcIRQ()
