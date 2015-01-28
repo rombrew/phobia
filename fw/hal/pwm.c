@@ -21,12 +21,7 @@
 
 halPWM_TypeDef			halPWM;
 
-void irqTIM1_UP_TIM10()
-{
-	TIM1->SR &= ~TIM_SR_UIF;
-
-	GPIOE->ODR ^= (1UL << 7);
-}
+void irqTIM1_UP_TIM10() { }
 
 void pwmEnable(int hzF, int nsD)
 {
@@ -58,7 +53,7 @@ void pwmEnable(int hzF, int nsD)
 	TIM1->CR1 = TIM_CR1_ARPE | TIM_CR1_CMS_0 | TIM_CR1_CMS_1;
 	TIM1->CR2 = TIM_CR2_MMS_1 | TIM_CR2_CCPC;
 	TIM1->SMCR = 0;
-	TIM1->DIER = TIM_DIER_UIE;
+	TIM1->DIER = 0;
 	TIM1->CCMR1 = TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1 | TIM_CCMR1_OC2PE
 		| TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1PE;
 	TIM1->CCMR2 = TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3PE;
@@ -79,13 +74,6 @@ void pwmEnable(int hzF, int nsD)
 	TIM1->EGR |= TIM_EGR_COMG | TIM_EGR_UG;
 	TIM1->CR1 |= TIM_CR1_CEN;
 	TIM1->RCR = 1;
-
-	/* Enable IRQ.
-	 * */
-	NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 1);
-	NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
-
-	MODIFY_REG(GPIOE->MODER, GPIO_MODER_MODER7, GPIO_MODER_MODER7_0);
 
 	/* Enable PE8-PE13 pins.
 	 * */

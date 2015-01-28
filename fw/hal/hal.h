@@ -23,6 +23,8 @@
 #include "pwm.h"
 #include "uart.h"
 
+#define __RAM__			__attribute__ ((section (".ram")))
+
 enum {
 	LED_GREEN		= 1,
 	LED_ORANGE		= 2,

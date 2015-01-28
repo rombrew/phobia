@@ -29,7 +29,6 @@ int strlen(const char *s);
 void putc(char c);
 void puts(const char *s);
 void printf(const char *fmt, ...);
-void *malloc(unsigned long int usz);
 
 #endif /* _H_LIB_ */
 

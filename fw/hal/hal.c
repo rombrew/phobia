@@ -139,14 +139,6 @@ boardStart()
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
 
-	/* Enable CCM RAM clock.
-	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_CCMDATARAMEN;
-
-	/* Enable compensation cell.
-	 * */
-	/*SYSCFG->CMPCR |= SYSCFG_CMPCR_CMP_PD;*/
-
 	/* Enable GPIO clock.
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN

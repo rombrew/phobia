@@ -23,17 +23,22 @@ halADC_TypeDef			halADC;
 
 void irqADC()
 {
-	ADC1->SR &= ~ADC_SR_JEOC;
+	if (ADC1->SR & ADC_SR_JEOC) {
 
-	halADC.xA = ADC1->JDR1;
-	GPIOE->ODR ^= (1UL << 7);
+		ADC1->SR &= ~ADC_SR_JEOC;
+		ADC2->SR &= ~ADC_SR_JEOC;
+
+		halADC.xA = ADC1->JDR1;
+
+		adcIRQ();
+	}
 }
 
 void adcEnable()
 {
-	/* Enable ADC1 clock.
+	/* Enable ADC clock.
 	 * */
-	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN;
 
 	/* Enable analog PA1, PA2, PA3 pins.
 	 * */
@@ -59,6 +64,10 @@ void adcEnable()
 	 * */
 	ADC1->CR2 |= ADC_CR2_ADON;
 
+	/* Enable multi mode.
+	 * */
+	ADC->CCR |= ADC_CCR_MULTI_0;
+
 	/* Enable IRQ.
 	 * */
 	NVIC_SetPriority(ADC_IRQn, 5);
@@ -67,5 +76,8 @@ void adcEnable()
 
 void adcDisable()
 {
+	/* Disable ADC clock.
+	 * */
+	RCC->APB2ENR &= ~(RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN);
 }
 

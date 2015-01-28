@@ -48,7 +48,7 @@ void libStart()
 		r = fread(&lib, sizeof(lib_t), 1, fseed);
 		fclose(fseed);
 	}
-	
+
 	if (r != 1) {
 
 		r = (unsigned int) time(NULL);

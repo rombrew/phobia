@@ -24,11 +24,10 @@
 
 typedef struct {
 
-	char		rBuf[UART_RXBUF_SZ];
+	char		RX[UART_RXBUF_SZ];
+	char		TX[UART_TXBUF_SZ];
+
 	int		rN;
-
-	char		tBuf[UART_TXBUF_SZ];
-
 }
 halUART_TypeDef;
 

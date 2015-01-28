@@ -28,8 +28,8 @@
 
 #define TEL_FILE	"/tmp/TEL"
 
-static blm_t	m;
-static pmc_t	pm;
+static blm_t		m;
+static pmc_t		pm;
 
 static void
 blmDC(int uA, int uB, int uC)
@@ -45,40 +45,9 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
-	static int 	sT = 0;
-
 	if (T > 2.) {
 
 		pm.iSPQ = 5.f;
-	}
-
-	if (T > 5.) {
-
-		pm.iSPQ = 10.f;
-	}
-
-	if (T > 7.) {
-
-		pm.iSPQ = 2.f + sin(T * 100.);
-	}
-
-	if (T > 3.) {
-
-		//m.R = pm.R * (1. + .2);
-		//m.E = pm.E * (1. + .1);
-		m.L = (1. / pm.IL) * (1. - .05);
-
-		if (sT == 0) {
-
-			pm.cA0 += .1f;
-			sT = 1;
-		}
-	}
-
-	if (T > 6.) {
-
-		//m.R = pm.R * (1. + .4);
-		//m.L = 474e-6;
 	}
 }
 
@@ -126,8 +95,8 @@ simTel(float *pTel)
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.pX + Q * pm.pY;
-	B = D * pm.pY - Q * pm.pX;
+	A = D * pm.rX + Q * pm.rY;
+	B = D * pm.rY - Q * pm.rX;
 	C = atan2(B, A);
 
 	/* Estimated position.
@@ -135,20 +104,20 @@ simTel(float *pTel)
 	pTel[12] = pm.kX[2];
 	pTel[13] = C;
 
-	/* Speed and load torque.
+	/* Speed.
 	 * */
 	pTel[14] = pm.kX[3];
-	pTel[15] = pm.kX[4];
 
 	/* Plant constants.
 	 * */
-	pTel[16] = pm.U;
-	pTel[17] = pm.kX[5];
-	pTel[18] = pm.kX[6];
-	pTel[19] = pm.kX[7];
+	pTel[15] = pm.U;
+	pTel[16] = pm.R;
+	pTel[17] = pm.Ld;
+	pTel[18] = pm.Lq;
+	pTel[19] = pm.E;
 	pTel[20] = pm.Zp;
-	pTel[21] = pm.kX[8];
-	pTel[22] = -.5f * pm.kX[8] + .8660254f * pm.kX[9];
+	pTel[21] = pm.M;
+	pTel[22] = pm.J;
 }
 
 static void
@@ -206,22 +175,9 @@ simF(double Tend, int Verb)
 	fclose(fdTel);
 }
 
-static void
-simReport(FILE *fout)
-{
-	fprintf(fout, "\n-----------------------------------------\n");
-	fprintf(fout, "U = %.3E \tVolt \t%.2f%%\n", pm.U,
-			100.f * (pm.U - m.U) / m.U);
-	fprintf(fout, "R = %.3E \tOhm \t%.2f%%\n", pm.R,
-			100.f * (pm.R - m.R) / m.R);
-	fprintf(fout, "L = %.3E \tHenry \t%.2f%%\n", 1. / pm.IL,
-			100.f * (1. / pm.IL - m.L) / m.L);
-	fprintf(fout, "\n-----------------------------------------\n");
-}
-
 int main(int argc, char *argv[])
 {
-	double		Tend = 10.;
+	double		Tend = 5.;
 
 	libStart();
 
@@ -234,20 +190,19 @@ int main(int argc, char *argv[])
 	pm.pZ = &blmZ;
 
 	pm.R = m.R * (1. + .0);
-	pm.IL = 1. / (m.L * (1. - .0));
+	pm.Ld = m.L * (1. - .0);
+	pm.Lq = pm.Ld;
 	pm.E = m.E * (1. + .0);
 
 	pm.Zp = 11;
-	pm.IJ = 1. / m.J;
+	pm.M = 0.f;
+	pm.J = m.J;
 
 	pmcEnable(&pm);
 
-	pm.fMOF = 0;
-	pm.fST1 = PMC_STATE_DRIFT;
+	pm.mReq = PMC_REQ_SPINUP;
 
 	simF(Tend, 0);
-
-	simReport(stdout);
 
 	libStop();
 

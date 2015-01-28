@@ -38,6 +38,31 @@ void uptime(char *s)
 			Day, Hour, Min, Sec);
 }
 
+void pm_impedance(char *s)
+{
+	complex_t	Zxx, Zxy, Zyx, Zyy;
+	float		Lx, Ly;
+
+	pm->IMP.UX = pm->sUX / pm->U;
+	pm->IMP.UY = pm->sUY / pm->U;
+	pm->IMP.AM = pm->sUAM / pm->U;
+	pm->IMP.DF = 2.f * KPI * pm->sFq / pm->hzF;
+
+	Lx = pm->tIX.re * pm->tIX.re + pm->tIX.im * pm->tIX.im;
+	Ly = pm->tIY.re * pm->tIY.re + pm->tIY.im * pm->tIY.im;
+
+	Zxx.re = (pm->tUX.re * pm->tIX.re + pm->tUX.im * pm->tIX.im) / Lx;
+	Zxx.im = (pm->tUX.re * pm->tIX.im - pm->tUX.im * pm->tIX.re) / Lx;
+	Zxy.re = (pm->tUX.re * pm->tIY.re + pm->tUX.im * pm->tIY.im) / Ly;
+	Zxy.im = (pm->tUX.re * pm->tIY.im - pm->tUX.im * pm->tIY.re) / Ly;
+	Zyx.re = (pm->tUY.re * pm->tIX.re + pm->tUY.im * pm->tIX.im) / Lx;
+	Zyx.im = (pm->tUY.re * pm->tIX.im - pm->tUY.im * pm->tIX.re) / Lx;
+	Zyy.re = (pm->tUY.re * pm->tIY.re + pm->tUY.im * pm->tIY.im) / Ly;
+	Zyy.im = (pm->tUY.re * pm->tIY.im - pm->tUY.im * pm->tIY.re) / Ly;
+
+	/*pm->R = pm->tA.re;
+					pm->L = pm->tA.im / 2.f * KPI * pm->sFq;*/
+}
 
 void led(char *s)
 {
@@ -68,9 +93,11 @@ const shCMD_t		cmList[] = {
 
 	{"uptime", &uptime},
 
+	{"pm_impedance", &pm_impedance},
+
 	{"led", &led},
 	{"prt", &prt},
-	
+
 	{NULL, NULL},
 };
 

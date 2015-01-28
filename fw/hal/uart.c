@@ -21,7 +21,7 @@
 
 #include "../task.h"
 
-halUART_TypeDef			halUART;
+halUART_TypeDef __RAM__		halUART;
 
 void irqUSART3() { td.xIN = 1; }
 
@@ -61,7 +61,7 @@ void uartEnable(unsigned long int bR)
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF1 | DMA_LIFCR_CHTIF1 | DMA_LIFCR_CTEIF1
 		| DMA_LIFCR_CDMEIF1 | DMA_LIFCR_CFEIF1;
 	DMA1_Stream1->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream1->M0AR = (unsigned int) halUART.rBuf;
+	DMA1_Stream1->M0AR = (unsigned int) halUART.RX;
 	DMA1_Stream1->NDTR = UART_RXBUF_SZ;
 	DMA1_Stream1->FCR = 0;
 	DMA1_Stream1->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
@@ -74,7 +74,7 @@ void uartEnable(unsigned long int bR)
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
 		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
 	DMA1_Stream3->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream3->M0AR = (unsigned int) halUART.tBuf;
+	DMA1_Stream3->M0AR = (unsigned int) halUART.TX;
 	DMA1_Stream3->NDTR = 0;
 	DMA1_Stream3->FCR = 0;
 	DMA1_Stream3->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
@@ -127,7 +127,7 @@ int uartRX()
 
 		/* There are data.
 		 * */
-		xC = halUART.rBuf[rN];
+		xC = halUART.RX[rN];
 		halUART.rN = (rN < (UART_RXBUF_SZ - 1)) ? rN + 1 : 0;
 	}
 	else
@@ -138,7 +138,7 @@ int uartRX()
 
 char *uartGetTX()
 {
-	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : halUART.tBuf;
+	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : halUART.TX;
 }
 
 void uartTX(int N)

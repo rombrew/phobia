@@ -22,7 +22,7 @@ SECTIONS
 		*(.text.*)
 		*(.rodata)
 		*(.rodata.*)
- 
+
 		. = ALIGN(4);
 		ldEtext = . ;
 
@@ -38,7 +38,7 @@ SECTIONS
 		. = ALIGN(4);
 		ldEdata = . ;
 
-	} > RAM
+	} > CCD
 
 	.bss : ALIGN(4)
 	{
@@ -50,6 +50,18 @@ SECTIONS
 
 		. = ALIGN(4);
 		ldEbss = . ;
+
+	} > CCD
+
+	.data : ALIGN(4)
+	{
+		ldSram = . ;
+
+		*(.ram)
+		*(.ram.*)
+
+		. = ALIGN(4);
+		ldEram = . ;
 
 	} > RAM
 }
