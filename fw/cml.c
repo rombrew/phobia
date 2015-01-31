@@ -21,6 +21,8 @@
 #include "task.h"
 #include "lib.h"
 
+#include "pmc.h"
+
 void uptime(char *s)
 {
 	int		Day, Hour, Min, Sec;
@@ -40,7 +42,7 @@ void uptime(char *s)
 
 void pm_impedance(char *s)
 {
-	complex_t	Zxx, Zxy, Zyx, Zyy;
+	/*complex_t	Zxx, Zxy, Zyx, Zyy;
 	float		Lx, Ly;
 
 	pm->IMP.UX = pm->sUX / pm->U;
@@ -58,45 +60,57 @@ void pm_impedance(char *s)
 	Zyx.re = (pm->tUY.re * pm->tIX.re + pm->tUY.im * pm->tIX.im) / Lx;
 	Zyx.im = (pm->tUY.re * pm->tIX.im - pm->tUY.im * pm->tIX.re) / Lx;
 	Zyy.re = (pm->tUY.re * pm->tIY.re + pm->tUY.im * pm->tIY.im) / Ly;
-	Zyy.im = (pm->tUY.re * pm->tIY.im - pm->tUY.im * pm->tIY.re) / Ly;
+	Zyy.im = (pm->tUY.re * pm->tIY.im - pm->tUY.im * pm->tIY.re) / Ly;*/
 
 	/*pm->R = pm->tA.re;
 					pm->L = pm->tA.im / 2.f * KPI * pm->sFq;*/
 }
 
-void led(char *s)
+pmc_t __CCM__			pm;
+
+static void
+xDC(int uA, int uB, int uC) { }
+
+static void
+xZ(int Z) { }
+
+void pm_test(char *s)
 {
-	halLED(LED_BLUE);
+	int		t0, t1;
+
+	pm.hzF = 20000.f;
+	pm.pwmR = 700;
+
+	pm.pDC = &xDC;
+	pm.pZ = &xZ;
+
+	pm.U = 12.f;
+	pm.R = 74e-3;
+	pm.Ld = 44e-6;
+	pm.Lq = pm.Ld;
+	pm.E = 64e-4;
+
+	pm.Zp = 11;
+	pm.M = 0.f;
+	pm.J = 10e-5;
+
+	pmcEnable(&pm);
+
+	pm.mBit = PMC_MODE_EKF_6X_BASE;
+
+	t0 = halSysTick();
+	pmcFeedBack(&pm, 2048, 2048, 0);
+	t1 = halSysTick();
+
+	printf("pmc %i" EOL, t0 - t1);
 }
-
-void prt(char *s)
-{
-	int		x;
-
-	halLED(LED_GREEN);
-	x = 123456789;
-
-	printf("1: long long string %i %i %i \r\n", x, x, x);
-	printf("2: long long string %i %i %i \r\n", x, x, x);
-	printf("3: long long string %i %i %i \r\n", x, x, x);
-	printf("4: long long string %i %i %i \r\n", x, x, x);
-	printf("5: long long string %i %i %i \r\n", x, x, x);
-	printf("6: long long string %i %i %i \r\n", x, x, x);
-	printf("7: long long string %i %i %i \r\n", x, x, x);
-	printf("8: long long string %i %i %i \r\n", x, x, x);
-	printf("9: long long string %i %i %i \r\n", x, x, x);
-}
-
-extern void shHistoryShow();
 
 const shCMD_t		cmList[] = {
 
 	{"uptime", &uptime},
 
 	{"pm_impedance", &pm_impedance},
-
-	{"led", &led},
-	{"prt", &prt},
+	{"pm_test", &pm_test},
 
 	{NULL, NULL},
 };

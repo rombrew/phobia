@@ -38,7 +38,7 @@ SECTIONS
 		. = ALIGN(4);
 		ldEdata = . ;
 
-	} > CCD
+	} > RAM
 
 	.bss : ALIGN(4)
 	{
@@ -51,18 +51,18 @@ SECTIONS
 		. = ALIGN(4);
 		ldEbss = . ;
 
-	} > CCD
+	} > RAM
 
-	.data : ALIGN(4)
+	.ccm : ALIGN(4)
 	{
-		ldSram = . ;
+		ldSccm = . ;
 
-		*(.ram)
-		*(.ram.*)
+		*(.ccm)
+		*(.ccm.*)
 
 		. = ALIGN(4);
-		ldEram = . ;
+		ldEccm = . ;
 
-	} > RAM
+	} > CCM
 }
 

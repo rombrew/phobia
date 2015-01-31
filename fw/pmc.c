@@ -18,9 +18,6 @@
 
 #include "pmc.h"
 
-#include <stdio.h>
-#include <math.h>
-
 #define KPI			3.1415927f
 
 static float
@@ -85,11 +82,12 @@ void pmcEnable(pmc_t *pm)
 {
 	pm->dT = 1.f / pm->hzF;
 
-	/*
+	/* Default configuration.
 	 * */
 	pm->sTdrift = .1f;
 	pm->sThold = .7f;
 	pm->sTend = .1f;
+	pm->sMP = (int) (250e-9f * pm->hzF * pm->pwmR + .5f);
 
 	/* ADC conversion constants.
 	 * */
@@ -184,7 +182,7 @@ static void
 kFB(pmc_t *pm, float iA, float iB)
 {
 	float		*X = pm->kX, *P = pm->kP;
-	float		rX, rY, iX, iY, xA, xB, eA, eB, wMAX;
+	float		rX, rY, iX, iY, xA, xB, eA, eB, dR;
 	float		C[6], PC[12], S[3], iS[3], K[12], Det;
 
 	/* Rotor axes.
@@ -259,9 +257,9 @@ kFB(pmc_t *pm, float iA, float iB)
 		 * */
 		X[0] += K[0] * eA + K[1] * eB;
 		X[1] += K[2] * eA + K[3] * eB;
-		X[2] += K[4] * eA + K[5] * eB;
+		dR = K[4] * eA + K[5] * eB;
+		X[2] += (dR < - KPI) ? - KPI : (dR > KPI) ? KPI : dR;
 		X[3] += K[6] * eA + K[7] * eB;
-
 		pm->M += K[8] * eA + K[9] * eB;
 		pm->E += K[10] * eA + K[11] * eB;
 
@@ -297,12 +295,6 @@ kFB(pmc_t *pm, float iA, float iB)
 	/* Ensure that angular position is in range.
 	 * */
 	X[2] = (X[2] < - KPI) ? X[2] + 2.f * KPI : (X[2] > KPI) ? X[2] - 2.f * KPI : X[2];
-	X[2] = (X[2] < - KPI) ? - KPI : (X[2] > KPI) ? KPI : X[2];
-
-	/* Maximal speed is one radian per cycle.
-	 * */
-	wMAX = 1.f * pm->hzF;
-	X[3] = (X[3] < - wMAX) ? - wMAX : (X[3] > wMAX) ? wMAX : X[3];
 
 	/* Previous state variables.
 	 * */
@@ -314,7 +306,7 @@ kFB(pmc_t *pm, float iA, float iB)
 
 	/* Update state estimate.
 	 * */
-	sFC(pm);
+	sFC(pm); // 725 ticks
 
 	/* Update rotor axes.
 	 * */
@@ -442,7 +434,7 @@ uFB(pmc_t *pm, float uX, float uY)
 	const float	uEPS = 1e-3f;
 	float		uA, uB, uC, Q;
 	float		uMIN, uMAX, uMID;
-	int		xA, xB, xC;
+	int		xA, xB, xC, U;
 
 	/* Transform the voltage vector to ABC axes.
 	 * */
@@ -519,6 +511,13 @@ uFB(pmc_t *pm, float uX, float uY)
 	xA = (int) (pm->pwmR * uA + .5f);
 	xB = (int) (pm->pwmR * uB + .5f);
 	xC = (int) (pm->pwmR * uC + .5f);
+
+	/* Minimal pulse width.
+	 * */
+	U = pm->pwmR - pm->sMP;
+	xA = (xA < pm->sMP) ? 0 : (xA > U) ? pm->pwmR : xA;
+	xB = (xB < pm->sMP) ? 0 : (xB > U) ? pm->pwmR : xB;
+	xC = (xC < pm->sMP) ? 0 : (xC > U) ? pm->pwmR : xC;
 
 	/* Update PWM duty cycle.
 	 * */
@@ -836,7 +835,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		/* EKF.
 		 * */
-		kFB(pm, iA, iB);
+		kFB(pm, iA, iB); // 1658 ticks
 
 		/* Current control loop.
 		 * */
@@ -851,7 +850,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		/* EKF.
 		 * */
-		kAT(pm);
+		kAT(pm); // 664 ticks
 	}
 }
 

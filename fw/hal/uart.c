@@ -21,7 +21,7 @@
 
 #include "../task.h"
 
-halUART_TypeDef __RAM__		halUART;
+halUART_TypeDef 		halUART;
 
 void irqUSART3() { td.xIN = 1; }
 

@@ -12,7 +12,8 @@ MK	= mkdir -p
 RM      = rm -rf
 
 CFLAGS  = -std=gnu99 -pipe -Wall -O3
-CFLAGS	+= -mcpu=cortex-m4 -mhard-float -mthumb
+CFLAGS	+= -mcpu=cortex-m4 -mthumb
+CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS  += -fno-hosted
 CFLAGS  += -fno-stack-protector
 AFLAGS	= -mcpu=cortex-m4 -mthumb
@@ -31,7 +32,8 @@ OBJS	= hal/entry.o \
 OBJS	+= task.o \
 	lib.o \
 	sh.o \
-	cml.o
+	cml.o \
+	pmc.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

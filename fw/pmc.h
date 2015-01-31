@@ -69,9 +69,10 @@ typedef struct {
 	int		timVal;
 	int		timEnd;
 
-	/* Startup configuration.
+	/* Configuration.
 	 * */
 	float		sTdrift, sThold, sTend;
+	int		sMP;
 
 	/* Impedance variables.
 	 * */

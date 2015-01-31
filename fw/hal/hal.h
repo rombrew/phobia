@@ -23,7 +23,7 @@
 #include "pwm.h"
 #include "uart.h"
 
-#define __RAM__			__attribute__ ((section (".ram")))
+#define __CCM__			__attribute__ ((section (".ccm")))
 
 enum {
 	LED_GREEN		= 1,
@@ -52,6 +52,7 @@ extern void			*ldHeap;
 void halStart();
 void halWFI();
 void halLED(int F);
+int halSysTick();
 
 extern void halMain();
 extern void halTick();

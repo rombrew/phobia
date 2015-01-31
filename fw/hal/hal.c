@@ -139,6 +139,10 @@ boardStart()
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
 
+	/* Enable CCM RAM clock.
+	 * */
+	RCC->AHB1ENR |= RCC_AHB1ENR_CCMDATARAMEN;
+
 	/* Enable GPIO clock.
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
@@ -186,6 +190,11 @@ void halWFI()
 	__WFI();
 }
 
+int halSysTick()
+{
+	return SysTick->VAL;
+}
+
 void halLED(int F)
 {
 	if (F & LED_GREEN)
@@ -205,7 +214,7 @@ void halLED(int F)
 		GPIOD->BSRRL = (1UL << 14);
 	else
 		GPIOD->BSRRH = (1UL << 14);
-	
+
 	if (F & LED_BLUE)
 
 		GPIOD->BSRRL = (1UL << 15);
