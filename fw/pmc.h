@@ -72,7 +72,8 @@ typedef struct {
 	/* Configuration.
 	 * */
 	float		sTdrift, sThold, sTend;
-	int		sMP;
+	float		pwmEPS;
+	int		pwmMP;
 
 	/* Impedance variables.
 	 * */
@@ -94,7 +95,7 @@ typedef struct {
 
 	/* Kalman filter.
 	 * */
-	float		kX[4];
+	float		kX[5];
 	float		kP[45];
 	float		kQ[9];
 	float		kR;
@@ -103,15 +104,10 @@ typedef struct {
 	 * */
 	float		kT[5];
 
-	/* Rotor axes.
-	 * */
-	float		rX, rY;
-
 	/* Zero Drift.
 	 * */
 	float		zA;
 	float		zB;
-	float		zU;
 
 	/* Electrical constants.
 	 * */
@@ -142,6 +138,11 @@ typedef struct {
 	float		wXX;
 	float		wKP;
 	float		wKI;
+
+	/* Limit values.
+	 * */
+	float		iMAX;
+	float		wMAX;
 
 	/* Control interface.
 	 * */

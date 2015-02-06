@@ -45,9 +45,9 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
-	if (T > 2.) {
+	if (T > 1.) {
 
-		pm.iSPQ = 5.f;
+		//pm.wSP = 1000.f * (T - 1.);
 	}
 }
 
@@ -95,18 +95,18 @@ simTel(float *pTel)
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.rX + Q * pm.rY;
-	B = D * pm.rY - Q * pm.rX;
+	A = D * pm.kX[2] + Q * pm.kX[3];
+	B = D * pm.kX[3] - Q * pm.kX[2];
 	C = atan2(B, A);
 
 	/* Estimated position.
 	 * */
-	pTel[12] = pm.kX[2];
+	pTel[12] = atan2(pm.kX[3], pm.kX[2]);
 	pTel[13] = C;
 
 	/* Speed.
 	 * */
-	pTel[14] = pm.kX[3];
+	pTel[14] = pm.kX[4];
 
 	/* Plant constants.
 	 * */
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. + .0);
+	pm.R = m.R * (1. + .1);
 	pm.Ld = m.L * (1. - .0);
 	pm.Lq = pm.Ld;
 	pm.E = m.E * (1. + .0);

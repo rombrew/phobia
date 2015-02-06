@@ -55,7 +55,7 @@ if (N == 6) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'Load Torque'
-	plot	@TEL using 1:15 title 'Load Torque' with lines 
+	plot	@TEL using 1:21 title 'Load Torque' with lines 
 }
 
 if (N == 7) {
