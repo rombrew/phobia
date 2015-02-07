@@ -45,9 +45,9 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
-	if (T > 1.) {
+	if (T > 3.) {
 
-		//pm.wSP = 1000.f * (T - 1.);
+		pm.wSP = - 5000.f;
 	}
 }
 
@@ -189,14 +189,14 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. + .1);
-	pm.Ld = m.L * (1. - .0);
-	pm.Lq = pm.Ld;
-	pm.E = m.E * (1. + .0);
+	pm.R = m.R * (1. - .2 * libGauss());
+	pm.Ld = m.L * (1. + .03 * libGauss());
+	pm.Lq = m.L * (1. - .03 * libGauss());
+	pm.E = m.E * (1. + .1 * libGauss());
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.J = m.J;
+	pm.J = m.J / 2.f;
 
 	pmcEnable(&pm);
 

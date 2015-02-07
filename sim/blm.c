@@ -50,7 +50,7 @@ void blmEnable(blm_t *m)
         m->X[0] = 0.; /* Phase A current (Ampere) */
 	m->X[1] = 0.; /* Phase B current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
-        m->X[3] = -1.; /* Electrical Position (Radian) */
+        m->X[3] = libGauss(); /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 
 	/* Winding resistance. (Ohm)

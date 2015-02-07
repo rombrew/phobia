@@ -102,7 +102,6 @@ void pmcEnable(pmc_t *pm)
 	/* Default configuration.
 	 * */
 	pm->sTdrift = .1f;
-	pm->sThold = .5f;
 	pm->sTend = .1f;
 
 	pm->pwmEPS = 1e-2f;
@@ -119,16 +118,14 @@ void pmcEnable(pmc_t *pm)
 
 	/* Model covariance.
 	 * */
-	pm->kQ[0] = 1e-2;
-	pm->kQ[1] = 1e-2;
-	pm->kQ[2] = 1e-4;
-	pm->kQ[3] = 1e-4;
-	pm->kQ[4] = 1e-6;
-	pm->kQ[5] = 1e-12;
+	pm->kQ[0] = 1e-6f;
+	pm->kQ[1] = 1e-6f;
+	pm->kQ[2] = 1e-6f;
+	pm->kQ[3] = 1e-6f;
+	pm->kQ[4] = 1e-6f;
 
-	pm->kQ[6] = 1e-2;
-	pm->kQ[7] = 1e-16;
-	pm->kQ[8] = 0e-10;
+	pm->kQ[5] = 1e-16f;
+	pm->kQ[6] = 1e-12f;
 
 	/* Measurement covariance.
 	 * */
@@ -141,7 +138,7 @@ void pmcEnable(pmc_t *pm)
 	pm->wKP = 1e-1f;
 	pm->wKI = 0e-3f;
 
-	pm->iMAX = 20.f;
+	pm->iMAX = 5.f;
 	pm->wMAX = 2e+4f;
 }
 
@@ -198,7 +195,7 @@ kFB(pmc_t *pm, float iA, float iB)
 {
 	float		*X = pm->kX, *P = pm->kP;
 	float		iX, iY, xA, xB, eA, eB, dR;
-	float		C[6], PC[12], S[3], iS[3], K[12], D;
+	float		C[6], PC[14], S[3], iS[3], K[14], D;
 
 	/* Get model output.
 	 * */
@@ -238,6 +235,8 @@ kFB(pmc_t *pm, float iA, float iB)
 		PC[9] = P[10] * C[3] + P[11] * C[4] + P[12] * C[5];
 		PC[10] = P[15] * C[0] + P[16] * C[1] + P[17] * C[2];
 		PC[11] = P[15] * C[3] + P[16] * C[4] + P[17] * C[5];
+		PC[12] = P[21] * C[0] + P[22] * C[1] + P[23] * C[2];
+		PC[13] = P[21] * C[3] + P[22] * C[4] + P[23] * C[5];
 
 		S[0] = C[0] * PC[0] + C[1] * PC[2] + C[2] * PC[4] + pm->kR;
 		S[1] = C[0] * PC[1] + C[1] * PC[3] + C[2] * PC[5];
@@ -262,6 +261,8 @@ kFB(pmc_t *pm, float iA, float iB)
 		K[9] = PC[8] * iS[1] + PC[9] * iS[2];
 		K[10] = PC[10] * iS[0] + PC[11] * iS[1];
 		K[11] = PC[10] * iS[1] + PC[11] * iS[2];
+		K[12] = PC[12] * iS[0] + PC[13] * iS[1];
+		K[13] = PC[12] * iS[1] + PC[13] * iS[2];
 
 		/* X = X + K * e;
 		 * */
@@ -271,8 +272,10 @@ kFB(pmc_t *pm, float iA, float iB)
 		dR = (dR < -1.f) ? -1.f : (dR > 1.f) ? 1.f : dR;
 		dROT(X + 2, dR, X + 2);
 		X[4] += K[6] * eA + K[7] * eB;
+
 		pm->M += K[8] * eA + K[9] * eB;
 		pm->E += K[10] * eA + K[11] * eB;
+		pm->R += K[12] * eA + K[13] * eB;
 
 		/* P = P - K * C * P.
 		 * */
@@ -297,6 +300,13 @@ kFB(pmc_t *pm, float iA, float iB)
 		P[18] -= K[10] * PC[6] + K[11] * PC[7];
 		P[19] -= K[10] * PC[8] + K[11] * PC[9];
 		P[20] -= K[10] * PC[10] + K[11] * PC[11];
+		P[21] -= K[12] * PC[0] + K[13] * PC[1];
+		P[22] -= K[12] * PC[2] + K[13] * PC[3];
+		P[23] -= K[12] * PC[4] + K[13] * PC[5];
+		P[24] -= K[12] * PC[6] + K[13] * PC[7];
+		P[25] -= K[12] * PC[8] + K[13] * PC[9];
+		P[26] -= K[12] * PC[10] + K[13] * PC[11];
+		P[27] -= K[12] * PC[12] + K[13] * PC[13];
 	}
 	else if (1) {
 
@@ -313,7 +323,7 @@ kFB(pmc_t *pm, float iA, float iB)
 
 	/* Update state estimate.
 	 * */
-	sFC(pm); // 725 ticks
+	sFC(pm); // 489 ticks
 }
 
 static void
@@ -322,7 +332,7 @@ kAT(pmc_t *pm)
 	float		*X = pm->kX, *P = pm->kP, *Q = pm->kQ;
 	float		dT, iD, iQ, rX, rY, wR, L;
 	float		dToLd, dToLq, dToJ, Zp2;
-	float		A[13], PA[36];
+	float		A[15], PA[49];
 
 	dT = pm->dT;
 
@@ -351,83 +361,127 @@ kAT(pmc_t *pm)
 	A[1] = wR * pm->Lq * dToLd;
 	A[2] = (rX * pm->uY - rY * pm->uX) * dToLd;
 	A[3] = iQ * pm->Lq * dToLd;
+	A[4] = - iD * dToLd;
 
-	A[4] = - wR * pm->Ld * dToLq;
-	A[5] = 1.f - pm->R * dToLq;
-	A[6] = (- rY * pm->uY - rX * pm->uX) * dToLq;
-	A[7] = (- pm->E - iD * pm->Ld) * dToLq;
-	A[8] = - wR * dToLq;
+	A[5] = - wR * pm->Ld * dToLq;
+	A[6] = 1.f - pm->R * dToLq;
+	A[7] = (- rY * pm->uY - rX * pm->uX) * dToLq;
+	A[8] = (- pm->E - iD * pm->Ld) * dToLq;
+	A[9] = - wR * dToLq;
+	A[10] = - iQ * dToLq;
 
-	A[9] = iQ * (pm->Ld - pm->Lq) * Zp2;
-	A[10] = Zp2 * (pm->E - iD * (pm->Lq - pm->Ld));
-	A[11] = - pm->Zp * dToJ;
-	A[12] = iQ * Zp2;
+	A[11] = iQ * (pm->Ld - pm->Lq) * Zp2;
+	A[12] = Zp2 * (pm->E - iD * (pm->Lq - pm->Ld));
+	A[13] = - pm->Zp * dToJ;
+	A[14] = iQ * Zp2;
 
 	/* P = A * P * A' + Q.
 	 * */
-	PA[0] = P[0] * A[0] + P[1] * A[1] + P[3] * A[2] + P[6] * A[3];
-	PA[1] = P[0] * A[4] + P[1] * A[5] + P[3] * A[6] + P[6] * A[7] + P[15] * A[8];
+	PA[0] = P[0] * A[0] + P[1] * A[1] + P[3] * A[2] + P[6] * A[3] + P[21] * A[4];
+	PA[1] = P[0] * A[5] + P[1] * A[6] + P[3] * A[7] + P[6] * A[8] + P[15] * A[9]
+		+ P[21] * A[10];
 	PA[2] = P[3] + P[6] * dT;
-	PA[3] = P[0] * A[9] + P[1] * A[10] + P[6] + P[10] * A[11] + P[15] * A[12];
-	PA[4] = P[10];
-	PA[5] = P[15];
+	PA[3] = P[0] * A[11] + P[1] * A[12] + P[6] + P[10] * A[13] + P[15] * A[14];
+	//PA[4] = P[10];
+	//PA[5] = P[15];
+	//PA[6] = P[21];
 
-	PA[6] = P[1] * A[0] + P[2] * A[1] + P[4] * A[2] + P[7] * A[3];
-	PA[7] = P[1] * A[4] + P[2] * A[5] + P[4] * A[6] + P[7] * A[7] + P[16] * A[8];
-	PA[8] = P[4] + P[7] * dT;
-	PA[9] = P[1] * A[9] + P[2] * A[10] + P[7] + P[11] * A[11] + P[16] * A[12];
-	PA[10] = P[11];
-	PA[11] = P[16];
+	PA[7] = P[1] * A[0] + P[2] * A[1] + P[4] * A[2] + P[7] * A[3] + P[22] * A[4];
+	PA[8] = P[1] * A[5] + P[2] * A[6] + P[4] * A[7] + P[7] * A[8] + P[16] * A[9]
+		+ P[22] * A[10];
+	PA[9] = P[4] + P[7] * dT;
+	PA[10] = P[1] * A[11] + P[2] * A[12] + P[7] + P[11] * A[13] + P[16] * A[14];
+	//PA[11] = P[11];
+	//PA[12] = P[16];
+	//PA[13] = P[22];
 
-	PA[12] = P[3] * A[0] + P[4] * A[1] + P[5] * A[2] + P[8] * A[3];
-	PA[13] = P[3] * A[4] + P[4] * A[5] + P[5] * A[6] + P[8] * A[7] + P[17] * A[8];
-	PA[14] = P[5] + P[8] * dT;
-	PA[15] = P[3] * A[9] + P[4] * A[10] + P[8] + P[12] * A[11] + P[17] * A[12];
-	PA[16] = P[12];
-	PA[17] = P[17];
+	PA[14] = P[3] * A[0] + P[4] * A[1] + P[5] * A[2] + P[8] * A[3] + P[23] * A[4];
+	PA[15] = P[3] * A[5] + P[4] * A[6] + P[5] * A[7] + P[8] * A[8] + P[17] * A[9]
+		+ P[23] * A[10];
+	PA[16] = P[5] + P[8] * dT;
+	//PA[17] = P[3] * A[11] + P[4] * A[12] + P[8] + P[12] * A[13] + P[17] * A[14];
+	//PA[18] = P[12];
+	//PA[19] = P[17];
+	//PA[20] = P[23];
 
-	PA[18] = P[6] * A[0] + P[7] * A[1] + P[8] * A[2] + P[9] * A[3];
-	PA[19] = P[6] * A[4] + P[7] * A[5] + P[8] * A[6] + P[9] * A[7] + P[18] * A[8];
-	PA[20] = P[8] + P[9] * dT;
-	PA[21] = P[6] * A[9] + P[7] * A[10] + P[9] + P[13] * A[11] + P[18] * A[12];
-	PA[22] = P[13];
-	PA[23] = P[18];
+	PA[21] = P[6] * A[0] + P[7] * A[1] + P[8] * A[2] + P[9] * A[3] + P[24] * A[4];
+	PA[22] = P[6] * A[5] + P[7] * A[6] + P[8] * A[7] + P[9] * A[8] + P[18] * A[9]
+		+ P[24] * A[10];
+	PA[23] = P[8] + P[9] * dT;
+	PA[24] = P[6] * A[11] + P[7] * A[12] + P[9] + P[13] * A[13] + P[18] * A[14];
+	//PA[25] = P[13];
+	//PA[26] = P[18];
+	//PA[27] = P[24];
 
-	PA[24] = P[10] * A[0] + P[11] * A[1] + P[12] * A[2] + P[13] * A[3];
-	PA[25] = P[10] * A[4] + P[11] * A[5] + P[12] * A[6] + P[13] * A[7] + P[19] * A[8];
-	PA[26] = P[12] + P[13] * dT;
-	PA[27] = P[10] * A[9] + P[11] * A[10] + P[13] + P[14] * A[11] + P[19] * A[12];
-	PA[28] = P[14];
-	PA[29] = P[19];
+	PA[28] = P[10] * A[0] + P[11] * A[1] + P[12] * A[2] + P[13] * A[3] + P[25] * A[4];
+	PA[29] = P[10] * A[5] + P[11] * A[6] + P[12] * A[7] + P[13] * A[8] + P[19] * A[9]
+		+ P[25] * A[10];
+	PA[30] = P[12] + P[13] * dT;
+	PA[31] = P[10] * A[11] + P[11] * A[12] + P[13] + P[14] * A[13] + P[19] * A[14];
+	//PA[32] = P[14];
+	//PA[33] = P[19];
+	//PA[34] = P[25];
 
-	PA[30] = P[15] * A[0] + P[16] * A[1] + P[17] * A[2] + P[18] * A[3];
-	PA[31] = P[15] * A[4] + P[16] * A[5] + P[17] * A[6] + P[18] * A[7] + P[20] * A[8];
-	PA[32] = P[17] + P[18] * dT;
-	PA[33] = P[15] * A[9] + P[16] * A[10] + P[18] + P[19] * A[11] + P[20] * A[12];
-	PA[34] = P[19];
-	PA[35] = P[20];
+	PA[35] = P[15] * A[0] + P[16] * A[1] + P[17] * A[2] + P[18] * A[3] + P[26] * A[4];
+	PA[36] = P[15] * A[5] + P[16] * A[6] + P[17] * A[7] + P[18] * A[8] + P[20] * A[9]
+		+ P[26] * A[10];
+	PA[37] = P[17] + P[18] * dT;
+	PA[38] = P[15] * A[11] + P[16] * A[12] + P[18] + P[19] * A[13] + P[20] * A[14];
+	//PA[39] = P[19];
+	//PA[40] = P[20];
+	//PA[41] = P[26];
 
-	P[0] = A[0] * PA[0] + A[1] * PA[6] + A[2] * PA[12] + A[3] * PA[18] + Q[0];
-	P[1] = A[4] * PA[0] + A[5] * PA[6] + A[6] * PA[12] + A[7] * PA[18] + A[8] * PA[30];
-	P[2] = A[4] * PA[1] + A[5] * PA[7] + A[6] * PA[13] + A[7] * PA[19] + A[8] * PA[31] + Q[1];
-	P[3] = PA[12] + dT * PA[18];
-	P[4] = PA[13] + dT * PA[19];
-	P[5] = PA[14] + dT * PA[20] + Q[2];
-	P[6] = A[9] * PA[0] + A[10] * PA[6] + PA[18] + A[11] * PA[24] + A[12] * PA[30];
-	P[7] = A[9] * PA[1] + A[10] * PA[7] + PA[19] + A[11] * PA[25] + A[12] * PA[31];
-	P[8] = A[9] * PA[2] + A[10] * PA[8] + PA[20] + A[11] * PA[26] + A[12] * PA[32];
-	P[9] = A[9] * PA[3] + A[10] * PA[9] + PA[21] + A[11] * PA[27] + A[12] * PA[33] + Q[3];
-	P[10] = PA[24];
-	P[11] = PA[25];
-	P[12] = PA[26];
-	P[13] = PA[27];
-	P[14] = PA[28] + Q[4];
-	P[15] = PA[30];
-	P[16] = PA[31];
-	P[17] = PA[32];
-	P[18] = PA[33];
-	P[19] = PA[34];
-	P[20] = PA[35] + Q[5];
+	PA[42] = P[21] * A[0] + P[22] * A[1] + P[23] * A[2] + P[24] * A[3] + P[27] * A[4];
+	PA[43] = P[21] * A[5] + P[22] * A[6] + P[23] * A[7] + P[24] * A[8] + P[26] * A[9]
+		+ P[27] * A[10];
+	PA[44] = P[23] + P[24] * dT;
+	PA[45] = P[21] * A[11] + P[22] * A[12] + P[24] + P[25] * A[13] + P[26] * A[14];
+	//PA[46] = P[25];
+	//PA[47] = P[26];
+	//PA[48] = P[27];
+
+	P[0] = A[0] * PA[0] + A[1] * PA[7] + A[2] * PA[14] + A[3] * PA[21] + A[4] * PA[42];
+	P[1] = A[5] * PA[0] + A[6] * PA[7] + A[7] * PA[14] + A[8] * PA[21] + A[9] * PA[35]
+		+ A[10] * PA[42];
+	P[2] = A[5] * PA[1] + A[6] * PA[8] + A[7] * PA[15] + A[8] * PA[22] + A[9] * PA[36]
+		+ A[10] * PA[43];
+	P[3] = PA[14] + dT * PA[21];
+	P[4] = PA[15] + dT * PA[22];
+	P[5] = PA[16] + dT * PA[23];
+	P[6] = A[11] * PA[0] + A[12] * PA[7] + PA[21] + A[13] * PA[28] + A[14] * PA[35];
+	P[7] = A[11] * PA[1] + A[12] * PA[8] + PA[22] + A[13] * PA[29] + A[14] * PA[36];
+	P[8] = A[11] * PA[2] + A[12] * PA[9] + PA[23] + A[13] * PA[30] + A[14] * PA[37];
+	P[9] = A[11] * PA[3] + A[12] * PA[10] + PA[24] + A[13] * PA[31] + A[14] * PA[38];
+
+	P[10] = PA[28];
+	P[11] = PA[29];
+	P[12] = PA[30];
+	P[13] = PA[31];
+	//P[14] = PA[32];
+
+	P[15] = PA[35];
+	P[16] = PA[36];
+	P[17] = PA[37];
+	P[18] = PA[38];
+	//P[19] = PA[39];
+	//P[20] = PA[40];
+
+	P[21] = PA[42];
+	P[22] = PA[43];
+	P[23] = PA[44];
+	P[24] = PA[45];
+	//P[25] = PA[46];
+	//P[26] = PA[47];
+	//P[27] = PA[48];
+
+	P[0] += Q[0];
+	P[2] += Q[1];
+	P[5] += Q[2];
+	P[9] += Q[3];
+	P[14] += Q[4];
+
+	P[20] += (P[20] < 1.f) ? Q[5] : 0.f;
+	P[27] += (P[27] < 1.f) ? Q[6] : 0.f;
 }
 
 static void
@@ -605,7 +659,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mReq != PMC_REQ_NULL) {
 
-				if (pm->mBit & PMC_MODE_EKF_6X_BASE) {
+				if (pm->mBit & PMC_MODE_EKF_7X_BASE) {
 
 					if (pm->mReq == PMC_REQ_BREAK)
 						pm->mS1 = PMC_STATE_BREAK;
@@ -775,7 +829,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 				int			j;
 
-				pm->mBit |= PMC_MODE_EKF_6X_BASE;
+				pm->mBit |= PMC_MODE_EKF_7X_BASE
+					| PMC_MODE_SPEED_CONTROL_LOOP;
 
 				pm->kX[0] = 0.f;
 				pm->kX[1] = 0.f;
@@ -786,39 +841,24 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->zA = 0.f;
 				pm->zB = 0.f;
 
-				for (j = 0; j < 21; ++j)
+				for (j = 0; j < 28; ++j)
 					pm->kP[j] = 0.f;
 
 				pm->kP[0] = 1e+4f;
 				pm->kP[2] = 1e+4f;
 				pm->kP[5] = 5.f;
 				pm->kP[9] = 5.f;
+				pm->kP[14] = 1.f;
 
-				pm->iSPD = 1.f;
-				pm->iSPQ = 0.f;
+				pm->kP[20] = 5e-8f;
+				pm->kP[27] = 2e-3f;
 
-				pm->timVal = 0;
-				pm->timEnd = pm->hzF * pm->sThold;
+				pm->wSP = 3000.f;
 
-				pm->mS2++;
-			}
-			else if (pm->mS2 == 1) {
 
-				pm->timVal++;
-
-				if (pm->timVal < pm->timEnd) ;
-				else {
-					pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
-
-					pm->iSPD = 0.f;
-					pm->iSPQ = 1.f;
-
-					pm->wSP = 3000.f;
-
-					pm->mReq = PMC_REQ_NULL;
-					pm->mS1 = PMC_STATE_IDLE;
-					pm->mS2 = 0;
-				}
+				pm->mReq = PMC_REQ_NULL;
+				pm->mS1 = PMC_STATE_IDLE;
+				pm->mS2 = 0;
 			}
 			break;
 
@@ -852,7 +892,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	bFSM(pm, iA, iB, uS);
 
-	if (pm->mBit & PMC_MODE_EKF_6X_BASE) {
+	if (pm->mBit & PMC_MODE_EKF_7X_BASE) {
 
 		/* EKF.
 		 * */
@@ -871,7 +911,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		/* EKF.
 		 * */
-		kAT(pm); // 664 ticks
+		kAT(pm); // 664/897 ticks
 	}
 }
 

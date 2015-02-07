@@ -29,7 +29,7 @@ enum {
 };
 
 enum {
-	PMC_MODE_EKF_6X_BASE			= 0x0100,
+	PMC_MODE_EKF_7X_BASE			= 0x0100,
 	PMC_MODE_EKF_9X_FULL			= 0x0200,
 	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0400,
 	PMC_MODE_EFFICIENT_MODULATION		= 0x0001,
@@ -71,7 +71,7 @@ typedef struct {
 
 	/* Configuration.
 	 * */
-	float		sTdrift, sThold, sTend;
+	float		sTdrift, sTend;
 	float		pwmEPS;
 	int		pwmMP;
 
@@ -96,8 +96,8 @@ typedef struct {
 	/* Kalman filter.
 	 * */
 	float		kX[5];
-	float		kP[45];
-	float		kQ[9];
+	float		kP[28];
+	float		kQ[7];
 	float		kR;
 
 	/* Temporal.
