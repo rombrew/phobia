@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,66 +17,6 @@
 */
 
 #include "pmc.h"
-
-#define KPI			3.1415927f
-
-static float
-ksin(float x)
-{
-	float		u;
-	int		s = 0;
-
-	if (x < 0.f) {
-
-		x = - x;
-		s = 1;
-	}
-
-	if (x > KPI / 2.f) {
-
-		x = KPI - x;
-	}
-
-	u = -1.3741951e-4f;
-	u = -2.0621440e-4f + u * x;
-	u =  8.6430385e-3f + u * x;
-	u = -2.4749696e-4f + u * x;
-	u = -1.6655975e-1f + u * x;
-	u = -2.3177562e-5f + u * x;
-	u =  1.0000021e+0f + u * x;
-	u = -4.0553596e-8f + u * x;
-
-	return s ? - u : u;
-}
-
-static float
-kcos(float x)
-{
-	float		u;
-	int		s = 0;
-
-	if (x < 0.f) {
-
-		x = - x;
-	}
-
-	if (x > KPI / 2.f) {
-
-		x = KPI - x;
-		s = 1;
-	}
-
-	u =  1.3804255e-4f;
-	u = -1.7206567e-3f + u * x;
-	u =  4.2851990e-4f + u * x;
-	u =  4.1352723e-2f + u * x;
-	u =  1.2810877e-4f + u * x;
-	u = -5.0002667e-1f + u * x;
-	u =  2.2899566e-6f + u * x;
-	u =  9.9999996e-1f + u * x;
-
-	return s ? - u : u;
-}
 
 static void
 dROT(float B[2], float R, const float A[2])
@@ -101,8 +41,8 @@ void pmcEnable(pmc_t *pm)
 
 	/* Default configuration.
 	 * */
-	pm->sTdrift = .1f;
-	pm->sTend = .1f;
+	pm->Tdrift = .1f;
+	pm->Tend = .1f;
 
 	pm->pwmEPS = 1e-2f;
 	pm->pwmMP = (int) (2e-7f * pm->hzF * pm->pwmR + .5f);
@@ -140,6 +80,7 @@ void pmcEnable(pmc_t *pm)
 
 	pm->iMAX = 5.f;
 	pm->wMAX = 2e+4f;
+	pm->wMIN = 0.f;
 }
 
 static void
@@ -160,7 +101,8 @@ dEq(pmc_t *pm, float D[], float X[])
 	/* Mechanical equations.
 	 * */
 	D[2] = X[4];
-	D[3] = pm->Zp * (1.5f * pm->Zp * (pm->E - (pm->Lq - pm->Ld) * X[0]) * X[1] - pm->M) / pm->J;
+	D[3] = pm->Zp * (1.5f * pm->Zp * (pm->E - (pm->Lq - pm->Ld) * X[0]) * X[1]
+			- pm->M) * pm->IJ;
 }
 
 static void
@@ -202,8 +144,8 @@ kFB(pmc_t *pm, float iA, float iB)
 	iX = X[2] * X[0] - X[3] * X[1];
 	iY = X[3] * X[0] + X[2] * X[1];
 
-	xA = iX - pm->zA;
-	xB = - .5f * iX + .8660254f * iY - pm->zB;
+	xA = iX - pm->Ad;
+	xB = - .5f * iX + .8660254f * iY - pm->Bd;
 
 	/* Obtain residual.
 	 * */
@@ -323,7 +265,7 @@ kFB(pmc_t *pm, float iA, float iB)
 
 	/* Update state estimate.
 	 * */
-	sFC(pm); // 489 ticks
+	sFC(pm);
 }
 
 static void
@@ -331,7 +273,7 @@ kAT(pmc_t *pm)
 {
 	float		*X = pm->kX, *P = pm->kP, *Q = pm->kQ;
 	float		dT, iD, iQ, rX, rY, wR, L;
-	float		dToLd, dToLq, dToJ, Zp2;
+	float		dToLd, dToLq, dTIJ, Zp2;
 	float		A[15], PA[49];
 
 	dT = pm->dT;
@@ -352,8 +294,8 @@ kAT(pmc_t *pm)
 	 * */
 	dToLd = dT / pm->Ld;
 	dToLq = dT / pm->Lq;
-	dToJ = dT / pm->J;
-	Zp2 = 1.5f * pm->Zp * pm->Zp * dToJ;
+	dTIJ = dT * pm->IJ;
+	Zp2 = 1.5f * pm->Zp * pm->Zp * dTIJ;
 
 	/* Transition Jacobian matrix.
 	 * */
@@ -372,7 +314,7 @@ kAT(pmc_t *pm)
 
 	A[11] = iQ * (pm->Ld - pm->Lq) * Zp2;
 	A[12] = Zp2 * (pm->E - iD * (pm->Lq - pm->Ld));
-	A[13] = - pm->Zp * dToJ;
+	A[13] = - pm->Zp * dTIJ;
 	A[14] = iQ * Zp2;
 
 	/* P = A * P * A' + Q.
@@ -382,63 +324,41 @@ kAT(pmc_t *pm)
 		+ P[21] * A[10];
 	PA[2] = P[3] + P[6] * dT;
 	PA[3] = P[0] * A[11] + P[1] * A[12] + P[6] + P[10] * A[13] + P[15] * A[14];
-	//PA[4] = P[10];
-	//PA[5] = P[15];
-	//PA[6] = P[21];
 
 	PA[7] = P[1] * A[0] + P[2] * A[1] + P[4] * A[2] + P[7] * A[3] + P[22] * A[4];
 	PA[8] = P[1] * A[5] + P[2] * A[6] + P[4] * A[7] + P[7] * A[8] + P[16] * A[9]
 		+ P[22] * A[10];
 	PA[9] = P[4] + P[7] * dT;
 	PA[10] = P[1] * A[11] + P[2] * A[12] + P[7] + P[11] * A[13] + P[16] * A[14];
-	//PA[11] = P[11];
-	//PA[12] = P[16];
-	//PA[13] = P[22];
 
 	PA[14] = P[3] * A[0] + P[4] * A[1] + P[5] * A[2] + P[8] * A[3] + P[23] * A[4];
 	PA[15] = P[3] * A[5] + P[4] * A[6] + P[5] * A[7] + P[8] * A[8] + P[17] * A[9]
 		+ P[23] * A[10];
 	PA[16] = P[5] + P[8] * dT;
-	//PA[17] = P[3] * A[11] + P[4] * A[12] + P[8] + P[12] * A[13] + P[17] * A[14];
-	//PA[18] = P[12];
-	//PA[19] = P[17];
-	//PA[20] = P[23];
 
 	PA[21] = P[6] * A[0] + P[7] * A[1] + P[8] * A[2] + P[9] * A[3] + P[24] * A[4];
 	PA[22] = P[6] * A[5] + P[7] * A[6] + P[8] * A[7] + P[9] * A[8] + P[18] * A[9]
 		+ P[24] * A[10];
 	PA[23] = P[8] + P[9] * dT;
 	PA[24] = P[6] * A[11] + P[7] * A[12] + P[9] + P[13] * A[13] + P[18] * A[14];
-	//PA[25] = P[13];
-	//PA[26] = P[18];
-	//PA[27] = P[24];
 
 	PA[28] = P[10] * A[0] + P[11] * A[1] + P[12] * A[2] + P[13] * A[3] + P[25] * A[4];
 	PA[29] = P[10] * A[5] + P[11] * A[6] + P[12] * A[7] + P[13] * A[8] + P[19] * A[9]
 		+ P[25] * A[10];
 	PA[30] = P[12] + P[13] * dT;
 	PA[31] = P[10] * A[11] + P[11] * A[12] + P[13] + P[14] * A[13] + P[19] * A[14];
-	//PA[32] = P[14];
-	//PA[33] = P[19];
-	//PA[34] = P[25];
 
 	PA[35] = P[15] * A[0] + P[16] * A[1] + P[17] * A[2] + P[18] * A[3] + P[26] * A[4];
 	PA[36] = P[15] * A[5] + P[16] * A[6] + P[17] * A[7] + P[18] * A[8] + P[20] * A[9]
 		+ P[26] * A[10];
 	PA[37] = P[17] + P[18] * dT;
 	PA[38] = P[15] * A[11] + P[16] * A[12] + P[18] + P[19] * A[13] + P[20] * A[14];
-	//PA[39] = P[19];
-	//PA[40] = P[20];
-	//PA[41] = P[26];
 
 	PA[42] = P[21] * A[0] + P[22] * A[1] + P[23] * A[2] + P[24] * A[3] + P[27] * A[4];
 	PA[43] = P[21] * A[5] + P[22] * A[6] + P[23] * A[7] + P[24] * A[8] + P[26] * A[9]
 		+ P[27] * A[10];
 	PA[44] = P[23] + P[24] * dT;
 	PA[45] = P[21] * A[11] + P[22] * A[12] + P[24] + P[25] * A[13] + P[26] * A[14];
-	//PA[46] = P[25];
-	//PA[47] = P[26];
-	//PA[48] = P[27];
 
 	P[0] = A[0] * PA[0] + A[1] * PA[7] + A[2] * PA[14] + A[3] * PA[21] + A[4] * PA[42];
 	P[1] = A[5] * PA[0] + A[6] * PA[7] + A[7] * PA[14] + A[8] * PA[21] + A[9] * PA[35]
@@ -452,27 +372,18 @@ kAT(pmc_t *pm)
 	P[7] = A[11] * PA[1] + A[12] * PA[8] + PA[22] + A[13] * PA[29] + A[14] * PA[36];
 	P[8] = A[11] * PA[2] + A[12] * PA[9] + PA[23] + A[13] * PA[30] + A[14] * PA[37];
 	P[9] = A[11] * PA[3] + A[12] * PA[10] + PA[24] + A[13] * PA[31] + A[14] * PA[38];
-
 	P[10] = PA[28];
 	P[11] = PA[29];
 	P[12] = PA[30];
 	P[13] = PA[31];
-	//P[14] = PA[32];
-
 	P[15] = PA[35];
 	P[16] = PA[36];
 	P[17] = PA[37];
 	P[18] = PA[38];
-	//P[19] = PA[39];
-	//P[20] = PA[40];
-
 	P[21] = PA[42];
 	P[22] = PA[43];
 	P[23] = PA[44];
 	P[24] = PA[45];
-	//P[25] = PA[46];
-	//P[26] = PA[47];
-	//P[27] = PA[48];
 
 	P[0] += Q[0];
 	P[2] += Q[1];
@@ -679,13 +590,12 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 		case PMC_STATE_DRIFT:
 
-
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
 
-				pm->zA = 0.f;
-				pm->zB = 0.f;
+				pm->Ad = 0.f;
+				pm->Bd = 0.f;
 				pm->kT[0] = 0.f;
 
 				pm->timVal = 0;
@@ -694,8 +604,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->mS2++;
 			}
 			else {
-				pm->zA += -iA;
-				pm->zB += -iB;
+				pm->Ad += -iA;
+				pm->Bd += -iB;
 				pm->kT[0] += uS - pm->U;
 
 				pm->timVal++;
@@ -704,8 +614,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				else {
 					/* Zero Drift.
 					 * */
-					pm->cA0 += pm->zA / pm->timEnd;
-					pm->cB0 += pm->zB / pm->timEnd;
+					pm->cA0 += pm->Ad / pm->timEnd;
+					pm->cB0 += pm->Bd / pm->timEnd;
 
 					/* Supply Voltage.
 					 * */
@@ -713,12 +623,12 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 					if (pm->mS2 == 1) {
 
-						pm->zA = 0.f;
-						pm->zB = 0.f;
+						pm->Ad = 0.f;
+						pm->Bd = 0.f;
 						pm->kT[0] = 0.f;
 
 						pm->timVal = 0;
-						pm->timEnd = pm->hzF * pm->sTdrift;
+						pm->timEnd = pm->hzF * pm->Tdrift;
 
 						pm->mS2++;
 					}
@@ -838,8 +748,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kX[3] = 0.f;
 				pm->kX[4] = 0.f;
 
-				pm->zA = 0.f;
-				pm->zB = 0.f;
+				pm->Ad = 0.f;
+				pm->Bd = 0.f;
+				pm->M = 0.f;
 
 				for (j = 0; j < 28; ++j)
 					pm->kP[j] = 0.f;
@@ -855,7 +766,6 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 				pm->wSP = 3000.f;
 
-
 				pm->mReq = PMC_REQ_NULL;
 				pm->mS1 = PMC_STATE_IDLE;
 				pm->mS2 = 0;
@@ -863,6 +773,12 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			break;
 
 		case PMC_STATE_BREAK:
+
+			pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
+			pm->wSP = 0.f;
+
+			/* TODO */
+
 			break;
 
 		case PMC_STATE_END:
@@ -896,7 +812,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		/* EKF.
 		 * */
-		kFB(pm, iA, iB); // 1658 ticks
+		kFB(pm, iA, iB);
 
 		/* Current control loop.
 		 * */
@@ -911,7 +827,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 		/* EKF.
 		 * */
-		kAT(pm); // 664/897 ticks
+		kAT(pm);
 	}
 }
 

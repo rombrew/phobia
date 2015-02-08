@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,9 +31,9 @@ enum {
 enum {
 	PMC_MODE_EKF_7X_BASE			= 0x0100,
 	PMC_MODE_EKF_9X_FULL			= 0x0200,
-	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0400,
-	PMC_MODE_EFFICIENT_MODULATION		= 0x0001,
-	PMC_MODE_HIGH_FREQUENCY_INJECTION	= 0x0002,
+	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
+	PMC_MODE_EFFICIENT_MODULATION		= 0x0004,
+	PMC_MODE_HIGH_FREQUENCY_INJECTION	= 0x0008,
 };
 
 enum {
@@ -71,7 +71,7 @@ typedef struct {
 
 	/* Configuration.
 	 * */
-	float		sTdrift, sTend;
+	float		Tdrift, Tend;
 	float		pwmEPS;
 	int		pwmMP;
 
@@ -106,8 +106,8 @@ typedef struct {
 
 	/* Zero Drift.
 	 * */
-	float		zA;
-	float		zB;
+	float		Ad;
+	float		Bd;
 
 	/* Electrical constants.
 	 * */
@@ -121,7 +121,7 @@ typedef struct {
 	 * */
 	int		Zp;
 	float		M;
-	float		J;
+	float		IJ;
 
 	/* Current control loop.
 	 * */
@@ -143,6 +143,7 @@ typedef struct {
 	 * */
 	float		iMAX;
 	float		wMAX;
+	float		wMIN;
 
 	/* Control interface.
 	 * */

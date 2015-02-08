@@ -117,7 +117,6 @@ simTel(float *pTel)
 	pTel[19] = pm.E;
 	pTel[20] = pm.Zp;
 	pTel[21] = pm.M;
-	pTel[22] = pm.J;
 }
 
 static void
@@ -196,7 +195,7 @@ int main(int argc, char *argv[])
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.J = m.J / 2.f;
+	pm.IJ = 1.f / m.J;
 
 	pmcEnable(&pm);
 
