@@ -61,23 +61,23 @@ if (N == 6) {
 if (N == 7) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Resistance (mOhm)'
-	plot	@TEL using 1:($16*1e+3) title 'R' with lines
+	set ylabel 'BEMF Constant (Kv)'
+	plot	@TEL using 1:(60/($19*4*pi*$20)) title 'Kv' with lines 
 }
 
 if (N == 8) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Inductance (uH)'
-	plot	@TEL using 1:($17*1e+6) title 'Ld' with lines, \
-		@TEL using 1:($18*1e+6) title 'Lq' with lines
+	set ylabel 'Winding Resistance (mOhm)'
+	plot	@TEL using 1:($16*1e+3) title 'R' with lines
 }
 
 if (N == 9) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'BEMF Constant (Kv)'
-	plot	@TEL using 1:(60/($19*4*pi*$20)) title 'Kv' with lines 
+	set ylabel 'Winding Inductance (uH)'
+	plot	@TEL using 1:($17*1e+6) title 'Ld' with lines, \
+		@TEL using 1:($18*1e+6) title 'Lq' with lines
 }
 
 if (N == 10) {

@@ -2,12 +2,12 @@
  * The equations of PMSM.
  */
 
-X : [id, iq, th, wR, M, E, R];
+X : [id, iq, th, wR, M, E, R, Ld, Lq];
 dF : [	(Ux*cos(th)+Uy*sin(th) - id*R + wR*iq*Lq) / Ld,
 	(Uy*cos(th)-Ux*sin(th) - iq*R - wR*id*Ld - wR*E) / Lq,
 	wR,
 	Zp * (1.5*Zp*iq*(E - (Lq - Ld)*id) - M) / J,
-	0, 0, 0 ];
+	0, 0, 0, 0, 0 ];
 
 F : X + dF * dT;
 A : jacobian(F, X);

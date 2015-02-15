@@ -23,14 +23,12 @@ enum {
 	PMC_REQ_NULL				= 0,
 	PMC_REQ_SPINUP,
 	PMC_REQ_BREAK,
-	PMC_REQ_IMPEDANCE,
-	PMC_REQ_CALIBRATE,
-	PMC_REQ_ESTIMATE_J,
+	PMC_REQ_CALIBRATE
 };
 
 enum {
-	PMC_MODE_EKF_7X_BASE			= 0x0100,
-	PMC_MODE_EKF_9X_FULL			= 0x0200,
+	PMC_MODE_EKF_9X_BASE			= 0x0100,
+	PMC_MODE_EKF_8X_J			= 0x0200,
 	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
 	PMC_MODE_EFFICIENT_MODULATION		= 0x0004,
 	PMC_MODE_HIGH_FREQUENCY_INJECTION	= 0x0008,
@@ -39,7 +37,6 @@ enum {
 enum {
 	PMC_STATE_IDLE				= 0,
 	PMC_STATE_DRIFT,
-	PMC_STATE_IMPEDANCE,
 	PMC_STATE_CALIBRATE,
 	PMC_STATE_SPINUP,
 	PMC_STATE_BREAK,
@@ -75,14 +72,6 @@ typedef struct {
 	float		pwmEPS;
 	int		pwmMP;
 
-	/* Impedance variables.
-	 * */
-	float		jTskip, jTcap;
-	float		jUX, jUY, jAmp, jFq;
-	float		jCOS, jSIN, jX, jY;
-	float		jIXre, jIXim, jIYre, jIYim;
-	float		jUXre, jUXim, jUYre, jUYim;
-
 	/* Conversion constants.
 	 * */
 	float		cA0, cA1;
@@ -96,8 +85,8 @@ typedef struct {
 	/* Kalman filter.
 	 * */
 	float		kX[5];
-	float		kP[28];
-	float		kQ[7];
+	float		kP[45];
+	float		kQ[9];
 	float		kR;
 
 	/* Temporal.
@@ -112,16 +101,23 @@ typedef struct {
 	/* Electrical constants.
 	 * */
 	float		U;
+	float		E;
 	float		R;
 	float		Ld;
 	float		Lq;
-	float		E;
 
 	/* Mechanical constants.
 	 * */
 	int		Zp;
 	float		M;
 	float		IJ;
+
+	/* .
+	 * */
+	float		E_MAX, E_MIN, E_COV;
+	float		R_MIN, R_MAX, R_COV;
+	float		Ld_MIN, Ld_MAX, Ld_COV;
+	float		Lq_MIN, Lq_MAX, Lq_COV;
 
 	/* Current control loop.
 	 * */
