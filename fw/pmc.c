@@ -73,8 +73,8 @@ void pmcEnable(pmc_t *pm)
 	 * */
 	pm->E_COV = 5e-9f;
 	pm->R_COV = 2e-3f;
-	pm->Ld_COV = 0e-9f;
-	pm->Lq_COV = 0e-9f;
+	pm->Ld_COV = 1e-12f;
+	pm->Lq_COV = 1e-12f;
 
 	pm->E_MIN = 3e-4;
 	pm->E_MAX = 3e-3;

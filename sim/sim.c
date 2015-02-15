@@ -47,22 +47,26 @@ simScript(double T)
 {
 	if (T > 1.) {
 
-		pm.wSP = - 5000.f;
+		pm.iSPD = 0.f;
+		pm.iSPQ = -5.f;
 	}
 
 	if (T > 2.) {
 
-		pm.wSP = 5000.f;
+		pm.iSPD = 2.f;
+		pm.iSPQ = 5.f;
 	}
 
 	if (T > 3.) {
 
-		pm.wSP = - 5000.f;
+		pm.iSPD = -2.f;
+		pm.iSPQ = -5.f;
 	}
 
 	if (T > 4.) {
 
-		pm.wSP = 5000.f;
+		pm.iSPD = -2.f;
+		pm.iSPQ = 5.f;
 	}
 }
 
