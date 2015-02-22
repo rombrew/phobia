@@ -209,12 +209,12 @@ int main(int argc, char *argv[])
 
 	pm.R = m.R * (1. - .0);
 	pm.Ld = m.L * (1. - .0);
-	pm.Lq = m.L * (1. + .2);
+	pm.Lq = m.L * (1. + .0);
 	pm.E = m.E * (1. + .0);
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.IJ = 1.f / m.J / 20.f;
+	pm.IJ = 1.f / m.J;
 
 	pmcEnable(&pm);
 

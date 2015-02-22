@@ -76,7 +76,7 @@ void blmEnable(blm_t *m)
 	/* BEMF constant. (Weber)
          * */
 	Kv = 650.; /* Total RPM per Volt */
-        m->E = 60. / 4. / M_PI / (Kv * m->Zp);
+        m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
 	 * */
