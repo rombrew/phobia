@@ -85,8 +85,8 @@ typedef struct {
 	/* Kalman filter.
 	 * */
 	float		kX[5];
-	float		kP[45];
-	float		kQ[9];
+	float		kP[15];
+	float		kQ[5];
 	float		kR;
 
 	/* Temporal.

@@ -207,14 +207,14 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. - .2 * libGauss());
-	pm.Ld = m.L * (1. - .1 * libGauss());
-	pm.Lq = m.L * (1. + .1 * libGauss());
-	pm.E = m.E * (1. + .1 * libGauss());
+	pm.R = m.R * (1. - .0);
+	pm.Ld = m.L * (1. - .0);
+	pm.Lq = m.L * (1. + .2);
+	pm.E = m.E * (1. + .0);
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.IJ = 1.f / m.J * 10.f;
+	pm.IJ = 1.f / m.J / 20.f;
 
 	pmcEnable(&pm);
 
