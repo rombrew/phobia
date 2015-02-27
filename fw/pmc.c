@@ -130,11 +130,77 @@ sFC(pmc_t *pm)
 }
 
 static void
+kEK(pmc_t *pm, float eD, float eQ)
+{
+	float		*P = pm->kEP, *EC = pm->kEC;
+	float		PC[8], S[3], iS[3], K[8], D;
+
+	/* P = P + Q.
+	 * */
+	P[0] += pm->kEQ[0];
+	P[2] += pm->kEQ[1];
+	P[5] += pm->kEQ[2];
+	P[9] += pm->kEQ[3];
+
+	/* S = C * P * C' + R;
+	 * */
+	PC[0] = P[1] * EC[0] + P[6] * EC[1];
+	PC[1] = P[0] * EC[2] + P[1] * EC[3] + P[3] * EC[4];
+	PC[2] = P[2] * EC[0] + P[7] * EC[1];
+	PC[3] = P[1] * EC[2] + P[2] * EC[3] + P[4] * EC[4];
+	PC[4] = P[4] * EC[0] + P[8] * EC[1];
+	PC[5] = P[3] * EC[2] + P[4] * EC[3] + P[5] * EC[4];
+	PC[6] = P[7] * EC[0] + P[9] * EC[1];
+	PC[7] = P[6] * EC[2] + P[7] * EC[3] + P[8] * EC[4];
+
+	S[0] = EC[0] * PC[2] + EC[1] * PC[6] + pm->kR;
+	S[1] = EC[2] * PC[0] + EC[3] * PC[2] + EC[4] * PC[4];
+	S[2] = EC[2] * PC[1] + EC[3] * PC[3] + EC[4] * PC[5] + pm->kR;
+
+	/* K = P * C' / S;
+	 * */
+	D = S[0] * S[2] - S[1] * S[1];
+	iS[0] = S[2] / D;
+	iS[1] = - S[1] / D;
+	iS[2] = S[0] / D;
+
+	K[0] = PC[0] * iS[0] + PC[1] * iS[1];
+	K[1] = PC[0] * iS[1] + PC[1] * iS[2];
+	K[2] = PC[2] * iS[0] + PC[3] * iS[1];
+	K[3] = PC[2] * iS[1] + PC[3] * iS[2];
+	K[4] = PC[4] * iS[0] + PC[5] * iS[1];
+	K[5] = PC[4] * iS[1] + PC[5] * iS[2];
+	K[6] = PC[6] * iS[0] + PC[7] * iS[1];
+	K[7] = PC[6] * iS[1] + PC[7] * iS[2];
+
+	/* X = X + K * e;
+	 * */
+	pm->E += K[0] * eD + K[1] * eQ;
+	pm->R += K[2] * eD + K[3] * eQ;
+	pm->Ld += K[4] * eD + K[5] * eQ;
+	pm->Lq += K[6] * eD + K[7] * eQ;
+
+	/* P = P - K * C * P.
+	 * */
+	P[0] -= K[0] * PC[0] + K[1] * PC[1];
+	P[1] -= K[2] * PC[0] + K[3] * PC[1];
+	P[2] -= K[2] * PC[2] + K[3] * PC[3];
+	P[3] -= K[4] * PC[0] + K[5] * PC[1];
+	P[4] -= K[4] * PC[2] + K[5] * PC[3];
+	P[5] -= K[4] * PC[4] + K[5] * PC[5];
+	P[6] -= K[6] * PC[0] + K[7] * PC[1];
+	P[7] -= K[6] * PC[2] + K[7] * PC[3];
+	P[8] -= K[6] * PC[4] + K[7] * PC[5];
+	P[9] -= K[6] * PC[6] + K[7] * PC[7];
+}
+
+static void
 kFB(pmc_t *pm, float iA, float iB)
 {
 	float		*X = pm->kX, *P = pm->kP;
 	float		C[6], PC[10], S[3], iS[3], K[10], D;
-	float		iX, iY, xA, xB, eA, eB, dR;
+	float		iX, iY, xA, xB, dR;
+	float		eA, eB, eD, eQ;
 
 	/* Get model output.
 	 * */
@@ -149,33 +215,34 @@ kFB(pmc_t *pm, float iA, float iB)
 	eA = iA - xA;
 	eB = iB - xB;
 
-	/* Output Jacobian matrix.
-	 * */
-	C[0] = X[2];
-	C[1] = - X[3];
-	C[2] = - X[2] * X[1] - X[3] * X[0];
-	C[3] = - .5f * X[2] + .8660254f * X[3];
-	C[4] = .5f * X[3] + .8660254f * X[2];
-	C[5] = - .5f * (C[2]) + .8660254f * (- X[3] * X[1] + X[2] * X[0]);
-
 	if (1) {
+
+		/* Transform residual to XY axes.
+		 * */
+		iX = eA;
+		iY = .57735027f * eA + 1.1547005f * eB;
+
+		/* Transform residual to DQ axes.
+		 * */
+		eD = X[2] * iX + X[3] * iY;
+		eQ = X[2] * iY - X[3] * iX;
 
 		/* S = C * P * C' + R;
 		 * */
-		PC[0] = P[0] * C[0] + P[1] * C[1] + P[3] * C[2];
-		PC[1] = P[0] * C[3] + P[1] * C[4] + P[3] * C[5];
-		PC[2] = P[1] * C[0] + P[2] * C[1] + P[4] * C[2];
-		PC[3] = P[1] * C[3] + P[2] * C[4] + P[4] * C[5];
-		PC[4] = P[3] * C[0] + P[4] * C[1] + P[5] * C[2];
-		PC[5] = P[3] * C[3] + P[4] * C[4] + P[5] * C[5];
-		PC[6] = P[6] * C[0] + P[7] * C[1] + P[8] * C[2];
-		PC[7] = P[6] * C[3] + P[7] * C[4] + P[8] * C[5];
-		PC[8] = P[10] * C[0] + P[11] * C[1] + P[12] * C[2];
-		PC[9] = P[10] * C[3] + P[11] * C[4] + P[12] * C[5];
+		PC[0] = P[0] - P[3] * X[1];
+		PC[1] = P[1] + P[3] * X[0];
+		PC[2] = P[1] - P[4] * X[1];
+		PC[3] = P[2] + P[4] * X[0];
+		PC[4] = P[3] - P[5] * X[1];
+		PC[5] = P[4] + P[5] * X[0];
+		PC[6] = P[6] - P[8] * X[1];
+		PC[7] = P[7] + P[8] * X[0];
+		PC[8] = P[10] - P[12] * X[1];
+		PC[9] = P[11] + P[12] * X[0];
 
-		S[0] = C[0] * PC[0] + C[1] * PC[2] + C[2] * PC[4] + pm->kR;
-		S[1] = C[0] * PC[1] + C[1] * PC[3] + C[2] * PC[5];
-		S[2] = C[3] * PC[1] + C[4] * PC[3] + C[5] * PC[5] + pm->kR;
+		S[0] = PC[0] - X[1] * PC[4] + pm->kR;
+		S[1] = PC[1] - X[1] * PC[5];
+		S[2] = PC[3] + X[0] * PC[5] + pm->kR;
 
 		/* K = P * C' / S;
 		 * */
@@ -197,13 +264,13 @@ kFB(pmc_t *pm, float iA, float iB)
 
 		/* X = X + K * e;
 		 * */
-		X[0] += K[0] * eA + K[1] * eB;
-		X[1] += K[2] * eA + K[3] * eB;
-		dR = K[4] * eA + K[5] * eB;
+		X[0] += K[0] * eD + K[1] * eQ;
+		X[1] += K[2] * eD + K[3] * eQ;
+		dR = K[4] * eD + K[5] * eQ;
 		dR = (dR < -1.f) ? -1.f : (dR > 1.f) ? 1.f : dR;
 		dROT(X + 2, dR, X + 2);
-		X[4] += K[6] * eA + K[7] * eB;
-		pm->M += K[8] * eA + K[9] * eB;
+		X[4] += K[6] * eD + K[7] * eQ;
+		pm->M += K[8] * eD + K[9] * eQ;
 
 		/* P = P - K * C * P.
 		 * */
@@ -222,10 +289,21 @@ kFB(pmc_t *pm, float iA, float iB)
 		P[12] -= K[8] * PC[4] + K[9] * PC[5];
 		P[13] -= K[8] * PC[6] + K[9] * PC[7];
 		P[14] -= K[8] * PC[8] + K[9] * PC[9];
+
+		//kEK(pm, eD, eQ);
 	}
 	else if (1) {
 
 		/* TODO: Single output case */
+
+		/* Output Jacobian matrix.
+		 * */
+		/*C[0] = X[2];
+		  C[1] = - X[3];
+		  C[2] = - X[2] * X[1] - X[3] * X[0];
+		  C[3] = - .5f * X[2] + .8660254f * X[3];
+		  C[4] = .5f * X[3] + .8660254f * X[2];
+		  C[5] = - .5f * (C[2]) + .8660254f * (- X[3] * X[1] + X[2] * X[0]);*/
 	}
 
 	/* Temporal.
@@ -244,7 +322,7 @@ kFB(pmc_t *pm, float iA, float iB)
 static void
 kAT(pmc_t *pm)
 {
-	float		*X = pm->kX, *P = pm->kP;
+	float		*X = pm->kX, *P = pm->kP, *EC = pm->kEC;
 	float		A[11], PA[20];
 	float		dT, iD, iQ, rX, rY, wR;
 	float		dTLd, dTLq, dTIJ, Zp2, L;
@@ -269,6 +347,14 @@ kAT(pmc_t *pm)
 	dTLq = dT / pm->Lq;
 	dTIJ = dT * pm->IJ;
 	Zp2 = 1.5f * pm->Zp * pm->Zp * dTIJ;
+
+	/* Electrical EKF output matrix.
+	 * */
+	EC[0] = - iD * dTLd;
+	EC[1] = wR * iQ * dTLd;
+	EC[2] = - wR * dTLq;
+	EC[3] = - iQ * dTLq;
+	EC[4] = - wR * iD * dTLq;
 
 	/* Transition Jacobian matrix.
 	 * */
@@ -499,7 +585,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mReq != PMC_REQ_NULL) {
 
-				if (pm->mBit & PMC_MODE_EKF_9X_BASE) {
+				if (pm->mBit & PMC_MODE_EKF_5X_BASE) {
 
 					if (pm->mReq == PMC_REQ_BREAK)
 						pm->mS1 = PMC_STATE_BREAK;
@@ -581,7 +667,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 				int			j;
 
-				pm->mBit |= PMC_MODE_EKF_9X_BASE
+				pm->mBit |= PMC_MODE_EKF_5X_BASE
 					| PMC_MODE_SPEED_CONTROL_LOOP;
 
 				pm->kX[0] = 0.f;
@@ -602,6 +688,19 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kP[5] = 9.f;
 				pm->kP[9] = 2e+1f;
 				pm->kP[14] = 1.f;
+
+				for (j = 0; j < 9; ++j)
+					pm->kEP[j] = 0.f;
+
+				pm->kEP[0] = 1e-7f;
+				pm->kEP[2] = 1e-4f;
+				pm->kEP[5] = 0e-12f;
+				pm->kEP[9] = 0e-12f;
+
+				pm->kEQ[0] = 0e-9f;
+				pm->kEQ[2] = 0e-9f;
+				pm->kEQ[5] = 0e-9f;
+				pm->kEQ[9] = 0e-9f;
 
 				pm->wSP = 3000.f;
 
@@ -647,7 +746,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	bFSM(pm, iA, iB, uS);
 
-	if (pm->mBit & PMC_MODE_EKF_9X_BASE) {
+	if (pm->mBit & PMC_MODE_EKF_5X_BASE) {
 
 		/* EKF.
 		 * */

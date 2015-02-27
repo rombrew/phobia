@@ -27,7 +27,7 @@ enum {
 };
 
 enum {
-	PMC_MODE_EKF_9X_BASE			= 0x0100,
+	PMC_MODE_EKF_5X_BASE			= 0x0100,
 	PMC_MODE_EKF_8X_J			= 0x0200,
 	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
 	PMC_MODE_EFFICIENT_MODULATION		= 0x0004,
@@ -82,7 +82,7 @@ typedef struct {
 	 * */
 	float		uX, uY;
 
-	/* Kalman filter.
+	/* Base EKF.
 	 * */
 	float		kX[5];
 	float		kP[15];
@@ -91,7 +91,7 @@ typedef struct {
 
 	/* Temporal.
 	 * */
-	float		kT[5];
+	float		kT[7];
 
 	/* Zero Drift.
 	 * */
@@ -112,12 +112,23 @@ typedef struct {
 	float		M;
 	float		IJ;
 
-	/* .
+	/* Electrical EKF.
 	 * */
-	float		E_MAX, E_MIN, E_COV;
-	float		R_MIN, R_MAX, R_COV;
-	float		Ld_MIN, Ld_MAX, Ld_COV;
-	float		Lq_MIN, Lq_MAX, Lq_COV;
+	float		kEC[5];
+	float		kEP[10];
+	float		kEQ[4];
+
+	/*
+	 * */
+	float		E_MAX, E_MIN;
+	float		R_MIN, R_MAX;
+	float		Ld_MIN, Ld_MAX;
+	float		Lq_MIN, Lq_MAX;
+
+	float		E_COV_MAX;
+	float		R_COV_MAX;
+	float		Ld_COV_MAX;
+	float		Lq_COV_MAX;
 
 	/* Current control loop.
 	 * */

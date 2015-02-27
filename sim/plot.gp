@@ -62,7 +62,7 @@ if (N == 7) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'BEMF Constant (Kv)'
-	plot	@TEL using 1:(60/($19*4*pi*$20)) title 'Kv' with lines 
+	plot	@TEL using 1:(60/($19*2*sqrt(3)*pi*$20)) title 'Kv' with lines 
 }
 
 if (N == 8) {

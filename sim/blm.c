@@ -91,7 +91,7 @@ void blmEnable(blm_t *m)
 }
 
 static void
-blmEquation(const blm_t *m, const double X[7], double dX[7])
+blmEquation(const blm_t *m, const double X[], double dX[])
 {
 	double		EA, EB, EC, IA, IB, IC;
 	double		BEMFA, BEMFB, BEMFC;
@@ -176,7 +176,7 @@ blmSolveSplit(blm_t *m, double dT)
 
 	/* Wrap the angular position.
 	 * */
-	m->X[3] = (m->X[3] < -M_PI)
+	m->X[3] = (m->X[3] < - M_PI)
 		? m->X[3] + 2. * M_PI : (m->X[3] > M_PI)
 		? m->X[3] - 2. * M_PI : m->X[3];
 }

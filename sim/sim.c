@@ -207,10 +207,10 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. - .0);
+	pm.R = m.R * (1. + .1);
 	pm.Ld = m.L * (1. - .0);
 	pm.Lq = m.L * (1. + .0);
-	pm.E = m.E * (1. + .0);
+	pm.E = m.E * (1. + .1);
 
 	pm.Zp = 11;
 	pm.M = 0.f;
