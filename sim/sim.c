@@ -45,28 +45,19 @@ blmZ(int Z) { }
 static void
 simScript(double T)
 {
+	if (T > 0.) {
+
+		pm.iSPQ = 1.f;
+	}
+
 	if (T > 1.) {
 
-		pm.iSPD = 0.f;
-		pm.iSPQ = -5.f;
-	}
-
-	if (T > 2.) {
-
-		pm.iSPD = 2.f;
 		pm.iSPQ = 5.f;
-	}
-
-	if (T > 3.) {
-
-		pm.iSPD = -2.f;
-		pm.iSPQ = -5.f;
 	}
 
 	if (T > 4.) {
 
-		pm.iSPD = -2.f;
-		pm.iSPQ = 5.f;
+		pm.iSPQ = - 5.f;
 	}
 }
 
@@ -129,7 +120,7 @@ simTel(float *pTel)
 
 	/* Plant constants.
 	 * */
-	pTel[15] = pm.U;
+	pTel[15] = pm.Qd;
 	pTel[16] = pm.R;
 	pTel[17] = pm.Ld;
 	pTel[18] = pm.Lq;
@@ -207,9 +198,9 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. + .1);
-	pm.Ld = m.L * (1. - .0);
-	pm.Lq = m.L * (1. + .0);
+	pm.R = m.R * (1. + .0);
+	pm.Ld = m.L * (1. + .2);
+	pm.Lq = m.L * (1. + .2);
 	pm.E = m.E * (1. + .1);
 
 	pm.Zp = 11;

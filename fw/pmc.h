@@ -23,6 +23,7 @@ enum {
 	PMC_REQ_NULL				= 0,
 	PMC_REQ_SPINUP,
 	PMC_REQ_BREAK,
+	PMC_REQ_SINE,
 	PMC_REQ_CALIBRATE
 };
 
@@ -37,6 +38,7 @@ enum {
 enum {
 	PMC_STATE_IDLE				= 0,
 	PMC_STATE_DRIFT,
+	PMC_STATE_SINE,
 	PMC_STATE_CALIBRATE,
 	PMC_STATE_SPINUP,
 	PMC_STATE_BREAK,
@@ -85,18 +87,19 @@ typedef struct {
 	/* Base EKF.
 	 * */
 	float		kX[5];
-	float		kP[15];
-	float		kQ[5];
+	float		kP[21];
+	float		kQ[6];
 	float		kR;
 
 	/* Temporal.
 	 * */
-	float		kT[7];
+	float		kT[5];
 
 	/* Zero Drift.
 	 * */
 	float		Ad;
 	float		Bd;
+	float		Qd;
 
 	/* Electrical constants.
 	 * */
@@ -111,24 +114,6 @@ typedef struct {
 	int		Zp;
 	float		M;
 	float		IJ;
-
-	/* Electrical EKF.
-	 * */
-	float		kEC[5];
-	float		kEP[10];
-	float		kEQ[4];
-
-	/*
-	 * */
-	float		E_MAX, E_MIN;
-	float		R_MIN, R_MAX;
-	float		Ld_MIN, Ld_MAX;
-	float		Lq_MIN, Lq_MAX;
-
-	float		E_COV_MAX;
-	float		R_COV_MAX;
-	float		Ld_COV_MAX;
-	float		Lq_COV_MAX;
 
 	/* Current control loop.
 	 * */

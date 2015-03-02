@@ -12,7 +12,7 @@ N = int(system("read N; echo $N"))
 if (N == 1) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Current (A)'
+	set ylabel 'Current (Ampere)'
 	plot    @TEL using 1:2 title 'Plant D' with lines, \
 		@TEL using 1:3 title 'Plant Q' with lines, \
 		@TEL using 1:10 title 'Estimated D' with lines, \
@@ -59,6 +59,13 @@ if (N == 6) {
 }
 
 if (N == 7) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Q Drift (Volt)'
+	plot	@TEL using 1:15 title 'Qd' with lines 
+}
+
+if (N == 17) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'BEMF Constant (Kv)'
