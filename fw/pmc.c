@@ -201,7 +201,7 @@ kFB(pmc_t *pm, float iA, float iB)
 	X[0] += K[0] * eD + K[1] * eQ;
 	X[1] += K[2] * eD + K[3] * eQ;
 	dR = K[4] * eD + K[5] * eQ;
-	dR = (dR < -1.f) ? -1.f : (dR > 1.f) ? 1.f : dR;
+	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 	dROT(X + 2, dR, X + 2);
 	X[4] += K[6] * eD + K[7] * eQ;
 	pm->M += K[8] * eD + K[9] * eQ;
@@ -273,7 +273,7 @@ kAT(pmc_t *pm)
 	dTIJ = dT * pm->IJ;
 	Zp2 = 1.5f * pm->Zp * pm->Zp * dTIJ;
 
-	/* Transition Jacobian matrix.
+	/* Transition matrix Jacobian.
 	 * */
 	A[0] = 1.f - pm->R * dTLd;
 	A[1] = wR * pm->Lq * dTLd;
@@ -322,7 +322,7 @@ kAT(pmc_t *pm)
 	PA[23] = P[15] * A[9] + P[16] * A[10] + P[18] + P[19] * A[11];
 
 	P[0] = A[0] * PA[0] + A[1] * PA[4] + A[2] * PA[8] + A[3] * PA[12] + pm->kQ[0];
-	P[1] = A[4] * PA[0] + A[5] * PA[4] + A[6] * PA[8] + A[7] * PA[12] + A[8] * PA[20];
+	P[1] = A[0] * PA[1] + A[1] * PA[5] + A[2] * PA[9] + A[3] * PA[13];
 	P[2] = A[4] * PA[1] + A[5] * PA[5] + A[6] * PA[9] + A[7] * PA[13] + A[8] * PA[21] + pm->kQ[1];
 	P[3] = PA[8] + dT * PA[12];
 	P[4] = PA[9] + dT * PA[13];
