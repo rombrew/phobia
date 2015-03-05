@@ -94,13 +94,14 @@ dEq(pmc_t *pm, float D[], const float X[])
 	/* Electrical equations.
 	 * */
 	D[0] = (uD - pm->R * X[0] + pm->Lq * X[4] * X[1]) / pm->Ld;
-	D[1] = (uQ - pm->R * X[1] - pm->Ld * X[4] * X[0] - pm->E * X[4] + pm->Qd) / pm->Lq;
+	D[1] = (uQ - pm->R * X[1] - pm->Ld * X[4] * X[0]
+			- pm->E * X[4] + pm->Qd) / pm->Lq;
 
 	/* Mechanical equations.
 	 * */
 	D[2] = X[4];
-	D[3] = pm->Zp * (1.5f * pm->Zp * (pm->E - (pm->Lq - pm->Ld) * X[0]) * X[1]
-			- pm->M) * pm->IJ;
+	D[3] = pm->Zp * (1.5f * pm->Zp * (pm->E - (pm->Lq - pm->Ld)
+				* X[0]) * X[1] - pm->M) * pm->IJ;
 }
 
 static void
@@ -134,7 +135,7 @@ static void
 kFB(pmc_t *pm, float iA, float iB)
 {
 	float		*X = pm->kX, *P = pm->kP;
-	float		PC[12], S[3], iS[3], K[12], D;
+	float		PC[12], S[3], L[3], K[12];
 	float		iX, iY, iD, iQ, eD, eQ, dR;
 
 	/* Zero Drift.
@@ -178,23 +179,22 @@ kFB(pmc_t *pm, float iA, float iB)
 
 	/* K = P * C' / S;
 	 * */
-	D = S[0] * S[2] - S[1] * S[1];
-	iS[0] = S[2] / D;
-	iS[1] = - S[1] / D;
-	iS[2] = S[0] / D;
+	L[0] = 1.f / S[0];
+	L[1] = S[1] * L[0];
+	L[2] = 1.f / (S[2] - S[1] * L[1]);
 
-	K[0] = PC[0] * iS[0] + PC[1] * iS[1];
-	K[1] = PC[0] * iS[1] + PC[1] * iS[2];
-	K[2] = PC[2] * iS[0] + PC[3] * iS[1];
-	K[3] = PC[2] * iS[1] + PC[3] * iS[2];
-	K[4] = PC[4] * iS[0] + PC[5] * iS[1];
-	K[5] = PC[4] * iS[1] + PC[5] * iS[2];
-	K[6] = PC[6] * iS[0] + PC[7] * iS[1];
-	K[7] = PC[6] * iS[1] + PC[7] * iS[2];
-	K[8] = PC[8] * iS[0] + PC[9] * iS[1];
-	K[9] = PC[8] * iS[1] + PC[9] * iS[2];
-	K[10] = PC[10] * iS[0] + PC[11] * iS[1];
-	K[11] = PC[10] * iS[1] + PC[11] * iS[2];
+	K[1] = (PC[1] - PC[0] * L[1]) * L[2];
+	K[0] = PC[0] * L[0] - K[1] * L[1];
+	K[3] = (PC[3] - PC[2] * L[1]) * L[2];
+	K[2] = PC[2] * L[0] - K[3] * L[1];
+	K[5] = (PC[5] - PC[4] * L[1]) * L[2];
+	K[4] = PC[4] * L[0] - K[5] * L[1];
+	K[7] = (PC[7] - PC[6] * L[1]) * L[2];
+	K[6] = PC[6] * L[0] - K[7] * L[1];
+	K[9] = (PC[9] - PC[8] * L[1]) * L[2];
+	K[8] = PC[8] * L[0] - K[9] * L[1];
+	K[11] = (PC[11] - PC[10] * L[1]) * L[2];
+	K[10] = PC[10] * L[0] - K[11] * L[1];
 
 	/* X = X + K * e;
 	 * */
