@@ -18,6 +18,9 @@
 
 #include "pmc.h"
 
+static inline float
+xabs(float x) { return (x < 0.f) ? - x : x; }
+
 static void
 dROT(float B[2], float R, const float A[2])
 {
@@ -42,9 +45,10 @@ void pmcEnable(pmc_t *pm)
 	/* Default configuration.
 	 * */
 	pm->Tdrift = .1f;
+	pm->Thold = .5f;
+	pm->Tsample = .2f;
+	pm->Tout = 1.f;
 	pm->Tend = .1f;
-
-	pm->pwmEPS = 1e-2f;
 	pm->pwmMP = (int) (2e-7f * pm->hzF * pm->pwmR + .5f);
 
 	/* ADC conversion constants.
@@ -63,7 +67,7 @@ void pmcEnable(pmc_t *pm)
 	pm->kQ[2] = 1e-8f;
 	pm->kQ[3] = 1e-8f;
 	pm->kQ[4] = 1e-5f;
-	pm->kQ[5] = 1e-7f;
+	pm->kQ[5] = 1e-9f;
 
 	/* R covariance.
 	 * */
@@ -73,12 +77,12 @@ void pmcEnable(pmc_t *pm)
 	 * */
 	pm->iKP = 2e-2f;
 	pm->iKI = 4e-3f;
-	pm->wKP = 1e-8f;
-	pm->wKI = 1e-8f;
+	pm->wKP = 1e-2f;
+	pm->wKI = 0e-3f;
 
 	pm->iMAX = 5.f;
 	pm->wMAX = 2e+4f;
-	pm->wMIN = 0.f;
+	pm->wMIN = 5e+2f;
 }
 
 static void
@@ -157,6 +161,9 @@ kFB(pmc_t *pm, float iA, float iB)
 	 * */
 	eD = iD - X[0];
 	eQ = iQ - X[1];
+
+	pm->eD = eD;
+	pm->eQ = eQ;
 
 	/* S = C * P * C' + R;
 	 * */
@@ -293,44 +300,53 @@ kAT(pmc_t *pm)
 	/* P = A * P * A' + Q.
 	 * */
 	PA[0] = P[0] * A[0] + P[1] * A[1] + P[3] * A[2] + P[6] * A[3];
-	PA[1] = P[0] * A[4] + P[1] * A[5] + P[3] * A[6] + P[6] * A[7] + P[15] * A[8];
+	PA[1] = P[0] * A[4] + P[1] * A[5] + P[3] * A[6] + P[6] * A[7]
+		+ P[15] * A[8];
 	PA[2] = P[3] + P[6] * dT;
 	PA[3] = P[0] * A[9] + P[1] * A[10] + P[6] + P[10] * A[11];
 
 	PA[4] = P[1] * A[0] + P[2] * A[1] + P[4] * A[2] + P[7] * A[3];
-	PA[5] = P[1] * A[4] + P[2] * A[5] + P[4] * A[6] + P[7] * A[7] + P[16] * A[8];
+	PA[5] = P[1] * A[4] + P[2] * A[5] + P[4] * A[6] + P[7] * A[7]
+		+ P[16] * A[8];
 	PA[6] = P[4] + P[7] * dT;
 	PA[7] = P[1] * A[9] + P[2] * A[10] + P[7] + P[11] * A[11];
 
 	PA[8] = P[3] * A[0] + P[4] * A[1] + P[5] * A[2] + P[8] * A[3];
-	PA[9] = P[3] * A[4] + P[4] * A[5] + P[5] * A[6] + P[8] * A[7] + P[17] * A[8];
+	PA[9] = P[3] * A[4] + P[4] * A[5] + P[5] * A[6] + P[8] * A[7]
+		+ P[17] * A[8];
 	PA[10] = P[5] + P[8] * dT;
 
 	PA[12] = P[6] * A[0] + P[7] * A[1] + P[8] * A[2] + P[9] * A[3];
-	PA[13] = P[6] * A[4] + P[7] * A[5] + P[8] * A[6] + P[9] * A[7] + P[18] * A[8];
+	PA[13] = P[6] * A[4] + P[7] * A[5] + P[8] * A[6] + P[9] * A[7]
+		+ P[18] * A[8];
 	PA[14] = P[8] + P[9] * dT;
 	PA[15] = P[6] * A[9] + P[7] * A[10] + P[9] + P[13] * A[11];
 
 	PA[16] = P[10] * A[0] + P[11] * A[1] + P[12] * A[2] + P[13] * A[3];
-	PA[17] = P[10] * A[4] + P[11] * A[5] + P[12] * A[6] + P[13] * A[7] + P[19] * A[8];
+	PA[17] = P[10] * A[4] + P[11] * A[5] + P[12] * A[6] + P[13] * A[7]
+		+ P[19] * A[8];
 	PA[18] = P[12] + P[13] * dT;
 	PA[19] = P[10] * A[9] + P[11] * A[10] + P[13] + P[14] * A[11];
 
 	PA[20] = P[15] * A[0] + P[16] * A[1] + P[17] * A[2] + P[18] * A[3];
-	PA[21] = P[15] * A[4] + P[16] * A[5] + P[17] * A[6] + P[18] * A[7] + P[20] * A[8];
+	PA[21] = P[15] * A[4] + P[16] * A[5] + P[17] * A[6] + P[18] * A[7]
+		+ P[20] * A[8];
 	PA[22] = P[17] + P[18] * dT;
 	PA[23] = P[15] * A[9] + P[16] * A[10] + P[18] + P[19] * A[11];
 
-	P[0] = A[0] * PA[0] + A[1] * PA[4] + A[2] * PA[8] + A[3] * PA[12] + pm->kQ[0];
+	P[0] = A[0] * PA[0] + A[1] * PA[4] + A[2] * PA[8] + A[3] * PA[12]
+		+ pm->kQ[0];
 	P[1] = A[0] * PA[1] + A[1] * PA[5] + A[2] * PA[9] + A[3] * PA[13];
-	P[2] = A[4] * PA[1] + A[5] * PA[5] + A[6] * PA[9] + A[7] * PA[13] + A[8] * PA[21] + pm->kQ[1];
+	P[2] = A[4] * PA[1] + A[5] * PA[5] + A[6] * PA[9] + A[7] * PA[13]
+		+ A[8] * PA[21] + pm->kQ[1];
 	P[3] = PA[8] + dT * PA[12];
 	P[4] = PA[9] + dT * PA[13];
 	P[5] = PA[10] + dT * PA[14] + pm->kQ[2];
 	P[6] = A[9] * PA[0] + A[10] * PA[4] + PA[12] + A[11] * PA[16];
 	P[7] = A[9] * PA[1] + A[10] * PA[5] + PA[13] + A[11] * PA[17];
 	P[8] = A[9] * PA[2] + A[10] * PA[6] + PA[14] + A[11] * PA[18];
-	P[9] = A[9] * PA[3] + A[10] * PA[7] + PA[15] + A[11] * PA[19] + pm->kQ[3];
+	P[9] = A[9] * PA[3] + A[10] * PA[7] + PA[15] + A[11] * PA[19]
+		+ pm->kQ[3];
 	P[10] = PA[16];
 	P[11] = PA[17];
 	P[12] = PA[18];
@@ -391,16 +407,18 @@ uFB(pmc_t *pm, float uX, float uY)
 
 		if (pm->mBit & PMC_MODE_EFFICIENT_MODULATION) {
 
-			Q = uMIN + uMAX - pm->pwmEPS;
+			Q = uMIN + uMAX;
 
-			/* Always snap neutral to GND or VCC to reduce switching losses.
+			/* Always snap neutral to GND or VCC to
+			 * reduce switching losses.
 			 * */
 			Q = (Q < 0.f) ? 0.f - uMIN : 1.f - uMAX;
 		}
 		else {
 			/* Only snap if voltage vector is overlong.
 			 * */
-			Q = (uMIN < -.5f) ? 0.f - uMIN : (uMAX > .5f) ? 1.f - uMAX : .5f;
+			Q = (uMIN < - .5f) ? 0.f - uMIN :
+				(uMAX > .5f) ? 1.f - uMAX : .5f;
 		}
 	}
 	else {
@@ -461,6 +479,18 @@ iFB(pmc_t *pm)
 	eD = pm->iSPD - pm->kX[0];
 	eQ = pm->iSPQ - pm->kX[1];
 
+	/* Frequency injection.
+	 * */
+	if (pm->mBit & PMC_MODE_FREQUENCY_INJECTION) {
+
+		if (pm->hSP > 0.f)
+			eD += pm->hCS[0] * pm->hSP;
+		else
+			eQ += pm->hCS[0] * pm->hSP;
+
+		dROT(pm->hCS, pm->hT, pm->hCS);
+	}
+
 	/* D axis PI regulator.
 	 * */
 	pm->iXD += pm->iKI * eD;
@@ -494,7 +524,7 @@ wFB(pmc_t *pm)
 	 * */
 	pm->wXX += pm->wKI * eW;
 	pm->wXX = (pm->wXX > pm->iMAX) ? pm->iMAX : (pm->wXX < - pm->iMAX) ? - pm->iMAX : pm->wXX;
-	iSP = pm->wKP * eW + pm->wXX;
+	iSP = pm->wKP * eW + pm->wXX + pm->wKD * pm->kX[1];
 
 	/* Current limit.
 	 * */
@@ -513,7 +543,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mReq != PMC_REQ_NULL) {
 
-				if (pm->mBit & PMC_MODE_EKF_5X_BASE) {
+				if (pm->mBit & PMC_MODE_EKF_6X_DQ) {
 
 					if (pm->mReq == PMC_REQ_BREAK)
 						pm->mS1 = PMC_STATE_BREAK;
@@ -521,8 +551,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 						pm->mReq = PMC_REQ_NULL;
 				}
 				else {
-					if (pm->mReq == PMC_REQ_CALIBRATE
-							|| pm->mReq == PMC_REQ_SPINUP)
+					if (pm->mReq == PMC_REQ_SPINUP
+							|| pm->mReq == PMC_REQ_SINE
+							|| pm->mReq == PMC_REQ_LINEAR)
 						pm->mS1 = PMC_STATE_DRIFT;
 					else
 						pm->mReq = PMC_REQ_NULL;
@@ -540,28 +571,28 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->Bd = 0.f;
 				pm->kT[0] = 0.f;
 
-				pm->timVal = 0;
-				pm->timEnd = 64;
+				pm->tVal = 0;
+				pm->tEnd = 64;
 
 				pm->mS2++;
 			}
 			else {
-				pm->Ad += -iA;
-				pm->Bd += -iB;
+				pm->Ad += - iA;
+				pm->Bd += - iB;
 				pm->kT[0] += uS - pm->U;
 
-				pm->timVal++;
+				pm->tVal++;
 
-				if (pm->timVal < pm->timEnd) ;
+				if (pm->tVal < pm->tEnd) ;
 				else {
-					/* Zero Drift.
+					/* Current sensors Zero Drift.
 					 * */
-					pm->cA0 += pm->Ad / pm->timEnd;
-					pm->cB0 += pm->Bd / pm->timEnd;
+					pm->cA0 += pm->Ad / pm->tEnd;
+					pm->cB0 += pm->Bd / pm->tEnd;
 
 					/* Supply Voltage.
 					 * */
-					pm->U += pm->kT[0] / pm->timEnd;
+					pm->U += pm->kT[0] / pm->tEnd;
 
 					if (pm->mS2 == 1) {
 
@@ -569,16 +600,20 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 						pm->Bd = 0.f;
 						pm->kT[0] = 0.f;
 
-						pm->timVal = 0;
-						pm->timEnd = pm->hzF * pm->Tdrift;
+						pm->tVal = 0;
+						pm->tEnd = pm->hzF * pm->Tdrift;
 
 						pm->mS2++;
 					}
 					else {
-						if (pm->mReq == PMC_REQ_CALIBRATE)
-							pm->mS1 = PMC_STATE_CALIBRATE;
-						else if (pm->mReq == PMC_REQ_SPINUP)
-							pm->mS1 = PMC_STATE_SPINUP;
+						if (pm->mReq == PMC_REQ_SPINUP)
+							pm->mS1 = PMC_STATE_HOLD;
+						else if (pm->mReq == PMC_REQ_SINE)
+							pm->mS1 = PMC_STATE_SINE;
+						else if (pm->mReq == PMC_REQ_LINEAR)
+							pm->mS1 = PMC_STATE_LINEAR;
+						else
+							pm->mS1 = PMC_STATE_END;
 
 						pm->mS2 = 0;
 					}
@@ -586,18 +621,166 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			}
 			break;
 
-		case PMC_STATE_CALIBRATE:
+		case PMC_STATE_HOLD:
+
+			if (pm->mS2 == 0) {
+
+				pm->kX[2] = 1.f;
+				pm->kX[3] = 0.f;
+
+				pm->iSPD = pm->iHOLD;
+				pm->iSPQ = 0.f;
+
+				pm->tVal = 0;
+				pm->tEnd = pm->hzF * pm->Thold;
+
+				pm->mS2++;
+			}
+			else {
+				pm->kX[0] = iA;
+				pm->kX[1] = .57735027f * iA + 1.1547005f * iB;
+
+				pm->kT[0] += pm->uX;
+
+				iFB(pm);
+
+				pm->tVal++;
+
+				if (pm->tVal < pm->tEnd) ;
+				else {
+					if (pm->mS2 == 1) {
+
+						pm->kT[0] = 0.f;
+
+						pm->tVal = 0;
+						pm->tEnd = pm->hzF * pm->Tsample;
+
+						pm->mS2++;
+					}
+					else {
+						/* Winding Resistance.
+						 * */
+						pm->R = pm->kT[0] / pm->tEnd / pm->iSPD;
+
+						if (pm->mReq == PMC_REQ_SPINUP)
+							pm->mS1 = PMC_STATE_SPINUP;
+						else
+							pm->mS1 = PMC_STATE_END;
+
+						pm->mS2 = 0;
+					}
+				}
+			}
+			break;
+
+		case PMC_STATE_SINE:
+
+			if (pm->mS2 == 0) {
+
+				pm->kX[2] = 1.f;
+				pm->kX[3] = 0.f;
+
+				pm->tVal = 0;
+				pm->tEnd = pm->hzF * pm->Thold;
+
+				pm->mS2++;
+			}
+			else {
+				float			iX, iY, L;
+
+				pm->kX[0] = iA;
+				pm->kX[1] = .57735027f * iA + 1.1547005f * iB;
+
+				iX = .5f * (pm->kX[0] + pm->kP[0]);
+				iY = .5f * (pm->kX[1] + pm->kP[1]);
+
+				pm->kP[0] = pm->kX[0];
+				pm->kP[1] = pm->kX[1];
+
+				if (pm->mS2 == 2) {
+
+					if (pm->hSP > 0.f) {
+
+						pm->kT[0] += iX * pm->hCS[0];
+						pm->kT[1] += iX * pm->hCS[1];
+						pm->kT[2] += pm->uX * pm->hCS[0];
+						pm->kT[3] += pm->uX * pm->hCS[1];
+					}
+					else {
+						pm->kT[0] += iY * pm->hCS[0];
+						pm->kT[1] += iY * pm->hCS[1];
+						pm->kT[2] += pm->uY * pm->hCS[0];
+						pm->kT[3] += pm->uY * pm->hCS[1];
+					}
+				}
+
+				iFB(pm);
+
+				pm->tVal++;
+
+				if (pm->tVal < pm->tEnd) ;
+				else {
+					if (pm->mS2 == 1) {
+
+						pm->mBit |= PMC_MODE_FREQUENCY_INJECTION;
+
+						pm->hT = 6.2831853f * pm->sineF / pm->hzF;
+						pm->hCS[0] = 0.f;
+						pm->hCS[1] = - 1.f;
+
+						pm->kT[0] = 0.f;
+						pm->kT[1] = 0.f;
+						pm->kT[2] = 0.f;
+						pm->kT[3] = 0.f;
+
+						pm->tVal = 0;
+						pm->tEnd = pm->hzF * pm->Tsample;
+
+						pm->mS2++;
+					}
+					else {
+						pm->kP[0] = pm->kT[2] * pm->kT[0] + pm->kT[3] * pm->kT[1];
+						pm->kP[1] = pm->kT[2] * pm->kT[1] - pm->kT[3] * pm->kT[0];
+
+						L = pm->kT[0] * pm->kT[0] + pm->kT[1] * pm->kT[1];
+						pm->kP[0] /= L;
+						pm->kP[1] /= L;
+
+						pm->R = pm->kP[0];
+						L = pm->kP[1] / (6.2831853f * pm->sineF);
+
+						printf("R %e \tL %e\n", pm->R, L);
+
+						if (pm->hSP > 0.f) {
+
+							pm->Ld = L;
+							pm->ILd = 1.f / L;
+						}
+						else {
+							pm->Lq = L;
+							pm->ILq = 1.f / L;
+						}
+
+						pm->mReq = PMC_REQ_NULL;
+						pm->mS1 = PMC_STATE_END;
+						pm->mS2 = 0;
+					}
+				}
+			}
+			break;
+
+		case PMC_STATE_LINEAR:
 			break;
 
 		case PMC_STATE_SPINUP:
 
 			if (pm->mS2 == 0) {
 
-				int			j;
-
-				pm->mBit |= PMC_MODE_EKF_5X_BASE
+				pm->mBit |= PMC_MODE_EKF_6X_DQ
 					| PMC_MODE_SPEED_CONTROL_LOOP;
 
+				/* X(0).
+				 * */
 				pm->kX[0] = 0.f;
 				pm->kX[1] = 0.f;
 				pm->kX[2] = 1.f;
@@ -607,23 +790,57 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->Ad = 0.f;
 				pm->Bd = 0.f;
 				pm->Qd = 0.f;
+
 				pm->M = 0.f;
 
-				for (j = 0; j < 21; ++j)
-					pm->kP[j] = 0.f;
+				/* P(0).
+				 * */
+				pm->kP[1] = 0.f;
+				pm->kP[3] = 0.f;
+				pm->kP[4] = 0.f;
+				pm->kP[6] = 0.f;
+				pm->kP[7] = 0.f;
+				pm->kP[8] = 0.f;
+				pm->kP[10] = 0.f;
+				pm->kP[11] = 0.f;
+				pm->kP[12] = 0.f;
+				pm->kP[13] = 0.f;
+				pm->kP[15] = 0.f;
+				pm->kP[16] = 0.f;
+				pm->kP[17] = 0.f;
+				pm->kP[18] = 0.f;
+				pm->kP[19] = 0.f;
 
-				pm->kP[0] = 5e+6f;
-				pm->kP[2] = 5e+6f;
-				pm->kP[5] = 9.f;
-				pm->kP[9] = 2e+4f;
-				pm->kP[14] = 0.f;
+				pm->kP[0] = 2e+6f;
+				pm->kP[2] = 2e+6f;
+				pm->kP[5] = 5.f;
+				pm->kP[9] = 4e+1f;
+				pm->kP[14] = 1e-2f;
 				pm->kP[20] = 0.f;
 
-				pm->wSP = 3000.f;
+				pm->wSP = pm->wMIN;
 
-				pm->mReq = PMC_REQ_NULL;
-				pm->mS1 = PMC_STATE_IDLE;
-				pm->mS2 = 0;
+				pm->tVal = 0;
+				pm->tEnd = pm->hzF * pm->Tout;
+
+				pm->mS2++;
+			}
+			else {
+				if (xabs(pm->kX[4]) > (pm->wMIN * .7f)) {
+
+					pm->mReq = PMC_REQ_NULL;
+					pm->mS1 = PMC_STATE_IDLE;
+					pm->mS2 = 0;
+				}
+
+				pm->tVal++;
+
+				if (pm->tVal < pm->tEnd) ;
+				else {
+					pm->mReq = PMC_REQ_NULL;
+					pm->mS1 = PMC_STATE_END;
+					pm->mS2 = 0;
+				}
 			}
 			break;
 
@@ -663,7 +880,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	 * */
 	bFSM(pm, iA, iB, uS);
 
-	if (pm->mBit & PMC_MODE_EKF_5X_BASE) {
+	if (pm->mBit & PMC_MODE_EKF_6X_DQ) {
 
 		/* EKF.
 		 * */

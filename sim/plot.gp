@@ -102,5 +102,13 @@ if (N == 11) {
 		@TEL using 1:22 title 'B' with lines
 }
 
+if (N == 12) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Error (A)'
+	plot	@TEL using 1:22 title 'D' with lines, \
+		@TEL using 1:23 title 'Q' with lines
+}
+
 pause mouse close
 

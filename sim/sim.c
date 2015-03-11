@@ -47,17 +47,17 @@ simScript(double T)
 {
 	if (T > 0.) {
 
-		pm.iSPQ = 1.f;
+		pm.wSP = 2000.f;
 	}
 
 	if (T > 1.) {
 
-		pm.iSPQ = 5.f;
+		pm.wSP = 9000.f;
 	}
 
 	if (T > 4.) {
 
-		pm.iSPQ = - 5.f;
+		pm.wSP = 3000.f;
 	}
 }
 
@@ -127,6 +127,8 @@ simTel(float *pTel)
 	pTel[19] = pm.E;
 	pTel[20] = pm.Zp;
 	pTel[21] = pm.M;
+	pTel[22] = pm.eD;
+	pTel[23] = pm.eQ;
 }
 
 static void
@@ -198,18 +200,22 @@ int main(int argc, char *argv[])
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = m.R * (1. + .0);
-	pm.Ld = m.L * (1. + .2);
-	pm.Lq = m.L * (1. + .2);
+	pm.R = 0.f;
+	pm.Ld = m.L * (1. + .1);
+	pm.Lq = m.L * (1. + .1);
 	pm.E = m.E * (1. + .1);
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.IJ = 1.f / m.J;
+	pm.IJ = 1.f / m.J * 10.f;
 
 	pmcEnable(&pm);
 
-	pm.mReq = PMC_REQ_SPINUP;
+	pm.mReq = PMC_REQ_SINE;
+	pm.sineF = 100.f;
+	pm.iSPD = 1.f;
+	pm.iSPQ = 0.f;
+	pm.hSP = .5f;
 
 	simF(Tend, 0);
 
