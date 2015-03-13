@@ -57,6 +57,10 @@ typedef struct {
 	 * */
 	int		pwmR;
 
+	/* Minimal pulse.
+	 * */
+	int		pwmMP;
+
 	/* FSM variables.
 	 * */
 	int		mReq;
@@ -69,16 +73,19 @@ typedef struct {
 	int		tVal;
 	int		tEnd;
 
-	/* Configuration.
+	/* Timer configuration.
 	 * */
 	float		Tdrift;
 	float		Thold;
 	float		Tsample;
 	float		Tout;
 	float		Tend;
+
+	/* Mixed configuration.
+	 * */
 	float		iHOLD;
+	float		iSINE;
 	float		sineF;
-	int		pwmMP;
 
 	/* Conversion constants.
 	 * */
@@ -127,6 +134,7 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
+	float		iMAX;
 	float		iSPD;
 	float		iSPQ;
 	float		iXD;
@@ -136,23 +144,19 @@ typedef struct {
 
 	/* Frequency injection.
 	 * */
-	float		hT;
+	float		hF, hT;
 	float		hCS[2];
 	float		hSP;
 
 	/* Speed control loop.
 	 * */
+	float		wMAX;
+	float		wMIN;
 	float		wSP;
 	float		wXX;
 	float		wKP;
 	float		wKI;
 	float		wKD;
-
-	/* Limit values.
-	 * */
-	float		iMAX;
-	float		wMAX;
-	float		wMIN;
 
 	/* Control interface.
 	 * */

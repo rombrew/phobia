@@ -40,19 +40,21 @@ dROT(float B[2], float R, const float A[2])
 
 void pmcEnable(pmc_t *pm)
 {
-	pm->dT = 1.f / pm->hzF;
-
 	/* Default configuration.
 	 * */
+	pm->dT = 1.f / pm->hzF;
+	pm->pwmMP = (int) (2e-7f * pm->hzF * pm->pwmR + .5f);
+
 	pm->Tdrift = .1f;
 	pm->Thold = .5f;
 	pm->Tsample = .2f;
 	pm->Tout = 1.f;
 	pm->Tend = .1f;
-	pm->pwmMP = (int) (2e-7f * pm->hzF * pm->pwmR + .5f);
 
-	/* ADC conversion constants.
-	 * */
+	pm->iHOLD = 1.f;
+	pm->iSINE = .5f;
+	pm->sineF = 100.f;
+
 	pm->cA0 = 0.f;
 	pm->cA1 = .01464844f;
 	pm->cB0 = 0.f;
@@ -60,8 +62,6 @@ void pmcEnable(pmc_t *pm)
 	pm->cU0 = 0.f;
 	pm->cU1 = .00725098f;
 
-	/* Q covariance.
-	 * */
 	pm->kQ[0] = 1e-4f;
 	pm->kQ[1] = 1e-4f;
 	pm->kQ[2] = 1e-8f;
@@ -69,12 +69,8 @@ void pmcEnable(pmc_t *pm)
 	pm->kQ[4] = 1e-5f;
 	pm->kQ[5] = 1e-9f;
 
-	/* R covariance.
-	 * */
 	pm->kR = 1e-2f;
 
-	/* PI constants.
-	 * */
 	pm->iKP = 2e-2f;
 	pm->iKI = 4e-3f;
 	pm->wKP = 1e-2f;
@@ -483,11 +479,7 @@ iFB(pmc_t *pm)
 	 * */
 	if (pm->mBit & PMC_MODE_FREQUENCY_INJECTION) {
 
-		if (pm->hSP > 0.f)
-			eD += pm->hCS[0] * pm->hSP;
-		else
-			eQ += pm->hCS[0] * pm->hSP;
-
+		eD += pm->hCS[1] * pm->hSP;
 		dROT(pm->hCS, pm->hT, pm->hCS);
 	}
 
@@ -680,38 +672,36 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kX[2] = 1.f;
 				pm->kX[3] = 0.f;
 
+				pm->kT[2] = pm->iSPD;
+				pm->kT[3] = pm->iSPQ;
+
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Thold;
 
 				pm->mS2++;
 			}
 			else {
-				float			iX, iY, L;
-
 				pm->kX[0] = iA;
 				pm->kX[1] = .57735027f * iA + 1.1547005f * iB;
 
-				iX = .5f * (pm->kX[0] + pm->kP[0]);
-				iY = .5f * (pm->kX[1] + pm->kP[1]);
+				if (pm->mS2 == 3) {
 
-				pm->kP[0] = pm->kX[0];
-				pm->kP[1] = pm->kX[1];
+					pm->kP[0] += pm->kX[0] * pm->hCS[0];
+					pm->kP[1] += pm->kX[0] * pm->hCS[1];
+					pm->kP[2] += pm->uX * pm->hCS[0];
+					pm->kP[3] += pm->uX * pm->hCS[1];
+					pm->kP[4] += pm->kX[1] * pm->hCS[0];
+					pm->kP[5] += pm->kX[1] * pm->hCS[1];
+					pm->kP[6] += pm->uY * pm->hCS[0];
+					pm->kP[7] += pm->uY * pm->hCS[1];
+				}
 
-				if (pm->mS2 == 2) {
+				if (pm->mS2 == 2 || pm->mS2 == 3) {
 
-					if (pm->hSP > 0.f) {
+					pm->iSPD = pm->kT[2] + pm->hCS[0] * pm->iSINE;
+					pm->iSPQ = pm->kT[3] + pm->hCS[1] * pm->iSINE;
 
-						pm->kT[0] += iX * pm->hCS[0];
-						pm->kT[1] += iX * pm->hCS[1];
-						pm->kT[2] += pm->uX * pm->hCS[0];
-						pm->kT[3] += pm->uX * pm->hCS[1];
-					}
-					else {
-						pm->kT[0] += iY * pm->hCS[0];
-						pm->kT[1] += iY * pm->hCS[1];
-						pm->kT[2] += pm->uY * pm->hCS[0];
-						pm->kT[3] += pm->uY * pm->hCS[1];
-					}
+					dROT(pm->hCS, pm->hT, pm->hCS);
 				}
 
 				iFB(pm);
@@ -722,50 +712,70 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				else {
 					if (pm->mS2 == 1) {
 
-						pm->mBit |= PMC_MODE_FREQUENCY_INJECTION;
-
 						pm->hT = 6.2831853f * pm->sineF / pm->hzF;
-						pm->hCS[0] = 0.f;
-						pm->hCS[1] = - 1.f;
+						pm->hCS[0] = 1.f;
+						pm->hCS[1] = 0.f;
 
-						pm->kT[0] = 0.f;
-						pm->kT[1] = 0.f;
-						pm->kT[2] = 0.f;
-						pm->kT[3] = 0.f;
+						pm->kP[0] = 0.f;
+						pm->kP[1] = 0.f;
+						pm->kP[2] = 0.f;
+						pm->kP[3] = 0.f;
+						pm->kP[4] = 0.f;
+						pm->kP[5] = 0.f;
+						pm->kP[6] = 0.f;
+						pm->kP[7] = 0.f;
+
+						pm->tVal = 0;
+						pm->tEnd = pm->hzF / pm->sineF;
+
+						pm->mS2++;
+					}
+					else if (pm->mS2 == 2) {
 
 						pm->tVal = 0;
 						pm->tEnd = pm->hzF * pm->Tsample;
 
 						pm->mS2++;
 					}
-					else {
-						pm->kP[0] = pm->kT[2] * pm->kT[0] + pm->kT[3] * pm->kT[1];
-						pm->kP[1] = pm->kT[2] * pm->kT[1] - pm->kT[3] * pm->kT[0];
-
-						L = pm->kT[0] * pm->kT[0] + pm->kT[1] * pm->kT[1];
-						pm->kP[0] /= L;
-						pm->kP[1] /= L;
-
-						pm->R = pm->kP[0];
-						L = pm->kP[1] / (6.2831853f * pm->sineF);
-
-						printf("R %e \tL %e\n", pm->R, L);
-
-						if (pm->hSP > 0.f) {
-
-							pm->Ld = L;
-							pm->ILd = 1.f / L;
-						}
-						else {
-							pm->Lq = L;
-							pm->ILq = 1.f / L;
-						}
-
-						pm->mReq = PMC_REQ_NULL;
-						pm->mS1 = PMC_STATE_END;
-						pm->mS2 = 0;
-					}
+					else
+						pm->mS2++;
 				}
+			}
+
+			if (pm->mS2 == 4) {
+
+				float			L;
+
+				pm->kT[0] = pm->kP[2] * pm->kP[0] + pm->kP[3] * pm->kP[1];
+				pm->kT[1] = pm->kP[2] * pm->kP[1] - pm->kP[3] * pm->kP[0];
+
+				L = pm->kP[0] * pm->kP[0] + pm->kP[1] * pm->kP[1];
+				pm->kT[0] /= L;
+				pm->kT[1] /= L;
+
+				/* Inductance on X axis.
+				 * */
+				pm->R = pm->kT[0];
+				pm->Ld = pm->kT[1] / (6.2831853f * pm->sineF);
+
+				pm->kT[0] = pm->kP[6] * pm->kP[4] + pm->kP[7] * pm->kP[5];
+				pm->kT[1] = pm->kP[6] * pm->kP[5] - pm->kP[7] * pm->kP[4];
+
+				L = pm->kP[4] * pm->kP[4] + pm->kP[5] * pm->kP[5];
+				pm->kT[0] /= L;
+				pm->kT[1] /= L;
+
+				/* Inductance on Y axis.
+				 * */
+				pm->R = .5f * (pm->kT[0] + pm->R);
+				pm->Lq = pm->kT[1] / (6.2831853f * pm->sineF);
+
+				pm->ILd = 1.f / pm->Ld;
+				pm->ILq = 1.f / pm->Lq;
+
+				pm->mReq = PMC_REQ_NULL;
+				pm->mS1 = PMC_STATE_END;
+				pm->mS2 = 0;
 			}
 			break;
 
@@ -826,7 +836,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->mS2++;
 			}
 			else {
-				if (xabs(pm->kX[4]) > (pm->wMIN * .7f)) {
+				if (xabs(pm->kX[4] * 1.4f) > pm->wMIN) {
 
 					pm->mReq = PMC_REQ_NULL;
 					pm->mS1 = PMC_STATE_IDLE;
@@ -882,7 +892,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 	if (pm->mBit & PMC_MODE_EKF_6X_DQ) {
 
-		/* EKF.
+		/* Measurement update.
 		 * */
 		kFB(pm, iA, iB);
 
@@ -897,7 +907,7 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 			wFB(pm);
 		}
 
-		/* EKF.
+		/* Time update.
 		 * */
 		kAT(pm);
 	}

@@ -43,25 +43,6 @@ static void
 blmZ(int Z) { }
 
 static void
-simScript(double T)
-{
-	if (T > 0.) {
-
-		pm.wSP = 2000.f;
-	}
-
-	if (T > 1.) {
-
-		pm.wSP = 9000.f;
-	}
-
-	if (T > 4.) {
-
-		pm.wSP = 3000.f;
-	}
-}
-
-static void
 simABtoDQ(double A, double B, double R, double *D, double *Q)
 {
 	double		X, Y, rS, rC;
@@ -132,29 +113,17 @@ simTel(float *pTel)
 }
 
 static void
-simF(double Tend, int Verb)
+simF(FILE *fdTel, double dT, int Verb)
 {
 	const int	szTel = 40;
 	float		Tel[szTel], *pTel;
-	double		Tin;
-	FILE		*fdTel;
-
-	fdTel = fopen(TEL_FILE, "wb");
-
-	if (fdTel == NULL) {
-
-		fprintf(stderr, "fopen: %s", strerror(errno));
-		exit(errno);
-	}
+	double		Tin, Tend;
 
 	pTel = Tel - 1;
 	Tin = m.Tsim;
+	Tend = Tin + dT;
 
 	while (m.Tsim < Tend) {
-
-		/* Script update.
-		 * */
-		simScript(m.Tsim);
 
 		/* Plant model update.
 		 * */
@@ -182,27 +151,17 @@ simF(double Tend, int Verb)
 			fflush(stdout);
 		}
 	}
-
-	fclose(fdTel);
 }
 
-int main(int argc, char *argv[])
+static void
+simScript(FILE *fdTel)
 {
-	double		Tend = 5.;
-
-	libStart();
-
-	blmEnable(&m);
-
 	pm.hzF = (float) (1. / m.dT);
 	pm.pwmR = m.PWMR;
 
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.R = 0.f;
-	pm.Ld = m.L * (1. + .1);
-	pm.Lq = m.L * (1. + .1);
 	pm.E = m.E * (1. + .1);
 
 	pm.Zp = 11;
@@ -212,13 +171,38 @@ int main(int argc, char *argv[])
 	pmcEnable(&pm);
 
 	pm.mReq = PMC_REQ_SINE;
-	pm.sineF = 100.f;
 	pm.iSPD = 1.f;
 	pm.iSPQ = 0.f;
-	pm.hSP = .5f;
 
-	simF(Tend, 0);
+	simF(fdTel, 1., 0);
 
+	printf("R\t%.4e\t(%.2f%%)\n", pm.R, 100. * (pm.R - m.R) / m.R);
+	printf("Ld\t%.4e\t(%.2f%%)\n", pm.Ld, 100. * (pm.Ld - m.L) / m.L);
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.Lq, 100. * (pm.Lq - m.L) / m.L);
+
+	pm.mReq = PMC_REQ_SPINUP;
+
+	simF(fdTel, 3., 0);
+}
+
+int main(int argc, char *argv[])
+{
+	FILE		*fdTel;
+
+	libStart();
+	blmEnable(&m);
+
+	fdTel = fopen(TEL_FILE, "wb");
+
+	if (fdTel == NULL) {
+
+		fprintf(stderr, "fopen: %s", strerror(errno));
+		exit(errno);
+	}
+
+	simScript(fdTel);
+
+	fclose(fdTel);
 	libStop();
 
 	return 0;
