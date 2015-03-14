@@ -95,21 +95,37 @@ simTel(float *pTel)
 	pTel[12] = atan2(pm.kX[3], pm.kX[2]);
 	pTel[13] = C;
 
-	/* Speed.
+	/* Estimated speed.
 	 * */
 	pTel[14] = pm.kX[4];
 
+	/* Measurement residual.
+	 * */
+	pTel[15] = pm.eD;
+	pTel[16] = pm.eQ;
+
+	/* Zero Drift.
+	 * */
+	pTel[17] = pm.Ad;
+	pTel[18] = pm.Bd;
+	pTel[19] = pm.Qd;
+
 	/* Plant constants.
 	 * */
-	pTel[15] = pm.Qd;
-	pTel[16] = pm.R;
-	pTel[17] = pm.Ld;
-	pTel[18] = pm.Lq;
-	pTel[19] = pm.E;
-	pTel[20] = pm.Zp;
-	pTel[21] = pm.M;
-	pTel[22] = pm.eD;
-	pTel[23] = pm.eQ;
+	pTel[20] = pm.U;
+	pTel[21] = pm.E;
+	pTel[22] = pm.R;
+	pTel[23] = pm.Ld;
+	pTel[24] = pm.Lq;
+	pTel[25] = pm.Zp;
+	pTel[26] = pm.M;
+	pTel[27] = 1.f / pm.IJ;
+
+	/* Set Point.
+	 * */
+	pTel[30] = pm.iSPD;
+	pTel[31] = pm.iSPQ;
+	pTel[32] = pm.wSP;
 }
 
 static void
@@ -162,11 +178,11 @@ simScript(FILE *fdTel)
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.E = m.E * (1. + .1);
+	pm.E = m.E * (1. - .1);
 
 	pm.Zp = 11;
 	pm.M = 0.f;
-	pm.IJ = 1.f / m.J * 10.f;
+	pm.IJ = 1.f / m.J;
 
 	pmcEnable(&pm);
 
@@ -183,6 +199,10 @@ simScript(FILE *fdTel)
 	pm.mReq = PMC_REQ_SPINUP;
 
 	simF(fdTel, 3., 0);
+
+	pm.mReq = PMC_REQ_BREAK;
+
+	simF(fdTel, 1., 0);
 }
 
 int main(int argc, char *argv[])

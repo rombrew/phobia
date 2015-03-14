@@ -66,19 +66,21 @@ void pmcEnable(pmc_t *pm)
 	pm->kQ[1] = 1e-4f;
 	pm->kQ[2] = 1e-8f;
 	pm->kQ[3] = 1e-8f;
-	pm->kQ[4] = 1e-5f;
+	pm->kQ[4] = 1e-7f;
 	pm->kQ[5] = 1e-9f;
 
 	pm->kR = 1e-2f;
 
-	pm->iKP = 2e-2f;
-	pm->iKI = 4e-3f;
-	pm->wKP = 1e-2f;
-	pm->wKI = 0e-3f;
-
 	pm->iMAX = 5.f;
-	pm->wMAX = 2e+4f;
-	pm->wMIN = 5e+2f;
+	pm->iKP = 2e-2f;
+	pm->iKI = 2e-3f;
+
+	pm->wDI = 0;
+	pm->wDN = 20;
+	pm->wMAX = 80000.f * .10471976f;
+	pm->wMIN = 5000.f * .10471976f;
+	pm->wKP = 5e-2f;
+	pm->wKI = 2e-4f;
 }
 
 static void
@@ -93,9 +95,9 @@ dEq(pmc_t *pm, float D[], const float X[])
 
 	/* Electrical equations.
 	 * */
-	D[0] = (uD - pm->R * X[0] + pm->Lq * X[4] * X[1]) / pm->Ld;
+	D[0] = (uD - pm->R * X[0] + pm->Lq * X[4] * X[1]) * pm->ILd;
 	D[1] = (uQ - pm->R * X[1] - pm->Ld * X[4] * X[0]
-			- pm->E * X[4] + pm->Qd) / pm->Lq;
+			- pm->E * X[4] + pm->Qd) * pm->ILq;
 
 	/* Mechanical equations.
 	 * */
@@ -271,8 +273,8 @@ kAT(pmc_t *pm)
 
 	/* Common subexpressions.
 	 * */
-	dTLd = dT / pm->Ld;
-	dTLq = dT / pm->Lq;
+	dTLd = dT * pm->ILd;
+	dTLq = dT * pm->ILq;
 	dTIJ = dT * pm->IJ;
 	Zp2 = 1.5f * pm->Zp * pm->Zp * dTIJ;
 
@@ -352,7 +354,7 @@ kAT(pmc_t *pm)
 	P[16] = PA[21];
 	P[17] = PA[22];
 	P[18] = PA[23];
-	P[20] += pm->kQ[5];
+	P[20] += (pm->mBit & PMC_MODE_Q_DRIFT) ? pm->kQ[5] : 0.f;
 }
 
 static void
@@ -516,7 +518,7 @@ wFB(pmc_t *pm)
 	 * */
 	pm->wXX += pm->wKI * eW;
 	pm->wXX = (pm->wXX > pm->iMAX) ? pm->iMAX : (pm->wXX < - pm->iMAX) ? - pm->iMAX : pm->wXX;
-	iSP = pm->wKP * eW + pm->wXX + pm->wKD * pm->kX[1];
+	iSP = pm->wKP * eW + pm->wXX;
 
 	/* Current limit.
 	 * */
@@ -825,10 +827,14 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kP[2] = 2e+6f;
 				pm->kP[5] = 5.f;
 				pm->kP[9] = 4e+1f;
-				pm->kP[14] = 1e-2f;
+				pm->kP[14] = 0.f;
 				pm->kP[20] = 0.f;
 
+				pm->iXD = 0.f;
+				pm->iXQ = 0.f;
+
 				pm->wSP = pm->wMIN;
+				pm->wXX = 0.f;
 
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Tout;
@@ -836,7 +842,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->mS2++;
 			}
 			else {
-				if (xabs(pm->kX[4] * 1.4f) > pm->wMIN) {
+				if (xabs(pm->kX[4]) > (pm->wMIN * .9f)) {
+
+					pm->mBit |= PMC_MODE_Q_DRIFT;
 
 					pm->mReq = PMC_REQ_NULL;
 					pm->mS1 = PMC_STATE_IDLE;
@@ -856,11 +864,35 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 		case PMC_STATE_BREAK:
 
-			pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
-			pm->wSP = 0.f;
+			if (pm->mS2 == 0) {
 
-			/* TODO */
+				pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
 
+				pm->wSP = 0.f;
+				pm->wXX = 0.f;
+
+				pm->tVal = 0;
+				pm->tEnd = pm->hzF * pm->Tout;
+
+				pm->mS2++;
+			}
+			else {
+				if (xabs(pm->kX[4]) < (pm->wMIN * .1f)) {
+
+					pm->mReq = PMC_REQ_NULL;
+					pm->mS1 = PMC_STATE_END;
+					pm->mS2 = 0;
+				}
+
+				pm->tVal++;
+
+				if (pm->tVal < pm->tEnd) ;
+				else {
+					pm->mReq = PMC_REQ_NULL;
+					pm->mS1 = PMC_STATE_END;
+					pm->mS2 = 0;
+				}
+			}
 			break;
 
 		case PMC_STATE_END:
@@ -904,7 +936,13 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 		 * */
 		if (pm->mBit & PMC_MODE_SPEED_CONTROL_LOOP) {
 
-			wFB(pm);
+			pm->wDI++;
+
+			if (pm->wDI >= pm->wDN) {
+
+				wFB(pm);
+				pm->wDI = 0;
+			}
 		}
 
 		/* Time update.

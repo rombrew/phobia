@@ -30,6 +30,9 @@ enum {
 
 enum {
 	PMC_MODE_EKF_6X_DQ			= 0x0100,
+	PMC_MODE_Q_DRIFT			= 0x0200,
+	PMC_MODE_ZERO_DRIFT			= 0x0400,
+	PMC_MODE_SUPPLY_VOLTAGE			= 0x0800,
 	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
 	PMC_MODE_EFFICIENT_MODULATION		= 0x0004,
 	PMC_MODE_FREQUENCY_INJECTION		= 0x0008,
@@ -53,12 +56,9 @@ typedef struct {
 	float		hzF;
 	float		dT;
 
-	/* PWM resolution.
+	/* PWM configuration.
 	 * */
 	int		pwmR;
-
-	/* Minimal pulse.
-	 * */
 	int		pwmMP;
 
 	/* FSM variables.
@@ -135,10 +135,8 @@ typedef struct {
 	/* Current control loop.
 	 * */
 	float		iMAX;
-	float		iSPD;
-	float		iSPQ;
-	float		iXD;
-	float		iXQ;
+	float		iSPD, iSPQ;
+	float		iXD, iXQ;
 	float		iKP;
 	float		iKI;
 
@@ -150,13 +148,12 @@ typedef struct {
 
 	/* Speed control loop.
 	 * */
-	float		wMAX;
-	float		wMIN;
+	int		wDI, wDN;
+	float		wMAX, wMIN;
 	float		wSP;
 	float		wXX;
 	float		wKP;
 	float		wKI;
-	float		wKD;
 
 	/* Control interface.
 	 * */
