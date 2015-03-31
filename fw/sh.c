@@ -89,17 +89,15 @@ int shRecv()
 
 void shSend(int xC)
 {
-	int	tT;
+	int		tT;
 
 	tT = FIFO_INC(sh.tT, SH_TXBUF_SZ);
 
 	while (sh.tR == tT)
-		taskYield();
+		taskIOMUX();
 
 	sh.tBuf[sh.tT] = (char) xC;
 	sh.tT = tT;
-
-	td.xOUT = 1;
 }
 
 int shExRecv()
@@ -117,18 +115,16 @@ int shExRecv()
 	return xC;
 }
 
-void shExSend(int xC)
+int shExPoll()
+{
+	return (sh.rT < sh.rR) ? sh.rR - sh.rT - 1
+		: sh.rR - sh.rT - 1 + SH_RXBUF_SZ;
+}
+
+void shExPush(int xC)
 {
 	sh.rBuf[sh.rT] = (char) xC;
 	sh.rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
-
-	if (sh.rR == sh.rT) {
-
-		/* FIXME: Incoming FIFO overrun.
-		 * */
-	}
-
-	td.xSH = 1;
 }
 
 static inline char

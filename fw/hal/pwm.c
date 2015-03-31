@@ -23,22 +23,26 @@ halPWM_TypeDef			halPWM;
 
 void irqTIM1_UP_TIM10() { }
 
-void pwmEnable(int hzF, int nsD)
+void pwmEnable()
 {
+	int		hzF, nsD;
 	int		R, D;
+
+	hzF = halPWM.hzF;
+	nsD = halPWM.nsD;
 
 	/* Calculate resolution.
 	 * */
-	R = halBASE.hzAPB2 * 2UL / 2UL / hzF;
+	R = HZ_APB2 * 2UL / 2UL / hzF;
 	R = (R & 1) ? R + 1 : R;
-	hzF = halBASE.hzAPB2 * 2UL / 2UL / R;
+	hzF = HZ_APB2 * 2UL / 2UL / R;
 
 	/* Dead time.
 	 * */
-	D = ((halBASE.hzAPB2 * 2UL / 1000UL) * nsD + 500000UL) / 1000000UL;
+	D = ((HZ_APB2 * 2UL / 1000UL) * nsD + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : (D < 256) ? 128 + (D - 128) / 2 : 191;
 	nsD = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255)
-		* 1000000UL / (halBASE.hzAPB2 * 2UL / 1000UL);
+		* 1000000UL / (HZ_APB2 * 2UL / 1000UL);
 
 	halPWM.hzF = hzF;
 	halPWM.R = R;

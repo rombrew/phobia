@@ -30,7 +30,8 @@ int shRecv();
 void shSend(int xC);
 
 int shExRecv();
-void shExSend(int xC);
+int shExPoll();
+void shExPush(int xC);
 
 void shTask();
 

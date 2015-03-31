@@ -198,7 +198,9 @@ simScript(FILE *fdTel)
 
 	pm.mReq = PMC_REQ_SPINUP;
 
-	simF(fdTel, 3., 0);
+	simF(fdTel, 2., 0);
+	m.R += m.R * .4;
+	simF(fdTel, 1., 0);
 
 	pm.mReq = PMC_REQ_BREAK;
 

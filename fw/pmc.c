@@ -553,6 +553,14 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 						pm->mReq = PMC_REQ_NULL;
 				}
 			}
+
+			if (xabs(pm->kX[4]) < (pm->wMIN * .9f)) {
+
+				pm->mBit &= ~PMC_MODE_Q_DRIFT;
+			}
+			else
+				pm->mBit |= PMC_MODE_Q_DRIFT;
+
 			break;
 
 		case PMC_STATE_DRIFT:
@@ -600,6 +608,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 						pm->mS2++;
 					}
 					else {
+						pm->mBit |= PMC_MODE_SUPPLY_VOLTAGE;
+
 						if (pm->mReq == PMC_REQ_SPINUP)
 							pm->mS1 = PMC_STATE_HOLD;
 						else if (pm->mReq == PMC_REQ_SINE)
@@ -830,6 +840,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kP[14] = 0.f;
 				pm->kP[20] = 0.f;
 
+				/* .
+				 * */
 				pm->iXD = 0.f;
 				pm->iXQ = 0.f;
 

@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,9 +27,13 @@ void irqADC()
 
 		ADC1->SR &= ~ADC_SR_JEOC;
 		ADC2->SR &= ~ADC_SR_JEOC;
+		ADC3->SR &= ~ADC_SR_JEOC;
 
 		halADC.xA = ADC1->JDR1;
+		halADC.xB = ADC2->JDR1;
+		halADC.xU = ADC3->JDR1;
 
+		__set_BASEPRI(7);
 		adcIRQ();
 	}
 }
@@ -60,13 +64,19 @@ void adcEnable()
 	ADC1->SMPR2 = ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP1_0;
 	ADC1->JSQR = ADC_JSQR_JSQ4_4;
 
-	/* Enable ADC1.
+	/* Configure ADC2 on PA1.
+	 * */
+	ADC2->CR1 = ADC_CR1_JEOCIE;
+	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
+	ADC2->SMPR1 = ADC_SMPR1_SMP16_2;
+	ADC2->SMPR2 = ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP1_0;
+	ADC2->JSQR = ADC_JSQR_JSQ4_4;
+
+	/* Enable ADC.
 	 * */
 	ADC1->CR2 |= ADC_CR2_ADON;
-
-	/* Enable multi mode.
-	 * */
-	ADC->CCR |= ADC_CCR_MULTI_0;
+	ADC2->CR2 |= ADC_CR2_ADON;
+	ADC3->CR2 |= ADC_CR2_ADON;
 
 	/* Enable IRQ.
 	 * */

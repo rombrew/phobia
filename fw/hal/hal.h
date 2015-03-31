@@ -21,7 +21,11 @@
 
 #include "adc.h"
 #include "pwm.h"
-#include "uart.h"
+#include "usart.h"
+
+#define HZ_AHB			168000000UL
+#define HZ_APB1			(HZ_AHB / 4UL)
+#define HZ_APB2			(HZ_AHB / 2UL)
 
 #define __CCM__			__attribute__ ((section (".ccm")))
 
@@ -32,27 +36,10 @@ enum {
 	LED_BLUE		= 8
 };
 
-typedef struct {
-
-	/* Clock frequency (Hz).
-	 * */
-	unsigned long int	hzAHB;
-	unsigned long int	hzAPB1;
-	unsigned long int	hzAPB2;
-
-	/* Resest reason.
-	 * */
-	int		rstR;
-}
-halBASE_TypeDef;
-
-extern halBASE_TypeDef		halBASE;
-extern void			*ldHeap;
-
 void halStart();
 void halWFI();
-void halLED(int F);
 int halSysTick();
+void halLED(int F);
 
 extern void halMain();
 extern void halTick();

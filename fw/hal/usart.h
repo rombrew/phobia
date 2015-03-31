@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,29 +16,34 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_UART_
-#define _H_UART_
+#ifndef _H_USART_
+#define _H_USART_
 
-#define UART_RXBUF_SZ		20
-#define UART_TXBUF_SZ		40
+#define USART_RXBUF_SZ		80
+#define USART_TXBUF_SZ		80
 
 typedef struct {
 
-	char		RX[UART_RXBUF_SZ];
-	char		TX[UART_TXBUF_SZ];
+	/* Baud Rate.
+	 * */
+	int		bR;
 
+	/* Buffers.
+	 * */
+	char		RX[USART_RXBUF_SZ];
+	char		TX[USART_TXBUF_SZ];
 	int		rN;
 }
-halUART_TypeDef;
+halUSART_TypeDef;
 
-extern halUART_TypeDef		halUART;
+extern halUSART_TypeDef		halUSART;
 
-void uartEnable(unsigned long int bR);
-void uartDisable();
+void usartEnable();
+void usartDisable();
 
-int uartRX();
-char *uartGetTX();
-void uartTX(int N);
+int usartRecv();
+int usartPoll();
+void usartPushAll(int N);
 
-#endif /* _H_UART_ */
+#endif /* _H_USART_ */
 

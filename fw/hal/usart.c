@@ -19,19 +19,16 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#include "../task.h"
+halUSART_TypeDef 		halUSART;
 
-halUART_TypeDef 		halUART;
-
-void irqUSART3() { td.xIN = 1; }
+void irqUSART3() { }
 
 void irqDMA1_Stream3()
 {
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF3;
-	td.xOUT = 1;
 }
 
-void uartEnable(unsigned long int bR)
+void usartEnable()
 {
 	/* Enable USART3 clock.
 	 * */
@@ -50,19 +47,23 @@ void uartEnable(unsigned long int bR)
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = halBASE.hzAPB1 / bR;
+	USART3->BRR = HZ_APB1 / halUSART.bR;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
 	USART3->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;
+
+	/* Flush RX buffer.
+	 * */
+	halUSART.rN = 0;
 
 	/* Configure DMA for RX.
 	 * */
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF1 | DMA_LIFCR_CHTIF1 | DMA_LIFCR_CTEIF1
 		| DMA_LIFCR_CDMEIF1 | DMA_LIFCR_CFEIF1;
 	DMA1_Stream1->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream1->M0AR = (unsigned int) halUART.RX;
-	DMA1_Stream1->NDTR = UART_RXBUF_SZ;
+	DMA1_Stream1->M0AR = (unsigned int) halUSART.RX;
+	DMA1_Stream1->NDTR = USART_RXBUF_SZ;
 	DMA1_Stream1->FCR = 0;
 	DMA1_Stream1->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
 		| DMA_SxCR_CIRC;
@@ -74,7 +75,7 @@ void uartEnable(unsigned long int bR)
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
 		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
 	DMA1_Stream3->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream3->M0AR = (unsigned int) halUART.TX;
+	DMA1_Stream3->M0AR = (unsigned int) halUSART.TX;
 	DMA1_Stream3->NDTR = 0;
 	DMA1_Stream3->FCR = 0;
 	DMA1_Stream3->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
@@ -116,19 +117,19 @@ void uartDisable()
 	RCC->AHB1ENR &= ~RCC_APB1ENR_USART3EN;
 }
 
-int uartRX()
+int usartRecv()
 {
 	int	rN, rW, xC;
 
-	rN = halUART.rN;
-	rW = UART_RXBUF_SZ - DMA1_Stream1->NDTR;
+	rN = halUSART.rN;
+	rW = USART_RXBUF_SZ - DMA1_Stream1->NDTR;
 
 	if (rN != rW) {
 
 		/* There are data.
 		 * */
-		xC = halUART.RX[rN];
-		halUART.rN = (rN < (UART_RXBUF_SZ - 1)) ? rN + 1 : 0;
+		xC = halUSART.RX[rN];
+		halUSART.rN = (rN < (USART_RXBUF_SZ - 1)) ? rN + 1 : 0;
 	}
 	else
 		xC = -1;
@@ -136,12 +137,12 @@ int uartRX()
 	return xC;
 }
 
-char *uartGetTX()
+int usartPoll()
 {
-	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : halUART.TX;
+	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : 1;
 }
 
-void uartTX(int N)
+void usartPushAll(int N)
 {
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
 		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;

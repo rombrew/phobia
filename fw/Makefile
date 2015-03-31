@@ -27,7 +27,7 @@ OBJS	= hal/entry.o \
 	hal/can.o \
 	hal/hal.o \
 	hal/pwm.o \
-	hal/uart.o
+	hal/usart.o
 
 OBJS	+= task.o \
 	lib.o \

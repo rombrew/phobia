@@ -43,7 +43,7 @@ halPWM_TypeDef;
 
 extern halPWM_TypeDef		halPWM;
 
-void pwmEnable(int hzF, int nsD);
+void pwmEnable();
 void pwmDisable();
 
 void pwmDC(int uA, int uB, int uC);

@@ -20,8 +20,7 @@
 #include "hal.h"
 
 extern int ldSvectors;
-
-halBASE_TypeDef			halBASE;
+extern int ldSccm, ldEccm;
 
 void irqNMI() { }
 void irqHardFault() { }
@@ -34,6 +33,21 @@ void irqPendSV() { }
 void irqSysTick()
 {
 	halTick();
+}
+
+static void
+Halt()
+{
+	/* Enable LED.
+	 * */
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
+	MODIFY_REG(GPIOD->MODER, GPIO_MODER_MODER14, GPIO_MODER_MODER14_0);
+	GPIOD->BSRRL = (1UL << 14);
+
+	/* Halt.
+	 * */
+	__disable_irq();
+	for (;;) __WFI();
 }
 
 static void
@@ -103,17 +117,11 @@ clockStart()
 		/* Wait till PLL is used.
 		 * */
 		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
-
-		/* Declare clock frequency.
-		 * */
-		halBASE.hzAHB = 168000000UL;
-		halBASE.hzAPB1 = halBASE.hzAHB / 4UL;
-		halBASE.hzAPB2 = halBASE.hzAHB / 2UL;
 	}
 	else {
 		/* HSE fails to start up.
 		 * */
-		halBASE.hzAHB = 0UL;
+		Halt();
 	}
 }
 
@@ -123,9 +131,6 @@ boardStart()
 	/* Enable FPU.
 	 * */
 	SCB->CPACR |= (3UL << 20) | (3UL << 22);
-
-	__DSB();
-	__ISB();
 
 	/* Vector table offset.
 	 * */
@@ -155,24 +160,12 @@ boardStart()
 			GPIO_MODER_MODER12_0 | GPIO_MODER_MODER13_0
 			| GPIO_MODER_MODER14_0 | GPIO_MODER_MODER15_0);
 
-	/* If clock fails to start up.
-	 * */
-	if (halBASE.hzAHB == 0UL) {
-	}
-
-	/* If BOR reset occurs.
-	 * */
-	if (RCC->CSR & RCC_CSR_BORRSTF) {
-	}
-
-	/* If VDD is lower than threshold.
-	 * */
-	if (PWR->CSR & PWR_CSR_PVDO) {
-	}
-
 	/* Configure SysTick (100 Hz).
 	 * */
-	SysTick_Config(halBASE.hzAHB / 100UL);
+	SysTick_Config(HZ_AHB / 100UL);
+
+	__DSB();
+	__ISB();
 
 	/* Enable interrupts.
 	 * */

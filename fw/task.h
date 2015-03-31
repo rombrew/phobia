@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,33 +19,25 @@
 #ifndef _H_TASK_
 #define _H_TASK_
 
+#include "pmc.h"
+
 typedef struct {
 
-	/* Ticks from power up.
+	/* Seconds from Power Up.
 	 * */
-	unsigned long int	uTICK;
+	int			uSEC;
+	int			uDS;
 
-	/* Busy mask.
+	/* IRQ load ticks.
 	 * */
-	int			mBUSY;
-
-	/* Pending flags.
-	 * */
-	int			xIN;
-	int			xOUT;
-	int			xSH;
-
-	/* Use bxCAN transport.
-	 * */
-	int			xCAN;
-
-	
+	int			Tirq;
 }
 taskDATA_t;
 
 extern taskDATA_t		td;
+extern pmc_t			pm;
 
-void taskYield();
+void taskIOMUX();
 
 #endif /* _H_TASK_ */
 

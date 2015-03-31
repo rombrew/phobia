@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #define NULL			((void *) 0L)
 #define EOL			"\r\n"
 
+void *memz(void *p, int sz);
 char strcmp(const char *s, const char *p);
 char strpcmp(const char *s, const char *p);
 char *strcpy(char *d, const char *s);

@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,21 @@
 #include "sh.h"
 
 #define PUTC(c)				shSend(c)
+
+void *memz(void *p, int sz)
+{
+	int	*x = p;
+
+	sz /= sizeof(int);
+
+	while (sz > 0) {
+
+		*x++ = 0;
+		sz--;
+	}
+
+	return x;
+}
 
 char strcmp(const char *s, const char *p)
 {
@@ -124,15 +139,104 @@ fmt_int(int x)
 	while (*p) PUTC(*p++);
 }
 
-static void
-fmt_float(float x)
+inline unsigned int
+ftou(float x)
 {
+	union {
+		float		f;
+		unsigned int	i;
+	} u;
+
+	u.f = x;
+
+	return u.i;
+}
+
+static void
+fmt_float(float x, int n)
+{
+	int		i, be, ma;
+	int		de = 0;
+	float		h;
+
+	if (x < 0) {
+
+		PUTC('-');
+		x = - x;
+	}
+
+	be = (ftou(x) >> 23) & 0xFF;
+	ma = ftou(x) & 0x7FFFFF;
+
+	if (be == 0xFF) {
+
+		if (ma != 0)
+
+			puts("NaN");
+		else
+			puts("Inf");
+
+		return ;
+	}
+	else if (be != 0) {
+
+		do {
+			be = ((ftou(x) >> 23) & 0xFF) - 127;
+
+			if (be < 0) {
+
+				x *= 10.f;
+				de--;
+			}
+			else if (be > 3) {
+
+				x /= 10.f;
+				de++;
+			}
+			else
+				break;
+		}
+		while (1);
+	}
+
+	h = .5f;
+	for (i = 0; i < n; ++i)
+		h /= 10.f;
+
+	x += h;
+	i = (int) x;
+
+	if (i > 9) {
+
+		x /= 10.f;
+		de++;
+	}
+
+	i = (int) x;
+	x -= i;
+
+	PUTC('0' + i);
+	PUTC('.');
+
+	while (n > 0) {
+
+		x *= 10.f;
+		i = (int) i;
+		x -= i;
+
+		PUTC('0' + i);
+		n--;
+	}
+
+	PUTC('e');
+	fmt_int(de);
 }
 
 void printf(const char *fmt, ...)
 {
         va_list		ap;
-        const char	*sarg;
+        const char	*s;
+	int		n = 5;
 
         va_start(ap, fmt);
 
@@ -141,6 +245,9 @@ void printf(const char *fmt, ...)
                 if (*fmt == '%') {
 
                         ++fmt;
+
+			if (*fmt >= '0' && *fmt <= '9')
+				n = *fmt++ - '0';
 
 			switch (*fmt) {
 
@@ -152,10 +259,13 @@ void printf(const char *fmt, ...)
 					fmt_int(va_arg(ap, int));
 					break;
 
+				case 'f':
+					fmt_float(* va_arg(ap, float *), n);
+					break;
+
 				case 's':
-					sarg = va_arg(ap, const char*);
-					while (*sarg)
-						PUTC(*sarg++);
+					s = va_arg(ap, const char *);
+					puts(s);
 					break;
 			}
 		}
@@ -168,15 +278,107 @@ void printf(const char *fmt, ...)
         va_end(ap);
 }
 
-void *malloc(unsigned long int usz)
+int stoi(int *x, const char *s)
 {
-	static char	*pHeap = (void *) 0x10000000;
-	void		*p;
+	int		r = 0, n = 1, i = 0;
 
-	usz = (usz + 7UL) & ~7UL;
-	p = pHeap;
-	pHeap += usz;
+	if (*s == '-') {
 
-	return p;
+		n = -1;
+		s++;
+	}
+	else if (*s == '+')
+		s++;
+
+	while (*s >= '0' && *s <= '9') {
+
+		i = 10 * i + (*s++ - '0') * n;
+
+		if (i * n < 0) {
+
+			r = -1;
+			break;
+		}
+	}
+
+	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+
+		*x = i;
+	else
+		r = -1;
+
+	return r;
+}
+
+int stof(float *x, const char *s)
+{
+	int		r = 0, n = 1, de = 0, e;
+	float		f = 0.f;
+
+	if (*s == '-') {
+
+		n = -1;
+		s++;
+	}
+	else if (*s == '+')
+		s++;
+
+	while (*s >= '0' && *s <= '9') {
+
+		f = 10.f * f + (*s++ - '0') * n;
+	}
+
+	if (*s == '.') {
+
+		s++;
+
+		while (*s >= '0' && *s <= '9') {
+
+			f = 10.f * f + (*s++ - '0') * n;
+			de--;
+		}
+	}
+
+	if (*s == 'n')
+		de += -9, s++;
+	else if (*s == 'u')
+		de += -6, s++;
+	else if (*s == 'm')
+		de += -3, s++;
+	else if (*s == 'K')
+		de += 3, s++;
+	else if (*s == 'M')
+		de += 6, s++;
+	else if (*s == 'G')
+		de += 9, s++;
+	else if (*s == 'e') {
+
+		s++;
+		r = stoi(&e, s);
+
+		if (r == 0)
+			de += e;
+	}
+
+	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') {
+
+		while (de < 0) {
+
+			f /= 10.f;
+			de++;
+		}
+
+		while (de > 0) {
+
+			f *= 10.f;
+			de--;
+		}
+
+		*x = f;
+	}
+	else
+		r = -1;
+
+	return r;
 }
 

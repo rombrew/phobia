@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,115 +18,118 @@
 
 #include "hal/hal.h"
 #include "task.h"
+#include "pmc.h"
 #include "sh.h"
 #include "lib.h"
 
 taskDATA_t			td;
+pmc_t __CCM__			pm;
 
 void halTick()
 {
-	td.uTICK++;
-}
+	td.uDS++;
 
-void adcIRQ()
-{
-}
+	if (td.uDS >= 100) {
 
-void taskIN()
-{
-	int		xC;
-
-	if (td.xCAN) {
-
-		/* TODO */
-	}
-	else {
-		do {
-			xC = uartRX();
-
-			if (xC < 0)
-				break;
-			else
-				shExSend(xC);
-		}
-		while (1);
+		td.uDS = 0;
+		td.uSEC++;
 	}
 }
 
-void taskOUT()
+void taskIOMUX()
 {
 	int		xC, xN;
 	char		*pX;
 
-	if (td.xCAN) {
+	/* From USART to SH.
+	 * */
+	xN = shExPoll();
 
-		/* TODO */
+	while (xN >= 0) {
+
+		xC = usartRecv();
+
+		if (xC < 0)
+			break;
+		else
+			shExPush(xC);
+
+		xN--;
 	}
-	else {
-		pX = uartGetTX();
 
-		if (pX != NULL) {
+	/* From SH to USART.
+	 * */
+	if (usartPoll()) {
 
-			xN = 0;
+		pX = halUSART.TX;
+		xN = 0;
 
-			do {
-				xC = shExRecv();
+		do {
+			xC = shExRecv();
 
-				if (xC < 0)
-					break;
-				else
-					*pX++ = (char) xC,
-					xN++;
+			if (xC < 0)
+				break;
+			else
+				*pX++ = (char) xC,
+				xN++;
 
-				if (xN >= (UART_TXBUF_SZ - 1))
-					break;
-			}
-			while (1);
-
-			if (xN > 0) {
-
-				uartTX(xN);
-			}
+			if (xN >= (USART_TXBUF_SZ - 1))
+				break;
 		}
-	}
-}
+		while (1);
 
-void taskCAN()
-{
-}
+		if (xN > 0) {
 
-void taskYield()
-{
-	if (td.xIN) {
-
-		td.xIN = 0;
-		taskIN();
-	}
-
-	if (td.xOUT) {
-
-		td.xOUT = 0;
-		taskOUT();
-	}
-
-	if (td.xSH && !(td.mBUSY & 1UL)) {
-
-		td.xSH = 0;
-		td.mBUSY |= 1UL;
-		shTask();
-		td.mBUSY &= ~1UL;
+			usartPushAll(xN);
+		}
 	}
 
 	halWFI();
 }
 
+void canIRQ()
+{
+}
+
+void adcIRQ()
+{
+	int		T0, T1;
+
+	T0 = halSysTick();
+	pmcFeedBack(&pm, halADC.xA, halADC.xB, halADC.xU);
+	T1 = halSysTick();
+
+	/* IRQ load ticks.
+	 * */
+	td.Tirq = T0 - T1;
+}
+
 void halMain()
 {
 	halLED(LED_BLUE);
-	uartEnable(57600UL);
+
+	/* Config.
+	 * */
+	halUSART.bR = 57600;
+	halPWM.hzF = 20000;
+	halPWM.nsD = 500;
+
+	usartEnable();
+
+	pwmEnable();
+	adcEnable();
+
+	pm.hzF = (float) halPWM.hzF;
+	pm.pwmR = halPWM.R;
+	pm.pDC = &pwmDC;
+	pm.pZ = &pwmZ;
+	pmcEnable(&pm);
 
 	do {
-		taskYield();
+		taskIOMUX();
+		shTask();
+
+		halWFI();
 	}
 	while (1);
 }
