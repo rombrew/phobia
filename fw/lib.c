@@ -107,6 +107,13 @@ int strlen(const char *s)
 	return len;
 }
 
+const char *strtok(const char *s)
+{
+	while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') ++s;
+
+	return s;
+}
+
 void putc(char c) { PUTC(c); }
 
 void puts(const char *s)
@@ -154,6 +161,57 @@ ftou(float x)
 
 static void
 fmt_float(float x, int n)
+{
+	int		i, be, ma;
+	float		h;
+
+	if (x < 0) {
+
+		PUTC('-');
+		x = - x;
+	}
+
+	be = (ftou(x) >> 23) & 0xFF;
+	ma = ftou(x) & 0x7FFFFF;
+
+	if (be == 0xFF) {
+
+		if (ma != 0)
+
+			puts("NaN");
+		else
+			puts("Inf");
+
+		return ;
+	}
+
+	h = .5f;
+	for (i = 0; i < n; ++i)
+		h /= 10.f;
+
+	x += h;
+	i = (int) x;
+	fmt_int(i);
+	x -= i;
+
+	if (x < 1.f) {
+
+		PUTC('.');
+
+		while (n > 0) {
+
+			x *= 10.f;
+			i = (int) x;
+			x -= i;
+
+			PUTC('0' + i);
+			n--;
+		}
+	}
+}
+
+static void
+fmt_fexp(float x, int n)
 {
 	int		i, be, ma;
 	int		de = 0;
@@ -221,7 +279,7 @@ fmt_float(float x, int n)
 	while (n > 0) {
 
 		x *= 10.f;
-		i = (int) i;
+		i = (int) x;
 		x -= i;
 
 		PUTC('0' + i);
@@ -229,6 +287,10 @@ fmt_float(float x, int n)
 	}
 
 	PUTC('e');
+
+	if (de >= 0)
+		PUTC('+');
+
 	fmt_int(de);
 }
 
@@ -263,6 +325,10 @@ void printf(const char *fmt, ...)
 					fmt_float(* va_arg(ap, float *), n);
 					break;
 
+				case 'e':
+					fmt_fexp(* va_arg(ap, float *), n);
+					break;
+
 				case 's':
 					s = va_arg(ap, const char *);
 					puts(s);
@@ -278,9 +344,9 @@ void printf(const char *fmt, ...)
         va_end(ap);
 }
 
-int stoi(int *x, const char *s)
+const char *stoi(int *x, const char *s)
 {
-	int		r = 0, n = 1, i = 0;
+	int		n = 1, k = 0, i = 0;
 
 	if (*s == '-') {
 
@@ -293,26 +359,27 @@ int stoi(int *x, const char *s)
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
+		k++;
 
-		if (i * n < 0) {
-
-			r = -1;
-			break;
-		}
+		if (i * n < 0)
+			return NULL;
 	}
+
+	if (k == 0)
+		return NULL;
 
 	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
 
 		*x = i;
 	else
-		r = -1;
+		return NULL;
 
-	return r;
+	return s;
 }
 
-int stof(float *x, const char *s)
+const char *stof(float *x, const char *s)
 {
-	int		r = 0, n = 1, de = 0, e;
+	int		n = 1, k = 0, de = 0, e;
 	float		f = 0.f;
 
 	if (*s == '-') {
@@ -326,6 +393,7 @@ int stof(float *x, const char *s)
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10.f * f + (*s++ - '0') * n;
+		k++;
 	}
 
 	if (*s == '.') {
@@ -335,9 +403,12 @@ int stof(float *x, const char *s)
 		while (*s >= '0' && *s <= '9') {
 
 			f = 10.f * f + (*s++ - '0') * n;
-			de--;
+			k++; de--;
 		}
 	}
+
+	if (k == 0)
+		return NULL;
 
 	if (*s == 'n')
 		de += -9, s++;
@@ -351,13 +422,14 @@ int stof(float *x, const char *s)
 		de += 6, s++;
 	else if (*s == 'G')
 		de += 9, s++;
-	else if (*s == 'e') {
+	else if (*s == 'e' || *s == 'E') {
 
-		s++;
-		r = stoi(&e, s);
+		s = stoi(&e, s + 1);
 
-		if (r == 0)
+		if (s != NULL)
 			de += e;
+		else
+			return NULL;
 	}
 
 	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') {
@@ -377,8 +449,8 @@ int stof(float *x, const char *s)
 		*x = f;
 	}
 	else
-		r = -1;
+		return NULL;
 
-	return r;
+	return s;
 }
 

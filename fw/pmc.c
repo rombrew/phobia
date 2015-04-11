@@ -19,7 +19,7 @@
 #include "pmc.h"
 
 static inline float
-xabs(float x) { return (x < 0.f) ? - x : x; }
+absf(float x) { return (x < 0.f) ? - x : x; }
 
 static void
 dROT(float B[2], float R, const float A[2])
@@ -53,7 +53,7 @@ void pmcEnable(pmc_t *pm)
 
 	pm->iHOLD = 1.f;
 	pm->iSINE = .5f;
-	pm->sineF = 100.f;
+	pm->sineF = 500.f;
 
 	pm->cA0 = 0.f;
 	pm->cA1 = .01464844f;
@@ -71,7 +71,7 @@ void pmcEnable(pmc_t *pm)
 
 	pm->kR = 1e-2f;
 
-	pm->iMAX = 5.f;
+	pm->iMAX = 2.f;
 	pm->iKP = 2e-2f;
 	pm->iKI = 2e-3f;
 
@@ -81,6 +81,8 @@ void pmcEnable(pmc_t *pm)
 	pm->wMIN = 5000.f * .10471976f;
 	pm->wKP = 5e-2f;
 	pm->wKI = 2e-4f;
+
+	pm->pZ(7);
 }
 
 static void
@@ -466,6 +468,11 @@ uFB(pmc_t *pm, float uX, float uY)
 	pm->uY = uY;
 }
 
+void pmc_uFB(pmc_t *pm, float uX, float uY)
+{
+	uFB(pm, uX, uY);
+}
+
 static void
 iFB(pmc_t *pm)
 {
@@ -554,12 +561,12 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				}
 			}
 
-			if (xabs(pm->kX[4]) < (pm->wMIN * .9f)) {
+			/*if (absf(pm->kX[4]) < (pm->wMIN * .9f)) {
 
 				pm->mBit &= ~PMC_MODE_Q_DRIFT;
 			}
 			else
-				pm->mBit |= PMC_MODE_Q_DRIFT;
+				pm->mBit |= PMC_MODE_Q_DRIFT;*/
 
 			break;
 
@@ -568,6 +575,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
+
+				pm->pZ(7);
 
 				pm->Ad = 0.f;
 				pm->Bd = 0.f;
@@ -609,6 +618,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 					}
 					else {
 						pm->mBit |= PMC_MODE_SUPPLY_VOLTAGE;
+
+						pm->pZ(0);
 
 						if (pm->mReq == PMC_REQ_SPINUP)
 							pm->mS1 = PMC_STATE_HOLD;
@@ -684,8 +695,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kX[2] = 1.f;
 				pm->kX[3] = 0.f;
 
-				pm->kT[2] = pm->iSPD;
-				pm->kT[3] = pm->iSPQ;
+				pm->kT[2] = pm->iHOLD;
+				pm->kT[3] = 0;
 
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Thold;
@@ -708,10 +719,13 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 					pm->kP[7] += pm->uY * pm->hCS[1];
 				}
 
+				pm->iSPD = pm->kT[2];
+				pm->iSPQ = pm->kT[3];
+
 				if (pm->mS2 == 2 || pm->mS2 == 3) {
 
-					pm->iSPD = pm->kT[2] + pm->hCS[0] * pm->iSINE;
-					pm->iSPQ = pm->kT[3] + pm->hCS[1] * pm->iSINE;
+					pm->iSPD += pm->hCS[0] * pm->iSINE;
+					pm->iSPQ += pm->hCS[1] * pm->iSINE;
 
 					dROT(pm->hCS, pm->hT, pm->hCS);
 				}
@@ -854,7 +868,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->mS2++;
 			}
 			else {
-				if (xabs(pm->kX[4]) > (pm->wMIN * .9f)) {
+				if (absf(pm->kX[4]) > (pm->wMIN * .9f)) {
 
 					pm->mBit |= PMC_MODE_Q_DRIFT;
 
@@ -889,7 +903,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->mS2++;
 			}
 			else {
-				if (xabs(pm->kX[4]) < (pm->wMIN * .1f)) {
+				if (absf(pm->kX[4]) < (pm->wMIN * .1f)) {
 
 					pm->mReq = PMC_REQ_NULL;
 					pm->mS1 = PMC_STATE_END;
@@ -911,6 +925,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			uFB(pm, 0.f, 0.f);
 
+			pm->pZ(7);
+
 			pm->mReq = PMC_REQ_NULL;
 			pm->mBit = 0;
 			pm->mS1 = PMC_STATE_IDLE;
@@ -929,6 +945,9 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 	iA = pm->cA1 * (xA - 2048) + pm->cA0;
 	iB = pm->cB1 * (xB - 2048) + pm->cB0;
 	uS = pm->cU1 * xU + pm->cU0;
+
+	pm->iX = iA;
+	pm->iY = .57735027f * iA + 1.1547005f * iB;
 
 	/* Call FSM.
 	 * */

@@ -25,12 +25,13 @@ enum {
 	PMC_REQ_BREAK,
 	PMC_REQ_PICKUP,
 	PMC_REQ_SINE,
-	PMC_REQ_LINEAR
+	PMC_REQ_LINEAR,
+	PMC_REQ_END
 };
 
 enum {
 	PMC_MODE_EKF_6X_DQ			= 0x0100,
-	PMC_MODE_Q_DRIFT			= 0x0200,
+	PMC_MODE_QAXIS_DRIFT			= 0x0200,
 	PMC_MODE_ZERO_DRIFT			= 0x0400,
 	PMC_MODE_SUPPLY_VOLTAGE			= 0x0800,
 	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
@@ -159,6 +160,8 @@ typedef struct {
 	 * */
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
+
+	float		iX, iY;
 }
 pmc_t;
 

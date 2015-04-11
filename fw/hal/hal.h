@@ -39,6 +39,7 @@ enum {
 void halStart();
 void halWFI();
 int halSysTick();
+void halReset();
 void halLED(int F);
 
 extern void halMain();

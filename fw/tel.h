@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,24 +16,28 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_SH_
-#define _H_SH_
+#ifndef _H_TEL_
+#define _H_TEL_
+
+#define	TELSZ			40000
 
 typedef struct {
 
-	const char		*iD;
-	void			(* pF) (const char *);
+	short int		in[8];
+	int			sz, en;
+
+	int			av[8];
+	int			num, dec;
+
+	short int		pD[TELSZ];
+	short int		*pZ;
 }
-shCMD_t;
+tel_t;
 
-int shRecv();
-void shSend(int xC);
+extern tel_t			tel;
 
-int shExRecv();
-int shExPoll();
-void shExPush(int xC);
+void telTask();
+void telShow();
 
-void shTask();
-
-#endif /* _H_SH_ */
+#endif /* _H_TEL_ */
 

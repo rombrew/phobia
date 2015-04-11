@@ -29,11 +29,11 @@ void irqADC()
 		ADC2->SR &= ~ADC_SR_JEOC;
 		ADC3->SR &= ~ADC_SR_JEOC;
 
-		halADC.xA = ADC1->JDR1;
-		halADC.xB = ADC2->JDR1;
-		halADC.xU = ADC3->JDR1;
+		halADC.xA = (1UL << 12) - ADC2->JDR1;
+		halADC.xB = (1UL << 12) - ADC3->JDR1;
+		halADC.xU = 1655; /* ADC1->JDR1;*/
 
-		__set_BASEPRI(7);
+		//__set_BASEPRI(7);
 		adcIRQ();
 	}
 }
@@ -44,7 +44,7 @@ void adcEnable()
 	 * */
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN;
 
-	/* Enable analog PA1, PA2, PA3 pins.
+	/* Enable analog PA1, ADC regular data register (ADC_DPA2, PA3 pins.
 	 * */
 	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER1 | GPIO_MODER_MODER2
 			| GPIO_MODER_MODER3,
@@ -56,21 +56,29 @@ void adcEnable()
 	 * */
 	ADC->CCR = ADC_CCR_TSVREFE | ADC_CCR_ADCPRE_0;
 
-	/* Configure ADC1.
+	/* Configure ADC1 on PA3.
 	 * */
 	ADC1->CR1 = ADC_CR1_JEOCIE;
 	ADC1->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
-	ADC1->SMPR1 = ADC_SMPR1_SMP16_2;
-	ADC1->SMPR2 = ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP1_0;
-	ADC1->JSQR = ADC_JSQR_JSQ4_4;
+	ADC1->SMPR1 = 0;
+	ADC1->SMPR2 = ADC_SMPR2_SMP3_0;
+	ADC1->JSQR = ADC_JSQR_JSQ4_0 | ADC_JSQR_JSQ4_1;
 
 	/* Configure ADC2 on PA1.
 	 * */
-	ADC2->CR1 = ADC_CR1_JEOCIE;
+	ADC2->CR1 = 0;
 	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
-	ADC2->SMPR1 = ADC_SMPR1_SMP16_2;
-	ADC2->SMPR2 = ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP1_0;
-	ADC2->JSQR = ADC_JSQR_JSQ4_4;
+	ADC2->SMPR1 = 0;
+	ADC2->SMPR2 = ADC_SMPR2_SMP1_0;
+	ADC2->JSQR = ADC_JSQR_JSQ4_0;
+
+	/* Configure ADC3 on PA2.
+	 * */
+	ADC3->CR1 = 0;
+	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
+	ADC3->SMPR1 = 0;
+	ADC3->SMPR2 = ADC_SMPR2_SMP2_0;
+	ADC3->JSQR = ADC_JSQR_JSQ4_1;
 
 	/* Enable ADC.
 	 * */

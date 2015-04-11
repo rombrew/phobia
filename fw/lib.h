@@ -23,13 +23,19 @@
 #define EOL			"\r\n"
 
 void *memz(void *p, int sz);
+
 char strcmp(const char *s, const char *p);
 char strpcmp(const char *s, const char *p);
 char *strcpy(char *d, const char *s);
 int strlen(const char *s);
+const char *strtok(const char *s);
+
 void putc(char c);
 void puts(const char *s);
 void printf(const char *fmt, ...);
+
+const char *stoi(int *x, const char *s);
+const char *stof(float *x, const char *s);
 
 #endif /* _H_LIB_ */
 

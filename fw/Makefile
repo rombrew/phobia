@@ -33,7 +33,8 @@ OBJS	+= task.o \
 	lib.o \
 	sh.o \
 	cml.o \
-	pmc.o
+	pmc.o \
+	tel.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

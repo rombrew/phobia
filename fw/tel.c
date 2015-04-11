@@ -1,6 +1,6 @@
 /*
    Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,24 +16,49 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_SH_
-#define _H_SH_
+#include "lib.h"
+#include "sh.h"
+#include "tel.h"
 
-typedef struct {
+tel_t				tel;
 
-	const char		*iD;
-	void			(* pF) (const char *);
+void telTask()
+{
+	int			j, sa;
+
+	for (j = 0; j < tel.sz; ++j)
+		tel.av[j] += tel.in[j];
+
+	tel.num++;
+
+	if (tel.num >= tel.dec) {
+
+		tel.num = 0;
+
+		for (j = 0; j < tel.sz; ++j) {
+
+			*tel.pZ++ = tel.av[j] / tel.dec;
+			tel.av[j] = 0;
+		}
+
+		sa = tel.pZ - tel.pD + tel.sz;
+		tel.en = (sa < TELSZ) ? tel.en : 0;
+	}
 }
-shCMD_t;
 
-int shRecv();
-void shSend(int xC);
+void telShow()
+{
+	short int		*pZ;
+	int			j;
 
-int shExRecv();
-int shExPoll();
-void shExPush(int xC);
+	pZ = tel.pD;
 
-void shTask();
+	while (pZ < tel.pZ) {
 
-#endif /* _H_SH_ */
+		for (j = 0; j < tel.sz; ++j)
+			printf("%i ", *pZ++);
+
+		puts(EOL);
+	}
+}
 

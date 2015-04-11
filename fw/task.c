@@ -17,10 +17,11 @@
 */
 
 #include "hal/hal.h"
-#include "task.h"
+#include "lib.h"
 #include "pmc.h"
 #include "sh.h"
-#include "lib.h"
+#include "task.h"
+#include "tel.h"
 
 taskDATA_t			td;
 pmc_t __CCM__			pm;
@@ -96,7 +97,18 @@ void adcIRQ()
 	int		T0, T1;
 
 	T0 = halSysTick();
+
 	pmcFeedBack(&pm, halADC.xA, halADC.xB, halADC.xU);
+
+	if (tel.en != 0) {
+
+		tel.in[0] = (short int) halADC.xA;
+		tel.in[1] = (short int) halADC.xB;
+		tel.sz = 2;
+
+		telTask();
+	}
+
 	T1 = halSysTick();
 
 	/* IRQ load ticks.
@@ -112,17 +124,19 @@ void halMain()
 	 * */
 	halUSART.bR = 57600;
 	halPWM.hzF = 20000;
-	halPWM.nsD = 500;
+	halPWM.nsD = 400;
 
 	usartEnable();
 
 	pwmEnable();
 	adcEnable();
 
+	memz(&pm, sizeof(pm));
 	pm.hzF = (float) halPWM.hzF;
 	pm.pwmR = halPWM.R;
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
+
 	pmcEnable(&pm);
 
 	do {

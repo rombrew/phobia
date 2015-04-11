@@ -22,19 +22,6 @@
 extern int ldSvectors;
 extern int ldSccm, ldEccm;
 
-void irqNMI() { }
-void irqHardFault() { }
-void irqMemoryFault() { }
-void irqBusFault() { }
-void irqUsageFault() { }
-void irqSVCall() { }
-void irqPendSV() { }
-
-void irqSysTick()
-{
-	halTick();
-}
-
 static void
 Halt()
 {
@@ -48,6 +35,19 @@ Halt()
 	 * */
 	__disable_irq();
 	for (;;) __WFI();
+}
+
+void irqNMI() { }
+void irqHardFault() { }
+void irqMemoryFault() { }
+void irqBusFault() { }
+void irqUsageFault() { }
+void irqSVCall() { }
+void irqPendSV() { }
+
+void irqSysTick()
+{
+	halTick();
 }
 
 static void
@@ -186,6 +186,11 @@ void halWFI()
 int halSysTick()
 {
 	return SysTick->VAL;
+}
+
+void halReset()
+{
+	NVIC_SystemReset();
 }
 
 void halLED(int F)

@@ -65,7 +65,7 @@ typedef struct {
 	/* History block.
 	 * */
 	char		cHist[SH_HISTORY_SZ];
-	int		hMD, hHEAD, hTAIL, hBACK, hIT;
+	int		hMD, hHEAD, hTAIL, hIT;
 }
 shTASK_t;
 
@@ -262,13 +262,25 @@ shHistoryMove(int xIT, int xDIR)
 static void
 shHistoryPut(const char *xS)
 {
-	int			xPREV;
+	int			xIT, R;
+	const char		*xP = xS;
 
 	if (sh.hHEAD != sh.hTAIL) {
 
-		xPREV = shHistoryMove(sh.hTAIL, DIR_UP);
+		xIT = shHistoryMove(sh.hTAIL, DIR_UP);
 
-		if (strcmp(xS, sh.cHist + xPREV) == 0)
+		do {
+			R = sh.cHist[xIT] - *xP;
+
+			if (R || !*xP)
+				break;
+
+			xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
+			xP++;
+		}
+		while (1);
+
+		if (R == 0)
 
 			/* Do not put the same line again.
 			 * */
@@ -376,48 +388,41 @@ static void
 shHistory(int xDIR)
 {
 	int			xIT;
+	char			*xD;
 
 	if (sh.hMD == 0) {
 
 		/* Enter history mode.
 		 * */
 		sh.hIT = sh.hTAIL;
-		sh.hBACK = sh.hTAIL;
 		sh.hMD = 1;
+		xIT = sh.hTAIL;
 
 		/* Save current line.
 		 * */
 		shHistoryPut(sh.cLine);
-		sh.hTAIL = sh.hBACK;
+		sh.hTAIL = xIT;
 	}
 
-	if (xDIR == DIR_UP) {
+	if (xDIR == DIR_UP)
 
 		xIT = shHistoryMove(sh.hIT, DIR_UP);
-
-		if (xIT != sh.hIT) {
-
-			strcpy(sh.cLine, sh.cHist + xIT);
-		}
-	}
-	else {
+	else
 		xIT = shHistoryMove(sh.hIT, DIR_DOWN);
-
-		/* Do not move over.
-		 * */
-		if (xIT != sh.hTAIL) {
-
-			strcpy(sh.cLine, sh.cHist + xIT);
-		}
-		else if (sh.hIT != sh.hTAIL) {
-
-			strcpy(sh.cLine, sh.cHist + sh.hBACK);
-		}
-	}
 
 	if (xIT != sh.hIT) {
 
 		sh.hIT = xIT;
+		xD = sh.cLine;
+
+		do {
+			if (!(*xD = sh.cHist[xIT]))
+				break;
+
+			xD++;
+			xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
+		}
+		while (1);
 
 		/* Update the command line.
 		 * */
@@ -488,6 +493,7 @@ void shTask()
 					|| (xC == '_')
 					|| (xC == '.')
 					|| (xC == '-')
+					|| (xC == '+')
 					|| (xC == '%')) {
 
 				shLinePutC(xC);
