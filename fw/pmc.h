@@ -24,6 +24,7 @@ enum {
 	PMC_REQ_SPINUP,
 	PMC_REQ_BREAK,
 	PMC_REQ_PICKUP,
+	PMC_REQ_HOLD,
 	PMC_REQ_SINE,
 	PMC_REQ_LINEAR,
 	PMC_REQ_END
@@ -78,7 +79,8 @@ typedef struct {
 	 * */
 	float		Tdrift;
 	float		Thold;
-	float		Tsample;
+	float		Trohm;
+	float		Tsine;
 	float		Tout;
 	float		Tend;
 
@@ -86,7 +88,9 @@ typedef struct {
 	 * */
 	float		iHOLD;
 	float		iSINE;
-	float		sineF;
+	float		iOFSD;
+	float		iOFSQ;
+	float		sF;
 
 	/* Conversion constants.
 	 * */
@@ -136,8 +140,10 @@ typedef struct {
 	/* Current control loop.
 	 * */
 	float		iMAX;
-	float		iSPD, iSPQ;
-	float		iXD, iXQ;
+	float		iSPD;
+	float		iSPQ;
+	float		iXD;
+	float		iXQ;
 	float		iKP;
 	float		iKI;
 
@@ -150,7 +156,8 @@ typedef struct {
 	/* Speed control loop.
 	 * */
 	int		wDI, wDN;
-	float		wMAX, wMIN;
+	float		wMAX;
+	float		wMIN;
 	float		wSP;
 	float		wXX;
 	float		wKP;
@@ -160,8 +167,6 @@ typedef struct {
 	 * */
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
-
-	float		iX, iY;
 }
 pmc_t;
 

@@ -186,13 +186,14 @@ simScript(FILE *fdTel)
 
 	pmcEnable(&pm);
 
-	pm.mReq = PMC_REQ_SINE;
-	pm.iSPD = 1.f;
-	pm.iSPQ = 0.f;
-
-	simF(fdTel, 1., 0);
+	pm.mReq = PMC_REQ_HOLD;
+	simF(fdTel, 2., 0);
 
 	printf("R\t%.4e\t(%.2f%%)\n", pm.R, 100. * (pm.R - m.R) / m.R);
+
+	pm.mReq = PMC_REQ_SINE;
+	simF(fdTel, 1., 0);
+
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.Ld, 100. * (pm.Ld - m.L) / m.L);
 	printf("Lq\t%.4e\t(%.2f%%)\n", pm.Lq, 100. * (pm.Lq - m.L) / m.L);
 
