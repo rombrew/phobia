@@ -44,7 +44,7 @@ void adcEnable()
 	 * */
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN;
 
-	/* Enable analog PA1, ADC regular data register (ADC_DPA2, PA3 pins.
+	/* Enable analog PA1, PA2, PA3 pins.
 	 * */
 	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER1 | GPIO_MODER_MODER2
 			| GPIO_MODER_MODER3,

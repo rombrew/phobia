@@ -29,7 +29,7 @@ blmBEMFShape(double x)
 
 	/* Sinusoidal shape.
 	 * */
-	s1 = - (sin(x) + sin(x * 3.) * 4e-2);
+	s1 = - (sin(x) + sin(x * 3.) * 0e-2);
 
 	return s1;
 }
@@ -55,7 +55,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 74e-3;
+	m->R = 195e-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -63,7 +63,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 25e-6;
+	m->L = 20e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -80,13 +80,13 @@ void blmEnable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 10e-5;
+	m->J = 1e-6;
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 2e-3;
+	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 2e-7;
+	m->M[2] = 1e-7;
 	m->M[3] = 0e-0;
 }
 

@@ -102,9 +102,11 @@ void adcIRQ()
 
 	if (tel.en != 0) {
 
-		tel.in[0] = (short int) halADC.xA;
-		tel.in[1] = (short int) halADC.xB;
-		tel.sz = 2;
+		tel.in[0] = (short int) (pm.kX[0] * 1000.f);
+		tel.in[1] = (short int) (pm.kX[1] * 1000.f);
+		tel.in[2] = (short int) (pm.kX[4] * 1.f);
+		tel.in[3] = (short int) (pm.M * 1000.f);
+		tel.sz = 4;
 
 		telTask();
 	}
@@ -142,8 +144,6 @@ void halMain()
 	do {
 		taskIOMUX();
 		shTask();
-
-		halWFI();
 	}
 	while (1);
 }

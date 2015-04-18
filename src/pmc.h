@@ -140,6 +140,7 @@ typedef struct {
 	/* Current control loop.
 	 * */
 	float		iMAX;
+	float		iMIN;
 	float		iSPD;
 	float		iSPQ;
 	float		iXD;

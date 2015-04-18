@@ -178,9 +178,9 @@ simScript(FILE *fdTel)
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.E = m.E * (1. - .1);
+	pm.E = m.E * (1. + .2);
 
-	pm.Zp = 11;
+	pm.Zp = 1;
 	pm.M = 0.f;
 	pm.IJ = 1.f / m.J;
 
@@ -198,13 +198,12 @@ simScript(FILE *fdTel)
 	printf("Lq\t%.4e\t(%.2f%%)\n", pm.Lq, 100. * (pm.Lq - m.L) / m.L);
 
 	pm.mReq = PMC_REQ_SPINUP;
+	simF(fdTel, 3., 0);
 
+	pm.iSPQ = -.5f;
 	simF(fdTel, 2., 0);
-	m.R += m.R * .4;
-	simF(fdTel, 1., 0);
 
 	pm.mReq = PMC_REQ_BREAK;
-
 	simF(fdTel, 1., 0);
 }
 

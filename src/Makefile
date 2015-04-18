@@ -1,6 +1,6 @@
 
-BUILD	?= /tmp/fw
-TARGET	= $(BUILD)/fw
+BUILD	?= /tmp/phobia
+TARGET	= $(BUILD)/phobia
 
 CROSS	?= arm-none-eabi-
 CC      = $(CROSS)gcc
@@ -29,11 +29,11 @@ OBJS	= hal/entry.o \
 	hal/pwm.o \
 	hal/usart.o
 
-OBJS	+= task.o \
+OBJS	+= cml.o \
 	lib.o \
-	sh.o \
-	cml.o \
 	pmc.o \
+	sh.o \
+	task.o \
 	tel.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))

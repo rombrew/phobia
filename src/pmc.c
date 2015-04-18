@@ -21,8 +21,27 @@
 inline float
 fabsf(float x) { return __builtin_fabsf(x); }
 
+#if __ARM_FP >= 4
+
+inline float
+sqrtf(float x)
+{
+	float		y;
+
+	asm volatile ("vsqrt.f32 %0, %1 \r\n"
+			: "=w" (y) : "w" (x));
+
+	return y;
+}
+
+#else
+
 inline float
 sqrtf(float x) { return __builtin_sqrtf(x); }
+
+#endif
+
+inline float sqf(float x) { return x * x; }
 
 static void
 dROT(float B[2], float R, const float A[2])
@@ -46,7 +65,7 @@ void pmcEnable(pmc_t *pm)
 	/* Default configuration.
 	 * */
 	pm->dT = 1.f / pm->hzF;
-	pm->pwmMP = (int) (2e-7f * pm->hzF * pm->pwmR + .5f);
+	pm->pwmMP = 8;
 
 	pm->Tdrift = .1f;
 	pm->Thold = 1.f;
@@ -59,7 +78,7 @@ void pmcEnable(pmc_t *pm)
 	pm->iSINE = 1.f;
 	pm->iOFSD = 0.f;
 	pm->iOFSQ = 0.f;
-	pm->sF = 500.f;
+	pm->sF = 2000.f;
 
 	pm->cA0 = 0.f;
 	pm->cA1 = .01464844f;
@@ -71,24 +90,25 @@ void pmcEnable(pmc_t *pm)
 	pm->kQ[0] = 1e-4f;
 	pm->kQ[1] = 1e-4f;
 	pm->kQ[2] = 1e-8f;
-	pm->kQ[3] = 1e-8f;
-	pm->kQ[4] = 1e-7f;
-	pm->kQ[5] = 1e-9f;
+	pm->kQ[3] = 1e-6f;
+	pm->kQ[4] = 1e-5f;
+	pm->kQ[5] = 1e-7f;
 
-	pm->kR = 1e-2f;
+	pm->kR = 4e-2f;
 
-	pm->iMAX = 2.f;
-	pm->iKP = 2e-2f;
+	pm->iMAX = 5.f;
+	pm->iMIN = - 1.f;
+	pm->iKP = 1e-2f;
 	pm->iKI = 2e-3f;
 
 	pm->wDI = 0;
-	pm->wDN = 20;
+	pm->wDN = 5;
 	pm->wMAX = 80000.f * .10471976f;
-	pm->wMIN = 5000.f * .10471976f;
-	pm->wKP = 5e-2f;
-	pm->wKI = 2e-4f;
+	pm->wMIN = 4000.f * .10471976f;
+	pm->wKP = 2e-3f;
+	pm->wKI = 2e-6f;
 
-	pm->pZ(7);
+	//pm->pZ(7);
 }
 
 static void
@@ -369,7 +389,7 @@ static void
 uFB(pmc_t *pm, float uX, float uY)
 {
 	float		uA, uB, uC, Q;
-	float		uMIN, uMAX, uMID;
+	float		uMIN, uMAX;
 	int		xA, xB, xC, xU;
 
 	/* Transform the voltage vector to ABC axes.
@@ -390,20 +410,13 @@ uFB(pmc_t *pm, float uX, float uY)
 		uMAX = uA;
 	}
 
-	if (uC < uMIN) {
+	if (uC < uMIN)
 
-		uMID = uMIN;
 		uMIN = uC;
-	}
-	else
-		uMID = uC;
 
-	if (uMAX < uMID) {
+	else if (uMAX < uC)
 
-		Q = uMAX;
-		uMAX = uMID;
-		uMID = Q;
-	}
+		uMAX = uC;
 
 	/* Voltage swing.
 	 * */
@@ -577,8 +590,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
-
-				pm->pZ(7);
+				//pm->pZ(7);
 
 				pm->Ad = 0.f;
 				pm->Bd = 0.f;
@@ -621,10 +633,11 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 					else {
 						pm->mBit |= PMC_MODE_SUPPLY_VOLTAGE;
 
-						pm->pZ(0);
+						//pm->pZ(0);
 
-						if (pm->mReq == PMC_REQ_SPINUP
-								|| pm->mReq == PMC_REQ_HOLD)
+						if (pm->mReq == PMC_REQ_SPINUP)
+							pm->mS1 = PMC_STATE_HOLD;
+						else if (pm->mReq == PMC_REQ_HOLD)
 							pm->mS1 = PMC_STATE_HOLD;
 						else if (pm->mReq == PMC_REQ_SINE)
 							pm->mS1 = PMC_STATE_SINE;
@@ -695,16 +708,23 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mS2 == 0) {
 
-				float			Z;
-
 				pm->kX[2] = 1.f;
 				pm->kX[3] = 0.f;
 				pm->kX[4] = 6.2831853f * pm->sF / pm->hzF;
 
-				Z = pm->Ld * 6.2831853f * pm->sF;
-				pm->kT[0] = pm->iSINE * sqrtf(pm->R * pm->R + Z * Z);
-				Z = pm->Lq * 6.2831853f * pm->sF;
-				pm->kT[1] = pm->iSINE * sqrtf(pm->R * pm->R + Z * Z);
+				pm->kP[0] = 0.f;
+				pm->kP[1] = 0.f;
+				pm->kP[2] = 0.f;
+				pm->kP[3] = 0.f;
+				pm->kP[4] = 0.f;
+				pm->kP[5] = 0.f;
+				pm->kP[6] = 0.f;
+				pm->kP[7] = 0.f;
+
+				pm->kT[0] = pm->iSINE * sqrtf(sqf(pm->R)
+						+ sqf(pm->Ld * 6.2831853f * pm->sF));
+				pm->kT[1] = pm->iSINE * sqrtf(sqf(pm->R)
+						+ sqf(pm->Lq * 6.2831853f * pm->sF));
 				pm->kT[2] = pm->iOFSD * pm->R;
 				pm->kT[3] = pm->iOFSQ * pm->R;
 
@@ -737,6 +757,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				else {
 					float			L;
 
+					/* Inductance on X (D) axis.
+					 * */
 					pm->kT[0] = pm->kP[2] * pm->kP[0] + pm->kP[3] * pm->kP[1];
 					pm->kT[1] = pm->kP[2] * pm->kP[1] - pm->kP[3] * pm->kP[0];
 
@@ -744,22 +766,18 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 					pm->kT[0] /= L;
 					pm->kT[1] /= L;
 
-					/* Inductance on X (D) axis.
-					 * */
-					L = pm->kT[0] * pm->kT[0] + pm->kT[1] * pm->kT[1];
-					pm->Ld = sqrtf(L - pm->R * pm->R) / (6.2831853f * pm->sF);
-
-					pm->kT[0] = pm->kP[6] * pm->kP[4] + pm->kP[7] * pm->kP[5];
-					pm->kT[1] = pm->kP[6] * pm->kP[5] - pm->kP[7] * pm->kP[4];
-
-					L = pm->kP[4] * pm->kP[4] + pm->kP[5] * pm->kP[5];
-					pm->kT[0] /= L;
-					pm->kT[1] /= L;
+					pm->Ld = pm->kT[1] / (6.2831853f * pm->sF);
 
 					/* Inductance on Y (Q) axis.
 					 * */
-					L = pm->kT[0] * pm->kT[0] + pm->kT[1] * pm->kT[1];
-					pm->Lq = sqrtf(L - pm->R * pm->R) / (6.2831853f * pm->sF);
+					pm->kT[2] = pm->kP[6] * pm->kP[4] + pm->kP[7] * pm->kP[5];
+					pm->kT[3] = pm->kP[6] * pm->kP[5] - pm->kP[7] * pm->kP[4];
+
+					L = pm->kP[4] * pm->kP[4] + pm->kP[5] * pm->kP[5];
+					pm->kT[2] /= L;
+					pm->kT[3] /= L;
+
+					pm->Lq = pm->kT[3] / (6.2831853f * pm->sF);
 
 					pm->ILd = 1.f / pm->Ld;
 					pm->ILq = 1.f / pm->Lq;
@@ -777,8 +795,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mS2 == 0) {
 
-				pm->mBit |= PMC_MODE_EKF_6X_DQ
-					| PMC_MODE_SPEED_CONTROL_LOOP;
+				pm->mBit |= PMC_MODE_EKF_6X_DQ;
+				//	| PMC_MODE_QAXIS_DRIFT;
+				pm->mBit |= PMC_MODE_QAXIS_DRIFT;
 
 				/* X(0).
 				 * */
@@ -818,13 +837,11 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				pm->kP[14] = 0.f;
 				pm->kP[20] = 0.f;
 
-				/* .
-				 * */
-				pm->iXD = 0.f;
-				pm->iXQ = 0.f;
-
 				pm->wSP = pm->wMIN * 2.f;
 				pm->wXX = 0.f;
+
+				pm->iSPD = 0.f;pm->mBit |= PMC_MODE_QAXIS_DRIFT;
+				pm->iSPQ = .5f;
 
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Tout;
@@ -834,9 +851,9 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			else {
 				if (fabsf(pm->kX[4]) > pm->wMIN) {
 
+					pm->mReq = PMC_REQ_NULL;
 					pm->mBit |= PMC_MODE_QAXIS_DRIFT;
 
-					pm->mReq = PMC_REQ_NULL;
 					pm->mS1 = PMC_STATE_IDLE;
 					pm->mS2 = 0;
 				}
@@ -855,8 +872,10 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 			if (pm->mS2 == 0) {
 
-				pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
+				//pm->mBit |= PMC_MODE_SPEED_CONTROL_LOOP;
 
+				pm->iSPD = 0.f;
+				pm->iSPQ = 0.f;
 				pm->wSP = 0.f;
 
 				pm->tVal = 0;
@@ -875,6 +894,8 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 
 				if (pm->tVal < pm->tEnd) ;
 				else {
+					//pm->mBit &= ~PMC_MODE_SPEED_CONTROL_LOOP;
+
 					pm->mS1 = PMC_STATE_END;
 					pm->mS2 = 0;
 				}
@@ -886,8 +907,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
-
-				pm->pZ(7);
+				//pm->pZ(7);
 
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Tend;
@@ -901,6 +921,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 				else {
 					pm->mReq = PMC_REQ_NULL;
 					pm->mBit = 0;
+
 					pm->mS1 = PMC_STATE_IDLE;
 					pm->mS2 = 0;
 				}
@@ -908,6 +929,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			break;
 	}
 }
+
 
 void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 {
@@ -941,8 +963,8 @@ void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU)
 
 			if (pm->wDI >= pm->wDN) {
 
-				wFB(pm);
 				pm->wDI = 0;
+				wFB(pm);
 			}
 		}
 
