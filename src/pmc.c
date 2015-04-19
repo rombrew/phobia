@@ -108,7 +108,7 @@ void pmcEnable(pmc_t *pm)
 	pm->wKP = 2e-3f;
 	pm->wKI = 2e-6f;
 
-	//pm->pZ(7);
+	pm->pZ(7);
 }
 
 static void
@@ -590,7 +590,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
-				//pm->pZ(7);
+				pm->pZ(7);
 
 				pm->Ad = 0.f;
 				pm->Bd = 0.f;
@@ -632,8 +632,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 					}
 					else {
 						pm->mBit |= PMC_MODE_SUPPLY_VOLTAGE;
-
-						//pm->pZ(0);
+						pm->pZ(0);
 
 						if (pm->mReq == PMC_REQ_SPINUP)
 							pm->mS1 = PMC_STATE_HOLD;
@@ -907,7 +906,7 @@ bFSM(pmc_t *pm, float iA, float iB, float uS)
 			if (pm->mS2 == 0) {
 
 				uFB(pm, 0.f, 0.f);
-				//pm->pZ(7);
+				pm->pZ(7);
 
 				pm->tVal = 0;
 				pm->tEnd = pm->hzF * pm->Tend;
