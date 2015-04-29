@@ -98,7 +98,7 @@ void adcIRQ()
 
 	T0 = halSysTick();
 
-	pmcFeedBack(&pm, halADC.xA, halADC.xB, halADC.xU);
+	pmc_feedback(&pm, halADC.xA, halADC.xB, halADC.xU);
 
 	if (tel.en != 0) {
 
@@ -106,7 +106,10 @@ void adcIRQ()
 		tel.in[1] = (short int) (pm.kX[1] * 1000.f);
 		tel.in[2] = (short int) (pm.kX[4] * 1.f);
 		tel.in[3] = (short int) (pm.M * 1000.f);
-		tel.sz = 4;
+		tel.in[4] = (short int) (pm.Qd * 1000.f);
+		tel.in[5] = (short int) (pm.eD * 1000.f);
+		tel.in[6] = (short int) (pm.eQ * 1000.f);
+		tel.sz = 7;
 
 		telTask();
 	}
@@ -124,9 +127,9 @@ void halMain()
 
 	/* Config.
 	 * */
-	halUSART.bR = 57600;
-	halPWM.hzF = 20000;
-	halPWM.nsD = 400;
+	halUSART.baudRate = 57600;
+	halPWM.freq_hz = 40000;
+	halPWM.dead_time_ns = 200;
 
 	usartEnable();
 
@@ -134,8 +137,8 @@ void halMain()
 	adcEnable();
 
 	memz(&pm, sizeof(pm));
-	pm.hzF = (float) halPWM.hzF;
-	pm.pwmR = halPWM.R;
+	pm.hzF = (float) halPWM.freq_hz;
+	pm.pwmR = halPWM.resolution;
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
 

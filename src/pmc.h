@@ -20,24 +20,15 @@
 #define _H_PMC_
 
 enum {
-	PMC_REQ_NULL				= 0,
-	PMC_REQ_SPINUP,
-	PMC_REQ_BREAK,
-	PMC_REQ_PICKUP,
-	PMC_REQ_HOLD,
-	PMC_REQ_SINE,
-	PMC_REQ_LINEAR,
-	PMC_REQ_END
-};
-
-enum {
-	PMC_MODE_EKF_6X_DQ			= 0x0100,
-	PMC_MODE_QAXIS_DRIFT			= 0x0200,
-	PMC_MODE_ZERO_DRIFT			= 0x0400,
-	PMC_MODE_SUPPLY_VOLTAGE			= 0x0800,
-	PMC_MODE_SPEED_CONTROL_LOOP		= 0x0002,
-	PMC_MODE_EFFICIENT_MODULATION		= 0x0004,
-	PMC_MODE_FREQUENCY_INJECTION		= 0x0008,
+	PMC_BIT_KALMAN_FILTER			= 0x0100,
+	PMC_BIT_QAXIS_DRIFT			= 0x0200,
+	PMC_BIT_ABZERO_DRIFT			= 0x0400,
+	PMC_BIT_SUPPLY_VOLTAGE			= 0x0800,
+	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0001,
+	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0002,
+	PMC_BIT_EFFICIENT_MODULATION		= 0x0004,
+	PMC_BIT_DIRECT_INJECTION		= 0x0008,
+	PMC_BIT_FREQUENCY_INJECTION		= 0x0010
 };
 
 enum {
@@ -45,124 +36,147 @@ enum {
 	PMC_STATE_DRIFT,
 	PMC_STATE_HOLD,
 	PMC_STATE_SINE,
+	PMC_STATE_BEMF,
 	PMC_STATE_LINEAR,
 	PMC_STATE_SPINUP,
 	PMC_STATE_BREAK,
 	PMC_STATE_END
 };
 
+enum {
+	PMC_OK					= 0,
+	PMC_ERROR_BROKEN_HARDWARE,
+	PMC_ERROR_INVALID_CONFIGURATION,
+	PMC_ERROR_SYNC_LOST
+};
+
 typedef struct {
 
 	/* Frequency (Hz).
 	 * */
-	float		hzF;
+	float		freq_hz;
 	float		dT;
 
 	/* PWM configuration.
 	 * */
-	int		pwmR;
-	int		pwmMP;
+	int		pwm_resolution;
+	int		pwm_minimal_pulse;
 
 	/* FSM variables.
 	 * */
-	int		mReq;
-	int		mBit;
-	int		mS1;
-	int		mS2;
+	int		m_request;
+	int		m_bitmask;
+	int		m_bitmode;
+	int		m_state;
+	int		m_phase;
+	int		m_errno;
 
 	/* Timer variables.
 	 * */
-	int		tVal;
-	int		tEnd;
+	int		t_value;
+	int		t_end;
 
 	/* Timer configuration.
 	 * */
-	float		Tdrift;
-	float		Thold;
-	float		Trohm;
-	float		Tsine;
-	float		Tout;
-	float		Tend;
+	float		T_drift;
+	float		T_hold;
+	float		T_rohm;
+	float		T_sine;
+	float		T_bemf;
+	float		T_end;
 
-	/* Mixed configuration.
+	/* Other configuration.
 	 * */
-	float		iHOLD;
-	float		iSINE;
-	float		iOFSD;
-	float		iOFSQ;
-	float		sF;
+	float		i_hold;
+	float		i_sine;
+	float		i_offset_D;
+	float		i_offset_Q;
+	float		freq_sine_hz;
 
 	/* Conversion constants.
 	 * */
-	float		cA0, cA1;
-	float		cB0, cB1;
-	float		cU0, cU1;
+	float		conv_A[2];
+	float		conv_B[2];
+	float		conv_U[2];
 
 	/* Actual VSI voltage.
 	 * */
-	float		uX, uY;
+	float		vsi_X;
+	float		vsi_Y;
 
 	/* Measurement residual.
 	 * */
-	float		eD, eQ;
+	float		residual_D;
+	float		residual_Q;
+	float		residual_variance;
 
 	/* Extended Kalman Filter.
 	 * */
-	float		kX[5];
-	float		kP[21];
-	float		kQ[6];
-	float		kR;
+	float		kalman_X[5];
+	float		kalman_P[21];
+	float		kalman_Q[6];
+	float		kalman_R;
+
+	/* Load torque.
+	 * */
+	float		var_M;
 
 	/* Temporal.
 	 * */
-	float		kT[5];
+	float		temp_A[5];
+	float		temp_B[5];
 
 	/* Zero Drift.
 	 * */
-	float		Ad;
-	float		Bd;
-	float		Qd;
+	float		drift_A;
+	float		drift_B;
+	float		drift_Q;
+	float		drift_AB_maximal;
+	float		drift_Q_maximal;
 
 	/* Electrical constants.
 	 * */
-	float		U;
-	float		E;
-	float		R;
-	float		Ld, ILd;
-	float		Lq, ILq;
+	float		const_U;
+	float		const_E;
+	float		const_R;
+	float		const_Q;
+	float		const_Ld, const_ILd;
+	float		const_Lq, const_ILq;
 
 	/* Mechanical constants.
 	 * */
-	int		Zp;
-	float		M;
-	float		IJ;
+	int		const_Zp;
+	float		const_IJ;
 
 	/* Current control loop.
 	 * */
-	float		iMAX;
-	float		iMIN;
-	float		iSPD;
-	float		iSPQ;
-	float		iXD;
-	float		iXQ;
-	float		iKP;
-	float		iKI;
+	float		i_maximal;
+	float		i_power_watt;
+	float		i_power_consumption_maximal;
+	float		i_power_regeneration_maximal;
+	float		i_set_point_D;
+	float		i_set_point_Q;
+	float		i_integral_D;
+	float		i_integral_Q;
+	float		i_KP;
+	float		i_KI;
 
 	/* Frequency injection.
 	 * */
-	float		hF, hT;
-	float		hCS[2];
-	float		hSP;
+	float		h_freq_hz;
+	float		h_set_point;
+	float		h_CS[2];
 
 	/* Speed control loop.
 	 * */
-	int		wDI, wDN;
-	float		wMAX;
-	float		wMIN;
-	float		wSP;
-	float		wXX;
-	float		wKP;
-	float		wKI;
+	int		w_clock, w_clock_scale;
+	float		w_maximal;
+	float		w_low_threshold;
+	float		w_low_hysteresis;
+	float		w_set_point;
+	float		w_integral;
+	float		w_KP;
+	float		w_KI;
 
 	/* Control interface.
 	 * */
@@ -171,8 +185,10 @@ typedef struct {
 }
 pmc_t;
 
-void pmcEnable(pmc_t *pm);
-void pmcFeedBack(pmc_t *pm, int xA, int xB, int xU);
+void pmc_default(pmc_t *pm);
+void pmc_feedback(pmc_t *pm, int xA, int xB, int xU);
+
+void pmc_current_gain(float);
 
 #endif /* _H_PMC_ */
 

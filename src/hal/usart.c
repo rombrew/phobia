@@ -47,7 +47,7 @@ void usartEnable()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HZ_APB1 / halUSART.bR;
+	USART3->BRR = HZ_APB1 / halUSART.baudRate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;

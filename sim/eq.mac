@@ -12,13 +12,5 @@ dF : [	(Ux*cos(th)+Uy*sin(th) - id*R + wR*iq*Lq) / Ld,
 F : X + dF * dT;
 A : jacobian(F, X);
 
-ix : id*cos(th)-iq*sin(th);
-iy : id*sin(th)+iq*cos(th);
-
-ia : ix;
-ib : -1/2 * ix + sqrt(3)/2 * iy;
-
-C : jacobian([ia, ib], X);
-
 optimize(A);
 

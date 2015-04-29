@@ -24,10 +24,10 @@ if (N == 1) {
 if (N == 2) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Electrical Speed (RPM)'
-	plot    @TEL using 1:($4*30/pi) title 'Plant' with lines, \
-		@TEL using 1:($14*30/pi) title 'Estimated' with lines, \
-		@TEL using 1:($32*30/pi) title 'Set Point' with lines
+	set ylabel 'Mechanical Speed (RPM)'
+	plot    @TEL using 1:($4/$27*30/pi) title 'Plant' with lines, \
+		@TEL using 1:($14/$27*30/pi) title 'Estimated' with lines, \
+		@TEL using 1:($32/$27*30/pi) title 'Set Point' with lines
 }
 
 if (N == 3) {
@@ -56,61 +56,68 @@ if (N == 5) {
 
 if (N == 6) {
 
-	set xlabel 'Time (Sec)'
-	set ylabel 'Load Torque'
-	plot	@TEL using 1:26 title 'Load Torque' with lines
+	set xlabel 'X'
+	set ylabel 'Y'
+	plot	@TEL using 15:16 title 'VSI voltage (Volt)' with points
 }
 
 if (N == 7) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Q Drift (Volt)'
-	plot	@TEL using 1:19 title 'Qd' with lines
+	set ylabel 'Residual (A)'
+	plot	@TEL using 1:17 title 'D' with lines, \
+		@TEL using 1:18 title 'Q' with lines
 }
 
 if (N == 8) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Supply (Volt)'
-	plot	@TEL using 1:20 title 'U' with lines
+	set ylabel 'Load Torque'
+	plot	@TEL using 1:28 title 'var_M' with lines
 }
 
 if (N == 9) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'BEMF Constant (Kv)'
-	plot	@TEL using 1:(60/($21*2*sqrt(3)*pi*$25)) title 'Kv' with lines
+	set ylabel 'Q Drift (Volt)'
+	plot	@TEL using 1:21 title 'drift_Q' with lines
 }
 
 if (N == 10) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Resistance (mOhm)'
-	plot	@TEL using 1:($22*1e+3) title 'R' with lines
+	set ylabel 'Supply (Volt)'
+	plot	@TEL using 1:22 title 'const_U' with lines
 }
 
 if (N == 11) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Inductance (uH)'
-	plot	@TEL using 1:($23*1e+6) title 'Ld' with lines, \
-		@TEL using 1:($24*1e+6) title 'Lq' with lines
+	set ylabel 'BEMF Constant (RPM/V)'
+	plot	@TEL using 1:(60/($23*2*sqrt(3)*pi*$27)) title 'const_Kv' with lines
 }
 
 if (N == 12) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Zero Drift (A)'
-	plot	@TEL using 1:17 title 'A' with lines, \
-		@TEL using 1:18 title 'B' with lines
+	set ylabel 'Winding Resistance (mOhm)'
+	plot	@TEL using 1:($24*1e+3) title 'const_R' with lines
 }
 
 if (N == 13) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Error (A)'
-	plot	@TEL using 1:15 title 'D' with lines, \
-		@TEL using 1:16 title 'Q' with lines
+	set ylabel 'Winding Inductance (uH)'
+	plot	@TEL using 1:($25*1e+6) title 'const_Ld' with lines, \
+		@TEL using 1:($26*1e+6) title 'const_Lq' with lines
+}
+
+if (N == 14) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Zero Drift (A)'
+	plot	@TEL using 1:19 title 'A' with lines, \
+		@TEL using 1:20 title 'B' with lines
 }
 
 pause mouse close

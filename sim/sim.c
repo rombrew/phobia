@@ -43,7 +43,7 @@ static void
 blmZ(int Z) { }
 
 static void
-simABtoDQ(double A, double B, double R, double *D, double *Q)
+sim_AB_DQ(double A, double B, double R, double *D, double *Q)
 {
 	double		X, Y, rS, rC;
 
@@ -58,11 +58,11 @@ simABtoDQ(double A, double B, double R, double *D, double *Q)
 }
 
 static void
-simTel(float *pTel)
+sim_Tel(float *pTel)
 {
 	double		A, B, C, D, Q;
 
-	simABtoDQ(m.X[0], m.X[1], m.X[3], &D, &Q);
+	sim_AB_DQ(m.X[0], m.X[1], m.X[3], &D, &Q);
 
 	/* Model.
 	 * */
@@ -81,55 +81,60 @@ simTel(float *pTel)
 
 	/* Estimated current.
 	 * */
-	pTel[10] = pm.kX[0];
-	pTel[11] = pm.kX[1];
+	pTel[10] = pm.kalman_X[0];
+	pTel[11] = pm.kalman_X[1];
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.kX[2] + Q * pm.kX[3];
-	B = D * pm.kX[3] - Q * pm.kX[2];
+	A = D * pm.kalman_X[2] + Q * pm.kalman_X[3];
+	B = D * pm.kalman_X[3] - Q * pm.kalman_X[2];
 	C = atan2(B, A);
 
 	/* Estimated position.
 	 * */
-	pTel[12] = atan2(pm.kX[3], pm.kX[2]);
+	pTel[12] = atan2(pm.kalman_X[3], pm.kalman_X[2]);
 	pTel[13] = C;
 
 	/* Estimated speed.
 	 * */
-	pTel[14] = pm.kX[4];
+	pTel[14] = pm.kalman_X[4];
+
+	/* VSI voltage.
+	 * */
+	pTel[15] = pm.vsi_X;
+	pTel[16] = pm.vsi_Y;
 
 	/* Measurement residual.
 	 * */
-	pTel[15] = pm.eD;
-	pTel[16] = pm.eQ;
+	pTel[17] = pm.residual_D;
+	pTel[18] = pm.residual_Q;
 
 	/* Zero Drift.
 	 * */
-	pTel[17] = pm.Ad;
-	pTel[18] = pm.Bd;
-	pTel[19] = pm.Qd;
+	pTel[19] = pm.drift_A;
+	pTel[20] = pm.drift_B;
+	pTel[21] = pm.drift_Q;
 
 	/* Plant constants.
 	 * */
-	pTel[20] = pm.U;
-	pTel[21] = pm.E;
-	pTel[22] = pm.R;
-	pTel[23] = pm.Ld;
-	pTel[24] = pm.Lq;
-	pTel[25] = pm.Zp;
-	pTel[26] = pm.M;
-	pTel[27] = 1.f / pm.IJ;
+	pTel[22] = pm.const_U;
+	pTel[23] = pm.const_E;
+	pTel[24] = pm.const_R;
+	pTel[25] = pm.const_Ld;
+	pTel[26] = pm.const_Lq;
+	pTel[27] = pm.const_Zp;
+	pTel[28] = pm.var_M;
+	pTel[29] = 1.f / pm.const_IJ;
 
 	/* Set Point.
 	 * */
-	pTel[30] = pm.iSPD;
-	pTel[31] = pm.iSPQ;
-	pTel[32] = pm.wSP;
+	pTel[30] = pm.i_set_point_D;
+	pTel[31] = pm.i_set_point_Q;
+	pTel[32] = pm.w_set_point;
 }
 
 static void
-simF(FILE *fdTel, double dT, int Verb)
+sim_F(FILE *fdTel, double dT, int Verb)
 {
 	const int	szTel = 40;
 	float		Tel[szTel], *pTel;
@@ -143,15 +148,15 @@ simF(FILE *fdTel, double dT, int Verb)
 
 		/* Plant model update.
 		 * */
-		blmUpdate(&m);
+		blm_Update(&m);
 
 		/* PMC update.
 		 * */
-		pmcFeedBack(&pm, m.xA, m.xB, m.xU);
+		pmc_feedback(&pm, m.xA, m.xB, m.xU);
 
 		/* Collect telemetry.
 		 * */
-		simTel(pTel);
+		sim_Tel(pTel);
 
 		/* Dump telemetry array.
 		 * */
@@ -170,41 +175,53 @@ simF(FILE *fdTel, double dT, int Verb)
 }
 
 static void
-simScript(FILE *fdTel)
+sim_Script(FILE *fdTel)
 {
-	pm.hzF = (float) (1. / m.dT);
-	pm.pwmR = m.PWMR;
+	pm.freq_hz = (float) (1. / m.dT);
+	pm.dT = 1.f / pm.freq_hz;
+	pm.pwm_resolution = m.PWMR;
 
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm.E = m.E * (1. + .2);
+	pmc_default(&pm);
 
-	pm.Zp = 1;
-	pm.M = 0.f;
-	pm.IJ = 1.f / m.J;
+	pm.const_R = m.R * (1. + .0);
+	pm.const_Ld = m.L * (1. + .0);
+	pm.const_Lq = pm.const_Ld;
+	pm.const_E = m.E * (1. + .0);
 
-	pmcEnable(&pm);
+	pm.const_ILd = 1.f / pm.const_Ld;
+	pm.const_ILq = 1.f / pm.const_Lq;
 
-	pm.mReq = PMC_REQ_HOLD;
+	pm.const_Zp = 11;
+	pm.const_IJ = 1.f / (m.J);
+
+	/*pm.m_request = PMC_STATE_HOLD;
 	simF(fdTel, 2., 0);
 
-	printf("R\t%.4e\t(%.2f%%)\n", pm.R, 100. * (pm.R - m.R) / m.R);
+	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
 
-	pm.mReq = PMC_REQ_SINE;
+	pm.m_request = PMC_STATE_SINE;
 	simF(fdTel, 1., 0);
 
-	printf("Ld\t%.4e\t(%.2f%%)\n", pm.Ld, 100. * (pm.Ld - m.L) / m.L);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.Lq, 100. * (pm.Lq - m.L) / m.L);
+	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.L) / m.L);
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.L) / m.L);*/
 
-	pm.mReq = PMC_REQ_SPINUP;
-	simF(fdTel, 3., 0);
+	pm.m_request = PMC_STATE_SPINUP;
+	sim_F(fdTel, 2., 0);
 
-	pm.iSPQ = -.5f;
+	pm.i_set_point_Q = 2.f;
+	sim_F(fdTel, 2., 0);
+
+	/*pm.m_request = PMC_STATE_BEMF;
 	simF(fdTel, 2., 0);
 
-	pm.mReq = PMC_REQ_BREAK;
-	simF(fdTel, 1., 0);
+	printf("E\t%.4e\t(%.2f%%)\n", pm.const_E, 100. * (pm.const_E - m.E) / m.E);
+	printf("Kv\t%.2f\n", 5.513289 / (pm.const_E * pm.const_Zp));
+
+	pm.m_request = PMC_STATE_BREAK;
+	simF(fdTel, 1., 0);*/
 }
 
 int main(int argc, char *argv[])
@@ -212,7 +229,7 @@ int main(int argc, char *argv[])
 	FILE		*fdTel;
 
 	libStart();
-	blmEnable(&m);
+	blm_Enable(&m);
 
 	fdTel = fopen(TEL_FILE, "wb");
 
@@ -222,7 +239,7 @@ int main(int argc, char *argv[])
 		exit(errno);
 	}
 
-	simScript(fdTel);
+	sim_Script(fdTel);
 
 	fclose(fdTel);
 	libStop();

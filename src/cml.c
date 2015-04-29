@@ -44,7 +44,7 @@ void irqload(const char *s)
 {
 	int		Tirq, Tbase, Rpc;
 
-	Tbase = 2 * halPWM.R;
+	Tbase = 2 * halPWM.resolution;
 	Tirq = td.Tirq;
 	Rpc = 100 * Tirq / Tbase;
 
@@ -69,14 +69,14 @@ void reboot(const char *s)
 
 void pwm_freq_hz(const char *s)
 {
-	stoi(&halPWM.hzF, s);
-	printf("%i (Hz)" EOL, halPWM.hzF);
+	stoi(&halPWM.freq_hz, s);
+	printf("%i (Hz)" EOL, halPWM.freq_hz);
 }
 
 void pwm_dead_time_ns(const char *s)
 {
-	stoi(&halPWM.nsD, s);
-	printf("%i (ns)" EOL, halPWM.nsD);
+	stoi(&halPWM.dead_time_ns, s);
+	printf("%i (ns)" EOL, halPWM.dead_time_ns);
 }
 
 void pm_spinup(const char *s)
@@ -93,7 +93,7 @@ void pm_spinup(const char *s)
 
 	tel.pZ = tel.pD;
 	tel.num = 0;
-	tel.dec = 10;
+	tel.dec = 1;
 	tel.en = 1;
 }
 
@@ -139,6 +139,19 @@ void pm_sine(const char *s)
 
 	printf("Ld %4e (H)" EOL, &pm.Ld);
 	printf("Lq %4e (H)" EOL, &pm.Lq);
+}
+
+void pm_e(const char *s)
+{
+	if (pm.mReq == PMC_REQ_NULL) {
+
+		tel.pZ = tel.pD;
+		tel.num = 0;
+		tel.dec = 1;
+		tel.en = 1;
+
+		pm.mReq = PMC_REQ_E;
+	}
 }
 
 void pm_linear(const char *s)
@@ -445,6 +458,7 @@ const shCMD_t		cmList[] = {
 	{"pm_break", &pm_break},
 	{"pm_hold", &pm_hold},
 	{"pm_sine", &pm_sine},
+	{"pm_e", &pm_e},
 	{"pm_linear", &pm_linear},
 
 	{"pm_pwmR", &pm_pwmR},

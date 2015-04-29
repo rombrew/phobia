@@ -58,8 +58,8 @@ typedef struct {
 }
 blm_t;
 
-void blmEnable(blm_t *m);
-void blmUpdate(blm_t *m);
+void blm_Enable(blm_t *m);
+void blm_Update(blm_t *m);
 
 #endif /* _H_BLDC_ */
 

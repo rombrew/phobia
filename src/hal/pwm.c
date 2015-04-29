@@ -25,28 +25,19 @@ void irqTIM1_UP_TIM10() { }
 
 void pwmEnable()
 {
-	int		hzF, nsD;
 	int		R, D;
 
-	hzF = halPWM.hzF;
-	nsD = halPWM.nsD;
-
-	/* Calculate resolution.
+	/* Update configuration.
 	 * */
-	R = HZ_APB2 * 2UL / 2UL / hzF;
+	R = HZ_APB2 * 2UL / 2UL / halPWM.freq_hz;
 	R = (R & 1) ? R + 1 : R;
-	hzF = HZ_APB2 * 2UL / 2UL / R;
+	halPWM.freq_hz = HZ_APB2 * 2UL / 2UL / R;
+	halPWM.resolution = R;
 
-	/* Dead time.
-	 * */
-	D = ((HZ_APB2 * 2UL / 1000UL) * nsD + 500000UL) / 1000000UL;
+	D = ((HZ_APB2 * 2UL / 1000UL) * halPWM.dead_time_ns + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : (D < 256) ? 128 + (D - 128) / 2 : 191;
-	nsD = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255)
+	halPWM.dead_time_ns = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255)
 		* 1000000UL / (HZ_APB2 * 2UL / 1000UL);
-
-	halPWM.hzF = hzF;
-	halPWM.R = R;
-	halPWM.nsD = nsD;
 
 	/* Enable TIM1 clock.
 	 * */

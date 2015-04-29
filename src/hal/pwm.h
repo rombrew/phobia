@@ -27,17 +27,9 @@ enum {
 
 typedef struct {
 
-	/* Frequency (Hz).
-	 * */
-	int		hzF;
-
-	/* Resolution.
-	 * */
-	int		R;
-
-	/* Dead Time (ns).
-	 * */
-	int		nsD;
+	int		freq_hz;
+	int		dead_time_ns;
+	int		resolution;
 }
 halPWM_TypeDef;
 

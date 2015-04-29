@@ -23,24 +23,24 @@
 #include "lib.h"
 
 static double
-blmBEMFShape(double x)
+blm_BEMF_Shape(double x)
 {
 	double		s1;
 
-	/* Sinusoidal shape.
+	/* Almost sinusoidal shape.
 	 * */
-	s1 = - (sin(x) + sin(x * 3.) * 0e-2);
+	s1 = - (sin(x) + sin(x * 5.) * 1e-2);
 
 	return s1;
 }
 
-void blmEnable(blm_t *m)
+void blm_Enable(blm_t *m)
 {
 	double		Kv;
 
 	m->Tsim = 0.; /* Simulation time (Second) */
-        m->dT = 1. / 20e+3; /* Time delta */
-	m->sT = 50e-6; /* Solver step */
+        m->dT = 1. / 40e+3; /* Time delta */
+	m->sT = 5e-6; /* Solver step */
 	m->PWMR = 2100; /* PWM resolution */
 
 	m->sF[0] = 1;
@@ -55,7 +55,7 @@ void blmEnable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 195e-3;
+	m->R = 125e-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -86,12 +86,12 @@ void blmEnable(blm_t *m)
 	 * */
 	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 1e-7;
+	m->M[2] = 2e-5;
 	m->M[3] = 0e-0;
 }
 
 static void
-blmEquation(const blm_t *m, const double X[], double dX[])
+blm_Equation(const blm_t *m, const double X[], double dX[])
 {
 	double		EA, EB, EC, IA, IB, IC;
 	double		BEMFA, BEMFB, BEMFC;
@@ -101,9 +101,9 @@ blmEquation(const blm_t *m, const double X[], double dX[])
 	L = m->L * (1. - 0.11e-3 * (X[4] - 20.));
 	E = m->E * (1. - 1.21e-3 * (X[4] - 20.));
 
-	EA = blmBEMFShape(X[3]);
-	EB = blmBEMFShape(X[3] - 2. * M_PI / 3.);
-	EC = blmBEMFShape(X[3] + 2. * M_PI / 3.);
+	EA = blm_BEMF_Shape(X[3]);
+	EB = blm_BEMF_Shape(X[3] - 2. * M_PI / 3.);
+	EC = blm_BEMF_Shape(X[3] + 2. * M_PI / 3.);
 
 	BEMFA = X[2] * E * EA;
 	BEMFB = X[2] * E * EB;
@@ -140,7 +140,7 @@ blmEquation(const blm_t *m, const double X[], double dX[])
 }
 
 static void
-blmSolve(blm_t *m, double dT)
+blm_Solve(blm_t *m, double dT)
 {
 	double		s1[7], s2[7], x2[7];
 	int		j;
@@ -148,19 +148,19 @@ blmSolve(blm_t *m, double dT)
 	/* Second-order ODE solver.
 	 * */
 
-	blmEquation(m, m->X, s1);
+	blm_Equation(m, m->X, s1);
 
 	for (j = 0; j < 7; ++j)
 		x2[j] = m->X[j] + s1[j] * dT;
 
-	blmEquation(m, x2, s2);
+	blm_Equation(m, x2, s2);
 
 	for (j = 0; j < 7; ++j)
 		m->X[j] += (s1[j] + s2[j]) * dT / 2.;
 }
 
 static void
-blmSolveSplit(blm_t *m, double dT)
+blm_Solve_Split(blm_t *m, double dT)
 {
 	double		sT = m->sT;
 
@@ -168,11 +168,11 @@ blmSolveSplit(blm_t *m, double dT)
 	 * */
 	while (dT > sT) {
 
-		blmSolve(m, sT);
+		blm_Solve(m, sT);
 		dT -= sT;
 	}
 
-	blmSolve(m, dT);
+	blm_Solve(m, dT);
 
 	/* Wrap the angular position.
 	 * */
@@ -182,14 +182,14 @@ blmSolveSplit(blm_t *m, double dT)
 }
 
 static void
-blmBridgeSample(blm_t *m)
+blm_Bridge_Sample(blm_t *m)
 {
 	double		S1, S2, U, Uref, dU;
 	int		ADC;
 
 	/* ADC reference voltage.
 	 * */
-	Uref = 3.3;
+	Uref = 3.;
 
 	/* Current sampling.
 	 * */
@@ -236,9 +236,9 @@ blmBridgeSample(blm_t *m)
 }
 
 static void
-blmBridgeSolve(blm_t *m)
+blm_Bridge_Solve(blm_t *m)
 {
-	int		j, Ton[3], pm[3];
+	int		temp, Ton[3], pm[3];
 	double		dPWM, dT;
 
 	dPWM = m->dT / m->PWMR / 2.;
@@ -254,69 +254,69 @@ blmBridgeSolve(blm_t *m)
 
 	if (Ton[pm[0]] < Ton[pm[2]]) {
 
-		j = pm[2];
+		temp = pm[2];
 		pm[2] = pm[0];
-		pm[0] = j;
+		pm[0] = temp;
 	}
 
 	if (Ton[pm[0]] < Ton[pm[1]]) {
 
-		j = pm[1];
+		temp = pm[1];
 		pm[1] = pm[0];
-		pm[0] = j;
+		pm[0] = temp;
 	}
 
 	if (Ton[pm[1]] < Ton[pm[2]]) {
 
-		j = pm[2];
+		temp = pm[2];
 		pm[2] = pm[1];
-		pm[1] = j;
+		pm[1] = temp;
 	}
 
 	/* Count Up.
 	 * */
 	dT = dPWM * (Ton[pm[0]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[0]] = 0;
 
 	dT = dPWM * (Ton[pm[1]] - Ton[pm[0]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[1]] = 0;
 
 	dT = dPWM * (Ton[pm[2]] - Ton[pm[1]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[2]] = 0;
 
 	dT = dPWM * (m->PWMR - Ton[pm[2]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	/* Count Down.
 	 * */
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[2]] = 1;
 
 	dT = dPWM * (Ton[pm[2]] - Ton[pm[1]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[1]] = 1;
 
 	dT = dPWM * (Ton[pm[1]] - Ton[pm[0]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 
 	m->sF[pm[0]] = 1;
 
 	dT = dPWM * (Ton[pm[0]]);
-	blmSolveSplit(m, dT);
+	blm_Solve_Split(m, dT);
 }
 
-void blmUpdate(blm_t *m)
+void blm_Update(blm_t *m)
 {
-	blmBridgeSample(m);
-	blmBridgeSolve(m);
+	blm_Bridge_Sample(m);
+	blm_Bridge_Solve(m);
 
 	m->Tsim += m->dT;
 }

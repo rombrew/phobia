@@ -24,12 +24,8 @@
 
 typedef struct {
 
-	/* Baud Rate.
-	 * */
-	int		bR;
+	int		baudRate;
 
-	/* Buffers.
-	 * */
 	char		RX[USART_RXBUF_SZ];
 	char		TX[USART_TXBUF_SZ];
 	int		rN;
