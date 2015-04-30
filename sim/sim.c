@@ -186,6 +186,7 @@ sim_Script(FILE *fdTel)
 
 	pmc_default(&pm);
 
+	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.L * (1. + .0);
 	pm.const_Lq = pm.const_Ld;
@@ -196,6 +197,8 @@ sim_Script(FILE *fdTel)
 
 	pm.const_Zp = 11;
 	pm.const_IJ = 1.f / (m.J);
+
+	pmc_gain_tune(&pm);
 
 	/*pm.m_request = PMC_STATE_HOLD;
 	simF(fdTel, 2., 0);

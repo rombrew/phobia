@@ -112,10 +112,10 @@ void pmc_default(pmc_t *pm)
 	pm->i_integral_D = 0.f;
 	pm->i_integral_Q = 0.f;
 	pm->i_KP = 2e-2f;
-	pm->i_KI = 1e-2f;
+	pm->i_KI = 3e-3f;
 
 	pm->h_freq_hz = 500.f;
-	pm->h_set_point = 1.f;
+	pm->h_set_point = .5f;
 
 	pm->w_clock = 0;
 	pm->w_clock_scale = 10;
@@ -464,10 +464,11 @@ vsi_control(pmc_t *pm, float uX, float uY)
 static void
 i_control(pmc_t *pm)
 {
+	const float	uMAX = .667f;
 	float		eD, eQ, uX, uY;
 	float		uD, uQ, wP, S;
 
-	/*pm->i_set_point_D = (pm->i_set_point_D > pm->i_maximal) ? pm->i_maximal :
+	pm->i_set_point_D = (pm->i_set_point_D > pm->i_maximal) ? pm->i_maximal :
 		(pm->i_set_point_D < - pm->i_maximal) ? - pm->i_maximal : pm->i_set_point_D;
 	pm->i_set_point_Q = (pm->i_set_point_Q > pm->i_maximal) ? pm->i_maximal :
 		(pm->i_set_point_Q < - pm->i_maximal) ? - pm->i_maximal : pm->i_set_point_Q;
@@ -489,7 +490,7 @@ i_control(pmc_t *pm)
 		S = pm->i_power_regeneration_maximal / wP;
 		pm->i_set_point_D *= S;
 		pm->i_set_point_Q *= S;
-	}*/
+	}
 
 	/* Obtain residual.
 	 * */
@@ -507,15 +508,26 @@ i_control(pmc_t *pm)
 		rotatef(pm->h_CS, 6.2831853f * pm->h_freq_hz * pm->dT, pm->h_CS);
 	}
 
-	pm->i_integral_D += pm->i_KI * eD;
-	pm->i_integral_D = (pm->i_integral_D > .67f) ? .67f :
-		(pm->i_integral_D < - .67f) ? - .67f : pm->i_integral_D;
-	uD = pm->i_KP * eD + pm->i_integral_D;
+	/*
+	 * */
+	uD = pm->i_KP * eD;
+	uQ = pm->i_KP * eQ;
 
-	pm->i_integral_Q += pm->i_KI * eQ;
-	pm->i_integral_Q = (pm->i_integral_Q > .67f) ? .67f :
-		(pm->i_integral_Q < - .67f) ? - .67f : pm->i_integral_Q;
-	uQ = pm->i_KP * eQ + pm->i_integral_Q;
+	if (fabsf(uD) < uMAX) {
+
+		pm->i_integral_D += pm->i_KI * eD;
+		pm->i_integral_D = (pm->i_integral_D > uMAX) ? uMAX :
+			(pm->i_integral_D < - uMAX) ? - uMAX : pm->i_integral_D;
+		uD += pm->i_integral_D;
+	}
+
+	if (fabsf(uQ) < uMAX) {
+
+		pm->i_integral_Q += pm->i_KI * eQ;
+		pm->i_integral_Q = (pm->i_integral_Q > uMAX) ? uMAX :
+			(pm->i_integral_Q < - uMAX) ? - uMAX : pm->i_integral_Q;
+		uQ += pm->i_integral_Q;
+	}
 
 	uX = pm->kalman_X[2] * uD - pm->kalman_X[3] * uQ;
 	uY = pm->kalman_X[3] * uD + pm->kalman_X[2] * uQ;
@@ -579,19 +591,22 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 				}
 			}
 
-			tA = fabsf(pm->kalman_X[4]);
-			tB = tA + pm->w_low_hysteresis;
-			tA = tA - pm->w_low_hysteresis;
+			if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
 
-			if (tA > pm->w_low_threshold) {
+				tA = fabsf(pm->kalman_X[4]);
+				tB = tA + pm->w_low_hysteresis;
+				tA = tA - pm->w_low_hysteresis;
 
-				pm->m_bitmode &= ~(PMC_BIT_FREQUENCY_INJECTION
-						| PMC_BIT_FREQUENCY_INJECTION);
-			}
-			else if (tB < pm->w_low_threshold) {
+				if (tA > pm->w_low_threshold) {
 
-				pm->m_bitmode |= pm->m_bitmask & (PMC_BIT_FREQUENCY_INJECTION
-						| PMC_BIT_FREQUENCY_INJECTION);
+					pm->m_bitmode &= ~(PMC_BIT_FREQUENCY_INJECTION
+							| PMC_BIT_FREQUENCY_INJECTION);
+				}
+				else if (tB < pm->w_low_threshold) {
+
+					pm->m_bitmode |= pm->m_bitmask & (PMC_BIT_FREQUENCY_INJECTION
+							| PMC_BIT_FREQUENCY_INJECTION);
+				}
 			}
 			break;
 
@@ -986,7 +1001,15 @@ void pmc_feedback(pmc_t *pm, int xA, int xB, int xU)
 	}
 }
 
-void pmc_current_gain(float a)
+void pmc_gain_tune(pmc_t *pm)
 {
+	float		min_L, KP, KI;
+
+	min_L = (pm->const_Ld < pm->const_Lq) ? pm->const_Ld : pm->const_Lq;
+	KP = (.5f * min_L * pm->freq_hz - pm->const_R) / pm->const_U;
+	KI = 5e-2f * min_L * pm->freq_hz / pm->const_U;
+
+	pm->i_KP = KP;
+	pm->i_KI = KI;
 }
 

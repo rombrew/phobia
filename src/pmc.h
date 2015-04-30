@@ -188,7 +188,7 @@ pmc_t;
 void pmc_default(pmc_t *pm);
 void pmc_feedback(pmc_t *pm, int xA, int xB, int xU);
 
-void pmc_current_gain(float);
+void pmc_gain_tune();
 
 #endif /* _H_PMC_ */
 

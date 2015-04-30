@@ -80,7 +80,7 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 1e-6;
+	m->J = 1e-4;
 
 	/* Load torque constants.
 	 * */
