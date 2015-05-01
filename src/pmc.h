@@ -23,7 +23,6 @@ enum {
 	PMC_BIT_KALMAN_FILTER			= 0x0100,
 	PMC_BIT_QAXIS_DRIFT			= 0x0200,
 	PMC_BIT_ABZERO_DRIFT			= 0x0400,
-	PMC_BIT_SUPPLY_VOLTAGE			= 0x0800,
 	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0001,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0002,
 	PMC_BIT_EFFICIENT_MODULATION		= 0x0004,
@@ -39,7 +38,6 @@ enum {
 	PMC_STATE_BEMF,
 	PMC_STATE_LINEAR,
 	PMC_STATE_SPINUP,
-	PMC_STATE_BREAK,
 	PMC_STATE_END
 };
 
@@ -186,8 +184,8 @@ typedef struct {
 pmc_t;
 
 void pmc_default(pmc_t *pm);
-void pmc_feedback(pmc_t *pm, int xA, int xB, int xU);
-
+void pmc_feedback(pmc_t *pm, int xA, int xB);
+void pmc_voltage(pmc_t *pm, int xU);
 void pmc_gain_tune();
 
 #endif /* _H_PMC_ */

@@ -105,8 +105,8 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 
 	pm->i_maximal = 5.f;
-	pm->i_power_consumption_maximal = 100.f;
-	pm->i_power_regeneration_maximal = - 10.f;
+	pm->i_power_consumption_maximal = 200.f;
+	pm->i_power_regeneration_maximal = - 20.f;
 	pm->i_set_point_D = 0.f;
 	pm->i_set_point_Q = 0.f;
 	pm->i_integral_D = 0.f;
@@ -468,6 +468,8 @@ i_control(pmc_t *pm)
 	float		eD, eQ, uX, uY;
 	float		uD, uQ, wP, S;
 
+	/*
+	 * */
 	pm->i_set_point_D = (pm->i_set_point_D > pm->i_maximal) ? pm->i_maximal :
 		(pm->i_set_point_D < - pm->i_maximal) ? - pm->i_maximal : pm->i_set_point_D;
 	pm->i_set_point_Q = (pm->i_set_point_Q > pm->i_maximal) ? pm->i_maximal :
@@ -508,7 +510,7 @@ i_control(pmc_t *pm)
 		rotatef(pm->h_CS, 6.2831853f * pm->h_freq_hz * pm->dT, pm->h_CS);
 	}
 
-	/*
+	/* PI controller.
 	 * */
 	uD = pm->i_KP * eD;
 	uQ = pm->i_KP * eQ;
@@ -561,7 +563,7 @@ w_control(pmc_t *pm)
 }
 
 static void
-pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
+pmc_FSM(pmc_t *pm, float iA, float iB)
 {
 	float			tA, tB;
 
@@ -575,8 +577,8 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 
 					if (pm->m_request == PMC_STATE_BEMF)
 						pm->m_state = PMC_STATE_BEMF;
-					else if (pm->m_request == PMC_STATE_BREAK)
-						pm->m_state = PMC_STATE_BREAK;
+					else if (pm->m_request == PMC_STATE_END)
+						pm->m_state = PMC_STATE_END;
 					else
 						pm->m_request = 0;
 				}
@@ -599,13 +601,26 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 
 				if (tA > pm->w_low_threshold) {
 
-					pm->m_bitmode &= ~(PMC_BIT_FREQUENCY_INJECTION
+					pm->m_bitmode &= ~(PMC_BIT_DIRECT_INJECTION
 							| PMC_BIT_FREQUENCY_INJECTION);
+					pm->m_bitmode |= (PMC_BIT_QAXIS_DRIFT
+							| PMC_BIT_EFFICIENT_MODULATION)
+						& pm->m_bitmask;
 				}
 				else if (tB < pm->w_low_threshold) {
 
-					pm->m_bitmode |= pm->m_bitmask & (PMC_BIT_FREQUENCY_INJECTION
-							| PMC_BIT_FREQUENCY_INJECTION);
+					pm->m_bitmode &= ~(PMC_BIT_QAXIS_DRIFT
+							| PMC_BIT_EFFICIENT_MODULATION);
+					pm->m_bitmode |= (PMC_BIT_DIRECT_INJECTION
+							| PMC_BIT_FREQUENCY_INJECTION)
+						& pm->m_bitmask;
+
+					pm->kalman_P[15] = 0.f;
+					pm->kalman_P[16] = 0.f;
+					pm->kalman_P[17] = 0.f;
+					pm->kalman_P[18] = 0.f;
+					pm->kalman_P[19] = 0.f;
+					pm->kalman_P[20] = 0.f;
 				}
 			}
 			break;
@@ -619,7 +634,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 
 				pm->temp_A[0] = 0.f;
 				pm->temp_A[1] = 0.f;
-				pm->temp_A[2] = 0.f;
 
 				pm->t_value = 0;
 				pm->t_end = 64;
@@ -629,7 +643,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 			else {
 				pm->temp_A[0] += - iA;
 				pm->temp_A[1] += - iB;
-				pm->temp_A[2] += uS - pm->const_U;
 
 				pm->t_value++;
 
@@ -640,15 +653,10 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 					pm->conv_A[0] += pm->temp_A[0] / pm->t_end;
 					pm->conv_B[0] += pm->temp_A[1] / pm->t_end;
 
-					/* Supply Voltage.
-					 * */
-					pm->const_U += pm->temp_A[2] / pm->t_end;
-
 					if (pm->m_phase == 1) {
 
 						pm->temp_A[0] = 0.f;
 						pm->temp_A[1] = 0.f;
-						pm->temp_A[2] = 0.f;
 
 						pm->t_value = 0;
 						pm->t_end = pm->freq_hz * pm->T_drift;
@@ -656,8 +664,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 						pm->m_phase++;
 					}
 					else {
-						pm->m_bitmode |= PMC_BIT_SUPPLY_VOLTAGE;
-
 						pm->pZ(0);
 
 						if (pm->m_request == PMC_STATE_SPINUP)
@@ -867,7 +873,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 
 			/* X(0).
 			 * */
-			pm->kalman_X[0] = pm->i_set_point_D;
+			pm->kalman_X[0] = 0.f;
 			pm->kalman_X[1] = 0.f;
 			pm->kalman_X[2] = 1.f;
 			pm->kalman_X[3] = 0.f;
@@ -896,9 +902,9 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 			pm->kalman_P[18] = 0.f;
 			pm->kalman_P[19] = 0.f;
 
-			pm->kalman_P[0] = 1.f;
-			pm->kalman_P[2] = 1.f;
-			pm->kalman_P[5] = .5f;
+			pm->kalman_P[0] = 40000.f;
+			pm->kalman_P[2] = 40000.f;
+			pm->kalman_P[5] = 1.f;
 			pm->kalman_P[9] = 0.f;
 			pm->kalman_P[14] = 0.f;
 			pm->kalman_P[20] = 0.f;
@@ -915,39 +921,21 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 			pm->m_phase = 0;
 			break;
 
-		case PMC_STATE_BREAK:
-
-			if (pm->m_phase == 0) {
-
-				pm->i_set_point_D = 0.f;
-				pm->i_set_point_Q = 0.f;
-				pm->w_set_point = 0.f;
-
-				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_end;
-
-				pm->m_phase++;
-			}
-			else {
-				pm->t_value++;
-
-				if (pm->t_value < pm->t_end) ;
-				else {
-					pm->pZ(7);
-
-					pm->m_request = 0;
-					pm->m_bitmode = 0;
-					pm->m_state = PMC_STATE_IDLE;
-					pm->m_phase = 0;
-				}
-			}
-			break;
-
 		case PMC_STATE_END:
 
 			if (pm->m_phase == 0) {
 
-				vsi_control(pm, 0.f, 0.f);
+				if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
+
+					pm->m_bitmode &= ~(PMC_BIT_SPEED_CONTROL_LOOP);
+
+					pm->i_set_point_D = 0.f;
+					pm->i_set_point_Q = 0.f;
+				}
+				else {
+
+					vsi_control(pm, 0.f, 0.f);
+				}
 
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_end;
@@ -971,15 +959,14 @@ pmc_FSM(pmc_t *pm, float iA, float iB, float uS)
 	}
 }
 
-void pmc_feedback(pmc_t *pm, int xA, int xB, int xU)
+void pmc_feedback(pmc_t *pm, int xA, int xB)
 {
-	float		iA, iB, uS;
+	float		iA, iB;
 
 	iA = pm->conv_A[1] * (xA - 2048) + pm->conv_A[0];
 	iB = pm->conv_B[1] * (xB - 2048) + pm->conv_B[0];
-	uS = pm->conv_U[1] * xU + pm->conv_U[0];
 
-	pmc_FSM(pm, iA, iB, uS);
+	pmc_FSM(pm, iA, iB);
 
 	if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
 
@@ -999,6 +986,15 @@ void pmc_feedback(pmc_t *pm, int xA, int xB, int xU)
 
 		kalman_time_update(pm);
 	}
+}
+
+void pmc_voltage(pmc_t *pm, int xU)
+{
+	float		uS;
+
+	uS = pm->conv_U[1] * xU + pm->conv_U[0];
+
+	pm->const_U += (uS - pm->const_U) * 2e-2f;
 }
 
 void pmc_gain_tune(pmc_t *pm)

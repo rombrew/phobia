@@ -152,7 +152,8 @@ sim_F(FILE *fdTel, double dT, int Verb)
 
 		/* PMC update.
 		 * */
-		pmc_feedback(&pm, m.xA, m.xB, m.xU);
+		pmc_feedback(&pm, m.xA, m.xB);
+		pmc_voltage(&pm, m.xU);
 
 		/* Collect telemetry.
 		 * */
