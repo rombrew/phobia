@@ -1,5 +1,5 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
+   Phobia Motor Controller for RC and robotics.
    Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -22,31 +22,31 @@
 
 tel_t				tel;
 
-void telTask()
+void tel_capture()
 {
-	int			j, sa;
+	int			j, tail;
 
-	for (j = 0; j < tel.sz; ++j)
-		tel.av[j] += tel.in[j];
+	for (j = 0; j < tel.p_size; ++j)
+		tel.s_average[j] += tel.p_list[j];
 
-	tel.num++;
+	tel.s_clock++;
 
-	if (tel.num >= tel.dec) {
+	if (tel.s_clock >= tel.s_clock_scale) {
 
-		tel.num = 0;
+		tel.clock = 0;
 
-		for (j = 0; j < tel.sz; ++j) {
+		for (j = 0; j < tel.p_size; ++j) {
 
-			*tel.pZ++ = tel.av[j] / tel.dec;
-			tel.av[j] = 0;
+			*tel.pZ++ = tel.s_average[j] / tel.s_clock_scale;
+			tel.s_average[j] = 0;
 		}
 
-		sa = tel.pZ - tel.pD + tel.sz;
-		tel.en = (sa < TELSZ) ? tel.en : 0;
+		tail = tel.pZ - tel.pD + tel.p_size;
+		tel.enabled = (tail < TELSZ) ? tel.enabled : 0;
 	}
 }
 
-void telShow()
+void tel_show()
 {
 	short int		*pZ;
 	int			j;
@@ -55,7 +55,7 @@ void telShow()
 
 	while (pZ < tel.pZ) {
 
-		for (j = 0; j < tel.sz; ++j)
+		for (j = 0; j < tel.p_size; ++j)
 			printf("%i ", *pZ++);
 
 		puts(EOL);

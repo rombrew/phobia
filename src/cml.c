@@ -1,6 +1,6 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Phobia Motor Controller for RC and robotics.
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -79,143 +79,116 @@ void pwm_dead_time_ns(const char *s)
 	printf("%i (ns)" EOL, halPWM.dead_time_ns);
 }
 
-void pm_spinup(const char *s)
+void pm_m_request_hold(const char *s)
 {
-	if (pm.mReq == PMC_REQ_NULL) {
+	if (pm.m_request == 0) {
 
-		pm.mReq = PMC_REQ_SPINUP;
-	}
-
-	do {
-		taskIOMUX();
-	}
-	while (pm.mS1 != PMC_STATE_SPINUP);
-
-	tel.pZ = tel.pD;
-	tel.num = 0;
-	tel.dec = 1;
-	tel.en = 1;
-}
-
-void pm_break(const char *s)
-{
-	if (pm.mReq == PMC_REQ_NULL) {
-
-		pm.mReq = PMC_REQ_BREAK;
+		pm.m_request = PMC_STATE_HOLD;
 	}
 }
 
-void pm_hold(const char *s)
+void pm_m_request_sine(const char *s)
 {
-	if (pm.mReq == PMC_REQ_NULL) {
+	if (pm.m_request == 0) {
 
-		pm.mReq = PMC_REQ_HOLD;
-	}
-
-	do {
-		taskIOMUX();
-	}
-	while (pm.mReq != PMC_REQ_NULL);
-
-	printf("R %4e (Ohm)" EOL, &pm.R);
-}
-
-void pm_sine(const char *s)
-{
-	if (pm.mReq == PMC_REQ_NULL) {
-
-		tel.pZ = tel.pD;
-		tel.num = 0;
-		tel.dec = 1;
-		tel.en = 1;
-
-		pm.mReq = PMC_REQ_SINE;
-	}
-
-	do {
-		taskIOMUX();
-	}
-	while (pm.mReq != PMC_REQ_NULL);
-
-	printf("Ld %4e (H)" EOL, &pm.Ld);
-	printf("Lq %4e (H)" EOL, &pm.Lq);
-}
-
-void pm_e(const char *s)
-{
-	if (pm.mReq == PMC_REQ_NULL) {
-
-		tel.pZ = tel.pD;
-		tel.num = 0;
-		tel.dec = 1;
-		tel.en = 1;
-
-		pm.mReq = PMC_REQ_E;
+		pm.m_request = PMC_STATE_SINE;
 	}
 }
 
-void pm_linear(const char *s)
+void pm_m_request_bemf(const char *s)
 {
-	if (pm.mReq == PMC_REQ_NULL) {
+	if (pm.m_request == 0) {
 
-		pm.mReq = PMC_REQ_LINEAR;
+		pm.m_request = PMC_STATE_BEMF;
 	}
 }
 
-void pm_pwmR(const char *s)
+void pm_m_request_linear(const char *s)
 {
-	printf("%i" EOL, pm.pwmR);
+	if (pm.m_request == 0) {
+
+		pm.m_request = PMC_STATE_LINEAR;
+	}
 }
 
-void pm_pwmMP_ns(const char *s)
+void pm_m_request_begin(const char *s)
 {
-	float		K;
+	if (pm.m_request == 0) {
+
+		pm.m_request = PMC_STATE_BEGIN;
+	}
+}
+
+void pm_m_request_end(const char *s)
+{
+	if (pm.m_request == 0) {
+
+		pm.m_request = PMC_STATE_END;
+	}
+}
+
+void pm_m_bitmask(const char *s)
+{
+}
+
+void pm_m_errno(const char *s)
+{
+}
+
+void pm_pwm_resolution(const char *s)
+{
+	printf("%i" EOL, pm.pwm_resolution);
+}
+
+void pm_pwm_minimal_pulse(const char *s)
+{
+	float		conv_G;
 	int		ns;
 
-	K = 1e-9f * pm.hzF * pm.pwmR;
+	conv_G = 1e-9f * pm.freq_hz * pm.pwm_resolution;
 
 	if (stoi(&ns, s) != NULL)
-		pm.pwmMP = (int) (ns * K + .5f);
+		pm.pwm_minimal_pulse = (int) (ns * conv_G + .5f);
 
-	ns = (int) (pm.pwmMP / K + .5f);
+	ns = (int) (pm.pwm_minimal_pulse / conv_G + .5f);
 
 	printf("%i (ns)" EOL, ns);
 }
 
-void pm_Tdrift(const char *s)
+void pm_T_drift(const char *s)
 {
-	stof(&pm.Tdrift, s);
-	printf("%3f (Sec)" EOL, &pm.Tdrift);
+	stof(&pm.T_drift, s);
+	printf("%3f (Sec)" EOL, &pm.T_drift);
 }
 
-void pm_Thold(const char *s)
+void pm_T_hold(const char *s)
 {
-	stof(&pm.Thold, s);
-	printf("%3f (Sec)" EOL, &pm.Thold);
+	stof(&pm.T_hold, s);
+	printf("%3f (Sec)" EOL, &pm.T_hold);
 }
 
-void pm_Trohm(const char *s)
+void pm_T_rohm(const char *s)
 {
-	stof(&pm.Trohm, s);
-	printf("%3f (Sec)" EOL, &pm.Trohm);
+	stof(&pm.T_rohm, s);
+	printf("%3f (Sec)" EOL, &pm.T_rohm);
 }
 
-void pm_Tsine(const char *s)
+void pm_T_sine(const char *s)
 {
-	stof(&pm.Tsine, s);
-	printf("%3f (Sec)" EOL, &pm.Tsine);
+	stof(&pm.T_sine, s);
+	printf("%3f (Sec)" EOL, &pm.T_sine);
 }
 
-void pm_Tout(const char *s)
+void pm_T_bemf(const char *s)
 {
-	stof(&pm.Tout, s);
-	printf("%3f (Sec)" EOL, &pm.Tout);
+	stof(&pm.T_bemf, s);
+	printf("%3f (Sec)" EOL, &pm.T_bemf);
 }
 
-void pm_Tend(const char *s)
+void pm_T_end(const char *s)
 {
 	stof(&pm.Tend, s);
-	printf("%3f (Sec)" EOL, &pm.Tend);
+	printf("%3f (Sec)" EOL, &pm.T_end);
 }
 
 void pm_iHOLD(const char *s)
@@ -429,15 +402,19 @@ void pm_wSP_rpm(const char *s)
 	printf("%1f (RPM)" EOL, &RPM);
 }
 
-void tel_enable(const char *s)
+void tel_setup(const char *s)
 {
-	tel.dec = 10;
+	tel.s_clock_scale = 1;
 
-	stoi(&tel.dec, s);
+	stoi(&tel.s_clock_scale, s);
 
 	tel.pZ = tel.pD;
-	tel.num = 0;
-	tel.en = 1;
+	tel.s_clock = 0;
+}
+
+void tel_enable(const char *s)
+{
+	tel.enabled = 1;
 }
 
 void tel_show(const char *s)
@@ -502,6 +479,7 @@ const shCMD_t		cmList[] = {
 	{"pm_wMIN_rpm", &pm_wMIN_rpm},
 	{"pm_wSP_rpm", &pm_wSP_rpm},
 
+	{"tel_setup", &tel_setup},
 	{"tel_enable", &tel_enable},
 	{"tel_show", &tel_show},
 

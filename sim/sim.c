@@ -1,6 +1,6 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Phobia Motor Controller for RC and robotics.
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -131,6 +131,10 @@ sim_Tel(float *pTel)
 	pTel[30] = pm.i_set_point_D;
 	pTel[31] = pm.i_set_point_Q;
 	pTel[32] = pm.w_set_point;
+
+	/* Variance.
+	 * */
+	pTel[33] = pm.residual_variance;
 }
 
 static void
@@ -212,10 +216,10 @@ sim_Script(FILE *fdTel)
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.L) / m.L);
 	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.L) / m.L);*/
 
-	pm.m_request = PMC_STATE_SPINUP;
+	pm.m_request = PMC_STATE_BEGIN;
 	sim_F(fdTel, 2., 0);
 
-	pm.i_set_point_Q = 2.f;
+	m.X[2] /= 5.;
 	sim_F(fdTel, 2., 0);
 
 	/*pm.m_request = PMC_STATE_BEMF;

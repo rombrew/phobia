@@ -1,5 +1,5 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
+   Phobia Motor Controller for RC and robotics.
    Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -23,11 +23,13 @@
 
 typedef struct {
 
-	short int		in[8];
-	int			sz, en;
+	int			enabled;
 
-	int			av[8];
-	int			num, dec;
+	short int		p_list[8];
+	int			p_size;
+
+	int			s_average[8];
+	int			s_clock, s_clock_scale;
 
 	short int		pD[TELSZ];
 	short int		*pZ;
@@ -36,8 +38,8 @@ tel_t;
 
 extern tel_t			tel;
 
-void telTask();
-void telShow();
+void tel_capture();
+void tel_show();
 
 #endif /* _H_TEL_ */
 

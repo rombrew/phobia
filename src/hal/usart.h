@@ -1,5 +1,5 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
+   Phobia Motor Controller for RC and robotics.
    Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -30,9 +30,9 @@ typedef struct {
 	char		TX[USART_TXBUF_SZ];
 	int		rN;
 }
-halUSART_TypeDef;
+halUSART_t;
 
-extern halUSART_TypeDef		halUSART;
+extern halUSART_t		halUSART;
 
 void usartEnable();
 void usartDisable();

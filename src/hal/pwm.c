@@ -1,6 +1,6 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
-   Copyright (C) 2014 Roman Belov <romblv@gmail.com>
+   Phobia Motor Controller for RC and robotics.
+   Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-halPWM_TypeDef			halPWM;
+halPWM_t			halPWM;
 
 void irqTIM1_UP_TIM10() { }
 

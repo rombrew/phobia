@@ -1,5 +1,5 @@
 /*
-   Phobia DC Motor Controller for RC and robotics.
+   Phobia Motor Controller for RC and robotics.
    Copyright (C) 2015 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-halADC_TypeDef			halADC;
+halADC_t			halADC;
 
 void irqADC()
 {

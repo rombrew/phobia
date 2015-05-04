@@ -120,5 +120,12 @@ if (N == 14) {
 		@TEL using 1:20 title 'B' with lines
 }
 
+if (N == 15) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'Residial variance (A)'
+	plot	@TEL using 1:33 title 'DQ' with lines,
+}
+
 pause mouse close
 
