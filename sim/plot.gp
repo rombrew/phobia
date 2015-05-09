@@ -16,9 +16,7 @@ if (N == 1) {
 	plot    @TEL using 1:2 title 'Plant D' with lines, \
 		@TEL using 1:3 title 'Plant Q' with lines, \
 		@TEL using 1:10 title 'Estimated D' with lines, \
-		@TEL using 1:11 title 'Estimated Q' with lines, \
-		@TEL using 1:30 title 'Set Point D' with lines, \
-		@TEL using 1:31 title 'Set Point Q' with lines
+		@TEL using 1:11 title 'Estimated Q' with lines
 }
 
 if (N == 2) {

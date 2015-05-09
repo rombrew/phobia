@@ -65,8 +65,12 @@ void pmc_default(pmc_t *pm)
 	pm->m_request = 0;
 	pm->m_bitmask = PMC_BIT_QAXIS_DRIFT
 		| PMC_BIT_EFFICIENT_MODULATION
+		| PMC_BIT_SPEED_CONTROL_LOOP
 		| PMC_BIT_DIRECT_INJECTION
-		| PMC_BIT_FREQUENCY_INJECTION;
+		| PMC_BIT_FREQUENCY_INJECTION
+		| PMC_BIT_HOLD_UPDATE_R
+		| PMC_BIT_SINE_UPDATE_L
+		| PMC_BIT_ESTIMATE_E;
 	pm->m_bitmode = 0;
 	pm->m_state = PMC_STATE_IDLE;
 	pm->m_phase = 0;
@@ -83,7 +87,7 @@ void pmc_default(pmc_t *pm)
 	pm->i_sine = 1.f;
 	pm->i_offset_D = 0.f;
 	pm->i_offset_Q = 0.f;
-	pm->freq_sine_hz = 2000.f;
+	pm->freq_sine_hz = 4000.f;
 
 	pm->conv_A[0] = 0.f;
 	pm->conv_A[1] = 1.332e-2f;
@@ -96,7 +100,7 @@ void pmc_default(pmc_t *pm)
 	pm->kalman_Q[1] = 1e-4f;
 	pm->kalman_Q[2] = 1e-6f;
 	pm->kalman_Q[3] = 1e-6f;
-	pm->kalman_Q[4] = 1e-5f;
+	pm->kalman_Q[4] = 1e-6f;
 	pm->kalman_Q[5] = 1e-7f;
 	pm->kalman_R = 4e-2f;
 
@@ -111,7 +115,7 @@ void pmc_default(pmc_t *pm)
 
 	pm->i_maximal = 10.f;
 	pm->i_power_consumption_maximal = 200.f;
-	pm->i_power_regeneration_maximal = - 20.f;
+	pm->i_power_regeneration_maximal = - 10.f;
 	pm->i_set_point_D = 0.f;
 	pm->i_set_point_Q = 0.f;
 	pm->i_integral_D = 0.f;
@@ -119,18 +123,17 @@ void pmc_default(pmc_t *pm)
 	pm->i_KP = 2e-2f;
 	pm->i_KI = 3e-3f;
 
-	pm->h_freq_hz = 500.f;
-	pm->h_set_point = .5f;
+	pm->i_inject_D = 1.f;
+	pm->i_inject_gain = 1.f;
 
-	pm->w_clock = 0;
-	pm->w_clock_scale = 10;
+	pm->h_freq_hz = 500.f;
+	pm->h_inject_D = .5f;
+
 	pm->w_maximal = 20944.f;
 	pm->w_low_threshold = 524.f;
 	pm->w_low_hysteresis = 52.f;
 	pm->w_set_point = 0.f;
-	pm->w_integral = 0.f;
-	pm->w_KP = 2e-3f;
-	pm->w_KI = 2e-6f;
+	pm->w_KP = 1e-1f;
 }
 
 static void
@@ -505,12 +508,12 @@ i_control(pmc_t *pm)
 
 	if (pm->m_bitmode & PMC_BIT_DIRECT_INJECTION) {
 
-		eD += 1.f * fabsf(pm->i_set_point_Q);
+		eD += pm->i_inject_gain * fabsf(pm->i_set_point_Q) + pm->i_inject_D;
 	}
 
 	if (pm->m_bitmode & PMC_BIT_FREQUENCY_INJECTION) {
 
-		eD += pm->h_CS[1] * pm->h_set_point;
+		eD += pm->h_CS[1] * pm->h_inject_D;
 		rotatef(pm->h_CS, 6.2831853f * pm->h_freq_hz * pm->dT, pm->h_CS);
 	}
 
@@ -546,24 +549,28 @@ w_control(pmc_t *pm)
 {
 	float		eW, iSP;
 
-	/* Obtain residual.
-	 * */
-	eW = pm->w_set_point - pm->kalman_X[4];
+	pm->w_average[0] += pm->kalman_X[4];
+	pm->w_average[1] += pm->var_M;
 
-	/* Speed PI regulator.
-	 * */
-	pm->w_integral += pm->w_KI * eW;
-	pm->w_integral = (pm->w_integral > pm->i_maximal) ? pm->i_maximal :
-		(pm->w_integral < - pm->i_maximal) ? - pm->i_maximal : pm->w_integral;
-	iSP = pm->w_KP * eW + pm->w_integral;
+	if (pm->t_clock == 0) {
 
-	/* Current limit.
-	 * */
-	iSP = (iSP > pm->i_maximal) ? pm->i_maximal :
-		(iSP < - pm->i_maximal) ? - pm->i_maximal : iSP;
+		pm->w_average[0] *= .2f;
+		pm->w_average[1] *= .2f;
 
-	pm->i_set_point_D = 0.f;
-	pm->i_set_point_Q = iSP;
+		/* Obtain residual.
+		 * */
+		eW = pm->w_set_point - pm->w_average[0];
+
+		/* P+FF controller.
+		 * */
+		iSP = pm->w_KP * eW + (pm->w_average[1] / (1.5f * pm->const_Zp * pm->const_E));
+
+		pm->i_set_point_D = 0.f;
+		pm->i_set_point_Q = iSP;
+
+		pm->w_average[0] = 0.f;
+		pm->w_average[1] = 0.f;
+	}
 }
 
 static void
@@ -575,24 +582,25 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 		case PMC_STATE_IDLE:
 
-			if (pm->m_request != PMC_STATE_IDLE) {
+			if (pm->m_request != 0) {
 
 				if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
 
-					if (pm->m_request == PMC_STATE_ESTIMATE_RE)
-						pm->m_state = PMC_STATE_ESTIMATE_RE;
+					if (pm->m_request == PMC_STATE_ESTIMATE_Q)
+						pm->m_state = PMC_STATE_ESTIMATE_Q;
 					else if (pm->m_request == PMC_STATE_ESTIMATE_J)
 						pm->m_state = PMC_STATE_ESTIMATE_J;
-					else if (pm->m_request == PMC_STATE_END)
-						pm->m_state = PMC_STATE_END;
+					else if (pm->m_request == PMC_STATE_KALMAN_STOP)
+						pm->m_state = PMC_STATE_KALMAN_STOP;
 					else
 						pm->m_request = 0;
 				}
 				else {
-					if (pm->m_request == PMC_STATE_WAVE_HOLD
+					if (pm->m_request == PMC_STATE_ZERO_DRIFT
+							|| pm->m_request == PMC_STATE_WAVE_HOLD
 							|| pm->m_request == PMC_STATE_WAVE_SINE
 							|| pm->m_request == PMC_STATE_CALIBRATION
-							|| pm->m_request == PMC_STATE_BEGIN)
+							|| pm->m_request == PMC_STATE_KALMAN_START)
 						pm->m_state = PMC_STATE_ZERO_DRIFT;
 					else
 						pm->m_request = 0;
@@ -647,8 +655,8 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 							pm->m_state = PMC_STATE_WAVE_SINE;
 						else if (pm->m_request == PMC_STATE_CALIBRATION)
 							pm->m_state = PMC_STATE_CALIBRATION;
-						else if (pm->m_request == PMC_STATE_BEGIN)
-							pm->m_state = PMC_STATE_BEGIN;
+						else if (pm->m_request == PMC_STATE_KALMAN_START)
+							pm->m_state = PMC_STATE_KALMAN_START;
 						else
 							pm->m_state = PMC_STATE_END;
 
@@ -816,7 +824,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 		case PMC_STATE_CALIBRATION:
 			break;
 
-		case PMC_STATE_ESTIMATE_RE:
+		case PMC_STATE_ESTIMATE_Q:
 
 			if (pm->m_phase == 0) {
 
@@ -838,13 +846,16 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 				if (pm->t_value < pm->t_end) ;
 				else {
-					if (pm->m_bitmask & PMC_BIT_ESTIMATE_UPDATE_R) {
+					if (pm->m_bitmask & PMC_BIT_ESTIMATE_R) {
 
 						pm->const_R += - pm->temp_B[2] / pm->temp_B[0];
 					}
-					else if (pm->m_bitmask & PMC_BIT_ESTIMATE_UPDATE_E) {
+					else if (pm->m_bitmask & PMC_BIT_ESTIMATE_E) {
 
 						pm->const_E += - pm->temp_B[2] / pm->temp_B[1];
+					}
+
+					if (pm->m_bitmask & PMC_BIT_ESTIMATE_Q) {
 					}
 
 					pm->m_request = 0;
@@ -854,9 +865,12 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 			}
 			break;
 
-		case PMC_STATE_BEGIN:
+		case PMC_STATE_KALMAN_START:
 
 			pm->m_bitmode |= PMC_BIT_KALMAN_FILTER;
+			pm->m_bitmode |= (PMC_BIT_SPEED_CONTROL_LOOP
+					| PMC_BIT_POSITION_CONTROL_LOOP)
+				& pm->m_bitmask;
 
 			/* X(0).
 			 * */
@@ -901,28 +915,48 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 			pm->i_set_point_D = 0.f;
 			pm->i_set_point_Q = 5.f;
-			pm->w_set_point = 0.f;
+			pm->w_set_point = 4000.f;
 
 			pm->m_request = 0;
 			pm->m_state = PMC_STATE_IDLE;
 			pm->m_phase = 0;
 			break;
 
+		case PMC_STATE_KALMAN_STOP:
+
+			if (pm->m_phase == 0) {
+
+				pm->m_bitmode &= ~(PMC_BIT_SPEED_CONTROL_LOOP
+						| PMC_BIT_POSITION_CONTROL_LOOP);
+
+				pm->i_set_point_D = 0.f;
+				pm->i_set_point_Q = 0.f;
+
+				pm->t_value = 0;
+				pm->t_end = pm->freq_hz * pm->T_end;
+
+				pm->m_phase++;
+			}
+			else {
+				pm->t_value++;
+
+				if (pm->t_value < pm->t_end) ;
+				else {
+					pm->pZ(7);
+
+					pm->m_request = 0;
+					pm->m_bitmode = 0;
+					pm->m_state = PMC_STATE_IDLE;
+					pm->m_phase = 0;
+				}
+			}
+			break;
+
 		case PMC_STATE_END:
 
 			if (pm->m_phase == 0) {
 
-				if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
-
-					pm->m_bitmode &= ~(PMC_BIT_SPEED_CONTROL_LOOP);
-
-					pm->i_set_point_D = 0.f;
-					pm->i_set_point_Q = 0.f;
-				}
-				else {
-
-					vsi_control(pm, 0.f, 0.f);
-				}
+				vsi_control(pm, 0.f, 0.f);
 
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_end;
@@ -951,47 +985,66 @@ pmc_underway(pmc_t *pm)
 {
 	float		tA, tB;
 
-	tA = fabsf(pm->kalman_X[4]);
-	tB = tA + pm->w_low_hysteresis;
-	tA = tA - pm->w_low_hysteresis;
+	if (pm->t_clock == 1) {
 
-	if (tA > pm->w_low_threshold) {
+		tA = fabsf(pm->kalman_X[4]);
+		tB = tA + pm->w_low_hysteresis;
+		tA = tA - pm->w_low_hysteresis;
 
-		pm->m_bitmode &= ~(PMC_BIT_DIRECT_INJECTION
-				| PMC_BIT_FREQUENCY_INJECTION);
-		pm->m_bitmode |= (PMC_BIT_QAXIS_DRIFT
-				| PMC_BIT_EFFICIENT_MODULATION)
-			& pm->m_bitmask;
+		if (pm->m_bitmode & PMC_BIT_LOW_REGION) {
+
+			if (tA > pm->w_low_threshold) {
+
+				pm->m_bitmode &= ~PMC_BIT_LOW_REGION;
+				pm->m_bitmode &= ~(PMC_BIT_DIRECT_INJECTION
+						| PMC_BIT_FREQUENCY_INJECTION);
+				pm->m_bitmode |= (PMC_BIT_QAXIS_DRIFT
+						| PMC_BIT_EFFICIENT_MODULATION)
+					& pm->m_bitmask;
+			}
+		}
+		else {
+			if (tB < pm->w_low_threshold) {
+
+				pm->m_bitmode |= PMC_BIT_LOW_REGION;
+				pm->m_bitmode &= ~(PMC_BIT_QAXIS_DRIFT
+						| PMC_BIT_EFFICIENT_MODULATION);
+				pm->m_bitmode |= (PMC_BIT_DIRECT_INJECTION
+						| PMC_BIT_FREQUENCY_INJECTION)
+					& pm->m_bitmask;
+
+				pm->kalman_P[15] = 0.f;
+				pm->kalman_P[16] = 0.f;
+				pm->kalman_P[17] = 0.f;
+				pm->kalman_P[18] = 0.f;
+				pm->kalman_P[19] = 0.f;
+				pm->kalman_P[20] = 0.f;
+			}
+		}
 	}
-	else if (tB < pm->w_low_threshold) {
+	else if (pm->t_clock == 2) {
 
-		pm->m_bitmode &= ~(PMC_BIT_QAXIS_DRIFT
-				| PMC_BIT_EFFICIENT_MODULATION);
-		pm->m_bitmode |= (PMC_BIT_DIRECT_INJECTION
-				| PMC_BIT_FREQUENCY_INJECTION)
-			& pm->m_bitmask;
+		pm->drift_A = (pm->drift_A < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
+			: (pm->drift_A > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_A;
+		pm->drift_B = (pm->drift_B < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
+			: (pm->drift_B > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_B;
+		pm->drift_Q = (pm->drift_Q < - pm->drift_Q_maximal) ? - pm->drift_Q_maximal
+			: (pm->drift_Q > pm->drift_Q_maximal) ? pm->drift_Q_maximal : pm->drift_Q;
 
-		pm->kalman_P[15] = 0.f;
-		pm->kalman_P[16] = 0.f;
-		pm->kalman_P[17] = 0.f;
-		pm->kalman_P[18] = 0.f;
-		pm->kalman_P[19] = 0.f;
-		pm->kalman_P[20] = 0.f;
 	}
+	else if (pm->t_clock == 3) {
 
-	pm->drift_Q = (pm->drift_Q < - pm->drift_Q_maximal) ? - pm->drift_Q_maximal
-		: (pm->drift_Q > pm->drift_Q_maximal) ? pm->drift_Q_maximal : pm->drift_Q;
+		if (pm->residual_variance > 10.f) {
 
-	if (pm->residual_variance > 10.f) {
+			/*pm->kalman_P[0] += 100.f;
+			  pm->kalman_P[2] += 100.f;
+			  pm->kalman_P[5] += 2.f;
+			  pm->kalman_P[9] += 1000.f;
+			  pm->kalman_P[14] += 1.f;
+			  pm->kalman_P[20] += 1.f;*/
 
-		/*pm->kalman_P[0] += 100.f;
-		pm->kalman_P[2] += 100.f;
-		pm->kalman_P[5] += 2.f;
-		pm->kalman_P[9] += 1000.f;
-		pm->kalman_P[14] += 1.f;
-		pm->kalman_P[20] += 1.f;*/
-
-		pm->residual_variance = 0.f;
+			pm->residual_variance = 0.f;
+		}
 	}
 }
 
@@ -1009,19 +1062,18 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 		kalman_measurement_update(pm, iA, iB);
 		i_control(pm);
 
+		kalman_time_update(pm);
+
 		if (pm->m_bitmode & PMC_BIT_SPEED_CONTROL_LOOP) {
 
-			pm->w_clock++;
-
-			if (pm->w_clock >= pm->w_clock_scale) {
-
-				pm->w_clock = 0;
-				w_control(pm);
-			}
+			w_control(pm);
+		}
+		else if (pm->m_bitmode & PMC_BIT_POSITION_CONTROL_LOOP) {
 		}
 
-		kalman_time_update(pm);
 		pmc_underway(pm);
+
+		pm->t_clock = (pm->t_clock < 4) ? pm->t_clock + 1 : 0;
 	}
 }
 

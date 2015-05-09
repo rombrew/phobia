@@ -24,6 +24,7 @@ enum {
 	PMC_BIT_QAXIS_DRIFT			= 0x0002,
 	PMC_BIT_ABZERO_DRIFT			= 0x0004,
 
+	PMC_BIT_LOW_REGION			= 0x0008,
 	PMC_BIT_EFFICIENT_MODULATION		= 0x0010,
 	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0020,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0040,
@@ -32,8 +33,9 @@ enum {
 
 	PMC_BIT_HOLD_UPDATE_R			= 0x0200,
 	PMC_BIT_SINE_UPDATE_L			= 0x0400,
-	PMC_BIT_ESTIMATE_UPDATE_R		= 0x0800,
-	PMC_BIT_ESTIMATE_UPDATE_E		= 0x1000,
+	PMC_BIT_ESTIMATE_R			= 0x0800,
+	PMC_BIT_ESTIMATE_E			= 0x1000,
+	PMC_BIT_ESTIMATE_Q			= 0x2000,
 };
 
 enum {
@@ -42,10 +44,10 @@ enum {
 	PMC_STATE_WAVE_HOLD,
 	PMC_STATE_WAVE_SINE,
 	PMC_STATE_CALIBRATION,
-	PMC_STATE_ESTIMATE_RE,
-	PMC_STATE_ESTIMATE_J,
 	PMC_STATE_ESTIMATE_Q,
-	PMC_STATE_BEGIN,
+	PMC_STATE_ESTIMATE_J,
+	PMC_STATE_KALMAN_START,
+	PMC_STATE_KALMAN_STOP,
 	PMC_STATE_END
 };
 
@@ -81,6 +83,7 @@ typedef struct {
 	 * */
 	int		t_value;
 	int		t_end;
+	int		t_clock;
 
 	/* Timer configuration.
 	 * */
@@ -167,22 +170,25 @@ typedef struct {
 	float		i_KP;
 	float		i_KI;
 
+	/* Direct injection.
+	 * */
+	float		i_inject_D;
+	float		i_inject_gain;
+
 	/* Frequency injection.
 	 * */
 	float		h_freq_hz;
-	float		h_set_point;
+	float		h_inject_D;
 	float		h_CS[2];
 
 	/* Speed control loop.
 	 * */
-	int		w_clock, w_clock_scale;
 	float		w_maximal;
 	float		w_low_threshold;
 	float		w_low_hysteresis;
 	float		w_set_point;
-	float		w_integral;
+	float		w_average[2];
 	float		w_KP;
-	float		w_KI;
 
 	/* Control interface.
 	 * */
