@@ -39,7 +39,7 @@ tel_t;
 extern tel_t			tel;
 
 void tel_capture();
-void tel_show();
+void tel_flush();
 
 #endif /* _H_TEL_ */
 

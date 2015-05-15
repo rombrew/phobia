@@ -31,7 +31,7 @@ typedef struct {
 	int		dead_time_ns;
 	int		resolution;
 }
-halPWM_t
+halPWM_t;
 
 extern halPWM_t			halPWM;
 

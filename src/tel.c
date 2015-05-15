@@ -33,7 +33,7 @@ void tel_capture()
 
 	if (tel.s_clock >= tel.s_clock_scale) {
 
-		tel.clock = 0;
+		tel.s_clock = 0;
 
 		for (j = 0; j < tel.p_size; ++j) {
 
@@ -46,7 +46,7 @@ void tel_capture()
 	}
 }
 
-void tel_show()
+void tel_flush()
 {
 	short int		*pZ;
 	int			j;

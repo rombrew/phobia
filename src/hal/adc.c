@@ -31,7 +31,7 @@ void irqADC()
 
 		halADC.xA = (1UL << 12) - ADC2->JDR1;
 		halADC.xB = (1UL << 12) - ADC3->JDR1;
-		halADC.xU = 1655; /* ADC1->JDR1;*/
+		halADC.xU = 1821; /* ADC1->JDR1;*/
 
 		//__set_BASEPRI(7);
 		adcIRQ();

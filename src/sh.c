@@ -32,8 +32,9 @@
 #define FIFO_INC(I, SZ)			(((I) < ((SZ) - 1)) ? (I) + 1 : 0)
 #define FIFO_DEC(I, SZ)			(((I) > 0) ? (I) - 1 : (SZ) - 1)
 
-static const char SH_PROMPT[] = "# ";
-static const char SH_BACKSPACE[] = "\b \b";
+static const char
+SH_PROMPT[] = "# ",
+SH_BACKSPACE[] = "\b \b";
 
 enum {
 	DIR_UP,

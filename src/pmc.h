@@ -91,7 +91,7 @@ typedef struct {
 	float		T_hold;
 	float		T_rohm;
 	float		T_sine;
-	float		T_re;
+	float		T_estq;
 	float		T_end;
 
 	/* Other configuration.
@@ -133,7 +133,7 @@ typedef struct {
 	/* Temporal.
 	 * */
 	float		temp_A[5];
-	float		temp_B[5];
+	float		temp_B[8];
 
 	/* Zero Drift.
 	 * */
@@ -155,6 +155,7 @@ typedef struct {
 	/* Mechanical constants.
 	 * */
 	int		const_Zp;
+	float		const_M[3];
 	float		const_IJ;
 
 	/* Current control loop.
@@ -183,7 +184,6 @@ typedef struct {
 
 	/* Speed control loop.
 	 * */
-	float		w_maximal;
 	float		w_low_threshold;
 	float		w_low_hysteresis;
 	float		w_set_point;

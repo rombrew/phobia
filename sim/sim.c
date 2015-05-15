@@ -62,7 +62,13 @@ sim_Tel(float *pTel)
 {
 	double		A, B, C, D, Q;
 
-	sim_AB_DQ(m.X[0], m.X[1], m.X[3], &D, &Q);
+	if (m.mDQ) {
+
+		D = m.X[0];
+		Q = m.X[1];
+	}
+	else
+		sim_AB_DQ(m.X[0], m.X[1], m.X[3], &D, &Q);
 
 	/* Model.
 	 * */
@@ -193,15 +199,15 @@ sim_Script(FILE *fdTel)
 
 	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
-	pm.const_Ld = m.L * (1. + .0);
-	pm.const_Lq = pm.const_Ld;
+	pm.const_Ld = m.Ld * (1. - .0);
+	pm.const_Lq = m.Lq * (1. - .0);
 	pm.const_E = m.E * (1. + .0);
 
 	pm.const_ILd = 1.f / pm.const_Ld;
 	pm.const_ILq = 1.f / pm.const_Lq;
 
 	pm.const_Zp = 11;
-	pm.const_IJ = 1.f / (m.J);
+	pm.const_IJ = 1.f / (m.J * 1.f);
 
 	pmc_gain_tune(&pm);
 
@@ -213,14 +219,20 @@ sim_Script(FILE *fdTel)
 	pm.m_request = PMC_STATE_WAVE_SINE;
 	sim_F(fdTel, 1., 0);
 
-	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.L) / m.L);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.L) / m.L);*/
+	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);*/
 
 	pm.m_request = PMC_STATE_KALMAN_START;
+	sim_F(fdTel, .5, 0);
+
+	m.X[3] = 0.;
+	sim_F(fdTel, .5, 0);
+
+	pm.i_set_point_Q = 2.;
 	sim_F(fdTel, 1., 0);
 
-	pm.w_set_point = 2000.f;
-	sim_F(fdTel, 1., 0);
+	/*pm.i_set_point_Q = 5.f;
+	sim_F(fdTel, 1., 0);*/
 
 	/*pm.m_request = PMC_STATE_BEMF;
 	simF(fdTel, 2., 0);

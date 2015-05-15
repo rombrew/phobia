@@ -24,6 +24,7 @@ typedef struct {
 	double		Tsim;
 	double		dT, sT;
 	int		PWMR;
+	int		mDQ;
 
 	/* Duty Cycle (Input).
 	 * */
@@ -37,13 +38,14 @@ typedef struct {
 
 	/* State variabes.
 	 * */
-	double		X[7];
+	double		X[5];
 
 	/* Constants.
 	 * */
 	double		R;
 	double		Q;
-	double		L;
+	double		Ld;
+	double		Lq;
 	double		E;
 	double		U;
 	int		Zp;

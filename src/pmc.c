@@ -65,9 +65,9 @@ void pmc_default(pmc_t *pm)
 	pm->m_request = 0;
 	pm->m_bitmask = PMC_BIT_QAXIS_DRIFT
 		| PMC_BIT_EFFICIENT_MODULATION
-		| PMC_BIT_SPEED_CONTROL_LOOP
+		//| PMC_BIT_SPEED_CONTROL_LOOP
 		| PMC_BIT_DIRECT_INJECTION
-		| PMC_BIT_FREQUENCY_INJECTION
+		//| PMC_BIT_FREQUENCY_INJECTION
 		| PMC_BIT_HOLD_UPDATE_R
 		| PMC_BIT_SINE_UPDATE_L
 		| PMC_BIT_ESTIMATE_E;
@@ -80,7 +80,7 @@ void pmc_default(pmc_t *pm)
 	pm->T_hold = .5f;
 	pm->T_rohm = .2f;
 	pm->T_sine = .2f;
-	pm->T_re = .2f;
+	pm->T_estq = .2f;
 	pm->T_end = .1f;
 
 	pm->i_hold = 1.f;
@@ -96,26 +96,31 @@ void pmc_default(pmc_t *pm)
 	pm->conv_U[0] = 0.f;
 	pm->conv_U[1] = 6.592e-3f;
 
-	pm->kalman_Q[0] = 1e-4f;
-	pm->kalman_Q[1] = 1e-4f;
-	pm->kalman_Q[2] = 1e-6f;
-	pm->kalman_Q[3] = 1e-6f;
-	pm->kalman_Q[4] = 1e-6f;
-	pm->kalman_Q[5] = 1e-7f;
+	pm->kalman_Q[0] = 1e-5f;
+	pm->kalman_Q[1] = 1e-5f;
+	pm->kalman_Q[2] = 1e-7f;
+	pm->kalman_Q[3] = 1e-7f;
+	pm->kalman_Q[4] = 1e-9f;
+	pm->kalman_Q[5] = 1e-9f;
 	pm->kalman_R = 4e-2f;
 
 	pm->drift_AB_maximal = 1.f;
 	pm->drift_Q_maximal = 1.f;
 
-	pm->const_U = 0.f;
-	pm->const_E = 0.f;
-	pm->const_R = 0.f;
+	pm->const_U = 12.f;
+	pm->const_E = 7.14e-4f;
+	pm->const_R = 1.91e-1f;
 	pm->const_Q = 0.f;
-	pm->const_Zp = 1;
+	pm->const_Ld = 20e-6;
+	pm->const_Lq = 20e-6;
+	pm->const_ILd = 1.f / pm->const_Ld;
+	pm->const_ILq = 1.f / pm->const_Lq;
+	pm->const_Zp = 11;
+	pm->const_IJ = 1.f / 1e-5f;
 
 	pm->i_maximal = 10.f;
-	pm->i_power_consumption_maximal = 200.f;
-	pm->i_power_regeneration_maximal = - 10.f;
+	pm->i_power_consumption_maximal = 50.f;
+	pm->i_power_regeneration_maximal = - 1.f;
 	pm->i_set_point_D = 0.f;
 	pm->i_set_point_Q = 0.f;
 	pm->i_integral_D = 0.f;
@@ -124,16 +129,15 @@ void pmc_default(pmc_t *pm)
 	pm->i_KI = 3e-3f;
 
 	pm->i_inject_D = 1.f;
-	pm->i_inject_gain = 1.f;
+	pm->i_inject_gain = 0.f;
 
-	pm->h_freq_hz = 500.f;
-	pm->h_inject_D = .5f;
+	pm->h_freq_hz = 4000.f;
+	pm->h_inject_D = 1.f;
 
-	pm->w_maximal = 20944.f;
 	pm->w_low_threshold = 524.f;
 	pm->w_low_hysteresis = 52.f;
 	pm->w_set_point = 0.f;
-	pm->w_KP = 1e-1f;
+	pm->w_KP = 1e-2f;
 }
 
 static void
@@ -574,9 +578,48 @@ w_control(pmc_t *pm)
 }
 
 static void
+pmc_inductance(pmc_t *pm, float *ft, float freq_hz)
+{
+	float			Dx, Dy, Lx, Ly, Lm;
+	float			b, D, s, Sr, Ld, Lq;
+
+	/* Inductance on XY axes.
+	 * */
+	Dx = ft[0] * ft[0] + ft[1] * ft[1];
+	Dy = ft[4] * ft[4] + ft[5] * ft[5];
+	D = 6.2831853f * freq_hz;
+	Dx *= D; Dy *= D;
+	Lx = (ft[2] * ft[1] - ft[3] * ft[0]) / Dx;
+	Ly = (ft[6] * ft[5] - ft[7] * ft[4]) / Dy;
+	Lm = (ft[6] * ft[1] - ft[7] * ft[0]) / Dx;
+	Lm += (ft[2] * ft[5] - ft[3] * ft[4]) / Dy;
+	Lm *= .5f;
+
+	/* Get eigenvalues.
+	 * */
+	b = - (Lx + Ly);
+	D = b * b - 4.f * (Lx * Ly - Lm * Lm);
+
+	if (D > 0.f) {
+
+		D = sqrtf(D);
+		Ld = (- b - D) * .5f;
+		Lq = (- b + D) * .5f;
+
+		/* Saliency ratio.
+		 * */
+		Sr = Ld / Lq;
+
+		s = Lx - Ld;
+		b = sqrtf(s * s + Lm * Lm);
+		s /= b;
+	}
+}
+
+static void
 pmc_FSM(pmc_t *pm, float iA, float iB)
 {
-	float			tA, tB;
+	float			uX, uY, temp;
 
 	switch (pm->m_state) {
 
@@ -730,21 +773,21 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->kalman_X[3] = 0.f;
 				pm->kalman_X[4] = 6.2831853f * pm->freq_sine_hz / pm->freq_hz;
 
-				pm->kalman_P[0] = 0.f;
-				pm->kalman_P[1] = 0.f;
-				pm->kalman_P[2] = 0.f;
-				pm->kalman_P[3] = 0.f;
-				pm->kalman_P[4] = 0.f;
-				pm->kalman_P[5] = 0.f;
-				pm->kalman_P[6] = 0.f;
-				pm->kalman_P[7] = 0.f;
+				pm->temp_B[0] = 0.f;
+				pm->temp_B[1] = 0.f;
+				pm->temp_B[2] = 0.f;
+				pm->temp_B[3] = 0.f;
+				pm->temp_B[4] = 0.f;
+				pm->temp_B[5] = 0.f;
+				pm->temp_B[6] = 0.f;
+				pm->temp_B[7] = 0.f;
 
-				tA = 6.2831853f * pm->const_Ld * pm->freq_sine_hz;
-				tA = pm->const_R * pm->const_R + tA * tA;
-				pm->temp_A[0] = pm->i_sine * sqrtf(tA);
-				tA = 6.2831853f * pm->const_Lq * pm->freq_sine_hz;
-				tA = pm->const_R * pm->const_R + tA * tA;
-				pm->temp_A[1] = pm->i_sine * sqrtf(tA);
+				temp = 6.2831853f * pm->const_Ld * pm->freq_sine_hz;
+				temp = pm->const_R * pm->const_R + temp * temp;
+				pm->temp_A[0] = pm->i_sine * sqrtf(temp);
+				temp = 6.2831853f * pm->const_Lq * pm->freq_sine_hz;
+				temp = pm->const_R * pm->const_R + temp * temp;
+				pm->temp_A[1] = pm->i_sine * sqrtf(temp);
 				pm->temp_A[2] = pm->i_offset_D * pm->const_R;
 				pm->temp_A[3] = pm->i_offset_Q * pm->const_R;
 
@@ -757,62 +800,32 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->kalman_X[0] = iA;
 				pm->kalman_X[1] = .57735027f * iA + 1.1547005f * iB;
 
-				pm->kalman_P[0] += pm->kalman_X[0] * pm->kalman_X[2];
-				pm->kalman_P[1] += pm->kalman_X[0] * pm->kalman_X[3];
-				pm->kalman_P[2] += pm->vsi_X * pm->kalman_X[2];
-				pm->kalman_P[3] += pm->vsi_X * pm->kalman_X[3];
-				pm->kalman_P[4] += pm->kalman_X[1] * pm->kalman_X[2];
-				pm->kalman_P[5] += pm->kalman_X[1] * pm->kalman_X[3];
-				pm->kalman_P[6] += pm->vsi_Y * pm->kalman_X[2];
-				pm->kalman_P[7] += pm->vsi_Y * pm->kalman_X[3];
+				pm->temp_B[0] += pm->kalman_X[0] * pm->kalman_X[2];
+				pm->temp_B[1] += pm->kalman_X[0] * pm->kalman_X[3];
+				pm->temp_B[2] += pm->vsi_X * pm->kalman_X[2];
+				pm->temp_B[3] += pm->vsi_X * pm->kalman_X[3];
+				pm->temp_B[4] += pm->kalman_X[1] * pm->kalman_X[2];
+				pm->temp_B[5] += pm->kalman_X[1] * pm->kalman_X[3];
+				pm->temp_B[6] += pm->vsi_Y * pm->kalman_X[2];
+				pm->temp_B[7] += pm->vsi_Y * pm->kalman_X[3];
 
 				rotatef(pm->kalman_X + 2, pm->kalman_X[4], pm->kalman_X + 2);
 
-				tA = pm->temp_A[2] + pm->temp_A[0] * pm->kalman_X[2];
-				tA /= pm->const_U;
-				tB = pm->temp_A[3] + pm->temp_A[1] * pm->kalman_X[3];
-				tB /= pm->const_U;
+				uX = pm->temp_A[2] + pm->temp_A[0] * pm->kalman_X[2];
+				uX /= pm->const_U;
+				uY = pm->temp_A[3] + pm->temp_A[1] * pm->kalman_X[3];
+				uY /= pm->const_U;
 
-				vsi_control(pm, tA, tB);
+				vsi_control(pm, uX, uY);
 
 				pm->t_value++;
 
 				if (pm->t_value < pm->t_end) ;
 				else {
-					/* Impedance on X (D) axis.
-					 * */
-					pm->temp_A[0] = pm->kalman_P[2] * pm->kalman_P[0]
-						+ pm->kalman_P[3] * pm->kalman_P[1];
-					pm->temp_A[1] = pm->kalman_P[2] * pm->kalman_P[1]
-						- pm->kalman_P[3] * pm->kalman_P[0];
-
-					tA = pm->kalman_P[0] * pm->kalman_P[0]
-						+ pm->kalman_P[1] * pm->kalman_P[1];
-					pm->temp_A[0] /= tA;
-					pm->temp_A[1] /= tA;
-
-					/* Impedance on Y (Q) axis.
-					 * */
-					pm->temp_A[2] = pm->kalman_P[6] * pm->kalman_P[4]
-						+ pm->kalman_P[7] * pm->kalman_P[5];
-					pm->temp_A[3] = pm->kalman_P[6] * pm->kalman_P[5]
-						- pm->kalman_P[7] * pm->kalman_P[4];
-
-					tA = pm->kalman_P[4] * pm->kalman_P[4]
-						+ pm->kalman_P[5] * pm->kalman_P[5];
-					pm->temp_A[2] /= tA;
-					pm->temp_A[3] /= tA;
-
 					if (pm->m_bitmask & PMC_BIT_SINE_UPDATE_L) {
 
-						/* Winding inductance.
-						 * */
-						tA = 6.2831853f * pm->freq_sine_hz;
-						pm->const_Ld = pm->temp_A[1] / tA;
-						pm->const_Lq = pm->temp_A[3] / tA;
-
-						pm->const_ILd = 1.f / pm->const_Ld;
-						pm->const_ILq = 1.f / pm->const_Lq;
+						pmc_inductance(pm, pm->temp_B,
+								pm->freq_sine_hz);
 					}
 
 					pm->m_state = PMC_STATE_END;
@@ -833,7 +846,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->temp_B[2] = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_re;
+				pm->t_end = pm->freq_hz * pm->T_estq;
 
 				pm->m_phase++;
 			}
@@ -910,12 +923,16 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 			pm->kalman_P[14] = 0.f;
 			pm->kalman_P[20] = 0.f;
 
+			/*
+			 * */
+			pm->t_clock = 0;
+
 			pm->h_CS[0] = 1.;
 			pm->h_CS[1] = 0.;
 
 			pm->i_set_point_D = 0.f;
-			pm->i_set_point_Q = 5.f;
-			pm->w_set_point = 4000.f;
+			pm->i_set_point_Q = 0.f;
+			pm->w_set_point = 800.f;
 
 			pm->m_request = 0;
 			pm->m_state = PMC_STATE_IDLE;
@@ -1012,6 +1029,8 @@ pmc_underway(pmc_t *pm)
 				pm->m_bitmode |= (PMC_BIT_DIRECT_INJECTION
 						| PMC_BIT_FREQUENCY_INJECTION)
 					& pm->m_bitmask;
+
+				pm->drift_Q = 0.f;
 
 				pm->kalman_P[15] = 0.f;
 				pm->kalman_P[16] = 0.f;

@@ -42,20 +42,21 @@ void blm_Enable(blm_t *m)
         m->dT = 1. / 40e+3; /* Time delta */
 	m->sT = 5e-6; /* Solver step */
 	m->PWMR = 2100; /* PWM resolution */
+	m->mDQ = 1; /* Salient pole model */
 
-	m->sF[0] = 1;
-	m->sF[1] = 1;
-	m->sF[2] = 1;
+	m->sF[0] = 0;
+	m->sF[1] = 0;
+	m->sF[2] = 0;
 
-        m->X[0] = 0.; /* Phase A current (Ampere) */
-	m->X[1] = 0.; /* Phase B current (Ampere) */
+        m->X[0] = 0.; /* Phase A/D current (Ampere) */
+	m->X[1] = 0.; /* Phase B/Q current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
         m->X[3] = -1.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 125e-3;
+	m->R = 155e-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -63,7 +64,8 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 20e-6;
+	m->Ld = 16e-6;
+	m->Lq = 22e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -87,19 +89,18 @@ void blm_Enable(blm_t *m)
 	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
 	m->M[2] = 1e-7;
-	m->M[3] = 0e-0;
+	m->M[3] = 2e-3;
 }
 
 static void
-blm_Equation(const blm_t *m, const double X[], double dX[])
+blm_AB_Equation(const blm_t *m, const double X[], double dX[])
 {
 	double		EA, EB, EC, IA, IB, IC;
 	double		BEMFA, BEMFB, BEMFC;
-	double		R, L, E, Uz, Mt, Ml, w;
+	double		R, E, Q, Mt, Ml, w;
 
-	R = m->R * (1. + 4.28e-3 * (X[4] - 20.));
-	L = m->L * (1. - 0.11e-3 * (X[4] - 20.));
-	E = m->E * (1. - 1.21e-3 * (X[4] - 20.));
+	R = m->R  * (1. + 4.28e-3 * (X[4] - 20.));
+	E = m->E  * (1. - 1.21e-3 * (X[4] - 20.));
 
 	EA = blm_BEMF_Shape(X[3]);
 	EB = blm_BEMF_Shape(X[3] - 2. * M_PI / 3.);
@@ -109,25 +110,63 @@ blm_Equation(const blm_t *m, const double X[], double dX[])
 	BEMFB = X[2] * E * EB;
 	BEMFC = X[2] * E * EC;
 
-	Uz = (m->sF[0] + m->sF[1] + m->sF[2]) * m->U / 3.
+	Q = (m->sF[0] + m->sF[1] + m->sF[2]) * m->U / 3.
 		- (BEMFA + BEMFB + BEMFC) / 3.;
 
 	/* Electrical equations.
 	 * */
-	dX[0] = ((m->sF[0] * m->U - Uz) - X[0] * R - BEMFA) / L;
-	dX[1] = ((m->sF[1] * m->U - Uz) - X[1] * R - BEMFB) / L;
+	dX[0] = ((m->sF[0] * m->U - Q) - X[0] * R - BEMFA) / m->Ld;
+	dX[1] = ((m->sF[1] * m->U - Q) - X[1] * R - BEMFB) / m->Ld;
 
 	IA = X[0] - BEMFA / m->Q;
 	IB = X[1] - BEMFB / m->Q;
 	IC = -(X[0] + X[1]) - BEMFC / m->Q;
 
-	Mt = m->Zp * m->E * (EA * IA + EB * IB + EC * IC);
+	Mt = m->Zp * E * (EA * IA + EB * IB + EC * IC);
 
 	w = fabs(X[2] / m->Zp);
-	Ml = m->M[0] + m->M[1] * w
-		+ m->M[2] * w * w
-		+ m->M[3] * w * w * w;
-	Ml = (X[2] < 0. ? Ml : -Ml);
+	Ml = m->M[0] + m->M[1] * w + m->M[2] * w * w + m->M[3] * sin(X[3] * 3.);
+	Ml = (X[2] < 0. ? Ml : - Ml);
+
+	/* Mechanical equations.
+	 * */
+	dX[2] = m->Zp * (Mt + Ml) / m->J;
+	dX[3] = X[2];
+
+	/* Thermal equation.
+	 * */
+	dX[4] = 0.;
+}
+
+static void
+blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
+{
+	double		uA, uB, uX, uY, uD, uQ;
+	double		R, E, Q, Mt, Ml, w;
+
+	R = m->R  * (1. + 4.28e-3 * (X[4] - 20.));
+	E = m->E  * (1. - 1.21e-3 * (X[4] - 20.));
+
+	Q = (m->sF[0] + m->sF[1] + m->sF[2]) / 3.;
+	uA = (m->sF[0] - Q) * m->U;
+	uB = (m->sF[1] - Q) * m->U;
+
+	uX = uA;
+	uY = .57735027f * uA + 1.1547005f * uB;
+
+	uD = cos(X[3]) * uX + sin(X[3]) * uY;
+	uQ = cos(X[3]) * uY - sin(X[3]) * uX;
+
+	/* Electrical equations.
+	 * */
+	dX[0] = (uD - R * X[0] + m->Lq * X[2] * X[1]) / m->Ld;
+	dX[1] = (uQ - R * X[1] - m->Ld * X[2] * X[0] - E * X[2]) / m->Lq;
+
+	Mt = 1.5f * m->Zp * (E - (m->Lq - m->Ld) * X[0]) * X[1];
+
+	w = fabs(X[2] / m->Zp);
+	Ml = m->M[0] + m->M[1] * w + m->M[2] * w * w;
+	Ml = (X[2] < 0. ? Ml : - Ml);
 
 	/* Mechanical equations.
 	 * */
@@ -142,20 +181,28 @@ blm_Equation(const blm_t *m, const double X[], double dX[])
 static void
 blm_Solve(blm_t *m, double dT)
 {
-	double		s1[7], s2[7], x2[7];
+	double		s1[5], s2[5], x2[5];
 	int		j;
 
 	/* Second-order ODE solver.
 	 * */
 
-	blm_Equation(m, m->X, s1);
+	if (m->mDQ)
 
-	for (j = 0; j < 7; ++j)
+		blm_DQ_Equation(m, m->X, s1);
+	else
+		blm_AB_Equation(m, m->X, s1);
+
+	for (j = 0; j < 5; ++j)
 		x2[j] = m->X[j] + s1[j] * dT;
 
-	blm_Equation(m, x2, s2);
+	if (m->mDQ)
 
-	for (j = 0; j < 7; ++j)
+		blm_DQ_Equation(m, x2, s2);
+	else
+		blm_AB_Equation(m, x2, s2);
+
+	for (j = 0; j < 5; ++j)
 		m->X[j] += (s1[j] + s2[j]) * dT / 2.;
 }
 
@@ -193,8 +240,16 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Current sampling.
 	 * */
-	S1 = m->X[0];
-	S2 = m->X[1];
+	if (m->mDQ) {
+
+		S1 = cos(m->X[3]) * m->X[0] - sin(m->X[3]) * m->X[1];
+		S2 = sin(m->X[3]) * m->X[0] + cos(m->X[3]) * m->X[1];
+		S2 = - .5f * S1 + .8660254f * S2;
+	}
+	else {
+		S1 = m->X[0];
+		S2 = m->X[1];
+	}
 
 	/* Output voltage of the current sensor A.
 	 * */
@@ -275,41 +330,41 @@ blm_Bridge_Solve(blm_t *m)
 
 	/* Count Up.
 	 * */
-	dT = dPWM * (Ton[pm[0]]);
+	dT = dPWM * (m->PWMR - Ton[pm[0]]);
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[0]] = 0;
+	m->sF[pm[0]] = 1;
 
-	dT = dPWM * (Ton[pm[1]] - Ton[pm[0]]);
+	dT = dPWM * (Ton[pm[0]] - Ton[pm[1]]);
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[1]] = 0;
+	m->sF[pm[1]] = 1;
 
-	dT = dPWM * (Ton[pm[2]] - Ton[pm[1]]);
+	dT = dPWM * (Ton[pm[1]] - Ton[pm[2]]);
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[2]] = 0;
+	m->sF[pm[2]] = 1;
 
-	dT = dPWM * (m->PWMR - Ton[pm[2]]);
+	dT = dPWM * (Ton[pm[2]]);
 	blm_Solve_Split(m, dT);
 
 	/* Count Down.
 	 * */
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[2]] = 1;
+	m->sF[pm[2]] = 0;
 
-	dT = dPWM * (Ton[pm[2]] - Ton[pm[1]]);
+	dT = dPWM * (Ton[pm[1]] - Ton[pm[2]]);
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[1]] = 1;
+	m->sF[pm[1]] = 0;
 
-	dT = dPWM * (Ton[pm[1]] - Ton[pm[0]]);
+	dT = dPWM * (Ton[pm[0]] - Ton[pm[1]]);
 	blm_Solve_Split(m, dT);
 
-	m->sF[pm[0]] = 1;
+	m->sF[pm[0]] = 0;
 
-	dT = dPWM * (Ton[pm[0]]);
+	dT = dPWM * (m->PWMR - Ton[pm[0]]);
 	blm_Solve_Split(m, dT);
 }
 

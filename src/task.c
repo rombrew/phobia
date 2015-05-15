@@ -98,20 +98,18 @@ void adcIRQ()
 
 	T0 = halSysTick();
 
-	pmc_feedback(&pm, halADC.xA, halADC.xB, halADC.xU);
+	pmc_feedback(&pm, halADC.xA, halADC.xB);
+	pmc_voltage(&pm, halADC.xU);
 
-	if (tel.en != 0) {
+	if (tel.enabled) {
 
-		tel.in[0] = (short int) (pm.kX[0] * 1000.f);
-		tel.in[1] = (short int) (pm.kX[1] * 1000.f);
-		tel.in[2] = (short int) (pm.kX[4] * 1.f);
-		tel.in[3] = (short int) (pm.M * 1000.f);
-		tel.in[4] = (short int) (pm.Qd * 1000.f);
-		tel.in[5] = (short int) (pm.eD * 1000.f);
-		tel.in[6] = (short int) (pm.eQ * 1000.f);
-		tel.sz = 7;
+		tel.p_list[0] = (short int) (pm.kalman_X[0] * 1000.f);
+		tel.p_list[1] = (short int) (pm.kalman_X[1] * 1000.f);
+		tel.p_list[2] = (short int) (pm.kalman_X[2] * 1000.f);
+		tel.p_list[3] = (short int) (pm.kalman_X[3] * 1000.f);
+		tel.p_size = 4;
 
-		telTask();
+		tel_capture();
 	}
 
 	T1 = halSysTick();
@@ -137,12 +135,15 @@ void halMain()
 	adcEnable();
 
 	memz(&pm, sizeof(pm));
-	pm.hzF = (float) halPWM.freq_hz;
-	pm.pwmR = halPWM.resolution;
+	pm.freq_hz = (float) halPWM.freq_hz;
+	pm.dT = 1.f / pm.freq_hz;
+	pm.pwm_resolution = halPWM.resolution;
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
 
-	pmcEnable(&pm);
+	pmc_default(&pm);
+
+	pm.m_request = PMC_STATE_ZERO_DRIFT;
 
 	do {
 		taskIOMUX();
