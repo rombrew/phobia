@@ -1,6 +1,6 @@
 
-BUILD	?= /tmp/phobia
-TARGET	= $(BUILD)/phobia
+BUILD	?= /tmp/pmc
+TARGET	= $(BUILD)/pmc
 
 CROSS	?= arm-none-eabi-
 CC      = $(CROSS)gcc

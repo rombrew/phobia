@@ -82,7 +82,7 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 1e-5;
+	m->J = 5e-5;
 
 	/* Load torque constants.
 	 * */
@@ -277,7 +277,7 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Voltage sampling.
 	 * */
-	S1 = m->U;
+	S1 = 12.;//m->U;
 
 	U = S1 / 9.;
 	dU = libGauss() * 3e-3 + 0e-3;

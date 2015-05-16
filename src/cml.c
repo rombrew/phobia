@@ -90,15 +90,15 @@ void pm_pwm_resolution(const char *s)
 
 void pm_pwm_minimal_pulse(const char *s)
 {
-	float		conv_G;
+	float		scal_G;
 	int		ns;
 
-	conv_G = 1e-9f * pm.freq_hz * pm.pwm_resolution;
+	scal_G = 1e-9f * pm.freq_hz * pm.pwm_resolution;
 
 	if (stoi(&ns, s) != NULL)
-		pm.pwm_minimal_pulse = (int) (ns * conv_G + .5f);
+		pm.pwm_minimal_pulse = (int) (ns * scal_G + .5f);
 
-	ns = (int) (pm.pwm_minimal_pulse / conv_G + .5f);
+	ns = (int) (pm.pwm_minimal_pulse / scal_G + .5f);
 
 	printf("%i (ns)" EOL, ns);
 }
@@ -135,11 +135,11 @@ void pm_m_request_calibration(const char *s)
 	}
 }
 
-void pm_m_request_estimate_Q(const char *s)
+void pm_m_request_estimate_E(const char *s)
 {
 	if (pm.m_request == 0) {
 
-		pm.m_request = PMC_STATE_ESTIMATE_Q;
+		pm.m_request = PMC_STATE_ESTIMATE_E;
 	}
 }
 
@@ -207,29 +207,14 @@ void pm_m_bitmask_frequency_injection(const char *s)
 	pm_m_bitmask(s, PMC_BIT_FREQUENCY_INJECTION);
 }
 
-void pm_m_bitmask_hold_update_R(const char *s)
+void pm_m_bitmask_update_R_after_hold(const char *s)
 {
-	pm_m_bitmask(s, PMC_BIT_HOLD_UPDATE_R);
+	pm_m_bitmask(s, PMC_BIT_UPDATE_R_AFTER_HOLD);
 }
 
-void pm_m_bitmask_sine_update_L(const char *s)
+void pm_m_bitmask_update_L_after_sine(const char *s)
 {
-	pm_m_bitmask(s, PMC_BIT_SINE_UPDATE_L);
-}
-
-void pm_m_bitmask_estimate_R(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_ESTIMATE_R);
-}
-
-void pm_m_bitmask_estimate_E(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_ESTIMATE_E);
-}
-
-void pm_m_bitmask_estimate_Q(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_ESTIMATE_Q);
+	pm_m_bitmask(s, PMC_BIT_UPDATE_L_AFTER_SINE);
 }
 
 void pm_m_errno(const char *s)
@@ -249,22 +234,10 @@ void pm_T_hold(const char *s)
 	printf("%3f (Sec)" EOL, &pm.T_hold);
 }
 
-void pm_T_rohm(const char *s)
+void pm_T_avg(const char *s)
 {
-	stof(&pm.T_rohm, s);
-	printf("%3f (Sec)" EOL, &pm.T_rohm);
-}
-
-void pm_T_sine(const char *s)
-{
-	stof(&pm.T_sine, s);
-	printf("%3f (Sec)" EOL, &pm.T_sine);
-}
-
-void pm_T_estq(const char *s)
-{
-	stof(&pm.T_estq, s);
-	printf("%3f (Sec)" EOL, &pm.T_estq);
+	stof(&pm.T_avg, s);
+	printf("%3f (Sec)" EOL, &pm.T_avg);
 }
 
 void pm_T_end(const char *s)
@@ -303,40 +276,40 @@ void pm_freq_sine_hz(const char *s)
 	printf("%1f (Hz)" EOL, &pm.freq_sine_hz);
 }
 
-void pm_conv_A0(const char *s)
+void pm_scal_A0(const char *s)
 {
-	stof(&pm.conv_A[0], s);
-	printf("%3f (A)" EOL, &pm.conv_A[0]);
+	stof(&pm.scal_A[0], s);
+	printf("%3f (A)" EOL, &pm.scal_A[0]);
 }
 
-void pm_conv_A1(const char *s)
+void pm_scal_A1(const char *s)
 {
-	stof(&pm.conv_A[1], s);
-	printf("%4e" EOL, &pm.conv_A[1]);
+	stof(&pm.scal_A[1], s);
+	printf("%4e" EOL, &pm.scal_A[1]);
 }
 
-void pm_conv_B0(const char *s)
+void pm_scal_B0(const char *s)
 {
-	stof(&pm.conv_B[0], s);
-	printf("%3f (A)" EOL, &pm.conv_B[0]);
+	stof(&pm.scal_B[0], s);
+	printf("%3f (A)" EOL, &pm.scal_B[0]);
 }
 
-void pm_conv_B1(const char *s)
+void pm_scal_B1(const char *s)
 {
-	stof(&pm.conv_B[1], s);
-	printf("%4e" EOL, &pm.conv_B[1]);
+	stof(&pm.scal_B[1], s);
+	printf("%4e" EOL, &pm.scal_B[1]);
 }
 
-void pm_conv_U0(const char *s)
+void pm_scal_U0(const char *s)
 {
-	stof(&pm.conv_U[0], s);
-	printf("%3f (V)" EOL, &pm.conv_U[0]);
+	stof(&pm.scal_U[0], s);
+	printf("%3f (V)" EOL, &pm.scal_U[0]);
 }
 
-void pm_conv_U1(const char *s)
+void pm_scal_U1(const char *s)
 {
-	stof(&pm.conv_U[1], s);
-	printf("%4e" EOL, &pm.conv_U[1]);
+	stof(&pm.scal_U[1], s);
+	printf("%4e" EOL, &pm.scal_U[1]);
 }
 
 void pm_residual_variance(const char *s)
@@ -510,6 +483,24 @@ void pm_const_Zp(const char *s)
 	printf("%i" EOL, pm.const_Zp);
 }
 
+void pm_const_M0(const char *s)
+{
+	stof(&pm.const_M[0], s);
+	printf("%4e (Nm)" EOL, &pm.const_M[0]);
+}
+
+void pm_const_M1(const char *s)
+{
+	stof(&pm.const_M[1], s);
+	printf("%4e (Nm)" EOL, &pm.const_M[1]);
+}
+
+void pm_const_M2(const char *s)
+{
+	stof(&pm.const_M[2], s);
+	printf("%4e (Nm)" EOL, &pm.const_M[2]);
+}
+
 void pm_const_J(const char *s)
 {
 	float		const_J;
@@ -522,15 +513,16 @@ void pm_const_J(const char *s)
 	printf("%4e (kgm2)" EOL, &const_J);
 }
 
+void pm_i_low_maximal(const char *s)
+{
+	stof(&pm.i_low_maximal, s);
+	printf("%3f (A)" EOL, &pm.i_low_maximal);
+}
+
 void pm_i_maximal(const char *s)
 {
 	stof(&pm.i_maximal, s);
 	printf("%3f (A)" EOL, &pm.i_maximal);
-}
-
-void pm_i_power_watt(const char *s)
-{
-	printf("%1f (W)" EOL, &pm.i_power_watt);
 }
 
 void pm_i_power_consumption_maximal(const char *s)
@@ -587,10 +579,10 @@ void pm_h_freq_hz(const char *s)
 	printf("%1f (Hz)" EOL, &pm.h_freq_hz);
 }
 
-void pm_h_inject_D(const char *s)
+void pm_h_swing_D(const char *s)
 {
-	stof(&pm.h_inject_D, s);
-	printf("%1f (Hz)" EOL, &pm.h_inject_D);
+	stof(&pm.h_swing_D, s);
+	printf("%1f (Hz)" EOL, &pm.h_swing_D);
 }
 
 void pm_w_low_threshold(const char *s)
@@ -631,6 +623,18 @@ void pm_w_KP(const char *s)
 	printf("%2e" EOL, &pm.w_KP);
 }
 
+void pm_i_power_watt(const char *s)
+{
+	printf("%1f (W)" EOL, &pm.i_power_watt);
+}
+
+void pm_temp_A(const char *s)
+{
+	printf("%4e " EOL, &pm.temp_A[0]);
+	printf("%4e " EOL, &pm.temp_A[1]);
+	printf("%4e " EOL, &pm.temp_A[2]);
+}
+
 void tel_setup(const char *s)
 {
 	tel.s_clock_scale = 1;
@@ -667,7 +671,7 @@ const shCMD_t		cmList[] = {
 	{"pm_m_request_wave_hold", &pm_m_request_wave_hold},
 	{"pm_m_request_wave_sine", &pm_m_request_wave_sine},
 	{"pm_m_request_calibration", &pm_m_request_calibration},
-	{"pm_m_request_estimate_Q", &pm_m_request_estimate_Q},
+	{"pm_m_request_estimate_E", &pm_m_request_estimate_E},
 	{"pm_m_request_kalman_start", &pm_m_request_kalman_start},
 	{"pm_m_request_kalman_stop", &pm_m_request_kalman_stop},
 
@@ -677,19 +681,14 @@ const shCMD_t		cmList[] = {
 	{"pm_m_bitmask_speed_control_loop", &pm_m_bitmask_speed_control_loop},
 	{"pm_m_bitmask_direct_injection", &pm_m_bitmask_direct_injection},
 	{"pm_m_bitmask_frequency_injection", &pm_m_bitmask_frequency_injection},
-	{"pm_m_bitmask_hold_update_R", &pm_m_bitmask_hold_update_R},
-	{"pm_m_bitmask_sine_update_L", &pm_m_bitmask_sine_update_L},
-	{"pm_m_bitmask_estimate_R", &pm_m_bitmask_estimate_R},
-	{"pm_m_bitmask_estimate_E", &pm_m_bitmask_estimate_E},
-	{"pm_m_bitmask_estimate_Q", &pm_m_bitmask_estimate_Q},
+	{"pm_m_bitmask_update_R_after_hold", &pm_m_bitmask_update_R_after_hold},
+	{"pm_m_bitmask_update_L_after_sine", &pm_m_bitmask_update_L_after_sine},
 
 	{"pm_m_errno", &pm_m_errno},
 
 	{"pm_T_drift", &pm_T_drift},
 	{"pm_T_hold", &pm_T_hold},
-	{"pm_T_rohm", &pm_T_rohm},
-	{"pm_T_sine", &pm_T_sine},
-	{"pm_T_estq", &pm_T_estq},
+	{"pm_T_avg", &pm_T_avg},
 	{"pm_T_end", &pm_T_end},
 
 	{"pm_i_hold", &pm_i_hold},
@@ -698,12 +697,12 @@ const shCMD_t		cmList[] = {
 	{"pm_i_offset_Q", &pm_i_offset_Q},
 	{"pm_freq_sine_hz", &pm_freq_sine_hz},
 
-	{"pm_conv_A0", &pm_conv_A0},
-	{"pm_conv_A1", &pm_conv_A1},
-	{"pm_conv_B0", &pm_conv_B0},
-	{"pm_conv_B1", &pm_conv_B1},
-	{"pm_conv_U0", &pm_conv_U0},
-	{"pm_conv_U1", &pm_conv_U1},
+	{"pm_scal_A0", &pm_scal_A0},
+	{"pm_scal_A1", &pm_scal_A1},
+	{"pm_scal_B0", &pm_scal_B0},
+	{"pm_scal_B1", &pm_scal_B1},
+	{"pm_scal_U0", &pm_scal_U0},
+	{"pm_scal_U1", &pm_scal_U1},
 
 	{"pm_residual_variance", &pm_residual_variance},
 
@@ -736,10 +735,13 @@ const shCMD_t		cmList[] = {
 	{"pm_const_Ld", &pm_const_Ld},
 	{"pm_const_Lq", &pm_const_Lq},
 	{"pm_const_Zp", &pm_const_Zp},
+	{"pm_const_M0", &pm_const_M0},
+	{"pm_const_M1", &pm_const_M1},
+	{"pm_const_M2", &pm_const_M2},
 	{"pm_const_J", &pm_const_J},
 
+	{"pm_i_low_maximal", &pm_i_low_maximal},
 	{"pm_i_maximal", &pm_i_maximal},
-	{"pm_i_power_watt", &pm_i_power_watt},
 	{"pm_i_power_consumption_maximal", &pm_i_power_consumption_maximal},
 	{"pm_i_power_regeneration_maximal", &pm_i_power_regeneration_maximal},
 	{"pm_i_set_point_D", &pm_i_set_point_D},
@@ -751,12 +753,15 @@ const shCMD_t		cmList[] = {
 	{"pm_i_inject_gain", &pm_i_inject_gain},
 
 	{"pm_h_freq_hz", &pm_h_freq_hz},
-	{"pm_h_inject_D", &pm_h_inject_D},
+	{"pm_h_swing_D", &pm_h_swing_D},
 
 	{"pm_w_low_threshold", &pm_w_low_threshold},
 	{"pm_w_low_hysteresis", &pm_w_low_hysteresis},
 	{"pm_w_set_point_rpm", &pm_w_set_point_rpm},
 	{"pm_w_KP", &pm_w_KP},
+
+	{"pm_i_power_watt", &pm_i_power_watt},
+	{"pm_temp_A", &pm_temp_A},
 
 	{"tel_setup", &tel_setup},
 	{"tel_enable", &tel_enable},

@@ -211,7 +211,10 @@ sim_Script(FILE *fdTel)
 
 	pmc_gain_tune(&pm);
 
-	/*pm.m_request = PMC_STATE_WAVE_HOLD;
+	pm.m_request = PMC_STATE_ZERO_DRIFT;
+	sim_F(fdTel, .5, 0);
+
+	pm.m_request = PMC_STATE_WAVE_HOLD;
 	sim_F(fdTel, 2., 0);
 
 	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
@@ -220,16 +223,19 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 1., 0);
 
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);*/
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);
 
 	pm.m_request = PMC_STATE_KALMAN_START;
 	sim_F(fdTel, .5, 0);
 
-	m.X[3] = 0.;
+	m.X[3] = 1.;
 	sim_F(fdTel, .5, 0);
 
 	pm.i_set_point_Q = 2.;
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, .05, 0);
+
+	m.X[2] = 0.;
+	sim_F(fdTel, .5, 0);
 
 	/*pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, 1., 0);*/

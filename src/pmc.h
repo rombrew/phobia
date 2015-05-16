@@ -23,19 +23,14 @@ enum {
 	PMC_BIT_KALMAN_FILTER			= 0x0001,
 	PMC_BIT_QAXIS_DRIFT			= 0x0002,
 	PMC_BIT_ABZERO_DRIFT			= 0x0004,
-
 	PMC_BIT_LOW_REGION			= 0x0008,
 	PMC_BIT_EFFICIENT_MODULATION		= 0x0010,
 	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0020,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0040,
 	PMC_BIT_DIRECT_INJECTION		= 0x0080,
 	PMC_BIT_FREQUENCY_INJECTION		= 0x0100,
-
-	PMC_BIT_HOLD_UPDATE_R			= 0x0200,
-	PMC_BIT_SINE_UPDATE_L			= 0x0400,
-	PMC_BIT_ESTIMATE_R			= 0x0800,
-	PMC_BIT_ESTIMATE_E			= 0x1000,
-	PMC_BIT_ESTIMATE_Q			= 0x2000,
+	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0200,
+	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0400,
 };
 
 enum {
@@ -44,7 +39,10 @@ enum {
 	PMC_STATE_WAVE_HOLD,
 	PMC_STATE_WAVE_SINE,
 	PMC_STATE_CALIBRATION,
-	PMC_STATE_ESTIMATE_Q,
+	PMC_STATE_ESTIMATE_AB,
+	PMC_STATE_ESTIMATE_R,
+	PMC_STATE_ESTIMATE_E,
+	PMC_STATE_ESTIMATE_M,
 	PMC_STATE_ESTIMATE_J,
 	PMC_STATE_KALMAN_START,
 	PMC_STATE_KALMAN_STOP,
@@ -89,9 +87,7 @@ typedef struct {
 	 * */
 	float		T_drift;
 	float		T_hold;
-	float		T_rohm;
-	float		T_sine;
-	float		T_estq;
+	float		T_avg;
 	float		T_end;
 
 	/* Other configuration.
@@ -102,11 +98,11 @@ typedef struct {
 	float		i_offset_Q;
 	float		freq_sine_hz;
 
-	/* Conversion constants.
+	/* Scale constants.
 	 * */
-	float		conv_A[2];
-	float		conv_B[2];
-	float		conv_U[2];
+	float		scal_A[2];
+	float		scal_B[2];
+	float		scal_U[2];
 
 	/* Actual VSI voltage.
 	 * */
@@ -118,6 +114,8 @@ typedef struct {
 	float		residual_D;
 	float		residual_Q;
 	float		residual_variance;
+	float		residual_gain;
+	float		residual_limit;
 
 	/* Extended Kalman Filter.
 	 * */
@@ -126,7 +124,7 @@ typedef struct {
 	float		kalman_Q[6];
 	float		kalman_R;
 
-	/* Load torque.
+	/* Load torque variable.
 	 * */
 	float		var_M;
 
@@ -160,8 +158,8 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
+	float		i_low_maximal;
 	float		i_maximal;
-	float		i_power_watt;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -179,7 +177,7 @@ typedef struct {
 	/* Frequency injection.
 	 * */
 	float		h_freq_hz;
-	float		h_inject_D;
+	float		h_swing_D;
 	float		h_CS[2];
 
 	/* Speed control loop.
@@ -189,6 +187,11 @@ typedef struct {
 	float		w_set_point;
 	float		w_average[2];
 	float		w_KP;
+	float		w_KI;
+
+	/* Informational.
+	 * */
+	float		i_power_watt;
 
 	/* Control interface.
 	 * */
