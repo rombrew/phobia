@@ -129,8 +129,8 @@ sim_Tel(float *pTel)
 	pTel[25] = pm.const_Ld;
 	pTel[26] = pm.const_Lq;
 	pTel[27] = pm.const_Zp;
-	pTel[28] = pm.var_M;
-	pTel[29] = 1.f / pm.const_IJ;
+	pTel[28] = pm.i_power_watt;
+	pTel[29] = 0.f;
 
 	/* Set Point.
 	 * */
@@ -200,42 +200,46 @@ sim_Script(FILE *fdTel)
 	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. - .0);
-	pm.const_E = m.E * (1. + .0);
+	pm.const_Lq = m.Lq * (1. + .0);
+	pm.const_E = m.E * (1. - .0);
 
 	pm.const_ILd = 1.f / pm.const_Ld;
 	pm.const_ILq = 1.f / pm.const_Lq;
 
 	pm.const_Zp = 11;
-	pm.const_IJ = 1.f / (m.J * 1.f);
-
-	pmc_gain_tune(&pm);
 
 	pm.m_request = PMC_STATE_ZERO_DRIFT;
 	sim_F(fdTel, .5, 0);
 
-	pm.m_request = PMC_STATE_WAVE_HOLD;
-	sim_F(fdTel, 2., 0);
+	/*pm.m_request = PMC_STATE_WAVE_HOLD;
+	sim_F(fdTel, 1., 0);
 
 	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
 
 	pm.m_request = PMC_STATE_WAVE_SINE;
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, .7, 0);
 
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);*/
+
+	pmc_tune(&pm);
 
 	pm.m_request = PMC_STATE_KALMAN_START;
 	sim_F(fdTel, .5, 0);
 
-	m.X[3] = 1.;
+	m.X[3] += .5;
 	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_Q = 2.;
-	sim_F(fdTel, .05, 0);
+	pm.w_set_point = 9000.f;
+	pm.i_set_point_Q = 10.f;
+	sim_F(fdTel, 1., 0);
 
-	m.X[2] = 0.;
-	sim_F(fdTel, .5, 0);
+	m.M[2] = 4e-7;
+	sim_F(fdTel, 1., 0);
+
+	pm.w_set_point = 2000.f;
+	pm.i_set_point_Q = -5.f;
+	sim_F(fdTel, 1., 0);
 
 	/*pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, 1., 0);*/

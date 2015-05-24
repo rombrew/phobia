@@ -23,7 +23,7 @@
 #define SH_RXBUF_SZ			40
 #define SH_TXBUF_SZ			80
 #define SH_CLINE_SZ			80
-#define SH_HISTORY_SZ			240
+#define SH_HISTORY_SZ			440
 
 #define K_SO				0x0E
 #define K_DLE				0x10

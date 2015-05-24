@@ -32,11 +32,11 @@ typedef struct {
 	int		uB;
 	int		uC;
 
-	/* State of the FETs.
+	/* State of VSI.
 	 * */
 	int		sF[3];
 
-	/* State variabes.
+	/* Motor variabes.
 	 * */
 	double		X[5];
 
@@ -44,15 +44,19 @@ typedef struct {
 	 * */
 	double		R;
 	double		Q;
-	double		Ld;
-	double		Lq;
+	double		L;
 	double		E;
 	double		U;
 	int		Zp;
 	double		J;
 	double		M[4];
 
-	/* ADC codes.
+	/* Saliency.
+	 * */
+	double		Ld;
+	double		Lq;
+
+	/* ADC codes (Output).
 	 * */
 	int		xA;
 	int		xB;

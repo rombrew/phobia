@@ -2,11 +2,10 @@
  * The equations of PMSM.
  */
 
-X : [id, iq, th, wR, M, Q];
+X : [id, iq, th, wR, Q];
 dF : [	(Ux*cos(th)+Uy*sin(th) - id*R + wR*iq*Lq) / Ld,
 	(Uy*cos(th)-Ux*sin(th) - iq*R - wR*id*Ld - wR*E + Q) / Lq,
 	wR,
-	Zp * (1.5*Zp*iq*(E - (Lq - Ld)*id) - M) / J,
 	0, 0 ];
 
 F : X + dF * dT;

@@ -21,16 +21,14 @@
 
 enum {
 	PMC_BIT_KALMAN_FILTER			= 0x0001,
-	PMC_BIT_QAXIS_DRIFT			= 0x0002,
-	PMC_BIT_ABZERO_DRIFT			= 0x0004,
-	PMC_BIT_LOW_REGION			= 0x0008,
-	PMC_BIT_EFFICIENT_MODULATION		= 0x0010,
-	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0020,
-	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0040,
-	PMC_BIT_DIRECT_INJECTION		= 0x0080,
-	PMC_BIT_FREQUENCY_INJECTION		= 0x0100,
-	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0200,
-	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0400,
+	PMC_BIT_LOW_SPEED_REGION		= 0x0004,
+	PMC_BIT_EFFICIENT_MODULATION		= 0x0008,
+	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0010,
+	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
+	PMC_BIT_DIRECT_INJECTION		= 0x0040,
+	PMC_BIT_FREQUENCY_INJECTION		= 0x0080,
+	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0100,
+	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0200,
 };
 
 enum {
@@ -42,8 +40,6 @@ enum {
 	PMC_STATE_ESTIMATE_AB,
 	PMC_STATE_ESTIMATE_R,
 	PMC_STATE_ESTIMATE_E,
-	PMC_STATE_ESTIMATE_M,
-	PMC_STATE_ESTIMATE_J,
 	PMC_STATE_KALMAN_START,
 	PMC_STATE_KALMAN_STOP,
 	PMC_STATE_END
@@ -114,19 +110,17 @@ typedef struct {
 	float		residual_D;
 	float		residual_Q;
 	float		residual_variance;
-	float		residual_gain;
-	float		residual_limit;
+	float		residual_gain_F;
+	float		residual_failure_limit;
 
 	/* Extended Kalman Filter.
 	 * */
 	float		kalman_X[5];
-	float		kalman_P[21];
-	float		kalman_Q[6];
+	float		kalman_P[15];
+	float		kalman_Q[5];
 	float		kalman_R;
-
-	/* Load torque variable.
-	 * */
-	float		var_M;
+	float		saliency_boost_D;
+	float		saliency_boost_Q;
 
 	/* Temporal.
 	 * */
@@ -141,38 +135,45 @@ typedef struct {
 	float		drift_AB_maximal;
 	float		drift_Q_maximal;
 
+	/* Supply voltage.
+	 * */
+	float		const_U, const_IU;
+	float		const_gain_U;
+
 	/* Electrical constants.
 	 * */
-	float		const_U;
 	float		const_E;
 	float		const_R;
-	float		const_Q;
 	float		const_Ld, const_ILd;
 	float		const_Lq, const_ILq;
 
 	/* Mechanical constants.
 	 * */
 	int		const_Zp;
-	float		const_M[3];
-	float		const_IJ;
 
 	/* Current control loop.
 	 * */
-	float		i_low_maximal;
 	float		i_maximal;
+	float		i_low_maximal;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
 	float		i_set_point_Q;
+	float		i_slew_rate_D;
+	float		i_slew_rate_Q;
+	float		i_track_point_D;
+	float		i_track_point_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
-	float		i_KP;
-	float		i_KI;
+	float		i_gain_P_D;
+	float		i_gain_I_D;
+	float		i_gain_P_Q;
+	float		i_gain_I_Q;
 
 	/* Direct injection.
 	 * */
 	float		i_inject_D;
-	float		i_inject_gain;
+	float		i_inject_gain_K;
 
 	/* Frequency injection.
 	 * */
@@ -185,9 +186,10 @@ typedef struct {
 	float		w_low_threshold;
 	float		w_low_hysteresis;
 	float		w_set_point;
-	float		w_average[2];
-	float		w_KP;
-	float		w_KI;
+	float		w_avg_speed;
+	float		w_integral;
+	float		w_gain_P;
+	float		w_gain_I;
 
 	/* Informational.
 	 * */
@@ -203,7 +205,7 @@ pmc_t;
 void pmc_default(pmc_t *pm);
 void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
-void pmc_gain_tune();
+void pmc_tune();
 
 #endif /* _H_PMC_ */
 

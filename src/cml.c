@@ -177,16 +177,6 @@ pm_m_bitmask(const char *s, int bit)
 	printf("%i (%s)" EOL, flag, flag ? MSG_ENABLED : MSG_DISABLED);
 }
 
-void pm_m_bitmask_qaxis_drift(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_QAXIS_DRIFT);
-}
-
-void pm_m_bitmask_abzero_drift(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_ABZERO_DRIFT);
-}
-
 void pm_m_bitmask_efficient_modulation(const char *s)
 {
 	pm_m_bitmask(s, PMC_BIT_EFFICIENT_MODULATION);
@@ -371,21 +361,22 @@ void pm_kalman_Q4(const char *s)
 	printf("%2e" EOL, &pm.kalman_Q[4]);
 }
 
-void pm_kalman_Q5(const char *s)
-{
-	stof(&pm.kalman_Q[5], s);
-	printf("%2e" EOL, &pm.kalman_Q[5]);
-}
-
 void pm_kalman_R(const char *s)
 {
 	stof(&pm.kalman_R, s);
 	printf("%2e" EOL, &pm.kalman_R);
 }
 
-void pm_var_M(const char *s)
+void pm_saliency_boost_D(const char *s)
 {
-	printf("%4e (Nm)" EOL, &pm.var_M);
+	stof(&pm.saliency_boost_D, s);
+	printf("%2e" EOL, &pm.saliency_boost_D);
+}
+
+void pm_saliency_boost_Q(const char *s)
+{
+	stof(&pm.saliency_boost_Q, s);
+	printf("%2e" EOL, &pm.saliency_boost_Q);
 }
 
 void pm_drift_A(const char *s)
@@ -455,12 +446,6 @@ void pm_const_R(const char *s)
 	printf("%4e (Ohm)" EOL, &pm.const_R);
 }
 
-void pm_const_Q(const char *s)
-{
-	stof(&pm.const_Q, s);
-	printf("%4e (Ohm)" EOL, &pm.const_Q);
-}
-
 void pm_const_Ld(const char *s)
 {
 	if (stof(&pm.const_Ld, s) != NULL)
@@ -483,46 +468,16 @@ void pm_const_Zp(const char *s)
 	printf("%i" EOL, pm.const_Zp);
 }
 
-void pm_const_M0(const char *s)
+void pm_i_maximal(const char *s)
 {
-	stof(&pm.const_M[0], s);
-	printf("%4e (Nm)" EOL, &pm.const_M[0]);
-}
-
-void pm_const_M1(const char *s)
-{
-	stof(&pm.const_M[1], s);
-	printf("%4e (Nm)" EOL, &pm.const_M[1]);
-}
-
-void pm_const_M2(const char *s)
-{
-	stof(&pm.const_M[2], s);
-	printf("%4e (Nm)" EOL, &pm.const_M[2]);
-}
-
-void pm_const_J(const char *s)
-{
-	float		const_J;
-
-	if (stof(&const_J, s) != NULL)
-		pm.const_IJ = (const_J != 0.f) ? 1.f / const_J : pm.const_IJ;
-
-	const_J = 1.f / pm.const_IJ;
-
-	printf("%4e (kgm2)" EOL, &const_J);
+	stof(&pm.i_maximal, s);
+	printf("%3f (A)" EOL, &pm.i_maximal);
 }
 
 void pm_i_low_maximal(const char *s)
 {
 	stof(&pm.i_low_maximal, s);
 	printf("%3f (A)" EOL, &pm.i_low_maximal);
-}
-
-void pm_i_maximal(const char *s)
-{
-	stof(&pm.i_maximal, s);
-	printf("%3f (A)" EOL, &pm.i_maximal);
 }
 
 void pm_i_power_consumption_maximal(const char *s)
@@ -549,16 +504,40 @@ void pm_i_set_point_Q(const char *s)
 	printf("%3f (A)" EOL, &pm.i_set_point_Q);
 }
 
-void pm_i_KP(const char *s)
+void pm_i_slew_rate_D(const char *s)
 {
-	stof(&pm.i_KP, s);
-	printf("%2e" EOL, &pm.i_KP);
+	stof(&pm.i_slew_rate_D, s);
+	printf("%3f (A)" EOL, &pm.i_slew_rate_D);
 }
 
-void pm_i_KI(const char *s)
+void pm_i_slew_rate_Q(const char *s)
 {
-	stof(&pm.i_KI, s);
-	printf("%2e" EOL, &pm.i_KI);
+	stof(&pm.i_slew_rate_Q, s);
+	printf("%3f (A)" EOL, &pm.i_slew_rate_Q);
+}
+
+void pm_i_gain_P_D(const char *s)
+{
+	stof(&pm.i_gain_P_D, s);
+	printf("%2e" EOL, &pm.i_gain_P_D);
+}
+
+void pm_i_gain_I_D(const char *s)
+{
+	stof(&pm.i_gain_I_D, s);
+	printf("%2e" EOL, &pm.i_gain_I_D);
+}
+
+void pm_i_gain_P_Q(const char *s)
+{
+	stof(&pm.i_gain_P_Q, s);
+	printf("%2e" EOL, &pm.i_gain_P_Q);
+}
+
+void pm_i_gain_I_Q(const char *s)
+{
+	stof(&pm.i_gain_I_Q, s);
+	printf("%2e" EOL, &pm.i_gain_I_Q);
 }
 
 void pm_i_inject_D(const char *s)
@@ -567,10 +546,10 @@ void pm_i_inject_D(const char *s)
 	printf("%3f (A)" EOL, &pm.i_inject_D);
 }
 
-void pm_i_inject_gain(const char *s)
+void pm_i_inject_gain_K(const char *s)
 {
-	stof(&pm.i_inject_gain, s);
-	printf("%2e" EOL, &pm.i_inject_gain);
+	stof(&pm.i_inject_gain_K, s);
+	printf("%2e" EOL, &pm.i_inject_gain_K);
 }
 
 void pm_h_freq_hz(const char *s)
@@ -617,10 +596,10 @@ void pm_w_set_point_rpm(const char *s)
 	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.w_set_point, &RPM);
 }
 
-void pm_w_KP(const char *s)
+void pm_w_gain_P(const char *s)
 {
-	stof(&pm.w_KP, s);
-	printf("%2e" EOL, &pm.w_KP);
+	stof(&pm.w_gain_P, s);
+	printf("%2e" EOL, &pm.w_gain_P);
 }
 
 void pm_i_power_watt(const char *s)
@@ -675,8 +654,6 @@ const shCMD_t		cmList[] = {
 	{"pm_m_request_kalman_start", &pm_m_request_kalman_start},
 	{"pm_m_request_kalman_stop", &pm_m_request_kalman_stop},
 
-	{"pm_m_bitmask_qaxis_drift", &pm_m_bitmask_qaxis_drift},
-	{"pm_m_bitmask_abzero_drift", &pm_m_bitmask_abzero_drift},
 	{"pm_m_bitmask_efficient_modulation", &pm_m_bitmask_efficient_modulation},
 	{"pm_m_bitmask_speed_control_loop", &pm_m_bitmask_speed_control_loop},
 	{"pm_m_bitmask_direct_injection", &pm_m_bitmask_direct_injection},
@@ -716,10 +693,9 @@ const shCMD_t		cmList[] = {
 	{"pm_kalman_Q2", &pm_kalman_Q2},
 	{"pm_kalman_Q3", &pm_kalman_Q3},
 	{"pm_kalman_Q4", &pm_kalman_Q4},
-	{"pm_kalman_Q5", &pm_kalman_Q5},
 	{"pm_kalman_R", &pm_kalman_R},
-
-	{"pm_var_M", &pm_var_M},
+	{"pm_saliency_boost_D", &pm_saliency_boost_D},
+	{"pm_saliency_boost_Q", &pm_saliency_boost_Q},
 
 	{"pm_drift_A", &pm_drift_A},
 	{"pm_drift_B", &pm_drift_B},
@@ -731,26 +707,25 @@ const shCMD_t		cmList[] = {
 	{"pm_const_E_wb", &pm_const_E_wb},
 	{"pm_const_E_kv", &pm_const_E_kv},
 	{"pm_const_R", &pm_const_R},
-	{"pm_const_Q", &pm_const_Q},
 	{"pm_const_Ld", &pm_const_Ld},
 	{"pm_const_Lq", &pm_const_Lq},
 	{"pm_const_Zp", &pm_const_Zp},
-	{"pm_const_M0", &pm_const_M0},
-	{"pm_const_M1", &pm_const_M1},
-	{"pm_const_M2", &pm_const_M2},
-	{"pm_const_J", &pm_const_J},
 
-	{"pm_i_low_maximal", &pm_i_low_maximal},
 	{"pm_i_maximal", &pm_i_maximal},
+	{"pm_i_low_maximal", &pm_i_low_maximal},
 	{"pm_i_power_consumption_maximal", &pm_i_power_consumption_maximal},
 	{"pm_i_power_regeneration_maximal", &pm_i_power_regeneration_maximal},
 	{"pm_i_set_point_D", &pm_i_set_point_D},
 	{"pm_i_set_point_Q", &pm_i_set_point_Q},
-	{"pm_i_KP", &pm_i_KP},
-	{"pm_i_KI", &pm_i_KI},
+	{"pm_i_slew_rate_D",&pm_i_slew_rate_D},
+	{"pm_i_slew_rate_Q",&pm_i_slew_rate_Q},
+	{"pm_i_gain_P_D", &pm_i_gain_P_D},
+	{"pm_i_gain_I_D", &pm_i_gain_I_D},
+	{"pm_i_gain_P_Q", &pm_i_gain_P_Q},
+	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
 
 	{"pm_i_inject_D", &pm_i_inject_D},
-	{"pm_i_inject_gain", &pm_i_inject_gain},
+	{"pm_i_inject_gain_K", &pm_i_inject_gain_K},
 
 	{"pm_h_freq_hz", &pm_h_freq_hz},
 	{"pm_h_swing_D", &pm_h_swing_D},
@@ -758,7 +733,7 @@ const shCMD_t		cmList[] = {
 	{"pm_w_low_threshold", &pm_w_low_threshold},
 	{"pm_w_low_hysteresis", &pm_w_low_hysteresis},
 	{"pm_w_set_point_rpm", &pm_w_set_point_rpm},
-	{"pm_w_KP", &pm_w_KP},
+	{"pm_w_gain_P", &pm_w_gain_P},
 
 	{"pm_i_power_watt", &pm_i_power_watt},
 	{"pm_temp_A", &pm_temp_A},

@@ -42,7 +42,7 @@ void blm_Enable(blm_t *m)
         m->dT = 1. / 40e+3; /* Time delta */
 	m->sT = 5e-6; /* Solver step */
 	m->PWMR = 2100; /* PWM resolution */
-	m->mDQ = 1; /* Salient pole model */
+	m->mDQ = 1; /* Saliency model */
 
 	m->sF[0] = 0;
 	m->sF[1] = 0;
@@ -56,7 +56,7 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 155e-3;
+	m->R = 175e-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -64,8 +64,7 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 16e-6;
-	m->Lq = 22e-6;
+	m->L = 25e-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -82,14 +81,19 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 5e-5;
+	m->J = 2e-5;
 
 	/* Load torque constants.
 	 * */
 	m->M[0] = 1e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 1e-7;
-	m->M[3] = 2e-3;
+	m->M[2] = 2e-9;
+	m->M[3] = 0e-0;
+
+	/* D/Q inductance. (Henry)
+         * */
+	m->Ld = 19e-6;
+	m->Lq = 22e-6;
 }
 
 static void
@@ -115,8 +119,8 @@ blm_AB_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* Electrical equations.
 	 * */
-	dX[0] = ((m->sF[0] * m->U - Q) - X[0] * R - BEMFA) / m->Ld;
-	dX[1] = ((m->sF[1] * m->U - Q) - X[1] * R - BEMFB) / m->Ld;
+	dX[0] = ((m->sF[0] * m->U - Q) - X[0] * R - BEMFA) / m->L;
+	dX[1] = ((m->sF[1] * m->U - Q) - X[1] * R - BEMFB) / m->L;
 
 	IA = X[0] - BEMFA / m->Q;
 	IB = X[1] - BEMFB / m->Q;
@@ -277,7 +281,7 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Voltage sampling.
 	 * */
-	S1 = 12.;//m->U;
+	S1 = m->U;
 
 	U = S1 / 9.;
 	dU = libGauss() * 3e-3 + 0e-3;
