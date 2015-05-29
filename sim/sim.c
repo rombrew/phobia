@@ -130,7 +130,7 @@ sim_Tel(float *pTel)
 	pTel[26] = pm.const_Lq;
 	pTel[27] = pm.const_Zp;
 	pTel[28] = pm.i_power_watt;
-	pTel[29] = 0.f;
+	pTel[29] = pm.temp_B[0];
 
 	/* Set Point.
 	 * */
@@ -224,21 +224,18 @@ sim_Script(FILE *fdTel)
 
 	pmc_tune(&pm);
 
+	m.X[3] = 0.;
 	pm.m_request = PMC_STATE_KALMAN_START;
-	sim_F(fdTel, .5, 0);
+	sim_F(fdTel, .005, 0);
+	/*sim_F(fdTel, .5, 0);
 
 	m.X[3] += .5;
-	sim_F(fdTel, .5, 0);
+	sim_F(fdTel, .5, 0);*/
 
-	pm.w_set_point = 9000.f;
-	pm.i_set_point_Q = 10.f;
+	pm.i_set_point_Q = 7.f;
 	sim_F(fdTel, 1., 0);
 
-	m.M[2] = 4e-7;
-	sim_F(fdTel, 1., 0);
-
-	pm.w_set_point = 2000.f;
-	pm.i_set_point_Q = -5.f;
+	m.M[2] = 3e-5f;
 	sim_F(fdTel, 1., 0);
 
 	/*pm.i_set_point_Q = 5.f;

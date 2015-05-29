@@ -67,7 +67,7 @@ void pmc_default(pmc_t *pm)
 		| PMC_BIT_EFFICIENT_MODULATION
 		//| PMC_BIT_SPEED_CONTROL_LOOP
 		//| PMC_BIT_DIRECT_INJECTION
-		| PMC_BIT_FREQUENCY_INJECTION
+		//| PMC_BIT_FREQUENCY_INJECTION
 		| PMC_BIT_UPDATE_R_AFTER_HOLD
 		| PMC_BIT_UPDATE_L_AFTER_SINE;
 	pm->m_bitmode = 0;
@@ -87,9 +87,9 @@ void pmc_default(pmc_t *pm)
 	pm->freq_sine_hz = 4000.f;
 
 	pm->scal_A[0] = 0.f;
-	pm->scal_A[1] = 1.332e-2f * 1.11f;
+	pm->scal_A[1] = 1.0f * 1.332e-2f;// * 1.11f;
 	pm->scal_B[0] = 0.f;
-	pm->scal_B[1] = 1.332e-2f * 1.15f;
+	pm->scal_B[1] = 1.332e-2f;// * 1.15f;
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 6.592e-3f;
 
@@ -100,7 +100,7 @@ void pmc_default(pmc_t *pm)
 	pm->kalman_Q[1] = 1e-5f;
 	pm->kalman_Q[2] = 1e-4f;
 	pm->kalman_Q[3] = 1e+4f;
-	pm->kalman_Q[4] = 1e-6f;
+	pm->kalman_Q[4] = 1e-7f;
 	pm->kalman_R = 4e-2f;
 
 	pm->saliency_boost_D = 2.f;
@@ -250,15 +250,25 @@ kalman_measurement_update(pmc_t *pm, float iA, float iB)
 	K[9] = (PC[9] - PC[8] * L[1]) * L[2];
 	K[8] = PC[8] * L[0] - K[9] * L[1];
 
+	pm->temp_B[0] = K[5];
+
 	/* X = X + K * e;
 	 * */
-	X[0] += K[0] * eD + K[1] * eQ;
+	/*X[0] += K[0] * eD + K[1] * eQ;
 	X[1] += K[2] * eD + K[3] * eQ;
 	dR = K[4] * eD + K[5] * eQ;
 	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 	rotatef(X + 2, dR, X + 2);
 	X[4] += K[6] * eD + K[7] * eQ;
-	pm->drift_Q += K[8] * eD + K[9] * eQ;
+	pm->drift_Q += K[8] * eD + K[9] * eQ;*/
+
+	X[0] += .5f * eD;
+	X[1] += .5f * eQ;
+	dR = .02f * eD + .0f * eQ;
+	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+	rotatef(X + 2, dR, X + 2);
+	X[4] += 0.f * eD + -197.f * eQ;
+	pm->drift_Q += 0e-3f * eD + 5e-4f * eQ;
 
 	/* P = P - K * C * P.
 	 * */
@@ -825,7 +835,14 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 			if (pm->m_phase == 0) {
 
-				pm->pDC(pm->pwm_resolution, 0, 0);
+				/* FIXME: !
+				 * */
+
+				if (pm->m_bitmask & PMC_BIT_DIRECT_INJECTION)
+					pm->pDC(pm->pwm_resolution, 0, 0);
+				else
+					pm->pDC(0, pm->pwm_resolution, 0);
+
 				pm->pZ(4);
 
 				pm->temp_A[0] = 0.f;

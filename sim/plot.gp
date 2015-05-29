@@ -125,5 +125,12 @@ if (N == 15) {
 	plot	@TEL using 1:33 title 'DQ' with lines,
 }
 
+if (N == 16) {
+
+	set xlabel 'Time (Sec)'
+	set ylabel 'X'
+	plot	@TEL using 1:29 title 'X' with lines,
+}
+
 pause mouse close
 
