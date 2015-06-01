@@ -85,15 +85,15 @@ void blm_Enable(blm_t *m)
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 1e-3;
+	m->M[0] = 2e-3;
 	m->M[1] = 0e-0;
-	m->M[2] = 2e-9;
+	m->M[2] = 0e-6;
 	m->M[3] = 0e-0;
 
 	/* D/Q inductance. (Henry)
          * */
 	m->Ld = 19e-6;
-	m->Lq = 22e-6;
+	m->Lq = 42e-6;
 }
 
 static void

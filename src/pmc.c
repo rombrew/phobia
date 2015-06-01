@@ -62,63 +62,65 @@ void pmc_default(pmc_t *pm)
 {
 	pm->pwm_minimal_pulse = 8;
 
-	pm->m_request = 0;
 	pm->m_bitmask = 0
-		| PMC_BIT_EFFICIENT_MODULATION
+		| PMC_BIT_HIGH_FREQUENCY_INJECTION
+		| PMC_BIT_FEWER_SWITCHING_MODULATION
 		//| PMC_BIT_SPEED_CONTROL_LOOP
-		//| PMC_BIT_DIRECT_INJECTION
-		//| PMC_BIT_FREQUENCY_INJECTION
 		| PMC_BIT_UPDATE_R_AFTER_HOLD
 		| PMC_BIT_UPDATE_L_AFTER_SINE;
-	pm->m_bitmode = 0;
 	pm->m_state = PMC_STATE_IDLE;
 	pm->m_phase = 0;
 	pm->m_errno = 0;
 
 	pm->T_drift = .1f;
 	pm->T_hold = .5f;
-	pm->T_avg = .2f;
+	pm->T_sine = .2f;
+	pm->T_measure = .2f;
 	pm->T_end = .1f;
 
-	pm->i_hold = 1.f;
-	pm->i_sine = 1.f;
-	pm->i_offset_D = 0.f;
-	pm->i_offset_Q = 0.f;
-	pm->freq_sine_hz = 4000.f;
+	pm->wave_i_hold = 1.f;
+	pm->wave_i_sine = 1.f;
+	pm->wave_i_offset_D = 0.f;
+	pm->wave_i_offset_Q = 0.f;
+	pm->wave_freq_sine_hz = 4000.f;
+	pm->wave_gain_P = 1e-1f;
+	pm->wave_gain_I = 1e-2f;
 
 	pm->scal_A[0] = 0.f;
-	pm->scal_A[1] = 1.0f * 1.332e-2f;// * 1.11f;
+	pm->scal_A[1] = 1.04f * 1.332e-2f;// * 1.11f;
 	pm->scal_B[0] = 0.f;
 	pm->scal_B[1] = 1.332e-2f;// * 1.15f;
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 6.592e-3f;
 
-	pm->residual_variance = 0.f;
-	pm->residual_gain_F = 5e-2f;
+	pm->lu_gain_K[0] = .5f;
+	pm->lu_gain_K[1] = .5f;
+	pm->lu_gain_K[2] = - .2f;
+	pm->lu_gain_K[3] = - 170.f;
+	pm->lu_gain_K[4] = 2e-2f;
+	pm->lu_gain_K[5] = 170.f;
+	pm->lu_gain_K[6] = - 180.f;
+	pm->lu_gain_K[7] = 4e-3f;
+	pm->lu_low_threshold = 504.f;
+	pm->lu_low_hysteresis = 147.f;
+	pm->lu_residual_variance = 0.f;
 
-	pm->kalman_Q[0] = 1e-5f;
-	pm->kalman_Q[1] = 1e-5f;
-	pm->kalman_Q[2] = 1e-4f;
-	pm->kalman_Q[3] = 1e+4f;
-	pm->kalman_Q[4] = 1e-7f;
-	pm->kalman_R = 4e-2f;
-
-	pm->saliency_boost_D = 2.f;
-	pm->saliency_boost_Q = .5f;
+	pm->hf_freq_hz = 4000.f;
+	pm->hf_swing_D = 1.f;
 
 	pm->drift_AB_maximal = 2.f;
 	pm->drift_Q_maximal = 2.f;
 
-	pm->const_U = 0.f;
+	pm->const_U = 5.f;
+	pm->const_U_gain_F = .1f;
+
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;
 	pm->const_Lq = 0.f;
-	pm->const_gain_U = 1e-1f;
 	pm->const_Zp = 1;
 
 	pm->i_maximal = 10.f;
-	pm->i_low_maximal = 10.f;
 	pm->i_power_consumption_maximal = 50.f;
 	pm->i_power_regeneration_maximal = - 1.f;
 	pm->i_set_point_D = 0.f;
@@ -134,14 +136,6 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2e-1f;
 	pm->i_gain_I_Q = 3e-2f;
 
-	pm->i_inject_D = 1.f;
-	pm->i_inject_gain_K = 0.f;
-
-	pm->h_freq_hz = 4000.f;
-	pm->h_swing_D = 1.f;
-
-	pm->w_low_threshold = 104.f;
-	pm->w_low_hysteresis = 47.f;
 	pm->w_set_point = 0.f;
 	pm->w_integral = 0.f;
 	pm->w_gain_P = 1e-3f;
@@ -151,24 +145,26 @@ void pmc_default(pmc_t *pm)
 static void
 pm_equation(pmc_t *pm, float D[], const float X[])
 {
-	float		uD, uQ, X4, X5;
+	float		uD, uQ, X4, X5, fluxD, fluxQ;
 
 	uD = X[2] * pm->vsi_X + X[3] * pm->vsi_Y;
 	uQ = X[2] * pm->vsi_Y - X[3] * pm->vsi_X;
 
-	X4 = pm->kalman_X[4];
+	X4 = pm->lu_X[4];
 	X5 = pm->drift_Q;
 
-	D[0] = (uD - pm->const_R * X[0] + pm->const_Lq * X4 * X[1]) * pm->const_ILd;
-	D[1] = (uQ - pm->const_R * X[1] - pm->const_Ld * X4 * X[0]
-			- pm->const_E * X4 + X5) * pm->const_ILq;
+	fluxD = pm->const_Ld * X[0] + pm->const_E;
+	fluxQ = pm->const_Lq * X[1];
+
+	D[0] = (uD - pm->const_R * X[0] + fluxQ * X4) * pm->const_Ld_inversed;
+	D[1] = (uQ - pm->const_R * X[1] - fluxD * X4 + X5) * pm->const_Lq_inversed;
 	D[2] = X4;
 }
 
 static void
 pm_update(pmc_t *pm)
 {
-	float		*X = pm->kalman_X;
+	float		*X = pm->lu_X;
 	float		D1[3], D2[3], X2[4];
 	float		dT;
 
@@ -191,10 +187,9 @@ pm_update(pmc_t *pm)
 }
 
 static void
-kalman_measurement_update(pmc_t *pm, float iA, float iB)
+luenberger_update(pmc_t *pm, float iA, float iB)
 {
-	float		*X = pm->kalman_X, *P = pm->kalman_P;
-	float		PC[10], S[3], L[3], K[10];
+	float		*X = pm->lu_X;
 	float		iX, iY, iD, iQ, eD, eQ, dR, temp;
 
 	iA -= pm->drift_A;
@@ -211,171 +206,42 @@ kalman_measurement_update(pmc_t *pm, float iA, float iB)
 	eD = iD - X[0];
 	eQ = iQ - X[1];
 
-	pm->residual_D = eD;
-	pm->residual_Q = eQ;
-	pm->residual_variance += (eD * eD + eQ * eQ - pm->residual_variance)
-		* pm->residual_gain_F;
+	pm->lu_residual_D = eD;
+	pm->lu_residual_Q = eQ;
+	pm->lu_residual_variance += (eD * eD + eQ * eQ - pm->lu_residual_variance) * .1f;
 
-	/* S = C * P * C' + R;
-	 * */
-	PC[0] = P[0] - P[3] * X[1];
-	PC[1] = P[1] + P[3] * X[0];
-	PC[2] = P[1] - P[4] * X[1];
-	PC[3] = P[2] + P[4] * X[0];
-	PC[4] = P[3] - P[5] * X[1];
-	PC[5] = P[4] + P[5] * X[0];
-	PC[6] = P[6] - P[8] * X[1];
-	PC[7] = P[7] + P[8] * X[0];
-	PC[8] = P[10] - P[12] * X[1];
-	PC[9] = P[11] + P[12] * X[0];
+	X[0] += pm->lu_gain_K[0] * eD;
+	X[1] += pm->lu_gain_K[1] * eQ;
 
-	S[0] = PC[0] - X[1] * PC[4] + pm->kalman_R;
-	S[1] = PC[1] - X[1] * PC[5];
-	S[2] = PC[3] + X[0] * PC[5] + pm->kalman_R;
+	if (pm->lu_region == PMC_LU_LOW_REGION) {
 
-	/* K = P * C' / S;
-	 * */
-	L[0] = 1.f / S[0];
-	L[1] = S[1] * L[0];
-	L[2] = 1.f / (S[2] - S[1] * L[1]);
+		eQ *= pm->hf_CS[0];
+		dR = pm->lu_gain_K[2] * eQ;
+		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+		rotatef(X + 2, dR, X + 2);
+		X[4] += pm->lu_gain_K[3] * eQ;
+	}
+	else {
+		eD = (X[4] < 0.f) ? - eD : eD;
+		dR = pm->lu_gain_K[4] * eD;
+		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+		rotatef(X + 2, dR, X + 2);
+		X[4] += pm->lu_gain_K[5] * eD + pm->lu_gain_K[6] * eQ;
+		pm->drift_Q += pm->lu_gain_K[7] * eQ;
+	}
 
-	K[1] = (PC[1] - PC[0] * L[1]) * L[2];
-	K[0] = PC[0] * L[0] - K[1] * L[1];
-	K[3] = (PC[3] - PC[2] * L[1]) * L[2];
-	K[2] = PC[2] * L[0] - K[3] * L[1];
-	K[5] = (PC[5] - PC[4] * L[1]) * L[2];
-	K[4] = PC[4] * L[0] - K[5] * L[1];
-	K[7] = (PC[7] - PC[6] * L[1]) * L[2];
-	K[6] = PC[6] * L[0] - K[7] * L[1];
-	K[9] = (PC[9] - PC[8] * L[1]) * L[2];
-	K[8] = PC[8] * L[0] - K[9] * L[1];
-
-	pm->temp_B[0] = K[5];
-
-	/* X = X + K * e;
-	 * */
-	/*X[0] += K[0] * eD + K[1] * eQ;
-	X[1] += K[2] * eD + K[3] * eQ;
-	dR = K[4] * eD + K[5] * eQ;
-	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-	rotatef(X + 2, dR, X + 2);
-	X[4] += K[6] * eD + K[7] * eQ;
-	pm->drift_Q += K[8] * eD + K[9] * eQ;*/
-
-	X[0] += .5f * eD;
-	X[1] += .5f * eQ;
-	dR = .02f * eD + .0f * eQ;
-	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-	rotatef(X + 2, dR, X + 2);
-	X[4] += 0.f * eD + -197.f * eQ;
-	pm->drift_Q += 0e-3f * eD + 5e-4f * eQ;
-
-	/* P = P - K * C * P.
-	 * */
-	P[0] -= K[0] * PC[0] + K[1] * PC[1];
-	P[1] -= K[2] * PC[0] + K[3] * PC[1];
-	P[2] -= K[2] * PC[2] + K[3] * PC[3];
-	P[3] -= K[4] * PC[0] + K[5] * PC[1];
-	P[4] -= K[4] * PC[2] + K[5] * PC[3];
-	P[5] -= K[4] * PC[4] + K[5] * PC[5];
-	P[6] -= K[6] * PC[0] + K[7] * PC[1];
-	P[7] -= K[6] * PC[2] + K[7] * PC[3];
-	P[8] -= K[6] * PC[4] + K[7] * PC[5];
-	P[9] -= K[6] * PC[6] + K[7] * PC[7];
-	P[10] -= K[8] * PC[0] + K[9] * PC[1];
-	P[11] -= K[8] * PC[2] + K[9] * PC[3];
-	P[12] -= K[8] * PC[4] + K[9] * PC[5];
-	P[13] -= K[8] * PC[6] + K[9] * PC[7];
-	P[14] -= K[8] * PC[8] + K[9] * PC[9];
-
-	pm->temp_A[0] = X[0];
-	pm->temp_A[1] = X[1];
 	pm->temp_A[2] = X[2];
 	pm->temp_A[3] = X[3];
-	pm->temp_A[4] = X[4];
 
 	pm_update(pm);
 
-	pm->temp_A[0] = (pm->temp_A[0] + X[0]) * .5f;
-	pm->temp_A[1] = (pm->temp_A[1] + X[1]) * .5f;
 	pm->temp_A[2] = (pm->temp_A[2] + X[2]) * .5f;
 	pm->temp_A[3] = (pm->temp_A[3] + X[3]) * .5f;
-	pm->temp_A[4] = (pm->temp_A[4] + X[4]) * .5f;
 
 	temp = (3.f - pm->temp_A[2] * pm->temp_A[2]
 			- pm->temp_A[3] * pm->temp_A[3]) * .5f;
 	pm->temp_A[2] *= temp;
 	pm->temp_A[3] *= temp;
-}
-
-static void
-kalman_time_update(pmc_t *pm)
-{
-	float		*P = pm->kalman_P;
-	float		A[9], PA[15];
-	float		dT, dTLd, dTLq;
-
-	dT = pm->dT;
-	dTLd = dT * pm->const_ILd;
-	dTLq = dT * pm->const_ILq;
-
-	if (pm->m_bitmode & PMC_BIT_FREQUENCY_INJECTION) {
-
-		dTLd *= pm->saliency_boost_D;
-		dTLq *= pm->saliency_boost_Q;
-	}
-
-	A[0] = 1.f - pm->const_R * dTLd;
-	A[1] = pm->temp_A[4] * pm->const_Lq * dTLd;
-	A[2] = (pm->temp_A[2] * pm->vsi_Y - pm->temp_A[3] * pm->vsi_X) * dTLd;
-	A[3] = pm->temp_A[1] * pm->const_Lq * dTLd;
-
-	A[4] = - pm->temp_A[4] * pm->const_Ld * dTLq;
-	A[5] = 1.f - pm->const_R * dTLq;
-	A[6] = - (pm->temp_A[2] * pm->vsi_X + pm->temp_A[3] * pm->vsi_Y) * dTLq;
-	A[7] = - (pm->const_E + pm->temp_A[0] * pm->const_Ld) * dTLq;
-	A[8] = dTLq;
-
-	/* P = A * P * A' + Q.
-	 * */
-	PA[0] = P[0] * A[0] + P[1] * A[1] + P[3] * A[2] + P[6] * A[3];
-	PA[1] = P[0] * A[4] + P[1] * A[5] + P[3] * A[6] + P[6] * A[7] + P[10] * A[8];
-	PA[2] = P[3] + P[6] * dT;
-
-	PA[3] = P[1] * A[0] + P[2] * A[1] + P[4] * A[2] + P[7] * A[3];
-	PA[4] = P[1] * A[4] + P[2] * A[5] + P[4] * A[6] + P[7] * A[7] + P[11] * A[8];
-	PA[5] = P[4] + P[7] * dT;
-
-	PA[6] = P[3] * A[0] + P[4] * A[1] + P[5] * A[2] + P[8] * A[3];
-	PA[7] = P[3] * A[4] + P[4] * A[5] + P[5] * A[6] + P[8] * A[7] + P[12] * A[8];
-	PA[8] = P[5] + P[8] * dT;
-
-	PA[9] = P[6] * A[0] + P[7] * A[1] + P[8] * A[2] + P[9] * A[3];
-	PA[10] = P[6] * A[4] + P[7] * A[5] + P[8] * A[6] + P[9] * A[7] + P[13] * A[8];
-	PA[11] = P[8] + P[9] * dT;
-
-	PA[12] = P[10] * A[0] + P[11] * A[1] + P[12] * A[2] + P[13] * A[3];
-	PA[13] = P[10] * A[4] + P[11] * A[5] + P[12] * A[6] + P[13] * A[7] + P[14] * A[8];
-	PA[14] = P[12] + P[13] * dT;
-
-	P[0] = A[0] * PA[0] + A[1] * PA[3] + A[2] * PA[6] + A[3] * PA[9];
-	P[1] = A[0] * PA[1] + A[1] * PA[4] + A[2] * PA[7] + A[3] * PA[10];
-	P[2] = A[4] * PA[1] + A[5] * PA[4] + A[6] * PA[7] + A[7] * PA[10] + A[8] * PA[13];
-	P[3] = PA[6] + dT * PA[9];
-	P[4] = PA[7] + dT * PA[10];
-	P[5] = PA[8] + dT * PA[11];
-	P[6] = PA[9];
-	P[7] = PA[10];
-	P[8] = PA[11];
-	P[10] = PA[12];
-	P[11] = PA[13];
-	P[12] = PA[14];
-
-	P[0] += pm->kalman_Q[0];
-	P[2] += pm->kalman_Q[1];
-	P[5] += pm->kalman_Q[2];
-	P[9] += pm->kalman_Q[3];
-	P[14] += /*(pm->m_bitmode & PMC_BIT_LOW_SPEED_REGION) ? 0.f : */pm->kalman_Q[4];
 }
 
 static void
@@ -411,7 +277,7 @@ vsi_control(pmc_t *pm, float uX, float uY)
 
 	if (Q < 1.f) {
 
-		if (pm->m_bitmode & PMC_BIT_EFFICIENT_MODULATION) {
+		if (pm->m_bitmask & PMC_BIT_FEWER_SWITCHING_MODULATION) {
 
 			Q = uMIN + uMAX;
 			Q = (Q < 0.f) ? 0.f - uMIN : 1.f - uMAX;
@@ -462,12 +328,9 @@ i_control(pmc_t *pm)
 	sp_D = pm->i_set_point_D;
 	sp_Q = pm->i_set_point_Q;
 
-	if (pm->m_bitmode & PMC_BIT_DIRECT_INJECTION)
-		sp_D += pm->i_inject_gain_K * fabsf(sp_Q) + pm->i_inject_D;
-
 	/* Current constraints.
 	 * */
-	temp = (pm->m_bitmode & PMC_BIT_LOW_SPEED_REGION) ? pm->i_low_maximal : pm->i_maximal;
+	temp = pm->i_maximal;
 	sp_D = (sp_D > temp) ? temp : (sp_D < - temp) ? - temp : sp_D;
 	sp_Q = (sp_Q > temp) ? temp : (sp_Q < - temp) ? - temp : sp_Q;
 
@@ -475,7 +338,7 @@ i_control(pmc_t *pm)
 	 * */
 	uD = pm->temp_A[2] * pm->vsi_X + pm->temp_A[3] * pm->vsi_Y;
 	uQ = pm->temp_A[2] * pm->vsi_Y - pm->temp_A[3] * pm->vsi_X;
-	pm->i_power_watt = pm->kalman_X[0] * uD + pm->kalman_X[1] * uQ;
+	pm->i_power_watt = pm->lu_X[0] * uD + pm->lu_X[1] * uQ;
 	wP = sp_D * uD + sp_Q * uQ;
 
 	if (wP > pm->i_power_consumption_maximal) {
@@ -504,11 +367,12 @@ i_control(pmc_t *pm)
 
 	/* Obtain residual.
 	 * */
-	eD = pm->i_track_point_D - pm->kalman_X[0];
-	eQ = pm->i_track_point_Q - pm->kalman_X[1];
+	eD = pm->i_track_point_D - pm->lu_X[0];
+	eQ = pm->i_track_point_Q - pm->lu_X[1];
 
-	if (pm->m_bitmode & PMC_BIT_FREQUENCY_INJECTION)
-		eD = (fabsf(eD) < pm->h_swing_D) ? 0.f : eD;
+	if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION
+			&& pm->lu_region == PMC_LU_LOW_REGION)
+		eD = (fabsf(eD) < pm->hf_swing_D) ? 0.f : eD;
 
 	/* PI controller.
 	 * */
@@ -529,17 +393,18 @@ i_control(pmc_t *pm)
 
 	/* High Frequency Injection.
 	 * */
-	if (pm->m_bitmode & PMC_BIT_FREQUENCY_INJECTION) {
+	if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION
+			&& pm->lu_region == PMC_LU_LOW_REGION) {
 
-		temp = 6.2831853f * pm->const_Ld * pm->h_freq_hz;
-		uD += pm->h_CS[1] * pm->h_swing_D * temp;
-		rotatef(pm->h_CS, 6.2831853f * pm->h_freq_hz * pm->dT, pm->h_CS);
+		temp = 6.2831853f * pm->const_Ld * pm->hf_freq_hz;
+		uD += pm->hf_CS[1] * pm->hf_swing_D * temp;
+		rotatef(pm->hf_CS, 6.2831853f * pm->hf_freq_hz * pm->dT, pm->hf_CS);
 	}
 
-	uX = pm->kalman_X[2] * uD - pm->kalman_X[3] * uQ;
-	uY = pm->kalman_X[3] * uD + pm->kalman_X[2] * uQ;
+	uX = pm->lu_X[2] * uD - pm->lu_X[3] * uQ;
+	uY = pm->lu_X[3] * uD + pm->lu_X[2] * uQ;
 
-	vsi_control(pm, uX * pm->const_IU, uY * pm->const_IU);
+	vsi_control(pm, uX * pm->const_U_inversed, uY * pm->const_U_inversed);
 }
 
 static void
@@ -547,9 +412,9 @@ w_control(pmc_t *pm)
 {
 	float		eW, iSP;
 
-	pm->w_avg_speed += pm->kalman_X[4];
+	pm->w_avg_speed += pm->lu_X[4];
 
-	if (pm->t_clock == 0) {
+	if (1) {
 
 		pm->w_avg_speed *= .2f;
 
@@ -627,8 +492,8 @@ pmc_inductance(pmc_t *pm, float *ft, float freq_hz)
 			pm->const_Lq = la2;
 		}
 
-		pm->const_ILd = 1.f / pm->const_Ld;
-		pm->const_ILq = 1.f / pm->const_Lq;
+		pm->const_Ld_inversed = 1.f / pm->const_Ld;
+		pm->const_Lq_inversed = 1.f / pm->const_Lq;
 	}
 }
 
@@ -640,30 +505,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 	switch (pm->m_state) {
 
 		case PMC_STATE_IDLE:
-
-			if (pm->m_request != 0) {
-
-				if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
-
-					if (pm->m_request == PMC_STATE_ESTIMATE_AB
-							|| pm->m_request == PMC_STATE_ESTIMATE_R
-							|| pm->m_request == PMC_STATE_ESTIMATE_E
-							|| pm->m_request == PMC_STATE_KALMAN_STOP)
-						pm->m_state = pm->m_request;
-					else
-						pm->m_request = 0;
-				}
-				else {
-					if (pm->m_request == PMC_STATE_ZERO_DRIFT
-							|| pm->m_request == PMC_STATE_WAVE_HOLD
-							|| pm->m_request == PMC_STATE_WAVE_SINE
-							|| pm->m_request == PMC_STATE_CALIBRATION
-							|| pm->m_request == PMC_STATE_KALMAN_START)
-						pm->m_state = pm->m_request;
-					else
-						pm->m_request = 0;
-				}
-			}
 			break;
 
 		case PMC_STATE_ZERO_DRIFT:
@@ -703,14 +544,11 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 			if (pm->m_phase == 0) {
 
-				pm->pDC(0, 0, 0);
 				pm->pZ(0);
 
-				pm->kalman_X[2] = 1.f;
-				pm->kalman_X[3] = 0.f;
-
-				pm->i_set_point_D = pm->i_hold;
-				pm->i_set_point_Q = 0.f;
+				pm->temp_A[0] = 0.f;
+				pm->temp_A[1] = 0.f;
+				pm->temp_A[2] = 0.f;
 
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_hold;
@@ -718,12 +556,27 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->m_phase++;
 			}
 			else {
-				pm->kalman_X[0] = iA;
-				pm->kalman_X[1] = .57735027f * iA + 1.1547005f * iB;
+				temp = pm->wave_i_hold - iA;
+				pm->temp_A[0] += pm->wave_gain_I * temp;
+				uX = pm->wave_gain_P * temp + pm->temp_A[0];
 
-				pm->temp_A[0] += pm->vsi_X - pm->i_set_point_D * pm->const_R;
+				temp = 0.f - .57735027f * iA - 1.1547005f * iB;
+				pm->temp_A[1] += pm->wave_gain_I * temp;
+				uY = pm->wave_gain_P * temp + pm->temp_A[1];
 
-				i_control(pm);
+				temp = .667f * pm->const_U;
+
+				if (fabsf(uX) > temp || fabsf(uY) > temp) {
+
+					pm->m_state = PMC_STATE_END;
+					pm->m_phase = 0;
+					pm->m_errno = PMC_ERROR_BROKEN_HARDWARE;
+				}
+
+				pm->temp_A[2] += pm->vsi_X - pm->wave_i_hold * pm->const_R;
+
+				vsi_control(pm, uX * pm->const_U_inversed,
+						uY * pm->const_U_inversed);
 
 				pm->t_value++;
 
@@ -733,10 +586,10 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 						if (pm->m_bitmask & PMC_BIT_UPDATE_R_AFTER_HOLD) {
 
-							pm->temp_A[0] = 0.f;
+							pm->temp_A[2] = 0.f;
 
 							pm->t_value = 0;
-							pm->t_end = pm->freq_hz * pm->T_avg;
+							pm->t_end = pm->freq_hz * pm->T_measure;
 
 							pm->m_phase++;
 						}
@@ -748,8 +601,8 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 					else {
 						/* Winding Resistance.
 						 * */
-						pm->const_R += pm->temp_A[0] / pm->t_end
-							/ pm->i_set_point_D;
+						pm->const_R += pm->temp_A[2] / pm->t_end
+							/ pm->wave_i_hold;
 
 						pm->m_state = PMC_STATE_END;
 						pm->m_phase = 0;
@@ -762,12 +615,11 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 			if (pm->m_phase == 0) {
 
-				pm->pDC(0, 0, 0);
 				pm->pZ(0);
 
-				pm->kalman_X[2] = 1.f;
-				pm->kalman_X[3] = 0.f;
-				pm->kalman_X[4] = 6.2831853f * pm->freq_sine_hz / pm->freq_hz;
+				pm->lu_X[2] = 1.f;
+				pm->lu_X[3] = 0.f;
+				pm->lu_X[4] = 6.2831853f * pm->wave_freq_sine_hz / pm->freq_hz;
 
 				pm->temp_B[0] = 0.f;
 				pm->temp_B[1] = 0.f;
@@ -779,39 +631,37 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->temp_B[7] = 0.f;
 
 				temp = (pm->const_Ld < pm->const_Lq) ? pm->const_Ld : pm->const_Lq;
-				temp = 6.2831853f * temp * pm->freq_sine_hz;
+				temp = 6.2831853f * temp * pm->wave_freq_sine_hz;
 				temp = pm->const_R * pm->const_R + temp * temp;
-				pm->temp_A[0] = pm->i_sine * sqrtf(temp);
-				pm->temp_A[1] = pm->temp_A[0];
-				pm->temp_A[2] = pm->i_offset_D * pm->const_R;
-				pm->temp_A[3] = pm->i_offset_Q * pm->const_R;
+				pm->temp_A[0] = pm->wave_i_sine * sqrtf(temp);
+				pm->temp_A[2] = pm->wave_i_offset_D * pm->const_R;
+				pm->temp_A[3] = pm->wave_i_offset_Q * pm->const_R;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_avg;
+				pm->t_end = pm->freq_hz * pm->T_sine;
 
 				pm->m_phase++;
 			}
 			else {
-				pm->kalman_X[0] = iA;
-				pm->kalman_X[1] = .57735027f * iA + 1.1547005f * iB;
+				pm->lu_X[0] = iA;
+				pm->lu_X[1] = .57735027f * iA + 1.1547005f * iB;
 
-				pm->temp_B[0] += pm->kalman_X[0] * pm->kalman_X[2];
-				pm->temp_B[1] += pm->kalman_X[0] * pm->kalman_X[3];
-				pm->temp_B[2] += pm->vsi_X * pm->kalman_X[2];
-				pm->temp_B[3] += pm->vsi_X * pm->kalman_X[3];
-				pm->temp_B[4] += pm->kalman_X[1] * pm->kalman_X[2];
-				pm->temp_B[5] += pm->kalman_X[1] * pm->kalman_X[3];
-				pm->temp_B[6] += pm->vsi_Y * pm->kalman_X[2];
-				pm->temp_B[7] += pm->vsi_Y * pm->kalman_X[3];
+				pm->temp_B[0] += pm->lu_X[0] * pm->lu_X[2];
+				pm->temp_B[1] += pm->lu_X[0] * pm->lu_X[3];
+				pm->temp_B[2] += pm->vsi_X * pm->lu_X[2];
+				pm->temp_B[3] += pm->vsi_X * pm->lu_X[3];
+				pm->temp_B[4] += pm->lu_X[1] * pm->lu_X[2];
+				pm->temp_B[5] += pm->lu_X[1] * pm->lu_X[3];
+				pm->temp_B[6] += pm->vsi_Y * pm->lu_X[2];
+				pm->temp_B[7] += pm->vsi_Y * pm->lu_X[3];
 
-				rotatef(pm->kalman_X + 2, pm->kalman_X[4], pm->kalman_X + 2);
+				rotatef(pm->lu_X + 2, pm->lu_X[4], pm->lu_X + 2);
 
-				uX = pm->temp_A[2] + pm->temp_A[0] * pm->kalman_X[2];
-				uX *= pm->const_IU;
-				uY = pm->temp_A[3] + pm->temp_A[1] * pm->kalman_X[3];
-				uY *= pm->const_IU;
+				uX = pm->temp_A[2] + pm->temp_A[0] * pm->lu_X[2];
+				uY = pm->temp_A[3] + pm->temp_A[0] * pm->lu_X[3];
 
-				vsi_control(pm, uX, uY);
+				vsi_control(pm, uX * pm->const_U_inversed,
+						uY * pm->const_U_inversed);
 
 				pm->t_value++;
 
@@ -822,7 +672,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 						/* Winding Inductance.
 						 * */
 						pmc_inductance(pm, pm->temp_B,
-								pm->freq_sine_hz);
+								pm->wave_freq_sine_hz);
 					}
 
 					pm->m_state = PMC_STATE_END;
@@ -838,11 +688,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				/* FIXME: !
 				 * */
 
-				if (pm->m_bitmask & PMC_BIT_DIRECT_INJECTION)
-					pm->pDC(pm->pwm_resolution, 0, 0);
-				else
-					pm->pDC(0, pm->pwm_resolution, 0);
-
 				pm->pZ(4);
 
 				pm->temp_A[0] = 0.f;
@@ -850,7 +695,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->temp_A[2] = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_avg;
+				pm->t_end = pm->freq_hz * pm->T_measure;
 
 				pm->m_phase++;
 			}
@@ -873,10 +718,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 			}
 			break;
 
-		case PMC_STATE_ESTIMATE_AB:
-			break;
-
-		case PMC_STATE_ESTIMATE_R:
+		/*case PMC_STATE_ESTIMATE_R:
 		case PMC_STATE_ESTIMATE_E:
 
 			if (pm->m_phase == 0) {
@@ -891,8 +733,8 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->m_phase++;
 			}
 			else {
-				pm->temp_B[0] += pm->kalman_X[1];
-				pm->temp_B[1] += pm->kalman_X[4];
+				pm->temp_B[0] += pm->lu_X[1];
+				pm->temp_B[1] += pm->lu_X[4];
 				pm->temp_B[2] += pm->drift_Q;
 
 				pm->t_value++;
@@ -913,69 +755,37 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 					pm->m_phase = 0;
 				}
 			}
-			break;
+			break;*/
 
-		case PMC_STATE_KALMAN_START:
+		case PMC_STATE_START:
 
-			pm->m_bitmode |= PMC_BIT_KALMAN_FILTER;
-			pm->m_bitmode |= (PMC_BIT_SPEED_CONTROL_LOOP
-					| PMC_BIT_POSITION_CONTROL_LOOP)
-				& pm->m_bitmask;
-
-			pm->pDC(0, 0, 0);
+			pm->lu_region = PMC_LU_LOW_REGION;
 			pm->pZ(0);
 
-			/* X(0).
-			 * */
-			pm->kalman_X[0] = 0.f;
-			pm->kalman_X[1] = 0.f;
-			pm->kalman_X[2] = 1.f;
-			pm->kalman_X[3] = 0.f;
-			pm->kalman_X[4] = 0.f;
+			pm->lu_X[0] = 0.f;
+			pm->lu_X[1] = 0.f;
+			pm->lu_X[2] = 1.f;
+			pm->lu_X[3] = 0.f;
+			pm->lu_X[4] = 0.f;
 
 			pm->drift_A = 0.f;
 			pm->drift_B = 0.f;
 			pm->drift_Q = 0.f;
 
-			/* P(0).
-			 * */
-			pm->kalman_P[1] = 0.f;
-			pm->kalman_P[3] = 0.f;
-			pm->kalman_P[4] = 0.f;
-			pm->kalman_P[6] = 0.f;
-			pm->kalman_P[7] = 0.f;
-			pm->kalman_P[8] = 0.f;
-			pm->kalman_P[10] = 0.f;
-			pm->kalman_P[11] = 0.f;
-			pm->kalman_P[12] = 0.f;
-			pm->kalman_P[13] = 0.f;
-
-			pm->kalman_P[0] = 0.f;
-			pm->kalman_P[2] = 0.f;
-			pm->kalman_P[5] = 1.f;
-			pm->kalman_P[9] = 0.f;
-			pm->kalman_P[14] = 0.f;
-
-			pm->t_clock = 0;
-
-			pm->h_CS[0] = 1.;
-			pm->h_CS[1] = 0.;
+			pm->hf_CS[0] = 1.;
+			pm->hf_CS[1] = 0.;
 
 			pm->i_set_point_D = 0.f;
 			pm->i_set_point_Q = 0.f;
 			pm->w_set_point = 0.f;
 
-			pm->m_request = 0;
 			pm->m_state = PMC_STATE_IDLE;
 			pm->m_phase = 0;
 			break;
 
-		case PMC_STATE_KALMAN_STOP:
+		case PMC_STATE_STOP:
 
 			if (pm->m_phase == 0) {
-
-				pm->m_bitmode &= ~(PMC_BIT_SPEED_CONTROL_LOOP
-						| PMC_BIT_POSITION_CONTROL_LOOP);
 
 				pm->i_set_point_D = 0.f;
 				pm->i_set_point_Q = 0.f;
@@ -992,8 +802,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				else {
 					pm->pZ(7);
 
-					pm->m_request = 0;
-					pm->m_bitmode = 0;
 					pm->m_state = PMC_STATE_IDLE;
 					pm->m_phase = 0;
 				}
@@ -1018,8 +826,6 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				else {
 					pm->pZ(7);
 
-					pm->m_request = 0;
-					pm->m_bitmode = 0;
 					pm->m_state = PMC_STATE_IDLE;
 					pm->m_phase = 0;
 				}
@@ -1031,68 +837,28 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 static void
 pmc_underway(pmc_t *pm)
 {
-	float		w_low, w_high;
+	float		temp;
 
-	if (pm->t_clock == 1) {
+	if (pm->lu_region == PMC_LU_LOW_REGION) {
 
-		w_low = fabsf(pm->kalman_X[4]);
-		w_high = w_low + pm->w_low_hysteresis;
-		w_low = w_low - pm->w_low_hysteresis;
+		temp = fabsf(pm->lu_X[4]) - pm->lu_low_hysteresis;
 
-		if (pm->m_bitmode & PMC_BIT_LOW_SPEED_REGION) {
-
-			if (w_low > pm->w_low_threshold) {
-
-				pm->m_bitmode &= ~PMC_BIT_LOW_SPEED_REGION;
-				pm->m_bitmode &= ~(PMC_BIT_DIRECT_INJECTION
-						| PMC_BIT_FREQUENCY_INJECTION);
-				pm->m_bitmode |= (PMC_BIT_EFFICIENT_MODULATION)
-					& pm->m_bitmask;
-			}
-		}
-		else {
-			if (w_high < pm->w_low_threshold) {
-
-				pm->m_bitmode |= PMC_BIT_LOW_SPEED_REGION;
-				pm->m_bitmode &= ~(PMC_BIT_EFFICIENT_MODULATION);
-				pm->m_bitmode |= (PMC_BIT_DIRECT_INJECTION
-						| PMC_BIT_FREQUENCY_INJECTION)
-					& pm->m_bitmask;
-
-				/*pm->drift_Q = 0.f;
-
-				pm->kalman_P[10] = 0.f;
-				pm->kalman_P[11] = 0.f;
-				pm->kalman_P[12] = 0.f;
-				pm->kalman_P[13] = 0.f;
-				pm->kalman_P[14] = 0.f;*/
-			}
-		}
+		if (temp > pm->lu_low_threshold)
+			pm->lu_region = PMC_LU_HIGH_REGION;
 	}
-	else if (pm->t_clock == 2) {
+	else {
+		temp = fabsf(pm->lu_X[4]) + pm->lu_low_hysteresis;
 
-		pm->drift_A = (pm->drift_A < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
-			: (pm->drift_A > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_A;
-		pm->drift_B = (pm->drift_B < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
-			: (pm->drift_B > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_B;
-		pm->drift_Q = (pm->drift_Q < - pm->drift_Q_maximal) ? - pm->drift_Q_maximal
-			: (pm->drift_Q > pm->drift_Q_maximal) ? pm->drift_Q_maximal : pm->drift_Q;
-
+		if (temp < pm->lu_low_threshold)
+			pm->lu_region = PMC_LU_LOW_REGION;
 	}
-	else if (pm->t_clock == 3) {
 
-		if (pm->residual_variance > 10.f) {
-
-			/*pm->kalman_P[0] += 100.f;
-			  pm->kalman_P[2] += 100.f;
-			  pm->kalman_P[5] += 2.f;
-			  pm->kalman_P[9] += 1000.f;
-			  pm->kalman_P[14] += 1.f;
-			  pm->kalman_P[20] += 1.f;*/
-
-			pm->residual_variance = 0.f;
-		}
-	}
+	pm->drift_A = (pm->drift_A < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
+		: (pm->drift_A > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_A;
+	pm->drift_B = (pm->drift_B < - pm->drift_AB_maximal) ? - pm->drift_AB_maximal
+		: (pm->drift_B > pm->drift_AB_maximal) ? pm->drift_AB_maximal : pm->drift_B;
+	pm->drift_Q = (pm->drift_Q < - pm->drift_Q_maximal) ? - pm->drift_Q_maximal
+		: (pm->drift_Q > pm->drift_Q_maximal) ? pm->drift_Q_maximal : pm->drift_Q;
 }
 
 void pmc_feedback(pmc_t *pm, int xA, int xB)
@@ -1104,21 +870,19 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 
 	pmc_FSM(pm, iA, iB);
 
-	if (pm->m_bitmode & PMC_BIT_KALMAN_FILTER) {
+	if (pm->lu_region != PMC_LU_DISABLED) {
 
-		kalman_measurement_update(pm, iA, iB);
+		luenberger_update(pm, iA, iB);
 		i_control(pm);
-		kalman_time_update(pm);
 
-		if (pm->m_bitmode & PMC_BIT_SPEED_CONTROL_LOOP) {
+		if (pm->m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP) {
 
 			w_control(pm);
 		}
-		else if (pm->m_bitmode & PMC_BIT_POSITION_CONTROL_LOOP) {
+		else if (pm->m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) {
 		}
 
 		pmc_underway(pm);
-		pm->t_clock = (pm->t_clock < 4) ? pm->t_clock + 1 : 0;
 	}
 }
 
@@ -1128,8 +892,8 @@ void pmc_voltage(pmc_t *pm, int xU)
 
 	uS = pm->scal_U[1] * xU + pm->scal_U[0];
 
-	pm->const_U += (uS - pm->const_U) * 2e-2f;
-	pm->const_IU = 1.f / pm->const_U;
+	pm->const_U += (uS - pm->const_U) * pm->const_U_gain_F;
+	pm->const_U_inversed = 1.f / pm->const_U;
 }
 
 void pmc_tune(pmc_t *pm)
@@ -1140,5 +904,30 @@ void pmc_tune(pmc_t *pm)
 	pm->i_gain_I_D = 5e-2f * pm->const_Ld * pm->freq_hz;
 	pm->i_gain_P_Q = (.5f * pm->const_Lq * pm->freq_hz - pm->const_R);
 	pm->i_gain_I_Q = 5e-2f * pm->const_Lq * pm->freq_hz;
+}
+
+void pmc_request(pmc_t *pm, int req)
+{
+	if (pm->m_state != PMC_STATE_IDLE)
+		return ;
+
+	if (pm->lu_region == PMC_LU_DISABLED) {
+
+		if (req == PMC_STATE_ZERO_DRIFT
+			|| req == PMC_STATE_WAVE_HOLD
+			|| req == PMC_STATE_WAVE_SINE
+			|| req == PMC_STATE_CALIBRATION
+			|| req == PMC_STATE_START) {
+
+			pm->m_state = req;
+		}
+	}
+	else {
+		if (req == PMC_STATE_ESTIMATE_R
+			|| req == PMC_STATE_STOP) {
+
+			pm->m_state = req;
+		}
+	}
 }
 

@@ -87,23 +87,23 @@ sim_Tel(float *pTel)
 
 	/* Estimated current.
 	 * */
-	pTel[10] = pm.kalman_X[0];
-	pTel[11] = pm.kalman_X[1];
+	pTel[10] = pm.lu_X[0];
+	pTel[11] = pm.lu_X[1];
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.kalman_X[2] + Q * pm.kalman_X[3];
-	B = D * pm.kalman_X[3] - Q * pm.kalman_X[2];
+	A = D * pm.lu_X[2] + Q * pm.lu_X[3];
+	B = D * pm.lu_X[3] - Q * pm.lu_X[2];
 	C = atan2(B, A);
 
 	/* Estimated position.
 	 * */
-	pTel[12] = atan2(pm.kalman_X[3], pm.kalman_X[2]);
+	pTel[12] = atan2(pm.lu_X[3], pm.lu_X[2]);
 	pTel[13] = C;
 
 	/* Estimated speed.
 	 * */
-	pTel[14] = pm.kalman_X[4];
+	pTel[14] = pm.lu_X[4];
 
 	/* VSI voltage.
 	 * */
@@ -112,8 +112,8 @@ sim_Tel(float *pTel)
 
 	/* Measurement residual.
 	 * */
-	pTel[17] = pm.residual_D;
-	pTel[18] = pm.residual_Q;
+	pTel[17] = pm.lu_residual_D;
+	pTel[18] = pm.lu_residual_Q;
 
 	/* Zero Drift.
 	 * */
@@ -130,7 +130,7 @@ sim_Tel(float *pTel)
 	pTel[26] = pm.const_Lq;
 	pTel[27] = pm.const_Zp;
 	pTel[28] = pm.i_power_watt;
-	pTel[29] = pm.temp_B[0];
+	pTel[29] = 0.f;
 
 	/* Set Point.
 	 * */
@@ -140,7 +140,7 @@ sim_Tel(float *pTel)
 
 	/* Variance.
 	 * */
-	pTel[33] = pm.residual_variance;
+	pTel[33] = pm.lu_residual_variance;
 }
 
 static void
@@ -203,20 +203,20 @@ sim_Script(FILE *fdTel)
 	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
 
-	pm.const_ILd = 1.f / pm.const_Ld;
-	pm.const_ILq = 1.f / pm.const_Lq;
+	pm.const_Ld_inversed = 1.f / pm.const_Ld;
+	pm.const_Lq_inversed = 1.f / pm.const_Lq;
 
-	pm.const_Zp = 11;
+	pm.const_Zp = m.Zp;
 
-	pm.m_request = PMC_STATE_ZERO_DRIFT;
+	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	/*pm.m_request = PMC_STATE_WAVE_HOLD;
+	/*pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 	sim_F(fdTel, 1., 0);
 
 	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
 
-	pm.m_request = PMC_STATE_WAVE_SINE;
+	pmc_request(&pm, PMC_STATE_WAVE_SINE);
 	sim_F(fdTel, .7, 0);
 
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
@@ -224,18 +224,16 @@ sim_Script(FILE *fdTel)
 
 	pmc_tune(&pm);
 
-	m.X[3] = 0.;
-	pm.m_request = PMC_STATE_KALMAN_START;
-	sim_F(fdTel, .005, 0);
-	/*sim_F(fdTel, .5, 0);
+	pmc_request(&pm, PMC_STATE_START);
+	sim_F(fdTel, .5, 0);
 
 	m.X[3] += .5;
-	sim_F(fdTel, .5, 0);*/
+	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_Q = 7.f;
+	pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, 1., 0);
 
-	m.M[2] = 3e-5f;
+	pm.i_set_point_Q = -5.f;
 	sim_F(fdTel, 1., 0);
 
 	/*pm.i_set_point_Q = 5.f;

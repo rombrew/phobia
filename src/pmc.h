@@ -20,13 +20,10 @@
 #define _H_PMC_
 
 enum {
-	PMC_BIT_KALMAN_FILTER			= 0x0001,
-	PMC_BIT_LOW_SPEED_REGION		= 0x0004,
-	PMC_BIT_EFFICIENT_MODULATION		= 0x0008,
+	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
+	PMC_BIT_FEWER_SWITCHING_MODULATION	= 0x0004,
 	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0010,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
-	PMC_BIT_DIRECT_INJECTION		= 0x0040,
-	PMC_BIT_FREQUENCY_INJECTION		= 0x0080,
 	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0100,
 	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0200,
 };
@@ -37,12 +34,17 @@ enum {
 	PMC_STATE_WAVE_HOLD,
 	PMC_STATE_WAVE_SINE,
 	PMC_STATE_CALIBRATION,
-	PMC_STATE_ESTIMATE_AB,
 	PMC_STATE_ESTIMATE_R,
 	PMC_STATE_ESTIMATE_E,
-	PMC_STATE_KALMAN_START,
-	PMC_STATE_KALMAN_STOP,
+	PMC_STATE_START,
+	PMC_STATE_STOP,
 	PMC_STATE_END
+};
+
+enum {
+	PMC_LU_DISABLED				= 0,
+	PMC_LU_LOW_REGION,
+	PMC_LU_HIGH_REGION
 };
 
 enum {
@@ -66,9 +68,7 @@ typedef struct {
 
 	/* FSM variables.
 	 * */
-	int		m_request;
 	int		m_bitmask;
-	int		m_bitmode;
 	int		m_state;
 	int		m_phase;
 	int		m_errno;
@@ -77,22 +77,24 @@ typedef struct {
 	 * */
 	int		t_value;
 	int		t_end;
-	int		t_clock;
 
 	/* Timer configuration.
 	 * */
 	float		T_drift;
 	float		T_hold;
-	float		T_avg;
+	float		T_sine;
+	float		T_measure;
 	float		T_end;
 
-	/* Other configuration.
+	/* Wave configuration.
 	 * */
-	float		i_hold;
-	float		i_sine;
-	float		i_offset_D;
-	float		i_offset_Q;
-	float		freq_sine_hz;
+	float		wave_i_hold;
+	float		wave_i_sine;
+	float		wave_i_offset_D;
+	float		wave_i_offset_Q;
+	float		wave_freq_sine_hz;
+	float		wave_gain_P;
+	float		wave_gain_I;
 
 	/* Scale constants.
 	 * */
@@ -105,26 +107,29 @@ typedef struct {
 	float		vsi_X;
 	float		vsi_Y;
 
+	/* Luenberger observer.
+	 * */
+	float		lu_X[5];
+	float		lu_gain_K[8];
+	float		lu_low_threshold;
+	float		lu_low_hysteresis;
+	int		lu_region;
+
 	/* Measurement residual.
 	 * */
-	float		residual_D;
-	float		residual_Q;
-	float		residual_variance;
-	float		residual_gain_F;
-	float		residual_failure_limit;
+	float		lu_residual_D;
+	float		lu_residual_Q;
+	float		lu_residual_variance;
 
-	/* Extended Kalman Filter.
+	/* HFI observer.
 	 * */
-	float		kalman_X[5];
-	float		kalman_P[15];
-	float		kalman_Q[5];
-	float		kalman_R;
-	float		saliency_boost_D;
-	float		saliency_boost_Q;
+	float		hf_freq_hz;
+	float		hf_swing_D;
+	float		hf_CS[2];
 
 	/* Temporal.
 	 * */
-	float		temp_A[5];
+	float		temp_A[4];
 	float		temp_B[8];
 
 	/* Zero Drift.
@@ -137,15 +142,18 @@ typedef struct {
 
 	/* Supply voltage.
 	 * */
-	float		const_U, const_IU;
-	float		const_gain_U;
+	float		const_U;
+	float		const_U_inversed;
+	float		const_U_gain_F;
 
 	/* Electrical constants.
 	 * */
 	float		const_E;
 	float		const_R;
-	float		const_Ld, const_ILd;
-	float		const_Lq, const_ILq;
+	float		const_Ld;
+	float		const_Ld_inversed;
+	float		const_Lq;
+	float		const_Lq_inversed;
 
 	/* Mechanical constants.
 	 * */
@@ -154,7 +162,6 @@ typedef struct {
 	/* Current control loop.
 	 * */
 	float		i_maximal;
-	float		i_low_maximal;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -170,21 +177,8 @@ typedef struct {
 	float		i_gain_P_Q;
 	float		i_gain_I_Q;
 
-	/* Direct injection.
-	 * */
-	float		i_inject_D;
-	float		i_inject_gain_K;
-
-	/* Frequency injection.
-	 * */
-	float		h_freq_hz;
-	float		h_swing_D;
-	float		h_CS[2];
-
 	/* Speed control loop.
 	 * */
-	float		w_low_threshold;
-	float		w_low_hysteresis;
 	float		w_set_point;
 	float		w_avg_speed;
 	float		w_integral;
@@ -205,7 +199,9 @@ pmc_t;
 void pmc_default(pmc_t *pm);
 void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
-void pmc_tune();
+void pmc_tune(pmc_t *pm);
+
+void pmc_request(pmc_t *pm, int req);
 
 #endif /* _H_PMC_ */
 

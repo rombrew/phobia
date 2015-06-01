@@ -103,10 +103,10 @@ void adcIRQ()
 
 	if (tel.enabled) {
 
-		tel.p_list[0] = (short int) (pm.kalman_X[0] * 1000.f);
-		tel.p_list[1] = (short int) (pm.kalman_X[1] * 1000.f);
-		tel.p_list[2] = (short int) (pm.kalman_X[2] * 1000.f);
-		tel.p_list[3] = (short int) (pm.kalman_X[3] * 1000.f);
+		tel.p_list[0] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.p_list[1] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.p_list[2] = (short int) (pm.lu_X[2] * 1000.f);
+		tel.p_list[3] = (short int) (pm.lu_X[3] * 1000.f);
 		tel.p_size = 4;
 
 		tel_capture();
@@ -143,7 +143,7 @@ void halMain()
 
 	pmc_default(&pm);
 
-	pm.m_request = PMC_STATE_ZERO_DRIFT;
+	pm.m_state = PMC_STATE_ZERO_DRIFT;
 
 	do {
 		taskIOMUX();
