@@ -545,22 +545,28 @@ void pm_i_gain_auto(const char *s)
 		&pm.i_gain_I_Q);
 }
 
-void pm_w_set_point_rpm(const char *s)
+void pm_p_set_point_w_rpm(const char *s)
 {
 	float			RPM;
 
 	if (stof(&RPM, s) != NULL)
-		pm.w_set_point = .10471976f * RPM * pm.const_Zp;
+		pm.p_set_point_w = .10471976f * RPM * pm.const_Zp;
 
-	RPM = 9.5492969f * pm.w_set_point / pm.const_Zp;
+	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.w_set_point, &RPM);
+	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.p_set_point_w, &RPM);
 }
 
-void pm_w_gain_P(const char *s)
+void pm_p_gain_D(const char *s)
 {
-	stof(&pm.w_gain_P, s);
-	printf("%2e" EOL, &pm.w_gain_P);
+	stof(&pm.p_gain_D, s);
+	printf("%2e" EOL, &pm.p_gain_D);
+}
+
+void pm_p_gain_P(const char *s)
+{
+	stof(&pm.p_gain_P, s);
+	printf("%2e" EOL, &pm.p_gain_P);
 }
 
 void pm_i_power_watt(const char *s)
@@ -600,22 +606,21 @@ void pm_request_stop(const char *s)
 
 void tel_setup(const char *s)
 {
-	tel.s_clock_scale = 1;
-
-	stoi(&tel.s_clock_scale, s);
+	tel.sDEC = 1;
+	stoi(&tel.sDEC, s);
 
 	tel.pZ = tel.pD;
-	tel.s_clock = 0;
+	tel.sCNT = 0;
 }
 
 void tel_enable(const char *s)
 {
-	tel.enabled = 1;
+	tel.iEN = 1;
 }
 
-void tel_print(const char *s)
+void tel_flush(const char *s)
 {
-	tel_flush();
+	telFlush();
 }
 
 const shCMD_t		cmList[] = {
@@ -705,8 +710,9 @@ const shCMD_t		cmList[] = {
 	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
 	{"pm_i_gain_auto", &pm_i_gain_auto},
 
-	{"pm_w_set_point_rpm", &pm_w_set_point_rpm},
-	{"pm_w_gain_P", &pm_w_gain_P},
+	{"pm_p_set_point_w_rpm", &pm_p_set_point_w_rpm},
+	{"pm_p_gain_D", &pm_p_gain_D},
+	{"pm_p_gain_P", &pm_p_gain_P},
 
 	{"pm_i_power_watt", &pm_i_power_watt},
 
@@ -719,7 +725,7 @@ const shCMD_t		cmList[] = {
 
 	{"tel_setup", &tel_setup},
 	{"tel_enable", &tel_enable},
-	{"tel_print", &tel_print},
+	{"tel_flush", &tel_flush},
 
 	{NULL, NULL},
 };

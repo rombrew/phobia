@@ -22,31 +22,31 @@
 
 tel_t				tel;
 
-void tel_capture()
+void telCapture()
 {
-	int			j, tail;
+	int			j, SZ;
 
-	for (j = 0; j < tel.p_size; ++j)
-		tel.s_average[j] += tel.p_list[j];
+	for (j = 0; j < tel.pSZ; ++j)
+		tel.sAVG[j] += tel.pIN[j];
 
-	tel.s_clock++;
+	tel.sCNT++;
 
-	if (tel.s_clock >= tel.s_clock_scale) {
+	if (tel.sCNT >= tel.sDEC) {
 
-		tel.s_clock = 0;
+		for (j = 0; j < tel.pSZ; ++j) {
 
-		for (j = 0; j < tel.p_size; ++j) {
-
-			*tel.pZ++ = tel.s_average[j] / tel.s_clock_scale;
-			tel.s_average[j] = 0;
+			*tel.pZ++ = tel.sAVG[j] / tel.sCNT;
+			tel.sAVG[j] = 0;
 		}
 
-		tail = tel.pZ - tel.pD + tel.p_size;
-		tel.enabled = (tail < TELSZ) ? tel.enabled : 0;
+		SZ = tel.pZ - tel.pD + tel.p_size;
+		tel.iEN = (SZ < TELSZ) ? tel.iEN : 0;
+
+		tel.sCNT = 0;
 	}
 }
 
-void tel_flush()
+void telFlush()
 {
 	short int		*pZ;
 	int			j;
@@ -55,7 +55,7 @@ void tel_flush()
 
 	while (pZ < tel.pZ) {
 
-		for (j = 0; j < tel.p_size; ++j)
+		for (j = 0; j < tel.pSZ; ++j)
 			printf("%i ", *pZ++);
 
 		puts(EOL);

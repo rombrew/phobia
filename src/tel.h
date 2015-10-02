@@ -23,13 +23,13 @@
 
 typedef struct {
 
-	int			enabled;
+	int			iEN;
 
-	short int		p_list[8];
-	int			p_size;
+	short int		pIN[8];
+	int			pSZ;
 
-	int			s_average[8];
-	int			s_clock, s_clock_scale;
+	int			sAVG[8];
+	int			sCNT, sDEC;
 
 	short int		pD[TELSZ];
 	short int		*pZ;
@@ -38,8 +38,8 @@ tel_t;
 
 extern tel_t			tel;
 
-void tel_capture();
-void tel_flush();
+void telCapture();
+void telFlush();
 
 #endif /* _H_TEL_ */
 
