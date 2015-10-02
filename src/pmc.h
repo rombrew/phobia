@@ -22,7 +22,6 @@
 enum {
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FEWER_SWITCHING_MODULATION	= 0x0004,
-	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0010,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
 	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0100,
 	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0200,
@@ -34,8 +33,6 @@ enum {
 	PMC_STATE_WAVE_HOLD,
 	PMC_STATE_WAVE_SINE,
 	PMC_STATE_CALIBRATION,
-	PMC_STATE_ESTIMATE_R,
-	PMC_STATE_ESTIMATE_E,
 	PMC_STATE_START,
 	PMC_STATE_STOP,
 	PMC_STATE_END
@@ -177,13 +174,18 @@ typedef struct {
 	float		i_gain_P_Q;
 	float		i_gain_I_Q;
 
-	/* Speed control loop.
+	/* Position control loop.
 	 * */
-	float		w_set_point;
-	float		w_avg_speed;
-	float		w_integral;
-	float		w_gain_P;
-	float		w_gain_I;
+	float		p_set_point_x[2];
+	float		p_set_point_w;
+	float		p_slew_rate_w;
+	float		p_track_point_w;
+	float		p_integral;
+	float		p_gain_D;
+	float		p_gain_P;
+	float		p_gain_I;
+	int		p_revol_x;
+	int		p_revol_sp;
 
 	/* Informational.
 	 * */
@@ -199,7 +201,6 @@ pmc_t;
 void pmc_default(pmc_t *pm);
 void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
-void pmc_tune(pmc_t *pm);
 
 void pmc_request(pmc_t *pm, int req);
 

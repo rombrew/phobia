@@ -129,7 +129,7 @@ if (N == 16) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'X'
-	plot	@TEL using 1:29 title 'X' with lines,
+	plot	@TEL using 1:($33*360+$12*180/pi) title 'X' with lines,
 }
 
 pause mouse close

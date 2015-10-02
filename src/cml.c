@@ -493,6 +493,17 @@ void pm_i_slew_rate_Q(const char *s)
 	printf("%3f (A)" EOL, &pm.i_slew_rate_Q);
 }
 
+void pm_i_slew_rate_auto(const char *s)
+{
+	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
+	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
+
+	printf(	"D %3f (A)" EOL
+		"D %3f (A)" EOL,
+		&pm.i_slew_rate_D,
+		&pm.i_slew_rate_Q);
+}
+
 void pm_i_gain_P_D(const char *s)
 {
 	stof(&pm.i_gain_P_D, s);
@@ -517,6 +528,23 @@ void pm_i_gain_I_Q(const char *s)
 	printf("%2e" EOL, &pm.i_gain_I_Q);
 }
 
+void pm_i_gain_auto(const char *s)
+{
+	pm.i_gain_P_D = (.5f * pm.const_Ld * pm.freq_hz - pm.const_R);
+	pm.i_gain_I_D = 5e-2f * pm.const_Ld * pm.freq_hz;
+	pm.i_gain_P_Q = (.5f * pm.const_Lq * pm.freq_hz - pm.const_R);
+	pm.i_gain_I_Q = 5e-2f * pm.const_Lq * pm.freq_hz;
+
+	printf(	"P_D %2e" EOL
+		"I_D %2e" EOL
+		"P_Q %2e" EOL
+		"I_Q %2e" EOL,
+		&pm.i_gain_P_D,
+		&pm.i_gain_I_D,
+		&pm.i_gain_P_Q,
+		&pm.i_gain_I_Q);
+}
+
 void pm_w_set_point_rpm(const char *s)
 {
 	float			RPM;
@@ -538,11 +566,6 @@ void pm_w_gain_P(const char *s)
 void pm_i_power_watt(const char *s)
 {
 	printf("%1f (W)" EOL, &pm.i_power_watt);
-}
-
-void pm_tune(const char *s)
-{
-	pmc_tune(&pm);
 }
 
 void pm_request_zero_drift(const char *s)
@@ -675,17 +698,18 @@ const shCMD_t		cmList[] = {
 	{"pm_i_set_point_Q", &pm_i_set_point_Q},
 	{"pm_i_slew_rate_D",&pm_i_slew_rate_D},
 	{"pm_i_slew_rate_Q",&pm_i_slew_rate_Q},
+	{"pm_i_slew_rate_auto", &pm_i_slew_rate_auto},
 	{"pm_i_gain_P_D", &pm_i_gain_P_D},
 	{"pm_i_gain_I_D", &pm_i_gain_I_D},
 	{"pm_i_gain_P_Q", &pm_i_gain_P_Q},
 	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
+	{"pm_i_gain_auto", &pm_i_gain_auto},
 
 	{"pm_w_set_point_rpm", &pm_w_set_point_rpm},
 	{"pm_w_gain_P", &pm_w_gain_P},
 
 	{"pm_i_power_watt", &pm_i_power_watt},
 
-	{"pm_tune", &pm_tune},
 	{"pm_request_zero_drift", &pm_request_zero_drift},
 	{"pm_request_wave_hold", &pm_request_wave_hold},
 	{"pm_request_wave_sine", &pm_request_wave_sine},

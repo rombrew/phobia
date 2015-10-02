@@ -136,11 +136,11 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[30] = pm.i_set_point_D;
 	pTel[31] = pm.i_set_point_Q;
-	pTel[32] = pm.w_set_point;
+	pTel[32] = 0.f;
 
 	/* Variance.
 	 * */
-	pTel[33] = pm.lu_residual_variance;
+	pTel[33] = pm.p_track_point_w;
 }
 
 static void
@@ -222,8 +222,6 @@ sim_Script(FILE *fdTel)
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
 	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);*/
 
-	pmc_tune(&pm);
-
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .5, 0);
 
@@ -231,9 +229,17 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, .5, 0);
 
 	pm.i_set_point_Q = 5.f;
-	sim_F(fdTel, 1., 0);
+	pm.p_set_point_w = 10.f;
+	pm.p_revol_sp = 0;
+	sim_F(fdTel, .5, 0);
+
+	//m.M[2] = 1e-6;
+	pm.i_set_point_Q = 1.f;
+	sim_F(fdTel, .5, 0);
 
 	pm.i_set_point_Q = -5.f;
+	pm.p_set_point_w = 0.f;
+	//pm.p_revol_sp = 0;
 	sim_F(fdTel, 1., 0);
 
 	/*pm.i_set_point_Q = 5.f;
