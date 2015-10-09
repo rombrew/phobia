@@ -17,71 +17,7 @@
 */
 
 #include "pmc.h"
-
-inline float
-fabsf(float x) { return __builtin_fabsf(x); }
-
-#if __ARM_FP >= 4
-
-inline float
-sqrtf(float x)
-{
-	float		y;
-
-	asm volatile ("vsqrt.f32 %0, %1 \r\n"
-			: "=w" (y) : "w" (x));
-
-	return y;
-}
-
-#else
-
-inline float
-sqrtf(float x) { return __builtin_sqrtf(x); }
-
-#endif
-
-static void
-rotatef(float y[2], float rad, const float x[2])
-{
-	float		q, s, c, a, b;
-
-	q = rad * rad;
-	s = rad - .16666667f * q * rad;
-	c = 1.f - .5f * q;
-
-	a = c * x[0] - s * x[1];
-	b = s * x[0] + c * x[1];
-
-	q = (3.f - a * a - b * b) * .5f;
-	y[0] = a * q;
-	y[1] = b * q;
-}
-
-static float
-arctanf(float y, float x)
-{
-	const float	p[] = {.25065566f, .93348042f, 1.5707963f};
-	float		y_abs, f = 0.f;
-
-	y_abs = fabsf(y);
-
-	if (x < 0.f) {
-
-		f = x;
-		x = y_abs;
-		y_abs = - f;
-		f = p[2];
-	}
-
-	if (y_abs < x)
-
-		f += (p[0] * y_abs + p[1]) * y_abs;
-	else
-		f += p[2] - (p[0] * x + p[1]) * x;
-
-	return (y < 0.f) ? - f : f;
-}
+#include "m.h"
 
 void pmc_default(pmc_t *pm)
 {
