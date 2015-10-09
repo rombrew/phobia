@@ -347,9 +347,9 @@ i_control(pmc_t *pm)
 	if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION
 			&& pm->lu_region == PMC_LU_LOW_REGION) {
 
-		temp = 6.2831853f * pm->const_Ld * pm->hf_freq_hz;
+		temp = 2.f * MPIF * pm->const_Ld * pm->hf_freq_hz;
 		uD += pm->hf_CS[1] * pm->hf_swing_D * temp;
-		rotatef(pm->hf_CS, 6.2831853f * pm->hf_freq_hz * pm->dT, pm->hf_CS);
+		rotatef(pm->hf_CS, 2.f * MPIF * pm->hf_freq_hz * pm->dT, pm->hf_CS);
 	}
 
 	uX = pm->lu_X[2] * uD - pm->lu_X[3] * uQ;
@@ -405,14 +405,14 @@ p_control(pmc_t *pm)
 	if (dY < 0.) {
 
 		if (pm->lu_X[3] < 0. && pm->p_set_point_x[1] >= 0.)
-			eP += 6.2831853f;
+			eP += 2.f * MPIF;
 	}
 	else {
 		if (pm->lu_X[3] >= 0. && pm->p_set_point_x[1] < 0.)
-			eP -= 6.2831853f;
+			eP -= 2.f * MPIF;
 	}
 
-	eP += (pm->p_revol_sp - pm->p_revol_x) * 6.2831853f;
+	eP += (pm->p_revol_sp - pm->p_revol_x) * 2.f * MPIF;
 
 	/* PD controller.
 	 * */
@@ -432,7 +432,7 @@ pmc_inductance(pmc_t *pm, float *ft, float freq_hz)
 	 * */
 	Dx = ft[0] * ft[0] + ft[1] * ft[1];
 	Dy = ft[4] * ft[4] + ft[5] * ft[5];
-	D = 6.2831853f * freq_hz;
+	D = 2.f * MPIF * freq_hz;
 	Dx *= D; Dy *= D;
 	Lx = (ft[2] * ft[1] - ft[3] * ft[0]) / Dx;
 	Ly = (ft[6] * ft[5] - ft[7] * ft[4]) / Dy;
@@ -600,7 +600,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 
 				pm->lu_X[2] = 1.f;
 				pm->lu_X[3] = 0.f;
-				pm->lu_X[4] = 6.2831853f * pm->wave_freq_sine_hz / pm->freq_hz;
+				pm->lu_X[4] = 2.f * MPIF * pm->wave_freq_sine_hz / pm->freq_hz;
 
 				pm->temp_B[0] = 0.f;
 				pm->temp_B[1] = 0.f;
@@ -612,7 +612,7 @@ pmc_FSM(pmc_t *pm, float iA, float iB)
 				pm->temp_B[7] = 0.f;
 
 				temp = (pm->const_Ld < pm->const_Lq) ? pm->const_Ld : pm->const_Lq;
-				temp = 6.2831853f * temp * pm->wave_freq_sine_hz;
+				temp = 2.f * MPIF * temp * pm->wave_freq_sine_hz;
 				temp = pm->const_R * pm->const_R + temp * temp;
 				pm->temp_A[0] = pm->wave_i_sine * sqrtf(temp);
 				pm->temp_A[2] = pm->wave_i_offset_D * pm->const_R;

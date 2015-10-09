@@ -23,8 +23,8 @@ void rotatef(float y[2], float angle, const float x[2])
 	float		q, s, c, a, b;
 
 	q = angle * angle;
-	s = angle - .16666667f * q * angle;
-	c = 1.f - .5f * q;
+	s = angle - q * angle * (.16666667f - 8.3333333e-3 * q);
+	c = 1.f - q * (.5f - 4.1666667e-2 * q);
 
 	a = c * x[0] - s * x[1];
 	b = s * x[0] + c * x[1];

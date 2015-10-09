@@ -229,7 +229,7 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, .5, 0);
 
 	pm.i_set_point_Q = 5.f;
-	pm.p_set_point_w = 10.f;
+	pm.p_set_point_w = 1000.f;
 	pm.p_revol_sp = 0;
 	sim_F(fdTel, .5, 0);
 
