@@ -101,22 +101,16 @@ void adcIRQ()
 	pmc_feedback(&pm, halADC.xA, halADC.xB);
 	pmc_voltage(&pm, halADC.xU);
 
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[2] * 1000.f);
-		tel.pIN[3] = (short int) (pm.lu_X[3] * 1000.f);
-		tel.pSZ = 4;
-
-		tel_capture();
-	}
-
 	T1 = halSysTick();
 
 	/* IRQ load ticks.
 	 * */
 	td.Tirq = T0 - T1;
+
+	/* IRQ handler.
+	 * */
+	if (td.pIRQ != NULL)
+		td.pIRQ();
 }
 
 void halMain()

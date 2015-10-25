@@ -24,9 +24,11 @@
 
 void *memz(void *p, int sz);
 
-char strcmp(const char *s, const char *p);
-char strpcmp(const char *s, const char *p);
+int strcmp(const char *s, const char *p);
+int strpcmp(const char *s, const char *p);
+int strxcmp(const char *s, const char *p, int x);
 char *strcpy(char *d, const char *s);
+char *strncpy(char *d, const char *s, int n);
 int strlen(const char *s);
 const char *strtok(const char *s);
 

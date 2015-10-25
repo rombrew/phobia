@@ -31,6 +31,7 @@ OBJS	= hal/entry.o \
 
 OBJS	+= cml.o \
 	lib.o \
+	m.o \
 	pmc.o \
 	sh.o \
 	task.o \

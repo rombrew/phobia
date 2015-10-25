@@ -39,7 +39,7 @@ void telCapture()
 			tel.sAVG[j] = 0;
 		}
 
-		SZ = tel.pZ - tel.pD + tel.p_size;
+		SZ = tel.pZ - tel.pD + tel.pSZ;
 		tel.iEN = (SZ < TELSZ) ? tel.iEN : 0;
 
 		tel.sCNT = 0;

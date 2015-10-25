@@ -31,6 +31,16 @@ typedef struct {
 	/* IRQ load ticks.
 	 * */
 	int			Tirq;
+
+	/* IRQ handler.
+	 * */
+	void			(* pIRQ) ();
+
+	/* Average variables.
+	 * */
+	float			*avgIN[4];
+	float			avgSUM[4];
+	int			avgN, avgMAX;
 }
 taskDATA_t;
 

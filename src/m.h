@@ -46,7 +46,8 @@ sqrtf(float x) { return __builtin_sqrtf(x); }
 
 void rotatef(float y[2], float angle, const float x[2]);
 float arctanf(float y, float x);
-void ksincosf(float angle, float x[2]);
+float ksinf(float angle);
+float kcosf(float angle);
 
 #endif /* _H_M_ */
 

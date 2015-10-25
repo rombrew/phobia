@@ -20,6 +20,7 @@
 #include "lib.h"
 #include "sh.h"
 #include "pmc.h"
+#include "m.h"
 #include "task.h"
 #include "tel.h"
 
@@ -131,9 +132,9 @@ void pm_m_bitmask_fewer_switching_modulation(const char *s)
 	pm_m_bitmask(s, PMC_BIT_FEWER_SWITCHING_MODULATION);
 }
 
-void pm_m_bitmask_speed_control_loop(const char *s)
+void pm_m_bitmask_position_control_loop(const char *s)
 {
-	pm_m_bitmask(s, PMC_BIT_SPEED_CONTROL_LOOP);
+	pm_m_bitmask(s, PMC_BIT_POSITION_CONTROL_LOOP);
 }
 
 void pm_m_bitmask_update_R_after_hold(const char *s)
@@ -545,6 +546,40 @@ void pm_i_gain_auto(const char *s)
 		&pm.i_gain_I_Q);
 }
 
+void pm_p_set_point_x_g(const char *s)
+{
+	float			angle, g;
+	int			revol;
+
+	if (stof(&g, s) != NULL) {
+
+		revol = (int) (g / 360.f);
+		g -= (float) (revol * 360);
+
+		if (g <= - 180.f) {
+
+			revol -= 1;
+			g += 360.f;
+		}
+
+		if (g >= 180.f) {
+
+			revol += 1;
+			g -= 360.f;
+		}
+
+		angle = g * (MPIF / 180.f);
+		pm.p_set_point_x[0] = kcosf(angle);
+		pm.p_set_point_x[1] = ksinf(angle);
+		pm.p_set_point_revol = revol;
+	}
+
+	angle = arctanf(pm.p_set_point_x[1], pm.p_set_point_x[0]);
+	g = angle * (180.f / MPIF) + (float) pm.p_set_point_revol * 360.f;
+
+	printf("%2f (degree)" EOL, &g);
+}
+
 void pm_p_set_point_w_rpm(const char *s)
 {
 	float			RPM;
@@ -554,7 +589,7 @@ void pm_p_set_point_w_rpm(const char *s)
 
 	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.p_set_point_w, &RPM);
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
 }
 
 void pm_p_gain_D(const char *s)
@@ -604,23 +639,103 @@ void pm_request_stop(const char *s)
 	pmc_request(&pm, PMC_STATE_STOP);
 }
 
-void tel_setup(const char *s)
+static void
+irq_telemetry_1()
 {
-	tel.sDEC = 1;
-	stoi(&tel.sDEC, s);
+	if (tel.iEN) {
 
-	tel.pZ = tel.pD;
-	tel.sCNT = 0;
+		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.pIN[2] = (short int) (pm.lu_X[2] * 1000.f);
+		tel.pIN[3] = (short int) (pm.lu_X[3] * 1000.f);
+		tel.pSZ = 4;
+
+		telCapture();
+	}
+	else
+		td.pIRQ = NULL;
 }
 
-void tel_enable(const char *s)
+void tel_start(const char *s)
 {
-	tel.iEN = 1;
+	if (td.pIRQ == NULL) {
+
+		tel.sDEC = 1;
+		stoi(&tel.sDEC, s);
+
+		tel.pZ = tel.pD;
+		tel.sCNT = 0;
+		tel.iEN = 1;
+
+		halWFI();
+
+		td.pIRQ = &irq_telemetry_1;
+	}
 }
 
 void tel_flush(const char *s)
 {
 	telFlush();
+}
+
+static void
+irq_avg_value_4()
+{
+	if (td.avgN < td.avgMAX) {
+
+		td.avgSUM[0] += *td.avgIN[0];
+		td.avgSUM[1] += *td.avgIN[1];
+		td.avgSUM[2] += *td.avgIN[2];
+		td.avgSUM[3] += *td.avgIN[3];
+
+		td.avgN++;
+	}
+	else
+		td.pIRQ = NULL;
+}
+
+void ap_update_const_E(const char *s)
+{
+	if (td.pIRQ == NULL && pm.lu_region != PMC_LU_DISABLED) {
+
+		td.avgIN[0] = &pm.lu_X[0];
+		td.avgIN[1] = &pm.lu_X[1];
+		td.avgIN[2] = &pm.lu_X[4];
+		td.avgIN[3] = &pm.drift_Q;
+
+		td.avgSUM[0] = 0.f;
+		td.avgSUM[1] = 0.f;
+		td.avgSUM[2] = 0.f;
+		td.avgSUM[3] = 0.f;
+
+		td.avgN = 0;
+		td.avgMAX = pm.freq_hz * pm.T_measure;
+
+		td.pIRQ = &irq_avg_value_4;
+
+		while (td.pIRQ != NULL)
+			taskIOMUX();
+
+		td.avgSUM[0] /= (float) td.avgN;
+		td.avgSUM[1] /= (float) td.avgN;
+		td.avgSUM[2] /= (float) td.avgN;
+		td.avgSUM[3] /= (float) td.avgN;
+
+		pm.const_E -= td.avgSUM[3] / td.avgSUM[2];
+	}
+}
+
+void codes()
+{
+	int		j, c;
+
+	for (j = 0; j < 5; ++j) {
+
+		while ((c = shRecv()) < 0) 
+			taskIOMUX();
+
+		printf("-- %i" EOL, c);
+	}
 }
 
 const shCMD_t		cmList[] = {
@@ -637,7 +752,7 @@ const shCMD_t		cmList[] = {
 
 	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
 	{"pm_m_bitmask_fewer_switching_modulation", &pm_m_bitmask_fewer_switching_modulation},
-	{"pm_m_bitmask_speed_control_loop", &pm_m_bitmask_speed_control_loop},
+	{"pm_m_bitmask_position_control_loop", &pm_m_bitmask_position_control_loop},
 	{"pm_m_bitmask_update_R_after_hold", &pm_m_bitmask_update_R_after_hold},
 	{"pm_m_bitmask_update_L_after_sine", &pm_m_bitmask_update_L_after_sine},
 
@@ -710,6 +825,7 @@ const shCMD_t		cmList[] = {
 	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
 	{"pm_i_gain_auto", &pm_i_gain_auto},
 
+	{"pm_p_set_point_x_g", &pm_p_set_point_x_g},
 	{"pm_p_set_point_w_rpm", &pm_p_set_point_w_rpm},
 	{"pm_p_gain_D", &pm_p_gain_D},
 	{"pm_p_gain_P", &pm_p_gain_P},
@@ -723,9 +839,12 @@ const shCMD_t		cmList[] = {
 	{"pm_request_start", &pm_request_start},
 	{"pm_request_stop", &pm_request_stop},
 
-	{"tel_setup", &tel_setup},
-	{"tel_enable", &tel_enable},
+	{"tel_start", &tel_start},
 	{"tel_flush", &tel_flush},
+
+	{"ap_update_const_E", &ap_update_const_E},
+
+	{"codes", &codes},
 
 	{NULL, NULL},
 };

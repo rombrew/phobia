@@ -38,7 +38,7 @@ void *memz(void *p, int sz)
 	return x;
 }
 
-char strcmp(const char *s, const char *p)
+int strcmp(const char *s, const char *p)
 {
 	char		c;
 
@@ -56,7 +56,7 @@ char strcmp(const char *s, const char *p)
 	return c;
 }
 
-char strpcmp(const char *s, const char *p)
+int strpcmp(const char *s, const char *p)
 {
 	char		c;
 
@@ -77,6 +77,29 @@ char strpcmp(const char *s, const char *p)
 	return c;
 }
 
+int strxcmp(const char *s, const char *p, int x)
+{
+	char		c;
+	int		n = 0;
+
+	do {
+		if (n >= x)
+			break;
+
+		c = *s - *p;
+
+		if (c || !*s)
+			break;
+
+		++s;
+		++p;
+		++n;
+	}
+	while (1);
+
+	return n;
+}
+
 char *strcpy(char *d, const char *s)
 {
 	do {
@@ -85,6 +108,27 @@ char *strcpy(char *d, const char *s)
 
 		++d;
 		++s;
+	}
+	while (1);
+
+	return d;
+}
+
+char *strncpy(char *d, const char *s, int n)
+{
+	do {
+		if (n <= 0) {
+
+			*d = 0;
+			break;
+		}
+
+		if (!(*d = *s))
+			break;
+
+		++d;
+		++s;
+		--n;
 	}
 	while (1);
 

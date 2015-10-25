@@ -87,7 +87,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2e-3;
 	m->M[1] = 0e-5;
-	m->M[2] = 1e-7;
+	m->M[2] = 1e-5;
 	m->M[3] = 0e-0;
 
 	/* D/Q inductance. (Henry)

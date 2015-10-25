@@ -25,6 +25,8 @@
 #define SH_CLINE_SZ			80
 #define SH_HISTORY_SZ			440
 
+#define K_ETX				0x03
+#define K_EOT				0x04
 #define K_SO				0x0E
 #define K_DLE				0x10
 #define K_ESC				0x1B
@@ -144,7 +146,7 @@ isChar(char xC)
 static void
 shErase(int N)
 {
-	while (N) {
+	while (N > 0) {
 
 		puts(SH_BACKSPACE);
 		--N;
@@ -180,16 +182,26 @@ shExactMatch()
 }
 
 static void
-shCyclicMatch()
+shCyclicMatch(int xDIR)
 {
 	const shCMD_t		*pCMD;
 	const char		*iD;
 	int			N = 0;
 
 	pCMD = cmList + sh.cIT;
+	pCMD += (xDIR == DIR_UP) ? 1 : - 1;
 	sh.cLine[sh.cEON] = 0;
 
 	do {
+		if (pCMD < cmList) {
+
+			while (pCMD->iD != NULL) ++pCMD;
+			--pCMD;
+
+			if (N++)
+				break;
+		}
+
 		iD = pCMD->iD;
 
 		if (iD == NULL) {
@@ -198,24 +210,64 @@ shCyclicMatch()
 
 			if (N++)
 				break;
-			else
-				continue;
 		}
 
 		if (!strpcmp(sh.cLine, iD)) {
 
-			/* Copy command name.
+			/* Copy the command name.
 			 * */
 			strcpy(sh.cLine, iD);
 
 			break;
 		}
 
+		if (xDIR == DIR_UP)
+			++pCMD;
+		else
+			--pCMD;
+	}
+	while (1);
+
+	sh.cIT = pCMD - cmList;
+}
+
+static void
+shCommonMatch()
+{
+	const shCMD_t		*pCMD;
+	const char		*iD, *iLast;
+	int			N;
+
+	iLast = NULL;
+	pCMD = cmList;
+
+	do {
+		iD = pCMD->iD;
+
+		if (iD == NULL)
+			break;
+
+		if (!strpcmp(sh.cLine, iD)) {
+
+			if (iLast != NULL)
+				N = strxcmp(iLast, iD, N);
+			else
+				N = strlen(iD);
+
+			iLast = iD;
+		}
+
 		++pCMD;
 	}
 	while (1);
 
-	sh.cIT = (pCMD - cmList) + 1;
+	if (iLast != NULL) {
+
+		strncpy(sh.cLine, iLast, N);
+		sh.cEON = N;
+	}
+	else
+		sh.cEON = 0;
 }
 
 static int
@@ -341,10 +393,9 @@ shEval()
 }
 
 static void
-shComplete()
+shComplete(int xDIR)
 {
 	char			*pC;
-	int			N;
 
 	if (sh.cMD == 0) {
 
@@ -360,27 +411,35 @@ shComplete()
 			++pC;
 		}
 
-		N = sh.nEOL;
-
-		/* Enter completion mode.
+		/* Complete to the common substring.
 		 * */
-		sh.cMD = 1;
-		sh.cEON = N;
-		sh.cIT = 0;
+		shCommonMatch();
+		puts(sh.cLine + sh.nEOL);
+
+		if (sh.nEOL <= sh.cEON) {
+
+			/* Enter completion mode.
+			 * */
+			sh.cMD = 1;
+			sh.cIT = 0;
+
+			if (sh.nEOL != sh.cEON)
+				sh.nEOL = sh.cEON;
+			else
+				shComplete(xDIR);
+		}
 	}
 	else {
-		N = sh.cEON;
+		/* Search for the next match.
+		 * */
+		shCyclicMatch(xDIR);
+
+		/* Update the command line.
+		 * */
+		shErase(sh.nEOL - sh.cEON);
+		sh.nEOL = strlen(sh.cLine);
+		puts(sh.cLine + sh.cEON);
 	}
-
-	/* Search for the next match.
-	 * */
-	shCyclicMatch();
-
-	/* Update the command line.
-	 * */
-	shErase(sh.nEOL - N);
-	sh.nEOL = strlen(sh.cLine);
-	puts(sh.cLine + N);
 
 	sh.hMD = 0;
 }
@@ -514,7 +573,12 @@ void shTask()
 			}
 			else if (xC == '\t') {
 
-				shComplete();
+				shComplete(DIR_UP);
+			}
+			else if (xC == K_ETX || xC == K_EOT) {
+
+				puts(EOL);
+				shLineNULL();
 			}
 			else if (xC == K_DLE) {
 
@@ -542,6 +606,10 @@ void shTask()
 				else if (xC == 'B') {
 
 					shHistory(DIR_DOWN);
+				}
+				else if (xC == 'Z') {
+
+					shComplete(DIR_DOWN);
 				}
 
 				sh.xESC = 0;

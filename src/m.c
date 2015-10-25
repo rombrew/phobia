@@ -23,8 +23,8 @@ void rotatef(float y[2], float angle, const float x[2])
 	float		q, s, c, a, b;
 
 	q = angle * angle;
-	s = angle - q * angle * (.16666667f - 8.3333333e-3 * q);
-	c = 1.f - q * (.5f - 4.1666667e-2 * q);
+	s = angle - q * angle * (.16666667f - 8.3333333e-3f * q);
+	c = 1.f - q * (.5f - 4.1666667e-2f * q);
 
 	a = c * x[0] - s * x[1];
 	b = s * x[0] + c * x[1];
@@ -58,52 +58,67 @@ float arctanf(float y, float x)
 	return (y < 0.f) ? - f : f;
 }
 
-void ksincosf(float angle, float x[2])
+static float	kpoly[8] = {
+
+	-1.37729499e-4f,
+	-2.04509846e-4f,
+	8.63928854e-3f,
+	-2.43287243e-4f,
+	-1.66562291e-1f,
+	-2.23787462e-5f,
+	1.00000193e+0f,
+	-3.55250780e-8f,
+};
+
+float ksinf(float angle)
 {
-        static float    l[8] = {
-
-                -1.37729499e-4f,
-                -2.04509846e-4f,
-                8.63928854e-3f,
-                -2.43287243e-4f,
-                -1.66562291e-1f,
-                -2.23787462e-5f,
-                1.00000193e+0f,
-                -3.55250780e-8f,
-        };
-
         float           u;
         int             m = 0;
 
         if (angle < 0.f) {
 
-                m += 1;
+                m = 1;
                 angle = - angle;
         }
 
+        if (angle > (MPIF / 2.f))
+                angle = MPIF - angle;
+
+        u = kpoly[1] + kpoly[0] * angle;
+        u = kpoly[2] + u * angle;
+        u = kpoly[3] + u * angle;
+	u = kpoly[4] + u * angle;
+	u = kpoly[5] + u * angle;
+	u = kpoly[6] + u * angle;
+	u = kpoly[7] + u * angle;
+	
+	return m ? - u : u;
+}
+
+float kcosf(float angle)
+{
+        float           u;
+        int             m = 0;
+
+        if (angle < 0.f)
+                angle = - angle;
+
         if (angle > (MPIF / 2.f)) {
 
-                m += 2;
+                m = 1;
                 angle = MPIF - angle;
         }
 
-        u = l[1] + l[0] * angle;
-        u = l[2] + u * angle;
-        u = l[3] + u * angle;
-	u = l[4] + u * angle;
-	u = l[5] + u * angle;
-	u = l[6] + u * angle;
-	u = l[7] + u * angle;
-	x[0] = (m & 1) ? - u : u;
-
 	angle = (MPIF / 2.f) - angle;
-	u = l[1] + l[0] * angle;
-	u = l[2] + u * angle;
-	u = l[3] + u * angle;
-	u = l[4] + u * angle;
-	u = l[5] + u * angle;
-	u = l[6] + u * angle;
-	u = l[7] + u * angle;
-	x[1] = (m & 2) ? - u : u;
+
+	u = kpoly[1] + kpoly[0] * angle;
+	u = kpoly[2] + u * angle;
+	u = kpoly[3] + u * angle;
+	u = kpoly[4] + u * angle;
+	u = kpoly[5] + u * angle;
+	u = kpoly[6] + u * angle;
+	u = kpoly[7] + u * angle;
+
+	return m ? - u : u;
 }
 

@@ -107,6 +107,7 @@ typedef struct {
 	/* Luenberger observer.
 	 * */
 	float		lu_X[5];
+	int		lu_revol;
 	float		lu_gain_K[8];
 	float		lu_low_threshold;
 	float		lu_low_hysteresis;
@@ -177,15 +178,10 @@ typedef struct {
 	/* Position control loop.
 	 * */
 	float		p_set_point_x[2];
+	int		p_set_point_revol;
 	float		p_set_point_w;
-	float		p_slew_rate_w;
-	float		p_track_point_w;
-	float		p_integral;
 	float		p_gain_D;
 	float		p_gain_P;
-	float		p_gain_I;
-	int		p_revol_x;
-	int		p_revol_sp;
 
 	/* Informational.
 	 * */
