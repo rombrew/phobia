@@ -19,10 +19,11 @@ PMC is an open project that aims to build a quality three-phase BLDC motor contr
 
 * CAN interface
 * The final hardware
+* Detailed documentaion
 
 ## Current Status
 
-A significant part of the functions already implemented in software. Hardware are currently on prototyping stage. Schematic of the prototype power stages is [here](https://bitbucket.org/amaora/phobia/downloads/phobia-f4d.pdf).
+A significant part of the functions are already implemented in software. Hardware is currently on prototyping stage. Schematic of the prototype power stages is [here](https://bitbucket.org/amaora/phobia/downloads/phobia-f4d.pdf).
 
 ![PMC](https://bitbucket.org/amaora/phobia/downloads/pmc1.jpg "PMC prototype")
 ![PMC](https://bitbucket.org/amaora/phobia/downloads/pmc2.jpg "PMC prototype")
