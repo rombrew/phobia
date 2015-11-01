@@ -17,16 +17,13 @@
 */
 
 #include "hal/hal.h"
+#include "ap.h"
 #include "lib.h"
 #include "sh.h"
 #include "pmc.h"
 #include "m.h"
 #include "task.h"
 #include "tel.h"
-
-static const char
-MSG_ENABLED[] = "Enabled",
-MSG_DISABLED[] = "Disabled";
 
 void uptime(const char *s)
 {
@@ -70,6 +67,22 @@ void reboot(const char *s)
 	while (td.uSEC < End);
 
 	halReset();
+}
+
+void keycodes()
+{
+	int		xC;
+
+	do {
+		while ((xC = shRecv()) < 0)
+			taskIOMUX();
+
+		if (xC == 3 || xC == 4)
+			break;
+
+		printf("-- %i" EOL, xC);
+	}
+	while (1);
 }
 
 void pwm_freq_hz(const char *s)
@@ -119,7 +132,7 @@ pm_m_bitmask(const char *s, int bit)
 
 	flag = (pm.m_bitmask & bit) ? 1 : 0;
 
-	printf("%i (%s)" EOL, flag, flag ? MSG_ENABLED : MSG_DISABLED);
+	printf("%i (%s)" EOL, flag, flag ? "Enabled" : "Disabled");
 }
 
 void pm_m_bitmask_high_frequency_injection(const char *s)
@@ -137,19 +150,17 @@ void pm_m_bitmask_position_control_loop(const char *s)
 	pm_m_bitmask(s, PMC_BIT_POSITION_CONTROL_LOOP);
 }
 
-void pm_m_bitmask_update_R_after_hold(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_UPDATE_R_AFTER_HOLD);
-}
-
-void pm_m_bitmask_update_L_after_sine(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_UPDATE_L_AFTER_SINE);
-}
-
 void pm_m_errno(const char *s)
 {
-	printf("%i" EOL, pm.m_errno);
+	int		flag;
+
+	printf("%i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno));
+
+	if (stoi(&flag, s) != NULL) {
+
+		if (flag == 0)
+			pm.m_errno = 0;
+	}
 }
 
 void pm_T_drift(const char *s)
@@ -260,7 +271,10 @@ void pm_lu_X1(const char *s)
 
 void pm_lu_X23(const char *s)
 {
-	printf("%3f %3f" EOL, &pm.lu_X[2], &pm.lu_X[3]);
+	float			g;
+
+	g = arctanf(pm.lu_X[3], pm.lu_X[2]) * 180.f / MPIF;
+	printf("%1f (degree) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
 }
 
 void pm_lu_X4(const char *s)
@@ -345,6 +359,18 @@ void pm_lu_residual_variance(const char *s)
 	printf("%4e" EOL, &pm.lu_residual_variance);
 }
 
+void pm_fault_iab_maximal(const char *s)
+{
+	stof(&pm.fault_iab_maximal, s);
+	printf("%3f (A)" EOL, &pm.fault_iab_maximal);
+}
+
+void pm_fault_residual_maximal(const char *s)
+{
+	stof(&pm.fault_residual_maximal, s);
+	printf("%4e" EOL, &pm.fault_residual_maximal);
+}
+
 void pm_hf_freq_hz(const char *s)
 {
 	stof(&pm.hf_freq_hz, s);
@@ -391,12 +417,6 @@ void pm_const_U(const char *s)
 {
 	stof(&pm.const_U, s);
 	printf("%3f (V)" EOL, &pm.const_U);
-}
-
-void pm_const_U_gain_F(const char *s)
-{
-	stof(&pm.const_U_gain_F, s);
-	printf("%2e" EOL, &pm.const_U_gain_F);
 }
 
 void pm_const_E_wb(const char *s)
@@ -499,8 +519,8 @@ void pm_i_slew_rate_auto(const char *s)
 	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
 	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
 
-	printf(	"D %3f (A)" EOL
-		"D %3f (A)" EOL,
+	printf(	"D %3f (A/Sec)" EOL
+		"Q %3f (A/Sec)" EOL,
 		&pm.i_slew_rate_D,
 		&pm.i_slew_rate_Q);
 }
@@ -577,7 +597,7 @@ void pm_p_set_point_x_g(const char *s)
 	angle = arctanf(pm.p_set_point_x[1], pm.p_set_point_x[0]);
 	g = angle * (180.f / MPIF) + (float) pm.p_set_point_revol * 360.f;
 
-	printf("%2f (degree)" EOL, &g);
+	printf("%1f (degree)" EOL, &g);
 }
 
 void pm_p_set_point_w_rpm(const char *s)
@@ -604,9 +624,32 @@ void pm_p_gain_P(const char *s)
 	printf("%2e" EOL, &pm.p_gain_P);
 }
 
+void pm_fi_gain_0(const char *s)
+{
+	stof(&pm.fi_gain[0], s);
+	printf("%2e" EOL, &pm.fi_gain[0]);
+}
+
+void pm_fi_gain_1(const char *s)
+{
+	stof(&pm.fi_gain[1], s);
+	printf("%2e" EOL, &pm.fi_gain[1]);
+}
+
+void pm_fi_gain_2(const char *s)
+{
+	stof(&pm.fi_gain[2], s);
+	printf("%2e" EOL, &pm.fi_gain[2]);
+}
+
 void pm_i_power_watt(const char *s)
 {
 	printf("%1f (W)" EOL, &pm.i_power_watt);
+}
+
+void pm_default(const char *s)
+{
+	pmc_default(&pm);
 }
 
 void pm_request_zero_drift(const char *s)
@@ -639,6 +682,58 @@ void pm_request_stop(const char *s)
 	pmc_request(&pm, PMC_STATE_STOP);
 }
 
+void pm_update_const_R(const char *s)
+{
+	if (pm.m_state == PMC_STATE_IDLE) {
+
+		pm.const_R += pm.wave_temp[2];
+		pm.wave_temp[2] = 0.f;
+
+		printf("%4e (Ohm)" EOL, &pm.const_R);
+	}
+}
+
+void pm_impedance(const char *s)
+{
+	float		IMP[6];
+
+	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+
+	printf(	"L1 %4e (H)" EOL
+		"L2 %4e (H)" EOL
+		"E %1f (degree)" EOL
+		"R1 %4e (Ohm)" EOL
+		"R2 %4e (Ohm)" EOL
+		"E %1f (degree)" EOL,
+		IMP + 0, IMP + 1, IMP + 2, IMP + 3, IMP + 4, IMP + 5);
+}
+
+void pm_update_const_L(const char *s)
+{
+	float		IMP[6];
+
+	if (pm.m_state == PMC_STATE_IDLE) {
+
+		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+
+		if (fabsf(IMP[2]) < 45.f) {
+
+			pm.const_Ld = IMP[0];
+			pm.const_Lq = IMP[1];
+		}
+		else {
+			pm.const_Ld = IMP[1];
+			pm.const_Lq = IMP[0];
+		}
+
+		pm.const_Ld_inversed = 1.f / pm.const_Ld;
+		pm.const_Lq_inversed = 1.f / pm.const_Lq;
+
+		printf("Ld %4e (H)" EOL, &pm.const_Ld);
+		printf("Lq %4e (H)" EOL, &pm.const_Lq);
+	}
+}
+
 static void
 irq_telemetry_1()
 {
@@ -656,7 +751,7 @@ irq_telemetry_1()
 		td.pIRQ = NULL;
 }
 
-void tel_start(const char *s)
+void tel_capture(const char *s)
 {
 	if (td.pIRQ == NULL) {
 
@@ -673,69 +768,45 @@ void tel_start(const char *s)
 	}
 }
 
+void tel_live(const char *s)
+{
+	int		xC;
+
+	if (td.pIRQ == NULL) {
+
+		tel.sDEC = 1200;
+		stoi(&tel.sDEC, s);
+
+		tel.pZ = tel.pD;
+		tel.sCNT = 0;
+		tel.iEN = 1;
+
+		halWFI();
+
+		td.pIRQ = &irq_telemetry_1;
+
+		do {
+			taskIOMUX();
+			xC = shRecv();
+
+			if (xC == 3 || xC == 4)
+				break;
+
+			if (tel.pZ != tel.pD) {
+
+				telFlush();
+				tel.pZ = tel.pD;
+			}
+		}
+		while (1);
+
+		tel.iEN = 0;
+	}
+}
+
 void tel_flush(const char *s)
 {
 	telFlush();
-}
-
-static void
-irq_avg_value_4()
-{
-	if (td.avgN < td.avgMAX) {
-
-		td.avgSUM[0] += *td.avgIN[0];
-		td.avgSUM[1] += *td.avgIN[1];
-		td.avgSUM[2] += *td.avgIN[2];
-		td.avgSUM[3] += *td.avgIN[3];
-
-		td.avgN++;
-	}
-	else
-		td.pIRQ = NULL;
-}
-
-void ap_update_const_E(const char *s)
-{
-	if (td.pIRQ == NULL && pm.lu_region != PMC_LU_DISABLED) {
-
-		td.avgIN[0] = &pm.lu_X[0];
-		td.avgIN[1] = &pm.lu_X[1];
-		td.avgIN[2] = &pm.lu_X[4];
-		td.avgIN[3] = &pm.drift_Q;
-
-		td.avgSUM[0] = 0.f;
-		td.avgSUM[1] = 0.f;
-		td.avgSUM[2] = 0.f;
-		td.avgSUM[3] = 0.f;
-
-		td.avgN = 0;
-		td.avgMAX = pm.freq_hz * pm.T_measure;
-
-		td.pIRQ = &irq_avg_value_4;
-
-		while (td.pIRQ != NULL)
-			taskIOMUX();
-
-		td.avgSUM[0] /= (float) td.avgN;
-		td.avgSUM[1] /= (float) td.avgN;
-		td.avgSUM[2] /= (float) td.avgN;
-		td.avgSUM[3] /= (float) td.avgN;
-
-		pm.const_E -= td.avgSUM[3] / td.avgSUM[2];
-	}
-}
-
-void codes()
-{
-	int		j, c;
-
-	for (j = 0; j < 5; ++j) {
-
-		while ((c = shRecv()) < 0) 
-			taskIOMUX();
-
-		printf("-- %i" EOL, c);
-	}
 }
 
 const shCMD_t		cmList[] = {
@@ -743,6 +814,7 @@ const shCMD_t		cmList[] = {
 	{"uptime", &uptime},
 	{"irqload", &irqload},
 	{"reboot", &reboot},
+	{"keycodes", &keycodes},
 
 	{"pwm_freq_hz", &pwm_freq_hz},
 	{"pwm_dead_time_ns", &pwm_dead_time_ns},
@@ -753,8 +825,6 @@ const shCMD_t		cmList[] = {
 	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
 	{"pm_m_bitmask_fewer_switching_modulation", &pm_m_bitmask_fewer_switching_modulation},
 	{"pm_m_bitmask_position_control_loop", &pm_m_bitmask_position_control_loop},
-	{"pm_m_bitmask_update_R_after_hold", &pm_m_bitmask_update_R_after_hold},
-	{"pm_m_bitmask_update_L_after_sine", &pm_m_bitmask_update_L_after_sine},
 
 	{"pm_m_errno", &pm_m_errno},
 
@@ -794,6 +864,9 @@ const shCMD_t		cmList[] = {
 	{"pm_lu_low_hysteresis", &pm_lu_low_hysteresis},
 	{"pm_lu_residual_variance", &pm_lu_residual_variance},
 
+	{"pm_fault_iab_maximal", &pm_fault_iab_maximal},
+	{"pm_fault_residual_maximal", &pm_fault_residual_maximal},
+
 	{"pm_hf_freq_hz", &pm_hf_freq_hz},
 	{"pm_hf_swing_D", &pm_hf_swing_D},
 
@@ -830,7 +903,12 @@ const shCMD_t		cmList[] = {
 	{"pm_p_gain_D", &pm_p_gain_D},
 	{"pm_p_gain_P", &pm_p_gain_P},
 
+	{"pm_fi_gain_0", &pm_fi_gain_0},
+	{"pm_fi_gain_1", &pm_fi_gain_1},
+	{"pm_fi_gain_2", &pm_fi_gain_2},
+
 	{"pm_i_power_watt", &pm_i_power_watt},
+	{"pm_default", &pm_default},
 
 	{"pm_request_zero_drift", &pm_request_zero_drift},
 	{"pm_request_wave_hold", &pm_request_wave_hold},
@@ -839,12 +917,15 @@ const shCMD_t		cmList[] = {
 	{"pm_request_start", &pm_request_start},
 	{"pm_request_stop", &pm_request_stop},
 
-	{"tel_start", &tel_start},
+	{"pm_update_const_R", &pm_update_const_R},
+	{"pm_impedance", &pm_impedance},
+	{"pm_update_const_L", &pm_update_const_L},
+
+	{"tel_capture", &tel_capture},
+	{"tel_live", &tel_live},
 	{"tel_flush", &tel_flush},
 
 	{"ap_update_const_E", &ap_update_const_E},
-
-	{"codes", &codes},
 
 	{NULL, NULL},
 };

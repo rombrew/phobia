@@ -120,8 +120,8 @@ void halMain()
 	/* Config.
 	 * */
 	halUSART.baudRate = 57600;
-	halPWM.freq_hz = 40000;
-	halPWM.dead_time_ns = 200;
+	halPWM.freq_hz = 60000;
+	halPWM.dead_time_ns = 90;
 
 	usartEnable();
 

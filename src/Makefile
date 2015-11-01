@@ -29,7 +29,8 @@ OBJS	= hal/entry.o \
 	hal/pwm.o \
 	hal/usart.o
 
-OBJS	+= cml.o \
+OBJS	+= ap.o \
+	cml.o \
 	lib.o \
 	m.o \
 	pmc.o \

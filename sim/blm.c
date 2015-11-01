@@ -39,9 +39,9 @@ void blm_Enable(blm_t *m)
 	double		Kv;
 
 	m->Tsim = 0.; /* Simulation time (Second) */
-        m->dT = 1. / 40e+3; /* Time delta */
+        m->dT = 1. / 60e+3; /* Time delta */
 	m->sT = 5e-6; /* Solver step */
-	m->PWMR = 2100; /* PWM resolution */
+	m->PWMR = 1400; /* PWM resolution */
 	m->mDQ = 1; /* Saliency model */
 
 	m->sF[0] = 0;
@@ -92,8 +92,8 @@ void blm_Enable(blm_t *m)
 
 	/* D/Q inductance. (Henry)
          * */
-	m->Ld = 14e-6;
-	m->Lq = 21e-6;
+	m->Ld = 15e-6;
+	m->Lq = 22e-6;
 }
 
 static void

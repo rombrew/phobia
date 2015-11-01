@@ -21,10 +21,9 @@
 
 enum {
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
-	PMC_BIT_FEWER_SWITCHING_MODULATION	= 0x0004,
+	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0008,
+	PMC_BIT_FEWER_SWITCHING_MODULATION	= 0x0010,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
-	PMC_BIT_UPDATE_R_AFTER_HOLD		= 0x0100,
-	PMC_BIT_UPDATE_L_AFTER_SINE		= 0x0200,
 };
 
 enum {
@@ -35,7 +34,8 @@ enum {
 	PMC_STATE_CALIBRATION,
 	PMC_STATE_START,
 	PMC_STATE_STOP,
-	PMC_STATE_END
+	PMC_STATE_END,
+	PMC_STATE_FAILURE
 };
 
 enum {
@@ -46,9 +46,10 @@ enum {
 
 enum {
 	PMC_OK					= 0,
-	PMC_ERROR_BROKEN_HARDWARE,
-	PMC_ERROR_INVALID_CONFIGURATION,
-	PMC_ERROR_SYNC_LOST
+	PMC_ERROR_OPEN_CIRCUIT,
+	PMC_ERROR_OVERCURRENT,
+	PMC_ERROR_CURRENT_SENSOR_FAULT,
+	PMC_ERROR_
 };
 
 typedef struct {
@@ -92,6 +93,8 @@ typedef struct {
 	float		wave_freq_sine_hz;
 	float		wave_gain_P;
 	float		wave_gain_I;
+	float		wave_temp[4];
+	float		wave_DFT[8];
 
 	/* Scale constants.
 	 * */
@@ -111,6 +114,7 @@ typedef struct {
 	float		lu_gain_K[8];
 	float		lu_low_threshold;
 	float		lu_low_hysteresis;
+	float		lu_flux_polarity;
 	int		lu_region;
 
 	/* Measurement residual.
@@ -119,16 +123,16 @@ typedef struct {
 	float		lu_residual_Q;
 	float		lu_residual_variance;
 
+	/* Fault limits.
+	 * */
+	float		fault_iab_maximal;
+	float		fault_residual_maximal;
+
 	/* HFI observer.
 	 * */
 	float		hf_freq_hz;
 	float		hf_swing_D;
 	float		hf_CS[2];
-
-	/* Temporal.
-	 * */
-	float		temp_A[4];
-	float		temp_B[8];
 
 	/* Zero Drift.
 	 * */
@@ -142,7 +146,6 @@ typedef struct {
 	 * */
 	float		const_U;
 	float		const_U_inversed;
-	float		const_U_gain_F;
 
 	/* Electrical constants.
 	 * */
@@ -183,6 +186,10 @@ typedef struct {
 	float		p_gain_D;
 	float		p_gain_P;
 
+	/* Filter gains.
+	 * */
+	float		fi_gain[4];
+
 	/* Informational.
 	 * */
 	float		i_power_watt;
@@ -197,8 +204,10 @@ pmc_t;
 void pmc_default(pmc_t *pm);
 void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
-
 void pmc_request(pmc_t *pm, int req);
+
+void pmc_impedance(const float *DFT, float hz, float *IMP);
+const char *pmc_strerror(int errno);
 
 #endif /* _H_PMC_ */
 

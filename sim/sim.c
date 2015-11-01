@@ -140,7 +140,7 @@ sim_Tel(float *pTel)
 
 	/* Variance.
 	 * */
-	pTel[33] = 0.f;
+	pTel[33] = pm.wave_temp[0];
 }
 
 static void
@@ -188,6 +188,8 @@ sim_F(FILE *fdTel, double dT, int Verb)
 static void
 sim_Script(FILE *fdTel)
 {
+	float			IMP[6];
+
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = m.PWMR;
@@ -214,10 +216,17 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 	sim_F(fdTel, 1., 0);
 
+	pm.const_R += pm.wave_temp[2];
+
 	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
 
 	pmc_request(&pm, PMC_STATE_WAVE_SINE);
 	sim_F(fdTel, .7, 0);
+
+	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+
+	printf("IMP\t%.4e %.4e %.4e %.4e %.4e %.4e\n",
+		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);
 
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
 	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);

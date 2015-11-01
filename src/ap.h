@@ -16,50 +16,16 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "lib.h"
-#include "sh.h"
-#include "tel.h"
+#ifndef _H_AP_
+#define _H_AP_
 
-tel_t				tel;
+enum {
+	AP_OK					= 1000,
+	AP_ERROR_UNBALANCED_RESISTANCE,
+	AP_ERROR_
+};
 
-void telCapture()
-{
-	int			j, SZ;
+void ap_update_const_E(const char *s);
 
-	for (j = 0; j < tel.pSZ; ++j)
-		tel.sAVG[j] += tel.pIN[j];
-
-	tel.sCNT++;
-
-	if (tel.sCNT >= tel.sDEC) {
-
-		for (j = 0; j < tel.pSZ; ++j) {
-
-			*tel.pZ++ = tel.sAVG[j] / tel.sCNT;
-			tel.sAVG[j] = 0;
-		}
-
-		SZ = tel.pZ - tel.pD + tel.pSZ;
-		tel.iEN = (SZ < TELSZ) ? tel.iEN : 0;
-
-		tel.sCNT = 0;
-	}
-}
-
-void telFlush()
-{
-	short int		*pZ, *pEnd;
-	int			j;
-
-	pZ = tel.pD;
-	pEnd = tel.pZ;
-
-	while (pZ < pEnd) {
-
-		for (j = 0; j < tel.pSZ; ++j)
-			printf("%i ", *pZ++);
-
-		puts(EOL);
-	}
-}
+#endif /* _H_AP_ */
 

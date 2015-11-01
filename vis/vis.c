@@ -23,19 +23,36 @@
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
 
+float			angle;
+
+static void
+Read()
+{
+	int		tel[4], n;
+
+	n = scanf("%i %i %i %i \n", tel + 0, tel + 1, tel + 2, tel + 3);
+
+	angle = atan2f(tel[3], tel[2]) * 180.f / M_PI;
+}
+
 static void
 Draw()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glLoadIdentity();
-
-	glBegin(GL_TRIANGLES);
+	glRotatef(angle, 0.f, 0.f, 1.f);
 
 	glColor3f(1.f, 1.f, 1.f);
 
-	glVertex2f(0.f, 0.f);
-	glVertex2f(.9f, .9f);
-	glVertex2f(.8f, .9f);
+	glBegin(GL_TRIANGLES);
+
+	glVertex2f(0.f, 3e-2f);
+	glVertex2f(0.f, - 3e-2f);
+	glVertex2f(.9f, 3e-2f);
+
+	glVertex2f(0.f, - 3e-2f);
+	glVertex2f(.9f, - 3e-2f);
+	glVertex2f(.9f, 3e-2f);
 
 	glEnd();
 }
@@ -45,7 +62,7 @@ int main(int argc, char *argv[])
 	SDL_Window	*window;
 	SDL_GLContext	glcontext;
 	SDL_Event	event;
-	int		szx, szy, running;
+	int		w, h, running;
 	double		temp;
 
 	SDL_Init(SDL_INIT_VIDEO);
@@ -53,14 +70,13 @@ int main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 16);
 
-	szx = 1024;
-	szy = 768;
-
 	window = SDL_CreateWindow("VIS", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			szx, szy, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+			0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
 
 	if (window == NULL)
 		exit(1);
+
+	SDL_GetWindowSize(window, &w, &h);
 
 	glcontext = SDL_GL_CreateContext(window);
 
@@ -69,8 +85,8 @@ int main(int argc, char *argv[])
 	glShadeModel(GL_SMOOTH);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	temp = (double) szx / (double) szy;
-	glOrtho(-temp, temp, -1., 1., -1, 1.);
+	temp = (double) w / (double) h;
+	glOrtho(- temp, temp, - 1., 1., - 1, 1.);
 	glMatrixMode(GL_MODELVIEW);
 
 	running = 1;
@@ -98,6 +114,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		Read();
 		Draw();
 
 		glFlush();

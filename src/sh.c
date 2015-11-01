@@ -195,6 +195,8 @@ shCyclicMatch(int xDIR)
 	do {
 		if (pCMD < cmList) {
 
+			/* Jump to the end.
+			 * */
 			while (pCMD->iD != NULL) ++pCMD;
 			--pCMD;
 
@@ -206,6 +208,8 @@ shCyclicMatch(int xDIR)
 
 		if (iD == NULL) {
 
+			/* Jump to the begin.
+			 * */
 			pCMD = cmList;
 
 			if (N++)

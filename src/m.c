@@ -58,7 +58,7 @@ float arctanf(float y, float x)
 	return (y < 0.f) ? - f : f;
 }
 
-static float	kpoly[8] = {
+static float	pl[8] = {
 
 	-1.37729499e-4f,
 	-2.04509846e-4f,
@@ -84,14 +84,14 @@ float ksinf(float angle)
         if (angle > (MPIF / 2.f))
                 angle = MPIF - angle;
 
-        u = kpoly[1] + kpoly[0] * angle;
-        u = kpoly[2] + u * angle;
-        u = kpoly[3] + u * angle;
-	u = kpoly[4] + u * angle;
-	u = kpoly[5] + u * angle;
-	u = kpoly[6] + u * angle;
-	u = kpoly[7] + u * angle;
-	
+        u = pl[1] + pl[0] * angle;
+        u = pl[2] + u * angle;
+        u = pl[3] + u * angle;
+	u = pl[4] + u * angle;
+	u = pl[5] + u * angle;
+	u = pl[6] + u * angle;
+	u = pl[7] + u * angle;
+
 	return m ? - u : u;
 }
 
@@ -111,13 +111,13 @@ float kcosf(float angle)
 
 	angle = (MPIF / 2.f) - angle;
 
-	u = kpoly[1] + kpoly[0] * angle;
-	u = kpoly[2] + u * angle;
-	u = kpoly[3] + u * angle;
-	u = kpoly[4] + u * angle;
-	u = kpoly[5] + u * angle;
-	u = kpoly[6] + u * angle;
-	u = kpoly[7] + u * angle;
+	u = pl[1] + pl[0] * angle;
+	u = pl[2] + u * angle;
+	u = pl[3] + u * angle;
+	u = pl[4] + u * angle;
+	u = pl[5] + u * angle;
+	u = pl[6] + u * angle;
+	u = pl[7] + u * angle;
 
 	return m ? - u : u;
 }
