@@ -24,9 +24,9 @@
 
 int			ap_errno;
 
+extern void pm_const_E_wb(const char *s);
 extern void pm_i_slew_rate_auto(const char *s);
 extern void pm_i_gain_auto(const char *s);
-extern void pm_const_E_wb(const char *s);
 
 static void
 irq_avg_value_4()
@@ -73,25 +73,9 @@ ap_strerror(int errno)
 { ap_errno = errno; printf("AP ERROR %i: %s" EOL, \
 		errno, ap_strerror(errno)); break; }
 
-static void
-ap_get_const_L(float *LDQ)
-{
-	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
-
-	if (fabsf(IMP[2]) < 45.f) {
-
-		LDQ[0] = IMP[0];
-		LDQ[1] = IMP[1];
-	}
-	else {
-		LDQ[0] = IMP[1];
-		LDQ[1] = IMP[0];
-	}
-}
-
 void ap_identify_base(const char *s)
 {
-	float			LDQ[4], temp;
+	float			IMP[6];
 
 	while (pm.lu_region == PMC_LU_DISABLED)
 	{
@@ -113,49 +97,35 @@ void ap_identify_base(const char *s)
 
 		printf("R %4e (Ohm)" EOL, &pm.const_R);
 
-		temp = pm.wave_freq_sine_hz;
-		pm.wave_freq_sine_hz = 10.f;
+		pmc_request(&pm, PMC_STATE_WAVE_SINE);
+		AP_WAIT_FOR_IDLE();
+
+		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+
+		if (fabsf(IMP[2]) < 45.f) {
+
+			pm.const_Ld = IMP[0];
+			pm.const_Lq = IMP[1];
+		}
+		else {
+			pm.const_Ld = IMP[1];
+			pm.const_Lq = IMP[0];
+		}
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
 		AP_WAIT_FOR_IDLE();
 
 		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
-		pm.wave_freq_sine_hz = temp;
 
-		printf( "+ R1 %4e (Ohm)" EOL
-			"+ R2 %4e (Ohm)" EOL, IMP + 3, IMP + 4);
+		if (fabsf(IMP[2]) < 45.f) {
 
-		(IMP[3] / IMP[4] < 91e-2f) ? AP_ERORR(AP_ERROR_UNBALANCED_RESISTANCE) : 0;
-
-		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-		AP_WAIT_FOR_IDLE();
-
-		pmc_request(&pm, PMC_STATE_WAVE_SINE);
-		AP_WAIT_FOR_IDLE();
-
-		ap_get_const_L(LDQ + 0);
-
-		temp = pm.wave_freq_sine_hz;
-		pm.wave_freq_sine_hz /= 2.f;
-
-		pmc_request(&pm, PMC_STATE_WAVE_SINE);
-		AP_WAIT_FOR_IDLE();
-
-		ap_get_const_L(LDQ + 2);
-		pm.wave_freq_sine_hz = temp;
-
-		printf(	"+ F %1f (Hz)" EOL
-			"+ L1 %4e (H)" EOL
-			"+ L2 %4e (H)" EOL,
-			"+ F/2 %1f (Hz)" EOL
-			"+ L1 %4e (H)" EOL,
-			"+ L2 %4e (H)" EOL,
-			LDQ + 0, LDQ + 1, LDQ + 2, LDQ + 3);
-
-		temp = (LDQ[0] - LDQ[2]) / (LDQ[0] + LDQ[2]) * 2.f;
-		(17e-2f < temp) ? AP_ERORR() : 0;
-
-		/* TODO */
+			pm.const_Ld = IMP[0];
+			pm.const_Lq = IMP[1];
+		}
+		else {
+			pm.const_Ld = IMP[1];
+			pm.const_Lq = IMP[0];
+		}
 
 		pm.const_Ld_inversed = 1.f / pm.const_Ld;
 		pm.const_Lq_inversed = 1.f / pm.const_Lq;
@@ -168,6 +138,23 @@ void ap_identify_base(const char *s)
 
 		break;
 	}
+}
+
+void ap_identify_defect(const char *s)
+{
+	/*temp = pm.wave_freq_sine_hz;
+	pm.wave_freq_sine_hz = 10.f;
+
+	pmc_request(&pm, PMC_STATE_WAVE_SINE);
+	AP_WAIT_FOR_IDLE();
+
+	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+	pm.wave_freq_sine_hz = temp;
+
+	printf( "+ R1 %4e (Ohm)" EOL
+			"+ R2 %4e (Ohm)" EOL, IMP + 3, IMP + 4);
+
+	(IMP[3] / IMP[4] < 91e-2f) ? AP_ERORR(AP_ERROR_UNBALANCED_RESISTANCE) : 0;*/
 }
 
 void ap_update_const_E(const char *s)
