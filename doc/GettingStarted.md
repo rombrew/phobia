@@ -65,7 +65,7 @@ Alternatively you could use position control loop at the first start.
 Next stage is to estimate BEMF constant more accurately. Do this when motor is
 in run. Choice of the speed may affect the result.
 
-	# ap_update_const_E
+	# ap_identify_const_E
 
 This completed the basic configuration.
 

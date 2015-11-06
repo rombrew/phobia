@@ -140,11 +140,6 @@ void pm_m_bitmask_high_frequency_injection(const char *s)
 	pm_m_bitmask(s, PMC_BIT_HIGH_FREQUENCY_INJECTION);
 }
 
-void pm_m_bitmask_fewer_switching_modulation(const char *s)
-{
-	pm_m_bitmask(s, PMC_BIT_FEWER_SWITCHING_MODULATION);
-}
-
 void pm_m_bitmask_position_control_loop(const char *s)
 {
 	pm_m_bitmask(s, PMC_BIT_POSITION_CONTROL_LOOP);
@@ -505,13 +500,13 @@ void pm_i_set_point_Q(const char *s)
 void pm_i_slew_rate_D(const char *s)
 {
 	stof(&pm.i_slew_rate_D, s);
-	printf("%3f (A)" EOL, &pm.i_slew_rate_D);
+	printf("%1f (A/Sec)" EOL, &pm.i_slew_rate_D);
 }
 
 void pm_i_slew_rate_Q(const char *s)
 {
 	stof(&pm.i_slew_rate_Q, s);
-	printf("%3f (A)" EOL, &pm.i_slew_rate_Q);
+	printf("%1f (A/Sec)" EOL, &pm.i_slew_rate_Q);
 }
 
 void pm_i_slew_rate_auto(const char *s)
@@ -519,8 +514,8 @@ void pm_i_slew_rate_auto(const char *s)
 	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
 	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
 
-	printf(	"D %3f (A/Sec)" EOL
-		"Q %3f (A/Sec)" EOL,
+	printf(	"D %1f (A/Sec)" EOL
+		"Q %1f (A/Sec)" EOL,
 		&pm.i_slew_rate_D,
 		&pm.i_slew_rate_Q);
 }
@@ -734,6 +729,24 @@ void pm_update_const_L(const char *s)
 	}
 }
 
+void pm_update_scal_AB(const char *s)
+{
+	float		gain, pc;
+
+	if (pm.m_state == PMC_STATE_IDLE) {
+
+		gain = - pm.wave_temp[1] / pm.wave_temp[2];
+		pc = 100.f * (gain - 1.f);
+
+		pm.scal_B[1] *= gain;
+
+		printf(	"FIX %2f %%" EOL
+			"A1 %4e" EOL
+			"B1 %4e" EOL,
+			&pc, &pm.scal_A[1], &pm.scal_B[1]);
+	}
+}
+
 static void
 irq_telemetry_1()
 {
@@ -823,7 +836,6 @@ const shCMD_t		cmList[] = {
 	{"pm_pwm_minimal_pulse", &pm_pwm_minimal_pulse},
 
 	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
-	{"pm_m_bitmask_fewer_switching_modulation", &pm_m_bitmask_fewer_switching_modulation},
 	{"pm_m_bitmask_position_control_loop", &pm_m_bitmask_position_control_loop},
 
 	{"pm_m_errno", &pm_m_errno},
@@ -920,12 +932,14 @@ const shCMD_t		cmList[] = {
 	{"pm_update_const_R", &pm_update_const_R},
 	{"pm_impedance", &pm_impedance},
 	{"pm_update_const_L", &pm_update_const_L},
+	{"pm_update_scal_AB", &pm_update_scal_AB},
 
 	{"tel_capture", &tel_capture},
 	{"tel_live", &tel_live},
 	{"tel_flush", &tel_flush},
 
-	{"ap_update_const_E", &ap_update_const_E},
+	{"ap_identify_base", &ap_identify_base},
+	{"ap_identify_const_E", &ap_identify_const_E},
 
 	{NULL, NULL},
 };

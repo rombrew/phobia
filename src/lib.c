@@ -330,7 +330,7 @@ fmt_fexp(float x, int n)
 		n--;
 	}
 
-	PUTC('e');
+	PUTC('E');
 
 	if (de >= 0)
 		PUTC('+');

@@ -25,6 +25,9 @@ void irqADC()
 {
 	if (ADC1->SR & ADC_SR_JEOC) {
 
+		MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER5, GPIO_MODER_MODER5_0);
+		GPIOC->BSRRL = (1UL << 5);
+
 		ADC1->SR &= ~ADC_SR_JEOC;
 		ADC2->SR &= ~ADC_SR_JEOC;
 		ADC3->SR &= ~ADC_SR_JEOC;
@@ -35,6 +38,8 @@ void irqADC()
 
 		//__set_BASEPRI(7);
 		adcIRQ();
+
+		GPIOC->BSRRH = (1UL << 5);
 	}
 }
 
@@ -69,7 +74,7 @@ void adcEnable()
 	ADC2->CR1 = 0;
 	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC2->SMPR1 = 0;
-	ADC2->SMPR2 = ADC_SMPR2_SMP1_1;
+	ADC2->SMPR2 = ADC_SMPR2_SMP1_0;
 	ADC2->JSQR = ADC_JSQR_JSQ4_0;
 
 	/* Configure ADC3 on PA2.
@@ -77,7 +82,7 @@ void adcEnable()
 	ADC3->CR1 = 0;
 	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC3->SMPR1 = 0;
-	ADC3->SMPR2 = ADC_SMPR2_SMP2_1;
+	ADC3->SMPR2 = ADC_SMPR2_SMP2_0;
 	ADC3->JSQR = ADC_JSQR_JSQ4_1;
 
 	/* Enable ADC.

@@ -22,7 +22,6 @@
 enum {
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0008,
-	PMC_BIT_FEWER_SWITCHING_MODULATION	= 0x0010,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
 };
 
@@ -48,7 +47,9 @@ enum {
 	PMC_OK					= 0,
 	PMC_ERROR_OPEN_CIRCUIT,
 	PMC_ERROR_OVERCURRENT,
-	PMC_ERROR_CURRENT_SENSOR_FAULT,
+	PMC_ERROR_CURRENT_SENSOR,
+	PMC_ERROR_LOW_VOLTAGE,
+	PMC_ERROR_HIGH_VOLTAGE,
 	PMC_ERROR_
 };
 
@@ -63,6 +64,8 @@ typedef struct {
 	 * */
 	int		pwm_resolution;
 	int		pwm_minimal_pulse;
+	int		pwm_clean_zone;
+	int		pwm_dead_time;
 
 	/* FSM variables.
 	 * */

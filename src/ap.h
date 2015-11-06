@@ -25,7 +25,8 @@ enum {
 	AP_ERROR_
 };
 
-void ap_update_const_E(const char *s);
+void ap_identify_base(const char *s);
+void ap_identify_const_E(const char *s);
 
 #endif /* _H_AP_ */
 

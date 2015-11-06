@@ -62,7 +62,7 @@ void pwmEnable()
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = 0;
-	TIM1->BDTR = TIM_BDTR_MOE | D;
+	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | D;
 
 	/* Start TIM1.
 	 * */
@@ -122,23 +122,35 @@ void pwmDC(int uA, int uB, int uC)
 
 void pwmZ(int Z)
 {
-	if (Z & PWM_A)
+	if (Z & PWM_A) {
 
-		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
-	else
-		TIM1->CCER |= TIM_CCER_CC1NE | TIM_CCER_CC1E;
+		TIM1->CCER &= ~TIM_CCER_CC1NE;
+		TIM1->CCMR1 &= ~TIM_CCMR1_OC1M_1;
+	}
+	else {
+		TIM1->CCER |= TIM_CCER_CC1NE;
+		TIM1->CCMR1 |= TIM_CCMR1_OC1M_1;
+	}
 
-	if (Z & PWM_B)
+	if (Z & PWM_B) {
 
-		TIM1->CCER &= ~(TIM_CCER_CC2NE | TIM_CCER_CC2E);
-	else
-		TIM1->CCER |= TIM_CCER_CC2NE | TIM_CCER_CC2E;
+		TIM1->CCER &= ~TIM_CCER_CC2NE;
+		TIM1->CCMR1 &= ~TIM_CCMR1_OC2M_1;
+	}
+	else {
+		TIM1->CCER |= TIM_CCER_CC2NE;
+		TIM1->CCMR1 |= TIM_CCMR1_OC2M_1;
+	}
 
-	if (Z & PWM_C)
+	if (Z & PWM_C) {
 
-		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
-	else
-		TIM1->CCER |= TIM_CCER_CC3NE | TIM_CCER_CC3E;
+		TIM1->CCER &= ~TIM_CCER_CC3NE;
+		TIM1->CCMR2 &= ~TIM_CCMR2_OC3M_1;
+	}
+	else {
+		TIM1->CCER |= TIM_CCER_CC3NE;
+		TIM1->CCMR2 |= TIM_CCMR2_OC3M_1;
+	}
 
 	TIM1->EGR |= TIM_EGR_COMG;
 }

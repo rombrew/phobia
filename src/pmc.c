@@ -22,11 +22,11 @@
 void pmc_default(pmc_t *pm)
 {
 	pm->pwm_minimal_pulse = 8;
+	pm->pwm_clean_zone = 0;
 
 	pm->m_bitmask = 0
 		| PMC_BIT_HIGH_FREQUENCY_INJECTION
 		| PMC_BIT_FLUX_POLARITY_DETECTION
-		| PMC_BIT_FEWER_SWITCHING_MODULATION
 		| PMC_BIT_POSITION_CONTROL_LOOP;
 	pm->m_state = PMC_STATE_IDLE;
 	pm->m_phase = 0;
@@ -42,7 +42,7 @@ void pmc_default(pmc_t *pm)
 	pm->wave_i_sine = 1.f;
 	pm->wave_i_offset_D = 0.f;
 	pm->wave_i_offset_Q = 0.f;
-	pm->wave_freq_sine_hz = 5000.f;
+	pm->wave_freq_sine_hz = pm->freq_hz / 12.f;
 	pm->wave_gain_P = 1e-1f;
 	pm->wave_gain_I = 1e-2f;
 
@@ -67,7 +67,7 @@ void pmc_default(pmc_t *pm)
 	pm->fault_iab_maximal = 20.f;
 	pm->fault_residual_maximal = 0.f;
 
-	pm->hf_freq_hz = 5000.f;
+	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
 
 	pm->drift_AB_maximal = 2.f;
@@ -194,6 +194,9 @@ luenberger_update(pmc_t *pm, float iA, float iB)
 		pm->drift_Q += pm->lu_gain_K[7] * eQ;
 	}
 
+	temp = pm->freq_hz * (2.f * MPIF / 12.f);
+	X[4] = (X[4] > temp) ? temp : (X[4] < - temp) ? - temp : X[4];
+
 	pm_update(pm);
 
 	if (pm->lu_region == PMC_LU_LOW_REGION) {
@@ -257,26 +260,18 @@ vsi_control(pmc_t *pm, float uX, float uY)
 
 	Q = uMAX - uMIN;
 
-	if (Q < 1.f) {
+	if (Q > 1.f) {
 
-		if (pm->m_bitmask & PMC_BIT_FEWER_SWITCHING_MODULATION) {
-
-			Q = uMIN + uMAX;
-			Q = (Q < 0.f) ? 0.f - uMIN : 1.f - uMAX;
-		}
-		else {
-			Q = (uMIN < - .5f) ? 0.f - uMIN :
-				(uMAX > .5f) ? 1.f - uMAX : .5f;
-		}
-	}
-	else {
 		Q = 1.f / Q;
 		uA *= Q;
 		uB *= Q;
 		uC *= Q;
-
-		Q = .5f - (uMIN + uMAX) * Q * .5f;
+		uMIN *= Q;
 	}
+
+	/* Always clamp to GND.
+	 * */
+	Q = 0.f - uMIN;
 
 	uA += Q;
 	uB += Q;
@@ -286,10 +281,29 @@ vsi_control(pmc_t *pm, float uX, float uY)
 	xB = (int) (pm->pwm_resolution * uB + .5f);
 	xC = (int) (pm->pwm_resolution * uC + .5f);
 
-	temp = pm->pwm_resolution - pm->pwm_minimal_pulse;
+	temp = pm->pwm_resolution - (pm->pwm_minimal_pulse + pm->pwm_clean_zone);
 	xA = (xA < pm->pwm_minimal_pulse) ? 0 : (xA > temp) ? pm->pwm_resolution : xA;
 	xB = (xB < pm->pwm_minimal_pulse) ? 0 : (xB > temp) ? pm->pwm_resolution : xB;
 	xC = (xC < pm->pwm_minimal_pulse) ? 0 : (xC > temp) ? pm->pwm_resolution : xC;
+
+	/*
+	 * */
+	/*{
+		float	iX, iY, iA, iB, iC, DT;
+
+		iX = pm->lu_X[2] * pm->lu_X[0] - pm->lu_X[3] * pm->lu_X[1];
+		iY = pm->lu_X[3] * pm->lu_X[0] + pm->lu_X[2] * pm->lu_X[1];
+
+		iA = iX;
+		iB = - .5f * iX + .8660254f * iY;
+		iC = - .5f * iX - .8660254f * iY;
+
+		DT = 90e-9 * pm->freq_hz * (pm->const_U - .9f);
+
+		uA += (iA < 0.f) ? DT : - DT;
+		uB += (iB < 0.f) ? DT : - DT;
+		uC += (iC < 0.f) ? DT : - DT;
+	}*/
 
 	pm->pDC(xA, xB, xC);
 
@@ -460,6 +474,7 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_drift;
 
+				pm->m_errno = PMC_OK;
 				pm->m_phase++;
 			}
 			else {
@@ -479,10 +494,10 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 					pm->m_phase = 0;
 
 					if (fabsf(pm->scal_A[0]) > pm->fault_iab_maximal)
-						pm->m_errno = PMC_ERROR_CURRENT_SENSOR_FAULT;
+						pm->m_errno = PMC_ERROR_CURRENT_SENSOR;
 
 					if (fabsf(pm->scal_B[0]) > pm->fault_iab_maximal)
-						pm->m_errno = PMC_ERROR_CURRENT_SENSOR_FAULT;
+						pm->m_errno = PMC_ERROR_CURRENT_SENSOR;
 				}
 			}
 			break;
@@ -500,9 +515,12 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_hold;
 
+				pm->m_errno = PMC_OK;
 				pm->m_phase++;
 			}
 			else {
+				pm->wave_temp[2] += pm->vsi_X - pm->wave_i_hold * pm->const_R;
+
 				temp = pm->wave_i_hold - iA;
 				pm->wave_temp[0] += pm->wave_gain_I * temp;
 				uX = pm->wave_gain_P * temp + pm->wave_temp[0];
@@ -519,8 +537,6 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 					pm->m_phase = 0;
 					pm->m_errno = PMC_ERROR_OPEN_CIRCUIT;
 				}
-
-				pm->wave_temp[2] += pm->vsi_X - pm->wave_i_hold * pm->const_R;
 
 				vsi_control(pm, uX * pm->const_U_inversed,
 						uY * pm->const_U_inversed);
@@ -577,6 +593,7 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_sine;
 
+				pm->m_errno = PMC_OK;
 				pm->m_phase++;
 			}
 			else {
@@ -614,9 +631,6 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 
 			if (pm->m_phase == 0) {
 
-				/* FIXME: !
-				 * */
-
 				pm->pZ(4);
 
 				pm->wave_temp[0] = 0.f;
@@ -626,18 +640,32 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->T_measure;
 
+				pm->m_errno = PMC_OK;
 				pm->m_phase++;
 			}
 			else {
-				pm->wave_temp[0] += iA;
-				pm->wave_temp[1] += iB;
-				pm->wave_temp[2] += pm->const_U;
+				pm->wave_temp[1] += iA;
+				pm->wave_temp[2] += iB;
+
+				temp = pm->wave_i_hold - iA;
+				pm->wave_temp[0] += pm->wave_gain_I * temp;
+				uX = pm->wave_gain_P * temp + pm->wave_temp[0];
+
+				temp = .667f * pm->const_U;
+
+				if (fabsf(uX) > temp) {
+
+					pm->m_state = PMC_STATE_END;
+					pm->m_phase = 0;
+					pm->m_errno = PMC_ERROR_OPEN_CIRCUIT;
+				}
+
+				vsi_control(pm, uX * pm->const_U_inversed, 0.f);
 
 				pm->t_value++;
 
 				if (pm->t_value < pm->t_end) ;
 				else {
-					pm->wave_temp[0] /= pm->t_end;
 					pm->wave_temp[1] /= pm->t_end;
 					pm->wave_temp[2] /= pm->t_end;
 
@@ -648,6 +676,9 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 			break;
 
 		case PMC_STATE_START:
+
+			if (pm->m_errno != PMC_OK)
+				break;
 
 			pm->lu_region = PMC_LU_LOW_REGION;
 			pm->pZ(0);
@@ -726,6 +757,7 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 
 				if (pm->t_value < pm->t_end) ;
 				else {
+					pm->lu_region = PMC_LU_DISABLED;
 					pm->pZ(7);
 
 					pm->m_state = PMC_STATE_IDLE;

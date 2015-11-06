@@ -157,7 +157,7 @@ void ap_identify_defect(const char *s)
 	(IMP[3] / IMP[4] < 91e-2f) ? AP_ERORR(AP_ERROR_UNBALANCED_RESISTANCE) : 0;*/
 }
 
-void ap_update_const_E(const char *s)
+void ap_identify_const_E(const char *s)
 {
 	if (td.pIRQ == NULL && pm.lu_region != PMC_LU_DISABLED) {
 

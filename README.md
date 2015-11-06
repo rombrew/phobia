@@ -5,17 +5,17 @@ controller for RC.
 
 ## Features
 
-* Only vector control is supported. There is advanced PWM scheme to reduce
-  switching losses and fully utilise DC bus. Current control loop can limit
-  consumption or regeneration power. Features such as field weakening or
+* Only vector control is supported. Features such as field weakening or
   regenerative breaking are an integral part of vector control.
-* Only sensor-less operation. Two current sensors are used to obtain all the
-  info need to control the motor.
-* Fast and robust rotor position estimation algorithm (based on Luenberger
-  observer with a bit of gain scheduling).
+* Advanced PWM scheme to reduce switching losses and fully utilise DC bus.
+* Adjustable power limits for consumption and regeneration.
+* Only sensor-less operation. Two phase current sensors are used to obtain all
+  the info need to control the motor.
+* Fast and robust rotor position estimation algorithm based on Luenberger
+  observer with a bit of gain scheduling.
 * Operation at low or zero speed using HFI. But it requires a motor with
   magnetic saliency.
-* Speed and absolute position control. So it can operate like servo.
+* Speed and absolute position control. So it can operate like a servo.
 * Some simple motor faults as open circuit or winding short can be detected.
 * All functions are available from command line interface through USART.
 * Only hardware limited PWM frequency (currently 60kHz).
@@ -23,7 +23,9 @@ controller for RC.
 
 ## TODO
 
-* Accuracy of the position estimation should be carefully analysed.
+* Analyse: Accuracy of the position estimation.
+* Analyse: Stability at fast transients.
+* Analyse: Robustness to the motor parameters uncertainty.
 * Add CAN interface.
 * Design the final hardware.
 * Make a detailed documentation.
