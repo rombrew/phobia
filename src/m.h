@@ -44,10 +44,10 @@ sqrtf(float x) { return __builtin_sqrtf(x); }
 
 #endif
 
-void rotatef(float y[2], float angle, const float x[2]);
-float arctanf(float y, float x);
-float ksinf(float angle);
-float kcosf(float angle);
+void mrotf(float y[2], float angle, const float x[2]);
+float matan2f(float y, float x);
+float msinf(float angle);
+float mcosf(float angle);
 
 #endif /* _H_M_ */
 

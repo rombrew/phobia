@@ -36,8 +36,8 @@ void pwmEnable()
 
 	D = ((HZ_APB2 * 2UL / 1000UL) * halPWM.dead_time_ns + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : (D < 256) ? 128 + (D - 128) / 2 : 191;
-	halPWM.dead_time_ns = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255)
-		* 1000000UL / (HZ_APB2 * 2UL / 1000UL);
+	halPWM.dead_time_tk = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255);
+	halPWM.dead_time_ns = halPWM.dead_time_tk * 1000000UL / (HZ_APB2 * 2UL / 1000UL);
 
 	/* Enable TIM1 clock.
 	 * */

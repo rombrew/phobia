@@ -40,7 +40,7 @@ void telCapture()
 		}
 
 		SZ = tel.pZ - tel.pD + tel.pSZ;
-		tel.iEN = (SZ < TELSZ) ? tel.iEN : 0;
+		tel.iEN = (SZ <= TELSZ) ? tel.iEN : 0;
 
 		tel.sCNT = 0;
 	}

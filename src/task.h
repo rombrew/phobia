@@ -38,9 +38,10 @@ typedef struct {
 
 	/* Average variables.
 	 * */
-	float			*avgIN[4];
-	float			avgSUM[4];
-	int			avgN, avgMAX;
+	float			*avgIN[8];
+	float			avgSUM[8];
+	int			avgK, avgN, avgMAX;
+	float			avg_default_time;
 }
 taskDATA_t;
 

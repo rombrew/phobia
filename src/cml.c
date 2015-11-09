@@ -25,7 +25,7 @@
 #include "task.h"
 #include "tel.h"
 
-void uptime(const char *s)
+void td_uptime(const char *s)
 {
 	int		Day, Hour, Min, Sec;
 
@@ -42,7 +42,7 @@ void uptime(const char *s)
 			Day, Hour, Min, Sec);
 }
 
-void irqload(const char *s)
+void td_irqload(const char *s)
 {
 	int		Tirq, Tbase, Rpc;
 
@@ -50,10 +50,16 @@ void irqload(const char *s)
 	Tirq = td.Tirq;
 	Rpc = 100 * Tirq / Tbase;
 
-	printf("%i%% (%i/%i)" EOL, Rpc, Tirq, Tbase);
+	printf("%i %% (%i/%i)" EOL, Rpc, Tirq, Tbase);
 }
 
-void reboot(const char *s)
+void td_avg_default_time(const char *s)
+{
+	stof(&td.avg_default_time, s);
+	printf("%3f (Sec)" EOL, &td.avg_default_time);
+}
+
+void td_reboot(const char *s)
 {
 	int		End, Del = 3;
 
@@ -69,7 +75,7 @@ void reboot(const char *s)
 	halReset();
 }
 
-void keycodes()
+void td_keycodes(const char *s)
 {
 	int		xC;
 
@@ -87,14 +93,18 @@ void keycodes()
 
 void pwm_freq_hz(const char *s)
 {
-	stoi(&halPWM.freq_hz, s);
+	if (stoi(&halPWM.freq_hz, s) != NULL) {
+	}
+
 	printf("%i (Hz)" EOL, halPWM.freq_hz);
 }
 
 void pwm_dead_time_ns(const char *s)
 {
-	stoi(&halPWM.dead_time_ns, s);
-	printf("%i (ns)" EOL, halPWM.dead_time_ns);
+	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
+	}
+
+	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
 }
 
 void pm_pwm_resolution(const char *s)
@@ -102,7 +112,8 @@ void pm_pwm_resolution(const char *s)
 	printf("%i" EOL, pm.pwm_resolution);
 }
 
-void pm_pwm_minimal_pulse(const char *s)
+static void
+pm_pwm_int_modify(int *param, const char *s)
 {
 	float		scal_G;
 	int		ns;
@@ -110,11 +121,26 @@ void pm_pwm_minimal_pulse(const char *s)
 	scal_G = 1e-9f * pm.freq_hz * pm.pwm_resolution;
 
 	if (stoi(&ns, s) != NULL)
-		pm.pwm_minimal_pulse = (int) (ns * scal_G + .5f);
+		*param = (int) (ns * scal_G + .5f);
 
-	ns = (int) (pm.pwm_minimal_pulse / scal_G + .5f);
+	ns = (int) (*param / scal_G + .5f);
 
-	printf("%i (ns)" EOL, ns);
+	printf("%i (tk) %i (ns)" EOL, *param, ns);
+}
+
+void pm_pwm_minimal_pulse(const char *s)
+{
+	pm_pwm_int_modify(&pm.pwm_minimal_pulse, s);
+}
+
+void pm_pwm_clean_zone(const char *s)
+{
+	pm_pwm_int_modify(&pm.pwm_clean_zone, s);
+}
+
+void pm_pwm_dead_time_compensation(const char *s)
+{
+	pm_pwm_int_modify(&pm.pwm_dead_time_compensation, s);
 }
 
 static void
@@ -149,13 +175,13 @@ void pm_m_errno(const char *s)
 {
 	int		flag;
 
-	printf("%i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno));
-
 	if (stoi(&flag, s) != NULL) {
 
 		if (flag == 0)
-			pm.m_errno = 0;
+			pm.m_errno = PMC_OK;
 	}
+
+	printf("%i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno));
 }
 
 void pm_T_drift(const char *s)
@@ -254,31 +280,84 @@ void pm_scal_U1(const char *s)
 	printf("%4e" EOL, &pm.scal_U[1]);
 }
 
+void irq_avg_value_8()
+{
+	int			j;
+
+	if (td.avgN <= td.avgMAX) {
+
+		for (j = 0; j < td.avgK; ++j)
+			td.avgSUM[j] += *td.avgIN[j];
+
+		td.avgN++;
+	}
+	else
+		td.pIRQ = NULL;
+}
+
+static float
+pm_avg_float_1(float *param, float time)
+{
+	td.avgIN[0] = param;
+	td.avgSUM[0] = 0.f;
+	td.avgK = 1;
+	td.avgN = 0;
+	td.avgMAX = pm.freq_hz * time;
+
+	halWFI();
+
+	td.pIRQ = &irq_avg_value_8;
+
+	while (td.pIRQ != NULL)
+		taskIOMUX();
+
+	td.avgSUM[0] /= (float) td.avgN;
+
+	return td.avgSUM[0];
+}
+
+static float
+pm_avg_float_arg_1(float *param, const char *s)
+{
+	float			time = td.avg_default_time;
+
+	stof(&time, s);
+
+	return pm_avg_float_1(param, time);
+}
+
 void pm_lu_X0(const char *s)
 {
-	printf("%3f (A)" EOL, &pm.lu_X[0]);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.lu_X[0], s);
+	printf("%3f (A)" EOL, &avg);
 }
 
 void pm_lu_X1(const char *s)
 {
-	printf("%3f (A)" EOL, &pm.lu_X[1]);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.lu_X[1], s);
+	printf("%3f (A)" EOL, &avg);
 }
 
 void pm_lu_X23(const char *s)
 {
 	float			g;
 
-	g = arctanf(pm.lu_X[3], pm.lu_X[2]) * 180.f / MPIF;
+	g = matan2f(pm.lu_X[3], pm.lu_X[2]) * 180.f / MPIF;
 	printf("%1f (degree) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
 }
 
 void pm_lu_X4(const char *s)
 {
-	float			RPM;
+	float			avg, RPM;
 
-	RPM = 9.5492969f * pm.lu_X[4] / pm.const_Zp;
+	avg = pm_avg_float_arg_1(&pm.lu_X[4], s);
+	RPM = 9.5492969f * avg / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_X[4], &RPM);
+	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
 }
 
 void pm_lu_gain_K0(const char *s)
@@ -351,7 +430,10 @@ void pm_lu_low_hysteresis(const char *s)
 
 void pm_lu_residual_variance(const char *s)
 {
-	printf("%4e" EOL, &pm.lu_residual_variance);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.lu_residual_variance, s);
+	printf("%4e" EOL, &avg);
 }
 
 void pm_fault_iab_maximal(const char *s)
@@ -380,20 +462,26 @@ void pm_hf_swing_D(const char *s)
 
 void pm_drift_A(const char *s)
 {
-	stof(&pm.drift_A, s);
-	printf("%3f (A)" EOL, &pm.drift_A);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.drift_A, s);
+	printf("%3f (A)" EOL, &avg);
 }
 
 void pm_drift_B(const char *s)
 {
-	stof(&pm.drift_B, s);
-	printf("%3f (A)" EOL, &pm.drift_B);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.drift_B, s);
+	printf("%3f (A)" EOL, &avg);
 }
 
 void pm_drift_Q(const char *s)
 {
-	stof(&pm.drift_Q, s);
-	printf("%3f (V)" EOL, &pm.drift_Q);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.drift_Q, s);
+	printf("%3f (V)" EOL, &avg);
 }
 
 void pm_drift_AB_maximal(const char *s)
@@ -410,8 +498,10 @@ void pm_drift_Q_maximal(const char *s)
 
 void pm_const_U(const char *s)
 {
-	stof(&pm.const_U, s);
-	printf("%3f (V)" EOL, &pm.const_U);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.const_U, s);
+	printf("%3f (V)" EOL, &avg);
 }
 
 void pm_const_E_wb(const char *s)
@@ -584,17 +674,18 @@ void pm_p_set_point_x_g(const char *s)
 		}
 
 		angle = g * (MPIF / 180.f);
-		pm.p_set_point_x[0] = kcosf(angle);
-		pm.p_set_point_x[1] = ksinf(angle);
+		pm.p_set_point_x[0] = mcosf(angle);
+		pm.p_set_point_x[1] = msinf(angle);
 		pm.p_set_point_revol = revol;
 	}
 
-	angle = arctanf(pm.p_set_point_x[1], pm.p_set_point_x[0]);
+	angle = matan2f(pm.p_set_point_x[1], pm.p_set_point_x[0]);
 	g = angle * (180.f / MPIF) + (float) pm.p_set_point_revol * 360.f;
 
 	printf("%1f (degree)" EOL, &g);
 }
 
+void tel_capture(const char *s);
 void pm_p_set_point_w_rpm(const char *s)
 {
 	float			RPM;
@@ -602,6 +693,7 @@ void pm_p_set_point_w_rpm(const char *s)
 	if (stof(&RPM, s) != NULL)
 		pm.p_set_point_w = .10471976f * RPM * pm.const_Zp;
 
+	tel_capture(EOL);
 	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
 
 	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
@@ -639,12 +731,16 @@ void pm_fi_gain_2(const char *s)
 
 void pm_i_power_watt(const char *s)
 {
-	printf("%1f (W)" EOL, &pm.i_power_watt);
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.i_power_watt, s);
+	printf("%1f (W)" EOL, &avg);
 }
 
 void pm_default(const char *s)
 {
-	pmc_default(&pm);
+	if (pm.lu_region == PMC_LU_DISABLED)
+		pmc_default(&pm);
 }
 
 void pm_request_zero_drift(const char *s)
@@ -754,9 +850,10 @@ irq_telemetry_1()
 
 		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
 		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[2] * 1000.f);
-		tel.pIN[3] = (short int) (pm.lu_X[3] * 1000.f);
-		tel.pSZ = 4;
+		tel.pIN[2] = (short int) (pm.lu_X[4] * 1.f);
+		tel.pIN[3] = (short int) (pm.lu_residual_D * 1000.f);
+		tel.pIN[4] = (short int) (pm.lu_residual_Q * 1000.f);
+		tel.pSZ = 5;
 
 		telCapture();
 	}
@@ -764,16 +861,41 @@ irq_telemetry_1()
 		td.pIRQ = NULL;
 }
 
+static void
+irq_telemetry_2()
+{
+	if (tel.iEN) {
+
+		tel.pIN[0] = (short int) (pm.lu_X[2] * 1000.f);
+		tel.pIN[1] = (short int) (pm.lu_X[3] * 1000.f);
+		tel.pSZ = 2;
+
+		telCapture();
+	}
+	else
+		td.pIRQ = NULL;
+}
+
+void (* irq_telemetry_list[]) () = {
+
+	&irq_telemetry_1,
+	&irq_telemetry_2,
+	NULL
+};
+
+void tel_decimal(const char *s)
+{
+	stoi(&tel.sDEC, s);
+	printf("%i" EOL, tel.sDEC);
+}
+
 void tel_capture(const char *s)
 {
 	if (td.pIRQ == NULL) {
 
-		tel.sDEC = 1;
-		stoi(&tel.sDEC, s);
-
-		tel.pZ = tel.pD;
-		tel.sCNT = 0;
 		tel.iEN = 1;
+		tel.sCNT = 0;
+		tel.pZ = tel.pD;
 
 		halWFI();
 
@@ -781,19 +903,28 @@ void tel_capture(const char *s)
 	}
 }
 
+void tel_disable(const char *s)
+{
+	tel.iEN = 0;
+	tel.sCNT = 0;
+	tel.pZ = tel.pD;
+}
+
+extern void tel_info(const char *s);
 void tel_live(const char *s)
 {
-	int		xC;
+	int		xC, decmin;
 
 	if (td.pIRQ == NULL) {
 
-		tel.sDEC = 1200;
-		stoi(&tel.sDEC, s);
+		decmin = (int) (pm.freq_hz / 50.f + .5f);
+		tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
 
-		tel.pZ = tel.pD;
-		tel.sCNT = 0;
 		tel.iEN = 1;
+		tel.sCNT = 0;
+		tel.pZ = tel.pD;
 
+		tel_info(EOL);
 		halWFI();
 
 		td.pIRQ = &irq_telemetry_1;
@@ -822,18 +953,34 @@ void tel_flush(const char *s)
 	telFlush();
 }
 
+void tel_info(const char *s)
+{
+	float		freq, time;
+
+	freq = pm.freq_hz / (float) tel.sDEC;
+	time = TELSZ * (float) tel.sDEC / pm.freq_hz;
+
+	printf(	"decimal %i" EOL
+		"freq %1f (Hz)" EOL
+		"time %3f (Sec)" EOL,
+		tel.sDEC, &freq, &time);
+}
+
 const shCMD_t		cmList[] = {
 
-	{"uptime", &uptime},
-	{"irqload", &irqload},
-	{"reboot", &reboot},
-	{"keycodes", &keycodes},
+	{"td_uptime", &td_uptime},
+	{"td_irqload", &td_irqload},
+	{"td_avg_default_time", &td_avg_default_time},
+	{"td_reboot", &td_reboot},
+	{"td_keycodes", &td_keycodes},
 
 	{"pwm_freq_hz", &pwm_freq_hz},
 	{"pwm_dead_time_ns", &pwm_dead_time_ns},
 
 	{"pm_pwm_resolution", &pm_pwm_resolution},
 	{"pm_pwm_minimal_pulse", &pm_pwm_minimal_pulse},
+	{"pm_pwm_clean_zone", &pm_pwm_clean_zone},
+	{"pm_pwm_dead_time_compensation", &pm_pwm_dead_time_compensation},
 
 	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
 	{"pm_m_bitmask_position_control_loop", &pm_m_bitmask_position_control_loop},
@@ -934,9 +1081,12 @@ const shCMD_t		cmList[] = {
 	{"pm_update_const_L", &pm_update_const_L},
 	{"pm_update_scal_AB", &pm_update_scal_AB},
 
+	{"tel_decimal", &tel_decimal},
 	{"tel_capture", &tel_capture},
+	{"tel_disable", &tel_disable},
 	{"tel_live", &tel_live},
 	{"tel_flush", &tel_flush},
+	{"tel_info", &tel_info},
 
 	{"ap_identify_base", &ap_identify_base},
 	{"ap_identify_const_E", &ap_identify_const_E},

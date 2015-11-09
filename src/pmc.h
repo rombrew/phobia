@@ -33,8 +33,7 @@ enum {
 	PMC_STATE_CALIBRATION,
 	PMC_STATE_START,
 	PMC_STATE_STOP,
-	PMC_STATE_END,
-	PMC_STATE_FAILURE
+	PMC_STATE_END
 };
 
 enum {
@@ -65,7 +64,7 @@ typedef struct {
 	int		pwm_resolution;
 	int		pwm_minimal_pulse;
 	int		pwm_clean_zone;
-	int		pwm_dead_time;
+	int		pwm_dead_time_compensation;
 
 	/* FSM variables.
 	 * */

@@ -18,7 +18,7 @@
 
 #include "m.h"
 
-void rotatef(float y[2], float angle, const float x[2])
+void mrotf(float y[2], float angle, const float x[2])
 {
 	float		q, s, c, a, b;
 
@@ -34,7 +34,7 @@ void rotatef(float y[2], float angle, const float x[2])
 	y[1] = b * q;
 }
 
-float arctanf(float y, float x)
+float matan2f(float y, float x)
 {
 	const float	p[] = {.25065566f, .93348042f, 1.5707963f};
 	float		y_abs, f = 0.f;
@@ -58,7 +58,7 @@ float arctanf(float y, float x)
 	return (y < 0.f) ? - f : f;
 }
 
-static float	pl[8] = {
+static float	psincos[8] = {
 
 	-1.37729499e-4f,
 	-2.04509846e-4f,
@@ -70,7 +70,7 @@ static float	pl[8] = {
 	-3.55250780e-8f,
 };
 
-float ksinf(float angle)
+float msinf(float angle)
 {
         float           u;
         int             m = 0;
@@ -84,18 +84,18 @@ float ksinf(float angle)
         if (angle > (MPIF / 2.f))
                 angle = MPIF - angle;
 
-        u = pl[1] + pl[0] * angle;
-        u = pl[2] + u * angle;
-        u = pl[3] + u * angle;
-	u = pl[4] + u * angle;
-	u = pl[5] + u * angle;
-	u = pl[6] + u * angle;
-	u = pl[7] + u * angle;
+        u = psincos[1] + psincos[0] * angle;
+        u = psincos[2] + u * angle;
+        u = psincos[3] + u * angle;
+	u = psincos[4] + u * angle;
+	u = psincos[5] + u * angle;
+	u = psincos[6] + u * angle;
+	u = psincos[7] + u * angle;
 
 	return m ? - u : u;
 }
 
-float kcosf(float angle)
+float mcosf(float angle)
 {
         float           u;
         int             m = 0;
@@ -111,13 +111,13 @@ float kcosf(float angle)
 
 	angle = (MPIF / 2.f) - angle;
 
-	u = pl[1] + pl[0] * angle;
-	u = pl[2] + u * angle;
-	u = pl[3] + u * angle;
-	u = pl[4] + u * angle;
-	u = pl[5] + u * angle;
-	u = pl[6] + u * angle;
-	u = pl[7] + u * angle;
+	u = psincos[1] + psincos[0] * angle;
+	u = psincos[2] + u * angle;
+	u = psincos[3] + u * angle;
+	u = psincos[4] + u * angle;
+	u = psincos[5] + u * angle;
+	u = psincos[6] + u * angle;
+	u = psincos[7] + u * angle;
 
 	return m ? - u : u;
 }

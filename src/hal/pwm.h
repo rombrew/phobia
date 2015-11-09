@@ -28,8 +28,9 @@ enum {
 typedef struct {
 
 	int		freq_hz;
-	int		dead_time_ns;
 	int		resolution;
+	int		dead_time_ns;
+	int		dead_time_tk;
 }
 halPWM_t;
 

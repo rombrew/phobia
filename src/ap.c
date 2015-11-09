@@ -24,25 +24,10 @@
 
 int			ap_errno;
 
+extern void irq_avg_value_8();
 extern void pm_const_E_wb(const char *s);
 extern void pm_i_slew_rate_auto(const char *s);
 extern void pm_i_gain_auto(const char *s);
-
-static void
-irq_avg_value_4()
-{
-	if (td.avgN < td.avgMAX) {
-
-		td.avgSUM[0] += *td.avgIN[0];
-		td.avgSUM[1] += *td.avgIN[1];
-		td.avgSUM[2] += *td.avgIN[2];
-		td.avgSUM[3] += *td.avgIN[3];
-
-		td.avgN++;
-	}
-	else
-		td.pIRQ = NULL;
-}
 
 static int
 ap_wait_for_idle()
@@ -171,10 +156,11 @@ void ap_identify_const_E(const char *s)
 		td.avgSUM[2] = 0.f;
 		td.avgSUM[3] = 0.f;
 
+		td.avgK = 4;
 		td.avgN = 0;
 		td.avgMAX = pm.freq_hz * pm.T_measure;
 
-		td.pIRQ = &irq_avg_value_4;
+		td.pIRQ = &irq_avg_value_8;
 
 		while (td.pIRQ != NULL)
 			taskIOMUX();

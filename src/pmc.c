@@ -43,26 +43,26 @@ void pmc_default(pmc_t *pm)
 	pm->wave_i_offset_D = 0.f;
 	pm->wave_i_offset_Q = 0.f;
 	pm->wave_freq_sine_hz = pm->freq_hz / 12.f;
-	pm->wave_gain_P = 1e-1f;
-	pm->wave_gain_I = 1e-2f;
+	pm->wave_gain_P = 1E-1f;
+	pm->wave_gain_I = 1E-2f;
 
 	pm->scal_A[0] = 0.f;
-	pm->scal_A[1] = 1.332e-2f;// * 1.11f;
+	pm->scal_A[1] = 1.332E-2f;
 	pm->scal_B[0] = 0.f;
-	pm->scal_B[1] = 1.332e-2f;// * 1.15f;
+	pm->scal_B[1] = 1.332E-2f;
 	pm->scal_U[0] = 0.f;
-	pm->scal_U[1] = 6.592e-3f;
+	pm->scal_U[1] = 6.592E-3f;
 
-	pm->lu_gain_K[0] = .2f;
-	pm->lu_gain_K[1] = .2f;
-	pm->lu_gain_K[2] = .2f;
-	pm->lu_gain_K[3] = 80.f;
-	pm->lu_gain_K[4] = 2e-2f;
-	pm->lu_gain_K[5] = 170.f;
-	pm->lu_gain_K[6] = - 180.f;
-	pm->lu_gain_K[7] = 4e-3f;
-	pm->lu_low_threshold = 304.f;
-	pm->lu_low_hysteresis = 147.f;
+	pm->lu_gain_K[0] = 2E-1f;
+	pm->lu_gain_K[1] = 2E-1f;
+	pm->lu_gain_K[2] = 1E-1f;
+	pm->lu_gain_K[3] = 1E+2f;
+	pm->lu_gain_K[4] = 1E-2f;
+	pm->lu_gain_K[5] = 8E+1f;
+	pm->lu_gain_K[6] = 9E+1f;
+	pm->lu_gain_K[7] = 2E-3f;
+	pm->lu_low_threshold = 300.f;
+	pm->lu_low_hysteresis = 150.f;
 
 	pm->fault_iab_maximal = 20.f;
 	pm->fault_residual_maximal = 0.f;
@@ -81,17 +81,17 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 
 	pm->i_maximal = 10.f;
-	pm->i_power_consumption_maximal = 10.f;
+	pm->i_power_consumption_maximal = 50.f;
 	pm->i_power_regeneration_maximal = - 1.f;
-	pm->i_slew_rate_D = 4e+3f;
-	pm->i_slew_rate_Q = 4e+3f;
-	pm->i_gain_P_D = 2e-1f;
-	pm->i_gain_I_D = 3e-2f;
-	pm->i_gain_P_Q = 2e-1f;
-	pm->i_gain_I_Q = 3e-2f;
+	pm->i_slew_rate_D = 4E+3f;
+	pm->i_slew_rate_Q = 4E+3f;
+	pm->i_gain_P_D = 2E-1f;
+	pm->i_gain_I_D = 3E-2f;
+	pm->i_gain_P_Q = 2E-1f;
+	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_gain_D = 1e-2f;
-	pm->p_gain_P = 1e-1f;
+	pm->p_gain_D = 1E-2f;
+	pm->p_gain_P = 1E-1f;
 
 	pm->fi_gain[0] = .1f;
 	pm->fi_gain[1] = .1f;
@@ -132,14 +132,14 @@ pm_update(pmc_t *pm)
 
 	X2[0] = X[0] + D1[0] * dT;
 	X2[1] = X[1] + D1[1] * dT;
-	rotatef(X2 + 2, D1[2] * dT, X + 2);
+	mrotf(X2 + 2, D1[2] * dT, X + 2);
 
 	pm_equation(pm, D2, X2);
 	dT *= .5f;
 
 	X[0] += (D1[0] + D2[0]) * dT;
 	X[1] += (D1[1] + D2[1]) * dT;
-	rotatef(X + 2, (D1[2] + D2[2]) * dT, X + 2);
+	mrotf(X + 2, (D1[2] + D2[2]) * dT, X + 2);
 }
 
 static void
@@ -171,7 +171,8 @@ luenberger_update(pmc_t *pm, float iA, float iB)
 	X[0] += pm->lu_gain_K[0] * eD;
 	X[1] += pm->lu_gain_K[1] * eQ;
 
-	if (pm->lu_region == PMC_LU_LOW_REGION) {
+	if (pm->lu_region == PMC_LU_LOW_REGION
+			&& pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
 
 		if (pm->m_bitmask & PMC_BIT_FLUX_POLARITY_DETECTION) {
 
@@ -182,15 +183,15 @@ luenberger_update(pmc_t *pm, float iA, float iB)
 		eR = pm->hf_CS[1] * eQ;
 		dR = pm->lu_gain_K[2] * eR;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-		rotatef(X + 2, dR, X + 2);
+		mrotf(X + 2, dR, X + 2);
 		X[4] += pm->lu_gain_K[3] * eR;
 	}
 	else {
 		eD = (X[4] < 0.f) ? - eD : eD;
 		dR = pm->lu_gain_K[4] * eD;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-		rotatef(X + 2, dR, X + 2);
-		X[4] += pm->lu_gain_K[5] * eD + pm->lu_gain_K[6] * eQ;
+		mrotf(X + 2, dR, X + 2);
+		X[4] += pm->lu_gain_K[5] * eD - pm->lu_gain_K[6] * eQ;
 		pm->drift_Q += pm->lu_gain_K[7] * eQ;
 	}
 
@@ -271,7 +272,10 @@ vsi_control(pmc_t *pm, float uX, float uY)
 
 	/* Always clamp to GND.
 	 * */
-	Q = 0.f - uMIN;
+	//Q = 0.f - uMIN;
+
+	Q = (uMIN < - .5f) ? 0.f - uMIN :
+		(uMAX > .5f) ? 1.f - uMAX : .5f;
 
 	uA += Q;
 	uB += Q;
@@ -394,7 +398,7 @@ i_control(pmc_t *pm)
 
 		temp = 2.f * MPIF * pm->const_Ld * pm->hf_freq_hz;
 		uD += pm->hf_CS[0] * pm->hf_swing_D * temp;
-		rotatef(pm->hf_CS, 2.f * MPIF * pm->hf_freq_hz * pm->dT, pm->hf_CS);
+		mrotf(pm->hf_CS, 2.f * MPIF * pm->hf_freq_hz * pm->dT, pm->hf_CS);
 	}
 
 	uX = pm->lu_X[2] * uD - pm->lu_X[3] * uQ;
@@ -411,7 +415,7 @@ p_control(pmc_t *pm)
 {
 	float		dX, dY, eP, iSP;
 
-	rotatef(pm->p_set_point_x, pm->p_set_point_w * pm->dT, pm->p_set_point_x);
+	mrotf(pm->p_set_point_x, pm->p_set_point_w * pm->dT, pm->p_set_point_x);
 
 	if (pm->p_set_point_x[0] < 0.f) {
 
@@ -431,7 +435,7 @@ p_control(pmc_t *pm)
 	dX = pm->p_set_point_x[0] * pm->lu_X[2] + pm->p_set_point_x[1] * pm->lu_X[3];
 	dY = pm->p_set_point_x[1] * pm->lu_X[2] - pm->p_set_point_x[0] * pm->lu_X[3];
 
-	eP = arctanf(dY, dX);
+	eP = matan2f(dY, dX);
 
 	if (dY < 0.) {
 
@@ -615,7 +619,7 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 				vsi_control(pm, uX * pm->const_U_inversed,
 						uY * pm->const_U_inversed);
 
-				rotatef(pm->lu_X + 2, pm->lu_X[4], pm->lu_X + 2);
+				mrotf(pm->lu_X + 2, pm->lu_X[4], pm->lu_X + 2);
 
 				pm->t_value++;
 
@@ -677,8 +681,12 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 
 		case PMC_STATE_START:
 
-			if (pm->m_errno != PMC_OK)
+			if (pm->m_errno != PMC_OK) {
+
+				pm->m_state = PMC_STATE_END;
+				pm->m_phase = 0;
 				break;
+			}
 
 			pm->lu_region = PMC_LU_LOW_REGION;
 			pm->pZ(0);
@@ -745,6 +753,7 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 
 			if (pm->m_phase == 0) {
 
+				pm->lu_region = PMC_LU_DISABLED;
 				pm->pDC(0, 0, 0);
 
 				pm->t_value = 0;
@@ -757,7 +766,6 @@ pm_FSM(pmc_t *pm, float iA, float iB)
 
 				if (pm->t_value < pm->t_end) ;
 				else {
-					pm->lu_region = PMC_LU_DISABLED;
 					pm->pZ(7);
 
 					pm->m_state = PMC_STATE_IDLE;
@@ -795,9 +803,13 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 	 * */
 	if (fabsf(iA) > pm->fault_iab_maximal || fabsf(iB) > pm->fault_iab_maximal) {
 
-		pm->m_state = PMC_STATE_END;
-		pm->m_phase = 0;
-		pm->m_errno = PMC_ERROR_OVERCURRENT;
+		if (pm->lu_region != PMC_LU_DISABLED
+				|| pm->m_state != PMC_STATE_IDLE) {
+
+			pm->m_state = PMC_STATE_END;
+			pm->m_phase = 0;
+			pm->m_errno = PMC_ERROR_OVERCURRENT;
+		}
 	}
 
 	pm_FSM(pm, iA, iB);
@@ -863,7 +875,7 @@ pm_eigenvalues(float X, float Y, float XY, float *DQA)
 		D = sqrtf(B * B + XY * XY);
 		B /= D;
 		D = - XY / D;
-		B = arctanf(D, B) * 180.f / MPIF;
+		B = matan2f(D, B) * 180.f / MPIF;
 
 		*DQA++ = la1;
 		*DQA++ = la2;
@@ -906,11 +918,15 @@ const char *pmc_strerror(int errno)
 {
 	const char *list[] = {
 
-		"No error",
-		"Open circuit",
-		"Overcurrent"
+		"No Error",
+		"Open Circuit",
+		"Overcurrent",
+		"Current Sensor",
+		"Low Voltage",
+		"High Voltage",
+		""
 	};
 
-	return (errno >= 0 && errno < 3) ? list[errno] : "";
+	return (errno >= 0 && errno < 6) ? list[errno] : "";
 }
 
