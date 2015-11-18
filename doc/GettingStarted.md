@@ -8,15 +8,14 @@ GNU/Linux.
 First you need to have the appropriate hardware. Currently only prototype is
 available. It is based on stm32f4discovery board and custom power board.
 
-To upload software you need to connect to the board USART. Then install our
-fork of [stmflasher](https://bitbucket.org/amaora/stmflasher) or any
-replacement software. Also you will need
-[picocom](https://github.com/npat-efault/picocom) or another terminal
-program. Get the PMC source.
+To upload the software you need to connect to the board USART. Install our fork
+of [stmflasher](https://bitbucket.org/amaora/stmflasher) or any replacement
+software. Also you will need [picocom](https://github.com/npat-efault/picocom)
+or another terminal program. Get the PMC source.
 
 	$ hg clone https://bitbucket.org/amaora/phobia
 
-Adapt src/Makefile to you needs. Probably will need to change compiler prefix,
+Adapt src/Makefile to your needs. Probably will need to change compiler prefix,
 tty name, ld script. Then build it and flash the binary.
 
 	$ make flash

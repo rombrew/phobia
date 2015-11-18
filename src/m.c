@@ -34,10 +34,18 @@ void mrotf(float y[2], float angle, const float x[2])
 	y[1] = b * q;
 }
 
+static const float	patan2[] = {
+
+	2.9009235E-1f,
+	- 6.5717929E-2f,
+	6.6529250E-2f,
+	9.9397328E-1f,
+	1.5707963E+0f
+};
+
 float matan2f(float y, float x)
 {
-	const float	p[] = {.25065566f, .93348042f, 1.5707963f};
-	float		y_abs, f = 0.f;
+	float		y_abs, u, f = 0.f;
 
 	y_abs = fabsf(y);
 
@@ -46,28 +54,36 @@ float matan2f(float y, float x)
 		f = x;
 		x = y_abs;
 		y_abs = - f;
-		f = p[2];
+		f = patan2[4];
 	}
 
-	if (y_abs < x)
+	if (y_abs < x) {
 
-		f += (p[0] * y_abs + p[1]) * y_abs;
-	else
-		f += p[2] - (p[0] * x + p[1]) * x;
+		u = patan2[1] + patan2[0] * y_abs;
+		u = patan2[2] + u * y_abs;
+		u = patan2[3] + u * y_abs;
+		f += u * y_abs;
+	}
+	else {
+		u = patan2[1] + patan2[0] * x;
+		u = patan2[2] + u * x;
+		u = patan2[3] + u * x;
+		f += patan2[4] - u * x;
+	}
 
 	return (y < 0.f) ? - f : f;
 }
 
-static float	psincos[8] = {
+static const float	psincos[8] = {
 
-	-1.37729499e-4f,
-	-2.04509846e-4f,
-	8.63928854e-3f,
-	-2.43287243e-4f,
-	-1.66562291e-1f,
-	-2.23787462e-5f,
-	1.00000193e+0f,
-	-3.55250780e-8f,
+	-1.37729499E-4f,
+	-2.04509846E-4f,
+	8.63928854E-3f,
+	-2.43287243E-4f,
+	-1.66562291E-1f,
+	-2.23787462E-5f,
+	1.00000193E+0f,
+	-3.55250780E-8f,
 };
 
 float msinf(float angle)

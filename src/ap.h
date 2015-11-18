@@ -19,13 +19,8 @@
 #ifndef _H_AP_
 #define _H_AP_
 
-enum {
-	AP_OK					= 1000,
-	AP_ERROR_UNBALANCED_RESISTANCE,
-	AP_ERROR_
-};
-
 void ap_identify_base(const char *s);
+void ap_identify_const_R_abc(const char *s);
 void ap_identify_const_E(const char *s);
 
 #endif /* _H_AP_ */

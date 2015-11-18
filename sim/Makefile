@@ -30,12 +30,6 @@ run: $(TARGET)
 	@ echo "  RUN	" $(notdir $^)
 	@ $(TARGET)
 
-tags:
-	@ echo "  TAGS "
-	@ $(MK) $(BUILD)
-	@ ctags --c-kinds=+px --fields=+Sn -R -f $(BUILD)/tags .
-	@ cscope -b -k -R -f $(BUILD)/scope -s .
-
 clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)

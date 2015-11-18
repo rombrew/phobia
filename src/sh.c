@@ -189,8 +189,9 @@ shCyclicMatch(int xDIR)
 	int			N = 0;
 
 	pCMD = cmList + sh.cIT;
-	pCMD += (xDIR == DIR_UP) ? 1 : - 1;
 	sh.cLine[sh.cEON] = 0;
+
+	pCMD += (xDIR == DIR_UP) ? 1 : - 1;
 
 	do {
 		if (pCMD < cmList) {
@@ -425,7 +426,7 @@ shComplete(int xDIR)
 			/* Enter completion mode.
 			 * */
 			sh.cMD = 1;
-			sh.cIT = 0;
+			sh.cIT = (xDIR == DIR_UP) ? - 1 : 0;
 
 			if (sh.nEOL != sh.cEON)
 				sh.nEOL = sh.cEON;

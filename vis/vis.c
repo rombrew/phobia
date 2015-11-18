@@ -28,11 +28,11 @@ float			angle;
 static void
 Read()
 {
-	int		tel[4], n;
+	int		tel[2], n;
 
-	n = scanf("%i %i %i %i \n", tel + 0, tel + 1, tel + 2, tel + 3);
+	n = scanf("%i %i \n", tel + 0, tel + 1);
 
-	angle = atan2f(tel[3], tel[2]) * 180.f / M_PI;
+	angle = atan2f(tel[1], tel[0]) * 180.f / M_PI;
 }
 
 static void

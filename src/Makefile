@@ -63,12 +63,6 @@ flash: $(TARGET)
 #	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
 	@ picocom -l -b $(BAUD) -pe $(TTY)
 
-tags:
-	@ echo "  CTAGS "
-	@ $(MK) $(BUILD)
-	@ ctags --c-kinds=+px --fields=+Sn -R -f $(BUILD)/tags .
-	@ cscope -b -k -R -f $(BUILD)/scope -s .
-
 clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)

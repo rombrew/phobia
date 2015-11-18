@@ -93,7 +93,17 @@ void td_keycodes(const char *s)
 
 void pwm_freq_hz(const char *s)
 {
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
 	if (stoi(&halPWM.freq_hz, s) != NULL) {
+
+		pwmDisable();
+		pwmEnable();
+
+		pm.freq_hz = (float) halPWM.freq_hz;
+		pm.dT = 1.f / pm.freq_hz;
+		pm.pwm_resolution = halPWM.resolution;
 	}
 
 	printf("%i (Hz)" EOL, halPWM.freq_hz);
@@ -101,7 +111,13 @@ void pwm_freq_hz(const char *s)
 
 void pwm_dead_time_ns(const char *s)
 {
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
 	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
+
+		pwmDisable();
+		pwmEnable();
 	}
 
 	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
@@ -214,10 +230,16 @@ void pm_T_end(const char *s)
 	printf("%3f (Sec)" EOL, &pm.T_end);
 }
 
-void pm_wave_i_hold(const char *s)
+void pm_wave_i_hold_X(const char *s)
 {
-	stof(&pm.wave_i_hold, s);
-	printf("%3f (A)" EOL, &pm.wave_i_hold);
+	stof(&pm.wave_i_hold_X, s);
+	printf("%3f (A)" EOL, &pm.wave_i_hold_X);
+}
+
+void pm_wave_i_hold_Y(const char *s)
+{
+	stof(&pm.wave_i_hold_Y, s);
+	printf("%3f (A)" EOL, &pm.wave_i_hold_Y);
 }
 
 void pm_wave_i_sine(const char *s)
@@ -226,22 +248,22 @@ void pm_wave_i_sine(const char *s)
 	printf("%3f (A)" EOL, &pm.wave_i_sine);
 }
 
-void pm_wave_i_offset_D(const char *s)
-{
-	stof(&pm.wave_i_offset_D, s);
-	printf("%3f (A)" EOL, &pm.wave_i_offset_D);
-}
-
-void pm_wave_i_offset_Q(const char *s)
-{
-	stof(&pm.wave_i_offset_Q, s);
-	printf("%3f (A)" EOL, &pm.wave_i_offset_Q);
-}
-
 void pm_wave_freq_sine_hz(const char *s)
 {
 	stof(&pm.wave_freq_sine_hz, s);
 	printf("%1f (Hz)" EOL, &pm.wave_freq_sine_hz);
+}
+
+void pm_wave_gain_P(const char *s)
+{
+	stof(&pm.wave_gain_P, s);
+	printf("%2e" EOL, &pm.wave_gain_P);
+}
+
+void pm_wave_gain_I(const char *s)
+{
+	stof(&pm.wave_gain_I, s);
+	printf("%2e" EOL, &pm.wave_gain_I);
 }
 
 void pm_scal_A0(const char *s)
@@ -278,6 +300,12 @@ void pm_scal_U1(const char *s)
 {
 	stof(&pm.scal_U[1], s);
 	printf("%4e" EOL, &pm.scal_U[1]);
+}
+
+void pm_vsi_u_maximal(const char *s)
+{
+	stof(&pm.vsi_u_maximal, s);
+	printf("%4e" EOL, &pm.vsi_u_maximal);
 }
 
 void irq_avg_value_8()
@@ -396,18 +424,6 @@ void pm_lu_gain_K5(const char *s)
 	printf("%2e" EOL, &pm.lu_gain_K[5]);
 }
 
-void pm_lu_gain_K6(const char *s)
-{
-	stof(&pm.lu_gain_K[6], s);
-	printf("%2e" EOL, &pm.lu_gain_K[6]);
-}
-
-void pm_lu_gain_K7(const char *s)
-{
-	stof(&pm.lu_gain_K[7], s);
-	printf("%2e" EOL, &pm.lu_gain_K[7]);
-}
-
 void pm_lu_low_threshold(const char *s)
 {
 	float			RPM;
@@ -458,6 +474,18 @@ void pm_hf_swing_D(const char *s)
 {
 	stof(&pm.hf_swing_D, s);
 	printf("%3f (A)" EOL, &pm.hf_swing_D);
+}
+
+void pm_hf_gain_K0(const char *s)
+{
+	stof(&pm.hf_gain_K[0], s);
+	printf("%2e" EOL, &pm.hf_gain_K[0]);
+}
+
+void pm_hf_gain_K1(const char *s)
+{
+	stof(&pm.hf_gain_K[1], s);
+	printf("%2e" EOL, &pm.hf_gain_K[1]);
 }
 
 void pm_drift_A(const char *s)
@@ -557,10 +585,16 @@ void pm_const_Zp(const char *s)
 	printf("%i" EOL, pm.const_Zp);
 }
 
-void pm_i_maximal(const char *s)
+void pm_i_high_maximal(const char *s)
 {
-	stof(&pm.i_maximal, s);
-	printf("%3f (A)" EOL, &pm.i_maximal);
+	stof(&pm.i_high_maximal, s);
+	printf("%3f (A)" EOL, &pm.i_high_maximal);
+}
+
+void pm_i_low_maximal(const char *s)
+{
+	stof(&pm.i_low_maximal, s);
+	printf("%3f (A)" EOL, &pm.i_low_maximal);
 }
 
 void pm_i_power_consumption_maximal(const char *s)
@@ -729,11 +763,11 @@ void pm_fi_gain_2(const char *s)
 	printf("%2e" EOL, &pm.fi_gain[2]);
 }
 
-void pm_i_power_watt(const char *s)
+void pm_n_power_watt(const char *s)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.i_power_watt, s);
+	avg = pm_avg_float_arg_1(&pm.n_power_watt, s);
 	printf("%1f (W)" EOL, &avg);
 }
 
@@ -777,8 +811,11 @@ void pm_update_const_R(const char *s)
 {
 	if (pm.m_state == PMC_STATE_IDLE) {
 
-		pm.const_R += pm.wave_temp[2];
-		pm.wave_temp[2] = 0.f;
+		if (pm.wave_i_hold_X != 0.f) {
+
+			pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
+			pm.wave_temp[2] = 0.f;
+		}
 
 		printf("%4e (Ohm)" EOL, &pm.const_R);
 	}
@@ -827,24 +864,26 @@ void pm_update_const_L(const char *s)
 
 void pm_update_scal_AB(const char *s)
 {
-	float		gain, pc;
+	float		gain, fix;
 
 	if (pm.m_state == PMC_STATE_IDLE) {
 
-		gain = - pm.wave_temp[1] / pm.wave_temp[2];
-		pc = 100.f * (gain - 1.f);
+		gain = pm.wave_temp[1] / pm.wave_temp[2];
+		fix = 100.f * (gain - 1.f);
 
+		gain = sqrtf(gain);
+		pm.scal_A[1] /= gain;
 		pm.scal_B[1] *= gain;
 
 		printf(	"FIX %2f %%" EOL
 			"A1 %4e" EOL
 			"B1 %4e" EOL,
-			&pc, &pm.scal_A[1], &pm.scal_B[1]);
+			&fix, &pm.scal_A[1], &pm.scal_B[1]);
 	}
 }
 
 static void
-irq_telemetry_1()
+irq_telemetry_0()
 {
 	if (tel.iEN) {
 
@@ -862,7 +901,7 @@ irq_telemetry_1()
 }
 
 static void
-irq_telemetry_2()
+irq_telemetry_1()
 {
 	if (tel.iEN) {
 
@@ -876,11 +915,10 @@ irq_telemetry_2()
 		td.pIRQ = NULL;
 }
 
-void (* irq_telemetry_list[]) () = {
+static void (* const irq_telemetry_list[]) () = {
 
+	&irq_telemetry_0,
 	&irq_telemetry_1,
-	&irq_telemetry_2,
-	NULL
 };
 
 void tel_decimal(const char *s)
@@ -891,15 +929,23 @@ void tel_decimal(const char *s)
 
 void tel_capture(const char *s)
 {
+	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
+	void 		(* irqtel) ();
+	int		nTEL = 0;
+
 	if (td.pIRQ == NULL) {
 
 		tel.iEN = 1;
 		tel.sCNT = 0;
 		tel.pZ = tel.pD;
 
+		stoi(&nTEL, s);
+		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+		irqtel = irq_telemetry_list[nTEL];
+
 		halWFI();
 
-		td.pIRQ = &irq_telemetry_1;
+		td.pIRQ = irqtel;
 	}
 }
 
@@ -910,9 +956,11 @@ void tel_disable(const char *s)
 	tel.pZ = tel.pD;
 }
 
-extern void tel_info(const char *s);
 void tel_live(const char *s)
 {
+	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
+	void 		(* irqtel) ();
+	int		nTEL = 0;
 	int		xC, decmin;
 
 	if (td.pIRQ == NULL) {
@@ -924,10 +972,13 @@ void tel_live(const char *s)
 		tel.sCNT = 0;
 		tel.pZ = tel.pD;
 
-		tel_info(EOL);
+		stoi(&nTEL, s);
+		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+		irqtel = irq_telemetry_list[nTEL];
+
 		halWFI();
 
-		td.pIRQ = &irq_telemetry_1;
+		td.pIRQ = irqtel;
 
 		do {
 			taskIOMUX();
@@ -993,11 +1044,12 @@ const shCMD_t		cmList[] = {
 	{"pm_T_measure", &pm_T_measure},
 	{"pm_T_end", &pm_T_end},
 
-	{"pm_wave_i_hold", &pm_wave_i_hold},
+	{"pm_wave_i_hold_X", &pm_wave_i_hold_X},
+	{"pm_wave_i_hold_Y", &pm_wave_i_hold_Y},
 	{"pm_wave_i_sine", &pm_wave_i_sine},
-	{"pm_wave_i_offset_D", &pm_wave_i_offset_D},
-	{"pm_wave_i_offset_Q", &pm_wave_i_offset_Q},
 	{"pm_wave_freq_sine_hz", &pm_wave_freq_sine_hz},
+	{"pm_wave_gain_P", &pm_wave_gain_P},
+	{"pm_wave_gain_I", &pm_wave_gain_I},
 
 	{"pm_scal_A0", &pm_scal_A0},
 	{"pm_scal_A1", &pm_scal_A1},
@@ -1005,6 +1057,8 @@ const shCMD_t		cmList[] = {
 	{"pm_scal_B1", &pm_scal_B1},
 	{"pm_scal_U0", &pm_scal_U0},
 	{"pm_scal_U1", &pm_scal_U1},
+
+	{"pm_vsi_u_maximal", &pm_vsi_u_maximal},
 
 	{"pm_lu_X0", &pm_lu_X0},
 	{"pm_lu_X1", &pm_lu_X1},
@@ -1017,8 +1071,6 @@ const shCMD_t		cmList[] = {
 	{"pm_lu_gain_K3", &pm_lu_gain_K3},
 	{"pm_lu_gain_K4", &pm_lu_gain_K4},
 	{"pm_lu_gain_K5", &pm_lu_gain_K5},
-	{"pm_lu_gain_K6", &pm_lu_gain_K6},
-	{"pm_lu_gain_K7", &pm_lu_gain_K7},
 	{"pm_lu_low_threshold", &pm_lu_low_threshold},
 	{"pm_lu_low_hysteresis", &pm_lu_low_hysteresis},
 	{"pm_lu_residual_variance", &pm_lu_residual_variance},
@@ -1028,6 +1080,8 @@ const shCMD_t		cmList[] = {
 
 	{"pm_hf_freq_hz", &pm_hf_freq_hz},
 	{"pm_hf_swing_D", &pm_hf_swing_D},
+	{"pm_hf_gain_K0", &pm_hf_gain_K0},
+	{"pm_hf_gain_K1", &pm_hf_gain_K1},
 
 	{"pm_drift_A", &pm_drift_A},
 	{"pm_drift_B", &pm_drift_B},
@@ -1043,7 +1097,8 @@ const shCMD_t		cmList[] = {
 	{"pm_const_Lq", &pm_const_Lq},
 	{"pm_const_Zp", &pm_const_Zp},
 
-	{"pm_i_maximal", &pm_i_maximal},
+	{"pm_i_high_maximal", &pm_i_high_maximal},
+	{"pm_i_low_maximal", &pm_i_low_maximal},
 	{"pm_i_power_consumption_maximal", &pm_i_power_consumption_maximal},
 	{"pm_i_power_regeneration_maximal", &pm_i_power_regeneration_maximal},
 	{"pm_i_set_point_D", &pm_i_set_point_D},
@@ -1066,7 +1121,7 @@ const shCMD_t		cmList[] = {
 	{"pm_fi_gain_1", &pm_fi_gain_1},
 	{"pm_fi_gain_2", &pm_fi_gain_2},
 
-	{"pm_i_power_watt", &pm_i_power_watt},
+	{"pm_n_power_watt", &pm_n_power_watt},
 	{"pm_default", &pm_default},
 
 	{"pm_request_zero_drift", &pm_request_zero_drift},
@@ -1089,6 +1144,7 @@ const shCMD_t		cmList[] = {
 	{"tel_info", &tel_info},
 
 	{"ap_identify_base", &ap_identify_base},
+	{"ap_identify_const_R_abc", &ap_identify_const_R_abc},
 	{"ap_identify_const_E", &ap_identify_const_E},
 
 	{NULL, NULL},

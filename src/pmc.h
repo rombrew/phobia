@@ -88,10 +88,9 @@ typedef struct {
 
 	/* Wave configuration.
 	 * */
-	float		wave_i_hold;
+	float		wave_i_hold_X;
+	float		wave_i_hold_Y;
 	float		wave_i_sine;
-	float		wave_i_offset_D;
-	float		wave_i_offset_Q;
 	float		wave_freq_sine_hz;
 	float		wave_gain_P;
 	float		wave_gain_I;
@@ -104,20 +103,27 @@ typedef struct {
 	float		scal_B[2];
 	float		scal_U[2];
 
+	/* Voltage utilisation factor.
+	 * */
+	float		vsi_u_maximal;
+
 	/* Actual VSI voltage.
 	 * */
 	float		vsi_X;
 	float		vsi_Y;
+	float		vsi_D;
+	float		vsi_Q;
 
 	/* Luenberger observer.
 	 * */
+	int		lu_region;
 	float		lu_X[5];
 	int		lu_revol;
-	float		lu_gain_K[8];
+	float		lu_gain_K[6];
 	float		lu_low_threshold;
 	float		lu_low_hysteresis;
 	float		lu_flux_polarity;
-	int		lu_region;
+	float		lu_temp[2];
 
 	/* Measurement residual.
 	 * */
@@ -129,12 +135,17 @@ typedef struct {
 	 * */
 	float		fault_iab_maximal;
 	float		fault_residual_maximal;
+	float		fault_drift_maximal;
+	float		fault_low_voltage;
+	float		fault_high_voltage;
 
 	/* HFI observer.
 	 * */
 	float		hf_freq_hz;
 	float		hf_swing_D;
 	float		hf_CS[2];
+	float		hf_gain_K[2];
+	float		hf_;
 
 	/* Zero Drift.
 	 * */
@@ -161,10 +172,12 @@ typedef struct {
 	/* Mechanical constants.
 	 * */
 	int		const_Zp;
+	float		const_J;
 
 	/* Current control loop.
 	 * */
-	float		i_maximal;
+	float		i_high_maximal;
+	float		i_low_maximal;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -194,7 +207,7 @@ typedef struct {
 
 	/* Informational.
 	 * */
-	float		i_power_watt;
+	float		n_power_watt;
 
 	/* Control interface.
 	 * */

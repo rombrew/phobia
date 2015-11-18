@@ -107,8 +107,6 @@ void adcIRQ()
 	 * */
 	td.Tirq = T0 - T1;
 
-	/* IRQ handler.
-	 * */
 	if (td.pIRQ != NULL)
 		td.pIRQ();
 }

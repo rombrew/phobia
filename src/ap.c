@@ -22,8 +22,6 @@
 #include "pmc.h"
 #include "task.h"
 
-int			ap_errno;
-
 extern void irq_avg_value_8();
 extern void pm_const_E_wb(const char *s);
 extern void pm_i_slew_rate_auto(const char *s);
@@ -38,32 +36,18 @@ ap_wait_for_idle()
 	return pm.m_errno;
 }
 
-static const char *
-ap_strerror(int errno)
-{
-	const char *list[] = {
-
-		"No error",
-		"Unbalanced resistance",
-	};
-
-	return (errno >= 0 && errno < 3) ? list[errno] : "";
-}
-
 #define AP_WAIT_FOR_IDLE()	\
 { if (ap_wait_for_idle() != PMC_OK) { printf("ERROR %i: %s" EOL, \
 		pm.m_errno, pmc_strerror(pm.m_errno)); break; } }
-
-#define AP_ERORR(errno)		\
-{ ap_errno = errno; printf("AP ERROR %i: %s" EOL, \
-		errno, ap_strerror(errno)); break; }
 
 void ap_identify_base(const char *s)
 {
 	float			IMP[6];
 
-	while (pm.lu_region == PMC_LU_DISABLED)
-	{
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	do {
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 		AP_WAIT_FOR_IDLE();
 
@@ -73,13 +57,12 @@ void ap_identify_base(const char *s)
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		pm.const_R += pm.wave_temp[2];
+		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		pm.const_R += pm.wave_temp[2];
-
+		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
 		printf("R %4e (Ohm)" EOL, &pm.const_R);
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
@@ -123,55 +106,123 @@ void ap_identify_base(const char *s)
 
 		break;
 	}
+	while (0);
 }
 
-void ap_identify_defect(const char *s)
+void ap_identify_const_R_abc(const char *s)
 {
-	/*temp = pm.wave_freq_sine_hz;
-	pm.wave_freq_sine_hz = 10.f;
+	float			temp[2], iSP, dU, R[3], STD;
+	int			xPWM;
 
-	pmc_request(&pm, PMC_STATE_WAVE_SINE);
-	AP_WAIT_FOR_IDLE();
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
 
-	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
-	pm.wave_freq_sine_hz = temp;
+	do {
+		temp[0] = pm.wave_i_hold_X;
+		temp[1] = pm.wave_i_hold_Y;
 
-	printf( "+ R1 %4e (Ohm)" EOL
-			"+ R2 %4e (Ohm)" EOL, IMP + 3, IMP + 4);
+		iSP = pm.wave_i_hold_X;
+		stof(&iSP, s);
 
-	(IMP[3] / IMP[4] < 91e-2f) ? AP_ERORR(AP_ERROR_UNBALANCED_RESISTANCE) : 0;*/
+		printf("iSP %3f (A)" EOL, &iSP);
+
+		pm.wave_i_hold_X = iSP;
+		pm.wave_i_hold_Y = 0.f;
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+
+		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
+		printf("R %4e (Ohm)" EOL, &pm.const_R);
+
+		dU = iSP * pm.const_R / pm.const_U;
+		xPWM = dU * pm.pwm_resolution;
+		dU *= 100.f;
+		printf("dU: %2f %% %i (tk)" EOL, &dU, xPWM);
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+
+		R[0] = pm.const_R + pm.wave_temp[2] / pm.wave_i_hold_X;
+		printf("R[a] %4e (Ohm)" EOL, &R[0]);
+
+		pm.wave_i_hold_X = - .5f * iSP;
+		pm.wave_i_hold_Y = .8660254f * iSP;
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+
+		R[1] = pm.const_R + (pm.wave_temp[2] / pm.wave_i_hold_X
+				+ pm.wave_temp[3] / pm.wave_i_hold_Y) / 2.f;
+		printf("R[b] %4e (Ohm)" EOL, &R[1]);
+
+		pm.wave_i_hold_X = - .5f * iSP;
+		pm.wave_i_hold_Y = - .8660254f * iSP;
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+
+		R[2] = pm.const_R + (pm.wave_temp[2] / pm.wave_i_hold_X
+				+ pm.wave_temp[3] / pm.wave_i_hold_Y) / 2.f;
+		printf("R[c] %4e (Ohm)" EOL, &R[2]);
+
+		pm.const_R = (R[0] + R[1] + R[2]) / 3.f;
+		STD = sqrtf((R[0] - pm.const_R) * (R[0] - pm.const_R)
+			+ (R[1] - pm.const_R) * (R[1] - pm.const_R)
+			+ (R[2] - pm.const_R) * (R[2] - pm.const_R));
+		STD = 100.f * STD / pm.const_R;
+
+		printf("R %4e (Ohm) STD %1f %%" EOL, &pm.const_R, &STD);
+
+		pm.wave_i_hold_X = temp[0];
+		pm.wave_i_hold_Y = temp[1];
+	}
+	while (0);
+}
+
+void ap_identify_const_L_(const char *s)
+{
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	do {
+	}
+	while (0);
 }
 
 void ap_identify_const_E(const char *s)
 {
-	if (td.pIRQ == NULL && pm.lu_region != PMC_LU_DISABLED) {
+	if (pm.lu_region == PMC_LU_DISABLED)
+		return ;
 
-		td.avgIN[0] = &pm.lu_X[0];
-		td.avgIN[1] = &pm.lu_X[1];
-		td.avgIN[2] = &pm.lu_X[4];
-		td.avgIN[3] = &pm.drift_Q;
+	if (td.pIRQ != NULL)
+		return ;
 
-		td.avgSUM[0] = 0.f;
-		td.avgSUM[1] = 0.f;
-		td.avgSUM[2] = 0.f;
-		td.avgSUM[3] = 0.f;
+	td.avgIN[0] = &pm.lu_X[0];
+	td.avgIN[1] = &pm.lu_X[1];
+	td.avgIN[2] = &pm.lu_X[4];
+	td.avgIN[3] = &pm.drift_Q;
 
-		td.avgK = 4;
-		td.avgN = 0;
-		td.avgMAX = pm.freq_hz * pm.T_measure;
+	td.avgSUM[0] = 0.f;
+	td.avgSUM[1] = 0.f;
+	td.avgSUM[2] = 0.f;
+	td.avgSUM[3] = 0.f;
 
-		td.pIRQ = &irq_avg_value_8;
+	td.avgK = 4;
+	td.avgN = 0;
+	td.avgMAX = pm.freq_hz * pm.T_measure;
 
-		while (td.pIRQ != NULL)
-			taskIOMUX();
+	td.pIRQ = &irq_avg_value_8;
 
-		td.avgSUM[0] /= (float) td.avgN;
-		td.avgSUM[1] /= (float) td.avgN;
-		td.avgSUM[2] /= (float) td.avgN;
-		td.avgSUM[3] /= (float) td.avgN;
+	while (td.pIRQ != NULL)
+		taskIOMUX();
 
-		pm.const_E -= td.avgSUM[3] / td.avgSUM[2];
-		pm_const_E_wb(EOL);
-	}
+	td.avgSUM[0] /= (float) td.avgN;
+	td.avgSUM[1] /= (float) td.avgN;
+	td.avgSUM[2] /= (float) td.avgN;
+	td.avgSUM[3] /= (float) td.avgN;
+
+	pm.const_E -= td.avgSUM[3] / td.avgSUM[2];
+	pm_const_E_wb(EOL);
 }
 

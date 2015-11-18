@@ -129,7 +129,7 @@ sim_Tel(float *pTel)
 	pTel[25] = pm.const_Ld;
 	pTel[26] = pm.const_Lq;
 	pTel[27] = pm.const_Zp;
-	pTel[28] = pm.i_power_watt;
+	pTel[28] = pm.n_power_watt;
 	pTel[29] = 0.f;
 
 	/* Set Point.
@@ -188,6 +188,8 @@ sim_F(FILE *fdTel, double dT, int Verb)
 static void
 sim_Script(FILE *fdTel)
 {
+	float		IMP[6];
+
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = m.PWMR;
@@ -211,7 +213,7 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	/*pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+	pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 	sim_F(fdTel, 1., 0);
 
 	pm.const_R += pm.wave_temp[2];
@@ -227,7 +229,7 @@ sim_Script(FILE *fdTel)
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);
 
 	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);*/
+	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .5, 0);
@@ -238,7 +240,7 @@ sim_Script(FILE *fdTel)
 	pm.p_set_point_w = 0.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.p_set_point_w = 5000.f;
+	pm.p_set_point_w = 8000.f;
 	sim_F(fdTel, 1., 0);
 
 	m.M[2] = 1e-5;
