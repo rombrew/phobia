@@ -123,6 +123,50 @@ void pwm_dead_time_ns(const char *s)
 	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
 }
 
+void pwm_DC(const char *s)
+{
+	const char	*tok;
+	int		tokN = 0;
+	int		xA, xB, xC, R;
+
+	tok = s;
+	s = stoi(&xA, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	tok = strtok(tok, " ");
+	s = stoi(&xB, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	tok = strtok(tok, " ");
+	s = stoi(&xC, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	if (tokN == 3) {
+
+		R = halPWM.resolution;
+
+		xA = (xA < 0) ? 0 : (xA > R) ? R : xA;
+		xB = (xB < 0) ? 0 : (xB > R) ? R : xB;
+		xC = (xC < 0) ? 0 : (xC > R) ? R : xC;
+
+		pwmDC(xA, xB, xC);
+
+		printf("DC %i %i %i" EOL, xA, xB, xC);
+	}
+}
+
+void pwm_Z(const char *s)
+{
+	int		Z;
+
+	if (stoi(&Z, s) != NULL) {
+
+		pwmZ(Z);
+
+		printf("Z %i" EOL, Z);
+	}
+}
+
 void pm_pwm_resolution(const char *s)
 {
 	printf("%i" EOL, pm.pwm_resolution);
@@ -149,14 +193,9 @@ void pm_pwm_minimal_pulse(const char *s)
 	pm_pwm_int_modify(&pm.pwm_minimal_pulse, s);
 }
 
-void pm_pwm_clean_zone(const char *s)
+void pm_pwm_dead_time(const char *s)
 {
-	pm_pwm_int_modify(&pm.pwm_clean_zone, s);
-}
-
-void pm_pwm_dead_time_compensation(const char *s)
-{
-	pm_pwm_int_modify(&pm.pwm_dead_time_compensation, s);
+	pm_pwm_int_modify(&pm.pwm_dead_time, s);
 }
 
 static void
@@ -177,14 +216,24 @@ pm_m_bitmask(const char *s, int bit)
 	printf("%i (%s)" EOL, flag, flag ? "Enabled" : "Disabled");
 }
 
+void pm_m_bitmask_direct_current_injection(const char *s)
+{
+	pm_m_bitmask(s, PMC_BIT_DIRECT_CURRENT_INJECTION);
+}
+
 void pm_m_bitmask_high_frequency_injection(const char *s)
 {
 	pm_m_bitmask(s, PMC_BIT_HIGH_FREQUENCY_INJECTION);
 }
 
-void pm_m_bitmask_position_control_loop(const char *s)
+void pm_m_bitmask_flux_polarity_detection(const char *s)
 {
-	pm_m_bitmask(s, PMC_BIT_POSITION_CONTROL_LOOP);
+	pm_m_bitmask(s, PMC_BIT_FLUX_POLARITY_DETECTION);
+}
+
+void pm_m_bitmask_servo_control_loop(const char *s)
+{
+	pm_m_bitmask(s, PMC_BIT_SERVO_CONTROL_LOOP);
 }
 
 void pm_m_errno(const char *s)
@@ -300,6 +349,36 @@ void pm_scal_U1(const char *s)
 {
 	stof(&pm.scal_U[1], s);
 	printf("%4e" EOL, &pm.scal_U[1]);
+}
+
+void pm_fault_iab_maximal(const char *s)
+{
+	stof(&pm.fault_iab_maximal, s);
+	printf("%3f (A)" EOL, &pm.fault_iab_maximal);
+}
+
+void pm_fault_residual_maximal(const char *s)
+{
+	stof(&pm.fault_residual_maximal, s);
+	printf("%4e" EOL, &pm.fault_residual_maximal);
+}
+
+void pm_fault_drift_maximal(const char *s)
+{
+	stof(&pm.fault_drift_maximal, s);
+	printf("%3f (A)" EOL, &pm.fault_drift_maximal);
+}
+
+void pm_fault_low_voltage(const char *s)
+{
+	stof(&pm.fault_low_voltage, s);
+	printf("%3f (V)" EOL, &pm.fault_low_voltage);
+}
+
+void pm_fault_high_voltage(const char *s)
+{
+	stof(&pm.fault_high_voltage, s);
+	printf("%3f (V)" EOL, &pm.fault_high_voltage);
 }
 
 void pm_vsi_u_maximal(const char *s)
@@ -424,24 +503,36 @@ void pm_lu_gain_K5(const char *s)
 	printf("%2e" EOL, &pm.lu_gain_K[5]);
 }
 
-void pm_lu_low_threshold(const char *s)
+void pm_lu_gain_K6(const char *s)
 {
-	float			RPM;
-
-	stof(&pm.lu_low_threshold, s);
-	RPM = 9.5492969f * pm.lu_low_threshold / pm.const_Zp;
-
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_low_threshold, &RPM);
+	stof(&pm.lu_gain_K[6], s);
+	printf("%2e" EOL, &pm.lu_gain_K[6]);
 }
 
-void pm_lu_low_hysteresis(const char *s)
+void pm_lu_threshold_low(const char *s)
 {
 	float			RPM;
 
-	stof(&pm.lu_low_hysteresis, s);
-	RPM = 9.5492969f * pm.lu_low_hysteresis / pm.const_Zp;
+	stof(&pm.lu_threshold_low, s);
+	RPM = 9.5492969f * pm.lu_threshold_low / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_low_hysteresis, &RPM);
+	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_threshold_low, &RPM);
+}
+
+void pm_lu_threshold_high(const char *s)
+{
+	float			RPM;
+
+	stof(&pm.lu_threshold_high, s);
+	RPM = 9.5492969f * pm.lu_threshold_high / pm.const_Zp;
+
+	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_threshold_high, &RPM);
+}
+
+void pm_lu_low_D(const char *s)
+{
+	stof(&pm.lu_low_D, s);
+	printf("%3f (A)" EOL, &pm.lu_low_D);
 }
 
 void pm_lu_residual_variance(const char *s)
@@ -450,18 +541,6 @@ void pm_lu_residual_variance(const char *s)
 
 	avg = pm_avg_float_arg_1(&pm.lu_residual_variance, s);
 	printf("%4e" EOL, &avg);
-}
-
-void pm_fault_iab_maximal(const char *s)
-{
-	stof(&pm.fault_iab_maximal, s);
-	printf("%3f (A)" EOL, &pm.fault_iab_maximal);
-}
-
-void pm_fault_residual_maximal(const char *s)
-{
-	stof(&pm.fault_residual_maximal, s);
-	printf("%4e" EOL, &pm.fault_residual_maximal);
 }
 
 void pm_hf_freq_hz(const char *s)
@@ -486,6 +565,40 @@ void pm_hf_gain_K1(const char *s)
 {
 	stof(&pm.hf_gain_K[1], s);
 	printf("%2e" EOL, &pm.hf_gain_K[1]);
+}
+
+void pm_hf_gain_K2(const char *s)
+{
+	stof(&pm.hf_gain_K[2], s);
+	printf("%2e" EOL, &pm.hf_gain_K[2]);
+}
+
+void pm_thermal_R(const char *s)
+{
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.thermal_R, s);
+	printf("%4e" EOL, &avg);
+}
+
+void pm_thermal_E(const char *s)
+{
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.thermal_E, s);
+	printf("%4e" EOL, &avg);
+}
+
+void pm_thermal_gain_R0(const char *s)
+{
+	stof(&pm.thermal_gain_R[0], s);
+	printf("%1f" EOL, &pm.thermal_gain_R[0]);
+}
+
+void pm_thermal_gain_R1(const char *s)
+{
+	stof(&pm.thermal_gain_R[1], s);
+	printf("%4e" EOL, &pm.thermal_gain_R[1]);
 }
 
 void pm_drift_A(const char *s)
@@ -624,13 +737,13 @@ void pm_i_set_point_Q(const char *s)
 void pm_i_slew_rate_D(const char *s)
 {
 	stof(&pm.i_slew_rate_D, s);
-	printf("%1f (A/Sec)" EOL, &pm.i_slew_rate_D);
+	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_D);
 }
 
 void pm_i_slew_rate_Q(const char *s)
 {
 	stof(&pm.i_slew_rate_Q, s);
-	printf("%1f (A/Sec)" EOL, &pm.i_slew_rate_Q);
+	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_Q);
 }
 
 void pm_i_slew_rate_auto(const char *s)
@@ -685,7 +798,19 @@ void pm_i_gain_auto(const char *s)
 		&pm.i_gain_I_Q);
 }
 
-void pm_p_set_point_x_g(const char *s)
+void pm_p_set_point_w_rpm(const char *s)
+{
+	float			RPM;
+
+	if (stof(&RPM, s) != NULL)
+		pm.p_set_point_w = .10471976f * RPM * pm.const_Zp;
+
+	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
+
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
+}
+
+void pm_p_track_point_x_g(const char *s)
 {
 	float			angle, g;
 	int			revol;
@@ -708,29 +833,15 @@ void pm_p_set_point_x_g(const char *s)
 		}
 
 		angle = g * (MPIF / 180.f);
-		pm.p_set_point_x[0] = mcosf(angle);
-		pm.p_set_point_x[1] = msinf(angle);
-		pm.p_set_point_revol = revol;
+		pm.p_track_point_x[0] = mcosf(angle);
+		pm.p_track_point_x[1] = msinf(angle);
+		pm.p_track_point_revol = revol;
 	}
 
-	angle = matan2f(pm.p_set_point_x[1], pm.p_set_point_x[0]);
-	g = angle * (180.f / MPIF) + (float) pm.p_set_point_revol * 360.f;
+	angle = matan2f(pm.p_track_point_x[1], pm.p_track_point_x[0]);
+	g = angle * (180.f / MPIF) + (float) pm.p_track_point_revol * 360.f;
 
 	printf("%1f (degree)" EOL, &g);
-}
-
-void tel_capture(const char *s);
-void pm_p_set_point_w_rpm(const char *s)
-{
-	float			RPM;
-
-	if (stof(&RPM, s) != NULL)
-		pm.p_set_point_w = .10471976f * RPM * pm.const_Zp;
-
-	tel_capture(EOL);
-	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
-
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
 }
 
 void pm_p_gain_D(const char *s)
@@ -745,22 +856,16 @@ void pm_p_gain_P(const char *s)
 	printf("%2e" EOL, &pm.p_gain_P);
 }
 
-void pm_fi_gain_0(const char *s)
+void pm_lp_gain_0(const char *s)
 {
-	stof(&pm.fi_gain[0], s);
-	printf("%2e" EOL, &pm.fi_gain[0]);
+	stof(&pm.lp_gain[0], s);
+	printf("%2e" EOL, &pm.lp_gain[0]);
 }
 
-void pm_fi_gain_1(const char *s)
+void pm_lp_gain_1(const char *s)
 {
-	stof(&pm.fi_gain[1], s);
-	printf("%2e" EOL, &pm.fi_gain[1]);
-}
-
-void pm_fi_gain_2(const char *s)
-{
-	stof(&pm.fi_gain[2], s);
-	printf("%2e" EOL, &pm.fi_gain[2]);
+	stof(&pm.lp_gain[1], s);
+	printf("%2e" EOL, &pm.lp_gain[1]);
 }
 
 void pm_n_power_watt(const char *s)
@@ -769,6 +874,14 @@ void pm_n_power_watt(const char *s)
 
 	avg = pm_avg_float_arg_1(&pm.n_power_watt, s);
 	printf("%1f (W)" EOL, &avg);
+}
+
+void pm_n_temperature_c(const char *s)
+{
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.n_temperature_c, s);
+	printf("%1f (C)" EOL, &avg);
 }
 
 void pm_default(const char *s)
@@ -809,13 +922,17 @@ void pm_request_stop(const char *s)
 
 void pm_update_const_R(const char *s)
 {
+	float			R;
+
 	if (pm.m_state == PMC_STATE_IDLE) {
 
-		if (pm.wave_i_hold_X != 0.f) {
+		R = 0.f;
 
-			pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
-			pm.wave_temp[2] = 0.f;
-		}
+		pmc_resistance(pm.wave_DFT, &R);
+		pm.const_R += R;
+
+		pm.wave_DFT[0] = 0.f;
+		pm.wave_DFT[1] = 0.f;
 
 		printf("%4e (Ohm)" EOL, &pm.const_R);
 	}
@@ -887,12 +1004,9 @@ irq_telemetry_0()
 {
 	if (tel.iEN) {
 
-		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[4] * 1.f);
-		tel.pIN[3] = (short int) (pm.lu_residual_D * 1000.f);
-		tel.pIN[4] = (short int) (pm.lu_residual_Q * 1000.f);
-		tel.pSZ = 5;
+		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
+		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
+		tel.pSZ = 2;
 
 		telCapture();
 	}
@@ -915,10 +1029,28 @@ irq_telemetry_1()
 		td.pIRQ = NULL;
 }
 
+static void
+irq_telemetry_2()
+{
+	if (tel.iEN) {
+
+		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.pIN[2] = (short int) (pm.lu_X[4] * 1.f);
+		tel.pIN[3] = (short int) (pm.n_temperature_c * 1.f);
+		tel.pSZ = 4;
+
+		telCapture();
+	}
+	else
+		td.pIRQ = NULL;
+}
+
 static void (* const irq_telemetry_list[]) () = {
 
 	&irq_telemetry_0,
 	&irq_telemetry_1,
+	&irq_telemetry_2,
 };
 
 void tel_decimal(const char *s)
@@ -1027,14 +1159,17 @@ const shCMD_t		cmList[] = {
 
 	{"pwm_freq_hz", &pwm_freq_hz},
 	{"pwm_dead_time_ns", &pwm_dead_time_ns},
+	{"pwm_DC", &pwm_DC},
+	{"pwm_Z", &pwm_Z},
 
 	{"pm_pwm_resolution", &pm_pwm_resolution},
 	{"pm_pwm_minimal_pulse", &pm_pwm_minimal_pulse},
-	{"pm_pwm_clean_zone", &pm_pwm_clean_zone},
-	{"pm_pwm_dead_time_compensation", &pm_pwm_dead_time_compensation},
+	{"pm_pwm_dead_time", &pm_pwm_dead_time},
 
+	{"pm_m_bitmask_direct_current_injection", &pm_m_bitmask_direct_current_injection},
 	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
-	{"pm_m_bitmask_position_control_loop", &pm_m_bitmask_position_control_loop},
+	{"pm_m_bitmask_flux_polarity_detection", &pm_m_bitmask_flux_polarity_detection},
+	{"pm_m_bitmask_servo_control_loop", &pm_m_bitmask_servo_control_loop},
 
 	{"pm_m_errno", &pm_m_errno},
 
@@ -1058,6 +1193,12 @@ const shCMD_t		cmList[] = {
 	{"pm_scal_U0", &pm_scal_U0},
 	{"pm_scal_U1", &pm_scal_U1},
 
+	{"pm_fault_iab_maximal", &pm_fault_iab_maximal},
+	{"pm_fault_residual_maximal", &pm_fault_residual_maximal},
+	{"pm_fault_drift_maximal", &pm_fault_drift_maximal},
+	{"pm_fault_low_voltage", &pm_fault_low_voltage},
+	{"pm_fault_high_voltage", &pm_fault_high_voltage},
+
 	{"pm_vsi_u_maximal", &pm_vsi_u_maximal},
 
 	{"pm_lu_X0", &pm_lu_X0},
@@ -1071,17 +1212,22 @@ const shCMD_t		cmList[] = {
 	{"pm_lu_gain_K3", &pm_lu_gain_K3},
 	{"pm_lu_gain_K4", &pm_lu_gain_K4},
 	{"pm_lu_gain_K5", &pm_lu_gain_K5},
-	{"pm_lu_low_threshold", &pm_lu_low_threshold},
-	{"pm_lu_low_hysteresis", &pm_lu_low_hysteresis},
+	{"pm_lu_gain_K6", &pm_lu_gain_K5},
+	{"pm_lu_threshold_low", &pm_lu_threshold_low},
+	{"pm_lu_threshold_high", &pm_lu_threshold_high},
+	{"pm_lu_low_D", &pm_lu_low_D},
 	{"pm_lu_residual_variance", &pm_lu_residual_variance},
-
-	{"pm_fault_iab_maximal", &pm_fault_iab_maximal},
-	{"pm_fault_residual_maximal", &pm_fault_residual_maximal},
 
 	{"pm_hf_freq_hz", &pm_hf_freq_hz},
 	{"pm_hf_swing_D", &pm_hf_swing_D},
 	{"pm_hf_gain_K0", &pm_hf_gain_K0},
 	{"pm_hf_gain_K1", &pm_hf_gain_K1},
+	{"pm_hf_gain_K2", &pm_hf_gain_K2},
+
+	{"pm_thermal_R", &pm_thermal_R},
+	{"pm_thermal_E", &pm_thermal_E},
+	{"pm_thermal_gain_R0", &pm_thermal_gain_R0},
+	{"pm_thermal_gain_R1", &pm_thermal_gain_R1},
 
 	{"pm_drift_A", &pm_drift_A},
 	{"pm_drift_B", &pm_drift_B},
@@ -1112,18 +1258,18 @@ const shCMD_t		cmList[] = {
 	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
 	{"pm_i_gain_auto", &pm_i_gain_auto},
 
-	{"pm_p_set_point_x_g", &pm_p_set_point_x_g},
 	{"pm_p_set_point_w_rpm", &pm_p_set_point_w_rpm},
+	{"pm_p_track_point_x_g", &pm_p_track_point_x_g},
 	{"pm_p_gain_D", &pm_p_gain_D},
 	{"pm_p_gain_P", &pm_p_gain_P},
 
-	{"pm_fi_gain_0", &pm_fi_gain_0},
-	{"pm_fi_gain_1", &pm_fi_gain_1},
-	{"pm_fi_gain_2", &pm_fi_gain_2},
+	{"pm_lp_gain_0", &pm_lp_gain_0},
+	{"pm_lp_gain_1", &pm_lp_gain_1},
 
 	{"pm_n_power_watt", &pm_n_power_watt},
-	{"pm_default", &pm_default},
+	{"pm_n_temperature_c", &pm_n_temperature_c},
 
+	{"pm_default", &pm_default},
 	{"pm_request_zero_drift", &pm_request_zero_drift},
 	{"pm_request_wave_hold", &pm_request_wave_hold},
 	{"pm_request_wave_sine", &pm_request_wave_sine},

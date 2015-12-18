@@ -63,6 +63,9 @@ flash: $(TARGET)
 #	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
 	@ picocom -l -b $(BAUD) -pe $(TTY)
 
+resume:
+	@ picocom -l -b $(BAUD) -pe $(TTY)
+
 clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)

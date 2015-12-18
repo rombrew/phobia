@@ -22,16 +22,32 @@
 #include "blm.h"
 #include "lib.h"
 
-static double
-blm_BEMF_Shape(double x)
+void blm_AB_DQ(double R, double A, double B, double *D, double *Q)
 {
-	double		s1;
+	double		X, Y, rS, rC;
 
-	/* Almost sinusoidal shape.
-	 * */
-	s1 = - (sin(x) + sin(x * 5.) * 1e-2);
+	X = A;
+	Y = .577350269189626 * A + 1.15470053837925 * B;
 
-	return s1;
+	rS = sin(R);
+	rC = cos(R);
+
+	*D = rC * X + rS * Y;
+	*Q = rC * Y - rS * X;
+}
+
+void blm_DQ_AB(double R, double D, double Q, double *A, double *B)
+{
+	double		X, Y, rS, rC;
+
+	rS = sin(R);
+	rC = cos(R);
+
+	X = rC * D - rS * Q;
+	Y = rS * D + rC * Q;
+
+	*A = X;
+	*B = - .5 * X + .866025403784439 * Y;
 }
 
 void blm_Enable(blm_t *m)
@@ -39,24 +55,23 @@ void blm_Enable(blm_t *m)
 	double		Kv;
 
 	m->Tsim = 0.; /* Simulation time (Second) */
-        m->dT = 1. / 60e+3; /* Time delta */
-	m->sT = 5e-6; /* Solver step */
+        m->dT = 1. / 60E+3; /* Time delta */
+	m->sT = 5E-6; /* Solver step */
 	m->PWMR = 1400; /* PWM resolution */
-	m->mDQ = 1; /* Saliency model */
 
 	m->sF[0] = 0;
 	m->sF[1] = 0;
 	m->sF[2] = 0;
 
-        m->X[0] = 0.; /* Phase A/D current (Ampere) */
-	m->X[1] = 0.; /* Phase B/Q current (Ampere) */
+        m->X[0] = 0.; /* Axis D current (Ampere) */
+	m->X[1] = 0.; /* Axis Q current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
-        m->X[3] = -1.; /* Electrical Position (Radian) */
+        m->X[3] = 0.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 175e-3;
+	m->R = 175E-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -64,7 +79,8 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->L = 25e-6;
+	m->Ld = 15E-6;
+	m->Lq = 22E-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -81,100 +97,61 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 1e-5;
+	m->J = 1E-4;
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 2e-3;
-	m->M[1] = 0e-5;
-	m->M[2] = 1e-9;
-	m->M[3] = 0e-0;
-
-	/* D/Q inductance. (Henry)
-         * */
-	m->Ld = 15e-6;
-	m->Lq = 22e-6;
-}
-
-static void
-blm_AB_Equation(const blm_t *m, const double X[], double dX[])
-{
-	double		EA, EB, EC, IA, IB, IC;
-	double		BEMFA, BEMFB, BEMFC;
-	double		R, E, Q, Mt, Ml, w;
-
-	R = m->R  * (1. + 4.28e-3 * (X[4] - 20.));
-	E = m->E  * (1. - 1.21e-3 * (X[4] - 20.));
-
-	EA = blm_BEMF_Shape(X[3]);
-	EB = blm_BEMF_Shape(X[3] - 2. * M_PI / 3.);
-	EC = blm_BEMF_Shape(X[3] + 2. * M_PI / 3.);
-
-	BEMFA = X[2] * E * EA;
-	BEMFB = X[2] * E * EB;
-	BEMFC = X[2] * E * EC;
-
-	Q = (m->sF[0] + m->sF[1] + m->sF[2]) * m->U / 3.
-		- (BEMFA + BEMFB + BEMFC) / 3.;
-
-	/* Electrical equations.
-	 * */
-	dX[0] = ((m->sF[0] * m->U - Q) - X[0] * R - BEMFA) / m->L;
-	dX[1] = ((m->sF[1] * m->U - Q) - X[1] * R - BEMFB) / m->L;
-
-	IA = X[0] - BEMFA / m->Q;
-	IB = X[1] - BEMFB / m->Q;
-	IC = -(X[0] + X[1]) - BEMFC / m->Q;
-
-	Mt = m->Zp * E * (EA * IA + EB * IB + EC * IC);
-
-	w = fabs(X[2] / m->Zp);
-	Ml = m->M[0] + m->M[1] * w + m->M[2] * w * w + m->M[3] * sin(X[3] * 3.);
-	Ml = (X[2] < 0. ? Ml : - Ml);
-
-	/* Mechanical equations.
-	 * */
-	dX[2] = m->Zp * (Mt + Ml) / m->J;
-	dX[3] = X[2];
-
-	/* Thermal equation.
-	 * */
-	dX[4] = 0.;
+	m->M[0] = 2E-3;
+	m->M[1] = 0E-5;
+	m->M[2] = 1E-9;
+	m->M[3] = 0E-0;
 }
 
 static void
 blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 {
-	double		uA, uB, uX, uY, uD, uQ;
-	double		R, E, Q, Mt, Ml, w;
+	double		UA, UB, UD, UQ, Q;
+	double		R1, E1, MT, ML, W;
 
-	R = m->R  * (1. + 4.28e-3 * (X[4] - 20.));
-	E = m->E  * (1. - 1.21e-3 * (X[4] - 20.));
+	/* Thermal drift.
+	 * */
+	R1 = m->R  * (1. + 4.28E-3 * (X[4] - 20.));
+	E1 = m->E  * (1. - 1.21E-3 * (X[4] - 20.));
 
+	/* BEMF waveform.
+	 * */
+	E1 *= 1. + sin(X[3] * 5.) * 1E-2;
+
+	/* Voltage from VSI.
+	 * */
 	Q = (m->sF[0] + m->sF[1] + m->sF[2]) / 3.;
-	uA = (m->sF[0] - Q) * m->U;
-	uB = (m->sF[1] - Q) * m->U;
+	UA = (m->sF[0] - Q) * m->U;
+	UB = (m->sF[1] - Q) * m->U;
 
-	uX = uA;
-	uY = .57735027f * uA + 1.1547005f * uB;
-
-	uD = cos(X[3]) * uX + sin(X[3]) * uY;
-	uQ = cos(X[3]) * uY - sin(X[3]) * uX;
+	blm_AB_DQ(X[3], UA, UB, &UD, &UQ);
 
 	/* Electrical equations.
 	 * */
-	dX[0] = (uD - R * X[0] + m->Lq * X[2] * X[1]) / m->Ld;
-	dX[1] = (uQ - R * X[1] - m->Ld * X[2] * X[0] - E * X[2]) / m->Lq;
+	UD += - R1 * X[0] + m->Lq * X[2] * X[1];
+	UQ += - R1 * X[1] - m->Ld * X[2] * X[0] - E1 * X[2];
 
-	Mt = 1.5f * m->Zp * (E - (m->Lq - m->Ld) * X[0]) * X[1];
+	dX[0] = UD / m->Ld;
+	dX[1] = UQ / m->Lq;
 
-	w = fabs(X[2] / m->Zp);
-	Ml = m->M[0] + m->M[1] * w + m->M[2] * w * w;
-	Ml = (X[2] < 0. ? Ml : - Ml);
+	/* Torque production.
+	 * */
+	MT = 1.5 * m->Zp * (E1 - (m->Lq - m->Ld) * X[0]) * X[1];
+
+	/* Load.
+	 * */
+	W = fabs(X[2] / m->Zp);
+	ML = m->M[0] + W * (m->M[1] + W * m->M[2])
+		+ m->M[3] * sin(X[3] * 3.);
+	ML = (X[2] < 0.) ? ML : - ML;
 
 	/* Mechanical equations.
 	 * */
-	dX[2] = m->Zp * (Mt + Ml) / m->J;
+	dX[2] = m->Zp * (MT + ML) / m->J;
 	dX[3] = X[2];
 
 	/* Thermal equation.
@@ -191,20 +168,12 @@ blm_Solve(blm_t *m, double dT)
 	/* Second-order ODE solver.
 	 * */
 
-	if (m->mDQ)
-
-		blm_DQ_Equation(m, m->X, s1);
-	else
-		blm_AB_Equation(m, m->X, s1);
+	blm_DQ_Equation(m, m->X, s1);
 
 	for (j = 0; j < 5; ++j)
 		x2[j] = m->X[j] + s1[j] * dT;
 
-	if (m->mDQ)
-
-		blm_DQ_Equation(m, x2, s2);
-	else
-		blm_AB_Equation(m, x2, s2);
+	blm_DQ_Equation(m, x2, s2);
 
 	for (j = 0; j < 5; ++j)
 		m->X[j] += (s1[j] + s2[j]) * dT / 2.;
@@ -244,21 +213,12 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Current sampling.
 	 * */
-	if (m->mDQ) {
-
-		S1 = cos(m->X[3]) * m->X[0] - sin(m->X[3]) * m->X[1];
-		S2 = sin(m->X[3]) * m->X[0] + cos(m->X[3]) * m->X[1];
-		S2 = - .5f * S1 + .8660254f * S2;
-	}
-	else {
-		S1 = m->X[0];
-		S2 = m->X[1];
-	}
+	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &S1, &S2);
 
 	/* Output voltage of the current sensor A.
 	 * */
-	U = S1 * 55e-3 + Uref / 2.;
-	dU = libGauss() * 3e-3 + 27e-3;
+	U = S1 * 55E-3 + Uref / 2.;
+	dU = libGauss() * 3E-3 + 27E-3;
 	U += dU;
 
 	/* ADC conversion.
@@ -269,8 +229,8 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Output voltage of the current sensor B.
 	 * */
-	U = S2 * 55e-3 + Uref / 2.;
-	dU = libGauss() * 3e-3 - 11e-3;
+	U = S2 * 55E-3 + Uref / 2.;
+	dU = libGauss() * 3E-3 - 11E-3;
 	U += dU;
 
 	/* ADC conversion.
@@ -284,7 +244,7 @@ blm_Bridge_Sample(blm_t *m)
 	S1 = m->U;
 
 	U = S1 / 9.;
-	dU = libGauss() * 3e-3 + 0e-3;
+	dU = libGauss() * 3E-3 + 0E-3;
 	U += dU;
 
 	/* ADC conversion.

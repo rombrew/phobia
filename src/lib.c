@@ -77,13 +77,13 @@ int strpcmp(const char *s, const char *p)
 	return c;
 }
 
-int strxcmp(const char *s, const char *p, int x)
+int strspl(const char *s, const char *p, int n)
 {
 	char		c;
-	int		n = 0;
+	int		l = 0;
 
 	do {
-		if (n >= x)
+		if (l >= n)
 			break;
 
 		c = *s - *p;
@@ -93,11 +93,11 @@ int strxcmp(const char *s, const char *p, int x)
 
 		++s;
 		++p;
-		++n;
+		++l;
 	}
 	while (1);
 
-	return n;
+	return l;
 }
 
 char *strcpy(char *d, const char *s)
@@ -151,9 +151,26 @@ int strlen(const char *s)
 	return len;
 }
 
-const char *strtok(const char *s)
+const char *strchr(const char *s, int c)
 {
-	while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') ++s;
+	do {
+		if (!*s)
+			return NULL;
+
+		if (*s == c)
+			break;
+
+		++s;
+	}
+	while (1);
+
+	return s;
+}
+
+const char *strtok(const char *s, const char *d)
+{
+	while (*s != 0 && strchr(d, *s) == NULL) ++s;
+	while (*s != 0 && strchr(d, *s) != NULL) ++s;
 
 	return s;
 }
@@ -412,7 +429,7 @@ const char *stoi(int *x, const char *s)
 	if (k == 0)
 		return NULL;
 
-	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+	if (*s == 0 || strchr(" ", *s) != NULL)
 
 		*x = i;
 	else
@@ -476,7 +493,7 @@ const char *stof(float *x, const char *s)
 			return NULL;
 	}
 
-	if (*s == 0 || *s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') {
+	if (*s == 0 || strchr(" ", *s) != NULL) {
 
 		while (de < 0) {
 

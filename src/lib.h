@@ -26,11 +26,12 @@ void *memz(void *p, int sz);
 
 int strcmp(const char *s, const char *p);
 int strpcmp(const char *s, const char *p);
-int strxcmp(const char *s, const char *p, int x);
+int strspl(const char *s, const char *p, int x);
 char *strcpy(char *d, const char *s);
 char *strncpy(char *d, const char *s, int n);
 int strlen(const char *s);
-const char *strtok(const char *s);
+const char *strchr(const char *s, int c);
+const char *strtok(const char *s, const char *d);
 
 void putc(char c);
 void puts(const char *s);

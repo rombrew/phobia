@@ -51,18 +51,21 @@ void ap_identify_base(const char *s)
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 		AP_WAIT_FOR_IDLE();
 
-		printf("scal_A0 %3f (A)" EOL, &pm.scal_A[0]);
-		printf("scal_B0 %3f (A)" EOL, &pm.scal_B[0]);
+		printf("A0 %3f (A)" EOL, &pm.scal_A[0]);
+		printf("B0 %3f (A)" EOL, &pm.scal_B[0]);
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
+		pmc_resistance(pm.wave_DFT, IMP);
+		pm.const_R += IMP[0];
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
+		pmc_resistance(pm.wave_DFT, IMP);
+		pm.const_R += IMP[0];
+
 		printf("R %4e (Ohm)" EOL, &pm.const_R);
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
@@ -126,24 +129,20 @@ void ap_identify_const_R_abc(const char *s)
 
 		printf("iSP %3f (A)" EOL, &iSP);
 
+		dU = iSP * pm.const_R / pm.const_U;
+		xPWM = dU * pm.pwm_resolution;
+		dU *= 100.f;
+		printf("U: %i (tk) %2f %%" EOL, xPWM, &dU);
+
 		pm.wave_i_hold_X = iSP;
 		pm.wave_i_hold_Y = 0.f;
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		pm.const_R += pm.wave_temp[2] / pm.wave_i_hold_X;
-		printf("R %4e (Ohm)" EOL, &pm.const_R);
+		pmc_resistance(pm.wave_DFT, R + 0);
+		R[0] += pm.const_R;
 
-		dU = iSP * pm.const_R / pm.const_U;
-		xPWM = dU * pm.pwm_resolution;
-		dU *= 100.f;
-		printf("dU: %2f %% %i (tk)" EOL, &dU, xPWM);
-
-		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-		AP_WAIT_FOR_IDLE();
-
-		R[0] = pm.const_R + pm.wave_temp[2] / pm.wave_i_hold_X;
 		printf("R[a] %4e (Ohm)" EOL, &R[0]);
 
 		pm.wave_i_hold_X = - .5f * iSP;
@@ -152,8 +151,9 @@ void ap_identify_const_R_abc(const char *s)
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		R[1] = pm.const_R + (pm.wave_temp[2] / pm.wave_i_hold_X
-				+ pm.wave_temp[3] / pm.wave_i_hold_Y) / 2.f;
+		pmc_resistance(pm.wave_DFT, R + 1);
+		R[1] += pm.const_R;
+
 		printf("R[b] %4e (Ohm)" EOL, &R[1]);
 
 		pm.wave_i_hold_X = - .5f * iSP;
@@ -162,8 +162,9 @@ void ap_identify_const_R_abc(const char *s)
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
-		R[2] = pm.const_R + (pm.wave_temp[2] / pm.wave_i_hold_X
-				+ pm.wave_temp[3] / pm.wave_i_hold_Y) / 2.f;
+		pmc_resistance(pm.wave_DFT, R + 2);
+		R[2] += pm.const_R;
+
 		printf("R[c] %4e (Ohm)" EOL, &R[2]);
 
 		pm.const_R = (R[0] + R[1] + R[2]) / 3.f;
@@ -171,6 +172,10 @@ void ap_identify_const_R_abc(const char *s)
 			+ (R[1] - pm.const_R) * (R[1] - pm.const_R)
 			+ (R[2] - pm.const_R) * (R[2] - pm.const_R));
 		STD = 100.f * STD / pm.const_R;
+
+		/*pm.abc_DR_A = R[0] / pm.const_R;
+		pm.abc_DR_B = R[1] / pm.const_R;
+		pm.abc_DR_C = R[2] / pm.const_R;*/
 
 		printf("R %4e (Ohm) STD %1f %%" EOL, &pm.const_R, &STD);
 

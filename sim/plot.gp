@@ -70,8 +70,8 @@ if (N == 7) {
 if (N == 8) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Load Torque'
-	plot	@TEL using 1:28 title 'var_M' with lines
+	set ylabel 'Power (Watt)'
+	plot	@TEL using 1:28 title 'W' with lines
 }
 
 if (N == 9) {
@@ -84,15 +84,18 @@ if (N == 9) {
 if (N == 10) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'Supply (Volt)'
-	plot	@TEL using 1:22 title 'const_U' with lines
+	set ylabel 'Temperature (Celsius)'
+	plot	@TEL using 1:6 title 'Plant' with lines, \
+		@TEL using 1:29 title 'Estimated' with lines
 }
+
 
 if (N == 11) {
 
 	set xlabel 'Time (Sec)'
-	set ylabel 'BEMF Constant (RPM/V)'
-	plot	@TEL using 1:(60/($23*2*sqrt(3)*pi*$27)) title 'const_Kv' with lines
+	set ylabel 'Thermal'
+	plot	@TEL using 1:23 title 'R' with lines, \
+		@TEL using 1:24 title 'E' with lines
 }
 
 if (N == 12) {
@@ -129,7 +132,9 @@ if (N == 16) {
 
 	set xlabel 'Time (Sec)'
 	set ylabel 'X'
-	plot	@TEL using 1:($33*360+$12*180/pi) title 'X' with lines,
+	plot	@TEL using 1:($25) title 'X1' with lines, \
+		@TEL using 1:($26) title 'X2' with lines, \
+		@TEL using 1:($30) title 'X3' with lines
 }
 
 pause mouse close

@@ -43,38 +43,15 @@ static void
 blmZ(int Z) { }
 
 static void
-sim_AB_DQ(double A, double B, double R, double *D, double *Q)
-{
-	double		X, Y, rS, rC;
-
-	X = A;
-	Y = .577350269189626 * A + 1.15470053837925 * B;
-
-	rS = sin(R);
-	rC = cos(R);
-
-	*D = rC * X + rS * Y;
-	*Q = rC * Y - rS * X;
-}
-
-static void
 sim_Tel(float *pTel)
 {
 	double		A, B, C, D, Q;
 
-	if (m.mDQ) {
-
-		D = m.X[0];
-		Q = m.X[1];
-	}
-	else
-		sim_AB_DQ(m.X[0], m.X[1], m.X[3], &D, &Q);
-
 	/* Model.
 	 * */
 	pTel[1] = m.Tsim;
-	pTel[2] = D;
-	pTel[3] = Q;
+	pTel[2] = m.X[0];
+	pTel[3] = m.X[1];
 	pTel[4] = m.X[2];
 	pTel[5] = m.X[3];
 	pTel[6] = m.X[4];
@@ -121,26 +98,17 @@ sim_Tel(float *pTel)
 	pTel[20] = pm.drift_B;
 	pTel[21] = pm.drift_Q;
 
-	/* Plant constants.
+	/* Other.
 	 * */
-	pTel[22] = pm.const_U;
-	pTel[23] = pm.const_E;
-	pTel[24] = pm.const_R;
-	pTel[25] = pm.const_Ld;
-	pTel[26] = pm.const_Lq;
+	pTel[22] = pm.hf_flux_polarity;
+	pTel[23] = pm.thermal_R;
+	pTel[24] = pm.thermal_E;
+	pTel[25] = 0.f;
+	pTel[26] = 0.f;
 	pTel[27] = pm.const_Zp;
 	pTel[28] = pm.n_power_watt;
-	pTel[29] = 0.f;
-
-	/* Set Point.
-	 * */
-	pTel[30] = pm.i_set_point_D;
-	pTel[31] = pm.i_set_point_Q;
-	pTel[32] = 0.f;
-
-	/* Variance.
-	 * */
-	pTel[33] = pm.wave_temp[0];
+	pTel[29] = pm.n_temperature_c;
+	pTel[30] = 0.f;
 }
 
 static void
@@ -213,37 +181,42 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-	sim_F(fdTel, 1., 0);
+	/*pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+	sim_F(fdTel, 2., 0);
 
 	pm.const_R += pm.wave_temp[2];
 
 	printf("R\t%.4e\t(%.2f%%)\n", pm.const_R, 100. * (pm.const_R - m.R) / m.R);
 
 	pmc_request(&pm, PMC_STATE_WAVE_SINE);
-	sim_F(fdTel, .7, 0);
+	sim_F(fdTel, 2., 0);
 
 	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
 
-	printf("IMP\t%.4e %.4e %.4e %.4e %.4e %.4e\n",
-		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);
+	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
+		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	printf("Ld\t%.4e\t(%.2f%%)\n", pm.const_Ld, 100. * (pm.const_Ld - m.Ld) / m.Ld);
-	printf("Lq\t%.4e\t(%.2f%%)\n", pm.const_Lq, 100. * (pm.const_Lq - m.Lq) / m.Lq);
+	pm.m_bitmask = 0*PMC_BIT_DIRECT_CURRENT_INJECTION
+		| PMC_BIT_HIGH_FREQUENCY_INJECTION
+		| PMC_BIT_POSITION_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
-	sim_F(fdTel, .5, 0);
+	sim_F(fdTel, .1, 0);
 
-	m.X[3] += .5;
-	sim_F(fdTel, .5, 0);
+	m.X[4] = 70.;
+	sim_F(fdTel, 2., 0);
 
-	pm.p_set_point_w = 0.f;
+	//pm.i_set_point_Q = 10.f;
+	pm.p_set_point_w = 600.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.p_set_point_w = 8000.f;
+	//pm.i_set_point_Q = 2.f;
+	//pm.p_set_point_w = 100.f;
+	m.X[2] /= 2.;
 	sim_F(fdTel, 1., 0);
 
-	m.M[2] = 1e-5;
+	//pm.i_set_point_Q = 10.f;
+	pm.p_set_point_w = 600.f;
 	sim_F(fdTel, 1., 0);
 }
 

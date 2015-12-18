@@ -24,7 +24,6 @@ typedef struct {
 	double		Tsim;
 	double		dT, sT;
 	int		PWMR;
-	int		mDQ;
 
 	/* Duty Cycle (Input).
 	 * */
@@ -44,17 +43,13 @@ typedef struct {
 	 * */
 	double		R;
 	double		Q;
-	double		L;
+	double		Ld;
+	double		Lq;
 	double		E;
 	double		U;
 	int		Zp;
 	double		J;
 	double		M[4];
-
-	/* Saliency.
-	 * */
-	double		Ld;
-	double		Lq;
 
 	/* ADC codes (Output).
 	 * */

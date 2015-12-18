@@ -40,14 +40,20 @@ could try to guess a close value. It is important to set Zp correctly before.
 
 	# pm_const_E_kv <value>
 
-Then you can try a first start. Disable HFI and position control loop.
+Then you can try a first start. Make sure that HFI and position control loop
+are disabled.
 
 	# pm_m_bitmask_high_frequency_injection 0
 	# pm_m_bitmask_position_control_loop 0
 
 Set a low current limit.
 
-	# pm_i_maximal 2
+	# pm_i_high_maximal 2
+	# pm_i_low_maximal 2
+
+Also set a voltage utilisation in irder to limit a maximal achievable speed.
+
+	# pm_vsi_u_maximal .2
 
 Align the rotor.
 
@@ -58,11 +64,8 @@ Now try to run.
 	# pm_request_start
 	# pm_i_set_point_Q 1
 
-The motor will run without speed limit. Keep in mind it may be dangerous.
-Alternatively you could use position control loop at the first start.
-
 Next stage is to estimate BEMF constant more accurately. Do this when motor is
-in run. Choice of the speed may affect the result.
+in run. Choice of different speed may give different results.
 
 	# ap_identify_const_E
 

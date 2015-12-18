@@ -20,9 +20,11 @@
 #define _H_PMC_
 
 enum {
+	PMC_BIT_DIRECT_CURRENT_INJECTION	= 0x0001,
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
-	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0008,
-	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0020,
+	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
+	PMC_BIT_BEMF_SHAPE_COMPENSATION		= 0x0008,
+	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0020,
 };
 
 enum {
@@ -44,12 +46,17 @@ enum {
 
 enum {
 	PMC_OK					= 0,
+	PMC_ERROR_CURRENT_SENSOR_A,
+	PMC_ERROR_CURRENT_SENSOR_B,
 	PMC_ERROR_OPEN_CIRCUIT,
 	PMC_ERROR_OVERCURRENT,
-	PMC_ERROR_CURRENT_SENSOR,
 	PMC_ERROR_LOW_VOLTAGE,
 	PMC_ERROR_HIGH_VOLTAGE,
 	PMC_ERROR_
+};
+
+enum {
+	PMC_BEMF_SHAPE_MAX			= 720,
 };
 
 typedef struct {
@@ -63,8 +70,7 @@ typedef struct {
 	 * */
 	int		pwm_resolution;
 	int		pwm_minimal_pulse;
-	int		pwm_clean_zone;
-	int		pwm_dead_time_compensation;
+	int		pwm_dead_time;
 
 	/* FSM variables.
 	 * */
@@ -86,6 +92,11 @@ typedef struct {
 	float		T_measure;
 	float		T_end;
 
+	/* Current feedback.
+	 * */
+	float		fb_iA;
+	float		fb_iB;
+
 	/* Wave configuration.
 	 * */
 	float		wave_i_hold_X;
@@ -103,6 +114,14 @@ typedef struct {
 	float		scal_B[2];
 	float		scal_U[2];
 
+	/* Fault limits.
+	 * */
+	float		fault_iab_maximal;
+	float		fault_residual_maximal;
+	float		fault_drift_maximal;
+	float		fault_low_voltage;
+	float		fault_high_voltage;
+
 	/* Voltage utilisation factor.
 	 * */
 	float		vsi_u_maximal;
@@ -119,10 +138,10 @@ typedef struct {
 	int		lu_region;
 	float		lu_X[5];
 	int		lu_revol;
-	float		lu_gain_K[6];
-	float		lu_low_threshold;
-	float		lu_low_hysteresis;
-	float		lu_flux_polarity;
+	float		lu_gain_K[7];
+	float		lu_threshold_low;
+	float		lu_threshold_high;
+	float		lu_low_D;
 	float		lu_temp[2];
 
 	/* Measurement residual.
@@ -131,23 +150,35 @@ typedef struct {
 	float		lu_residual_Q;
 	float		lu_residual_variance;
 
-	/* Fault limits.
-	 * */
-	float		fault_iab_maximal;
-	float		fault_residual_maximal;
-	float		fault_drift_maximal;
-	float		fault_low_voltage;
-	float		fault_high_voltage;
-
 	/* HFI observer.
 	 * */
 	float		hf_freq_hz;
 	float		hf_swing_D;
+	float		hf_flux_polarity;
 	float		hf_CS[2];
-	float		hf_gain_K[2];
-	float		hf_;
+	float		hf_gain_K[3];
+	//float		hf_;
 
-	/* Zero Drift.
+	/* BEMF waveform.
+	 * */
+	/*int		bemf_resolution;
+	int		bemf_scan;
+	float		bemf_E_D;
+	float		bemf_E_Q;*/
+
+	/* ABC deviations.
+	 * */
+	/*float		abc_DR_A;
+	float		abc_DR_B;
+	float		abc_DR_C;*/
+
+	/* Thermal drift.
+	 * */
+	float		thermal_R;
+	float		thermal_E;
+	float		thermal_gain_R[2];
+
+	/* Zero drift.
 	 * */
 	float		drift_A;
 	float		drift_B;
@@ -193,26 +224,33 @@ typedef struct {
 	float		i_gain_P_Q;
 	float		i_gain_I_Q;
 
-	/* Position control loop.
+	/* Servo control loop.
 	 * */
-	float		p_set_point_x[2];
-	int		p_set_point_revol;
 	float		p_set_point_w;
+	float		p_slew_rate_w;
+	float		p_track_point_w;
+	float		p_track_point_x[2];
+	int		p_track_point_revol;
 	float		p_gain_D;
 	float		p_gain_P;
 
-	/* Filter gains.
+	/* Low-pass gains.
 	 * */
-	float		fi_gain[4];
+	float		lp_gain[2];
 
 	/* Informational.
 	 * */
 	float		n_power_watt;
+	float		n_temperature_c;
 
 	/* Control interface.
 	 * */
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
+
+	/* Large tables.
+	 * */
+	float		bemf_shape[PMC_BEMF_SHAPE_MAX][2];
 }
 pmc_t;
 
@@ -221,6 +259,7 @@ void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
 void pmc_request(pmc_t *pm, int req);
 
+void pmc_resistance(const float *DFT, float *R);
 void pmc_impedance(const float *DFT, float hz, float *IMP);
 const char *pmc_strerror(int errno);
 

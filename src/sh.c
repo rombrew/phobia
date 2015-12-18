@@ -255,7 +255,7 @@ shCommonMatch()
 		if (!strpcmp(sh.cLine, iD)) {
 
 			if (iLast != NULL)
-				N = strxcmp(iLast, iD, N);
+				N = strspl(iLast, iD, N);
 			else
 				N = strlen(iD);
 
