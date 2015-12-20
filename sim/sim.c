@@ -196,9 +196,10 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	pm.m_bitmask = 0*PMC_BIT_DIRECT_CURRENT_INJECTION
+	pm.m_bitmask = 0
+		//| PMC_BIT_DIRECT_CURRENT_INJECTION
 		| PMC_BIT_HIGH_FREQUENCY_INJECTION
-		| PMC_BIT_POSITION_CONTROL_LOOP;
+		| PMC_BIT_SERVO_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
@@ -207,7 +208,8 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 2., 0);
 
 	//pm.i_set_point_Q = 10.f;
-	pm.p_set_point_w = 600.f;
+	//pm.p_set_point_w = 600.f;
+	pm.p_track_point_revol = 1;
 	sim_F(fdTel, 1., 0);
 
 	//pm.i_set_point_Q = 2.f;
@@ -216,7 +218,8 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 1., 0);
 
 	//pm.i_set_point_Q = 10.f;
-	pm.p_set_point_w = 600.f;
+	//pm.p_set_point_w = 600.f;
+	pm.p_track_point_revol = 10;
 	sim_F(fdTel, 1., 0);
 }
 

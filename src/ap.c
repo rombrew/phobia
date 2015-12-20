@@ -203,31 +203,31 @@ void ap_identify_const_E(const char *s)
 	if (td.pIRQ != NULL)
 		return ;
 
-	td.avgIN[0] = &pm.lu_X[0];
-	td.avgIN[1] = &pm.lu_X[1];
-	td.avgIN[2] = &pm.lu_X[4];
-	td.avgIN[3] = &pm.drift_Q;
+	td.avg_IN[0] = &pm.lu_X[0];
+	td.avg_IN[1] = &pm.lu_X[1];
+	td.avg_IN[2] = &pm.lu_X[4];
+	td.avg_IN[3] = &pm.drift_Q;
 
-	td.avgSUM[0] = 0.f;
-	td.avgSUM[1] = 0.f;
-	td.avgSUM[2] = 0.f;
-	td.avgSUM[3] = 0.f;
+	td.avg_SUM[0] = 0.f;
+	td.avg_SUM[1] = 0.f;
+	td.avg_SUM[2] = 0.f;
+	td.avg_SUM[3] = 0.f;
 
-	td.avgK = 4;
-	td.avgN = 0;
-	td.avgMAX = pm.freq_hz * pm.T_measure;
+	td.avg_K = 4;
+	td.avg_N = 0;
+	td.avg_MAX = pm.freq_hz * pm.T_measure;
 
 	td.pIRQ = &irq_avg_value_8;
 
 	while (td.pIRQ != NULL)
 		taskIOMUX();
 
-	td.avgSUM[0] /= (float) td.avgN;
-	td.avgSUM[1] /= (float) td.avgN;
-	td.avgSUM[2] /= (float) td.avgN;
-	td.avgSUM[3] /= (float) td.avgN;
+	td.avg_SUM[0] /= (float) td.avg_N;
+	td.avg_SUM[1] /= (float) td.avg_N;
+	td.avg_SUM[2] /= (float) td.avg_N;
+	td.avg_SUM[3] /= (float) td.avg_N;
 
-	pm.const_E -= td.avgSUM[3] / td.avgSUM[2];
+	pm.const_E -= td.avg_SUM[3] / td.avg_SUM[2];
 	pm_const_E_wb(EOL);
 }
 

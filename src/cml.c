@@ -391,12 +391,12 @@ void irq_avg_value_8()
 {
 	int			j;
 
-	if (td.avgN <= td.avgMAX) {
+	if (td.avg_N <= td.avg_MAX) {
 
-		for (j = 0; j < td.avgK; ++j)
-			td.avgSUM[j] += *td.avgIN[j];
+		for (j = 0; j < td.avg_K; ++j)
+			td.avg_SUM[j] += *td.avg_IN[j];
 
-		td.avgN++;
+		td.avg_N++;
 	}
 	else
 		td.pIRQ = NULL;
@@ -405,11 +405,11 @@ void irq_avg_value_8()
 static float
 pm_avg_float_1(float *param, float time)
 {
-	td.avgIN[0] = param;
-	td.avgSUM[0] = 0.f;
-	td.avgK = 1;
-	td.avgN = 0;
-	td.avgMAX = pm.freq_hz * time;
+	td.avg_IN[0] = param;
+	td.avg_SUM[0] = 0.f;
+	td.avg_K = 1;
+	td.avg_N = 0;
+	td.avg_MAX = pm.freq_hz * time;
 
 	halWFI();
 
@@ -418,9 +418,9 @@ pm_avg_float_1(float *param, float time)
 	while (td.pIRQ != NULL)
 		taskIOMUX();
 
-	td.avgSUM[0] /= (float) td.avgN;
+	td.avg_SUM[0] /= (float) td.avg_N;
 
-	return td.avgSUM[0];
+	return td.avg_SUM[0];
 }
 
 static float

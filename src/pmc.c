@@ -580,6 +580,13 @@ p_control(pmc_t *pm)
 	 * */
 	iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
 
+	{
+		static float		s;
+
+		s += eP;
+		iSP += 2E-6f * s;
+	}
+
 	pm->i_set_point_Q = iSP;
 }
 

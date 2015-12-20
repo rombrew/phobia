@@ -38,9 +38,9 @@ typedef struct {
 
 	/* Average variables.
 	 * */
-	float			*avgIN[8];
-	float			avgSUM[8];
-	int			avgK, avgN, avgMAX;
+	float			*avg_IN[8];
+	float			avg_SUM[8];
+	int			avg_K, avg_N, avg_MAX;
 	float			avg_default_time;
 }
 taskDATA_t;
@@ -48,7 +48,7 @@ taskDATA_t;
 extern taskDATA_t		td;
 extern pmc_t			pm;
 
-void taskIOMUX();
+extern void taskIOMUX();
 
 #endif /* _H_TASK_ */
 

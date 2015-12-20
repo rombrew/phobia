@@ -40,6 +40,7 @@ void halTick()
 void taskIOMUX()
 {
 	int		xC, xN;
+	int		xWFI = 1;
 	char		*pX;
 
 	/* From USART to SH.
@@ -53,7 +54,8 @@ void taskIOMUX()
 		if (xC < 0)
 			break;
 		else
-			shExPush(xC);
+			shExPush(xC),
+			xWFI = 0;
 
 		xN--;
 	}
@@ -69,7 +71,7 @@ void taskIOMUX()
 			xC = shExRecv();
 
 			if (xC < 0)
-				break;
+				goto fail_1;
 			else
 				*pX++ = (char) xC,
 				xN++;
@@ -79,13 +81,19 @@ void taskIOMUX()
 		}
 		while (1);
 
-		if (xN > 0) {
-
-			usartPushAll(xN);
-		}
+		usartPushAll(xN);
+		xWFI = 0;
+fail_1:
+		;
 	}
 
-	halWFI();
+	/* TODO: From CAN to SH.
+	 * */
+
+	/* TODO: From SH to CAN.
+	 * */
+
+	xWFI ? halWFI() : 0;
 }
 
 void canIRQ()
@@ -141,6 +149,7 @@ void halMain()
 	do {
 		taskIOMUX();
 		shTask();
+		halWFI();
 	}
 	while (1);
 }

@@ -22,21 +22,6 @@
 extern int ldSvectors;
 extern int ldSccm, ldEccm;
 
-static void
-Halt()
-{
-	/* Enable LED.
-	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
-	MODIFY_REG(GPIOD->MODER, GPIO_MODER_MODER14, GPIO_MODER_MODER14_0);
-	GPIOD->BSRRL = (1UL << 14);
-
-	/* Halt.
-	 * */
-	__disable_irq();
-	for (;;) __WFI();
-}
-
 void irqNMI() { }
 void irqHardFault() { }
 void irqMemoryFault() { }
@@ -77,52 +62,55 @@ clockStart()
 	}
 	while (!HSERDY && HSEN < HSE_STARTUP_TIMEOUT);
 
-	/* If HSE is ready.
+	/* Enable power interface clock.
 	 * */
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+
+	/* Regulator voltage scale 1 mode.
+	 * */
+	PWR->CR |= PWR_CR_VOS;
+
+	/* Set AHB/APB1/APB2 prescalers.
+	 * */
+	RCC->CFGR &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
+	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
+
 	if (HSERDY) {
 
-		/* Enable power interface clock.
-		 * */
-		RCC->APB1ENR |= RCC_APB1ENR_PWREN;
-
-		/* Regulator voltage scale 1 mode.
-		 * */
-		PWR->CR |= PWR_CR_VOS;
-
-		/* Set AHB/APB1/APB2 prescalers.
-		 * */
-		RCC->CFGR &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
-		RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
-
-		/* Enable PLL.
+		/* From HSE.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE
 			| (7UL << 24) | (0UL << 16)
 			| (168UL << 6) | (4UL << 0);
-		RCC->CR |= RCC_CR_PLLON;
-
-		/* Wait till the main PLL is ready.
-		 * */
-		while (!(RCC->CR & RCC_CR_PLLRDY)) ;
-
-		/* Configure Flash.
-		 * */
-		FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
-
-		/* Select PLL.
-		 * */
-		RCC->CFGR &= ~RCC_CFGR_SW;
-		RCC->CFGR |= RCC_CFGR_SW_PLL;
-
-		/* Wait till PLL is used.
-		 * */
-		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
 	}
 	else {
-		/* HSE fails to start up.
+		/* From HSI.
 		 * */
-		Halt();
+		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI
+			| (7UL << 24) | (0UL << 16)
+			| (84UL << 6) | (4UL << 0);
 	}
+
+	/* Enable PLL.
+	 * */
+	RCC->CR |= RCC_CR_PLLON;
+
+	/* Wait till the main PLL is ready.
+	 * */
+	while (!(RCC->CR & RCC_CR_PLLRDY)) ;
+
+	/* Configure Flash.
+	 * */
+	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
+
+	/* Select PLL.
+	 * */
+	RCC->CFGR &= ~RCC_CFGR_SW;
+	RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+	/* Wait till PLL is used.
+	 * */
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
 }
 
 static void
