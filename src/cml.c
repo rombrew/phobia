@@ -813,12 +813,15 @@ void pm_p_set_point_w_rpm(const char *s)
 void pm_p_track_point_x_g(const char *s)
 {
 	float			angle, g;
-	int			revol;
+	int			revol, full;
 
 	if (stof(&g, s) != NULL) {
 
 		revol = (int) (g / 360.f);
 		g -= (float) (revol * 360);
+
+		if (stoi(&full, strtok(s, " ")) != NULL)
+			revol += full;
 
 		if (g <= - 180.f) {
 
