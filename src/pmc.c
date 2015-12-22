@@ -126,9 +126,9 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 7E+3f;
-	pm->p_gain_D = 2E-2f;
-	pm->p_gain_P = 2E-1f;
+	pm->p_slew_rate_w = 1E+3f;
+	pm->p_gain_D = 5E-2f;
+	pm->p_gain_P = 5E-1f;
 
 	pm->lp_gain[0] = .1f;
 	pm->lp_gain[1] = .1f;
@@ -534,6 +534,31 @@ p_control(pmc_t *pm)
 
 	pm->lu_temp[0] = pm->lu_X[3];
 
+	/*if (1) {
+
+		dX = pm->p_set_point_x[0] * pm->p_track_point_x[0] +
+			pm->p_set_point_x[1] * pm->p_track_point_x[1];
+		dY = pm->p_set_point_x[1] * pm->p_track_point_x[0] -
+			pm->p_set_point_x[0] * pm->p_track_point_x[1];
+
+		eP = matan2f(dY, dX);
+
+		if (dY < 0.) {
+
+			if (pm->p_track_point_x[1] < 0. && pm->p_set_point_x[1] >= 0.)
+				eP += 2.f * MPIF;
+		}
+		else {
+			if (pm->p_track_point_x[1] >= 0. && pm->p_set_point_x[1] < 0.)
+				eP -= 2.f * MPIF;
+		}
+
+		eP += (pm->p_set_point_revol - pm->p_track_point_revol) * 2.f * MPIF;
+
+		// TODO:
+		//	pm->p_set_point_w = ;
+	}*/
+
 	/* Slew rate (acceleration).
 	 * */
 	temp = pm->p_slew_rate_w * pm->dT;
@@ -579,13 +604,6 @@ p_control(pmc_t *pm)
 	/* PD controller.
 	 * */
 	iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
-
-	{
-		static float		s;
-
-		s += eP;
-		iSP += 2E-6f * s;
-	}
 
 	pm->i_set_point_Q = iSP;
 }

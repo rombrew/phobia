@@ -197,29 +197,23 @@ sim_Script(FILE *fdTel)
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
 	pm.m_bitmask = 0
-		//| PMC_BIT_DIRECT_CURRENT_INJECTION
+		| PMC_BIT_DIRECT_CURRENT_INJECTION
 		| PMC_BIT_HIGH_FREQUENCY_INJECTION
 		| PMC_BIT_SERVO_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	m.X[4] = 70.;
-	sim_F(fdTel, 2., 0);
+	//m.X[4] = 70.;
+	//sim_F(fdTel, 1., 0);
 
-	//pm.i_set_point_Q = 10.f;
-	//pm.p_set_point_w = 600.f;
-	pm.p_track_point_revol = 1;
+	pm.p_track_point_revol = 3;
 	sim_F(fdTel, 1., 0);
 
-	//pm.i_set_point_Q = 2.f;
-	//pm.p_set_point_w = 100.f;
-	m.X[2] /= 2.;
+	//m.X[3] += .1;
 	sim_F(fdTel, 1., 0);
 
-	//pm.i_set_point_Q = 10.f;
-	//pm.p_set_point_w = 600.f;
-	pm.p_track_point_revol = 10;
+	pm.p_set_point_w = 3000.f;
 	sim_F(fdTel, 1., 0);
 }
 
