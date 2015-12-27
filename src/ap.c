@@ -185,16 +185,6 @@ void ap_identify_const_R_abc(const char *s)
 	while (0);
 }
 
-void ap_identify_const_L_(const char *s)
-{
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
-
-	do {
-	}
-	while (0);
-}
-
 void ap_identify_const_E(const char *s)
 {
 	if (pm.lu_region == PMC_LU_DISABLED)
@@ -229,5 +219,18 @@ void ap_identify_const_E(const char *s)
 
 	pm.const_E -= td.avg_SUM[3] / td.avg_SUM[2];
 	pm_const_E_wb(EOL);
+}
+
+void ap_identify_const_J(const char *s)
+{
+	if (pm.lu_region == PMC_LU_DISABLED)
+		return ;
+
+	if (td.pIRQ != NULL)
+		return ;
+
+	do {
+	}
+	while (0);
 }
 

@@ -133,8 +133,7 @@ if (N == 16) {
 	set xlabel 'Time (Sec)'
 	set ylabel 'X'
 	plot	@TEL using 1:($25) title 'X1' with lines, \
-		@TEL using 1:($26) title 'X2' with lines, \
-		@TEL using 1:($30) title 'X3' with lines
+		@TEL using 1:($26) title 'X2' with lines
 }
 
 pause mouse close

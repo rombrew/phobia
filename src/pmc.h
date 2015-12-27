@@ -157,9 +157,10 @@ typedef struct {
 	float		hf_flux_polarity;
 	float		hf_CS[2];
 	float		hf_gain_K[3];
+	// TODO: Add saliency distortion compensation
 	//float		hf_;
 
-	/* BEMF waveform.
+	/* TODO: Add BEMF waveform compensation.
 	 * */
 	/*int		bemf_resolution;
 	int		bemf_scan;

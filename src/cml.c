@@ -516,7 +516,7 @@ void pm_lu_threshold_low(const char *s)
 	stof(&pm.lu_threshold_low, s);
 	RPM = 9.5492969f * pm.lu_threshold_low / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_threshold_low, &RPM);
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_low, &RPM);
 }
 
 void pm_lu_threshold_high(const char *s)
@@ -526,7 +526,18 @@ void pm_lu_threshold_high(const char *s)
 	stof(&pm.lu_threshold_high, s);
 	RPM = 9.5492969f * pm.lu_threshold_high / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &pm.lu_threshold_high, &RPM);
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_high, &RPM);
+}
+
+void pm_lu_threshold_auto(const char *s)
+{
+	pm.lu_threshold_low = 1E-1f / pm.const_E;
+	pm.lu_threshold_high = pm.lu_threshold_low + 1E+2f;
+	
+	printf(	"%4e (Rad/S)" EOL
+		"%4e (Rad/S)" EOL,
+		&pm.lu_threshold_low,
+		&pm.lu_threshold_high);
 }
 
 void pm_lu_low_D(const char *s)
@@ -842,9 +853,9 @@ void pm_p_track_point_x_g(const char *s)
 	}
 
 	angle = matan2f(pm.p_track_point_x[1], pm.p_track_point_x[0]);
-	g = angle * (180.f / MPIF) + (float) pm.p_track_point_revol * 360.f;
+	g = angle * (180.f / MPIF);
 
-	printf("%1f (degree)" EOL, &g);
+	printf("%1f (degree) + %i (full revolutions)" EOL, &g, pm.p_track_point_revol);
 }
 
 void pm_p_gain_D(const char *s)
@@ -984,21 +995,38 @@ void pm_update_const_L(const char *s)
 
 void pm_update_scal_AB(const char *s)
 {
-	float		gain, fix;
+	float		gainA, gainB, fixA, fixB, ref;
 
 	if (pm.m_state == PMC_STATE_IDLE) {
 
-		gain = pm.wave_temp[1] / pm.wave_temp[2];
-		fix = 100.f * (gain - 1.f);
+		if (stof(&ref, s) != NULL && ref != 0.f) {
 
-		gain = sqrtf(gain);
-		pm.scal_A[1] /= gain;
-		pm.scal_B[1] *= gain;
+			gainA = pm.wave_DFT[0] / ref;
+			gainB = pm.wave_DFT[1] / ref;
 
-		printf(	"FIX %2f %%" EOL
-			"A1 %4e" EOL
-			"B1 %4e" EOL,
-			&fix, &pm.scal_A[1], &pm.scal_B[1]);
+			fixA = 100.f * (gainA - 1.f);
+			fixB = 100.f * (gainB - 1.f);
+
+			printf(	"FIX_A %2f %%" EOL
+				"FIX_B %2f %%" EOL
+				"A1 %4e" EOL
+				"B1 %4e" EOL,
+				&fixA, &fixB,
+				&pm.scal_A[1], &pm.scal_B[1]);
+		}
+		else {
+			gainA = pm.wave_DFT[0] / pm.wave_DFT[1];
+			fixA = 100.f * (gainA - 1.f);
+
+			gainA = sqrtf(gainA);
+			pm.scal_A[1] /= gainA;
+			pm.scal_B[1] *= gainA;
+
+			printf(	"FIX %2f %%" EOL
+				"A1 %4e" EOL
+				"B1 %4e" EOL,
+				&fixA, &pm.scal_A[1], &pm.scal_B[1]);
+		}
 	}
 }
 
@@ -1218,6 +1246,7 @@ const shCMD_t		cmList[] = {
 	{"pm_lu_gain_K6", &pm_lu_gain_K5},
 	{"pm_lu_threshold_low", &pm_lu_threshold_low},
 	{"pm_lu_threshold_high", &pm_lu_threshold_high},
+	{"pm_lu_threshold_auto", &pm_lu_threshold_auto},
 	{"pm_lu_low_D", &pm_lu_low_D},
 	{"pm_lu_residual_variance", &pm_lu_residual_variance},
 

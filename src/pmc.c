@@ -498,6 +498,13 @@ i_control(pmc_t *pm)
 		(pm->i_integral_Q < - temp) ? - temp : pm->i_integral_Q;
 	uQ += pm->i_integral_Q;
 
+	/*if (0) {
+
+		uD += pm->const_R * pm->lu_X[0] - pm->const_Lq * pm->lu_X[1] * pm->lu_X[4];
+		uQ += pm->const_R * pm->lu_X[1] + (pm->const_Ld * pm->lu_X[0]
+				+ pm->const_E) * pm->lu_X[4] + pm->drift_Q;
+	}*/
+
 	/* High Frequency Injection.
 	 * */
 	if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION
@@ -994,7 +1001,30 @@ void pmc_voltage(pmc_t *pm, int xU)
 	pm->const_U += (uS - pm->const_U) * pm->lp_gain[0];
 	pm->const_U_inversed = 1.f / pm->const_U;
 
+	/* Low voltage.
+	 * */
 	if (pm->const_U < pm->fault_low_voltage) {
+
+		if (pm->lu_region != PMC_LU_DISABLED
+				|| pm->m_state != PMC_STATE_IDLE) {
+
+			pm->m_state = PMC_STATE_END;
+			pm->m_phase = 0;
+			pm->m_errno = PMC_ERROR_LOW_VOLTAGE;
+		}
+	}
+
+	/* High voltage.
+	 * */
+	if (pm->const_U > pm->fault_high_voltage) {
+
+		if (pm->lu_region != PMC_LU_DISABLED
+				|| pm->m_state != PMC_STATE_IDLE) {
+
+			pm->m_state = PMC_STATE_END;
+			pm->m_phase = 0;
+			pm->m_errno = PMC_ERROR_LOW_VOLTAGE;
+		}
 	}
 }
 
