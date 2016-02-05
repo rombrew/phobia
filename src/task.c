@@ -71,7 +71,7 @@ void taskIOMUX()
 			xC = shExRecv();
 
 			if (xC < 0)
-				goto fail_1;
+				break;
 			else
 				*pX++ = (char) xC,
 				xN++;
@@ -81,10 +81,11 @@ void taskIOMUX()
 		}
 		while (1);
 
-		usartPushAll(xN);
-		xWFI = 0;
-fail_1:
-		;
+		if (xN > 0) {
+
+			usartPushAll(xN);
+			xWFI = 0;
+		}
 	}
 
 	/* TODO: From CAN to SH.
