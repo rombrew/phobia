@@ -1,32 +1,35 @@
-# Getting Started
+## Overview
 
-In this doc we briefly describe how to use PMC. We will assume that you use
-GNU/Linux.
+This manual gives a basic info about Phobia Motor Controller (PMC). Look into
+other docs for specific questions.
 
-## Prepare
+## Hardware
 
-First you need to have the appropriate hardware. Currently only prototype is
-available. It is based on stm32f4discovery board and custom power board.
+We do not assemble hardware for sales. You can get appropriate revision of PCB
+from repo and order the fabrication and assembly somewhere.
 
-To upload the software you need to connect to the board USART. Install our fork
-of [stmflasher](https://bitbucket.org/amaora/stmflasher) or any replacement
-software. Also you will need [picocom](https://github.com/npat-efault/picocom)
-or another terminal program. Get the PMC source.
+	$ hg clone https://bitbucket.org/amaora/phobia-pcb
+
+## Software
+
+You can upload software through USART or SWD. To configure PMC you need a
+terminal program. We suggest you satisfy the following requirements.
+
+* arm-non-eabi toolchain
+* [stmflasher](https://bitbucket.org/amaora/stmflasher)
+* [picocom](https://github.com/npat-efault/picocom)
+
+Adapt our Makefile if you need any other toolchain or flasher or terminal.
 
 	$ hg clone https://bitbucket.org/amaora/phobia
-
-Adapt src/Makefile to your needs. Probably will need to change compiler prefix,
-tty name, ld script. Then build it and flash the binary.
-
 	$ make flash
 
-Once binary is uploaded a terminal program is connected to the tty. If all goes
-well you will see a shell prompt.
+Once software is uploaded you should configure PMC through USART or CAN. There
+is command line interface.
 
-## Configure a new motor
+## Basic configuration
 
-Connect the motor to the power terminals. Remove any load from it, allow it
-rotate freely. Then do a base parameters identification.
+Connect the motor to the terminals. First do a base parameters identification.
 
 	# ap_identify_base
 
@@ -40,8 +43,8 @@ could try to guess a close value. It is important to set Zp correctly before.
 
 	# pm_const_E_kv <value>
 
-Then you can try a first start. Make sure that HFI and position control loop
-are disabled.
+Then you can try a first start. Remove any load from the motor, allow it rotate
+freely. You can disable HFI and position control loop for the first time.
 
 	# pm_m_bitmask_high_frequency_injection 0
 	# pm_m_bitmask_position_control_loop 0
@@ -51,7 +54,7 @@ Set a low current limit.
 	# pm_i_high_maximal 2
 	# pm_i_low_maximal 2
 
-Also set a voltage utilisation in irder to limit a maximal achievable speed.
+Also set a voltage utilisation to limit a maximal achievable speed.
 
 	# pm_vsi_u_maximal .2
 
@@ -59,7 +62,7 @@ Align the rotor.
 
 	# pm_request_wave_hold
 
-Now try to run.
+Try to run.
 
 	# pm_request_start
 	# pm_i_set_point_Q 1
@@ -69,5 +72,11 @@ in run. Choice of different speed may give different results.
 
 	# ap_identify_const_E
 
-This completed the basic configuration.
+There can be a many alternatives if some step fails. Look into command
+description for details. This completes the basic configuration.
+
+## Usage
+
+Once configuration is done you can run the motor with controlled torque or
+speed or absolute position.
 
