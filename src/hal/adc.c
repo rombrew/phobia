@@ -25,21 +25,16 @@ void irqADC()
 {
 	if (ADC1->SR & ADC_SR_JEOC) {
 
-		MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER5, GPIO_MODER_MODER5_0);
-		GPIOC->BSRRL = (1UL << 5);
-
 		ADC1->SR &= ~ADC_SR_JEOC;
 		ADC2->SR &= ~ADC_SR_JEOC;
 		ADC3->SR &= ~ADC_SR_JEOC;
 
-		halADC.xA = (1UL << 12) - ADC2->JDR1;
-		halADC.xB = (1UL << 12) - ADC3->JDR1;
-		halADC.xU = 1821; /* ADC1->JDR1;*/
+		halADC.xA = ADC2->JDR1;
+		halADC.xB = ADC3->JDR1;
+		halADC.xSUPPLY = ADC1->JDR1;
 
 		//__set_BASEPRI(7);
 		adcIRQ();
-
-		GPIOC->BSRRH = (1UL << 5);
 	}
 }
 

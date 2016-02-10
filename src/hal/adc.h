@@ -28,15 +28,23 @@ typedef struct {
 
 	/* Supply voltage.
 	 * */
-	int		xU;
+	int		xSUPPLY;
+
+	/* External voltage.
+	 * */
+	int		xHVIN;
+
+	/* NTC resistor.
+	 * */
+	int		xNTC;
 
 	/* Thermal sensor.
 	 * */
-	int		xT;
+	int		xTEMP;
 
 	/* Reference voltage.
 	 * */
-	int		xR;
+	int		xREF;
 }
 halADC_t;
 

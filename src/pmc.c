@@ -958,7 +958,6 @@ pm_FSM(pmc_t *pm)
 		default:
 			pm->m_state = PMC_STATE_END;
 			pm->m_phase = 0;
-			break;
 	}
 }
 
@@ -1107,7 +1106,7 @@ const char *pmc_strerror(int errno)
 		"Current Sensor A",
 		"Current Sensor B",
 		"Open Circuit",
-		"Overcurrent",
+		"OverCurrent",
 		"Low Voltage",
 		"High Voltage",
 		""
