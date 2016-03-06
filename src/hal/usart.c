@@ -104,7 +104,7 @@ void uartDisable()
 	 * */
 	USART3->CR1 = 0;
 
-	/* Disable PC10, PC11 pins.
+	/* Disable PC10 PC11 pins.
 	 * */
 	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER10 | GPIO_MODER_MODER11, 0);
 

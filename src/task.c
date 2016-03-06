@@ -108,7 +108,7 @@ void adcIRQ()
 	T0 = halSysTick();
 
 	pmc_feedback(&pm, halADC.xA, halADC.xB);
-	pmc_voltage(&pm, halADC.xU);
+	pmc_voltage(&pm, halADC.xSUPPLY);
 
 	T1 = halSysTick();
 
@@ -122,7 +122,7 @@ void adcIRQ()
 
 void halMain()
 {
-	halLED(LED_BLUE);
+	halLED(LED_RED);
 
 	/* Config.
 	 * */

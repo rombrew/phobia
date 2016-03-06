@@ -23,8 +23,9 @@ enum {
 	PMC_BIT_DIRECT_CURRENT_INJECTION	= 0x0001,
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
-	PMC_BIT_BEMF_SHAPE_COMPENSATION		= 0x0008,
-	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0020,
+	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0008,
+	PMC_BIT_BEMF_WAVEFORM_ESTIMATION	= 0x0010,
+	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0100,
 };
 
 enum {
@@ -56,7 +57,7 @@ enum {
 };
 
 enum {
-	PMC_BEMF_SHAPE_MAX			= 720,
+	PMC_BEMF_SHAPE_MAX			= 512,
 };
 
 typedef struct {
@@ -160,12 +161,11 @@ typedef struct {
 	// TODO: Add saliency distortion compensation
 	//float		hf_;
 
-	/* TODO: Add BEMF waveform compensation.
+	/* BEMF waveform compensation.
 	 * */
-	/*int		bemf_resolution;
-	int		bemf_scan;
+	float		bemf_gain_K[2];
 	float		bemf_E_D;
-	float		bemf_E_Q;*/
+	float		bemf_E_Q;
 
 	/* ABC deviations.
 	 * */
@@ -260,9 +260,10 @@ void pmc_feedback(pmc_t *pm, int xA, int xB);
 void pmc_voltage(pmc_t *pm, int xU);
 void pmc_request(pmc_t *pm, int req);
 
+const char *pmc_strerror(int errno);
+
 void pmc_resistance(const float *DFT, float *R);
 void pmc_impedance(const float *DFT, float hz, float *IMP);
-const char *pmc_strerror(int errno);
 
 #endif /* _H_PMC_ */
 

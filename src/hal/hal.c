@@ -139,14 +139,11 @@ boardStart()
 	/* Enable GPIO clock.
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
-		| RCC_AHB1ENR_GPIOCEN | RCC_AHB1ENR_GPIODEN | RCC_AHB1ENR_GPIOEEN;
+		| RCC_AHB1ENR_GPIOCEN;
 
 	/* Enable LED pins.
 	 * */
-	MODIFY_REG(GPIOD->MODER, GPIO_MODER_MODER12 | GPIO_MODER_MODER13
-			| GPIO_MODER_MODER14 | GPIO_MODER_MODER15,
-			GPIO_MODER_MODER12_0 | GPIO_MODER_MODER13_0
-			| GPIO_MODER_MODER14_0 | GPIO_MODER_MODER15_0);
+	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER12, GPIO_MODER_MODER12_0);
 
 	/* Configure SysTick (100 Hz).
 	 * */
@@ -183,28 +180,10 @@ void halReset()
 
 void halLED(int F)
 {
-	if (F & LED_GREEN)
-
-		GPIOD->BSRRL = (1UL << 12);
-	else
-		GPIOD->BSRRH = (1UL << 12);
-
-	if (F & LED_ORANGE)
-
-		GPIOD->BSRRL = (1UL << 13);
-	else
-		GPIOD->BSRRH = (1UL << 13);
-
 	if (F & LED_RED)
 
-		GPIOD->BSRRL = (1UL << 14);
+		GPIOC->BSRRL = (1UL << 12);
 	else
-		GPIOD->BSRRH = (1UL << 14);
-
-	if (F & LED_BLUE)
-
-		GPIOD->BSRRL = (1UL << 15);
-	else
-		GPIOD->BSRRH = (1UL << 15);
+		GPIOC->BSRRH = (1UL << 12);
 }
 

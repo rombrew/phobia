@@ -71,17 +71,17 @@ void pmc_default(pmc_t *pm)
 	pm->wave_gain_I = 1E-3f;
 
 	pm->scal_A[0] = 0.f;
-	pm->scal_A[1] = 1.332E-2f;
+	pm->scal_A[1] = 1.4648E-2f;
 	pm->scal_B[0] = 0.f;
-	pm->scal_B[1] = 1.332E-2f;
+	pm->scal_B[1] = 1.4648E-2f;
 	pm->scal_U[0] = 0.f;
-	pm->scal_U[1] = 6.592E-3f;
+	pm->scal_U[1] = 1.3637E-2f;
 
-	pm->fault_iab_maximal = 20.f;
+	pm->fault_iab_maximal = 25.f;
 	pm->fault_residual_maximal = 0.f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
-	pm->fault_high_voltage = 35.f;
+	pm->fault_high_voltage = 50.f;
 
 	pm->vsi_u_maximal = 5.7735027E-1f;
 
@@ -101,6 +101,9 @@ void pmc_default(pmc_t *pm)
 	pm->hf_gain_K[0] = 1E-1f;
 	pm->hf_gain_K[1] = 4E+1f;
 	pm->hf_gain_K[2] = 1E-3f;
+
+	pm->bemf_gain_K[0] = 1E-7f;
+	pm->bemf_gain_K[1] = 1E-7f;
 
 	pm->thermal_gain_R[0] = 20.f;
 	pm->thermal_gain_R[1] = 233.64f;
@@ -134,11 +137,52 @@ void pmc_default(pmc_t *pm)
 	pm->lp_gain[1] = .1f;
 }
 
-/*static void
-bemf_lookup(pmc_t *pm, float E[])
+static void
+bemf_lookup(pmc_t *pm, int left, int right)
 {
+	float		temp[2], fn;
+	int		loop;
+
+	temp[0] = 0.f;
+	temp[1] = 0.f;
+	fn = 1.f / (float) (right - left + 1);
+
+	do {
+		loop = left & (PMC_BEMF_SHAPE_MAX - 1);
+
+		temp[0] += pm->bemf_shape[loop][0];
+		temp[1] += pm->bemf_shape[loop][1];
+
+		if (left == right)
+			break;
+
+		++left;
+	}
+	while (1);
+
+	pm->bemf_E_D = temp[0] * fn;
+	pm->bemf_E_Q = temp[1] * fn;
 }
-*/
+
+static void
+bemf_add(pmc_t *pm, int left, int right, const float s[])
+{
+	int		loop;
+
+	do {
+		loop = left & (PMC_BEMF_SHAPE_MAX - 1);
+
+		pm->bemf_shape[loop][0] += s[0];
+		pm->bemf_shape[loop][1] += s[1];
+
+		if (left == right)
+			break;
+
+		++left;
+	}
+	while (1);
+}
+
 static void
 pm_equation(pmc_t *pm, float D[], const float X[])
 {
@@ -152,8 +196,8 @@ pm_equation(pmc_t *pm, float D[], const float X[])
 	R1 = pm->const_R * (1.f + pm->thermal_R);
 	E1 = pm->const_E * (1.f + pm->thermal_E);
 
-	fluxD = pm->const_Ld * X[0] + E1;
-	fluxQ = pm->const_Lq * X[1];
+	fluxD = pm->const_Ld * X[0] + E1 + pm->bemf_E_D;
+	fluxQ = pm->const_Lq * X[1] + pm->bemf_E_Q;
 
 	D[0] = (uD - R1 * X[0] + fluxQ * X4) * pm->const_Ld_inversed;
 	D[1] = (uQ - R1 * X[1] - fluxD * X4 + X5) * pm->const_Lq_inversed;
@@ -203,6 +247,29 @@ hf_update(pmc_t *pm, float eD, float eQ)
 		pm->hf_flux_polarity += (C2 * eD - pm->hf_flux_polarity)
 			* pm->hf_gain_K[2];
 	}
+}
+
+static void
+bemf_update(pmc_t *pm, float eD, float eQ)
+{
+	float			xR, sG;
+	float			E[2];
+	int			N, S;
+
+	sG = PMC_BEMF_SHAPE_MAX / 2.f / MPIF;
+	xR = matan2f(pm->lu_X[3], pm->lu_X[2]);
+	N = (int) ((xR + MPIF) * sG);
+	S = (int) (pm->lu_X[4] * pm->dT * sG);
+
+	if (1) {
+
+		E[0] = pm->bemf_gain_K[0] * eD;
+		E[1] = pm->bemf_gain_K[1] * eQ;
+
+		bemf_add(pm, N - S, N, E);
+	}
+
+	bemf_lookup(pm, N, N + S);
 }
 
 static void
@@ -270,6 +337,13 @@ lu_update(pmc_t *pm)
 	/* Time update.
 	 * */
 	pm_solve_2(pm);
+
+	/* Update BEMF ...
+	 * */
+	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
+
+		bemf_update(pm, eD, eQ);
+	}
 }
 
 static void
@@ -884,6 +958,9 @@ pm_FSM(pmc_t *pm)
 			pm->hf_CS[1] = 0.;
 			pm->hf_flux_polarity = 0.f;
 
+			pm->bemf_E_D = 0.f;
+			pm->bemf_E_Q = 0.f;
+
 			pm->thermal_R = 0.f;
 			pm->thermal_E = 0.f;
 
@@ -972,7 +1049,9 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 			|| fabsf(pm->fb_iB) > pm->fault_iab_maximal) {
 
 		if (pm->lu_region != PMC_LU_DISABLED
-				|| pm->m_state != PMC_STATE_IDLE) {
+				|| pm->m_state == PMC_STATE_WAVE_HOLD
+				|| pm->m_state == PMC_STATE_WAVE_SINE
+				|| pm->m_state == PMC_STATE_CALIBRATION) {
 
 			pm->m_state = PMC_STATE_END;
 			pm->m_phase = 0;
@@ -1106,7 +1185,7 @@ const char *pmc_strerror(int errno)
 		"Current Sensor A",
 		"Current Sensor B",
 		"Open Circuit",
-		"OverCurrent",
+		"Over Current",
 		"Low Voltage",
 		"High Voltage",
 		""

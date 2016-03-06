@@ -207,10 +207,10 @@ sim_Script(FILE *fdTel)
 	//m.X[4] = 70.;
 	//sim_F(fdTel, 1., 0);
 
-	pm.i_set_point_Q = 5.f;
+	//pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, 1., 0);
 
-	//m.X[3] += .1;
+	m.X[3] += .5;
 	sim_F(fdTel, 1., 0);
 
 	pm.i_set_point_Q = 10.f;

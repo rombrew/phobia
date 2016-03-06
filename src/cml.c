@@ -533,7 +533,7 @@ void pm_lu_threshold_auto(const char *s)
 {
 	pm.lu_threshold_low = 1E-1f / pm.const_E;
 	pm.lu_threshold_high = pm.lu_threshold_low + 1E+2f;
-	
+
 	printf(	"%4e (Rad/S)" EOL
 		"%4e (Rad/S)" EOL,
 		&pm.lu_threshold_low,
