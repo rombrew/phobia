@@ -20,7 +20,7 @@ controller for RC.
 * Reverse polarity protection: No.
 * Overcurrent protection: No (implemented in software).
 
-Look at [phobia-pcb](https://bitbucket.org/amaora/phobia-pcb) repository for
+Look into [phobia-pcb](https://bitbucket.org/amaora/phobia-pcb) repository for
 PCB design.
 
 ## Software features
