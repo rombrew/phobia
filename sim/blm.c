@@ -79,8 +79,8 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 8.0E-5;
-	m->Lq = 1.1E-4;
+	m->Ld = 16E-6;
+	m->Lq = 22E-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 1E-6;
+	m->M[2] = 1E-5;
 	m->M[3] = 0E-0;
 }
 
@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 5.) * 10E-2;
+	E1 *= 1. + sin(X[3] * 6.) * 10E-2;
 
 	/* Voltage from VSI.
 	 * */
@@ -218,7 +218,7 @@ blm_Bridge_Sample(blm_t *m)
 	/* Output voltage of the current sensor A.
 	 * */
 	U = S1 * 55E-3 + Uref / 2.;
-	dU = libGauss() * 30E-3 + 27E-3;
+	dU = libGauss() * 3E-3 + 27E-3;
 	U += dU;
 
 	/* ADC conversion.
@@ -230,7 +230,7 @@ blm_Bridge_Sample(blm_t *m)
 	/* Output voltage of the current sensor B.
 	 * */
 	U = S2 * 55E-3 + Uref / 2.;
-	dU = libGauss() * 30E-3 - 11E-3;
+	dU = libGauss() * 3E-3 - 11E-3;
 	U += dU;
 
 	/* ADC conversion.
@@ -243,7 +243,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	S1 = m->U;
 
-	U = S1 / 9.;
+	U = S1 / 18.4;
 	dU = libGauss() * 3E-3 + 0E-3;
 	U += dU;
 

@@ -23,8 +23,9 @@ enum {
 	PMC_BIT_DIRECT_CURRENT_INJECTION	= 0x0001,
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
-	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0008,
-	PMC_BIT_BEMF_WAVEFORM_ESTIMATION	= 0x0010,
+	PMC_BIT_THERMAL_DRIFT_ESTIMATION	= 0x0008,
+	PMC_BIT_BEMF_HARMONIC_COMPENSATION	= 0x0010,
+	PMC_BIT_BEMF_HARMONIC_ESTIMATION	= 0x0020,
 	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0100,
 };
 
@@ -54,10 +55,6 @@ enum {
 	PMC_ERROR_LOW_VOLTAGE,
 	PMC_ERROR_HIGH_VOLTAGE,
 	PMC_ERROR_
-};
-
-enum {
-	PMC_BEMF_SHAPE_MAX			= 512,
 };
 
 typedef struct {
@@ -161,11 +158,13 @@ typedef struct {
 	// TODO: Add saliency distortion compensation
 	//float		hf_;
 
-	/* BEMF waveform compensation.
+	/* BEMF harmonic compensation.
 	 * */
-	float		bemf_gain_K[2];
-	float		bemf_E_D;
-	float		bemf_E_Q;
+	float		bemf_previous[9];
+	float		bemf_harmonic[9];
+	int		bemf_length;
+	float		bemf_gain_K;
+	float		bemf_Q;
 
 	/* ABC deviations.
 	 * */
@@ -248,10 +247,6 @@ typedef struct {
 	 * */
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
-
-	/* Large tables.
-	 * */
-	float		bemf_shape[PMC_BEMF_SHAPE_MAX][2];
 }
 pmc_t;
 
