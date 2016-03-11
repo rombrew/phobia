@@ -20,7 +20,6 @@
 #include "hal.h"
 
 extern int ldSvectors;
-extern int ldSccm, ldEccm;
 
 void irqNMI() { }
 void irqHardFault() { }

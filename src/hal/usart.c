@@ -25,7 +25,8 @@ void irqUSART3() { }
 
 void irqDMA1_Stream3()
 {
-	DMA1->LIFCR |= DMA_LIFCR_CTCIF3;
+	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
+		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
 }
 
 void usartEnable()
@@ -52,10 +53,6 @@ void usartEnable()
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
 	USART3->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;
-
-	/* Flush RX buffer.
-	 * */
-	halUSART.rN = 0;
 
 	/* Configure DMA for RX.
 	 * */
@@ -87,9 +84,14 @@ void usartEnable()
 	NVIC_SetPriority(USART3_IRQn, 11);
 	NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 	NVIC_EnableIRQ(USART3_IRQn);
+
+	/* Initial.
+	 * */
+	halUSART.rN = 0;
+	halUSART.tN = 0;
 }
 
-void uartDisable()
+void usartDisable()
 {
 	/* Disable IRQs.
 	 * */
@@ -137,16 +139,39 @@ int usartRecv()
 	return xC;
 }
 
-int usartPoll()
+static int
+DMA_IsBusy()
 {
-	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 0 : 1;
+	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 1 : 0;
 }
 
-void usartPushAll(int N)
+static void
+DMA_Send()
 {
 	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
 		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
-	DMA1_Stream3->NDTR = N;
+	DMA1_Stream3->NDTR = halUSART.tN;
 	DMA1_Stream3->CR |= DMA_SxCR_EN;
+
+	halUSART.tN = 0;
+}
+
+int usartSend(int xC)
+{
+	if (DMA_IsBusy())
+		return -1;
+
+	halUSART.TX[halUSART.tN++] = (char) xC;
+
+	if (halUSART.tN >= USART_TXBUF_SZ)
+		DMA_Send();
+
+	return xC;
+}
+
+void usartFlush()
+{
+	if (halUSART.tN > 0 && !DMA_IsBusy())
+		DMA_Send();
 }
 

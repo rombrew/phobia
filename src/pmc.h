@@ -48,13 +48,19 @@ enum {
 
 enum {
 	PMC_OK					= 0,
+
+	/* Internal.
+	 * */
 	PMC_ERROR_CURRENT_SENSOR_A,
 	PMC_ERROR_CURRENT_SENSOR_B,
 	PMC_ERROR_OPEN_CIRCUIT,
 	PMC_ERROR_OVERCURRENT,
 	PMC_ERROR_LOW_VOLTAGE,
 	PMC_ERROR_HIGH_VOLTAGE,
-	PMC_ERROR_
+
+	/* AP messages.
+	 * */
+	PMC_ERROR_AP_TIMEOUT,
 };
 
 typedef struct {
@@ -160,7 +166,7 @@ typedef struct {
 
 	/* BEMF harmonic compensation.
 	 * */
-	float		bemf_previous[9];
+	float		bemf_ftgains[9];
 	float		bemf_harmonic[9];
 	int		bemf_length;
 	float		bemf_gain_K;
@@ -233,6 +239,7 @@ typedef struct {
 	int		p_track_point_revol;
 	float		p_gain_D;
 	float		p_gain_P;
+	int		p_revol_limit;
 
 	/* Low-pass gains.
 	 * */

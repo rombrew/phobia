@@ -19,6 +19,9 @@
 #ifndef _H_SH_
 #define _H_SH_
 
+#define SH_DEF(name)		void name(const char *s)
+#define SH_ENTRY(name)		{ #name, &name}
+
 typedef struct {
 
 	const char		*iD;
@@ -30,8 +33,7 @@ int shRecv();
 void shSend(int xC);
 
 int shExRecv();
-int shExPoll();
-void shExPush(int xC);
+int shExSend(int xC);
 
 void shTask();
 

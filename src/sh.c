@@ -73,7 +73,7 @@ typedef struct {
 shTASK_t;
 
 static shTASK_t		sh;
-extern shCMD_t		cmList[];
+extern const shCMD_t	cmList[];
 
 int shRecv()
 {
@@ -97,7 +97,7 @@ void shSend(int xC)
 	tT = FIFO_INC(sh.tT, SH_TXBUF_SZ);
 
 	while (sh.tR == tT)
-		taskIOMUX();
+		taskYIELD();
 
 	sh.tBuf[sh.tT] = (char) xC;
 	sh.tT = tT;
@@ -118,16 +118,21 @@ int shExRecv()
 	return xC;
 }
 
-int shExPoll()
+int shExSend(int xC)
 {
-	return (sh.rT < sh.rR) ? sh.rR - sh.rT - 1
-		: sh.rR - sh.rT - 1 + SH_RXBUF_SZ;
-}
+	int		rT;
 
-void shExPush(int xC)
-{
-	sh.rBuf[sh.rT] = (char) xC;
-	sh.rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
+	rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
+
+	if (sh.rR != rT) {
+
+		sh.rBuf[sh.rT] = (char) xC;
+		sh.rT = rT;
+	}
+	else
+		xC = -1;
+
+	return xC;
 }
 
 static inline char

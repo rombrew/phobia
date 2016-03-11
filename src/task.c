@@ -29,6 +29,7 @@ pmc_t __CCM__			pm;
 void halTick()
 {
 	td.uDS++;
+	td.uTIM++;
 
 	if (td.uDS >= 100) {
 
@@ -37,64 +38,52 @@ void halTick()
 	}
 }
 
-void taskIOMUX()
+static void
+taskRecvSend(int (* pRecv) (), int (* pSend) (int), int *temp)
 {
-	int		xC, xN;
-	int		xWFI = 1;
-	char		*pX;
+	int		xC;
 
-	/* From USART to SH.
-	 * */
-	xN = shExPoll();
+	do {
+		if (*temp >= 0) {
 
-	while (xN >= 0) {
-
-		xC = usartRecv();
-
-		if (xC < 0)
-			break;
-		else
-			shExPush(xC),
-			xWFI = 0;
-
-		xN--;
-	}
-
-	/* From SH to USART.
-	 * */
-	if (usartPoll()) {
-
-		pX = halUSART.TX;
-		xN = 0;
+			if (pSend(*temp) < 0)
+				break;
+			else
+				*temp = -1;
+		}
 
 		do {
-			xC = shExRecv();
+			xC = pRecv();
 
 			if (xC < 0)
 				break;
-			else
-				*pX++ = (char) xC,
-				xN++;
+			else if (pSend(xC) < 0) {
 
-			if (xN >= (USART_TXBUF_SZ - 1))
+				*temp = xC;
 				break;
+			}
 		}
 		while (1);
-
-		if (xN > 0) {
-
-			usartPushAll(xN);
-			xWFI = 0;
-		}
 	}
+	while (0);
+}
 
-	/* TODO: From CAN to SH.
+void taskIOMUX()
+{
+	/* USART <---> SH.
 	 * */
+	taskRecvSend(&usartRecv, &shExSend, td.mux_TEMP + 0);
+	taskRecvSend(&shExRecv, &usartSend, td.mux_TEMP + 1);
+	usartFlush();
 
-	/* TODO: From SH to CAN.
+	/* TODO: CAN.
 	 * */
+}
 
-	xWFI ? halWFI() : 0;
+void taskYIELD()
+{
+	taskIOMUX();
+	halWFI();
 }
 
 void canIRQ()
@@ -122,7 +111,8 @@ void adcIRQ()
 
 void halMain()
 {
-	halLED(LED_RED);
+	td.mux_TEMP[0] = -1;
+	td.mux_TEMP[1] = -1;
 
 	/* Config.
 	 * */
@@ -130,6 +120,8 @@ void halMain()
 	halPWM.freq_hz = 60000;
 	halPWM.dead_time_ns = 70;
 	td.avg_default_time = .2f;
+
+	halLED(LED_RED);
 
 	usartEnable();
 

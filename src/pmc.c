@@ -50,10 +50,7 @@ void pmc_default(pmc_t *pm)
 	pm->pwm_minimal_pulse = 8;
 	pm->pwm_dead_time = 0;
 
-	pm->m_bitmask = 0
-		| PMC_BIT_HIGH_FREQUENCY_INJECTION
-		| PMC_BIT_THERMAL_DRIFT_ESTIMATION
-		| PMC_BIT_SERVO_CONTROL_LOOP;
+	pm->m_bitmask = 0;
 	pm->m_state = PMC_STATE_IDLE;
 	pm->m_phase = 0;
 	pm->m_errno = 0;
@@ -139,9 +136,10 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 5E+3f;
+	pm->p_slew_rate_w = 1E+3f;
 	pm->p_gain_D = 5E-2f;
 	pm->p_gain_P = 5E-1f;
+	pm->p_revol_limit = 10;
 
 	pm->lp_gain[0] = .1f;
 	pm->lp_gain[1] = .1f;
@@ -216,7 +214,7 @@ hf_update(pmc_t *pm, float eD, float eQ)
 static void
 bemf_update(pmc_t *pm, float eQ)
 {
-	float		*previous = pm->bemf_previous;
+	float		*ftgains = pm->bemf_ftgains;
 	float		*harmonic = pm->bemf_harmonic;
 	float		X[2], E[2], temp, Q;
 	int		nu = 0;
@@ -229,12 +227,12 @@ bemf_update(pmc_t *pm, float eQ)
 		do {
 			/* DFT.
 			 * */
-			*harmonic++ += eQ * *previous++;
+			*harmonic++ += eQ * *ftgains++;
 			++nu;
 		}
 		while (nu < pm->bemf_length);
 
-		previous = pm->bemf_previous;
+		ftgains = pm->bemf_ftgains;
 		harmonic = pm->bemf_harmonic;
 		nu = 0;
 	}
@@ -251,7 +249,7 @@ bemf_update(pmc_t *pm, float eQ)
 		/* Inverse DFT.
 		 * */
 		Q += *harmonic++ * E[1];
-		*previous++ = E[1];
+		*ftgains++ = E[1];
 
 		/* Basis functions.
 		 * */
@@ -601,6 +599,7 @@ static void
 p_control(pmc_t *pm)
 {
 	float		dX, dY, eP, eD, iSP, temp;
+	int		revol;
 
 	if (pm->lu_X[2] < 0.f) {
 
@@ -680,6 +679,10 @@ p_control(pmc_t *pm)
 		if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
 			eP -= 2.f * MPIF;
 	}
+
+	revol = pm->p_track_point_revol - pm->lu_revol;
+	pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
+		(revol > pm->p_revol_limit) ? - 1 : 0;
 
 	eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
 	eD = pm->p_track_point_w - pm->lu_X[4];
@@ -956,20 +959,26 @@ pm_FSM(pmc_t *pm)
 			pm->drift_B = 0.f;
 			pm->drift_Q = 0.f;
 
-			pm->hf_CS[0] = 1.;
-			pm->hf_CS[1] = 0.;
-			pm->hf_flux_polarity = 0.f;
+			if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
 
-			pm->bemf_previous[0] = 0.f;
-			pm->bemf_previous[1] = 0.f;
-			pm->bemf_previous[2] = 0.f;
-			pm->bemf_previous[3] = 0.f;
-			pm->bemf_previous[4] = 0.f;
-			pm->bemf_previous[5] = 0.f;
-			pm->bemf_previous[6] = 0.f;
-			pm->bemf_previous[7] = 0.f;
-			pm->bemf_previous[8] = 0.f;
-			pm->bemf_Q = 0.f;
+				pm->hf_CS[0] = 1.;
+				pm->hf_CS[1] = 0.;
+				pm->hf_flux_polarity = 0.f;
+			}
+
+			if (pm->m_bitmask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+
+				pm->bemf_ftgains[0] = 0.f;
+				pm->bemf_ftgains[1] = 0.f;
+				pm->bemf_ftgains[2] = 0.f;
+				pm->bemf_ftgains[3] = 0.f;
+				pm->bemf_ftgains[4] = 0.f;
+				pm->bemf_ftgains[5] = 0.f;
+				pm->bemf_ftgains[6] = 0.f;
+				pm->bemf_ftgains[7] = 0.f;
+				pm->bemf_ftgains[8] = 0.f;
+				pm->bemf_Q = 0.f;
+			}
 
 			pm->thermal_R = 0.f;
 			pm->thermal_E = 0.f;
@@ -981,11 +990,14 @@ pm_FSM(pmc_t *pm)
 			pm->i_integral_D = 0.f;
 			pm->i_integral_Q = 0.f;
 
-			pm->p_set_point_w = 0.f;
-			pm->p_track_point_x[0] = 1.f;
-			pm->p_track_point_x[1] = 0.f;
-			pm->p_track_point_revol = 0;
-			pm->p_track_point_w = 0.f;
+			if (pm->m_bitmask & PMC_BIT_SERVO_CONTROL_LOOP) {
+
+				pm->p_set_point_w = 0.f;
+				pm->p_track_point_x[0] = 1.f;
+				pm->p_track_point_x[1] = 0.f;
+				pm->p_track_point_revol = 0;
+				pm->p_track_point_w = 0.f;
+			}
 
 			pm->m_state = PMC_STATE_IDLE;
 			pm->m_phase = 0;
@@ -1198,7 +1210,8 @@ const char *pmc_strerror(int errno)
 		"Over Current",
 		"Low Voltage",
 		"High Voltage",
-		""
+
+		"(AP) Timeout"
 	};
 
 	const int 	emax = sizeof(list) / sizeof(list[0]);

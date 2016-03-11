@@ -19,9 +19,14 @@
 #ifndef _H_AP_
 #define _H_AP_
 
-void ap_identify_base(const char *s);
-void ap_identify_const_R_abc(const char *s);
-void ap_identify_const_E(const char *s);
+#include "sh.h"
+
+SH_DEF(ap_identify_base);
+SH_DEF(ap_identify_const_R_abc);
+SH_DEF(ap_identify_const_E);
+SH_DEF(ap_identify_const_J);
+SH_DEF(ap_blind_spinup);
+SH_DEF(ap_probe_electrical);
 
 #endif /* _H_AP_ */
 

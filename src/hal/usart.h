@@ -28,7 +28,7 @@ typedef struct {
 
 	char		RX[USART_RXBUF_SZ];
 	char		TX[USART_TXBUF_SZ];
-	int		rN;
+	int		rN, tN;
 }
 halUSART_t;
 
@@ -38,8 +38,8 @@ void usartEnable();
 void usartDisable();
 
 int usartRecv();
-int usartPoll();
-void usartPushAll(int N);
+int usartSend(int xC);
+void usartFlush();
 
 #endif /* _H_USART_ */
 

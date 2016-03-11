@@ -20,6 +20,7 @@
 #include "lib.h"
 #include "m.h"
 #include "pmc.h"
+#include "sh.h"
 #include "task.h"
 
 extern void irq_avg_value_8();
@@ -31,7 +32,7 @@ static int
 ap_wait_for_idle()
 {
 	while (pm.m_state != PMC_STATE_IDLE)
-		taskIOMUX();
+		taskYIELD();
 
 	return pm.m_errno;
 }
@@ -40,7 +41,7 @@ ap_wait_for_idle()
 { if (ap_wait_for_idle() != PMC_OK) { printf("ERROR %i: %s" EOL, \
 		pm.m_errno, pmc_strerror(pm.m_errno)); break; } }
 
-void ap_identify_base(const char *s)
+SH_DEF(ap_identify_base)
 {
 	float			IMP[6];
 
@@ -112,7 +113,7 @@ void ap_identify_base(const char *s)
 	while (0);
 }
 
-void ap_identify_const_R_abc(const char *s)
+SH_DEF(ap_identify_const_R_abc)
 {
 	float			temp[2], iSP, dU, R[3], STD;
 	int			xPWM;
@@ -127,7 +128,7 @@ void ap_identify_const_R_abc(const char *s)
 		iSP = pm.wave_i_hold_X;
 		stof(&iSP, s);
 
-		printf("iSP %3f (A)" EOL, &iSP);
+		printf("SP %3f (A)" EOL, &iSP);
 
 		dU = iSP * pm.const_R / pm.const_U;
 		xPWM = dU * pm.pwm_resolution;
@@ -185,7 +186,7 @@ void ap_identify_const_R_abc(const char *s)
 	while (0);
 }
 
-void ap_identify_const_E(const char *s)
+SH_DEF(ap_identify_const_E)
 {
 	if (pm.lu_region == PMC_LU_DISABLED)
 		return ;
@@ -210,7 +211,7 @@ void ap_identify_const_E(const char *s)
 	td.pIRQ = &irq_avg_value_8;
 
 	while (td.pIRQ != NULL)
-		taskIOMUX();
+		taskYIELD();
 
 	td.avg_SUM[0] /= (float) td.avg_N;
 	td.avg_SUM[1] /= (float) td.avg_N;
@@ -221,15 +222,96 @@ void ap_identify_const_E(const char *s)
 	pm_const_E_wb(EOL);
 }
 
-void ap_identify_const_J(const char *s)
+SH_DEF(ap_identify_const_J)
 {
-	if (pm.lu_region == PMC_LU_DISABLED)
+	/*if (pm.lu_region == PMC_LU_DISABLED)
 		return ;
 
 	if (td.pIRQ != NULL)
 		return ;
 
 	do {
+	}
+	while (0);*/
+}
+
+SH_DEF(ap_blind_spinup)
+{
+	int		uEND;
+
+	if (pm.lu_region == PMC_LU_DISABLED)
+		return ;
+
+	pm.p_set_point_w = 2.f * pm.lu_threshold_high;
+	pm.p_track_point_x[0] = pm.lu_X[2];
+	pm.p_track_point_x[1] = pm.lu_X[3];
+	pm.p_track_point_revol = pm.lu_revol;
+	pm.p_track_point_w = 0.f;
+
+	pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
+		| PMC_BIT_SERVO_CONTROL_LOOP;
+
+	td.uTIM = 0;
+	uEND = 500;
+
+	do {
+		taskYIELD();
+
+		if (pm.lu_region == PMC_LU_HIGH_REGION)
+			break;
+
+		if (pm.m_errno != PMC_OK)
+			break;
+
+		if (td.uTIM > uEND) {
+
+			pm.m_state = PMC_STATE_STOP;
+			pm.m_phase = 0;
+			pm.m_errno = PMC_ERROR_AP_TIMEOUT;
+		}
+	}
+	while (1);
+
+	if (pm.m_errno == PMC_OK) {
+
+		td.uTIM = 0;
+		uEND = 100;
+
+		do {
+			taskYIELD();
+
+			if (pm.m_errno != PMC_OK)
+				break;
+		}
+		while (td.uTIM < uEND);
+	}
+
+	if (pm.m_errno != PMC_OK) {
+
+		pm.m_bitmask &= ~(PMC_BIT_DIRECT_CURRENT_INJECTION
+				| PMC_BIT_SERVO_CONTROL_LOOP);
+
+		printf("ERROR %i: %s" EOL, pm.m_errno,
+				pmc_strerror(pm.m_errno));
+	}
+}
+
+#define AP_EXIT_IF_ERROR()	{ if (pm.m_errno != PMC_OK) break; }
+
+SH_DEF(ap_probe_electrical)
+{
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	do {
+		ap_identify_base(EOL);
+		AP_EXIT_IF_ERROR();
+
+		ap_blind_spinup(EOL);
+		AP_EXIT_IF_ERROR();
+
+		ap_identify_const_E(EOL);
+		AP_EXIT_IF_ERROR();
 	}
 	while (0);
 }

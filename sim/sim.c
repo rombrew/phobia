@@ -196,37 +196,21 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	pm.m_bitmask &= ~PMC_BIT_SERVO_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
+		| PMC_BIT_SERVO_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	//m.X[4] = 70.;
-	//sim_F(fdTel, 1., 0);
-
+	//pm.i_set_point_Q = 1.f;
 	sim_F(fdTel, 1., 0);
 
-	m.X[3] += .5;
+	/*m.X[3] += .5;
+	sim_F(fdTel, 1., 0);*/
+
+	pm.p_set_point_w = 2.f * pm.lu_threshold_high;
+	m.M[2] = 1E-2;
 	sim_F(fdTel, 1., 0);
-
-	pm.i_set_point_Q = 5.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.m_bitmask |= PMC_BIT_BEMF_HARMONIC_COMPENSATION
-		| PMC_BIT_BEMF_HARMONIC_ESTIMATION;
-
-	sim_F(fdTel, 1., 0);
-
-	m.M[2] = 1E-6;
-
-	sim_F(fdTel, 1., 0);
-
-	{
-		int		i;
-
-		for (i = 0; i < 9; ++i)
-			printf("%f \n", pm.bemf_harmonic[i]);
-	}
 }
 
 int main(int argc, char *argv[])

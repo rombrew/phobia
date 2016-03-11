@@ -19,13 +19,13 @@
 #include "hal/hal.h"
 #include "ap.h"
 #include "lib.h"
-#include "sh.h"
-#include "pmc.h"
 #include "m.h"
+#include "pmc.h"
+#include "sh.h"
 #include "task.h"
 #include "tel.h"
 
-void td_uptime(const char *s)
+SH_DEF(td_uptime)
 {
 	int		Day, Hour, Min, Sec;
 
@@ -42,7 +42,7 @@ void td_uptime(const char *s)
 			Day, Hour, Min, Sec);
 }
 
-void td_irqload(const char *s)
+SH_DEF(td_irqload)
 {
 	int		Tirq, Tbase, Rpc;
 
@@ -53,13 +53,13 @@ void td_irqload(const char *s)
 	printf("%i %% (%i/%i)" EOL, Rpc, Tirq, Tbase);
 }
 
-void td_avg_default_time(const char *s)
+SH_DEF(td_avg_default_time)
 {
 	stof(&td.avg_default_time, s);
 	printf("%3f (Sec)" EOL, &td.avg_default_time);
 }
 
-void td_reboot(const char *s)
+SH_DEF(td_reboot)
 {
 	int		End, Del = 3;
 
@@ -68,20 +68,20 @@ void td_reboot(const char *s)
 	End = td.uSEC + Del;
 
 	do {
-		taskIOMUX();
+		taskYIELD();
 	}
 	while (td.uSEC < End);
 
 	halReset();
 }
 
-void td_keycodes(const char *s)
+SH_DEF(td_keycodes)
 {
 	int		xC;
 
 	do {
 		while ((xC = shRecv()) < 0)
-			taskIOMUX();
+			taskYIELD();
 
 		if (xC == 3 || xC == 4)
 			break;
@@ -91,7 +91,7 @@ void td_keycodes(const char *s)
 	while (1);
 }
 
-void pwm_freq_hz(const char *s)
+SH_DEF(pwm_freq_hz)
 {
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
@@ -109,7 +109,7 @@ void pwm_freq_hz(const char *s)
 	printf("%i (Hz)" EOL, halPWM.freq_hz);
 }
 
-void pwm_dead_time_ns(const char *s)
+SH_DEF(pwm_dead_time_ns)
 {
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
@@ -123,7 +123,7 @@ void pwm_dead_time_ns(const char *s)
 	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
 }
 
-void pwm_DC(const char *s)
+SH_DEF(pwm_DC)
 {
 	const char	*tok;
 	int		tokN = 0;
@@ -155,7 +155,7 @@ void pwm_DC(const char *s)
 	}
 }
 
-void pwm_Z(const char *s)
+SH_DEF(pwm_Z)
 {
 	int		Z;
 
@@ -167,7 +167,7 @@ void pwm_Z(const char *s)
 	}
 }
 
-void pm_pwm_resolution(const char *s)
+SH_DEF(pm_pwm_resolution)
 {
 	printf("%i" EOL, pm.pwm_resolution);
 }
@@ -188,12 +188,12 @@ pm_pwm_int_modify(int *param, const char *s)
 	printf("%i (tk) %i (ns)" EOL, *param, ns);
 }
 
-void pm_pwm_minimal_pulse(const char *s)
+SH_DEF(pm_pwm_minimal_pulse)
 {
 	pm_pwm_int_modify(&pm.pwm_minimal_pulse, s);
 }
 
-void pm_pwm_dead_time(const char *s)
+SH_DEF(pm_pwm_dead_time)
 {
 	pm_pwm_int_modify(&pm.pwm_dead_time, s);
 }
@@ -216,27 +216,27 @@ pm_m_bitmask(const char *s, int bit)
 	printf("%i (%s)" EOL, flag, flag ? "Enabled" : "Disabled");
 }
 
-void pm_m_bitmask_direct_current_injection(const char *s)
+SH_DEF(pm_m_bitmask_direct_current_injection)
 {
 	pm_m_bitmask(s, PMC_BIT_DIRECT_CURRENT_INJECTION);
 }
 
-void pm_m_bitmask_high_frequency_injection(const char *s)
+SH_DEF(pm_m_bitmask_high_frequency_injection)
 {
 	pm_m_bitmask(s, PMC_BIT_HIGH_FREQUENCY_INJECTION);
 }
 
-void pm_m_bitmask_flux_polarity_detection(const char *s)
+SH_DEF(pm_m_bitmask_flux_polarity_detection)
 {
 	pm_m_bitmask(s, PMC_BIT_FLUX_POLARITY_DETECTION);
 }
 
-void pm_m_bitmask_servo_control_loop(const char *s)
+SH_DEF(pm_m_bitmask_servo_control_loop)
 {
 	pm_m_bitmask(s, PMC_BIT_SERVO_CONTROL_LOOP);
 }
 
-void pm_m_errno(const char *s)
+SH_DEF(pm_m_errno)
 {
 	int		flag;
 
@@ -249,139 +249,139 @@ void pm_m_errno(const char *s)
 	printf("%i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno));
 }
 
-void pm_T_drift(const char *s)
+SH_DEF(pm_T_drift)
 {
 	stof(&pm.T_drift, s);
 	printf("%3f (Sec)" EOL, &pm.T_drift);
 }
 
-void pm_T_hold(const char *s)
+SH_DEF(pm_T_hold)
 {
 	stof(&pm.T_hold, s);
 	printf("%3f (Sec)" EOL, &pm.T_hold);
 }
 
-void pm_T_sine(const char *s)
+SH_DEF(pm_T_sine)
 {
 	stof(&pm.T_sine, s);
 	printf("%3f (Sec)" EOL, &pm.T_sine);
 }
 
-void pm_T_measure(const char *s)
+SH_DEF(pm_T_measure)
 {
 	stof(&pm.T_measure, s);
 	printf("%3f (Sec)" EOL, &pm.T_measure);
 }
 
-void pm_T_end(const char *s)
+SH_DEF(pm_T_end)
 {
 	stof(&pm.T_end, s);
 	printf("%3f (Sec)" EOL, &pm.T_end);
 }
 
-void pm_wave_i_hold_X(const char *s)
+SH_DEF(pm_wave_i_hold_X)
 {
 	stof(&pm.wave_i_hold_X, s);
 	printf("%3f (A)" EOL, &pm.wave_i_hold_X);
 }
 
-void pm_wave_i_hold_Y(const char *s)
+SH_DEF(pm_wave_i_hold_Y)
 {
 	stof(&pm.wave_i_hold_Y, s);
 	printf("%3f (A)" EOL, &pm.wave_i_hold_Y);
 }
 
-void pm_wave_i_sine(const char *s)
+SH_DEF(pm_wave_i_sine)
 {
 	stof(&pm.wave_i_sine, s);
 	printf("%3f (A)" EOL, &pm.wave_i_sine);
 }
 
-void pm_wave_freq_sine_hz(const char *s)
+SH_DEF(pm_wave_freq_sine_hz)
 {
 	stof(&pm.wave_freq_sine_hz, s);
 	printf("%1f (Hz)" EOL, &pm.wave_freq_sine_hz);
 }
 
-void pm_wave_gain_P(const char *s)
+SH_DEF(pm_wave_gain_P)
 {
 	stof(&pm.wave_gain_P, s);
 	printf("%2e" EOL, &pm.wave_gain_P);
 }
 
-void pm_wave_gain_I(const char *s)
+SH_DEF(pm_wave_gain_I)
 {
 	stof(&pm.wave_gain_I, s);
 	printf("%2e" EOL, &pm.wave_gain_I);
 }
 
-void pm_scal_A0(const char *s)
+SH_DEF(pm_scal_A0)
 {
 	stof(&pm.scal_A[0], s);
 	printf("%3f (A)" EOL, &pm.scal_A[0]);
 }
 
-void pm_scal_A1(const char *s)
+SH_DEF(pm_scal_A1)
 {
 	stof(&pm.scal_A[1], s);
 	printf("%4e" EOL, &pm.scal_A[1]);
 }
 
-void pm_scal_B0(const char *s)
+SH_DEF(pm_scal_B0)
 {
 	stof(&pm.scal_B[0], s);
 	printf("%3f (A)" EOL, &pm.scal_B[0]);
 }
 
-void pm_scal_B1(const char *s)
+SH_DEF(pm_scal_B1)
 {
 	stof(&pm.scal_B[1], s);
 	printf("%4e" EOL, &pm.scal_B[1]);
 }
 
-void pm_scal_U0(const char *s)
+SH_DEF(pm_scal_U0)
 {
 	stof(&pm.scal_U[0], s);
 	printf("%3f (V)" EOL, &pm.scal_U[0]);
 }
 
-void pm_scal_U1(const char *s)
+SH_DEF(pm_scal_U1)
 {
 	stof(&pm.scal_U[1], s);
 	printf("%4e" EOL, &pm.scal_U[1]);
 }
 
-void pm_fault_iab_maximal(const char *s)
+SH_DEF(pm_fault_iab_maximal)
 {
 	stof(&pm.fault_iab_maximal, s);
 	printf("%3f (A)" EOL, &pm.fault_iab_maximal);
 }
 
-void pm_fault_residual_maximal(const char *s)
+SH_DEF(pm_fault_residual_maximal)
 {
 	stof(&pm.fault_residual_maximal, s);
 	printf("%4e" EOL, &pm.fault_residual_maximal);
 }
 
-void pm_fault_drift_maximal(const char *s)
+SH_DEF(pm_fault_drift_maximal)
 {
 	stof(&pm.fault_drift_maximal, s);
 	printf("%3f (A)" EOL, &pm.fault_drift_maximal);
 }
 
-void pm_fault_low_voltage(const char *s)
+SH_DEF(pm_fault_low_voltage)
 {
 	stof(&pm.fault_low_voltage, s);
 	printf("%3f (V)" EOL, &pm.fault_low_voltage);
 }
 
-void pm_fault_high_voltage(const char *s)
+SH_DEF(pm_fault_high_voltage)
 {
 	stof(&pm.fault_high_voltage, s);
 	printf("%3f (V)" EOL, &pm.fault_high_voltage);
 }
 
-void pm_vsi_u_maximal(const char *s)
+SH_DEF(pm_vsi_u_maximal)
 {
 	stof(&pm.vsi_u_maximal, s);
 	printf("%4e" EOL, &pm.vsi_u_maximal);
@@ -416,7 +416,7 @@ pm_avg_float_1(float *param, float time)
 	td.pIRQ = &irq_avg_value_8;
 
 	while (td.pIRQ != NULL)
-		taskIOMUX();
+		taskYIELD();
 
 	td.avg_SUM[0] /= (float) td.avg_N;
 
@@ -433,7 +433,7 @@ pm_avg_float_arg_1(float *param, const char *s)
 	return pm_avg_float_1(param, time);
 }
 
-void pm_lu_X0(const char *s)
+SH_DEF(pm_lu_X0)
 {
 	float			avg;
 
@@ -441,7 +441,7 @@ void pm_lu_X0(const char *s)
 	printf("%3f (A)" EOL, &avg);
 }
 
-void pm_lu_X1(const char *s)
+SH_DEF(pm_lu_X1)
 {
 	float			avg;
 
@@ -449,7 +449,7 @@ void pm_lu_X1(const char *s)
 	printf("%3f (A)" EOL, &avg);
 }
 
-void pm_lu_X23(const char *s)
+SH_DEF(pm_lu_X23)
 {
 	float			g;
 
@@ -457,7 +457,7 @@ void pm_lu_X23(const char *s)
 	printf("%1f (degree) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
 }
 
-void pm_lu_X4(const char *s)
+SH_DEF(pm_lu_X4)
 {
 	float			avg, RPM;
 
@@ -467,49 +467,49 @@ void pm_lu_X4(const char *s)
 	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
 }
 
-void pm_lu_gain_K0(const char *s)
+SH_DEF(pm_lu_gain_K0)
 {
 	stof(&pm.lu_gain_K[0], s);
 	printf("%2e" EOL, &pm.lu_gain_K[0]);
 }
 
-void pm_lu_gain_K1(const char *s)
+SH_DEF(pm_lu_gain_K1)
 {
 	stof(&pm.lu_gain_K[1], s);
 	printf("%2e" EOL, &pm.lu_gain_K[1]);
 }
 
-void pm_lu_gain_K2(const char *s)
+SH_DEF(pm_lu_gain_K2)
 {
 	stof(&pm.lu_gain_K[2], s);
 	printf("%2e" EOL, &pm.lu_gain_K[2]);
 }
 
-void pm_lu_gain_K3(const char *s)
+SH_DEF(pm_lu_gain_K3)
 {
 	stof(&pm.lu_gain_K[3], s);
 	printf("%2e" EOL, &pm.lu_gain_K[3]);
 }
 
-void pm_lu_gain_K4(const char *s)
+SH_DEF(pm_lu_gain_K4)
 {
 	stof(&pm.lu_gain_K[4], s);
 	printf("%2e" EOL, &pm.lu_gain_K[4]);
 }
 
-void pm_lu_gain_K5(const char *s)
+SH_DEF(pm_lu_gain_K5)
 {
 	stof(&pm.lu_gain_K[5], s);
 	printf("%2e" EOL, &pm.lu_gain_K[5]);
 }
 
-void pm_lu_gain_K6(const char *s)
+SH_DEF(pm_lu_gain_K6)
 {
 	stof(&pm.lu_gain_K[6], s);
 	printf("%2e" EOL, &pm.lu_gain_K[6]);
 }
 
-void pm_lu_threshold_low(const char *s)
+SH_DEF(pm_lu_threshold_low)
 {
 	float			RPM;
 
@@ -519,7 +519,7 @@ void pm_lu_threshold_low(const char *s)
 	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_low, &RPM);
 }
 
-void pm_lu_threshold_high(const char *s)
+SH_DEF(pm_lu_threshold_high)
 {
 	float			RPM;
 
@@ -529,7 +529,7 @@ void pm_lu_threshold_high(const char *s)
 	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_high, &RPM);
 }
 
-void pm_lu_threshold_auto(const char *s)
+SH_DEF(pm_lu_threshold_auto)
 {
 	pm.lu_threshold_low = 1E-1f / pm.const_E;
 	pm.lu_threshold_high = pm.lu_threshold_low + 1E+2f;
@@ -540,13 +540,13 @@ void pm_lu_threshold_auto(const char *s)
 		&pm.lu_threshold_high);
 }
 
-void pm_lu_low_D(const char *s)
+SH_DEF(pm_lu_low_D)
 {
 	stof(&pm.lu_low_D, s);
 	printf("%3f (A)" EOL, &pm.lu_low_D);
 }
 
-void pm_lu_residual_variance(const char *s)
+SH_DEF(pm_lu_residual_variance)
 {
 	float			avg;
 
@@ -554,37 +554,37 @@ void pm_lu_residual_variance(const char *s)
 	printf("%4e" EOL, &avg);
 }
 
-void pm_hf_freq_hz(const char *s)
+SH_DEF(pm_hf_freq_hz)
 {
 	stof(&pm.hf_freq_hz, s);
 	printf("%1f (Hz)" EOL, &pm.hf_freq_hz);
 }
 
-void pm_hf_swing_D(const char *s)
+SH_DEF(pm_hf_swing_D)
 {
 	stof(&pm.hf_swing_D, s);
 	printf("%3f (A)" EOL, &pm.hf_swing_D);
 }
 
-void pm_hf_gain_K0(const char *s)
+SH_DEF(pm_hf_gain_K0)
 {
 	stof(&pm.hf_gain_K[0], s);
 	printf("%2e" EOL, &pm.hf_gain_K[0]);
 }
 
-void pm_hf_gain_K1(const char *s)
+SH_DEF(pm_hf_gain_K1)
 {
 	stof(&pm.hf_gain_K[1], s);
 	printf("%2e" EOL, &pm.hf_gain_K[1]);
 }
 
-void pm_hf_gain_K2(const char *s)
+SH_DEF(pm_hf_gain_K2)
 {
 	stof(&pm.hf_gain_K[2], s);
 	printf("%2e" EOL, &pm.hf_gain_K[2]);
 }
 
-void pm_thermal_R(const char *s)
+SH_DEF(pm_thermal_R)
 {
 	float			avg;
 
@@ -592,7 +592,7 @@ void pm_thermal_R(const char *s)
 	printf("%4e" EOL, &avg);
 }
 
-void pm_thermal_E(const char *s)
+SH_DEF(pm_thermal_E)
 {
 	float			avg;
 
@@ -600,19 +600,19 @@ void pm_thermal_E(const char *s)
 	printf("%4e" EOL, &avg);
 }
 
-void pm_thermal_gain_R0(const char *s)
+SH_DEF(pm_thermal_gain_R0)
 {
 	stof(&pm.thermal_gain_R[0], s);
 	printf("%1f" EOL, &pm.thermal_gain_R[0]);
 }
 
-void pm_thermal_gain_R1(const char *s)
+SH_DEF(pm_thermal_gain_R1)
 {
 	stof(&pm.thermal_gain_R[1], s);
 	printf("%4e" EOL, &pm.thermal_gain_R[1]);
 }
 
-void pm_drift_A(const char *s)
+SH_DEF(pm_drift_A)
 {
 	float			avg;
 
@@ -620,7 +620,7 @@ void pm_drift_A(const char *s)
 	printf("%3f (A)" EOL, &avg);
 }
 
-void pm_drift_B(const char *s)
+SH_DEF(pm_drift_B)
 {
 	float			avg;
 
@@ -628,7 +628,7 @@ void pm_drift_B(const char *s)
 	printf("%3f (A)" EOL, &avg);
 }
 
-void pm_drift_Q(const char *s)
+SH_DEF(pm_drift_Q)
 {
 	float			avg;
 
@@ -636,19 +636,19 @@ void pm_drift_Q(const char *s)
 	printf("%3f (V)" EOL, &avg);
 }
 
-void pm_drift_AB_maximal(const char *s)
+SH_DEF(pm_drift_AB_maximal)
 {
 	stof(&pm.drift_AB_maximal, s);
 	printf("%3f (A)" EOL, &pm.drift_AB_maximal);
 }
 
-void pm_drift_Q_maximal(const char *s)
+SH_DEF(pm_drift_Q_maximal)
 {
 	stof(&pm.drift_Q_maximal, s);
 	printf("%3f (V)" EOL, &pm.drift_Q_maximal);
 }
 
-void pm_const_U(const char *s)
+SH_DEF(pm_const_U)
 {
 	float			avg;
 
@@ -656,7 +656,7 @@ void pm_const_U(const char *s)
 	printf("%3f (V)" EOL, &avg);
 }
 
-void pm_const_E_wb(const char *s)
+SH_DEF(pm_const_E_wb)
 {
 	float		const_Kv;
 
@@ -666,7 +666,7 @@ void pm_const_E_wb(const char *s)
 	printf("%4e (Wb) %1f (RPM/V)" EOL, &pm.const_E, &const_Kv);
 }
 
-void pm_const_E_kv(const char *s)
+SH_DEF(pm_const_E_kv)
 {
 	float		const_Kv, Z;
 
@@ -681,13 +681,13 @@ void pm_const_E_kv(const char *s)
 	printf("%4e (Wb) %1f (RPM/V)" EOL, &pm.const_E, &const_Kv);
 }
 
-void pm_const_R(const char *s)
+SH_DEF(pm_const_R)
 {
 	stof(&pm.const_R, s);
 	printf("%4e (Ohm)" EOL, &pm.const_R);
 }
 
-void pm_const_Ld(const char *s)
+SH_DEF(pm_const_Ld)
 {
 	if (stof(&pm.const_Ld, s) != NULL)
 		pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -695,7 +695,7 @@ void pm_const_Ld(const char *s)
 	printf("%4e (H)" EOL, &pm.const_Ld);
 }
 
-void pm_const_Lq(const char *s)
+SH_DEF(pm_const_Lq)
 {
 	if (stof(&pm.const_Lq, s) != NULL)
 		pm.const_Lq_inversed = 1.f / pm.const_Lq;
@@ -703,61 +703,61 @@ void pm_const_Lq(const char *s)
 	printf("%4e (H)" EOL, &pm.const_Lq);
 }
 
-void pm_const_Zp(const char *s)
+SH_DEF(pm_const_Zp)
 {
 	stoi(&pm.const_Zp, s);
 	printf("%i" EOL, pm.const_Zp);
 }
 
-void pm_i_high_maximal(const char *s)
+SH_DEF(pm_i_high_maximal)
 {
 	stof(&pm.i_high_maximal, s);
 	printf("%3f (A)" EOL, &pm.i_high_maximal);
 }
 
-void pm_i_low_maximal(const char *s)
+SH_DEF(pm_i_low_maximal)
 {
 	stof(&pm.i_low_maximal, s);
 	printf("%3f (A)" EOL, &pm.i_low_maximal);
 }
 
-void pm_i_power_consumption_maximal(const char *s)
+SH_DEF(pm_i_power_consumption_maximal)
 {
 	stof(&pm.i_power_consumption_maximal, s);
 	printf("%1f (W)" EOL, &pm.i_power_consumption_maximal);
 }
 
-void pm_i_power_regeneration_maximal(const char *s)
+SH_DEF(pm_i_power_regeneration_maximal)
 {
 	stof(&pm.i_power_regeneration_maximal, s);
 	printf("%1f (W)" EOL, &pm.i_power_regeneration_maximal);
 }
 
-void pm_i_set_point_D(const char *s)
+SH_DEF(pm_i_set_point_D)
 {
 	stof(&pm.i_set_point_D, s);
 	printf("%3f (A)" EOL, &pm.i_set_point_D);
 }
 
-void pm_i_set_point_Q(const char *s)
+SH_DEF(pm_i_set_point_Q)
 {
 	stof(&pm.i_set_point_Q, s);
 	printf("%3f (A)" EOL, &pm.i_set_point_Q);
 }
 
-void pm_i_slew_rate_D(const char *s)
+SH_DEF(pm_i_slew_rate_D)
 {
 	stof(&pm.i_slew_rate_D, s);
 	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_D);
 }
 
-void pm_i_slew_rate_Q(const char *s)
+SH_DEF(pm_i_slew_rate_Q)
 {
 	stof(&pm.i_slew_rate_Q, s);
 	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_Q);
 }
 
-void pm_i_slew_rate_auto(const char *s)
+SH_DEF(pm_i_slew_rate_auto)
 {
 	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
 	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
@@ -768,31 +768,31 @@ void pm_i_slew_rate_auto(const char *s)
 		&pm.i_slew_rate_Q);
 }
 
-void pm_i_gain_P_D(const char *s)
+SH_DEF(pm_i_gain_P_D)
 {
 	stof(&pm.i_gain_P_D, s);
 	printf("%2e" EOL, &pm.i_gain_P_D);
 }
 
-void pm_i_gain_I_D(const char *s)
+SH_DEF(pm_i_gain_I_D)
 {
 	stof(&pm.i_gain_I_D, s);
 	printf("%2e" EOL, &pm.i_gain_I_D);
 }
 
-void pm_i_gain_P_Q(const char *s)
+SH_DEF(pm_i_gain_P_Q)
 {
 	stof(&pm.i_gain_P_Q, s);
 	printf("%2e" EOL, &pm.i_gain_P_Q);
 }
 
-void pm_i_gain_I_Q(const char *s)
+SH_DEF(pm_i_gain_I_Q)
 {
 	stof(&pm.i_gain_I_Q, s);
 	printf("%2e" EOL, &pm.i_gain_I_Q);
 }
 
-void pm_i_gain_auto(const char *s)
+SH_DEF(pm_i_gain_auto)
 {
 	pm.i_gain_P_D = (.5f * pm.const_Ld * pm.freq_hz - pm.const_R);
 	pm.i_gain_I_D = 5e-2f * pm.const_Ld * pm.freq_hz;
@@ -809,7 +809,7 @@ void pm_i_gain_auto(const char *s)
 		&pm.i_gain_I_Q);
 }
 
-void pm_p_set_point_w_rpm(const char *s)
+SH_DEF(pm_p_set_point_w_rpm)
 {
 	float			RPM;
 
@@ -821,7 +821,7 @@ void pm_p_set_point_w_rpm(const char *s)
 	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
 }
 
-void pm_p_track_point_x_g(const char *s)
+SH_DEF(pm_p_track_point_x_g)
 {
 	float			angle, g;
 	int			revol, full;
@@ -858,31 +858,31 @@ void pm_p_track_point_x_g(const char *s)
 	printf("%1f (degree) + %i (full revolutions)" EOL, &g, pm.p_track_point_revol);
 }
 
-void pm_p_gain_D(const char *s)
+SH_DEF(pm_p_gain_D)
 {
 	stof(&pm.p_gain_D, s);
 	printf("%2e" EOL, &pm.p_gain_D);
 }
 
-void pm_p_gain_P(const char *s)
+SH_DEF(pm_p_gain_P)
 {
 	stof(&pm.p_gain_P, s);
 	printf("%2e" EOL, &pm.p_gain_P);
 }
 
-void pm_lp_gain_0(const char *s)
+SH_DEF(pm_lp_gain_0)
 {
 	stof(&pm.lp_gain[0], s);
 	printf("%2e" EOL, &pm.lp_gain[0]);
 }
 
-void pm_lp_gain_1(const char *s)
+SH_DEF(pm_lp_gain_1)
 {
 	stof(&pm.lp_gain[1], s);
 	printf("%2e" EOL, &pm.lp_gain[1]);
 }
 
-void pm_n_power_watt(const char *s)
+SH_DEF(pm_n_power_watt)
 {
 	float			avg;
 
@@ -890,7 +890,7 @@ void pm_n_power_watt(const char *s)
 	printf("%1f (W)" EOL, &avg);
 }
 
-void pm_n_temperature_c(const char *s)
+SH_DEF(pm_n_temperature_c)
 {
 	float			avg;
 
@@ -898,43 +898,43 @@ void pm_n_temperature_c(const char *s)
 	printf("%1f (C)" EOL, &avg);
 }
 
-void pm_default(const char *s)
+SH_DEF(pm_default)
 {
 	if (pm.lu_region == PMC_LU_DISABLED)
 		pmc_default(&pm);
 }
 
-void pm_request_zero_drift(const char *s)
+SH_DEF(pm_request_zero_drift)
 {
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 }
 
-void pm_request_wave_hold(const char *s)
+SH_DEF(pm_request_wave_hold)
 {
 	pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 }
 
-void pm_request_wave_sine(const char *s)
+SH_DEF(pm_request_wave_sine)
 {
 	pmc_request(&pm, PMC_STATE_WAVE_SINE);
 }
 
-void pm_request_calibration(const char *s)
+SH_DEF(pm_request_calibration)
 {
 	pmc_request(&pm, PMC_STATE_CALIBRATION);
 }
 
-void pm_request_start(const char *s)
+SH_DEF(pm_request_start)
 {
 	pmc_request(&pm, PMC_STATE_START);
 }
 
-void pm_request_stop(const char *s)
+SH_DEF(pm_request_stop)
 {
 	pmc_request(&pm, PMC_STATE_STOP);
 }
 
-void pm_update_const_R(const char *s)
+SH_DEF(pm_update_const_R)
 {
 	float			R;
 
@@ -952,7 +952,7 @@ void pm_update_const_R(const char *s)
 	}
 }
 
-void pm_impedance(const char *s)
+SH_DEF(pm_impedance)
 {
 	float		IMP[6];
 
@@ -967,7 +967,7 @@ void pm_impedance(const char *s)
 		IMP + 0, IMP + 1, IMP + 2, IMP + 3, IMP + 4, IMP + 5);
 }
 
-void pm_update_const_L(const char *s)
+SH_DEF(pm_update_const_L)
 {
 	float		IMP[6];
 
@@ -993,7 +993,7 @@ void pm_update_const_L(const char *s)
 	}
 }
 
-void pm_update_scal_AB(const char *s)
+SH_DEF(pm_update_scal_AB)
 {
 	float		gainA, gainB, fixA, fixB, ref;
 
@@ -1084,13 +1084,13 @@ static void (* const irq_telemetry_list[]) () = {
 	&irq_telemetry_2,
 };
 
-void tel_decimal(const char *s)
+SH_DEF(tel_decimal)
 {
 	stoi(&tel.sDEC, s);
 	printf("%i" EOL, tel.sDEC);
 }
 
-void tel_capture(const char *s)
+SH_DEF(tel_capture)
 {
 	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
 	void 		(* irqtel) ();
@@ -1112,14 +1112,14 @@ void tel_capture(const char *s)
 	}
 }
 
-void tel_disable(const char *s)
+SH_DEF(tel_disable)
 {
 	tel.iEN = 0;
 	tel.sCNT = 0;
 	tel.pZ = tel.pD;
 }
 
-void tel_live(const char *s)
+SH_DEF(tel_live)
 {
 	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
 	void 		(* irqtel) ();
@@ -1144,7 +1144,7 @@ void tel_live(const char *s)
 		td.pIRQ = irqtel;
 
 		do {
-			taskIOMUX();
+			taskYIELD();
 			xC = shRecv();
 
 			if (xC == 3 || xC == 4)
@@ -1162,12 +1162,12 @@ void tel_live(const char *s)
 	}
 }
 
-void tel_flush(const char *s)
+SH_DEF(tel_flush)
 {
 	telFlush();
 }
 
-void tel_info(const char *s)
+SH_DEF(tel_info)
 {
 	float		freq, time;
 
@@ -1180,151 +1180,136 @@ void tel_info(const char *s)
 		tel.sDEC, &freq, &time);
 }
 
+/* Command list can be generated from source like this.
+ * :r !sed -n '/SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' %
+ * */
+
 const shCMD_t		cmList[] = {
 
-	{"td_uptime", &td_uptime},
-	{"td_irqload", &td_irqload},
-	{"td_avg_default_time", &td_avg_default_time},
-	{"td_reboot", &td_reboot},
-	{"td_keycodes", &td_keycodes},
+	SH_ENTRY(td_uptime),
+	SH_ENTRY(td_irqload),
+	SH_ENTRY(td_avg_default_time),
+	SH_ENTRY(td_reboot),
+	SH_ENTRY(td_keycodes),
+	SH_ENTRY(pwm_freq_hz),
+	SH_ENTRY(pwm_dead_time_ns),
+	SH_ENTRY(pwm_DC),
+	SH_ENTRY(pwm_Z),
+	SH_ENTRY(pm_pwm_resolution),
+	SH_ENTRY(pm_pwm_minimal_pulse),
+	SH_ENTRY(pm_pwm_dead_time),
+	SH_ENTRY(pm_m_bitmask_direct_current_injection),
+	SH_ENTRY(pm_m_bitmask_high_frequency_injection),
+	SH_ENTRY(pm_m_bitmask_flux_polarity_detection),
+	SH_ENTRY(pm_m_bitmask_servo_control_loop),
+	SH_ENTRY(pm_m_errno),
+	SH_ENTRY(pm_T_drift),
+	SH_ENTRY(pm_T_hold),
+	SH_ENTRY(pm_T_sine),
+	SH_ENTRY(pm_T_measure),
+	SH_ENTRY(pm_T_end),
+	SH_ENTRY(pm_wave_i_hold_X),
+	SH_ENTRY(pm_wave_i_hold_Y),
+	SH_ENTRY(pm_wave_i_sine),
+	SH_ENTRY(pm_wave_freq_sine_hz),
+	SH_ENTRY(pm_wave_gain_P),
+	SH_ENTRY(pm_wave_gain_I),
+	SH_ENTRY(pm_scal_A0),
+	SH_ENTRY(pm_scal_A1),
+	SH_ENTRY(pm_scal_B0),
+	SH_ENTRY(pm_scal_B1),
+	SH_ENTRY(pm_scal_U0),
+	SH_ENTRY(pm_scal_U1),
+	SH_ENTRY(pm_fault_iab_maximal),
+	SH_ENTRY(pm_fault_residual_maximal),
+	SH_ENTRY(pm_fault_drift_maximal),
+	SH_ENTRY(pm_fault_low_voltage),
+	SH_ENTRY(pm_fault_high_voltage),
+	SH_ENTRY(pm_vsi_u_maximal),
+	SH_ENTRY(pm_lu_X0),
+	SH_ENTRY(pm_lu_X1),
+	SH_ENTRY(pm_lu_X23),
+	SH_ENTRY(pm_lu_X4),
+	SH_ENTRY(pm_lu_gain_K0),
+	SH_ENTRY(pm_lu_gain_K1),
+	SH_ENTRY(pm_lu_gain_K2),
+	SH_ENTRY(pm_lu_gain_K3),
+	SH_ENTRY(pm_lu_gain_K4),
+	SH_ENTRY(pm_lu_gain_K5),
+	SH_ENTRY(pm_lu_gain_K6),
+	SH_ENTRY(pm_lu_threshold_low),
+	SH_ENTRY(pm_lu_threshold_high),
+	SH_ENTRY(pm_lu_threshold_auto),
+	SH_ENTRY(pm_lu_low_D),
+	SH_ENTRY(pm_lu_residual_variance),
+	SH_ENTRY(pm_hf_freq_hz),
+	SH_ENTRY(pm_hf_swing_D),
+	SH_ENTRY(pm_hf_gain_K0),
+	SH_ENTRY(pm_hf_gain_K1),
+	SH_ENTRY(pm_hf_gain_K2),
+	SH_ENTRY(pm_thermal_R),
+	SH_ENTRY(pm_thermal_E),
+	SH_ENTRY(pm_thermal_gain_R0),
+	SH_ENTRY(pm_thermal_gain_R1),
+	SH_ENTRY(pm_drift_A),
+	SH_ENTRY(pm_drift_B),
+	SH_ENTRY(pm_drift_Q),
+	SH_ENTRY(pm_drift_AB_maximal),
+	SH_ENTRY(pm_drift_Q_maximal),
+	SH_ENTRY(pm_const_U),
+	SH_ENTRY(pm_const_E_wb),
+	SH_ENTRY(pm_const_E_kv),
+	SH_ENTRY(pm_const_R),
+	SH_ENTRY(pm_const_Ld),
+	SH_ENTRY(pm_const_Lq),
+	SH_ENTRY(pm_const_Zp),
+	SH_ENTRY(pm_i_high_maximal),
+	SH_ENTRY(pm_i_low_maximal),
+	SH_ENTRY(pm_i_power_consumption_maximal),
+	SH_ENTRY(pm_i_power_regeneration_maximal),
+	SH_ENTRY(pm_i_set_point_D),
+	SH_ENTRY(pm_i_set_point_Q),
+	SH_ENTRY(pm_i_slew_rate_D),
+	SH_ENTRY(pm_i_slew_rate_Q),
+	SH_ENTRY(pm_i_slew_rate_auto),
+	SH_ENTRY(pm_i_gain_P_D),
+	SH_ENTRY(pm_i_gain_I_D),
+	SH_ENTRY(pm_i_gain_P_Q),
+	SH_ENTRY(pm_i_gain_I_Q),
+	SH_ENTRY(pm_i_gain_auto),
+	SH_ENTRY(pm_p_set_point_w_rpm),
+	SH_ENTRY(pm_p_track_point_x_g),
+	SH_ENTRY(pm_p_gain_D),
+	SH_ENTRY(pm_p_gain_P),
+	SH_ENTRY(pm_lp_gain_0),
+	SH_ENTRY(pm_lp_gain_1),
+	SH_ENTRY(pm_n_power_watt),
+	SH_ENTRY(pm_n_temperature_c),
+	SH_ENTRY(pm_default),
+	SH_ENTRY(pm_request_zero_drift),
+	SH_ENTRY(pm_request_wave_hold),
+	SH_ENTRY(pm_request_wave_sine),
+	SH_ENTRY(pm_request_calibration),
+	SH_ENTRY(pm_request_start),
+	SH_ENTRY(pm_request_stop),
+	SH_ENTRY(pm_update_const_R),
+	SH_ENTRY(pm_impedance),
+	SH_ENTRY(pm_update_const_L),
+	SH_ENTRY(pm_update_scal_AB),
+	SH_ENTRY(tel_decimal),
+	SH_ENTRY(tel_capture),
+	SH_ENTRY(tel_disable),
+	SH_ENTRY(tel_live),
+	SH_ENTRY(tel_flush),
+	SH_ENTRY(tel_info),
 
-	{"pwm_freq_hz", &pwm_freq_hz},
-	{"pwm_dead_time_ns", &pwm_dead_time_ns},
-	{"pwm_DC", &pwm_DC},
-	{"pwm_Z", &pwm_Z},
+	SH_ENTRY(ap_identify_base),
+	SH_ENTRY(ap_identify_const_R_abc),
+	SH_ENTRY(ap_identify_const_E),
+	SH_ENTRY(ap_identify_const_J),
+	SH_ENTRY(ap_blind_spinup),
+	SH_ENTRY(ap_probe_electrical),
 
-	{"pm_pwm_resolution", &pm_pwm_resolution},
-	{"pm_pwm_minimal_pulse", &pm_pwm_minimal_pulse},
-	{"pm_pwm_dead_time", &pm_pwm_dead_time},
-
-	{"pm_m_bitmask_direct_current_injection", &pm_m_bitmask_direct_current_injection},
-	{"pm_m_bitmask_high_frequency_injection", &pm_m_bitmask_high_frequency_injection},
-	{"pm_m_bitmask_flux_polarity_detection", &pm_m_bitmask_flux_polarity_detection},
-	{"pm_m_bitmask_servo_control_loop", &pm_m_bitmask_servo_control_loop},
-
-	{"pm_m_errno", &pm_m_errno},
-
-	{"pm_T_drift", &pm_T_drift},
-	{"pm_T_hold", &pm_T_hold},
-	{"pm_T_sine", &pm_T_sine},
-	{"pm_T_measure", &pm_T_measure},
-	{"pm_T_end", &pm_T_end},
-
-	{"pm_wave_i_hold_X", &pm_wave_i_hold_X},
-	{"pm_wave_i_hold_Y", &pm_wave_i_hold_Y},
-	{"pm_wave_i_sine", &pm_wave_i_sine},
-	{"pm_wave_freq_sine_hz", &pm_wave_freq_sine_hz},
-	{"pm_wave_gain_P", &pm_wave_gain_P},
-	{"pm_wave_gain_I", &pm_wave_gain_I},
-
-	{"pm_scal_A0", &pm_scal_A0},
-	{"pm_scal_A1", &pm_scal_A1},
-	{"pm_scal_B0", &pm_scal_B0},
-	{"pm_scal_B1", &pm_scal_B1},
-	{"pm_scal_U0", &pm_scal_U0},
-	{"pm_scal_U1", &pm_scal_U1},
-
-	{"pm_fault_iab_maximal", &pm_fault_iab_maximal},
-	{"pm_fault_residual_maximal", &pm_fault_residual_maximal},
-	{"pm_fault_drift_maximal", &pm_fault_drift_maximal},
-	{"pm_fault_low_voltage", &pm_fault_low_voltage},
-	{"pm_fault_high_voltage", &pm_fault_high_voltage},
-
-	{"pm_vsi_u_maximal", &pm_vsi_u_maximal},
-
-	{"pm_lu_X0", &pm_lu_X0},
-	{"pm_lu_X1", &pm_lu_X1},
-	{"pm_lu_X23", &pm_lu_X23},
-	{"pm_lu_X4", &pm_lu_X4},
-
-	{"pm_lu_gain_K0", &pm_lu_gain_K0},
-	{"pm_lu_gain_K1", &pm_lu_gain_K1},
-	{"pm_lu_gain_K2", &pm_lu_gain_K2},
-	{"pm_lu_gain_K3", &pm_lu_gain_K3},
-	{"pm_lu_gain_K4", &pm_lu_gain_K4},
-	{"pm_lu_gain_K5", &pm_lu_gain_K5},
-	{"pm_lu_gain_K6", &pm_lu_gain_K5},
-	{"pm_lu_threshold_low", &pm_lu_threshold_low},
-	{"pm_lu_threshold_high", &pm_lu_threshold_high},
-	{"pm_lu_threshold_auto", &pm_lu_threshold_auto},
-	{"pm_lu_low_D", &pm_lu_low_D},
-	{"pm_lu_residual_variance", &pm_lu_residual_variance},
-
-	{"pm_hf_freq_hz", &pm_hf_freq_hz},
-	{"pm_hf_swing_D", &pm_hf_swing_D},
-	{"pm_hf_gain_K0", &pm_hf_gain_K0},
-	{"pm_hf_gain_K1", &pm_hf_gain_K1},
-	{"pm_hf_gain_K2", &pm_hf_gain_K2},
-
-	{"pm_thermal_R", &pm_thermal_R},
-	{"pm_thermal_E", &pm_thermal_E},
-	{"pm_thermal_gain_R0", &pm_thermal_gain_R0},
-	{"pm_thermal_gain_R1", &pm_thermal_gain_R1},
-
-	{"pm_drift_A", &pm_drift_A},
-	{"pm_drift_B", &pm_drift_B},
-	{"pm_drift_Q", &pm_drift_Q},
-	{"pm_drift_AB_maximal", &pm_drift_AB_maximal},
-	{"pm_drift_Q_maximal", &pm_drift_Q_maximal},
-
-	{"pm_const_U", &pm_const_U},
-	{"pm_const_E_wb", &pm_const_E_wb},
-	{"pm_const_E_kv", &pm_const_E_kv},
-	{"pm_const_R", &pm_const_R},
-	{"pm_const_Ld", &pm_const_Ld},
-	{"pm_const_Lq", &pm_const_Lq},
-	{"pm_const_Zp", &pm_const_Zp},
-
-	{"pm_i_high_maximal", &pm_i_high_maximal},
-	{"pm_i_low_maximal", &pm_i_low_maximal},
-	{"pm_i_power_consumption_maximal", &pm_i_power_consumption_maximal},
-	{"pm_i_power_regeneration_maximal", &pm_i_power_regeneration_maximal},
-	{"pm_i_set_point_D", &pm_i_set_point_D},
-	{"pm_i_set_point_Q", &pm_i_set_point_Q},
-	{"pm_i_slew_rate_D",&pm_i_slew_rate_D},
-	{"pm_i_slew_rate_Q",&pm_i_slew_rate_Q},
-	{"pm_i_slew_rate_auto", &pm_i_slew_rate_auto},
-	{"pm_i_gain_P_D", &pm_i_gain_P_D},
-	{"pm_i_gain_I_D", &pm_i_gain_I_D},
-	{"pm_i_gain_P_Q", &pm_i_gain_P_Q},
-	{"pm_i_gain_I_Q", &pm_i_gain_I_Q},
-	{"pm_i_gain_auto", &pm_i_gain_auto},
-
-	{"pm_p_set_point_w_rpm", &pm_p_set_point_w_rpm},
-	{"pm_p_track_point_x_g", &pm_p_track_point_x_g},
-	{"pm_p_gain_D", &pm_p_gain_D},
-	{"pm_p_gain_P", &pm_p_gain_P},
-
-	{"pm_lp_gain_0", &pm_lp_gain_0},
-	{"pm_lp_gain_1", &pm_lp_gain_1},
-
-	{"pm_n_power_watt", &pm_n_power_watt},
-	{"pm_n_temperature_c", &pm_n_temperature_c},
-
-	{"pm_default", &pm_default},
-	{"pm_request_zero_drift", &pm_request_zero_drift},
-	{"pm_request_wave_hold", &pm_request_wave_hold},
-	{"pm_request_wave_sine", &pm_request_wave_sine},
-	{"pm_request_calibration", &pm_request_calibration},
-	{"pm_request_start", &pm_request_start},
-	{"pm_request_stop", &pm_request_stop},
-
-	{"pm_update_const_R", &pm_update_const_R},
-	{"pm_impedance", &pm_impedance},
-	{"pm_update_const_L", &pm_update_const_L},
-	{"pm_update_scal_AB", &pm_update_scal_AB},
-
-	{"tel_decimal", &tel_decimal},
-	{"tel_capture", &tel_capture},
-	{"tel_disable", &tel_disable},
-	{"tel_live", &tel_live},
-	{"tel_flush", &tel_flush},
-	{"tel_info", &tel_info},
-
-	{"ap_identify_base", &ap_identify_base},
-	{"ap_identify_const_R_abc", &ap_identify_const_R_abc},
-	{"ap_identify_const_E", &ap_identify_const_E},
-
-	{NULL, NULL},
+	{NULL, NULL}
 };
 

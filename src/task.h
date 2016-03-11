@@ -27,6 +27,11 @@ typedef struct {
 	 * */
 	int			uSEC;
 	int			uDS;
+	int			uTIM;
+
+	/* Task IOMUX.
+	 * */
+	int			mux_TEMP[2];
 
 	/* IRQ load ticks.
 	 * */
@@ -48,7 +53,7 @@ taskDATA_t;
 extern taskDATA_t		td;
 extern pmc_t			pm;
 
-extern void taskIOMUX();
+extern void taskYIELD();
 
 #endif /* _H_TASK_ */
 
