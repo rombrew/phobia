@@ -90,9 +90,9 @@ void pmc_default(pmc_t *pm)
 	pm->lu_gain_K[4] = 5E+1f;
 	pm->lu_gain_K[5] = 1E-3f;
 	pm->lu_gain_K[6] = 2E-3f;
-	pm->lu_threshold_low = 100.f;
-	pm->lu_threshold_high = 200.f;
-	pm->lu_low_D = 2.f;
+	pm->lu_threshold_low = 1E+2f;
+	pm->lu_threshold_high = 2E+2f;
+	pm->lu_low_D = 4.f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
@@ -109,16 +109,13 @@ void pmc_default(pmc_t *pm)
 	pm->bemf_harmonic[6] = 0.f;
 	pm->bemf_harmonic[7] = 0.f;
 	pm->bemf_harmonic[8] = 0.f;
-	pm->bemf_length = 9;
-	pm->bemf_gain_K = 5E-4f;
+	pm->bemf_length = 12;
+	pm->bemf_gain_K = 2E-4f;
 
 	pm->thermal_gain_R[0] = 20.f;
 	pm->thermal_gain_R[1] = 233.64f;
 
-	pm->drift_AB_maximal = 2.f;
-	pm->drift_Q_maximal = 2.f;
-
-	pm->const_U = 12.f;
+	pm->const_U = 0.f;
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;
@@ -136,9 +133,9 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 1E+3f;
-	pm->p_gain_D = 5E-2f;
-	pm->p_gain_P = 5E-1f;
+	pm->p_slew_rate_w = 1E+2f;
+	pm->p_gain_D = 1E-2f;
+	pm->p_gain_P = 1E-1f;
 	pm->p_revol_limit = 10;
 
 	pm->lp_gain[0] = .1f;
@@ -228,6 +225,7 @@ bemf_update(pmc_t *pm, float eQ)
 			/* DFT.
 			 * */
 			*harmonic++ += eQ * *ftgains++;
+			*harmonic++ += eQ * *ftgains++;
 			++nu;
 		}
 		while (nu < pm->bemf_length);
@@ -248,6 +246,8 @@ bemf_update(pmc_t *pm, float eQ)
 	do {
 		/* Inverse DFT.
 		 * */
+		Q += *harmonic++ * E[0];
+		*ftgains++ = E[0];
 		Q += *harmonic++ * E[1];
 		*ftgains++ = E[1];
 
@@ -257,13 +257,16 @@ bemf_update(pmc_t *pm, float eQ)
 		E[1] = E[0] * X[1] + E[1] * X[0];
 		E[0] = temp;
 
+		temp = (3.f - E[0] * E[0] - E[1] * E[1]) * .5f;
+		E[0] *= temp;
+		E[1] *= temp;
+
 		++nu;
 	}
 	while (nu < pm->bemf_length);
 
 	pm->bemf_Q = Q;
 }
-
 
 static void
 lu_update(pmc_t *pm)
@@ -361,20 +364,27 @@ lu_post(pmc_t *pm)
 		}
 	}
 
-	/* Winding temperature (Celsius).
-	 * */
-	pm->n_temperature_c = pm->thermal_R * pm->thermal_gain_R[1] + pm->thermal_gain_R[0];
-
 	/* Do not allow the out of range.
 	 * */
 	temp = pm->freq_hz * (2.f * MPIF / 12.f);
 	pm->lu_X[4] = (pm->lu_X[4] > temp) ? temp : (pm->lu_X[4] < - temp) ? - temp : pm->lu_X[4];
 
-	pm->thermal_R = (pm->thermal_R < - .3f) ? - .3f
-		: (pm->thermal_R > .5f) ? .5f : pm->thermal_R;
+	if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
+
+		pm->thermal_R = (pm->thermal_R < - .3f) ? - .3f
+			: (pm->thermal_R > .5f) ? .5f : pm->thermal_R;
+	}
 
 	pm->drift_Q = (pm->drift_Q < - pm->const_U) ? - pm->const_U
 		: (pm->drift_Q > pm->const_U) ? pm->const_U : pm->drift_Q;
+
+	/* Power conversion (Watt).
+	 * */
+	pm->n_power_watt = 1.5f * (pm->lu_X[0] * pm->vsi_D + pm->lu_X[1] * pm->vsi_Q);
+
+	/* Winding temperature (Celsius).
+	 * */
+	pm->n_temperature_c = pm->thermal_R * pm->thermal_gain_R[1] + pm->thermal_gain_R[0];
 }
 
 static void
@@ -497,9 +507,6 @@ i_control(pmc_t *pm)
 	if (pm->m_bitmask & PMC_BIT_DIRECT_CURRENT_INJECTION
 			&& pm->lu_region == PMC_LU_LOW_REGION) {
 
-		/*temp = (fabsf(pm->lu_X[4]) - pm->lu_w_high)
-			/ (pm->lu_w_low - pm->lu_w_high);
-		temp = (temp < 0.f) ? 0.f : (temp > 1.f) ? 1.f : temp;*/
 		sp_D += pm->lu_low_D;
 	}
 
@@ -512,8 +519,7 @@ i_control(pmc_t *pm)
 
 	/* Power constraints.
 	 * */
-	pm->n_power_watt = pm->lu_X[0] * pm->vsi_D + pm->lu_X[1] * pm->vsi_Q;
-	wP = sp_D * pm->vsi_D + sp_Q * pm->vsi_Q;
+	wP = 1.5f * (sp_D * pm->vsi_D + sp_Q * pm->vsi_Q);
 
 	if (wP > pm->i_power_consumption_maximal) {
 

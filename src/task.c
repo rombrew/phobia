@@ -83,7 +83,7 @@ void taskIOMUX()
 void taskYIELD()
 {
 	taskIOMUX();
-	halWFI();
+	halSleep();
 }
 
 void canIRQ()
@@ -142,7 +142,7 @@ void halMain()
 	do {
 		taskIOMUX();
 		shTask();
-		halWFI();
+		halSleep();
 	}
 	while (1);
 }

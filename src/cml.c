@@ -198,42 +198,107 @@ SH_DEF(pm_pwm_dead_time)
 	pm_pwm_int_modify(&pm.pwm_dead_time, s);
 }
 
-static void
+static int
 pm_m_bitmask(const char *s, int bit)
 {
-	int		flag;
+	int		flag, mask = pm.m_bitmask;
 
 	if (stoi(&flag, s) != NULL) {
 
 		if (flag)
-			pm.m_bitmask |= bit;
+			mask |= bit;
 		else
-			pm.m_bitmask &= ~bit;
+			mask &= ~bit;
 	}
 
-	flag = (pm.m_bitmask & bit) ? 1 : 0;
+	flag = (mask & bit) ? 1 : 0;
 
 	printf("%i (%s)" EOL, flag, flag ? "Enabled" : "Disabled");
+
+	return mask;
 }
 
 SH_DEF(pm_m_bitmask_direct_current_injection)
 {
-	pm_m_bitmask(s, PMC_BIT_DIRECT_CURRENT_INJECTION);
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_DIRECT_CURRENT_INJECTION);
 }
 
 SH_DEF(pm_m_bitmask_high_frequency_injection)
 {
-	pm_m_bitmask(s, PMC_BIT_HIGH_FREQUENCY_INJECTION);
+	int			mask;
+
+	mask = pm_m_bitmask(s, PMC_BIT_HIGH_FREQUENCY_INJECTION);
+
+	if (mask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
+
+		pm.hf_CS[0] = 1.;
+		pm.hf_CS[1] = 0.;
+		pm.hf_flux_polarity = 0.f;
+
+		halFence();
+	}
+
+	pm.m_bitmask = mask;
 }
 
 SH_DEF(pm_m_bitmask_flux_polarity_detection)
 {
-	pm_m_bitmask(s, PMC_BIT_FLUX_POLARITY_DETECTION);
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_FLUX_POLARITY_DETECTION);
+}
+
+SH_DEF(pm_m_bitmask_thermal_drift_estimation)
+{
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_THERMAL_DRIFT_ESTIMATION);
+}
+
+SH_DEF(pm_m_bitmask_bemf_harmonic_compensation)
+{
+	int			mask;
+
+	mask = pm_m_bitmask(s, PMC_BIT_BEMF_HARMONIC_COMPENSATION);
+
+	if (mask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+
+		pm.bemf_ftgains[0] = 0.f;
+		pm.bemf_ftgains[1] = 0.f;
+		pm.bemf_ftgains[2] = 0.f;
+		pm.bemf_ftgains[3] = 0.f;
+		pm.bemf_ftgains[4] = 0.f;
+		pm.bemf_ftgains[5] = 0.f;
+		pm.bemf_ftgains[6] = 0.f;
+		pm.bemf_ftgains[7] = 0.f;
+		pm.bemf_ftgains[8] = 0.f;
+		pm.bemf_Q = 0.f;
+
+		halFence();
+	}
+
+	pm.m_bitmask = mask;
+}
+
+SH_DEF(pm_m_bitmask_bemf_harmonic_estimation)
+{
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_BEMF_HARMONIC_ESTIMATION);
 }
 
 SH_DEF(pm_m_bitmask_servo_control_loop)
 {
-	pm_m_bitmask(s, PMC_BIT_SERVO_CONTROL_LOOP);
+	int			mask;
+
+	mask = pm_m_bitmask(s, PMC_BIT_SERVO_CONTROL_LOOP);
+
+	if (mask & PMC_BIT_SERVO_CONTROL_LOOP) {
+
+		pm.p_set_point_w = 0.f;
+		pm.p_track_point_x[0] = 1.f;
+		pm.p_track_point_x[1] = 0.f;
+		pm.p_track_point_revol = 0;
+		pm.p_track_point_w = 0.f;
+
+		halFence();
+	}
+
+	pm.m_bitmask = mask;
 }
 
 SH_DEF(pm_m_errno)
@@ -411,7 +476,7 @@ pm_avg_float_1(float *param, float time)
 	td.avg_N = 0;
 	td.avg_MAX = pm.freq_hz * time;
 
-	halWFI();
+	halFence();
 
 	td.pIRQ = &irq_avg_value_8;
 
@@ -566,6 +631,14 @@ SH_DEF(pm_hf_swing_D)
 	printf("%3f (A)" EOL, &pm.hf_swing_D);
 }
 
+SH_DEF(pm_hf_flux_polarity)
+{
+	float			avg;
+
+	avg = pm_avg_float_arg_1(&pm.hf_flux_polarity, s);
+	printf("%4e" EOL, &avg);
+}
+
 SH_DEF(pm_hf_gain_K0)
 {
 	stof(&pm.hf_gain_K[0], s);
@@ -582,6 +655,33 @@ SH_DEF(pm_hf_gain_K2)
 {
 	stof(&pm.hf_gain_K[2], s);
 	printf("%2e" EOL, &pm.hf_gain_K[2]);
+}
+
+SH_DEF(pm_bemf_harmonic)
+{
+	float			*harmonic = pm.bemf_harmonic;
+	float			Z[2];
+	int			i;
+
+	for (i = 0; i < pm.bemf_length; ++i) {
+
+		Z[0] = *harmonic++ * 100.f;
+		Z[1] = *harmonic++ * 100.f;
+
+		printf("%i: %1f %% %1f %%" EOL, i + 1, Z + 0, Z + 1);
+	}
+}
+
+SH_DEF(pm_bemf_length)
+{
+	stoi(&pm.bemf_length, s);
+	printf("%i" EOL, pm.bemf_length);
+}
+
+SH_DEF(pm_bemf_gain_K)
+{
+	stof(&pm.bemf_gain_K, s);
+	printf("%2e" EOL, &pm.bemf_gain_K);
 }
 
 SH_DEF(pm_thermal_R)
@@ -634,18 +734,6 @@ SH_DEF(pm_drift_Q)
 
 	avg = pm_avg_float_arg_1(&pm.drift_Q, s);
 	printf("%3f (V)" EOL, &avg);
-}
-
-SH_DEF(pm_drift_AB_maximal)
-{
-	stof(&pm.drift_AB_maximal, s);
-	printf("%3f (A)" EOL, &pm.drift_AB_maximal);
-}
-
-SH_DEF(pm_drift_Q_maximal)
-{
-	stof(&pm.drift_Q_maximal, s);
-	printf("%3f (V)" EOL, &pm.drift_Q_maximal);
 }
 
 SH_DEF(pm_const_U)
@@ -821,6 +909,12 @@ SH_DEF(pm_p_set_point_w_rpm)
 	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
 }
 
+SH_DEF(pm_p_slew_rate_w)
+{
+	stof(&pm.p_slew_rate_w, s);
+	printf("%4e (Rad/S^2)" EOL, &pm.p_slew_rate_w);
+}
+
 SH_DEF(pm_p_track_point_x_g)
 {
 	float			angle, g;
@@ -868,6 +962,12 @@ SH_DEF(pm_p_gain_P)
 {
 	stof(&pm.p_gain_P, s);
 	printf("%2e" EOL, &pm.p_gain_P);
+}
+
+SH_DEF(pm_p_revol_limit)
+{
+	stoi(&pm.p_revol_limit, s);
+	printf("%i" EOL, pm.p_revol_limit);
 }
 
 SH_DEF(pm_lp_gain_0)
@@ -1106,7 +1206,7 @@ SH_DEF(tel_capture)
 		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
 		irqtel = irq_telemetry_list[nTEL];
 
-		halWFI();
+		halFence();
 
 		td.pIRQ = irqtel;
 	}
@@ -1139,7 +1239,7 @@ SH_DEF(tel_live)
 		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
 		irqtel = irq_telemetry_list[nTEL];
 
-		halWFI();
+		halFence();
 
 		td.pIRQ = irqtel;
 
@@ -1201,6 +1301,9 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_m_bitmask_direct_current_injection),
 	SH_ENTRY(pm_m_bitmask_high_frequency_injection),
 	SH_ENTRY(pm_m_bitmask_flux_polarity_detection),
+	SH_ENTRY(pm_m_bitmask_thermal_drift_estimation),
+	SH_ENTRY(pm_m_bitmask_bemf_harmonic_compensation),
+	SH_ENTRY(pm_m_bitmask_bemf_harmonic_estimation),
 	SH_ENTRY(pm_m_bitmask_servo_control_loop),
 	SH_ENTRY(pm_m_errno),
 	SH_ENTRY(pm_T_drift),
@@ -1244,9 +1347,13 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_lu_residual_variance),
 	SH_ENTRY(pm_hf_freq_hz),
 	SH_ENTRY(pm_hf_swing_D),
+	SH_ENTRY(pm_hf_flux_polarity),
 	SH_ENTRY(pm_hf_gain_K0),
 	SH_ENTRY(pm_hf_gain_K1),
 	SH_ENTRY(pm_hf_gain_K2),
+	SH_ENTRY(pm_bemf_harmonic),
+	SH_ENTRY(pm_bemf_length),
+	SH_ENTRY(pm_bemf_gain_K),
 	SH_ENTRY(pm_thermal_R),
 	SH_ENTRY(pm_thermal_E),
 	SH_ENTRY(pm_thermal_gain_R0),
@@ -1254,8 +1361,6 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_drift_A),
 	SH_ENTRY(pm_drift_B),
 	SH_ENTRY(pm_drift_Q),
-	SH_ENTRY(pm_drift_AB_maximal),
-	SH_ENTRY(pm_drift_Q_maximal),
 	SH_ENTRY(pm_const_U),
 	SH_ENTRY(pm_const_E_wb),
 	SH_ENTRY(pm_const_E_kv),
@@ -1278,9 +1383,11 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_i_gain_I_Q),
 	SH_ENTRY(pm_i_gain_auto),
 	SH_ENTRY(pm_p_set_point_w_rpm),
+	SH_ENTRY(pm_p_slew_rate_w),
 	SH_ENTRY(pm_p_track_point_x_g),
 	SH_ENTRY(pm_p_gain_D),
 	SH_ENTRY(pm_p_gain_P),
+	SH_ENTRY(pm_p_revol_limit),
 	SH_ENTRY(pm_lp_gain_0),
 	SH_ENTRY(pm_lp_gain_1),
 	SH_ENTRY(pm_n_power_watt),
@@ -1308,7 +1415,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(ap_identify_const_E),
 	SH_ENTRY(ap_identify_const_J),
 	SH_ENTRY(ap_blind_spinup),
-	SH_ENTRY(ap_probe_electrical),
+	SH_ENTRY(ap_probe_base),
 
 	{NULL, NULL}
 };

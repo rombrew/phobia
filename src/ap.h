@@ -26,7 +26,7 @@ SH_DEF(ap_identify_const_R_abc);
 SH_DEF(ap_identify_const_E);
 SH_DEF(ap_identify_const_J);
 SH_DEF(ap_blind_spinup);
-SH_DEF(ap_probe_electrical);
+SH_DEF(ap_probe_base);
 
 #endif /* _H_AP_ */
 

@@ -166,8 +166,8 @@ typedef struct {
 
 	/* BEMF harmonic compensation.
 	 * */
-	float		bemf_ftgains[9];
-	float		bemf_harmonic[9];
+	float		bemf_ftgains[32];
+	float		bemf_harmonic[32];
 	int		bemf_length;
 	float		bemf_gain_K;
 	float		bemf_Q;
@@ -189,8 +189,6 @@ typedef struct {
 	float		drift_A;
 	float		drift_B;
 	float		drift_Q;
-	float		drift_AB_maximal;
-	float		drift_Q_maximal;
 
 	/* Supply voltage.
 	 * */

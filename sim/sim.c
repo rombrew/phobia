@@ -170,7 +170,7 @@ sim_Script(FILE *fdTel)
 	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. + .0);
+	pm.const_Lq = m.Lq * (1. + .1);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -196,8 +196,7 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
-		| PMC_BIT_SERVO_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
@@ -208,8 +207,12 @@ sim_Script(FILE *fdTel)
 	/*m.X[3] += .5;
 	sim_F(fdTel, 1., 0);*/
 
-	pm.p_set_point_w = 2.f * pm.lu_threshold_high;
-	m.M[2] = 1E-2;
+	pm.i_set_point_Q = 10.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.m_bitmask |= PMC_BIT_BEMF_HARMONIC_COMPENSATION
+		| PMC_BIT_BEMF_HARMONIC_ESTIMATION;
+
 	sim_F(fdTel, 1., 0);
 }
 

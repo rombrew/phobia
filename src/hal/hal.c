@@ -162,11 +162,6 @@ void halStart()
 	boardStart();
 }
 
-void halWFI()
-{
-	__WFI();
-}
-
 int halSysTick()
 {
 	return SysTick->VAL;
@@ -184,5 +179,15 @@ void halLED(int F)
 		GPIOC->BSRRL = (1UL << 12);
 	else
 		GPIOC->BSRRH = (1UL << 12);
+}
+
+void halSleep()
+{
+	__WFI();
+}
+
+void halFence()
+{
+	__DMB();
 }
 

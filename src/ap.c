@@ -24,9 +24,11 @@
 #include "task.h"
 
 extern void irq_avg_value_8();
-extern void pm_const_E_wb(const char *s);
-extern void pm_i_slew_rate_auto(const char *s);
-extern void pm_i_gain_auto(const char *s);
+
+SH_DEF(pm_lu_threshold_auto);
+SH_DEF(pm_const_E_wb);
+SH_DEF(pm_i_slew_rate_auto);
+SH_DEF(pm_i_gain_auto);
 
 static int
 ap_wait_for_idle()
@@ -37,9 +39,13 @@ ap_wait_for_idle()
 	return pm.m_errno;
 }
 
+#define AP_PRINT_ERROR()	\
+	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
+
 #define AP_WAIT_FOR_IDLE()	\
-{ if (ap_wait_for_idle() != PMC_OK) { printf("ERROR %i: %s" EOL, \
-		pm.m_errno, pmc_strerror(pm.m_errno)); break; } }
+	{ if (ap_wait_for_idle() != PMC_OK) { AP_PRINT_ERROR(); break; } }
+
+#define AP_EXIT_IF_ERROR()	{ if (pm.m_errno != PMC_OK) break; }
 
 SH_DEF(ap_identify_base)
 {
@@ -208,6 +214,8 @@ SH_DEF(ap_identify_const_E)
 	td.avg_N = 0;
 	td.avg_MAX = pm.freq_hz * pm.T_measure;
 
+	halFence();
+
 	td.pIRQ = &irq_avg_value_8;
 
 	while (td.pIRQ != NULL)
@@ -237,68 +245,76 @@ SH_DEF(ap_identify_const_J)
 
 SH_DEF(ap_blind_spinup)
 {
-	int		uEND;
+	int			uEND;
 
-	if (pm.lu_region == PMC_LU_DISABLED)
+	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
 
-	pm.p_set_point_w = 2.f * pm.lu_threshold_high;
-	pm.p_track_point_x[0] = pm.lu_X[2];
-	pm.p_track_point_x[1] = pm.lu_X[3];
-	pm.p_track_point_revol = pm.lu_revol;
-	pm.p_track_point_w = 0.f;
-
-	pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
-		| PMC_BIT_SERVO_CONTROL_LOOP;
-
-	td.uTIM = 0;
-	uEND = 500;
-
 	do {
-		taskYIELD();
+		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+		AP_WAIT_FOR_IDLE();
 
-		if (pm.lu_region == PMC_LU_HIGH_REGION)
-			break;
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
 
-		if (pm.m_errno != PMC_OK)
-			break;
+		pmc_request(&pm, PMC_STATE_START);
+		AP_WAIT_FOR_IDLE();
 
-		if (td.uTIM > uEND) {
+		pm.p_set_point_w = pm.lu_threshold_high;
+		pm.p_track_point_x[0] = pm.lu_X[2];
+		pm.p_track_point_x[1] = pm.lu_X[3];
+		pm.p_track_point_revol = pm.lu_revol;
+		pm.p_track_point_w = 0.f;
 
-			pm.m_state = PMC_STATE_STOP;
-			pm.m_phase = 0;
-			pm.m_errno = PMC_ERROR_AP_TIMEOUT;
-		}
-	}
-	while (1);
-
-	if (pm.m_errno == PMC_OK) {
+		if (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) ;
+		else
+			pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
+				| PMC_BIT_SERVO_CONTROL_LOOP;
 
 		td.uTIM = 0;
-		uEND = 100;
+		uEND = (int) (100.f * pm.p_set_point_w / pm.p_slew_rate_w) + 50;
 
 		do {
 			taskYIELD();
 
-			if (pm.m_errno != PMC_OK)
+			if (pm.lu_region == PMC_LU_HIGH_REGION)
 				break;
+
+			AP_EXIT_IF_ERROR();
+
+			if (td.uTIM > uEND) {
+
+				pm.m_state = PMC_STATE_STOP;
+				pm.m_phase = 0;
+				pm.m_errno = PMC_ERROR_AP_TIMEOUT;
+			}
 		}
-		while (td.uTIM < uEND);
+		while (1);
+
+		if (pm.m_errno == PMC_OK) {
+
+			td.uTIM = 0;
+			uEND = 100;
+
+			do {
+				taskYIELD();
+				AP_EXIT_IF_ERROR();
+			}
+			while (td.uTIM < uEND);
+		}
+
+		if (pm.m_errno != PMC_OK) {
+
+			pm.m_bitmask &= ~(PMC_BIT_DIRECT_CURRENT_INJECTION
+					| PMC_BIT_SERVO_CONTROL_LOOP);
+
+			AP_PRINT_ERROR();
+		}
 	}
-
-	if (pm.m_errno != PMC_OK) {
-
-		pm.m_bitmask &= ~(PMC_BIT_DIRECT_CURRENT_INJECTION
-				| PMC_BIT_SERVO_CONTROL_LOOP);
-
-		printf("ERROR %i: %s" EOL, pm.m_errno,
-				pmc_strerror(pm.m_errno));
-	}
+	while (0);
 }
 
-#define AP_EXIT_IF_ERROR()	{ if (pm.m_errno != PMC_OK) break; }
-
-SH_DEF(ap_probe_electrical)
+SH_DEF(ap_probe_base)
 {
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
@@ -312,6 +328,35 @@ SH_DEF(ap_probe_electrical)
 
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
+
+		pm_lu_threshold_auto(EOL);
+	}
+	while (0);
+}
+
+SH_DEF(ap_probe_hfi)
+{
+	float			Qpc;
+
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	Qpc = fabsf(1.f - pm.const_Ld / pm.const_Lq) * 100.f;
+
+	printf("Q %.1f %%" EOL, &Qpc);
+
+	do {
+		pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
+
+		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+		AP_WAIT_FOR_IDLE();
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+
+		pmc_request(&pm, PMC_STATE_START);
+		AP_WAIT_FOR_IDLE();
+
 	}
 	while (0);
 }
