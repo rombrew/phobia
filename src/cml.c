@@ -251,34 +251,20 @@ SH_DEF(pm_m_bitmask_thermal_drift_estimation)
 	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_THERMAL_DRIFT_ESTIMATION);
 }
 
-SH_DEF(pm_m_bitmask_bemf_harmonic_compensation)
+SH_DEF(pm_m_bitmask_bemf_waveform_compensation)
 {
 	int			mask;
 
-	mask = pm_m_bitmask(s, PMC_BIT_BEMF_HARMONIC_COMPENSATION);
+	mask = pm_m_bitmask(s, PMC_BIT_BEMF_WAVEFORM_COMPENSATION);
 
-	if (mask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+	if (mask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
-		pm.bemf_ftgains[0] = 0.f;
-		pm.bemf_ftgains[1] = 0.f;
-		pm.bemf_ftgains[2] = 0.f;
-		pm.bemf_ftgains[3] = 0.f;
-		pm.bemf_ftgains[4] = 0.f;
-		pm.bemf_ftgains[5] = 0.f;
-		pm.bemf_ftgains[6] = 0.f;
-		pm.bemf_ftgains[7] = 0.f;
-		pm.bemf_ftgains[8] = 0.f;
 		pm.bemf_Q = 0.f;
 
 		halFence();
 	}
 
 	pm.m_bitmask = mask;
-}
-
-SH_DEF(pm_m_bitmask_bemf_harmonic_estimation)
-{
-	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_BEMF_HARMONIC_ESTIMATION);
 }
 
 SH_DEF(pm_m_bitmask_servo_control_loop)
@@ -615,8 +601,8 @@ SH_DEF(pm_lu_residual_variance)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.lu_residual_variance, s);
-	printf("%4e" EOL, &avg);
+	avg = sqrtf(pm_avg_float_arg_1(&pm.lu_residual_variance, s));
+	printf("%4e (SD)" EOL, &avg);
 }
 
 SH_DEF(pm_hf_freq_hz)
@@ -657,31 +643,47 @@ SH_DEF(pm_hf_gain_K2)
 	printf("%2e" EOL, &pm.hf_gain_K[2]);
 }
 
-SH_DEF(pm_bemf_harmonic)
+SH_DEF(pm_bemf_DFT)
 {
-	float			*harmonic = pm.bemf_harmonic;
-	float			Z[2];
+	float			*DFT = pm.bemf_DFT;
+	float			A, Z;
 	int			i;
 
-	for (i = 0; i < pm.bemf_length; ++i) {
+	for (i = 0; i < pm.bemf_N; ++i) {
 
-		Z[0] = *harmonic++ * 100.f;
-		Z[1] = *harmonic++ * 100.f;
+		Z = *DFT++;
+		A = *DFT++;
+		Z = sqrtf(A * A + Z * Z) * 100.f;
 
-		printf("%i: %1f %% %1f %%" EOL, i + 1, Z + 0, Z + 1);
+		printf("%i: %1f %%" EOL, 3 + i * 2, &Z);
 	}
-}
-
-SH_DEF(pm_bemf_length)
-{
-	stoi(&pm.bemf_length, s);
-	printf("%i" EOL, pm.bemf_length);
 }
 
 SH_DEF(pm_bemf_gain_K)
 {
 	stof(&pm.bemf_gain_K, s);
 	printf("%2e" EOL, &pm.bemf_gain_K);
+}
+
+SH_DEF(pm_bemf_N)
+{
+	stoi(&pm.bemf_N, s);
+
+	pm.bemf_N = (pm.bemf_N < 1) ? 1 :
+		(pm.bemf_N > 4) ? 4 : pm.bemf_N;
+
+	printf("%i" EOL, pm.bemf_N);
+}
+
+SH_DEF(pm_bemf_tune_t)
+{
+	float		T;
+
+	if (stof(&T, s) != NULL) {
+
+		pm.bemf_tune_t = pm.freq_hz * T;
+		printf("%3f (Sec)" EOL, &T);
+	}
 }
 
 SH_DEF(pm_thermal_R)
@@ -1302,8 +1304,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_m_bitmask_high_frequency_injection),
 	SH_ENTRY(pm_m_bitmask_flux_polarity_detection),
 	SH_ENTRY(pm_m_bitmask_thermal_drift_estimation),
-	SH_ENTRY(pm_m_bitmask_bemf_harmonic_compensation),
-	SH_ENTRY(pm_m_bitmask_bemf_harmonic_estimation),
+	SH_ENTRY(pm_m_bitmask_bemf_waveform_compensation),
 	SH_ENTRY(pm_m_bitmask_servo_control_loop),
 	SH_ENTRY(pm_m_errno),
 	SH_ENTRY(pm_T_drift),
@@ -1351,9 +1352,10 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_hf_gain_K0),
 	SH_ENTRY(pm_hf_gain_K1),
 	SH_ENTRY(pm_hf_gain_K2),
-	SH_ENTRY(pm_bemf_harmonic),
-	SH_ENTRY(pm_bemf_length),
+	SH_ENTRY(pm_bemf_DFT),
 	SH_ENTRY(pm_bemf_gain_K),
+	SH_ENTRY(pm_bemf_N),
+	SH_ENTRY(pm_bemf_tune_t),
 	SH_ENTRY(pm_thermal_R),
 	SH_ENTRY(pm_thermal_E),
 	SH_ENTRY(pm_thermal_gain_R0),

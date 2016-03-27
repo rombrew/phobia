@@ -121,7 +121,7 @@ SH_DEF(ap_identify_base)
 
 SH_DEF(ap_identify_const_R_abc)
 {
-	float			temp[2], iSP, dU, R[3], STD;
+	float			temp[2], iSP, U, R[3], STD;
 	int			xPWM;
 
 	if (pm.lu_region != PMC_LU_DISABLED)
@@ -136,10 +136,11 @@ SH_DEF(ap_identify_const_R_abc)
 
 		printf("SP %3f (A)" EOL, &iSP);
 
-		dU = iSP * pm.const_R / pm.const_U;
-		xPWM = dU * pm.pwm_resolution;
-		dU *= 100.f;
-		printf("U: %i (tk) %2f %%" EOL, xPWM, &dU);
+		U = iSP * pm.const_R / pm.const_U;
+		xPWM = U * pm.pwm_resolution;
+		U *= 100.f;
+
+		printf("U: %i (tk) %2f %%" EOL, xPWM, &U);
 
 		pm.wave_i_hold_X = iSP;
 		pm.wave_i_hold_Y = 0.f;
@@ -287,6 +288,8 @@ SH_DEF(ap_blind_spinup)
 				pm.m_state = PMC_STATE_STOP;
 				pm.m_phase = 0;
 				pm.m_errno = PMC_ERROR_AP_TIMEOUT;
+
+				break;
 			}
 		}
 		while (1);

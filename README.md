@@ -3,9 +3,9 @@
 PMC is an open project that aims to build a quality three-phase BLDC motor
 controller for RC.
 
-## Hardware features (rev1)
-
 ![PMC rev1](https://bitbucket.org/amaora/phobia/downloads/pmcr1.jpg)
+
+## Hardware features (rev1)
 
 * Separate power and control PCB.
 * Dimension: 40mm x 70mm x 20mm.

@@ -24,8 +24,7 @@ enum {
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
 	PMC_BIT_THERMAL_DRIFT_ESTIMATION	= 0x0008,
-	PMC_BIT_BEMF_HARMONIC_COMPENSATION	= 0x0010,
-	PMC_BIT_BEMF_HARMONIC_ESTIMATION	= 0x0020,
+	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0010,
 	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0100,
 };
 
@@ -164,12 +163,13 @@ typedef struct {
 	// TODO: Add saliency distortion compensation
 	//float		hf_;
 
-	/* BEMF harmonic compensation.
+	/* BEMF waveform compensation.
 	 * */
-	float		bemf_ftgains[32];
-	float		bemf_harmonic[32];
-	int		bemf_length;
-	float		bemf_gain_K;
+	float           bemf_DFT[8];
+	float           bemf_TEMP[9];
+	float           bemf_gain_K;
+	int		bemf_N;
+	int		bemf_tune_t;
 	float		bemf_Q;
 
 	/* ABC deviations.

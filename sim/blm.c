@@ -71,7 +71,7 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 153E-3;
+	m->R = 57E-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -79,7 +79,7 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 16E-6;
+	m->Ld = 14E-6;
 	m->Lq = 22E-6;
 
 	/* Source voltage. (Volt)
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 1E-5;
+	m->M[2] = 1E-7;
 	m->M[3] = 0E-0;
 }
 
@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 6. - 1.) * 10E-2;
+	E1 *= 1. + sin(X[3] * 6.) * 10E-2;
 
 	/* Voltage from VSI.
 	 * */

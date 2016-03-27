@@ -86,8 +86,8 @@ void pmc_default(pmc_t *pm)
 	pm->lu_gain_K[0] = 2E-1f;
 	pm->lu_gain_K[1] = 2E-1f;
 	pm->lu_gain_K[2] = 5E-3f;
-	pm->lu_gain_K[3] = 4E+1f;
-	pm->lu_gain_K[4] = 5E+1f;
+	pm->lu_gain_K[3] = 5E+0f;
+	pm->lu_gain_K[4] = 7E+0f;
 	pm->lu_gain_K[5] = 1E-3f;
 	pm->lu_gain_K[6] = 2E-3f;
 	pm->lu_threshold_low = 1E+2f;
@@ -97,20 +97,11 @@ void pmc_default(pmc_t *pm)
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
 	pm->hf_gain_K[0] = 1E-1f;
-	pm->hf_gain_K[1] = 4E+1f;
+	pm->hf_gain_K[1] = 7E+0f;
 	pm->hf_gain_K[2] = 1E-3f;
 
-	pm->bemf_harmonic[0] = 0.f;
-	pm->bemf_harmonic[1] = 0.f;
-	pm->bemf_harmonic[2] = 0.f;
-	pm->bemf_harmonic[3] = 0.f;
-	pm->bemf_harmonic[4] = 0.f;
-	pm->bemf_harmonic[5] = 0.f;
-	pm->bemf_harmonic[6] = 0.f;
-	pm->bemf_harmonic[7] = 0.f;
-	pm->bemf_harmonic[8] = 0.f;
-	pm->bemf_length = 12;
-	pm->bemf_gain_K = 2E-4f;
+        pm->bemf_gain_K = 1E-4f;
+	pm->bemf_N = 3;
 
 	pm->thermal_gain_R[0] = 20.f;
 	pm->thermal_gain_R[1] = 233.64f;
@@ -209,61 +200,81 @@ hf_update(pmc_t *pm, float eD, float eQ)
 }
 
 static void
-bemf_update(pmc_t *pm, float eQ)
+bemf_tune(pmc_t *pm, float eD, float eQ)
 {
-	float		*ftgains = pm->bemf_ftgains;
-	float		*harmonic = pm->bemf_harmonic;
-	float		X[2], E[2], temp, Q;
+	float           *DFT = pm->bemf_DFT;
+        float           *TEMP = pm->bemf_TEMP;
+	float		A, B, Q;
 	int		nu = 0;
 
-	if (pm->m_bitmask & PMC_BIT_BEMF_HARMONIC_ESTIMATION) {
+	/* FIXME: Observer may be unstable.
+	 * */
 
-		eQ = (pm->lu_X[4] < 0.f) ? - eQ : eQ;
-		eQ *= pm->bemf_gain_K;
+	A = pm->const_Lq * pm->freq_hz;
+	B = - (pm->const_Lq * pm->freq_hz - pm->const_R);
 
-		do {
-			/* DFT.
-			 * */
-			*harmonic++ += eQ * *ftgains++;
-			*harmonic++ += eQ * *ftgains++;
-			++nu;
-		}
-		while (nu < pm->bemf_length);
+	eQ = (pm->lu_X[4] < 0.f) ? - eQ : eQ;
+	Q = A * eQ + B * TEMP[8];
+	TEMP[8] = eQ;
+	Q *= pm->bemf_gain_K;
 
-		ftgains = pm->bemf_ftgains;
-		harmonic = pm->bemf_harmonic;
-		nu = 0;
+	while (nu < pm->bemf_N) {
+
+		*DFT++ += Q * *TEMP++;
+		*DFT++ += Q * *TEMP++;
+	
+		++nu;
+	}
+}
+
+static void
+bemf_update(pmc_t *pm, float eD, float eQ)
+{
+        float           *DFT = pm->bemf_DFT;
+        float           *TEMP = pm->bemf_TEMP;
+        float           X[2], E[2], temp, Q;
+        int             nu = 0;
+
+	if (pm->bemf_tune_t > 0) {
+
+		bemf_tune(pm, eD, eQ);
+		pm->bemf_tune_t--;
 	}
 
-	/* Obtain the rotor position with advance.
-	 * */
-	mrotf(X, .5f * pm->lu_X[4] * pm->dT, pm->lu_X + 2);
+        /* Obtain the rotor position with advance.
+         * */
+        mrotf(X, .5f * pm->lu_X[4] * pm->dT, pm->lu_X + 2);
 
-	E[0] = X[0];
-	E[1] = X[1];
+        E[0] = X[0];
+        E[1] = X[1];
+
+	temp = X[0] * X[0] - X[1] * X[1];
+	X[1] = X[0] * X[1] + X[1] * X[0];
+	X[0] = temp;
+
+	temp = (3.f - X[0] * X[0] - X[1] * X[1]) * .5f;
+	X[0] *= temp;
+	X[1] *= temp;
+
 	Q = 0.f;
 
-	do {
-		/* Inverse DFT.
-		 * */
-		Q += *harmonic++ * E[0];
-		*ftgains++ = E[0];
-		Q += *harmonic++ * E[1];
-		*ftgains++ = E[1];
+	while (nu < pm->bemf_N) {
 
 		/* Basis functions.
 		 * */
 		temp = E[0] * X[0] - E[1] * X[1];
 		E[1] = E[0] * X[1] + E[1] * X[0];
 		E[0] = temp;
-
-		temp = (3.f - E[0] * E[0] - E[1] * E[1]) * .5f;
-		E[0] *= temp;
-		E[1] *= temp;
+		
+		/* Inverse DFT.
+		 * */
+		Q += *DFT++ * E[0];
+		Q += *DFT++ * E[1];
+		*TEMP++ = E[0];
+		*TEMP++ = E[1];
 
 		++nu;
 	}
-	while (nu < pm->bemf_length);
 
 	pm->bemf_Q = Q;
 }
@@ -336,9 +347,9 @@ lu_update(pmc_t *pm)
 
 	/* Update BEMF.
 	 * */
-	if (pm->m_bitmask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
-		bemf_update(pm, eQ);
+		bemf_update(pm, eD, eQ);
 	}
 }
 
@@ -578,9 +589,9 @@ i_control(pmc_t *pm)
 				+ pm->const_E) * pm->lu_X[4] + pm->drift_Q;
 	}*/
 
-	/* BEMF harmonic compensation.
+	/* BEMF waveform compensation.
 	 * */
-	if (pm->m_bitmask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
 		uQ += - pm->lu_X[4] * pm->const_E * pm->bemf_Q;
 	}
@@ -972,17 +983,8 @@ pm_FSM(pmc_t *pm)
 				pm->hf_flux_polarity = 0.f;
 			}
 
-			if (pm->m_bitmask & PMC_BIT_BEMF_HARMONIC_COMPENSATION) {
+			if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
-				pm->bemf_ftgains[0] = 0.f;
-				pm->bemf_ftgains[1] = 0.f;
-				pm->bemf_ftgains[2] = 0.f;
-				pm->bemf_ftgains[3] = 0.f;
-				pm->bemf_ftgains[4] = 0.f;
-				pm->bemf_ftgains[5] = 0.f;
-				pm->bemf_ftgains[6] = 0.f;
-				pm->bemf_ftgains[7] = 0.f;
-				pm->bemf_ftgains[8] = 0.f;
 				pm->bemf_Q = 0.f;
 			}
 

@@ -103,8 +103,8 @@ sim_Tel(float *pTel)
 	pTel[22] = pm.hf_flux_polarity;
 	pTel[23] = pm.thermal_R;
 	pTel[24] = pm.thermal_E;
-	pTel[25] = pm.bemf_harmonic[0];
-	pTel[26] = pm.bemf_harmonic[2];
+	pTel[25] = 0.f;
+	pTel[26] = 0.f;
 	pTel[27] = pm.const_Zp;
 	pTel[28] = pm.n_power_watt;
 	pTel[29] = pm.n_temperature_c;
@@ -204,16 +204,18 @@ sim_Script(FILE *fdTel)
 	//pm.i_set_point_Q = 1.f;
 	sim_F(fdTel, 1., 0);
 
-	/*m.X[3] += .5;
-	sim_F(fdTel, 1., 0);*/
+	m.X[3] += .5;
+	sim_F(fdTel, 1., 0);
 
 	pm.i_set_point_Q = 10.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.m_bitmask |= PMC_BIT_BEMF_HARMONIC_COMPENSATION
-		| PMC_BIT_BEMF_HARMONIC_ESTIMATION;
+	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
 
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, 4., 0);
+
+/*	m.X[2] /= 2.f;
+	sim_F(fdTel, 1., 0);*/
 }
 
 int main(int argc, char *argv[])
