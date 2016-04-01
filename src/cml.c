@@ -675,13 +675,13 @@ SH_DEF(pm_bemf_N)
 	printf("%i" EOL, pm.bemf_N);
 }
 
-SH_DEF(pm_bemf_tune_t)
+SH_DEF(pm_bemf_tune_T)
 {
 	float		T;
 
 	if (stof(&T, s) != NULL) {
 
-		pm.bemf_tune_t = pm.freq_hz * T;
+		pm.bemf_tune_T = pm.freq_hz * T;
 		printf("%3f (Sec)" EOL, &T);
 	}
 }
@@ -1355,7 +1355,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_bemf_DFT),
 	SH_ENTRY(pm_bemf_gain_K),
 	SH_ENTRY(pm_bemf_N),
-	SH_ENTRY(pm_bemf_tune_t),
+	SH_ENTRY(pm_bemf_tune_T),
 	SH_ENTRY(pm_thermal_R),
 	SH_ENTRY(pm_thermal_E),
 	SH_ENTRY(pm_thermal_gain_R0),

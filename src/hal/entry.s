@@ -43,9 +43,9 @@
 	.word	irqDefault
 	.word	irqADC
 	.word	irqDefault
-	.word	irqDefault
-	.word	irqDefault
-	.word	irqDefault
+	.word	irqCAN1_RX0
+	.word	irqCAN1_RX1
+	.word	irqCAN1_SCE
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqTIM1_UP_TIM10

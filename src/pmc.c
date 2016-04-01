@@ -124,7 +124,7 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 1E+2f;
+	pm->p_slew_rate_w = 5E+2f;
 	pm->p_gain_D = 1E-2f;
 	pm->p_gain_P = 1E-1f;
 	pm->p_revol_limit = 10;
@@ -222,7 +222,7 @@ bemf_tune(pmc_t *pm, float eD, float eQ)
 
 		*DFT++ += Q * *TEMP++;
 		*DFT++ += Q * *TEMP++;
-	
+
 		++nu;
 	}
 }
@@ -232,13 +232,13 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 {
         float           *DFT = pm->bemf_DFT;
         float           *TEMP = pm->bemf_TEMP;
-        float           X[2], E[2], temp, Q;
+        float           X[2], E[2], Q, temp;
         int             nu = 0;
 
-	if (pm->bemf_tune_t > 0) {
+	if (pm->bemf_tune_T > 0) {
 
 		bemf_tune(pm, eD, eQ);
-		pm->bemf_tune_t--;
+		pm->bemf_tune_T--;
 	}
 
         /* Obtain the rotor position with advance.
@@ -260,12 +260,22 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 
 	while (nu < pm->bemf_N) {
 
+		/*temp = fabsf((float) (3 + 2 * nu) * pm->lu_X[4] * pm->dT * .5f);
+
+		S = 2.9472E-2f;
+		S = -1.9667E-1f + S * temp;
+		S = 8.6695E-3f + S * temp;
+		S = 1.f + S * temp;
+
+		if (S < 0.f)
+			break;*/
+
 		/* Basis functions.
 		 * */
 		temp = E[0] * X[0] - E[1] * X[1];
 		E[1] = E[0] * X[1] + E[1] * X[0];
 		E[0] = temp;
-		
+
 		/* Inverse DFT.
 		 * */
 		Q += *DFT++ * E[0];
@@ -328,6 +338,7 @@ lu_update(pmc_t *pm)
 			pm->lu_revol = pm->p_track_point_revol;
 			X[2] = pm->p_track_point_x[0];
 			X[3] = pm->p_track_point_x[1];
+			X[4] = pm->p_track_point_w;
 			eR += eD * X[0];
 		}
 

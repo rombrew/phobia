@@ -196,7 +196,8 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
+	pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION;
+	pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
@@ -207,15 +208,19 @@ sim_Script(FILE *fdTel)
 	m.X[3] += .5;
 	sim_F(fdTel, 1., 0);
 
-	pm.i_set_point_Q = 10.f;
-	sim_F(fdTel, 1., 0);
+	pm.p_set_point_w = 400.f;
+	sim_F(fdTel, 2., 0);
 
-	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	/*pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
 
+	pm.bemf_tune_t = 1.f * pm.freq_hz;
+	sim_F(fdTel, 2., 0);
+
+	pm.vsi_u_maximal = .57f;
 	sim_F(fdTel, 4., 0);
 
-/*	m.X[2] /= 2.f;
-	sim_F(fdTel, 1., 0);*/
+	printf("%f %f \n", pm.bemf_DFT[0], pm.bemf_DFT[1]);
+	printf("%f %f \n", pm.bemf_DFT[2], pm.bemf_DFT[3]);*/
 }
 
 int main(int argc, char *argv[])

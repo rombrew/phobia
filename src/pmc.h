@@ -169,7 +169,7 @@ typedef struct {
 	float           bemf_TEMP[9];
 	float           bemf_gain_K;
 	int		bemf_N;
-	int		bemf_tune_t;
+	int		bemf_tune_T;
 	float		bemf_Q;
 
 	/* ABC deviations.
