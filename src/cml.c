@@ -218,11 +218,6 @@ pm_m_bitmask(const char *s, int bit)
 	return mask;
 }
 
-SH_DEF(pm_m_bitmask_direct_current_injection)
-{
-	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_DIRECT_CURRENT_INJECTION);
-}
-
 SH_DEF(pm_m_bitmask_high_frequency_injection)
 {
 	int			mask;
@@ -589,12 +584,6 @@ SH_DEF(pm_lu_threshold_auto)
 		"%4e (Rad/S)" EOL,
 		&pm.lu_threshold_low,
 		&pm.lu_threshold_high);
-}
-
-SH_DEF(pm_lu_low_D)
-{
-	stof(&pm.lu_low_D, s);
-	printf("%3f (A)" EOL, &pm.lu_low_D);
 }
 
 SH_DEF(pm_lu_residual_variance)
@@ -1300,7 +1289,6 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_pwm_resolution),
 	SH_ENTRY(pm_pwm_minimal_pulse),
 	SH_ENTRY(pm_pwm_dead_time),
-	SH_ENTRY(pm_m_bitmask_direct_current_injection),
 	SH_ENTRY(pm_m_bitmask_high_frequency_injection),
 	SH_ENTRY(pm_m_bitmask_flux_polarity_detection),
 	SH_ENTRY(pm_m_bitmask_thermal_drift_estimation),
@@ -1344,7 +1332,6 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_lu_threshold_low),
 	SH_ENTRY(pm_lu_threshold_high),
 	SH_ENTRY(pm_lu_threshold_auto),
-	SH_ENTRY(pm_lu_low_D),
 	SH_ENTRY(pm_lu_residual_variance),
 	SH_ENTRY(pm_hf_freq_hz),
 	SH_ENTRY(pm_hf_swing_D),

@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 5.) * 1E-2;
+	E1 *= 1. + sin(X[3] * 5.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */

@@ -261,7 +261,7 @@ SH_DEF(ap_blind_spinup)
 		pmc_request(&pm, PMC_STATE_START);
 		AP_WAIT_FOR_IDLE();
 
-		pm.p_set_point_w = pm.lu_threshold_high;
+		pm.p_set_point_w = 2.f * pm.lu_threshold_high;
 		pm.p_track_point_x[0] = pm.lu_X[2];
 		pm.p_track_point_x[1] = pm.lu_X[3];
 		pm.p_track_point_revol = pm.lu_revol;
@@ -269,8 +269,8 @@ SH_DEF(ap_blind_spinup)
 
 		if (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) ;
 		else
-			pm.m_bitmask |= PMC_BIT_DIRECT_CURRENT_INJECTION
-				| PMC_BIT_SERVO_CONTROL_LOOP;
+			pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP
+				| PMC_BIT_SERVO_FORCED_CONTROL;
 
 		td.uTIM = 0;
 		uEND = (int) (100.f * pm.p_set_point_w / pm.p_slew_rate_w) + 50;
@@ -308,8 +308,8 @@ SH_DEF(ap_blind_spinup)
 
 		if (pm.m_errno != PMC_OK) {
 
-			pm.m_bitmask &= ~(PMC_BIT_DIRECT_CURRENT_INJECTION
-					| PMC_BIT_SERVO_CONTROL_LOOP);
+			pm.m_bitmask &= ~(PMC_BIT_SERVO_CONTROL_LOOP
+					| PMC_BIT_SERVO_FORCED_CONTROL);
 
 			AP_PRINT_ERROR();
 		}

@@ -92,7 +92,6 @@ void pmc_default(pmc_t *pm)
 	pm->lu_gain_K[6] = 2E-3f;
 	pm->lu_threshold_low = 1E+2f;
 	pm->lu_threshold_high = 2E+2f;
-	pm->lu_low_D = 4.f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
@@ -113,9 +112,9 @@ void pmc_default(pmc_t *pm)
 	pm->const_Lq = 0.f;
 	pm->const_Zp = 1;
 
-	pm->i_high_maximal = 10.f;
-	pm->i_low_maximal = pm->i_high_maximal;
-	pm->i_power_consumption_maximal = 50.f;
+	pm->i_high_maximal = 20.f;
+	pm->i_low_maximal = 10.f;
+	pm->i_power_consumption_maximal = 200.f;
 	pm->i_power_regeneration_maximal = - 1.f;
 	pm->i_slew_rate_D = 4E+3f;
 	pm->i_slew_rate_Q = 4E+3f;
@@ -124,7 +123,7 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 5E+2f;
+	pm->p_slew_rate_w = 1E+2f;
 	pm->p_gain_D = 1E-2f;
 	pm->p_gain_P = 1E-1f;
 	pm->p_revol_limit = 10;
@@ -323,6 +322,13 @@ lu_update(pmc_t *pm)
 	mrotf(X + 2, dR, X + 2);
 	X[4] += pm->lu_gain_K[3] * eR - pm->lu_gain_K[4] * eQ;
 
+	if (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL) {
+
+		X[2] = pm->p_track_point_x[0];
+		X[3] = pm->p_track_point_x[1];
+		X[4] = pm->p_track_point_w;
+	}
+
 	if (pm->lu_region == PMC_LU_LOW_REGION) {
 
 		eR = eQ * X[1];
@@ -330,15 +336,6 @@ lu_update(pmc_t *pm)
 		if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
 
 			hf_update(pm, eD, eQ);
-			eR += eD * X[0];
-		}
-		else if (pm->m_bitmask & (PMC_BIT_DIRECT_CURRENT_INJECTION
-					| PMC_BIT_SERVO_CONTROL_LOOP)) {
-
-			pm->lu_revol = pm->p_track_point_revol;
-			X[2] = pm->p_track_point_x[0];
-			X[3] = pm->p_track_point_x[1];
-			X[4] = pm->p_track_point_w;
 			eR += eD * X[0];
 		}
 
@@ -391,14 +388,14 @@ lu_post(pmc_t *pm)
 	temp = pm->freq_hz * (2.f * MPIF / 12.f);
 	pm->lu_X[4] = (pm->lu_X[4] > temp) ? temp : (pm->lu_X[4] < - temp) ? - temp : pm->lu_X[4];
 
+	pm->drift_Q = (pm->drift_Q < - pm->const_U) ? - pm->const_U
+		: (pm->drift_Q > pm->const_U) ? pm->const_U : pm->drift_Q;
+
 	if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
 
 		pm->thermal_R = (pm->thermal_R < - .3f) ? - .3f
 			: (pm->thermal_R > .5f) ? .5f : pm->thermal_R;
 	}
-
-	pm->drift_Q = (pm->drift_Q < - pm->const_U) ? - pm->const_U
-		: (pm->drift_Q > pm->const_U) ? pm->const_U : pm->drift_Q;
 
 	/* Power conversion (Watt).
 	 * */
@@ -416,7 +413,7 @@ vsi_control(pmc_t *pm, float uX, float uY)
 	float		uMIN, uMAX;
 	int		xA, xB, xC, xMP, xMPH;
 
-	if (1) {
+	if (0) {
 
 		Q = sqrtf(uX * uX + uY * uY);
 
@@ -525,12 +522,6 @@ i_control(pmc_t *pm)
 
 	sp_D = pm->i_set_point_D;
 	sp_Q = pm->i_set_point_Q;
-
-	if (pm->m_bitmask & PMC_BIT_DIRECT_CURRENT_INJECTION
-			&& pm->lu_region == PMC_LU_LOW_REGION) {
-
-		sp_D += pm->lu_low_D;
-	}
 
 	/* Current constraints.
 	 * */

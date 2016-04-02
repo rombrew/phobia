@@ -20,12 +20,12 @@
 #define _H_PMC_
 
 enum {
-	PMC_BIT_DIRECT_CURRENT_INJECTION	= 0x0001,
 	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
 	PMC_BIT_THERMAL_DRIFT_ESTIMATION	= 0x0008,
 	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0010,
 	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0100,
+	PMC_BIT_SERVO_FORCED_CONTROL		= 0x0200,
 };
 
 enum {
@@ -144,7 +144,6 @@ typedef struct {
 	float		lu_gain_K[7];
 	float		lu_threshold_low;
 	float		lu_threshold_high;
-	float		lu_low_D;
 	float		lu_temp[2];
 
 	/* Measurement residual.
