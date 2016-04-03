@@ -121,7 +121,7 @@ SH_DEF(ap_identify_base)
 
 SH_DEF(ap_identify_const_R_abc)
 {
-	float			temp[2], iSP, U, R[3], STD;
+	float			temp[2], iSP, U, R[3], SD;
 	int			xPWM;
 
 	if (pm.lu_region != PMC_LU_DISABLED)
@@ -176,16 +176,16 @@ SH_DEF(ap_identify_const_R_abc)
 		printf("R[c] %4e (Ohm)" EOL, &R[2]);
 
 		pm.const_R = (R[0] + R[1] + R[2]) / 3.f;
-		STD = sqrtf((R[0] - pm.const_R) * (R[0] - pm.const_R)
+		SD = sqrtf((R[0] - pm.const_R) * (R[0] - pm.const_R)
 			+ (R[1] - pm.const_R) * (R[1] - pm.const_R)
 			+ (R[2] - pm.const_R) * (R[2] - pm.const_R));
-		STD = 100.f * STD / pm.const_R;
+		SD = 100.f * SD / pm.const_R;
 
 		/*pm.abc_DR_A = R[0] / pm.const_R;
 		pm.abc_DR_B = R[1] / pm.const_R;
 		pm.abc_DR_C = R[2] / pm.const_R;*/
 
-		printf("R %4e (Ohm) STD %1f %%" EOL, &pm.const_R, &STD);
+		printf("R %4e (Ohm) SD %1f %%" EOL, &pm.const_R, &SD);
 
 		pm.wave_i_hold_X = temp[0];
 		pm.wave_i_hold_Y = temp[1];

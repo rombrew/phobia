@@ -29,15 +29,16 @@ typedef struct {
 	int			uDS;
 	int			uTIM;
 
+	/* IDLE average time.
+	 * */
+	int			idle_S;
+	int			idle_T;
+
 	/* Task IOMUX.
 	 * */
 	int			mux_TEMP[2];
 
-	/* IRQ load ticks.
-	 * */
-	int			Tirq;
-
-	/* IRQ handler.
+	/* ADC IRQ.
 	 * */
 	void			(* pIRQ) ();
 

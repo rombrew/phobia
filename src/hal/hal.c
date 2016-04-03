@@ -167,6 +167,11 @@ int halSysTick()
 	return SysTick->VAL;
 }
 
+int halSleepTick()
+{
+	return DWT->CYCCNT;
+}
+
 void halReset()
 {
 	NVIC_SystemReset();

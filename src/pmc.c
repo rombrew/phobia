@@ -90,8 +90,8 @@ void pmc_default(pmc_t *pm)
 	pm->lu_gain_K[4] = 7E+0f;
 	pm->lu_gain_K[5] = 1E-3f;
 	pm->lu_gain_K[6] = 2E-3f;
-	pm->lu_threshold_low = 1E+2f;
-	pm->lu_threshold_high = 2E+2f;
+	pm->lu_threshold_low = 100.f;
+	pm->lu_threshold_high = 150.f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
@@ -124,6 +124,7 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_I_Q = 3E-2f;
 
 	pm->p_slew_rate_w = 1E+2f;
+	pm->p_forced_D = 5.f;
 	pm->p_gain_D = 1E-2f;
 	pm->p_gain_P = 1E-1f;
 	pm->p_revol_limit = 10;
@@ -322,25 +323,16 @@ lu_update(pmc_t *pm)
 	mrotf(X + 2, dR, X + 2);
 	X[4] += pm->lu_gain_K[3] * eR - pm->lu_gain_K[4] * eQ;
 
-	if (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL) {
-
-		X[2] = pm->p_track_point_x[0];
-		X[3] = pm->p_track_point_x[1];
-		X[4] = pm->p_track_point_w;
-	}
-
 	if (pm->lu_region == PMC_LU_LOW_REGION) {
-
-		eR = eQ * X[1];
 
 		if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
 
 			hf_update(pm, eD, eQ);
-			eR += eD * X[0];
 		}
 
 		if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
 
+			eR = eQ * X[1];
 			pm->thermal_R += - eR * pm->lu_gain_K[5];
 		}
 	}
@@ -391,19 +383,21 @@ lu_post(pmc_t *pm)
 	pm->drift_Q = (pm->drift_Q < - pm->const_U) ? - pm->const_U
 		: (pm->drift_Q > pm->const_U) ? pm->const_U : pm->drift_Q;
 
+	/* Informational variables.
+	 * */
 	if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
 
 		pm->thermal_R = (pm->thermal_R < - .3f) ? - .3f
 			: (pm->thermal_R > .5f) ? .5f : pm->thermal_R;
+
+		/* Winding temperature (Celsius).
+		 * */
+		pm->n_temperature_c = pm->thermal_R * pm->thermal_gain_R[1] + pm->thermal_gain_R[0];
 	}
 
 	/* Power conversion (Watt).
 	 * */
 	pm->n_power_watt = 1.5f * (pm->lu_X[0] * pm->vsi_D + pm->lu_X[1] * pm->vsi_Q);
-
-	/* Winding temperature (Celsius).
-	 * */
-	pm->n_temperature_c = pm->thermal_R * pm->thermal_gain_R[1] + pm->thermal_gain_R[0];
 }
 
 static void
@@ -584,13 +578,6 @@ i_control(pmc_t *pm)
 		(pm->i_integral_Q < - temp) ? - temp : pm->i_integral_Q;
 	uQ += pm->i_integral_Q;
 
-	/*if (0) {
-
-		uD += pm->const_R * pm->lu_X[0] - pm->const_Lq * pm->lu_X[1] * pm->lu_X[4];
-		uQ += pm->const_R * pm->lu_X[1] + (pm->const_Ld * pm->lu_X[0]
-				+ pm->const_E) * pm->lu_X[4] + pm->drift_Q;
-	}*/
-
 	/* BEMF waveform compensation.
 	 * */
 	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
@@ -684,33 +671,45 @@ p_control(pmc_t *pm)
 
 	pm->lu_temp[1] = pm->p_track_point_x[1];
 
-	dX = pm->p_track_point_x[0] * pm->lu_X[2] + pm->p_track_point_x[1] * pm->lu_X[3];
-	dY = pm->p_track_point_x[1] * pm->lu_X[2] - pm->p_track_point_x[0] * pm->lu_X[3];
+	if (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL) {
 
-	eP = matan2f(dY, dX);
+		pm->lu_X[2] = pm->p_track_point_x[0];
+		pm->lu_X[3] = pm->p_track_point_x[1];
+		pm->lu_X[4] = pm->p_track_point_w;
+		pm->lu_revol = pm->p_track_point_revol;
 
-	if (dY < 0.) {
-
-		if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
-			eP += 2.f * MPIF;
+		pm->i_set_point_D = pm->p_forced_D;
+		pm->i_set_point_Q = 0.f;
 	}
 	else {
-		if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
-			eP -= 2.f * MPIF;
+		dX = pm->p_track_point_x[0] * pm->lu_X[2] + pm->p_track_point_x[1] * pm->lu_X[3];
+		dY = pm->p_track_point_x[1] * pm->lu_X[2] - pm->p_track_point_x[0] * pm->lu_X[3];
+
+		eP = matan2f(dY, dX);
+
+		if (dY < 0.) {
+
+			if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
+				eP += 2.f * MPIF;
+		}
+		else {
+			if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
+				eP -= 2.f * MPIF;
+		}
+
+		revol = pm->p_track_point_revol - pm->lu_revol;
+		pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
+			(revol > pm->p_revol_limit) ? - 1 : 0;
+
+		eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
+		eD = pm->p_track_point_w - pm->lu_X[4];
+
+		/* PD controller.
+		 * */
+		iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
+
+		pm->i_set_point_Q = iSP;
 	}
-
-	revol = pm->p_track_point_revol - pm->lu_revol;
-	pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
-		(revol > pm->p_revol_limit) ? - 1 : 0;
-
-	eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
-	eD = pm->p_track_point_w - pm->lu_X[4];
-
-	/* PD controller.
-	 * */
-	iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
-
-	pm->i_set_point_Q = iSP;
 }
 
 static void

@@ -42,15 +42,13 @@ SH_DEF(td_uptime)
 			Day, Hour, Min, Sec);
 }
 
-SH_DEF(td_irqload)
+SH_DEF(td_idle)
 {
-	int		Tirq, Tbase, Rpc;
+	float		Rpc;
 
-	Tbase = 2 * halPWM.resolution;
-	Tirq = td.Tirq;
-	Rpc = 100 * Tirq / Tbase;
+	Rpc = 100.f * (float) td.idle_T / (float) HZ_AHB;
 
-	printf("%i %% (%i/%i)" EOL, Rpc, Tirq, Tbase);
+	printf("%1f %% (%i)" EOL, &Rpc, td.idle_T);
 }
 
 SH_DEF(td_avg_default_time)
@@ -280,6 +278,11 @@ SH_DEF(pm_m_bitmask_servo_control_loop)
 	}
 
 	pm.m_bitmask = mask;
+}
+
+SH_DEF(pm_m_bitmask_servo_forced_control)
+{
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_SERVO_FORCED_CONTROL);
 }
 
 SH_DEF(pm_m_errno)
@@ -577,8 +580,8 @@ SH_DEF(pm_lu_threshold_high)
 
 SH_DEF(pm_lu_threshold_auto)
 {
-	pm.lu_threshold_low = 1E-1f / pm.const_E;
-	pm.lu_threshold_high = pm.lu_threshold_low + 1E+2f;
+	pm.lu_threshold_low = 5E-3f * pm.const_U / pm.const_E;
+	pm.lu_threshold_high = pm.lu_threshold_low + 50.f;
 
 	printf(	"%4e (Rad/S)" EOL
 		"%4e (Rad/S)" EOL,
@@ -635,16 +638,15 @@ SH_DEF(pm_hf_gain_K2)
 SH_DEF(pm_bemf_DFT)
 {
 	float			*DFT = pm.bemf_DFT;
-	float			A, Z;
+	float			D, Q;
 	int			i;
 
 	for (i = 0; i < pm.bemf_N; ++i) {
 
-		Z = *DFT++;
-		A = *DFT++;
-		Z = sqrtf(A * A + Z * Z) * 100.f;
+		D = *DFT++;
+		Q = *DFT++;
 
-		printf("%i: %1f %%" EOL, 3 + i * 2, &Z);
+		printf("%i: %1f %% %1f %%" EOL, 3 + i * 2, &D, &Q);
 	}
 }
 
@@ -904,6 +906,12 @@ SH_DEF(pm_p_slew_rate_w)
 {
 	stof(&pm.p_slew_rate_w, s);
 	printf("%4e (Rad/S^2)" EOL, &pm.p_slew_rate_w);
+}
+
+SH_DEF(pm_p_forced_D)
+{
+	stof(&pm.p_forced_D, s);
+	printf("%3f (A)" EOL, &pm.p_forced_D);
 }
 
 SH_DEF(pm_p_track_point_x_g)
@@ -1278,7 +1286,7 @@ SH_DEF(tel_info)
 const shCMD_t		cmList[] = {
 
 	SH_ENTRY(td_uptime),
-	SH_ENTRY(td_irqload),
+	SH_ENTRY(td_idle),
 	SH_ENTRY(td_avg_default_time),
 	SH_ENTRY(td_reboot),
 	SH_ENTRY(td_keycodes),
@@ -1294,6 +1302,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_m_bitmask_thermal_drift_estimation),
 	SH_ENTRY(pm_m_bitmask_bemf_waveform_compensation),
 	SH_ENTRY(pm_m_bitmask_servo_control_loop),
+	SH_ENTRY(pm_m_bitmask_servo_forced_control),
 	SH_ENTRY(pm_m_errno),
 	SH_ENTRY(pm_T_drift),
 	SH_ENTRY(pm_T_hold),
@@ -1373,6 +1382,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_i_gain_auto),
 	SH_ENTRY(pm_p_set_point_w_rpm),
 	SH_ENTRY(pm_p_slew_rate_w),
+	SH_ENTRY(pm_p_forced_D),
 	SH_ENTRY(pm_p_track_point_x_g),
 	SH_ENTRY(pm_p_gain_D),
 	SH_ENTRY(pm_p_gain_P),

@@ -231,6 +231,7 @@ typedef struct {
 	 * */
 	float		p_set_point_w;
 	float		p_slew_rate_w;
+	float		p_forced_D;
 	float		p_track_point_w;
 	float		p_track_point_x[2];
 	int		p_track_point_revol;
