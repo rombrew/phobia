@@ -29,10 +29,10 @@ typedef struct {
 	int			uDS;
 	int			uTIM;
 
-	/* IDLE average time.
+	/* CPU usage.
 	 * */
-	int			idle_S;
-	int			idle_T;
+	int			usage_S;
+	int			usage_T;
 
 	/* Task IOMUX.
 	 * */

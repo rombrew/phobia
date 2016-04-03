@@ -56,10 +56,7 @@ enum {
 	PMC_ERROR_OVERCURRENT,
 	PMC_ERROR_LOW_VOLTAGE,
 	PMC_ERROR_HIGH_VOLTAGE,
-
-	/* AP messages.
-	 * */
-	PMC_ERROR_AP_TIMEOUT,
+	PMC_ERROR_SYNC_LOSS,
 };
 
 typedef struct {
@@ -119,7 +116,7 @@ typedef struct {
 
 	/* Fault limits.
 	 * */
-	float		fault_iab_maximal;
+	float		fault_current_maximal;
 	float		fault_residual_maximal;
 	float		fault_drift_maximal;
 	float		fault_low_voltage;
@@ -232,6 +229,7 @@ typedef struct {
 	float		p_set_point_w;
 	float		p_slew_rate_w;
 	float		p_forced_D;
+	float		p_forced_slew_rate_w;
 	float		p_track_point_w;
 	float		p_track_point_x[2];
 	int		p_track_point_revol;

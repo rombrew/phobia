@@ -29,54 +29,38 @@ is command line interface.
 
 ## Basic configuration
 
-Connect the motor to the terminals. First do a base parameters identification.
+Connect the motor to the terminals. Remove any load from motor to allow it
+rotate freely.
 
-	# ap_identify_base
+You can reset PM if you are not sure that current configuration is correct.
 
-Verify that obtained parameters are within the permissible range. Set the
-number of the rotor pole pairs if you know.
+	# pm_default
+
+Provide the number of the rotor pole pairs if you need a correct printouts of
+rpm/v constant and mechanical speed.
 
 	# pm_const_Zp <n>
 
-Set BEMF constant also known as Kv constant. If you do not know it exactly you
-could try to guess a close value. It is important to set Zp correctly before.
+Try automated motor probe.
 
-	# pm_const_E_kv <value>
+	# ap_probe_base
 
-Then you can try a first start. Remove any load from the motor, allow it rotate
-freely. You can disable HFI and position control loop for the first time.
-
-	# pm_m_bitmask_high_frequency_injection 0
-	# pm_m_bitmask_position_control_loop 0
-
-Set a low current limit.
-
-	# pm_i_high_maximal 2
-	# pm_i_low_maximal 2
-
-Also set a voltage utilisation to limit a maximal achievable speed.
-
-	# pm_vsi_u_maximal .2
-
-Align the rotor.
-
-	# pm_request_wave_hold
-
-Try to run.
-
-	# pm_request_start
-	# pm_i_set_point_Q 1
-
-Next stage is to estimate BEMF constant more accurately. Do this when motor is
-in run. Choice of different speed may give different results.
-
-	# ap_identify_const_E
-
-There can be a many alternatives if some step fails. Look into command
-description for details. This completes the basic configuration.
+All identified parameters will be printed out. Verify they are within the
+permissible range. During the probe motor may rotate on final stages.
 
 ## Usage
 
 Once configuration is done you can run the motor with controlled torque or
 speed or absolute position.
+
+	# pm_request_start
+
+Set Q axis current in torque control mode.
+
+	# pm_i_set_point_Q <A>
+
+Set RPM or absolute position in servo mode.
+
+	# pm_p_set_point_w_rpm <rpm>
+	# pm_p_track_point_x_g <x>
 

@@ -42,13 +42,13 @@ SH_DEF(td_uptime)
 			Day, Hour, Min, Sec);
 }
 
-SH_DEF(td_idle)
+SH_DEF(td_cpu_usage)
 {
 	float		Rpc;
 
-	Rpc = 100.f * (float) td.idle_T / (float) HZ_AHB;
+	Rpc = 100.f * (float) td.usage_T / (float) HZ_AHB;
 
-	printf("%1f %% (%i)" EOL, &Rpc, td.idle_T);
+	printf("%1f %% (%i)" EOL, &Rpc, td.usage_T / halPWM.freq_hz);
 }
 
 SH_DEF(td_avg_default_time)
@@ -268,6 +268,8 @@ SH_DEF(pm_m_bitmask_servo_control_loop)
 
 	if (mask & PMC_BIT_SERVO_CONTROL_LOOP) {
 
+		pm.lu_revol = 0;
+
 		pm.p_set_point_w = 0.f;
 		pm.p_track_point_x[0] = 1.f;
 		pm.p_track_point_x[1] = 0.f;
@@ -400,10 +402,10 @@ SH_DEF(pm_scal_U1)
 	printf("%4e" EOL, &pm.scal_U[1]);
 }
 
-SH_DEF(pm_fault_iab_maximal)
+SH_DEF(pm_fault_current_maximal)
 {
-	stof(&pm.fault_iab_maximal, s);
-	printf("%3f (A)" EOL, &pm.fault_iab_maximal);
+	stof(&pm.fault_current_maximal, s);
+	printf("%3f (A)" EOL, &pm.fault_current_maximal);
 }
 
 SH_DEF(pm_fault_residual_maximal)
@@ -583,8 +585,8 @@ SH_DEF(pm_lu_threshold_auto)
 	pm.lu_threshold_low = 5E-3f * pm.const_U / pm.const_E;
 	pm.lu_threshold_high = pm.lu_threshold_low + 50.f;
 
-	printf(	"%4e (Rad/S)" EOL
-		"%4e (Rad/S)" EOL,
+	printf(	"LO %4e (Rad/S)" EOL
+		"HI %4e (Rad/S)" EOL,
 		&pm.lu_threshold_low,
 		&pm.lu_threshold_high);
 }
@@ -912,6 +914,12 @@ SH_DEF(pm_p_forced_D)
 {
 	stof(&pm.p_forced_D, s);
 	printf("%3f (A)" EOL, &pm.p_forced_D);
+}
+
+SH_DEF(pm_p_forced_slew_rate_w)
+{
+	stof(&pm.p_forced_slew_rate_w, s);
+	printf("%4e (Rad/S^2)" EOL, &pm.p_forced_slew_rate_w);
 }
 
 SH_DEF(pm_p_track_point_x_g)
@@ -1286,7 +1294,7 @@ SH_DEF(tel_info)
 const shCMD_t		cmList[] = {
 
 	SH_ENTRY(td_uptime),
-	SH_ENTRY(td_idle),
+	SH_ENTRY(td_cpu_usage),
 	SH_ENTRY(td_avg_default_time),
 	SH_ENTRY(td_reboot),
 	SH_ENTRY(td_keycodes),
@@ -1321,7 +1329,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_scal_B1),
 	SH_ENTRY(pm_scal_U0),
 	SH_ENTRY(pm_scal_U1),
-	SH_ENTRY(pm_fault_iab_maximal),
+	SH_ENTRY(pm_fault_current_maximal),
 	SH_ENTRY(pm_fault_residual_maximal),
 	SH_ENTRY(pm_fault_drift_maximal),
 	SH_ENTRY(pm_fault_low_voltage),
@@ -1383,6 +1391,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_p_set_point_w_rpm),
 	SH_ENTRY(pm_p_slew_rate_w),
 	SH_ENTRY(pm_p_forced_D),
+	SH_ENTRY(pm_p_forced_slew_rate_w),
 	SH_ENTRY(pm_p_track_point_x_g),
 	SH_ENTRY(pm_p_gain_D),
 	SH_ENTRY(pm_p_gain_P),

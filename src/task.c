@@ -28,8 +28,6 @@ pmc_t __CCM__			pm;
 
 void halTick()
 {
-	unsigned int		uT;
-
 	td.uDS++;
 	td.uTIM++;
 
@@ -38,17 +36,9 @@ void halTick()
 		td.uDS = 0;
 		td.uSEC++;
 
-		/* IDLE average time.
-		 * */
-		uT = halSleepTick();
-		td.idle_T = uT - td.idle_S;
-		td.idle_S = uT;
+		td.usage_T = td.usage_S;
+		td.usage_S = 0;
 	}
-}
-
-void taskIDLE()
-{
-	halSleep();
 }
 
 static void
@@ -96,7 +86,7 @@ void taskIOMUX()
 void taskYIELD()
 {
 	taskIOMUX();
-	taskIDLE();
+	halSleep();
 }
 
 void canIRQ()
@@ -105,8 +95,16 @@ void canIRQ()
 
 void adcIRQ()
 {
+	int		T, dT;
+
+	T = halSysTick();
+
 	pmc_feedback(&pm, halADC.xA, halADC.xB);
 	pmc_voltage(&pm, halADC.xSUPPLY);
+
+	dT = T - halSysTick();
+	dT += (dT < 0) ? HZ_AHB / 100 : 0;
+	td.usage_S += dT;
 
 	if (td.pIRQ != NULL)
 		td.pIRQ();
@@ -145,7 +143,7 @@ void halMain()
 	do {
 		taskIOMUX();
 		shTask();
-		taskIDLE();
+		halSleep();
 	}
 	while (1);
 }

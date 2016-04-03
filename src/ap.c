@@ -244,10 +244,33 @@ SH_DEF(ap_identify_const_J)
 	while (0);*/
 }
 
-SH_DEF(ap_blind_spinup)
+static int
+ap_wait_for_settle(float wSP, int xT)
 {
+	float			SR;
 	int			uEND;
 
+	pm.p_set_point_w = wSP;
+
+	td.uTIM = 0;
+	SR = (pm.m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
+		? pm.p_forced_slew_rate_w : pm.p_slew_rate_w;
+	uEND = (int) (100.f * pm.p_set_point_w / SR) + xT;
+
+	do {
+		taskYIELD();
+		AP_EXIT_IF_ERROR();
+	}
+	while (td.uTIM < uEND);
+
+	if (pm.m_errno != PMC_OK)
+		AP_PRINT_ERROR();
+
+	return pm.m_errno;
+}
+
+SH_DEF(ap_blind_spinup)
+{
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
 
@@ -258,61 +281,16 @@ SH_DEF(ap_blind_spinup)
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
+		pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
+		pm.m_bitmask |= (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION)
+			? 0 : PMC_BIT_SERVO_FORCED_CONTROL;
+
 		pmc_request(&pm, PMC_STATE_START);
 		AP_WAIT_FOR_IDLE();
 
-		pm.p_set_point_w = 2.f * pm.lu_threshold_high;
-		pm.p_track_point_x[0] = pm.lu_X[2];
-		pm.p_track_point_x[1] = pm.lu_X[3];
-		pm.p_track_point_revol = pm.lu_revol;
-		pm.p_track_point_w = 0.f;
+		ap_wait_for_settle(2.f * pm.lu_threshold_high, 100);
 
-		if (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) ;
-		else
-			pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP
-				| PMC_BIT_SERVO_FORCED_CONTROL;
-
-		td.uTIM = 0;
-		uEND = (int) (100.f * pm.p_set_point_w / pm.p_slew_rate_w) + 50;
-
-		do {
-			taskYIELD();
-
-			if (pm.lu_region == PMC_LU_HIGH_REGION)
-				break;
-
-			AP_EXIT_IF_ERROR();
-
-			if (td.uTIM > uEND) {
-
-				pm.m_state = PMC_STATE_STOP;
-				pm.m_phase = 0;
-				pm.m_errno = PMC_ERROR_AP_TIMEOUT;
-
-				break;
-			}
-		}
-		while (1);
-
-		if (pm.m_errno == PMC_OK) {
-
-			td.uTIM = 0;
-			uEND = 100;
-
-			do {
-				taskYIELD();
-				AP_EXIT_IF_ERROR();
-			}
-			while (td.uTIM < uEND);
-		}
-
-		if (pm.m_errno != PMC_OK) {
-
-			pm.m_bitmask &= ~(PMC_BIT_SERVO_CONTROL_LOOP
-					| PMC_BIT_SERVO_FORCED_CONTROL);
-
-			AP_PRINT_ERROR();
-		}
+		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
 	}
 	while (0);
 }
@@ -332,7 +310,16 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
 
+		ap_wait_for_settle(1.f / pm.const_E, 100);
+		AP_EXIT_IF_ERROR();
+
+		ap_identify_const_E(EOL);
+		AP_EXIT_IF_ERROR();
+
 		pm_lu_threshold_auto(EOL);
+
+		pmc_request(&pm, PMC_STATE_STOP);
+		pm.m_bitmask &= ~PMC_BIT_SERVO_CONTROL_LOOP;
 	}
 	while (0);
 }

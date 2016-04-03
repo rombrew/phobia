@@ -75,8 +75,8 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 1.4830E-2f;
 
-	pm->fault_iab_maximal = 25.f;
-	pm->fault_residual_maximal = 0.f;
+	pm->fault_current_maximal = 25.f;
+	pm->fault_residual_maximal = 1.f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
 	pm->fault_high_voltage = 50.f;
@@ -113,7 +113,7 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 
 	pm->i_high_maximal = 20.f;
-	pm->i_low_maximal = 10.f;
+	pm->i_low_maximal = 5.f;
 	pm->i_power_consumption_maximal = 200.f;
 	pm->i_power_regeneration_maximal = - 1.f;
 	pm->i_slew_rate_D = 4E+3f;
@@ -123,14 +123,15 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 1E+2f;
+	pm->p_slew_rate_w = 2E+3f;
 	pm->p_forced_D = 5.f;
-	pm->p_gain_D = 1E-2f;
-	pm->p_gain_P = 1E-1f;
+	pm->p_forced_slew_rate_w = 2E+2f;
+	pm->p_gain_D = 2E-2f;
+	pm->p_gain_P = 2E-1f;
 	pm->p_revol_limit = 10;
 
 	pm->lp_gain[0] = .1f;
-	pm->lp_gain[1] = .1f;
+	pm->lp_gain[1] = .2f;
 }
 
 static void
@@ -311,6 +312,13 @@ lu_update(pmc_t *pm)
 	pm->lu_residual_Q = eQ;
 	pm->lu_residual_variance += (eD * eD + eQ * eQ - pm->lu_residual_variance)
 		* pm->lp_gain[1];
+	
+	if (pm->lu_residual_variance > pm->fault_residual_maximal) {
+
+		pm->m_state = PMC_STATE_END;
+		pm->m_phase = 0;
+		pm->m_errno = PMC_ERROR_SYNC_LOSS;
+	}
 
 	/* Measurement update.
 	 * */
@@ -649,7 +657,8 @@ p_control(pmc_t *pm)
 
 	/* Slew rate (acceleration).
 	 * */
-	temp = pm->p_slew_rate_w * pm->dT;
+	temp = (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
+		? pm->p_forced_slew_rate_w * pm->dT : pm->p_slew_rate_w * pm->dT;
 	pm->p_track_point_w = (pm->p_track_point_w < pm->p_set_point_w - temp)
 		? pm->p_track_point_w + temp : (pm->p_track_point_w > pm->p_set_point_w + temp)
 		? pm->p_track_point_w - temp : pm->p_set_point_w;
@@ -708,6 +717,7 @@ p_control(pmc_t *pm)
 		 * */
 		iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
 
+		pm->i_set_point_D = 0.f;
 		pm->i_set_point_Q = iSP;
 	}
 }
@@ -1076,8 +1086,8 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 
 	/* Overcurrent protection.
 	 * */
-	if (fabsf(pm->fb_iA) > pm->fault_iab_maximal
-			|| fabsf(pm->fb_iB) > pm->fault_iab_maximal) {
+	if (fabsf(pm->fb_iA) > pm->fault_current_maximal
+			|| fabsf(pm->fb_iB) > pm->fault_current_maximal) {
 
 		if (pm->lu_region != PMC_LU_DISABLED
 				|| pm->m_state == PMC_STATE_WAVE_HOLD
@@ -1219,8 +1229,7 @@ const char *pmc_strerror(int errno)
 		"Over Current",
 		"Low Voltage",
 		"High Voltage",
-
-		"(AP) Timeout"
+		"Sync Loss"
 	};
 
 	const int 	emax = sizeof(list) / sizeof(list[0]);
