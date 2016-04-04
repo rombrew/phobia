@@ -161,11 +161,12 @@ typedef struct {
 
 	/* BEMF waveform compensation.
 	 * */
-	float           bemf_DFT[8];
-	float           bemf_TEMP[9];
+	float           bemf_DFT[64];
+	float           bemf_TEMP[34];
 	float           bemf_gain_K;
 	int		bemf_N;
 	int		bemf_tune_T;
+	float		bemf_D;
 	float		bemf_Q;
 
 	/* ABC deviations.
@@ -226,6 +227,10 @@ typedef struct {
 
 	/* Servo control loop.
 	 * */
+	float		p_freq_dT;
+	float		p_freq_sT;
+	float		p_freq_X4;
+	int		p_freq_N;
 	float		p_set_point_w;
 	float		p_slew_rate_w;
 	float		p_forced_D;

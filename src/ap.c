@@ -30,22 +30,15 @@ SH_DEF(pm_const_E_wb);
 SH_DEF(pm_i_slew_rate_auto);
 SH_DEF(pm_i_gain_auto);
 
-static int
-ap_wait_for_idle()
-{
-	while (pm.m_state != PMC_STATE_IDLE)
-		taskYIELD();
+#define AP_PRINT_ERROR()	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
+#define AP_WAIT_FOR(expr)	\
+	{ do { if (pm.m_errno != PMC_OK || (expr)) break; taskYIELD(); } while (1);	\
+	if (pm.m_errno != PMC_OK) { AP_PRINT_ERROR(); break; } }
 
-	return pm.m_errno;
-}
-
-#define AP_PRINT_ERROR()	\
-	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
-
-#define AP_WAIT_FOR_IDLE()	\
-	{ if (ap_wait_for_idle() != PMC_OK) { AP_PRINT_ERROR(); break; } }
-
+#define AP_WAIT_FOR_IDLE()	AP_WAIT_FOR(pm.m_state == PMC_STATE_IDLE)
 #define AP_EXIT_IF_ERROR()	{ if (pm.m_errno != PMC_OK) break; }
+#define AP_PRINT_AND_EXIT_IF_ERROR()	\
+	{ if (pm.m_errno != PMC_OK) { AP_PRINT_ERROR(); break; } }
 
 SH_DEF(ap_identify_base)
 {
@@ -55,6 +48,8 @@ SH_DEF(ap_identify_base)
 		return ;
 
 	do {
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 		AP_WAIT_FOR_IDLE();
 
@@ -128,6 +123,8 @@ SH_DEF(ap_identify_const_R_abc)
 		return ;
 
 	do {
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
 		temp[0] = pm.wave_i_hold_X;
 		temp[1] = pm.wave_i_hold_Y;
 
@@ -219,16 +216,18 @@ SH_DEF(ap_identify_const_E)
 
 	td.pIRQ = &irq_avg_value_8;
 
-	while (td.pIRQ != NULL)
-		taskYIELD();
+	do {
+		AP_WAIT_FOR(td.pIRQ == NULL);
 
-	td.avg_SUM[0] /= (float) td.avg_N;
-	td.avg_SUM[1] /= (float) td.avg_N;
-	td.avg_SUM[2] /= (float) td.avg_N;
-	td.avg_SUM[3] /= (float) td.avg_N;
+		td.avg_SUM[0] /= (float) td.avg_N;
+		td.avg_SUM[1] /= (float) td.avg_N;
+		td.avg_SUM[2] /= (float) td.avg_N;
+		td.avg_SUM[3] /= (float) td.avg_N;
 
-	pm.const_E -= td.avg_SUM[3] / td.avg_SUM[2];
-	pm_const_E_wb(EOL);
+		pm.const_E -= td.avg_SUM[3] / td.avg_SUM[2];
+		pm_const_E_wb(EOL);
+	}
+	while (0);
 }
 
 SH_DEF(ap_identify_const_J)
@@ -244,7 +243,7 @@ SH_DEF(ap_identify_const_J)
 	while (0);*/
 }
 
-static int
+static void
 ap_wait_for_settle(float wSP, int xT)
 {
 	float			SR;
@@ -262,11 +261,6 @@ ap_wait_for_settle(float wSP, int xT)
 		AP_EXIT_IF_ERROR();
 	}
 	while (td.uTIM < uEND);
-
-	if (pm.m_errno != PMC_OK)
-		AP_PRINT_ERROR();
-
-	return pm.m_errno;
 }
 
 SH_DEF(ap_blind_spinup)
@@ -275,11 +269,16 @@ SH_DEF(ap_blind_spinup)
 		return ;
 
 	do {
-		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
-		AP_WAIT_FOR_IDLE();
+		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-		AP_WAIT_FOR_IDLE();
+		if (s[0] != 'F') {
+
+			pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+			AP_WAIT_FOR_IDLE();
+
+			pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+			AP_WAIT_FOR_IDLE();
+		}
 
 		pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
 		pm.m_bitmask |= (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION)
@@ -289,6 +288,7 @@ SH_DEF(ap_blind_spinup)
 		AP_WAIT_FOR_IDLE();
 
 		ap_wait_for_settle(2.f * pm.lu_threshold_high, 100);
+		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
 	}
@@ -301,17 +301,19 @@ SH_DEF(ap_probe_base)
 		return ;
 
 	do {
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
 		ap_identify_base(EOL);
 		AP_EXIT_IF_ERROR();
 
-		ap_blind_spinup(EOL);
+		ap_blind_spinup("F");
 		AP_EXIT_IF_ERROR();
 
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
 
 		ap_wait_for_settle(1.f / pm.const_E, 100);
-		AP_EXIT_IF_ERROR();
+		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();

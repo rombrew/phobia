@@ -76,7 +76,7 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[1] = 1.4830E-2f;
 
 	pm->fault_current_maximal = 25.f;
-	pm->fault_residual_maximal = 1.f;
+	pm->fault_residual_maximal = 1E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
 	pm->fault_high_voltage = 50.f;
@@ -100,7 +100,7 @@ void pmc_default(pmc_t *pm)
 	pm->hf_gain_K[2] = 1E-3f;
 
         pm->bemf_gain_K = 1E-4f;
-	pm->bemf_N = 3;
+	pm->bemf_N = 9;
 
 	pm->thermal_gain_R[0] = 20.f;
 	pm->thermal_gain_R[1] = 233.64f;
@@ -123,9 +123,10 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_slew_rate_w = 2E+3f;
+	pm->p_freq_dT = 1E-3f;
+	pm->p_slew_rate_w = 7E+3f;
 	pm->p_forced_D = 5.f;
-	pm->p_forced_slew_rate_w = 2E+2f;
+	pm->p_forced_slew_rate_w = 4E+2f;
 	pm->p_gain_D = 2E-2f;
 	pm->p_gain_P = 2E-1f;
 	pm->p_revol_limit = 10;
@@ -148,7 +149,7 @@ pm_equation(pmc_t *pm, float D[], const float X[])
 	E1 = pm->const_E * (1.f + pm->thermal_E - pm->bemf_Q);
 
 	fluxD = pm->const_Ld * X[0] + E1;
-	fluxQ = pm->const_Lq * X[1];
+	fluxQ = pm->const_Lq * X[1] + (pm->const_E * pm->bemf_D);
 
 	D[0] = (uD - R1 * X[0] + fluxQ * X4) * pm->const_Ld_inversed;
 	D[1] = (uQ - R1 * X[1] - fluxD * X4 + X5) * pm->const_Lq_inversed;
@@ -205,24 +206,35 @@ bemf_tune(pmc_t *pm, float eD, float eQ)
 {
 	float           *DFT = pm->bemf_DFT;
         float           *TEMP = pm->bemf_TEMP;
-	float		A, B, Q;
+	float		A, B, D, Q;
 	int		nu = 0;
 
-	/* FIXME: Observer may be unstable.
-	 * */
+	A = pm->const_Ld * pm->freq_hz;
+	B = - (pm->const_Ld * pm->freq_hz - pm->const_R);
+
+	eD = (pm->lu_X[4] < 0.f) ? - eD : eD;
+	D = A * eD + B * TEMP[32];
+	TEMP[32] = eD;
+	D *= pm->bemf_gain_K;
 
 	A = pm->const_Lq * pm->freq_hz;
 	B = - (pm->const_Lq * pm->freq_hz - pm->const_R);
 
 	eQ = (pm->lu_X[4] < 0.f) ? - eQ : eQ;
-	Q = A * eQ + B * TEMP[8];
-	TEMP[8] = eQ;
+	Q = A * eQ + B * TEMP[33];
+	TEMP[33] = eQ;
 	Q *= pm->bemf_gain_K;
 
 	while (nu < pm->bemf_N) {
 
-		*DFT++ += Q * *TEMP++;
-		*DFT++ += Q * *TEMP++;
+		A = *TEMP++;
+		B = *TEMP++;
+
+		*DFT++ += D * A;
+		*DFT++ += D * B;
+
+		*DFT++ += Q * A;
+		*DFT++ += Q * B;
 
 		++nu;
 	}
@@ -233,7 +245,7 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 {
         float           *DFT = pm->bemf_DFT;
         float           *TEMP = pm->bemf_TEMP;
-        float           X[2], E[2], Q, temp;
+        float           X[2], E[2], D, Q, temp;
         int             nu = 0;
 
 	if (pm->bemf_tune_T > 0) {
@@ -249,27 +261,19 @@ bemf_update(pmc_t *pm, float eD, float eQ)
         E[0] = X[0];
         E[1] = X[1];
 
-	temp = X[0] * X[0] - X[1] * X[1];
-	X[1] = X[0] * X[1] + X[1] * X[0];
-	X[0] = temp;
-
-	temp = (3.f - X[0] * X[0] - X[1] * X[1]) * .5f;
-	X[0] *= temp;
-	X[1] *= temp;
-
+	D = 0.f;
 	Q = 0.f;
 
 	while (nu < pm->bemf_N) {
 
-		/*temp = fabsf((float) (3 + 2 * nu) * pm->lu_X[4] * pm->dT * .5f);
-
-		S = 2.9472E-2f;
-		S = -1.9667E-1f + S * temp;
-		S = 8.6695E-3f + S * temp;
-		S = 1.f + S * temp;
-
-		if (S < 0.f)
-			break;*/
+		/* Inverse DFT.
+		 * */
+		D += *DFT++ * E[0];
+		D += *DFT++ * E[1];
+		Q += *DFT++ * E[0];
+		Q += *DFT++ * E[1];
+		*TEMP++ = E[0];
+		*TEMP++ = E[1];
 
 		/* Basis functions.
 		 * */
@@ -277,16 +281,10 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 		E[1] = E[0] * X[1] + E[1] * X[0];
 		E[0] = temp;
 
-		/* Inverse DFT.
-		 * */
-		Q += *DFT++ * E[0];
-		Q += *DFT++ * E[1];
-		*TEMP++ = E[0];
-		*TEMP++ = E[1];
-
 		++nu;
 	}
 
+	pm->bemf_D = D;
 	pm->bemf_Q = Q;
 }
 
@@ -312,7 +310,7 @@ lu_update(pmc_t *pm)
 	pm->lu_residual_Q = eQ;
 	pm->lu_residual_variance += (eD * eD + eQ * eQ - pm->lu_residual_variance)
 		* pm->lp_gain[1];
-	
+
 	if (pm->lu_residual_variance > pm->fault_residual_maximal) {
 
 		pm->m_state = PMC_STATE_END;
@@ -590,6 +588,7 @@ i_control(pmc_t *pm)
 	 * */
 	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
+		uD += - pm->lu_X[4] * pm->const_E * pm->bemf_D;
 		uQ += - pm->lu_X[4] * pm->const_E * pm->bemf_Q;
 	}
 
@@ -610,10 +609,45 @@ i_control(pmc_t *pm)
 }
 
 static void
+p_update_PD(pmc_t *pm)
+{
+	float		dX, dY, eP, eD, iSP;
+	int		revol;
+
+	dX = pm->p_track_point_x[0] * pm->lu_X[2] + pm->p_track_point_x[1] * pm->lu_X[3];
+	dY = pm->p_track_point_x[1] * pm->lu_X[2] - pm->p_track_point_x[0] * pm->lu_X[3];
+
+	eP = matan2f(dY, dX);
+
+	if (dY < 0.) {
+
+		if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
+			eP += 2.f * MPIF;
+	}
+	else {
+		if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
+			eP -= 2.f * MPIF;
+	}
+
+	revol = pm->p_track_point_revol - pm->lu_revol;
+	pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
+		(revol > pm->p_revol_limit) ? - 1 : 0;
+
+	eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
+	eD = pm->p_track_point_w - pm->p_freq_X4;
+
+	/* PD controller.
+	 * */
+	iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
+
+	pm->i_set_point_D = 0.f;
+	pm->i_set_point_Q = iSP;
+}
+
+static void
 p_control(pmc_t *pm)
 {
-	float		dX, dY, eP, eD, iSP, temp;
-	int		revol;
+	float		temp;
 
 	if (pm->lu_X[2] < 0.f) {
 
@@ -629,31 +663,6 @@ p_control(pmc_t *pm)
 	}
 
 	pm->lu_temp[0] = pm->lu_X[3];
-
-	/*if (1) {
-
-		dX = pm->p_set_point_x[0] * pm->p_track_point_x[0] +
-			pm->p_set_point_x[1] * pm->p_track_point_x[1];
-		dY = pm->p_set_point_x[1] * pm->p_track_point_x[0] -
-			pm->p_set_point_x[0] * pm->p_track_point_x[1];
-
-		eP = matan2f(dY, dX);
-
-		if (dY < 0.) {
-
-			if (pm->p_track_point_x[1] < 0. && pm->p_set_point_x[1] >= 0.)
-				eP += 2.f * MPIF;
-		}
-		else {
-			if (pm->p_track_point_x[1] >= 0. && pm->p_set_point_x[1] < 0.)
-				eP -= 2.f * MPIF;
-		}
-
-		eP += (pm->p_set_point_revol - pm->p_track_point_revol) * 2.f * MPIF;
-
-		// TODO:
-		//	pm->p_set_point_w = ;
-	}*/
 
 	/* Slew rate (acceleration).
 	 * */
@@ -691,34 +700,19 @@ p_control(pmc_t *pm)
 		pm->i_set_point_Q = 0.f;
 	}
 	else {
-		dX = pm->p_track_point_x[0] * pm->lu_X[2] + pm->p_track_point_x[1] * pm->lu_X[3];
-		dY = pm->p_track_point_x[1] * pm->lu_X[2] - pm->p_track_point_x[0] * pm->lu_X[3];
+		pm->p_freq_sT += pm->dT;
+		pm->p_freq_X4 += pm->lu_X[4];
+		pm->p_freq_N++;
 
-		eP = matan2f(dY, dX);
+		if (pm->p_freq_sT >= pm->p_freq_dT) {
 
-		if (dY < 0.) {
+			pm->p_freq_X4 /= (float) pm->p_freq_N;
 
-			if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
-				eP += 2.f * MPIF;
+			pm->p_freq_sT -= pm->p_freq_dT;
+			pm->p_freq_N = 0;
+
+			p_update_PD(pm);
 		}
-		else {
-			if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
-				eP -= 2.f * MPIF;
-		}
-
-		revol = pm->p_track_point_revol - pm->lu_revol;
-		pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
-			(revol > pm->p_revol_limit) ? - 1 : 0;
-
-		eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
-		eD = pm->p_track_point_w - pm->lu_X[4];
-
-		/* PD controller.
-		 * */
-		iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
-
-		pm->i_set_point_D = 0.f;
-		pm->i_set_point_Q = iSP;
 	}
 }
 
@@ -996,6 +990,7 @@ pm_FSM(pmc_t *pm)
 
 			if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
+				pm->bemf_D = 0.f;
 				pm->bemf_Q = 0.f;
 			}
 

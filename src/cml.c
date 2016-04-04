@@ -252,6 +252,7 @@ SH_DEF(pm_m_bitmask_bemf_waveform_compensation)
 
 	if (mask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
+		pm.bemf_D = 0.f;
 		pm.bemf_Q = 0.f;
 
 		halFence();
@@ -640,15 +641,18 @@ SH_DEF(pm_hf_gain_K2)
 SH_DEF(pm_bemf_DFT)
 {
 	float			*DFT = pm.bemf_DFT;
-	float			D, Q;
+	float			D[2], Q[2];
 	int			i;
 
 	for (i = 0; i < pm.bemf_N; ++i) {
 
-		D = *DFT++;
-		Q = *DFT++;
+		D[0] = 100.f * *DFT++;
+		D[1] = 100.f * *DFT++;
+		Q[0] = 100.f * *DFT++;
+		Q[1] = 100.f * *DFT++;
 
-		printf("%i: %1f %% %1f %%" EOL, 3 + i * 2, &D, &Q);
+		printf("%i: %1f %1f %1f %1f (%%)" EOL, 1 + i,
+				D + 0, D + 1, Q + 0, Q + 1);
 	}
 }
 
@@ -663,7 +667,7 @@ SH_DEF(pm_bemf_N)
 	stoi(&pm.bemf_N, s);
 
 	pm.bemf_N = (pm.bemf_N < 1) ? 1 :
-		(pm.bemf_N > 4) ? 4 : pm.bemf_N;
+		(pm.bemf_N > 14) ? 14 : pm.bemf_N;
 
 	printf("%i" EOL, pm.bemf_N);
 }

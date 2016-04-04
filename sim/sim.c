@@ -170,7 +170,7 @@ sim_Script(FILE *fdTel)
 	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. + .1);
+	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -196,35 +196,41 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
-	pm.m_bitmask |= PMC_BIT_SERVO_FORCED_CONTROL;
-
-	//pm.const_E = 0.f;
+	//pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	//pm.i_set_point_Q = 1.f;
-	sim_F(fdTel, 1., 0);
+	/*sim_F(fdTel, 1., 0);
 
 	m.X[3] += .5;
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, 1., 0);*/
 
-	pm.i_set_point_D = 4.f;
-	pm.p_set_point_w = 400.f;
+	//pm.p_set_point_w = 3000.f;
+	pm.i_set_point_Q = 4.f;
+	sim_F(fdTel, 2., 0);
 
-	sim_F(fdTel, 7., 0);
+	/*m.X[2] /= 1.1;
+	sim_F(fdTel, 1., 0);*/
 
-	/*pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
 
-	pm.bemf_tune_t = 1.f * pm.freq_hz;
+	pm.bemf_tune_T = 2.f * pm.freq_hz;
 	sim_F(fdTel, 2., 0);
 
 	pm.vsi_u_maximal = .57f;
 	sim_F(fdTel, 4., 0);
 
-	printf("%f %f \n", pm.bemf_DFT[0], pm.bemf_DFT[1]);
-	printf("%f %f \n", pm.bemf_DFT[2], pm.bemf_DFT[3]);*/
+	{
+		int		j;
+
+		for (j = 0; j < 28; j += 4)
+			printf("%f %f %f %f \n",
+				pm.bemf_DFT[j],
+				pm.bemf_DFT[j + 1],
+				pm.bemf_DFT[j + 2],
+				pm.bemf_DFT[j + 3]);
+	}
 }
 
 int main(int argc, char *argv[])

@@ -138,8 +138,6 @@ void halMain()
 
 	pmc_default(&pm);
 
-	pm.m_state = PMC_STATE_ZERO_DRIFT;
-
 	do {
 		taskIOMUX();
 		shTask();
