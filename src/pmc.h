@@ -227,10 +227,9 @@ typedef struct {
 
 	/* Servo control loop.
 	 * */
-	float		p_freq_dT;
-	float		p_freq_sT;
-	float		p_freq_X4;
-	int		p_freq_N;
+	float		p_smooth_X4;
+	float		p_smooth_gain_F;
+	float		p_smooth_range;
 	float		p_set_point_w;
 	float		p_slew_rate_w;
 	float		p_forced_D;
@@ -240,7 +239,6 @@ typedef struct {
 	int		p_track_point_revol;
 	float		p_gain_D;
 	float		p_gain_P;
-	int		p_revol_limit;
 
 	/* Low-pass gains.
 	 * */

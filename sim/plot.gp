@@ -25,7 +25,7 @@ if (N == 2) {
 	set ylabel 'Mechanical Speed (RPM)'
 	plot    @TEL using 1:($4/$27*30/pi) title 'Plant' with lines, \
 		@TEL using 1:($14/$27*30/pi) title 'Estimated' with lines, \
-		@TEL using 1:($32/$27*30/pi) title 'Set Point' with lines
+		@TEL using 1:($25/$27*30/pi) title 'Smooth' with lines
 }
 
 if (N == 3) {

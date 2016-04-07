@@ -20,6 +20,7 @@
 #define _H_M_
 
 #define MPIF			3.14159265f
+#define EPSF			1.2E-7f
 
 inline float
 fabsf(float x) { return __builtin_fabsf(x); }

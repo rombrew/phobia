@@ -896,6 +896,18 @@ SH_DEF(pm_i_gain_auto)
 		&pm.i_gain_I_Q);
 }
 
+SH_DEF(pm_p_smooth_gain_F)
+{
+	stof(&pm.p_smooth_gain_F, s);
+	printf("%2e" EOL, &pm.p_smooth_gain_F);
+}
+
+SH_DEF(pm_p_smooth_range)
+{
+	stof(&pm.p_smooth_range, s);
+	printf("%4e (Rad/S)" EOL, &pm.p_smooth_range);
+}
+
 SH_DEF(pm_p_set_point_w_rpm)
 {
 	float			RPM;
@@ -973,12 +985,6 @@ SH_DEF(pm_p_gain_P)
 {
 	stof(&pm.p_gain_P, s);
 	printf("%2e" EOL, &pm.p_gain_P);
-}
-
-SH_DEF(pm_p_revol_limit)
-{
-	stoi(&pm.p_revol_limit, s);
-	printf("%i" EOL, pm.p_revol_limit);
 }
 
 SH_DEF(pm_lp_gain_0)
@@ -1392,6 +1398,8 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_i_gain_P_Q),
 	SH_ENTRY(pm_i_gain_I_Q),
 	SH_ENTRY(pm_i_gain_auto),
+	SH_ENTRY(pm_p_smooth_gain_F),
+	SH_ENTRY(pm_p_smooth_range),
 	SH_ENTRY(pm_p_set_point_w_rpm),
 	SH_ENTRY(pm_p_slew_rate_w),
 	SH_ENTRY(pm_p_forced_D),
@@ -1399,7 +1407,6 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_p_track_point_x_g),
 	SH_ENTRY(pm_p_gain_D),
 	SH_ENTRY(pm_p_gain_P),
-	SH_ENTRY(pm_p_revol_limit),
 	SH_ENTRY(pm_lp_gain_0),
 	SH_ENTRY(pm_lp_gain_1),
 	SH_ENTRY(pm_n_power_watt),

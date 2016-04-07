@@ -103,7 +103,7 @@ sim_Tel(float *pTel)
 	pTel[22] = pm.hf_flux_polarity;
 	pTel[23] = pm.thermal_R;
 	pTel[24] = pm.thermal_E;
-	pTel[25] = 0.f;
+	pTel[25] = pm.p_smooth_X4;
 	pTel[26] = 0.f;
 	pTel[27] = pm.const_Zp;
 	pTel[28] = pm.n_power_watt;
@@ -170,7 +170,7 @@ sim_Script(FILE *fdTel)
 	pm.const_U = m.U;
 	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. + .0);
+	pm.const_Lq = m.Lq * (1. - .0);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -196,24 +196,31 @@ sim_Script(FILE *fdTel)
 	printf("IMP\t%.4e %.4e %.1f %.4e %.4e %.1f\n",
 		IMP[0], IMP[1], IMP[2], IMP[3], IMP[4], IMP[5]);*/
 
-	//pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	/*sim_F(fdTel, 1., 0);
+	sim_F(fdTel, 1., 0);
 
 	m.X[3] += .5;
-	sim_F(fdTel, 1., 0);*/
+	sim_F(fdTel, 1., 0);
 
-	//pm.p_set_point_w = 3000.f;
-	pm.i_set_point_Q = 4.f;
-	sim_F(fdTel, 2., 0);
+	pm.p_set_point_w = 2000.f * (2.f * M_PI / 60.f * m.Zp);
+	//pm.i_set_point_Q = 4.f;
+	sim_F(fdTel, 1., 0);
 
-	/*m.X[2] /= 1.1;
-	sim_F(fdTel, 1., 0);*/
+	m.M[2] = 5E-6;
+	sim_F(fdTel, 1., 0);
 
-	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	m.M[2] = 1E-7;
+	sim_F(fdTel, 1., 0);
+
+	pm.p_set_point_w = -60.f * (2.f * M_PI / 60.f * m.Zp);
+	sim_F(fdTel, 3., 0);
+
+	/*pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
 
 	pm.bemf_tune_T = 2.f * pm.freq_hz;
 	sim_F(fdTel, 2., 0);
@@ -230,7 +237,7 @@ sim_Script(FILE *fdTel)
 				pm.bemf_DFT[j + 1],
 				pm.bemf_DFT[j + 2],
 				pm.bemf_DFT[j + 3]);
-	}
+	}*/
 }
 
 int main(int argc, char *argv[])

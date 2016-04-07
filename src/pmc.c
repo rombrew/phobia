@@ -95,8 +95,8 @@ void pmc_default(pmc_t *pm)
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
-	pm->hf_gain_K[0] = 1E-1f;
-	pm->hf_gain_K[1] = 7E+0f;
+	pm->hf_gain_K[0] = 1E-2f;
+	pm->hf_gain_K[1] = 2E+1f;
 	pm->hf_gain_K[2] = 1E-3f;
 
         pm->bemf_gain_K = 1E-4f;
@@ -123,13 +123,13 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_freq_dT = 1E-3f;
-	pm->p_slew_rate_w = 7E+3f;
+	pm->p_smooth_gain_F = 1E-2f;
+	pm->p_smooth_range = 80.f;
+	pm->p_slew_rate_w = 1E+6f;
 	pm->p_forced_D = 5.f;
 	pm->p_forced_slew_rate_w = 4E+2f;
-	pm->p_gain_D = 2E-2f;
-	pm->p_gain_P = 2E-1f;
-	pm->p_revol_limit = 10;
+	pm->p_gain_D = 1E-1f;
+	pm->p_gain_P = 0E-0f;
 
 	pm->lp_gain[0] = .1f;
 	pm->lp_gain[1] = .2f;
@@ -609,46 +609,13 @@ i_control(pmc_t *pm)
 }
 
 static void
-p_update_PD(pmc_t *pm)
-{
-	float		dX, dY, eP, eD, iSP;
-	int		revol;
-
-	dX = pm->p_track_point_x[0] * pm->lu_X[2] + pm->p_track_point_x[1] * pm->lu_X[3];
-	dY = pm->p_track_point_x[1] * pm->lu_X[2] - pm->p_track_point_x[0] * pm->lu_X[3];
-
-	eP = matan2f(dY, dX);
-
-	if (dY < 0.) {
-
-		if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
-			eP += 2.f * MPIF;
-	}
-	else {
-		if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
-			eP -= 2.f * MPIF;
-	}
-
-	revol = pm->p_track_point_revol - pm->lu_revol;
-	pm->p_track_point_revol += (revol < - pm->p_revol_limit) ? 1 :
-		(revol > pm->p_revol_limit) ? - 1 : 0;
-
-	eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
-	eD = pm->p_track_point_w - pm->p_freq_X4;
-
-	/* PD controller.
-	 * */
-	iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
-
-	pm->i_set_point_D = 0.f;
-	pm->i_set_point_Q = iSP;
-}
-
-static void
 p_control(pmc_t *pm)
 {
+	float		dX, dY, eP, eD, iSP;
 	float		temp;
 
+	/* Full revolution counter.
+	 * */
 	if (pm->lu_X[2] < 0.f) {
 
 		if (pm->lu_X[3] < 0.f) {
@@ -664,7 +631,7 @@ p_control(pmc_t *pm)
 
 	pm->lu_temp[0] = pm->lu_X[3];
 
-	/* Slew rate (acceleration).
+	/* Make a trajectory according to slew rate.
 	 * */
 	temp = (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
 		? pm->p_forced_slew_rate_w * pm->dT : pm->p_slew_rate_w * pm->dT;
@@ -674,6 +641,8 @@ p_control(pmc_t *pm)
 
 	mrotf(pm->p_track_point_x, pm->p_track_point_w * pm->dT, pm->p_track_point_x);
 
+	/* Full revolution counter.
+	 * */
 	if (pm->p_track_point_x[0] < 0.f) {
 
 		if (pm->p_track_point_x[1] < 0.f) {
@@ -691,6 +660,8 @@ p_control(pmc_t *pm)
 
 	if (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL) {
 
+		/* Forced control.
+		 * */
 		pm->lu_X[2] = pm->p_track_point_x[0];
 		pm->lu_X[3] = pm->p_track_point_x[1];
 		pm->lu_X[4] = pm->p_track_point_w;
@@ -700,19 +671,55 @@ p_control(pmc_t *pm)
 		pm->i_set_point_Q = 0.f;
 	}
 	else {
-		pm->p_freq_sT += pm->dT;
-		pm->p_freq_X4 += pm->lu_X[4];
-		pm->p_freq_N++;
+		if (pm->p_gain_P < EPSF) {
 
-		if (pm->p_freq_sT >= pm->p_freq_dT) {
+			/* Suppress large discrepancy if P gain is near zero.
+			 * */
+			pm->p_track_point_revol = pm->lu_revol;
 
-			pm->p_freq_X4 /= (float) pm->p_freq_N;
-
-			pm->p_freq_sT -= pm->p_freq_dT;
-			pm->p_freq_N = 0;
-
-			p_update_PD(pm);
+			eP = 0.f;
 		}
+		else {
+			/* Obtain an absolute position discrepancy.
+			 * */
+			dX = pm->p_track_point_x[0] * pm->lu_X[2] +
+				pm->p_track_point_x[1] * pm->lu_X[3];
+			dY = pm->p_track_point_x[1] * pm->lu_X[2] -
+				pm->p_track_point_x[0] * pm->lu_X[3];
+
+			eP = matan2f(dY, dX);
+
+			if (dY < 0.) {
+
+				if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
+					eP += 2.f * MPIF;
+			}
+			else {
+				if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
+					eP -= 2.f * MPIF;
+			}
+
+			eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
+		}
+
+		/* Smooth speed signal.
+		 * */
+		pm->p_smooth_X4 += (pm->lu_X[4] - pm->p_smooth_X4) * pm->p_smooth_gain_F;
+		pm->p_smooth_X4 = (pm->p_smooth_X4 < pm->lu_X[4] - pm->p_smooth_range)
+			? pm->lu_X[4] - pm->p_smooth_range : pm->p_smooth_X4;
+		pm->p_smooth_X4 = (pm->p_smooth_X4 > pm->lu_X[4] + pm->p_smooth_range)
+			? pm->lu_X[4] + pm->p_smooth_range : pm->p_smooth_X4;
+
+		/* Speed discrepancy.
+		 * */
+		eD = pm->p_track_point_w - pm->p_smooth_X4;
+
+		/* PD controller.
+		 * */
+		iSP = pm->p_gain_P * eP + pm->p_gain_D * eD;
+
+		pm->i_set_point_D = 0.f;
+		pm->i_set_point_Q = iSP;
 	}
 }
 
