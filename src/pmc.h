@@ -227,9 +227,9 @@ typedef struct {
 
 	/* Servo control loop.
 	 * */
-	float		p_smooth_X4;
-	float		p_smooth_gain_F;
-	float		p_smooth_range;
+	float		p_alt_X4;
+	float		p_alt_gain_F;
+	float		p_alt_range;
 	float		p_set_point_w;
 	float		p_slew_rate_w;
 	float		p_forced_D;

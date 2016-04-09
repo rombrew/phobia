@@ -123,8 +123,8 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_smooth_gain_F = 1E-2f;
-	pm->p_smooth_range = 80.f;
+	pm->p_alt_gain_F = 1E-2f;
+	pm->p_alt_range = 50.f;
 	pm->p_slew_rate_w = 1E+6f;
 	pm->p_forced_D = 5.f;
 	pm->p_forced_slew_rate_w = 4E+2f;
@@ -704,15 +704,15 @@ p_control(pmc_t *pm)
 
 		/* Smooth speed signal.
 		 * */
-		pm->p_smooth_X4 += (pm->lu_X[4] - pm->p_smooth_X4) * pm->p_smooth_gain_F;
-		pm->p_smooth_X4 = (pm->p_smooth_X4 < pm->lu_X[4] - pm->p_smooth_range)
-			? pm->lu_X[4] - pm->p_smooth_range : pm->p_smooth_X4;
-		pm->p_smooth_X4 = (pm->p_smooth_X4 > pm->lu_X[4] + pm->p_smooth_range)
-			? pm->lu_X[4] + pm->p_smooth_range : pm->p_smooth_X4;
+		pm->p_alt_X4 += (pm->lu_X[4] - pm->p_alt_X4) * pm->p_alt_gain_F;
+		pm->p_alt_X4 = (pm->p_alt_X4 < pm->lu_X[4] - pm->p_alt_range)
+			? pm->lu_X[4] - pm->p_alt_range : pm->p_alt_X4;
+		pm->p_alt_X4 = (pm->p_alt_X4 > pm->lu_X[4] + pm->p_alt_range)
+			? pm->lu_X[4] + pm->p_alt_range : pm->p_alt_X4;
 
 		/* Speed discrepancy.
 		 * */
-		eD = pm->p_track_point_w - pm->p_smooth_X4;
+		eD = pm->p_track_point_w - pm->p_alt_X4;
 
 		/* PD controller.
 		 * */
