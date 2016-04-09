@@ -76,7 +76,7 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[1] = 1.4830E-2f;
 
 	pm->fault_current_maximal = 25.f;
-	pm->fault_residual_maximal = 1E+1f;
+	pm->fault_residual_maximal = 3E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
 	pm->fault_high_voltage = 50.f;
@@ -315,7 +315,7 @@ lu_update(pmc_t *pm)
 
 		pm->m_state = PMC_STATE_END;
 		pm->m_phase = 0;
-		pm->m_errno = PMC_ERROR_SYNC_LOSS;
+		pm->m_errno = PMC_ERROR_STABILITY_LOSS;
 	}
 
 	/* Measurement update.
@@ -1231,7 +1231,7 @@ const char *pmc_strerror(int errno)
 		"Over Current",
 		"Low Voltage",
 		"High Voltage",
-		"Sync Loss"
+		"Stability Loss"
 	};
 
 	const int 	emax = sizeof(list) / sizeof(list[0]);
