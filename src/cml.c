@@ -433,12 +433,6 @@ SH_DEF(pm_fault_high_voltage)
 	printf("%3f (V)" EOL, &pm.fault_high_voltage);
 }
 
-SH_DEF(pm_vsi_u_maximal)
-{
-	stof(&pm.vsi_u_maximal, s);
-	printf("%4e" EOL, &pm.vsi_u_maximal);
-}
-
 void irq_avg_value_8()
 {
 	int			j;
@@ -1344,7 +1338,6 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_fault_drift_maximal),
 	SH_ENTRY(pm_fault_low_voltage),
 	SH_ENTRY(pm_fault_high_voltage),
-	SH_ENTRY(pm_vsi_u_maximal),
 	SH_ENTRY(pm_lu_X0),
 	SH_ENTRY(pm_lu_X1),
 	SH_ENTRY(pm_lu_X23),

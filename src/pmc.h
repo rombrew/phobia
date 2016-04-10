@@ -94,6 +94,7 @@ typedef struct {
 
 	/* Current feedback.
 	 * */
+	float		fb_range;
 	float		fb_iA;
 	float		fb_iB;
 
@@ -121,10 +122,6 @@ typedef struct {
 	float		fault_drift_maximal;
 	float		fault_low_voltage;
 	float		fault_high_voltage;
-
-	/* Voltage utilisation factor.
-	 * */
-	float		vsi_u_maximal;
 
 	/* Actual VSI voltage.
 	 * */

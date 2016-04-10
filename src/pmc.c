@@ -61,6 +61,8 @@ void pmc_default(pmc_t *pm)
 	pm->T_measure = .5f;
 	pm->T_end = .1f;
 
+	pm->fb_range = 25.f;
+
 	pm->wave_i_hold_X = 2.f;
 	pm->wave_i_hold_Y = 0.f;
 	pm->wave_i_sine = 1.f;
@@ -75,13 +77,10 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 1.4830E-2f;
 
-	pm->fault_current_maximal = 25.f;
 	pm->fault_residual_maximal = 3E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
-	pm->fault_high_voltage = 50.f;
-
-	pm->vsi_u_maximal = 5.7735027E-1f;
+	pm->fault_high_voltage = 55.f;
 
 	pm->lu_gain_K[0] = 2E-1f;
 	pm->lu_gain_K[1] = 2E-1f;
@@ -112,9 +111,9 @@ void pmc_default(pmc_t *pm)
 	pm->const_Lq = 0.f;
 	pm->const_Zp = 1;
 
-	pm->i_high_maximal = 20.f;
+	pm->i_high_maximal = 40.f;
 	pm->i_low_maximal = 5.f;
-	pm->i_power_consumption_maximal = 200.f;
+	pm->i_power_consumption_maximal = 500.f;
 	pm->i_power_regeneration_maximal = - 1.f;
 	pm->i_slew_rate_D = 4E+3f;
 	pm->i_slew_rate_Q = 4E+3f;
@@ -289,9 +288,33 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 }
 
 static void
-lu_update(pmc_t *pm)
+lu_measure(pmc_t *pm, float Z[2])
 {
 	float		*X = pm->lu_X;
+	float		iA, iB, iX, iY;
+
+	iX = X[2] * X[0] - X[3] * X[1];
+	iY = X[3] * X[0] + X[2] * X[1];
+
+	iA = iX;
+	iB = - .5f * iX + .8660254f * iY;
+
+	iA = (iA < - pm->fb_range) ? - pm->fb_range :
+		(iA > pm->fb_range) ? pm->fb_range : iA;
+	iB = (iB < - pm->fb_range) ? - pm->fb_range :
+		(iB > pm->fb_range) ? pm->fb_range : iB;
+
+	iX = iA;
+	iY = .57735027f * iA + 1.1547005f * iB;
+
+	Z[0] = X[2] * iX + X[3] * iY;
+	Z[1] = X[2] * iY - X[3] * iX;
+}
+
+static void
+lu_update(pmc_t *pm)
+{
+	float		*X = pm->lu_X, Z[2];
 	float		iX, iY, iD, iQ;
 	float		eD, eQ, eR, dR;
 
@@ -301,10 +324,12 @@ lu_update(pmc_t *pm)
 	iD = X[2] * iX + X[3] * iY;
 	iQ = X[2] * iY - X[3] * iX;
 
+	lu_measure(pm, Z);
+
 	/* Obtain residual.
 	 * */
-	eD = iD - X[0];
-	eQ = iQ - X[1];
+	eD = iD - Z[0];
+	eQ = iQ - Z[1];
 
 	pm->lu_residual_D = eD;
 	pm->lu_residual_Q = eQ;
@@ -351,8 +376,6 @@ lu_update(pmc_t *pm)
 	 * */
 	pm_solve_2(pm);
 
-	/* Update BEMF.
-	 * */
 	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
 		bemf_update(pm, eD, eQ);
@@ -412,20 +435,6 @@ vsi_control(pmc_t *pm, float uX, float uY)
 	float		uA, uB, uC, Q;
 	float		uMIN, uMAX;
 	int		xA, xB, xC, xMP, xMPH;
-
-	if (0) {
-
-		Q = sqrtf(uX * uX + uY * uY);
-
-		/* Voltage utilisation limit.
-		 * */
-		if (Q > pm->vsi_u_maximal) {
-
-			Q = pm->vsi_u_maximal / Q;
-			uX *= Q;
-			uY *= Q;
-		}
-	}
 
 	uA = uX;
 	uB = - .5f * uX + .8660254f * uY;
@@ -1083,24 +1092,15 @@ pm_FSM(pmc_t *pm)
 
 void pmc_feedback(pmc_t *pm, int xA, int xB)
 {
-	pm->fb_iA = pm->scal_A[1] * (xA - 2048) + pm->scal_A[0];
-	pm->fb_iB = pm->scal_B[1] * (xB - 2048) + pm->scal_B[0];
+	float		iA, iB;
 
-	/* Overcurrent protection.
-	 * */
-	if (fabsf(pm->fb_iA) > pm->fault_current_maximal
-			|| fabsf(pm->fb_iB) > pm->fault_current_maximal) {
+	iA = pm->scal_A[1] * (xA - 2048) + pm->scal_A[0];
+	iB = pm->scal_B[1] * (xB - 2048) + pm->scal_B[0];
 
-		if (pm->lu_region != PMC_LU_DISABLED
-				|| pm->m_state == PMC_STATE_WAVE_HOLD
-				|| pm->m_state == PMC_STATE_WAVE_SINE
-				|| pm->m_state == PMC_STATE_CALIBRATION) {
-
-			pm->m_state = PMC_STATE_END;
-			pm->m_phase = 0;
-			pm->m_errno = PMC_ERROR_OVERCURRENT;
-		}
-	}
+	pm->fb_iA = (iA < - pm->fb_range) ? - pm->fb_range :
+		(iA > pm->fb_range) ? pm->fb_range : iA;
+	pm->fb_iB = (iB < - pm->fb_range) ? - pm->fb_range :
+		(iB > pm->fb_range) ? pm->fb_range : iB;
 
 	pm_FSM(pm);
 
