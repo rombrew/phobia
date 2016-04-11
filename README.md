@@ -37,7 +37,9 @@ PCB design.
 * Some simple motor failures as open circuit or winding short can be detected.
 * All functions are available from command line interface through USART.
 * Adjustable PWM frequency (currently 60kHz).
-* Semi-automated motor parameters identification. No additional tools are needed.
+* Automated motor parameters identification. No additional tools are needed.
+* BEMF waveform online estimation.
+* Operation at current values outside the sensor range (overcurrent).
 
 ## TODO
 
@@ -45,7 +47,6 @@ PCB design.
 * Analyse stability at fast transients.
 * Analyse robustness to the motor parameters uncertainty.
 * Add dead time compensation.
-* Add BEMF waveform compensation.
 * Add saliency distortion compensation.
 * Add cogging torque compensation.
 * Add CAN interface.
@@ -57,7 +58,7 @@ PCB design.
 A significant part of the functions are already implemented in software. New
 revision of hardware is in development.
 
-There are a few videos showing the operation of the prototypes.
+There are a few videos show the operation of the prototypes.
 
 [![PMC](https://i.ytimg.com/vi/7XdBx24nlt0/default.jpg)](https://www.youtube.com/watch?v=7XdBx24nlt0)
 [![PMC](https://i.ytimg.com/vi/r_TeMXxeZ9c/default.jpg)](https://www.youtube.com/watch?v=r_TeMXxeZ9c)
