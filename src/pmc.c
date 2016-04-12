@@ -698,20 +698,20 @@ p_control(pmc_t *pm)
 
 			eP = matan2f(dY, dX);
 
-			if (dY < 0.) {
+			if (dY < 0.f) {
 
-				if (pm->lu_X[3] < 0. && pm->p_track_point_x[1] >= 0.)
+				if (pm->lu_X[3] < 0.f && pm->p_track_point_x[1] >= 0.f)
 					eP += 2.f * MPIF;
 			}
 			else {
-				if (pm->lu_X[3] >= 0. && pm->p_track_point_x[1] < 0.)
+				if (pm->lu_X[3] >= 0.f && pm->p_track_point_x[1] < 0.f)
 					eP -= 2.f * MPIF;
 			}
 
 			eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
 		}
 
-		/* Smooth speed signal.
+		/* Alt filter.
 		 * */
 		pm->p_alt_X4 += (pm->lu_X[4] - pm->p_alt_X4) * pm->p_alt_gain_F;
 		pm->p_alt_X4 = (pm->p_alt_X4 < pm->lu_X[4] - pm->p_alt_range)

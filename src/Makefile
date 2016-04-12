@@ -3,21 +3,20 @@ BUILD	?= /tmp/pmc
 TARGET	= $(BUILD)/pmc
 
 CROSS	?= arm-none-eabi-
-CC      = $(CROSS)gcc
-AS      = $(CROSS)as
-LD      = $(CROSS)ld
-OC      = $(CROSS)objcopy
-OD      = $(CROSS)objdump
+CC	= $(CROSS)gcc
+OC	= $(CROSS)objcopy
 MK	= mkdir -p
-RM      = rm -rf
+RM	= rm -rf
 
-CFLAGS  = -std=gnu99 -pipe -Wall -O3
+CFLAGS	= -std=gnu99 -pipe -Wall -O3
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
-CFLAGS  += -fno-hosted
-CFLAGS  += -fno-stack-protector
-AFLAGS	= -mcpu=cortex-m4 -mthumb
-LFLAGS  = -T hal/ram.ld
+CFLAGS	+= -fno-hosted
+CFLAGS	+= -fno-stack-protector
+CFLAGS	+= -Wdouble-promotion
+CFLAGS	+= -flto
+LDFLAGS	= -nostdlib
+LDFLAGS	+= -Wl,-T,hal/ram.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
@@ -45,7 +44,7 @@ all: $(TARGET)
 $(BUILD)/%.o: %.s
 	@ echo "  AS    " $<
 	@ $(MK) $(dir $@)
-	@ $(AS) $(AFLAGS) -o $@ $<
+	@ $(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
@@ -54,7 +53,7 @@ $(BUILD)/%.o: %.c
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)
-	@ $(LD) $(LFLAGS) -o $@ $^
+	@ $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 	@ $(OC) -j .text -j .data -O binary $@
 
 flash: $(TARGET)

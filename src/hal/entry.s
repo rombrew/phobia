@@ -126,32 +126,32 @@ irqReset:
 	ldr	r1, =(ldEtext)
 	ldr	r3, =(ldEdata)
 
-	b.n	__iRdataComp
+	b.n	dataComp
 
-__iRdataLoop:
+dataLoop:
 
 	ldr.w	r0, [r1], #4
 	str.w	r0, [r2], #4
 
-__iRdataComp:
+dataComp:
 
 	cmp	r2, r3
-	bne.n	__iRdataLoop
+	bne.n	dataLoop
 
 	ldr	r2, =(ldSbss)
 	ldr	r1, =(ldEbss)
 	mov	r0, #0
 
-	b.n	__iRbssComp
+	b.n	bssComp
 
-__iRbssLoop:
+bssLoop:
 
 	str.w	r0, [r2], #4
 
-__iRbssComp:
+bssComp:
 
 	cmp	r2, r1
-	bne.n	__iRbssLoop
+	bne.n	bssLoop
 
 	bl	halStart
 	bl	halMain
