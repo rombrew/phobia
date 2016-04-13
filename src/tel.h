@@ -19,27 +19,14 @@
 #ifndef _H_TEL_
 #define _H_TEL_
 
-#define	TELSZ			40000
+#include "sh.h"
 
-typedef struct {
-
-	int			iEN;
-
-	short int		pIN[8];
-	int			pSZ;
-
-	int			sAVG[8];
-	int			sCNT, sDEC;
-
-	short int		pD[TELSZ];
-	short int		*pZ;
-}
-tel_t;
-
-extern tel_t			tel;
-
-void telCapture();
-void telFlush();
+SH_DEF(tel_decimal);
+SH_DEF(tel_capture);
+SH_DEF(tel_disable);
+SH_DEF(tel_live);
+SH_DEF(tel_flush);
+SH_DEF(tel_info);
 
 #endif /* _H_TEL_ */
 

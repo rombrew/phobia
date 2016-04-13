@@ -25,146 +25,6 @@
 #include "task.h"
 #include "tel.h"
 
-SH_DEF(td_uptime)
-{
-	int		Day, Hour, Min, Sec;
-
-	Sec = td.uSEC;
-
-	Day = Sec / 86400;
-	Sec -= Day * 86400;
-	Hour = Sec / 3600;
-	Sec -= Hour * 3600;
-	Min = Sec / 60;
-	Sec -= Min * 60;
-
-	printf("%id %ih %im %is" EOL,
-			Day, Hour, Min, Sec);
-}
-
-SH_DEF(td_cpu_usage)
-{
-	float		Rpc;
-
-	Rpc = 100.f * (float) td.usage_T / (float) HZ_AHB;
-
-	printf("%1f %% (%i)" EOL, &Rpc, td.usage_T / halPWM.freq_hz);
-}
-
-SH_DEF(td_avg_default_time)
-{
-	stof(&td.avg_default_time, s);
-	printf("%3f (Sec)" EOL, &td.avg_default_time);
-}
-
-SH_DEF(td_reboot)
-{
-	int		End, Del = 3;
-
-	printf("Reboot in %i second" EOL, Del);
-
-	End = td.uSEC + Del;
-
-	do {
-		taskYIELD();
-	}
-	while (td.uSEC < End);
-
-	halReset();
-}
-
-SH_DEF(td_keycodes)
-{
-	int		xC;
-
-	do {
-		while ((xC = shRecv()) < 0)
-			taskYIELD();
-
-		if (xC == 3 || xC == 4)
-			break;
-
-		printf("-- %i" EOL, xC);
-	}
-	while (1);
-}
-
-SH_DEF(pwm_freq_hz)
-{
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
-
-	if (stoi(&halPWM.freq_hz, s) != NULL) {
-
-		pwmDisable();
-		pwmEnable();
-
-		pm.freq_hz = (float) halPWM.freq_hz;
-		pm.dT = 1.f / pm.freq_hz;
-		pm.pwm_resolution = halPWM.resolution;
-	}
-
-	printf("%i (Hz)" EOL, halPWM.freq_hz);
-}
-
-SH_DEF(pwm_dead_time_ns)
-{
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
-
-	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
-
-		pwmDisable();
-		pwmEnable();
-	}
-
-	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
-}
-
-SH_DEF(pwm_DC)
-{
-	const char	*tok;
-	int		tokN = 0;
-	int		xA, xB, xC, R;
-
-	tok = s;
-	s = stoi(&xA, tok);
-	tokN += (s != NULL) ? 1 : 0;
-
-	tok = strtok(tok, " ");
-	s = stoi(&xB, tok);
-	tokN += (s != NULL) ? 1 : 0;
-
-	tok = strtok(tok, " ");
-	s = stoi(&xC, tok);
-	tokN += (s != NULL) ? 1 : 0;
-
-	if (tokN == 3) {
-
-		R = halPWM.resolution;
-
-		xA = (xA < 0) ? 0 : (xA > R) ? R : xA;
-		xB = (xB < 0) ? 0 : (xB > R) ? R : xB;
-		xC = (xC < 0) ? 0 : (xC > R) ? R : xC;
-
-		pwmDC(xA, xB, xC);
-
-		printf("DC %i %i %i" EOL, xA, xB, xC);
-	}
-}
-
-SH_DEF(pwm_Z)
-{
-	int		Z;
-
-	if (stoi(&Z, s) != NULL) {
-
-		pwmZ(Z);
-
-		printf("Z %i" EOL, Z);
-	}
-}
-
 SH_DEF(pm_pwm_resolution)
 {
 	printf("%i" EOL, pm.pwm_resolution);
@@ -433,57 +293,11 @@ SH_DEF(pm_fault_high_voltage)
 	printf("%3f (V)" EOL, &pm.fault_high_voltage);
 }
 
-void irq_avg_value_8()
-{
-	int			j;
-
-	if (td.avg_N <= td.avg_MAX) {
-
-		for (j = 0; j < td.avg_K; ++j)
-			td.avg_SUM[j] += *td.avg_IN[j];
-
-		td.avg_N++;
-	}
-	else
-		td.pIRQ = NULL;
-}
-
-static float
-pm_avg_float_1(float *param, float time)
-{
-	td.avg_IN[0] = param;
-	td.avg_SUM[0] = 0.f;
-	td.avg_K = 1;
-	td.avg_N = 0;
-	td.avg_MAX = pm.freq_hz * time;
-
-	halFence();
-
-	td.pIRQ = &irq_avg_value_8;
-
-	while (td.pIRQ != NULL)
-		taskYIELD();
-
-	td.avg_SUM[0] /= (float) td.avg_N;
-
-	return td.avg_SUM[0];
-}
-
-static float
-pm_avg_float_arg_1(float *param, const char *s)
-{
-	float			time = td.avg_default_time;
-
-	stof(&time, s);
-
-	return pm_avg_float_1(param, time);
-}
-
 SH_DEF(pm_lu_X0)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.lu_X[0], s);
+	avg = task_av_float_arg_1(&pm.lu_X[0], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -491,7 +305,7 @@ SH_DEF(pm_lu_X1)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.lu_X[1], s);
+	avg = task_av_float_arg_1(&pm.lu_X[1], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -507,7 +321,7 @@ SH_DEF(pm_lu_X4)
 {
 	float			avg, RPM;
 
-	avg = pm_avg_float_arg_1(&pm.lu_X[4], s);
+	avg = task_av_float_arg_1(&pm.lu_X[4], s);
 	RPM = 9.5492969f * avg / pm.const_Zp;
 
 	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
@@ -590,7 +404,7 @@ SH_DEF(pm_lu_residual_variance)
 {
 	float			avg;
 
-	avg = sqrtf(pm_avg_float_arg_1(&pm.lu_residual_variance, s));
+	avg = sqrtf(task_av_float_arg_1(&pm.lu_residual_variance, s));
 	printf("%4e (SD)" EOL, &avg);
 }
 
@@ -610,7 +424,7 @@ SH_DEF(pm_hf_flux_polarity)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.hf_flux_polarity, s);
+	avg = task_av_float_arg_1(&pm.hf_flux_polarity, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -670,10 +484,10 @@ SH_DEF(pm_bemf_tune_T)
 {
 	float		T;
 
-	if (stof(&T, s) != NULL) {
+	if (stof(&T, s) != NULL && T > 0.f) {
 
 		pm.bemf_tune_T = pm.freq_hz * T;
-		printf("%3f (Sec)" EOL, &T);
+		printf("+ %3f (Sec)" EOL, &T);
 	}
 }
 
@@ -681,7 +495,7 @@ SH_DEF(pm_thermal_R)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.thermal_R, s);
+	avg = task_av_float_arg_1(&pm.thermal_R, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -689,7 +503,7 @@ SH_DEF(pm_thermal_E)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.thermal_E, s);
+	avg = task_av_float_arg_1(&pm.thermal_E, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -709,7 +523,7 @@ SH_DEF(pm_drift_A)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.drift_A, s);
+	avg = task_av_float_arg_1(&pm.drift_A, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -717,7 +531,7 @@ SH_DEF(pm_drift_B)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.drift_B, s);
+	avg = task_av_float_arg_1(&pm.drift_B, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -725,7 +539,7 @@ SH_DEF(pm_drift_Q)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.drift_Q, s);
+	avg = task_av_float_arg_1(&pm.drift_Q, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -733,7 +547,7 @@ SH_DEF(pm_const_U)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.const_U, s);
+	avg = task_av_float_arg_1(&pm.const_U, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -997,7 +811,7 @@ SH_DEF(pm_n_power_watt)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.n_power_watt, s);
+	avg = task_av_float_arg_1(&pm.n_power_watt, s);
 	printf("%1f (W)" EOL, &avg);
 }
 
@@ -1005,7 +819,7 @@ SH_DEF(pm_n_temperature_c)
 {
 	float			avg;
 
-	avg = pm_avg_float_arg_1(&pm.n_temperature_c, s);
+	avg = task_av_float_arg_1(&pm.n_temperature_c, s);
 	printf("%1f (C)" EOL, &avg);
 }
 
@@ -1141,171 +955,29 @@ SH_DEF(pm_update_scal_AB)
 	}
 }
 
-static void
-irq_telemetry_0()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
-		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
-		tel.pSZ = 2;
-
-		telCapture();
-	}
-	else
-		td.pIRQ = NULL;
-}
-
-static void
-irq_telemetry_1()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.lu_X[2] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[3] * 1000.f);
-		tel.pSZ = 2;
-
-		telCapture();
-	}
-	else
-		td.pIRQ = NULL;
-}
-
-static void
-irq_telemetry_2()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[4] * 1.f);
-		tel.pIN[3] = (short int) (pm.n_temperature_c * 1.f);
-		tel.pSZ = 4;
-
-		telCapture();
-	}
-	else
-		td.pIRQ = NULL;
-}
-
-static void (* const irq_telemetry_list[]) () = {
-
-	&irq_telemetry_0,
-	&irq_telemetry_1,
-	&irq_telemetry_2,
-};
-
-SH_DEF(tel_decimal)
-{
-	stoi(&tel.sDEC, s);
-	printf("%i" EOL, tel.sDEC);
-}
-
-SH_DEF(tel_capture)
-{
-	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
-	void 		(* irqtel) ();
-	int		nTEL = 0;
-
-	if (td.pIRQ == NULL) {
-
-		tel.iEN = 1;
-		tel.sCNT = 0;
-		tel.pZ = tel.pD;
-
-		stoi(&nTEL, s);
-		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-		irqtel = irq_telemetry_list[nTEL];
-
-		halFence();
-
-		td.pIRQ = irqtel;
-	}
-}
-
-SH_DEF(tel_disable)
-{
-	tel.iEN = 0;
-	tel.sCNT = 0;
-	tel.pZ = tel.pD;
-}
-
-SH_DEF(tel_live)
-{
-	const int	nMAX = sizeof(irq_telemetry_list) / sizeof(irq_telemetry_list[0]);
-	void 		(* irqtel) ();
-	int		nTEL = 0;
-	int		xC, decmin;
-
-	if (td.pIRQ == NULL) {
-
-		decmin = (int) (pm.freq_hz / 50.f + .5f);
-		tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
-
-		tel.iEN = 1;
-		tel.sCNT = 0;
-		tel.pZ = tel.pD;
-
-		stoi(&nTEL, s);
-		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-		irqtel = irq_telemetry_list[nTEL];
-
-		halFence();
-
-		td.pIRQ = irqtel;
-
-		do {
-			taskYIELD();
-			xC = shRecv();
-
-			if (xC == 3 || xC == 4)
-				break;
-
-			if (tel.pZ != tel.pD) {
-
-				telFlush();
-				tel.pZ = tel.pD;
-			}
-		}
-		while (1);
-
-		tel.iEN = 0;
-	}
-}
-
-SH_DEF(tel_flush)
-{
-	telFlush();
-}
-
-SH_DEF(tel_info)
-{
-	float		freq, time;
-
-	freq = pm.freq_hz / (float) tel.sDEC;
-	time = TELSZ * (float) tel.sDEC / pm.freq_hz;
-
-	printf(	"decimal %i" EOL
-		"freq %1f (Hz)" EOL
-		"time %3f (Sec)" EOL,
-		tel.sDEC, &freq, &time);
-}
-
 /* Command list can be generated from source like this.
  * :r !sed -n '/SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' %
  * */
 
 const shCMD_t		cmList[] = {
 
-	SH_ENTRY(td_uptime),
-	SH_ENTRY(td_cpu_usage),
-	SH_ENTRY(td_avg_default_time),
-	SH_ENTRY(td_reboot),
-	SH_ENTRY(td_keycodes),
-	SH_ENTRY(pwm_freq_hz),
-	SH_ENTRY(pwm_dead_time_ns),
-	SH_ENTRY(pwm_DC),
-	SH_ENTRY(pwm_Z),
+	SH_ENTRY(ap_identify_base),
+	SH_ENTRY(ap_identify_const_R_abc),
+	SH_ENTRY(ap_identify_const_E),
+	SH_ENTRY(ap_identify_const_J),
+	SH_ENTRY(ap_blind_spinup),
+	SH_ENTRY(ap_probe_base),
+
+	SH_ENTRY(hal_uptime),
+	SH_ENTRY(hal_cpu_usage),
+	SH_ENTRY(hal_av_default_time),
+	SH_ENTRY(hal_reboot),
+	SH_ENTRY(hal_keycodes),
+	SH_ENTRY(hal_pwm_freq_hz),
+	SH_ENTRY(hal_pwm_dead_time_ns),
+	SH_ENTRY(hal_pwm_DC),
+	SH_ENTRY(hal_pwm_Z),
+
 	SH_ENTRY(pm_pwm_resolution),
 	SH_ENTRY(pm_pwm_minimal_pulse),
 	SH_ENTRY(pm_pwm_dead_time),
@@ -1415,19 +1087,13 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_impedance),
 	SH_ENTRY(pm_update_const_L),
 	SH_ENTRY(pm_update_scal_AB),
+
 	SH_ENTRY(tel_decimal),
 	SH_ENTRY(tel_capture),
 	SH_ENTRY(tel_disable),
 	SH_ENTRY(tel_live),
 	SH_ENTRY(tel_flush),
 	SH_ENTRY(tel_info),
-
-	SH_ENTRY(ap_identify_base),
-	SH_ENTRY(ap_identify_const_R_abc),
-	SH_ENTRY(ap_identify_const_E),
-	SH_ENTRY(ap_identify_const_J),
-	SH_ENTRY(ap_blind_spinup),
-	SH_ENTRY(ap_probe_base),
 
 	{NULL, NULL}
 };

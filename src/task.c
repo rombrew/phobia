@@ -21,7 +21,6 @@
 #include "pmc.h"
 #include "sh.h"
 #include "task.h"
-#include "tel.h"
 
 taskDATA_t			td;
 pmc_t __CCM__			pm;
@@ -106,8 +105,8 @@ void adcIRQ()
 	dT += (dT < 0) ? HZ_AHB / 100 : 0;
 	td.usage_S += dT;
 
-	if (td.pIRQ != NULL)
-		td.pIRQ();
+	if (td.pEX != NULL)
+		td.pEX();
 }
 
 void halMain()
@@ -120,7 +119,7 @@ void halMain()
 	halUSART.baudRate = 57600;
 	halPWM.freq_hz = 60000;
 	halPWM.dead_time_ns = 70;
-	td.avg_default_time = .2f;
+	td.av_default_time = .2f;
 
 	halLED(LED_RED);
 
@@ -144,5 +143,198 @@ void halMain()
 		halSleep();
 	}
 	while (1);
+}
+
+void evAV_8()
+{
+	int			j;
+
+	if (td.av_sample_N <= td.av_sample_MAX) {
+
+		for (j = 0; j < td.av_variable_N; ++j)
+			td.av_VAL[j] += *td.av_IN[j];
+
+		td.av_sample_N++;
+	}
+	else
+		td.pEX = NULL;
+}
+
+float task_av_float_1(float *param, float time)
+{
+	td.av_IN[0] = param;
+	td.av_VAL[0] = 0.f;
+	td.av_variable_N = 1;
+	td.av_sample_N = 0;
+	td.av_sample_MAX = pm.freq_hz * time;
+
+	halFence();
+
+	td.pEX = &evAV_8;
+
+	while (td.pEX != NULL)
+		taskYIELD();
+
+	td.av_VAL[0] /= (float) td.av_sample_N;
+
+	return td.av_VAL[0];
+}
+
+float task_av_float_arg_1(float *param, const char *s)
+{
+	float			time = td.av_default_time;
+
+	stof(&time, s);
+
+	return task_av_float_1(param, time);
+}
+
+SH_DEF(hal_uptime)
+{
+	int		Day, Hour, Min, Sec;
+
+	Sec = td.uSEC;
+
+	Day = Sec / 86400;
+	Sec -= Day * 86400;
+	Hour = Sec / 3600;
+	Sec -= Hour * 3600;
+	Min = Sec / 60;
+	Sec -= Min * 60;
+
+	printf("%id %ih %im %is" EOL,
+			Day, Hour, Min, Sec);
+}
+
+SH_DEF(hal_cpu_usage)
+{
+	float		Rpc;
+
+	Rpc = 100.f * (float) td.usage_T / (float) HZ_AHB;
+
+	printf("%1f %% (%i)" EOL, &Rpc, td.usage_T / halPWM.freq_hz);
+}
+
+SH_DEF(hal_av_default_time)
+{
+	stof(&td.av_default_time, s);
+	printf("%3f (Sec)" EOL, &td.av_default_time);
+}
+
+SH_DEF(hal_reboot)
+{
+	int		End, Del = 3;
+
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	printf("Reboot in %i second" EOL, Del);
+
+	End = td.uSEC + Del;
+
+	do {
+		taskYIELD();
+	}
+	while (td.uSEC < End);
+
+	halReset();
+}
+
+SH_DEF(hal_keycodes)
+{
+	int		xC;
+
+	do {
+		while ((xC = shRecv()) < 0)
+			taskYIELD();
+
+		if (xC == 3 || xC == 4)
+			break;
+
+		printf("-- %i" EOL, xC);
+	}
+	while (1);
+}
+
+SH_DEF(hal_pwm_freq_hz)
+{
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	if (stoi(&halPWM.freq_hz, s) != NULL) {
+
+		pwmDisable();
+		pwmEnable();
+
+		pm.freq_hz = (float) halPWM.freq_hz;
+		pm.dT = 1.f / pm.freq_hz;
+		pm.pwm_resolution = halPWM.resolution;
+	}
+
+	printf("%i (Hz)" EOL, halPWM.freq_hz);
+}
+
+SH_DEF(hal_pwm_dead_time_ns)
+{
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
+
+		pwmDisable();
+		pwmEnable();
+	}
+
+	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
+}
+
+SH_DEF(hal_pwm_DC)
+{
+	const char	*tok;
+	int		tokN = 0;
+	int		xA, xB, xC, R;
+
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	tok = s;
+	s = stoi(&xA, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	tok = strtok(tok, " ");
+	s = stoi(&xB, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	tok = strtok(tok, " ");
+	s = stoi(&xC, tok);
+	tokN += (s != NULL) ? 1 : 0;
+
+	if (tokN == 3) {
+
+		R = halPWM.resolution;
+
+		xA = (xA < 0) ? 0 : (xA > R) ? R : xA;
+		xB = (xB < 0) ? 0 : (xB > R) ? R : xB;
+		xC = (xC < 0) ? 0 : (xC > R) ? R : xC;
+
+		pwmDC(xA, xB, xC);
+
+		printf("DC %i %i %i" EOL, xA, xB, xC);
+	}
+}
+
+SH_DEF(hal_pwm_Z)
+{
+	int		Z;
+
+	if (pm.lu_region != PMC_LU_DISABLED)
+		return ;
+
+	if (stoi(&Z, s) != NULL) {
+
+		pwmZ(Z);
+
+		printf("Z %i" EOL, Z);
+	}
 }
 

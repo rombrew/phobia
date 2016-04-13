@@ -23,8 +23,6 @@
 #include "sh.h"
 #include "task.h"
 
-extern void irq_avg_value_8();
-
 SH_DEF(pm_lu_threshold_auto);
 SH_DEF(pm_const_E_wb);
 SH_DEF(pm_i_slew_rate_auto);
@@ -195,36 +193,36 @@ SH_DEF(ap_identify_const_E)
 	if (pm.lu_region == PMC_LU_DISABLED)
 		return ;
 
-	if (td.pIRQ != NULL)
+	if (td.pEX != NULL)
 		return ;
 
-	td.avg_IN[0] = &pm.lu_X[0];
-	td.avg_IN[1] = &pm.lu_X[1];
-	td.avg_IN[2] = &pm.lu_X[4];
-	td.avg_IN[3] = &pm.drift_Q;
+	td.av_IN[0] = &pm.lu_X[0];
+	td.av_IN[1] = &pm.lu_X[1];
+	td.av_IN[2] = &pm.lu_X[4];
+	td.av_IN[3] = &pm.drift_Q;
 
-	td.avg_SUM[0] = 0.f;
-	td.avg_SUM[1] = 0.f;
-	td.avg_SUM[2] = 0.f;
-	td.avg_SUM[3] = 0.f;
+	td.av_VAL[0] = 0.f;
+	td.av_VAL[1] = 0.f;
+	td.av_VAL[2] = 0.f;
+	td.av_VAL[3] = 0.f;
 
-	td.avg_K = 4;
-	td.avg_N = 0;
-	td.avg_MAX = pm.freq_hz * pm.T_measure;
+	td.av_variable_N = 4;
+	td.av_sample_N = 0;
+	td.av_sample_MAX = pm.freq_hz * pm.T_measure;
 
 	halFence();
 
-	td.pIRQ = &irq_avg_value_8;
+	td.pEX = &evAV_8;
 
 	do {
-		AP_WAIT_FOR(td.pIRQ == NULL);
+		AP_WAIT_FOR(td.pEX == NULL);
 
-		td.avg_SUM[0] /= (float) td.avg_N;
-		td.avg_SUM[1] /= (float) td.avg_N;
-		td.avg_SUM[2] /= (float) td.avg_N;
-		td.avg_SUM[3] /= (float) td.avg_N;
+		td.av_VAL[0] /= (float) td.av_sample_N;
+		td.av_VAL[1] /= (float) td.av_sample_N;
+		td.av_VAL[2] /= (float) td.av_sample_N;
+		td.av_VAL[3] /= (float) td.av_sample_N;
 
-		pm.const_E -= td.avg_SUM[3] / td.avg_SUM[2];
+		pm.const_E -= td.av_VAL[3] / td.av_VAL[2];
 		pm_const_E_wb(EOL);
 	}
 	while (0);

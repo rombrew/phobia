@@ -25,9 +25,12 @@
 inline float
 fabsf(float x) { return __builtin_fabsf(x); }
 
-#if __ARM_FP >= 4
-
 inline float
+sqrtf(float x) { return __builtin_sqrtf(x); }
+
+//#if __ARM_FP >= 4
+
+/*inline float
 sqrtf(float x)
 {
 	float		y;
@@ -36,14 +39,13 @@ sqrtf(float x)
 			: "=w" (y) : "w" (x));
 
 	return y;
-}
+}*/
 
-#else
+//#else
 
-inline float
-sqrtf(float x) { return __builtin_sqrtf(x); }
 
-#endif
+
+//#endif
 
 void mrotf(float y[2], float angle, const float x[2]);
 float matan2f(float y, float x);

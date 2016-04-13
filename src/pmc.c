@@ -20,7 +20,7 @@
 #include "m.h"
 
 static void
-lib_eigenvalues(float X, float Y, float XY, float *DQA)
+lib_eigenvalues(float X, float Y, float XY, float DQA[3])
 {
 	float		B, D, la1, la2;
 
@@ -1173,7 +1173,7 @@ void pmc_request(pmc_t *pm, int req)
 	}
 }
 
-void pmc_resistance(const float *DFT, float *R)
+void pmc_resistance(const float DFT[8], float *R)
 {
 	float			D, X, Y, E;
 
@@ -1189,7 +1189,7 @@ void pmc_resistance(const float *DFT, float *R)
 	}
 }
 
-void pmc_impedance(const float *DFT, float hz, float *IMP)
+void pmc_impedance(const float DFT[8], float hz, float IMP[6])
 {
 	float			Dx, Dy, w;
 	float			Lx, Ly, Lm, Rx, Ry, Rm;

@@ -16,13 +16,35 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "hal/hal.h"
 #include "lib.h"
+#include "m.h"
+#include "pmc.h"
 #include "sh.h"
+#include "task.h"
 #include "tel.h"
 
-tel_t				tel;
+#define	TELSZ			40000
 
-void telCapture()
+typedef struct {
+
+	int			iEN;
+
+	short int		pIN[8];
+	int			pSZ;
+
+	int			sAVG[8];
+	int			sCNT, sDEC;
+
+	short int		pD[TELSZ];
+	short int		*pZ;
+}
+tel_t;
+
+static tel_t			tel;
+
+static void
+telCapture()
 {
 	int			j, SZ;
 
@@ -46,7 +68,8 @@ void telCapture()
 	}
 }
 
-void telFlush()
+static void
+telFlush()
 {
 	short int		*pZ, *pEnd;
 	int			j;
@@ -61,5 +84,159 @@ void telFlush()
 
 		puts(EOL);
 	}
+}
+
+static void
+evTEL_0()
+{
+	if (tel.iEN) {
+
+		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
+		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
+		tel.pIN[2] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.pIN[3] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.pIN[4] = (short int) (pm.lu_X[2] * 4096.f);
+		tel.pIN[5] = (short int) (pm.lu_X[3] * 4096.f);
+		tel.pIN[6] = (short int) (pm.lu_X[4] * 1.f);
+		tel.pIN[7] = (short int) (sqrtf(pm.lu_residual_variance) * 1000.f);
+		tel.pSZ = 8;
+
+		telCapture();
+	}
+	else
+		td.pEX = NULL;
+}
+
+static void
+evTEL_1()
+{
+	if (tel.iEN) {
+
+		tel.pIN[0] = (short int) (pm.lu_X[2] * 4096.f);
+		tel.pIN[1] = (short int) (pm.lu_X[3] * 4096.f);
+		tel.pSZ = 2;
+
+		telCapture();
+	}
+	else
+		td.pEX = NULL;
+}
+
+static void
+evTEL_2()
+{
+	if (tel.iEN) {
+
+		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.pSZ = 2;
+
+		telCapture();
+	}
+	else
+		td.pEX = NULL;
+}
+
+static void (* const evTEL_list[]) () = {
+
+	&evTEL_0,
+	&evTEL_1,
+	&evTEL_2,
+};
+
+SH_DEF(tel_decimal)
+{
+	stoi(&tel.sDEC, s);
+	printf("%i" EOL, tel.sDEC);
+}
+
+SH_DEF(tel_capture)
+{
+	const int	nMAX = sizeof(evTEL_list) / sizeof(evTEL_list[0]);
+	void 		(* evTEL) ();
+	int		nTEL = 0;
+
+	if (td.pEX == NULL) {
+
+		tel.iEN = 1;
+		tel.sCNT = 0;
+		tel.pZ = tel.pD;
+
+		stoi(&nTEL, s);
+		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+		evTEL = evTEL_list[nTEL];
+
+		halFence();
+
+		td.pEX = evTEL;
+	}
+}
+
+SH_DEF(tel_disable)
+{
+	tel.iEN = 0;
+	tel.sCNT = 0;
+	tel.pZ = tel.pD;
+}
+
+SH_DEF(tel_live)
+{
+	const int	nMAX = sizeof(evTEL_list) / sizeof(evTEL_list[0]);
+	void 		(* evTEL) ();
+	int		nTEL = 0;
+	int		xC, decmin;
+
+	if (td.pEX == NULL) {
+
+		decmin = (int) (pm.freq_hz / 25.f + .5f);
+		tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
+
+		tel.iEN = 1;
+		tel.sCNT = 0;
+		tel.pZ = tel.pD;
+
+		stoi(&nTEL, s);
+		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+		evTEL = evTEL_list[nTEL];
+
+		halFence();
+
+		td.pEX = evTEL;
+
+		do {
+			taskYIELD();
+			xC = shRecv();
+
+			if (xC == 3 || xC == 4)
+				break;
+
+			if (tel.pZ != tel.pD) {
+
+				telFlush();
+				tel.pZ = tel.pD;
+			}
+		}
+		while (1);
+
+		tel.iEN = 0;
+	}
+}
+
+SH_DEF(tel_flush)
+{
+	telFlush();
+}
+
+SH_DEF(tel_info)
+{
+	float		freq, time;
+
+	freq = pm.freq_hz / (float) tel.sDEC;
+	time = TELSZ * (float) tel.sDEC / pm.freq_hz;
+
+	printf(	"decimal %i" EOL
+		"freq %1f (Hz)" EOL
+		"time %3f (Sec)" EOL,
+		tel.sDEC, &freq, &time);
 }
 

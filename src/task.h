@@ -20,6 +20,7 @@
 #define _H_TASK_
 
 #include "pmc.h"
+#include "sh.h"
 
 typedef struct {
 
@@ -38,23 +39,39 @@ typedef struct {
 	 * */
 	int			mux_TEMP[2];
 
-	/* ADC IRQ.
+	/* ADC Event Handler.
 	 * */
-	void			(* pIRQ) ();
+	void			(* pEX) ();
 
-	/* Average variables.
+	/* Average Values.
 	 * */
-	float			*avg_IN[8];
-	float			avg_SUM[8];
-	int			avg_K, avg_N, avg_MAX;
-	float			avg_default_time;
+	float			*av_IN[8];
+	float			av_VAL[8];
+	int			av_variable_N;
+	int			av_sample_N;
+	int			av_sample_MAX;
+	float			av_default_time;
 }
 taskDATA_t;
 
 extern taskDATA_t		td;
 extern pmc_t			pm;
 
-extern void taskYIELD();
+void taskYIELD();
+
+void evAV_8();
+float task_av_float_1(float *param, float time);
+float task_av_float_arg_1(float *param, const char *s);
+
+SH_DEF(hal_uptime);
+SH_DEF(hal_cpu_usage);
+SH_DEF(hal_av_default_time);
+SH_DEF(hal_reboot);
+SH_DEF(hal_keycodes);
+SH_DEF(hal_pwm_freq_hz);
+SH_DEF(hal_pwm_dead_time_ns);
+SH_DEF(hal_pwm_DC);
+SH_DEF(hal_pwm_Z);
 
 #endif /* _H_TASK_ */
 

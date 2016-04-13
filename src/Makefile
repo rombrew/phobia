@@ -8,13 +8,18 @@ OC	= $(CROSS)objcopy
 MK	= mkdir -p
 RM	= rm -rf
 
-CFLAGS	= -std=gnu99 -pipe -Wall -O3
+CFLAGS	= -std=gnu99 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
+CFLAGS	+= -Wall -Wdouble-promotion
+CFLAGS	+= -fno-math-errno
+CFLAGS	+= -ffinite-math-only
+CFLAGS	+= -fno-signed-zeros
+CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
-CFLAGS	+= -Wdouble-promotion
-CFLAGS	+= -flto
+CFLAGS	+= -O3 -flto
+
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/ram.ld
 
@@ -49,7 +54,7 @@ $(BUILD)/%.o: %.s
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
 	@ $(MK) $(dir $@)
-	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
+	@ $(CC) -c $(CFLAGS) -I $(BUILD) -MMD -o $@ $<
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)

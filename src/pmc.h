@@ -47,9 +47,6 @@ enum {
 
 enum {
 	PMC_OK					= 0,
-
-	/* Internal.
-	 * */
 	PMC_ERROR_CURRENT_SENSOR_A,
 	PMC_ERROR_CURRENT_SENSOR_B,
 	PMC_ERROR_OPEN_CIRCUIT,
@@ -260,8 +257,8 @@ void pmc_request(pmc_t *pm, int req);
 
 const char *pmc_strerror(int errno);
 
-void pmc_resistance(const float *DFT, float *R);
-void pmc_impedance(const float *DFT, float hz, float *IMP);
+void pmc_resistance(const float DFT[8], float *R);
+void pmc_impedance(const float DFT[8], float hz, float IMP[6]);
 
 #endif /* _H_PMC_ */
 
