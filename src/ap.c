@@ -263,13 +263,15 @@ ap_wait_for_settle(float wSP, int xT)
 
 SH_DEF(ap_blind_spinup)
 {
+	float			wSP;
+
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		if (s[0] != 'F') {
+		if (strchr(s, 'f') != NULL) {
 
 			pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 			AP_WAIT_FOR_IDLE();
@@ -285,7 +287,10 @@ SH_DEF(ap_blind_spinup)
 		pmc_request(&pm, PMC_STATE_START);
 		AP_WAIT_FOR_IDLE();
 
-		ap_wait_for_settle(2.f * pm.lu_threshold_high, 100);
+		wSP = 2.f * pm.lu_threshold_high;
+		wSP = (strchr(s, '-') != NULL) ? - wSP : wSP;
+
+		ap_wait_for_settle(wSP, 100);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
@@ -304,7 +309,7 @@ SH_DEF(ap_probe_base)
 		ap_identify_base(EOL);
 		AP_EXIT_IF_ERROR();
 
-		ap_blind_spinup("F");
+		ap_blind_spinup("f");
 		AP_EXIT_IF_ERROR();
 
 		ap_identify_const_E(EOL);

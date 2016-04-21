@@ -28,25 +28,6 @@ fabsf(float x) { return __builtin_fabsf(x); }
 inline float
 sqrtf(float x) { return __builtin_sqrtf(x); }
 
-//#if __ARM_FP >= 4
-
-/*inline float
-sqrtf(float x)
-{
-	float		y;
-
-	asm volatile ("vsqrt.f32 %0, %1 \r\n"
-			: "=w" (y) : "w" (x));
-
-	return y;
-}*/
-
-//#else
-
-
-
-//#endif
-
 void mrotf(float y[2], float angle, const float x[2]);
 float matan2f(float y, float x);
 float msinf(float angle);
