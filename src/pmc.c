@@ -640,7 +640,7 @@ p_control(pmc_t *pm)
 
 	pm->lu_temp[0] = pm->lu_X[3];
 
-	/* Make a trajectory according to slew rate.
+	/* Make a trajectory according to the slew rate.
 	 * */
 	temp = (pm->m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
 		? pm->p_forced_slew_rate_w * pm->dT : pm->p_slew_rate_w * pm->dT;
@@ -711,7 +711,7 @@ p_control(pmc_t *pm)
 			eP += (pm->p_track_point_revol - pm->lu_revol) * 2.f * MPIF;
 		}
 
-		/* Alt filter.
+		/* Nonlinear filter.
 		 * */
 		pm->p_alt_X4 += (pm->lu_X[4] - pm->p_alt_X4) * pm->p_alt_gain_F;
 		pm->p_alt_X4 = (pm->p_alt_X4 < pm->lu_X[4] - pm->p_alt_range)
@@ -1144,7 +1144,7 @@ void pmc_voltage(pmc_t *pm, int xU)
 
 			pm->m_state = PMC_STATE_END;
 			pm->m_phase = 0;
-			pm->m_errno = PMC_ERROR_LOW_VOLTAGE;
+			pm->m_errno = PMC_ERROR_HIGH_VOLTAGE;
 		}
 	}
 }

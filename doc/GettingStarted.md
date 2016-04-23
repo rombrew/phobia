@@ -52,10 +52,10 @@ permissible range. During the probe motor will rotate on final stages.
 ## Usage
 
 Once configuration is done you can run the motor with controlled torque or
-speed or absolute position. Without HFI you will need a blind start to ramp up
-into the high speed region.
+speed or absolute position. Without HFI you will need a blind spinup to go into
+the high speed region.
 
-	# ap_blind_start
+	# ap_blind_spinup
 
 Set Q axis current in torque control mode.
 
@@ -66,7 +66,7 @@ Set RPM or absolute position in servo mode.
 	# pm_p_set_point_w_rpm <rpm>
 	# pm_p_track_point_x_g <x>
 
-By default PMC is in servo mode after a blind start. It can be disabled as
+By default PMC is in servo mode after a blind spinup. It can be disabled as
 follows.
 
 	# pm_m_bitmask_servo_control_loop 0
