@@ -242,10 +242,11 @@ bemf_tune(pmc_t *pm, float eD, float eQ)
 static void
 bemf_update(pmc_t *pm, float eD, float eQ)
 {
-        float           *DFT = pm->bemf_DFT;
-        float           *TEMP = pm->bemf_TEMP;
-        float           X[2], E[2], D, Q, temp;
-        int             nu = 0;
+	float           *DFT = pm->bemf_DFT;
+	float           *TEMP = pm->bemf_TEMP;
+	float           X[2], E[2], D, Q, temp;
+	float		F[2], K, G, H;
+	int             nu = 0;
 
 	if (pm->bemf_tune_T > 0) {
 
@@ -263,22 +264,34 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 	D = 0.f;
 	Q = 0.f;
 
+	K = pm->lu_X[4] * pm->dT / MPIF;
+	G = K;
+
 	while (nu < pm->bemf_N) {
+
+		/* Attenuation.
+		 * */
+		H = 1.f - G;
+		H = (H < 0.f) ? 0.f : H;
+		F[0] = E[0] * H;
+		F[1] = E[1] * H;
 
 		/* Inverse DFT.
 		 * */
-		D += *DFT++ * E[0];
-		D += *DFT++ * E[1];
-		Q += *DFT++ * E[0];
-		Q += *DFT++ * E[1];
-		*TEMP++ = E[0];
-		*TEMP++ = E[1];
+		D += *DFT++ * F[0];
+		D += *DFT++ * F[1];
+		Q += *DFT++ * F[0];
+		Q += *DFT++ * F[1];
+		*TEMP++ = F[0];
+		*TEMP++ = F[1];
 
 		/* Basis functions.
 		 * */
 		temp = E[0] * X[0] - E[1] * X[1];
 		E[1] = E[0] * X[1] + E[1] * X[0];
 		E[0] = temp;
+
+		G += K;
 
 		++nu;
 	}

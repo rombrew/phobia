@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 2E-5;
+	m->M[2] = 2E-6;
 	m->M[3] = 0E-3;
 }
 
@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 5.) * 0E-2;
+	E1 *= 1. + sin(X[3] * 5.) * 10E-2;
 
 	/* Voltage from VSI.
 	 * */

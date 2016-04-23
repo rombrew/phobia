@@ -199,6 +199,8 @@ sim_Script(FILE *fdTel)
 	//pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
 	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
+	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
@@ -208,12 +210,28 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 1., 0);
 
 	//pm.p_set_point_w = 2000.f * (2.f * M_PI / 60.f * m.Zp);
-	pm.i_set_point_Q = 4.f;
+	pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, 1., 0);
 
-	//pm.p_set_point_w = -60.f * (2.f * M_PI / 60.f * m.Zp);
+	pm.bemf_tune_T = (int) (1.f * pm.freq_hz);
+	sim_F(fdTel, 2., 0);
+
 	pm.i_set_point_Q = 40.f;
-	sim_F(fdTel, 3., 0);
+	sim_F(fdTel, 1., 0);
+
+	pm.bemf_tune_T = (int) (1.f * pm.freq_hz);
+	sim_F(fdTel, 2., 0);
+
+	{
+		int		j;
+
+		for (j = 0; j < 28; j += 4)
+			printf("%f %f %f %f \n",
+					pm.bemf_DFT[j],
+					pm.bemf_DFT[j + 1],
+					pm.bemf_DFT[j + 2],
+					pm.bemf_DFT[j + 3]);
+	}
 }
 
 int main(int argc, char *argv[])
