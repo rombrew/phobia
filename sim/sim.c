@@ -219,9 +219,6 @@ sim_Script(FILE *fdTel)
 	pm.i_set_point_Q = 40.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.bemf_tune_T = (int) (1.f * pm.freq_hz);
-	sim_F(fdTel, 2., 0);
-
 	{
 		int		j;
 

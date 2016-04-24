@@ -271,7 +271,7 @@ SH_DEF(ap_blind_spinup)
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		if (strchr(s, 'f') != NULL) {
+		if (strchr(s, 'f') == NULL) {
 
 			pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 			AP_WAIT_FOR_IDLE();

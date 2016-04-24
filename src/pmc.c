@@ -111,10 +111,10 @@ void pmc_default(pmc_t *pm)
 	pm->const_Lq = 0.f;
 	pm->const_Zp = 1;
 
-	pm->i_high_maximal = 40.f;
+	pm->i_high_maximal = 20.f;
 	pm->i_low_maximal = 5.f;
 	pm->i_power_consumption_maximal = 500.f;
-	pm->i_power_regeneration_maximal = - 1.f;
+	pm->i_power_regeneration_maximal = - 100.f;
 	pm->i_slew_rate_D = 4E+3f;
 	pm->i_slew_rate_Q = 4E+3f;
 	pm->i_gain_P_D = 2E-1f;
@@ -123,11 +123,11 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_I_Q = 3E-2f;
 
 	pm->p_alt_gain_F = 1E-2f;
-	pm->p_alt_range = 50.f;
+	pm->p_alt_range = 90.f;
 	pm->p_slew_rate_w = 1E+6f;
 	pm->p_forced_D = 5.f;
 	pm->p_forced_slew_rate_w = 4E+2f;
-	pm->p_gain_D = 1E-1f;
+	pm->p_gain_D = 5E-2f;
 	pm->p_gain_P = 0E-0f;
 
 	pm->lp_gain[0] = .1f;
