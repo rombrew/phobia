@@ -604,6 +604,12 @@ SH_DEF(pm_const_Zp)
 	printf("%i" EOL, pm.const_Zp);
 }
 
+SH_DEF(pm_const_J)
+{
+	stof(&pm.const_J, s);
+	printf("%4e (kgm2)" EOL, &pm.const_J);
+}
+
 SH_DEF(pm_i_high_maximal)
 {
 	stof(&pm.i_high_maximal, s);
@@ -704,16 +710,16 @@ SH_DEF(pm_i_gain_auto)
 		&pm.i_gain_I_Q);
 }
 
-SH_DEF(pm_p_alt_gain_F)
+SH_DEF(pm_p_nonl_gain_F)
 {
-	stof(&pm.p_alt_gain_F, s);
-	printf("%2e" EOL, &pm.p_alt_gain_F);
+	stof(&pm.p_nonl_gain_F, s);
+	printf("%2e" EOL, &pm.p_nonl_gain_F);
 }
 
-SH_DEF(pm_p_alt_range)
+SH_DEF(pm_p_nonl_range)
 {
-	stof(&pm.p_alt_range, s);
-	printf("%4e (Rad/S)" EOL, &pm.p_alt_range);
+	stof(&pm.p_nonl_range, s);
+	printf("%4e (Rad/S)" EOL, &pm.p_nonl_range);
 }
 
 SH_DEF(pm_p_set_point_w_rpm)
@@ -731,7 +737,7 @@ SH_DEF(pm_p_set_point_w_rpm)
 SH_DEF(pm_p_slew_rate_w)
 {
 	stof(&pm.p_slew_rate_w, s);
-	printf("%4e (Rad/S^2)" EOL, &pm.p_slew_rate_w);
+	printf("%4e (Rad/S2)" EOL, &pm.p_slew_rate_w);
 }
 
 SH_DEF(pm_p_forced_D)
@@ -743,7 +749,22 @@ SH_DEF(pm_p_forced_D)
 SH_DEF(pm_p_forced_slew_rate_w)
 {
 	stof(&pm.p_forced_slew_rate_w, s);
-	printf("%4e (Rad/S^2)" EOL, &pm.p_forced_slew_rate_w);
+	printf("%4e (Rad/S2)" EOL, &pm.p_forced_slew_rate_w);
+}
+
+SH_DEF(pm_p_slew_rate_auto)
+{
+	float			MT;
+
+	if (pm.const_J > EPSF) {
+
+		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
+		pm.p_slew_rate_w = 1.5f * MT * pm.i_high_maximal;
+		pm.p_forced_slew_rate_w = .3f * MT * pm.p_forced_D;
+
+		printf("%4e (Rad/S2)" EOL, &pm.p_slew_rate_w);
+		printf("%4e (Rad/S2)" EOL, &pm.p_forced_slew_rate_w);
+	}
 }
 
 SH_DEF(pm_p_track_point_x_g)
@@ -964,6 +985,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(ap_identify_base),
 	SH_ENTRY(ap_identify_const_R_abc),
 	SH_ENTRY(ap_identify_const_E),
+	SH_ENTRY(ap_J_measure_T),
 	SH_ENTRY(ap_identify_const_J),
 	SH_ENTRY(ap_blind_spinup),
 	SH_ENTRY(ap_probe_base),
@@ -1049,6 +1071,7 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_const_Ld),
 	SH_ENTRY(pm_const_Lq),
 	SH_ENTRY(pm_const_Zp),
+	SH_ENTRY(pm_const_J),
 	SH_ENTRY(pm_i_high_maximal),
 	SH_ENTRY(pm_i_low_maximal),
 	SH_ENTRY(pm_i_power_consumption_maximal),
@@ -1063,12 +1086,13 @@ const shCMD_t		cmList[] = {
 	SH_ENTRY(pm_i_gain_P_Q),
 	SH_ENTRY(pm_i_gain_I_Q),
 	SH_ENTRY(pm_i_gain_auto),
-	SH_ENTRY(pm_p_alt_gain_F),
-	SH_ENTRY(pm_p_alt_range),
+	SH_ENTRY(pm_p_nonl_gain_F),
+	SH_ENTRY(pm_p_nonl_range),
 	SH_ENTRY(pm_p_set_point_w_rpm),
 	SH_ENTRY(pm_p_slew_rate_w),
 	SH_ENTRY(pm_p_forced_D),
 	SH_ENTRY(pm_p_forced_slew_rate_w),
+	SH_ENTRY(pm_p_slew_rate_auto),
 	SH_ENTRY(pm_p_track_point_x_g),
 	SH_ENTRY(pm_p_gain_D),
 	SH_ENTRY(pm_p_gain_P),

@@ -110,6 +110,7 @@ void pmc_default(pmc_t *pm)
 	pm->const_Ld = 0.f;
 	pm->const_Lq = 0.f;
 	pm->const_Zp = 1;
+	pm->const_J = 0.f;
 
 	pm->i_high_maximal = 20.f;
 	pm->i_low_maximal = 5.f;
@@ -122,8 +123,8 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->p_alt_gain_F = 1E-2f;
-	pm->p_alt_range = 90.f;
+	pm->p_nonl_gain_F = 1E-2f;
+	pm->p_nonl_range = 90.f;
 	pm->p_slew_rate_w = 1E+6f;
 	pm->p_forced_D = 5.f;
 	pm->p_forced_slew_rate_w = 4E+2f;
@@ -135,7 +136,7 @@ void pmc_default(pmc_t *pm)
 }
 
 static void
-pm_equation(pmc_t *pm, float D[], const float X[])
+pm_equation_3(pmc_t *pm, float D[], const float X[])
 {
 	float		uD, uQ, X4, X5, R1, E1, fluxD, fluxQ;
 
@@ -165,14 +166,14 @@ pm_solve_2(pmc_t *pm)
 	/* Second-order ODE solver.
 	 * */
 
-	pm_equation(pm, D1, X);
+	pm_equation_3(pm, D1, X);
 	dT = pm->dT;
 
 	X2[0] = X[0] + D1[0] * dT;
 	X2[1] = X[1] + D1[1] * dT;
 	mrotf(X2 + 2, D1[2] * dT, X + 2);
 
-	pm_equation(pm, D2, X2);
+	pm_equation_3(pm, D2, X2);
 	dT *= .5f;
 
 	X[0] += (D1[0] + D2[0]) * dT;
@@ -292,7 +293,6 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 		E[0] = temp;
 
 		G += K;
-
 		++nu;
 	}
 
@@ -726,15 +726,15 @@ p_control(pmc_t *pm)
 
 		/* Nonlinear filter.
 		 * */
-		pm->p_alt_X4 += (pm->lu_X[4] - pm->p_alt_X4) * pm->p_alt_gain_F;
-		pm->p_alt_X4 = (pm->p_alt_X4 < pm->lu_X[4] - pm->p_alt_range)
-			? pm->lu_X[4] - pm->p_alt_range : pm->p_alt_X4;
-		pm->p_alt_X4 = (pm->p_alt_X4 > pm->lu_X[4] + pm->p_alt_range)
-			? pm->lu_X[4] + pm->p_alt_range : pm->p_alt_X4;
+		pm->p_nonl_X4 += (pm->lu_X[4] - pm->p_nonl_X4) * pm->p_nonl_gain_F;
+		pm->p_nonl_X4 = (pm->p_nonl_X4 < pm->lu_X[4] - pm->p_nonl_range)
+			? pm->lu_X[4] - pm->p_nonl_range : pm->p_nonl_X4;
+		pm->p_nonl_X4 = (pm->p_nonl_X4 > pm->lu_X[4] + pm->p_nonl_range)
+			? pm->lu_X[4] + pm->p_nonl_range : pm->p_nonl_X4;
 
 		/* Speed discrepancy.
 		 * */
-		eD = pm->p_track_point_w - pm->p_alt_X4;
+		eD = pm->p_track_point_w - pm->p_nonl_X4;
 
 		/* PD controller.
 		 * */

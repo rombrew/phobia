@@ -119,7 +119,9 @@ void halMain()
 	halUSART.baudRate = 57600;
 	halPWM.freq_hz = 60000;
 	halPWM.dead_time_ns = 70;
+
 	td.av_default_time = .2f;
+	td.ap_J_measure_T = .1f;
 
 	halLED(LED_RED);
 

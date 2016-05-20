@@ -51,6 +51,13 @@ typedef struct {
 	int			av_sample_N;
 	int			av_sample_MAX;
 	float			av_default_time;
+
+	/* J estimation.
+	 * */
+	int			ap_J_fsm_state;
+	float			ap_J_measure_T;
+	float			ap_J_vars[4];
+
 }
 taskDATA_t;
 

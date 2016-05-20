@@ -24,6 +24,7 @@
 SH_DEF(ap_identify_base);
 SH_DEF(ap_identify_const_R_abc);
 SH_DEF(ap_identify_const_E);
+SH_DEF(ap_J_measure_T);
 SH_DEF(ap_identify_const_J);
 SH_DEF(ap_blind_spinup);
 SH_DEF(ap_probe_base);

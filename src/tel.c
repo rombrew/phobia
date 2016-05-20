@@ -91,14 +91,15 @@ evTEL_0()
 {
 	if (tel.iEN) {
 
-		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
-		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[3] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[4] = (short int) (pm.lu_X[2] * 4096.f);
-		tel.pIN[5] = (short int) (pm.lu_X[3] * 4096.f);
-		tel.pIN[6] = (short int) (pm.lu_X[4] * 1.f);
-		tel.pIN[7] = (short int) (sqrtf(pm.lu_residual_variance) * 1000.f);
+		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
+		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
+		tel.pIN[2] = (short int) (pm.lu_X[2] * 4096.f);
+		tel.pIN[3] = (short int) (pm.lu_X[3] * 4096.f);
+		tel.pIN[4] = (short int) (pm.lu_X[4] * 30.f / MPIF / pm.const_Zp);
+		tel.pIN[5] = (short int) (pm.drift_Q * 1000.f);
+		tel.pIN[6] = (short int) (pm.lu_residual_D * 1000.f);
+		tel.pIN[7] = (short int) (pm.lu_residual_Q * 1000.f);
+
 		tel.pSZ = 8;
 
 		telCapture();
@@ -112,8 +113,8 @@ evTEL_1()
 {
 	if (tel.iEN) {
 
-		tel.pIN[0] = (short int) (pm.lu_X[2] * 4096.f);
-		tel.pIN[1] = (short int) (pm.lu_X[3] * 4096.f);
+		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
+		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
 		tel.pSZ = 2;
 
 		telCapture();

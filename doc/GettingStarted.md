@@ -6,7 +6,7 @@ other docs for specific questions.
 ## Hardware
 
 We do not assemble hardware for sales. You can get appropriate revision of PCB
-from repo and order the fabrication and assembly somewhere.
+from repo and order fabrication and assembly somewhere.
 
 	$ hg clone https://bitbucket.org/amaora/phobia-pcb
 

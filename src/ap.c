@@ -27,6 +27,7 @@ SH_DEF(pm_lu_threshold_auto);
 SH_DEF(pm_const_E_wb);
 SH_DEF(pm_i_slew_rate_auto);
 SH_DEF(pm_i_gain_auto);
+SH_DEF(pm_p_slew_rate_auto);
 
 #define AP_PRINT_ERROR()	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
 #define AP_WAIT_FOR(expr)	\
@@ -211,7 +212,6 @@ SH_DEF(ap_identify_const_E)
 	td.av_sample_MAX = pm.freq_hz * pm.T_measure;
 
 	halFence();
-
 	td.pEX = &evAV_8;
 
 	do {
@@ -226,19 +226,6 @@ SH_DEF(ap_identify_const_E)
 		pm_const_E_wb(EOL);
 	}
 	while (0);
-}
-
-SH_DEF(ap_identify_const_J)
-{
-	/*if (pm.lu_region == PMC_LU_DISABLED)
-		return ;
-
-	if (td.pIRQ != NULL)
-		return ;
-
-	do {
-	}
-	while (0);*/
 }
 
 static void
@@ -259,6 +246,127 @@ ap_wait_for_settle(float wSP, int xT)
 		AP_EXIT_IF_ERROR();
 	}
 	while (td.uTIM < uEND);
+}
+
+static void
+ev_fsm_J()
+{
+	float		temp;
+
+	if (pm.m_errno != PMC_OK) {
+
+		td.pEX = NULL;
+		return ;
+	}
+
+	switch (td.ap_J_fsm_state) {
+
+		case 0:
+			td.ap_J_fsm_state = 1;
+			td.ap_J_vars[0] = 0.f;
+			td.ap_J_vars[1] = pm.lu_X[4];
+
+			pm.t_value = 0;
+			pm.t_end = pm.freq_hz * td.ap_J_measure_T;
+			break;
+
+		case 1:
+			td.ap_J_vars[0] += pm.lu_X[1];
+			pm.t_value++;
+
+			if (pm.t_value >= pm.t_end) {
+
+				td.ap_J_fsm_state = 2;
+				td.ap_J_vars[2] = pm.lu_X[4];
+			}
+			break;
+
+		case 2:
+			temp = pm.const_E * td.ap_J_vars[0];
+			temp *= 1.5f * pm.const_Zp * pm.const_Zp;
+			temp *= pm.dT / (td.ap_J_vars[2] - td.ap_J_vars[1]);
+			td.ap_J_vars[3] = temp;
+			td.pEX = NULL;
+			break;
+
+		default:
+			break;
+	}
+}
+
+SH_DEF(ap_J_measure_T)
+{
+	stof(&td.ap_J_measure_T, s);
+	printf("%3e (Sec)" EOL, &td.ap_J_measure_T);
+}
+
+SH_DEF(ap_identify_const_J)
+{
+	float			wSP1, wSP2, J;
+
+	if (pm.lu_region == PMC_LU_DISABLED)
+		return ;
+
+	if (!(pm.m_bitmask & PMC_BIT_SERVO_CONTROL_LOOP))
+		return ;
+
+	if (td.pEX != NULL)
+		return ;
+
+	wSP1 = 2.f * pm.lu_threshold_high;
+	wSP2 = 1.f / pm.const_E;
+
+	if (stof(&wSP1, s) != NULL) {
+
+		wSP1 *= .10471976f * pm.const_Zp;
+
+		if (stof(&wSP2, strtok(s, " ")) != NULL) {
+
+			wSP2 *= .10471976f * pm.const_Zp;
+		}
+	}
+	else {
+		if (strchr(s, '-') != NULL) {
+
+			wSP1 = - wSP1;
+			wSP2 = - wSP2;
+		}
+	}
+
+	do {
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
+		ap_wait_for_settle(wSP1, 100);
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
+		td.ap_J_fsm_state = 0;
+
+		halFence();
+		td.pEX = &ev_fsm_J;
+
+		ap_wait_for_settle(wSP2, 0);
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
+		halFence();
+		AP_WAIT_FOR(td.pEX == NULL);
+
+		J = td.ap_J_vars[3];
+
+		td.ap_J_fsm_state = 0;
+
+		halFence();
+		td.pEX = &ev_fsm_J;
+
+		ap_wait_for_settle(wSP1, 0);
+		AP_PRINT_AND_EXIT_IF_ERROR();
+
+		halFence();
+		AP_WAIT_FOR(td.pEX == NULL);
+
+		pm.const_J = (J + td.ap_J_vars[3]) * .5f;
+		printf("J %4e (kgm2)" EOL, &pm.const_J);
+	}
+	while (0);
 }
 
 SH_DEF(ap_blind_spinup)
@@ -322,6 +430,11 @@ SH_DEF(ap_probe_base)
 		AP_EXIT_IF_ERROR();
 
 		pm_lu_threshold_auto(EOL);
+
+		ap_identify_const_J(EOL);
+		AP_EXIT_IF_ERROR();
+
+		pm_p_slew_rate_auto(EOL);
 
 		pmc_request(&pm, PMC_STATE_STOP);
 		pm.m_bitmask &= ~PMC_BIT_SERVO_CONTROL_LOOP;

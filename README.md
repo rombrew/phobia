@@ -1,6 +1,6 @@
 # Phobia Motor Controller
 
-PMC is an open project that aims to build a quality three-phase BLDC motor
+PMC is an open project that aims to build the quality three-phase BLDC motor
 controller for RC.
 
 ![PMC rev1](https://bitbucket.org/amaora/phobia/downloads/pmcr1.jpg)

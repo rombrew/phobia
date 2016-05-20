@@ -7,7 +7,7 @@ LD	= gcc
 MK	= mkdir -p
 RM      = rm -rf
 
-CFLAGS	= -std=gnu99 -pipe -Wall -O2 -g3
+CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto -g3
 LFLAGS	= -lm -g3
 
 OBJS	= lib.o blm.o sim.o
@@ -24,7 +24,7 @@ $(BUILD)/%.o: %.c
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)
-	@ $(LD) $(LFLAGS) -o $@ $^
+	@ $(LD) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 run: $(TARGET)
 	@ echo "  RUN	" $(notdir $^)

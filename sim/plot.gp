@@ -1,140 +1,68 @@
-#!/usr/bin/gnuplot -p
+#!/home/amaora/util/gp
+# vi: filetype=conf
 
-set terminal x11
-set grid
+font 14 "/usr/share/fonts/corefonts/cour.ttf"
+batch 20000
+scheme 0
 
-set macros
-TEL = "\"/tmp/TEL\" binary format=\"%40float\""
+load 0 -1 float 40 "/tmp/TEL"
 
-system "echo -n Number:"
-N = int(system("read N; echo $N"))
+page 1 "DQ Current"
+label 0 "Time (Sec)"
+label 1 "Current (Ampere)"
+figure 0 0 1 0 1 "Plant D"
+figure 0 0 2 0 1 "Plant Q"
+figure 0 0 9 0 1 "Estimated D"
+figure 0 0 10 0 1 "Estimated Q"
 
-if (N == 1) {
+page 2 "Mechanical Speed"
+label 0 "Time (Sec)"
+label 1 "Mechanical Speed (RPM)"
+figure 0 0 3 0 1 "Plant"
+figure 0 0 13 0 1 "Estimated"
+figure 0 0 24 0 1 "Nonl X4"
 
-	set xlabel 'Time (Sec)'
-	set ylabel 'Current (Ampere)'
-	plot    @TEL using 1:2 title 'Plant D' with lines, \
-		@TEL using 1:3 title 'Plant Q' with lines, \
-		@TEL using 1:10 title 'Estimated D' with lines, \
-		@TEL using 1:11 title 'Estimated Q' with lines
-}
+page 3 "Electrical Position"
+label 0 "Time (Sec)"
+label 1 "Electrical Position (Degree)"
+figure 0 0 4 0 1 "Plant"
+figure 0 0 11 0 1 "Estimated"
 
-if (N == 2) {
+page 4 "Electrical Position Error"
+label 0 "Time (Sec)"
+label 1 "Error (Degree)"
+figure 0 0 12 0 1 "Error"
 
-	set xlabel 'Time (Sec)'
-	set ylabel 'Mechanical Speed (RPM)'
-	plot    @TEL using 1:($4/$27*30/pi) title 'Plant' with lines, \
-		@TEL using 1:($14/$27*30/pi) title 'Estimated' with lines, \
-		@TEL using 1:($25/$27*30/pi) title 'Alt X4' with lines
-}
+page 5 "PWM Duty Cycle"
+label 0 "Time (Sec)"
+label 1 "Duty Cycle (%)"
+figure 0 0 6 0 1 "A"
+figure 0 0 7 0 1 "B"
+figure 0 0 8 0 1 "C"
 
-if (N == 3) {
+page 6 "VSI Voltage"
+label 0 "X (Volt)"
+label 1 "Y (Volt)"
+figure 0 15 16 0 1 "VSI"
 
-	set xlabel 'Time (Sec)'
-	set ylabel 'Electrical Position (Degree)'
-	plot	@TEL using 1:($5*180/pi) title 'Plant' with lines, \
-		@TEL using 1:($12*180/pi) title 'Estimated' with lines
-}
+page 7 "DQ Residual"
+label 0 "Time (Sec)"
+label 1 "Residual (Ampere)"
+figure 0 0 17 0 1 "D"
+figure 0 0 18 0 1 "Q"
 
-if (N == 4) {
+page 8 "Power"
+label 0 "Time (Sec)"
+label 1 "Power (Watt)"
+figure 0 0 22 0 1 "W"
 
-	set xlabel 'Time (Sec)'
-	set ylabel 'Electrical Position (Degree)'
-	plot    @TEL using 1:($13*180/pi) title 'Error' with lines
-}
+page 9 "Drift Q"
+label 0 "Time (Sec)"
+label 1 "Drift (Volt)"
+figure 0 0 21 0 1 "Q"
 
-if (N == 5) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Duty Cycle (%)'
-	plot	@TEL using 1:($7*100) title 'A' with lines, \
-		@TEL using 1:($8*100) title 'B' with lines, \
-		@TEL using 1:($9*100) title 'C' with lines
-}
-
-if (N == 6) {
-
-	set xlabel 'X'
-	set ylabel 'Y'
-	plot	@TEL using 15:16 title 'VSI voltage (Volt)' with points
-}
-
-if (N == 7) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Residual (A)'
-	plot	@TEL using 1:17 title 'D' with lines, \
-		@TEL using 1:18 title 'Q' with lines
-}
-
-if (N == 8) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Power (Watt)'
-	plot	@TEL using 1:28 title 'W' with lines
-}
-
-if (N == 9) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Q Drift (Volt)'
-	plot	@TEL using 1:21 title 'drift_Q' with lines
-}
-
-if (N == 10) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Temperature (Celsius)'
-	plot	@TEL using 1:6 title 'Plant' with lines, \
-		@TEL using 1:29 title 'Estimated' with lines
-}
-
-
-if (N == 11) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Thermal'
-	plot	@TEL using 1:23 title 'R' with lines, \
-		@TEL using 1:24 title 'E' with lines
-}
-
-if (N == 12) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Resistance (mOhm)'
-	plot	@TEL using 1:($24*1e+3) title 'const_R' with lines
-}
-
-if (N == 13) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Winding Inductance (uH)'
-	plot	@TEL using 1:($25*1e+6) title 'const_Ld' with lines, \
-		@TEL using 1:($26*1e+6) title 'const_Lq' with lines
-}
-
-if (N == 14) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Zero Drift (A)'
-	plot	@TEL using 1:19 title 'A' with lines, \
-		@TEL using 1:20 title 'B' with lines
-}
-
-if (N == 15) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'Residial variance (A)'
-	plot	@TEL using 1:33 title 'DQ' with lines,
-}
-
-if (N == 16) {
-
-	set xlabel 'Time (Sec)'
-	set ylabel 'X'
-	plot	@TEL using 1:($25) title 'X1' with lines, \
-		@TEL using 1:($26) title 'X2' with lines
-}
-
-pause mouse close
+page 10 "Load Torque"
+label 0 "Time (Sec)"
+label 1 "Torque (H/m)"
+figure 0 0 14 0 1 "M"
 
