@@ -166,9 +166,9 @@ sim_Script(FILE *fdTel)
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. + .0);
+	pm.const_R = m.R * (1. + .1);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. - .0);
+	pm.const_Lq = m.Lq * (1. + .3);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -202,7 +202,7 @@ sim_Script(FILE *fdTel)
 	pm.p_set_point_w = 3000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);
 
-	pm.p_set_point_w = 4000.f * (2.f * M_PI / 60.f * m.Zp);
+	pm.p_set_point_w = 6000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);
 }
 

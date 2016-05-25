@@ -96,7 +96,7 @@ void pmc_default(pmc_t *pm)
 	pm->hf_swing_D = 1.f;
 	pm->hf_gain_K[0] = 1E-2f;
 	pm->hf_gain_K[1] = 2E+1f;
-	pm->hf_gain_K[2] = 1E-3f;
+	pm->hf_gain_K[2] = 1E-2f;
 
         pm->bemf_gain_K = 1E-4f;
 	pm->bemf_N = 9;
@@ -112,10 +112,10 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 20.f;
+	pm->i_high_maximal = 25.f;
 	pm->i_low_maximal = 5.f;
-	pm->i_power_consumption_maximal = 500.f;
-	pm->i_power_regeneration_maximal = - 100.f;
+	pm->i_power_consumption_maximal = 1050.f;
+	pm->i_power_regeneration_maximal = - 210.f;
 	pm->i_slew_rate_D = 4E+3f;
 	pm->i_slew_rate_Q = 4E+3f;
 	pm->i_gain_P_D = 2E-1f;
@@ -196,8 +196,16 @@ hf_update(pmc_t *pm, float eD, float eQ)
 	if (pm->m_bitmask & PMC_BIT_FLUX_POLARITY_DETECTION) {
 
 		C2 = pm->hf_CS[0] * pm->hf_CS[0] - pm->hf_CS[1] * pm->hf_CS[1];
-		pm->hf_flux_polarity += (C2 * eD - pm->hf_flux_polarity)
-			* pm->hf_gain_K[2];
+		pm->hf_flux_polarity += eD * C2 * pm->hf_gain_K[2];
+
+		if (pm->hf_flux_polarity > 1.f) {
+
+			X[2] = - X[2];
+			X[3] = - X[3];
+			pm->hf_flux_polarity = 0.f;
+		}
+		else if (pm->hf_flux_polarity < - 1.f)
+			pm->hf_flux_polarity = - 1.f;
 	}
 }
 

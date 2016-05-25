@@ -54,7 +54,7 @@ $(BUILD)/%.o: %.s
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
 	@ $(MK) $(dir $@)
-	@ $(CC) -c $(CFLAGS) -I $(BUILD) -MMD -o $@ $<
+	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)

@@ -128,9 +128,8 @@ evTEL_2()
 {
 	if (tel.iEN) {
 
-		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pSZ = 2;
+		tel.pIN[0] = (short int) 0;
+		tel.pSZ = 1;
 
 		telCapture();
 	}
