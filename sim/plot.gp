@@ -61,8 +61,3 @@ label 0 "Time (Sec)"
 label 1 "Drift (Volt)"
 figure 0 0 21 0 1 "Q"
 
-page 10 "Load Torque"
-label 0 "Time (Sec)"
-label 1 "Torque (H/m)"
-figure 0 0 14 0 1 "M"
-

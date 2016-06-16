@@ -131,10 +131,6 @@ boardStart()
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
 
-	/* Enable CCM RAM clock.
-	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_CCMDATARAMEN;
-
 	/* Enable GPIO clock.
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
@@ -165,11 +161,6 @@ void halStart()
 int halSysTick()
 {
 	return SysTick->VAL;
-}
-
-int halSleepTick()
-{
-	return DWT->CYCCNT;
 }
 
 void halReset()

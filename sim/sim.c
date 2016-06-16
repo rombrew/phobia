@@ -82,9 +82,9 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[13] = pm.lu_X[4] * 30. / M_PI / m.Zp;
 
-	/* Estimated torque.
+	/* .
 	 * */
-	pTel[14] = pm.lu_X[5];
+	pTel[14] = 0.f;
 
 	/* VSI voltage.
 	 * */

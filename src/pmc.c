@@ -96,7 +96,7 @@ void pmc_default(pmc_t *pm)
 	pm->hf_swing_D = 1.f;
 	pm->hf_gain_K[0] = 1E-2f;
 	pm->hf_gain_K[1] = 2E+1f;
-	pm->hf_gain_K[2] = 1E-2f;
+	pm->hf_gain_K[2] = 5E-3f;
 
         pm->bemf_gain_K = 1E-4f;
 	pm->bemf_N = 9;

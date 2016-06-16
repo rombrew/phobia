@@ -122,6 +122,11 @@ irqDefault:
 
 irqReset:
 
+	ldr	r2, =(0x40023800)
+	ldr	r3, [r2, #48]
+	orr.w	r3, r3, #1048576
+	str	r3, [r2, #48]
+
 	ldr	r2, =(ldSdata)
 	ldr	r1, =(ldEtext)
 	ldr	r3, =(ldEdata)
