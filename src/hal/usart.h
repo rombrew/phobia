@@ -19,27 +19,12 @@
 #ifndef _H_USART_
 #define _H_USART_
 
-#define USART_RXBUF_SZ		80
-#define USART_TXBUF_SZ		80
-
-typedef struct {
-
-	int		baudRate;
-
-	char		RX[USART_RXBUF_SZ];
-	char		TX[USART_TXBUF_SZ];
-	int		rN, tN;
-}
-halUSART_t;
-
-extern halUSART_t		halUSART;
-
-void usartEnable();
+void usartEnable(int baudRate);
 void usartDisable();
 
-int usartRecv();
-int usartSend(int xC);
-void usartFlush();
+int usart_getc();
+void usart_putc(int c);
+void usart_debug_putc(int c);
 
 #endif /* _H_USART_ */
 

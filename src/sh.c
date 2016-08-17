@@ -16,23 +16,18 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
+#include "freertos/FreeRTOS.h"
+
 #include "sh.h"
-#include "task.h"
 #include "lib.h"
 
-#define SH_RXBUF_SZ			40
-#define SH_TXBUF_SZ			80
 #define SH_CLINE_SZ			80
 #define SH_HISTORY_SZ			440
 
-#define K_ETX				0x03
-#define K_EOT				0x04
-#define K_SO				0x0E
-#define K_DLE				0x10
-#define K_ESC				0x1B
-
-#define FIFO_INC(I, SZ)			(((I) < ((SZ) - 1)) ? (I) + 1 : 0)
-#define FIFO_DEC(I, SZ)			(((I) > 0) ? (I) - 1 : (SZ) - 1)
+#define FIFO_INC(I, SZ)                 (((I) < ((SZ) - 1)) ? (I) + 1 : 0)
+#define FIFO_DEC(I, SZ)                 (((I) > 0) ? (I) - 1 : (SZ) - 1)
 
 static const char
 SH_PROMPT[] = "# ",
@@ -44,16 +39,6 @@ enum {
 };
 
 typedef struct {
-
-	/* Incoming FIFO.
-	 * */
-	char		rBuf[SH_RXBUF_SZ];
-	int		rR, rT;
-
-	/* Outgoing FIFO.
-	 * */
-	char		tBuf[SH_TXBUF_SZ];
-	int		tR, tT;
 
 	/* Base SH data.
 	 * */
@@ -72,68 +57,8 @@ typedef struct {
 }
 shTASK_t;
 
-static shTASK_t		sh;
+static shTASK_t		*pSH;
 extern const shCMD_t	cmList[];
-
-int shRecv()
-{
-	int		xC;
-
-	if (sh.rR != sh.rT) {
-
-		xC = sh.rBuf[sh.rR];
-		sh.rR = FIFO_INC(sh.rR, SH_RXBUF_SZ);
-	}
-	else
-		xC = -1;
-
-	return xC;
-}
-
-void shSend(int xC)
-{
-	int		tT;
-
-	tT = FIFO_INC(sh.tT, SH_TXBUF_SZ);
-
-	while (sh.tR == tT)
-		taskYIELD();
-
-	sh.tBuf[sh.tT] = (char) xC;
-	sh.tT = tT;
-}
-
-int shExRecv()
-{
-	int		xC;
-
-	if (sh.tR != sh.tT) {
-
-		xC = sh.tBuf[sh.tR];
-		sh.tR = FIFO_INC(sh.tR, SH_TXBUF_SZ);
-	}
-	else
-		xC = -1;
-
-	return xC;
-}
-
-int shExSend(int xC)
-{
-	int		rT;
-
-	rT = FIFO_INC(sh.rT, SH_RXBUF_SZ);
-
-	if (sh.rR != rT) {
-
-		sh.rBuf[sh.rT] = (char) xC;
-		sh.rT = rT;
-	}
-	else
-		xC = -1;
-
-	return xC;
-}
 
 static inline char
 isDigit(char xC)
@@ -172,11 +97,11 @@ shExactMatch()
 		if (iD == NULL)
 			break;
 
-		if (!strcmp(sh.cLine, iD)) {
+		if (!strcmp(pSH->cLine, iD)) {
 
 			/* Call the function.
 			 * */
-			pCMD->pF(sh.pARG);
+			pCMD->pF(pSH->pARG);
 
 			break;
 		}
@@ -193,8 +118,8 @@ shCyclicMatch(int xDIR)
 	const char		*iD;
 	int			N = 0;
 
-	pCMD = cmList + sh.cIT;
-	sh.cLine[sh.cEON] = 0;
+	pCMD = cmList + pSH->cIT;
+	pSH->cLine[pSH->cEON] = 0;
 
 	pCMD += (xDIR == DIR_UP) ? 1 : - 1;
 
@@ -222,11 +147,11 @@ shCyclicMatch(int xDIR)
 				break;
 		}
 
-		if (!strpcmp(sh.cLine, iD)) {
+		if (!strpcmp(pSH->cLine, iD)) {
 
 			/* Copy the command name.
 			 * */
-			strcpy(sh.cLine, iD);
+			strcpy(pSH->cLine, iD);
 
 			break;
 		}
@@ -238,7 +163,7 @@ shCyclicMatch(int xDIR)
 	}
 	while (1);
 
-	sh.cIT = pCMD - cmList;
+	pSH->cIT = pCMD - cmList;
 }
 
 static void
@@ -257,7 +182,7 @@ shCommonMatch()
 		if (iD == NULL)
 			break;
 
-		if (!strpcmp(sh.cLine, iD)) {
+		if (!strpcmp(pSH->cLine, iD)) {
 
 			if (iLast != NULL)
 				N = strspl(iLast, iD, N);
@@ -273,11 +198,11 @@ shCommonMatch()
 
 	if (iLast != NULL) {
 
-		strncpy(sh.cLine, iLast, N);
-		sh.cEON = N;
+		strncpy(pSH->cLine, iLast, N);
+		pSH->cEON = N;
 	}
 	else
-		sh.cEON = 0;
+		pSH->cEON = 0;
 }
 
 static int
@@ -285,7 +210,7 @@ shHistoryMove(int xIT, int xDIR)
 {
 	if (xDIR == DIR_UP) {
 
-		if (xIT != sh.hHEAD) {
+		if (xIT != pSH->hHEAD) {
 
 			/* Get previous line.
 			 * */
@@ -294,7 +219,7 @@ shHistoryMove(int xIT, int xDIR)
 			do {
 				xIT = FIFO_DEC(xIT, SH_HISTORY_SZ);
 
-				if (sh.cHist[xIT] == 0)
+				if (pSH->cHist[xIT] == 0)
 					break;
 			}
 			while (1);
@@ -303,14 +228,14 @@ shHistoryMove(int xIT, int xDIR)
 		}
 	}
 	else {
-		if (xIT != sh.hTAIL) {
+		if (xIT != pSH->hTAIL) {
 
 			/* Get next line.
 			 * */
 			do {
 				xIT = FIFO_INC(xIT, SH_HISTORY_SZ);
 
-				if (sh.cHist[xIT] == 0)
+				if (pSH->cHist[xIT] == 0)
 					break;
 			}
 			while (1);
@@ -328,12 +253,12 @@ shHistoryPut(const char *xS)
 	int			xIT, R;
 	const char		*xP = xS;
 
-	if (sh.hHEAD != sh.hTAIL) {
+	if (pSH->hHEAD != pSH->hTAIL) {
 
-		xIT = shHistoryMove(sh.hTAIL, DIR_UP);
+		xIT = shHistoryMove(pSH->hTAIL, DIR_UP);
 
 		do {
-			R = sh.cHist[xIT] - *xP;
+			R = pSH->cHist[xIT] - *xP;
 
 			if (R || !*xP)
 				break;
@@ -351,22 +276,22 @@ shHistoryPut(const char *xS)
 	}
 
 	do {
-		sh.cHist[sh.hTAIL] = *xS;
-		sh.hTAIL = FIFO_INC(sh.hTAIL, SH_HISTORY_SZ);
+		pSH->cHist[pSH->hTAIL] = *xS;
+		pSH->hTAIL = FIFO_INC(pSH->hTAIL, SH_HISTORY_SZ);
 
-		if (sh.hTAIL == sh.hHEAD) {
+		if (pSH->hTAIL == pSH->hHEAD) {
 
 			/* Forget old lines.
 			 * */
 			do {
-				sh.hHEAD = FIFO_INC(sh.hHEAD, SH_HISTORY_SZ);
+				pSH->hHEAD = FIFO_INC(pSH->hHEAD, SH_HISTORY_SZ);
 
-				if (sh.cHist[sh.hHEAD] == 0)
+				if (pSH->cHist[pSH->hHEAD] == 0)
 					break;
 			}
 			while (1);
 
-			sh.hHEAD = FIFO_INC(sh.hHEAD, SH_HISTORY_SZ);
+			pSH->hHEAD = FIFO_INC(pSH->hHEAD, SH_HISTORY_SZ);
 		}
 
 		if (*xS == 0)
@@ -382,7 +307,7 @@ shEval()
 {
 	char			*pC;
 
-	pC = sh.cLine;
+	pC = pSH->cLine;
 
 	if (*pC != 0) {
 
@@ -394,7 +319,7 @@ shEval()
 		 * */
 		while (*pC && *pC != ' ') ++pC;
 		while (*pC && *pC == ' ') *pC++ = 0;
-		sh.pARG = pC;
+		pSH->pARG = pC;
 
 		/* Search for specific command to execute.
 		 * */
@@ -407,9 +332,9 @@ shComplete(int xDIR)
 {
 	char			*pC;
 
-	if (sh.cMD == 0) {
+	if (pSH->cMD == 0) {
 
-		pC = sh.cLine;
+		pC = pSH->cLine;
 
 		while (*pC) {
 
@@ -424,17 +349,17 @@ shComplete(int xDIR)
 		/* Complete to the common substring.
 		 * */
 		shCommonMatch();
-		puts(sh.cLine + sh.nEOL);
+		puts(pSH->cLine + pSH->nEOL);
 
-		if (sh.nEOL <= sh.cEON) {
+		if (pSH->nEOL <= pSH->cEON) {
 
 			/* Enter completion mode.
 			 * */
-			sh.cMD = 1;
-			sh.cIT = (xDIR == DIR_UP) ? - 1 : 0;
+			pSH->cMD = 1;
+			pSH->cIT = (xDIR == DIR_UP) ? - 1 : 0;
 
-			if (sh.nEOL != sh.cEON)
-				sh.nEOL = sh.cEON;
+			if (pSH->nEOL != pSH->cEON)
+				pSH->nEOL = pSH->cEON;
 			else
 				shComplete(xDIR);
 		}
@@ -446,12 +371,12 @@ shComplete(int xDIR)
 
 		/* Update the command line.
 		 * */
-		shErase(sh.nEOL - sh.cEON);
-		sh.nEOL = strlen(sh.cLine);
-		puts(sh.cLine + sh.cEON);
+		shErase(pSH->nEOL - pSH->cEON);
+		pSH->nEOL = strlen(pSH->cLine);
+		puts(pSH->cLine + pSH->cEON);
 	}
 
-	sh.hMD = 0;
+	pSH->hMD = 0;
 }
 
 static void
@@ -460,33 +385,33 @@ shHistory(int xDIR)
 	int			xIT;
 	char			*xD;
 
-	if (sh.hMD == 0) {
+	if (pSH->hMD == 0) {
 
 		/* Enter history mode.
 		 * */
-		sh.hIT = sh.hTAIL;
-		sh.hMD = 1;
-		xIT = sh.hTAIL;
+		pSH->hIT = pSH->hTAIL;
+		pSH->hMD = 1;
+		xIT = pSH->hTAIL;
 
 		/* Save current line.
 		 * */
-		shHistoryPut(sh.cLine);
-		sh.hTAIL = xIT;
+		shHistoryPut(pSH->cLine);
+		pSH->hTAIL = xIT;
 	}
 
 	if (xDIR == DIR_UP)
 
-		xIT = shHistoryMove(sh.hIT, DIR_UP);
+		xIT = shHistoryMove(pSH->hIT, DIR_UP);
 	else
-		xIT = shHistoryMove(sh.hIT, DIR_DOWN);
+		xIT = shHistoryMove(pSH->hIT, DIR_DOWN);
 
-	if (xIT != sh.hIT) {
+	if (xIT != pSH->hIT) {
 
-		sh.hIT = xIT;
-		xD = sh.cLine;
+		pSH->hIT = xIT;
+		xD = pSH->cLine;
 
 		do {
-			if (!(*xD = sh.cHist[xIT]))
+			if (!(*xD = pSH->cHist[xIT]))
 				break;
 
 			xD++;
@@ -496,67 +421,71 @@ shHistory(int xDIR)
 
 		/* Update the command line.
 		 * */
-		shErase(sh.nEOL);
-		sh.nEOL = strlen(sh.cLine);
-		puts(sh.cLine);
+		shErase(pSH->nEOL);
+		pSH->nEOL = strlen(pSH->cLine);
+		puts(pSH->cLine);
 	}
 
-	sh.cMD = 0;
+	pSH->cMD = 0;
 }
 
 static void
 shLinePutC(char xC)
 {
-	if (sh.nEOL < (SH_CLINE_SZ - 1)) {
+	if (pSH->nEOL < (SH_CLINE_SZ - 1)) {
 
-		sh.cLine[sh.nEOL++] = xC;
-		sh.cLine[sh.nEOL] = 0;
+		pSH->cLine[pSH->nEOL++] = xC;
+		pSH->cLine[pSH->nEOL] = 0;
 
 		/* Echo.
 		 * */
-		putc(xC);
+		iodef->putc(xC);
 
-		sh.cMD = 0;
-		sh.hMD = 0;
+		pSH->cMD = 0;
+		pSH->hMD = 0;
 	}
 }
 
 static void
 shLineBS()
 {
-	if (sh.nEOL > 0) {
+	if (pSH->nEOL > 0) {
 
-		sh.cLine[--sh.nEOL] = 0;
+		pSH->cLine[--pSH->nEOL] = 0;
 
 		/* Echo.
 		 * */
 		puts(SH_BACKSPACE);
 
-		sh.cMD = 0;
-		sh.hMD = 0;
+		pSH->cMD = 0;
+		pSH->hMD = 0;
 	}
 }
 
 static void
 shLineNULL()
 {
-	sh.cLine[sh.nEOL = 0] = 0;
+	pSH->cLine[pSH->nEOL = 0] = 0;
 
 	/* Prompt.
 	 * */
 	puts(SH_PROMPT);
 
-	sh.cMD = 0;
-	sh.hMD = 0;
+	pSH->cMD = 0;
+	pSH->hMD = 0;
 }
 
-void shTask()
+void taskSH(void *pvParameters)
 {
 	int		xC;
 
-	while ((xC = shRecv()) >= 0) {
+	pSH = pvPortMalloc(sizeof(shTASK_t));
+	memzero(pSH, sizeof(shTASK_t));
 
-		if (sh.xESC == 0) {
+	do {
+		xC = iodef->getc();
+
+		if (pSH->xESC == 0) {
 
 			if (isChar(xC) || isDigit(xC)
 					|| (xC == ' ')
@@ -600,13 +529,13 @@ void shTask()
 			}
 			else if (xC == K_ESC) {
 
-				sh.xESC = 1;
+				pSH->xESC = 1;
 			}
 		}
 		else {
-			if (sh.xESC == 1) {
+			if (pSH->xESC == 1) {
 
-				sh.xESC = (xC == '[') ? 2 : 0;
+				pSH->xESC = (xC == '[') ? 2 : 0;
 			}
 			else {
 				if (xC == 'A') {
@@ -622,9 +551,19 @@ void shTask()
 					shComplete(DIR_DOWN);
 				}
 
-				sh.xESC = 0;
+				pSH->xESC = 0;
 			}
 		}
 	}
+	while (1);
 }
+
+#include "sh.gen_h"
+
+const shCMD_t		cmList[] = {
+
+#include "sh.gen_list"
+
+	{NULL, NULL}
+};
 

@@ -16,15 +16,16 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
 #include "hal/hal.h"
 #include "lib.h"
 #include "m.h"
+#include "main.h"
 #include "pmc.h"
 #include "sh.h"
-#include "task.h"
-#include "tel.h"
 
-#define	TELSZ			40000
+#define	TELSZ			4000
 
 typedef struct {
 
@@ -105,7 +106,7 @@ evTEL_0()
 		telCapture();
 	}
 	else
-		td.pEX = NULL;
+		ma.pEX = NULL;
 }
 
 static void
@@ -120,7 +121,7 @@ evTEL_1()
 		telCapture();
 	}
 	else
-		td.pEX = NULL;
+		ma.pEX = NULL;
 }
 
 static void
@@ -134,7 +135,7 @@ evTEL_2()
 		telCapture();
 	}
 	else
-		td.pEX = NULL;
+		ma.pEX = NULL;
 }
 
 static void (* const evTEL_list[]) () = {
@@ -156,7 +157,7 @@ SH_DEF(tel_capture)
 	void 		(* evTEL) ();
 	int		nTEL = 0;
 
-	if (td.pEX == NULL) {
+	if (ma.pEX == NULL) {
 
 		tel.iEN = 1;
 		tel.sCNT = 0;
@@ -168,7 +169,7 @@ SH_DEF(tel_capture)
 
 		halFence();
 
-		td.pEX = evTEL;
+		ma.pEX = evTEL;
 	}
 }
 
@@ -186,7 +187,7 @@ SH_DEF(tel_live)
 	int		nTEL = 0;
 	int		xC, decmin;
 
-	if (td.pEX == NULL) {
+	if (ma.pEX == NULL) {
 
 		decmin = (int) (pm.freq_hz / 25.f + .5f);
 		tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
@@ -201,11 +202,10 @@ SH_DEF(tel_live)
 
 		halFence();
 
-		td.pEX = evTEL;
+		ma.pEX = evTEL;
 
 		do {
-			taskYIELD();
-			xC = shRecv();
+			xC = iodef->getc();
 
 			if (xC == 3 || xC == 4)
 				break;

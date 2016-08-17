@@ -17,6 +17,7 @@
 */
 
 #include "cmsis/stm32f4xx.h"
+#include "adc.h"
 #include "hal.h"
 
 halADC_t			halADC;
@@ -88,7 +89,7 @@ void adcEnable()
 
 	/* Enable IRQ.
 	 * */
-	NVIC_SetPriority(ADC_IRQn, 5);
+	NVIC_SetPriority(ADC_IRQn, 3);
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 

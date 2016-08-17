@@ -19,6 +19,12 @@
 #ifndef _H_SH_
 #define _H_SH_
 
+#define K_ETX			0x03
+#define K_EOT			0x04
+#define K_SO			0x0E
+#define K_DLE			0x10
+#define K_ESC			0x1B
+
 #define SH_DEF(name)		void name(const char *s)
 #define SH_ENTRY(name)		{ #name, &name}
 
@@ -29,13 +35,7 @@ typedef struct {
 }
 shCMD_t;
 
-int shRecv();
-void shSend(int xC);
-
-int shExRecv();
-int shExSend(int xC);
-
-void shTask();
+void taskSH(void *pvParameters);
 
 #endif /* _H_SH_ */
 

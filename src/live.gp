@@ -1,5 +1,5 @@
 #!/home/amaora/util/gp
-# vi: filetype=conf
+# vi: ft=conf
 
 font 14 "/usr/share/fonts/corefonts/cour.ttf"
 batch 1

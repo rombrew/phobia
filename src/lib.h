@@ -19,10 +19,20 @@
 #ifndef _H_LIB_
 #define _H_LIB_
 
-#define NULL			((void *) 0L)
 #define EOL			"\r\n"
 
-void *memz(void *p, int sz);
+typedef struct {
+
+	int		(* getc) ();
+	void		(* putc) (int c);
+}
+io_ops_t;
+
+extern io_ops_t		*iodef;
+
+void *memzero(void *d, unsigned long sz);
+void *memset(void *d, int c, unsigned long sz);
+void *memcpy(void *d, const void *s, unsigned long sz);
 
 int strcmp(const char *s, const char *p);
 int strpcmp(const char *s, const char *p);
@@ -33,7 +43,9 @@ int strlen(const char *s);
 const char *strchr(const char *s, int c);
 const char *strtok(const char *s, const char *d);
 
-void putc(char c);
+void xputs(io_ops_t *_io, const char *s);
+void xprintf(io_ops_t *_io, const char *fmt, ...);
+
 void puts(const char *s);
 void printf(const char *fmt, ...);
 

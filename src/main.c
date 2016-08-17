@@ -16,121 +16,105 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+#include <stdarg.h>
+
 #include "hal/hal.h"
+#include "hal/adc.h"
+#include "hal/pwm.h"
+#include "hal/usart.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
+#include "main.h"
 #include "lib.h"
 #include "pmc.h"
 #include "sh.h"
-#include "task.h"
 
-taskDATA_t			td;
+char 				ucHeap[configTOTAL_HEAP_SIZE];
+
+main_t				ma;
 pmc_t __CCM__			pm;
 
-void halTick()
+extern void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
+
+void debugTRACE(const char *fmt, ...)
 {
-	td.uDS++;
-	td.uTIM++;
+	va_list		ap;
+	io_ops_t	ops = {
 
-	if (td.uDS >= 100) {
+		.getc = NULL,
+		.putc = &usart_debug_putc
+	};
 
-		td.uDS = 0;
-		td.uSEC++;
+        va_start(ap, fmt);
+	xvprintf(&ops, fmt, ap);
+        va_end(ap);
+}
 
-		td.usage_T = td.usage_S;
-		td.usage_S = 0;
+void vAssertCalled(const char *file, int line)
+{
+	debugTRACE("freertos: assert %s:%i" EOL, file, line);
+	halHalt();
+}
+
+void vApplicationMallocFailedHook()
+{
+	debugTRACE("freertos hook: heap allocation failed" EOL);
+	halHalt();
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
+{
+	debugTRACE("freertos hook: stack overflow in \"%s\" task" EOL, pcTaskName);
+	halHalt();
+}
+
+void vApplicationIdleHook()
+{
+	if (ma.load_count_flag) {
+
+		ma.load_count_value += 1;
+
+		halFence();
+	}
+	else {
+
+		halSleep();
 	}
 }
 
-static void
-taskRecvSend(int (* pRecv) (), int (* pSend) (int), int *temp)
+void taskINIT(void *pvParameters)
 {
-	int		xC;
+	halLED(LED_RED);
 
-	do {
-		if (*temp >= 0) {
+	ma.load_count_flag = 1;
+	ma.load_count_value = 0;
 
-			if (pSend(*temp) < 0)
-				break;
-			else
-				*temp = -1;
-		}
+	vTaskDelay(100);
 
-		do {
-			xC = pRecv();
+	ma.load_count_flag = 0;
+	ma.load_count_limit = ma.load_count_value * 10;
 
-			if (xC < 0)
-				break;
-			else if (pSend(xC) < 0) {
-
-				*temp = xC;
-				break;
-			}
-		}
-		while (1);
-	}
-	while (0);
-}
-
-void taskIOMUX()
-{
-	/* USART <---> SH.
-	 * */
-	taskRecvSend(&usartRecv, &shExSend, td.mux_TEMP + 0);
-	taskRecvSend(&shExRecv, &usartSend, td.mux_TEMP + 1);
-	usartFlush();
-
-	/* TODO: CAN.
-	 * */
-}
-
-void taskYIELD()
-{
-	taskIOMUX();
-	halSleep();
-}
-
-void canIRQ()
-{
-}
-
-void adcIRQ()
-{
-	int		T, dT;
-
-	T = halSysTick();
-
-	pmc_feedback(&pm, halADC.xA, halADC.xB);
-	pmc_voltage(&pm, halADC.xSUPPLY);
-
-	dT = T - halSysTick();
-	dT += (dT < 0) ? HZ_AHB / 100 : 0;
-	td.usage_S += dT;
-
-	if (td.pEX != NULL)
-		td.pEX();
-}
-
-void halMain()
-{
-	td.mux_TEMP[0] = -1;
-	td.mux_TEMP[1] = -1;
+	ma.io_usart.getc = &usart_getc;
+	ma.io_usart.putc = &usart_putc;
+	iodef = &ma.io_usart;
 
 	/* Config.
 	 * */
-	halUSART.baudRate = 57600;
+	usartEnable(57600);
+
 	halPWM.freq_hz = 60000;
 	halPWM.dead_time_ns = 70;
 
-	td.av_default_time = .2f;
-	td.ap_J_measure_T = .1f;
-
-	halLED(LED_RED);
-
-	usartEnable();
+	ma.av_default_time = .2f;
+	ma.ap_J_measure_T = .1f;
 
 	pwmEnable();
 	adcEnable();
 
-	memz(&pm, sizeof(pm));
 	pm.freq_hz = (float) halPWM.freq_hz;
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = halPWM.resolution;
@@ -139,64 +123,78 @@ void halMain()
 
 	pmc_default(&pm);
 
-	do {
-		taskIOMUX();
-		shTask();
-		halSleep();
-	}
-	while (1);
+	xTaskCreate(taskSH, "tSH", 2 * 1024, NULL, 1, NULL);
+
+	vTaskDelete(NULL);
 }
 
-void evAV_8()
+void adcIRQ()
+{
+	pmc_feedback(&pm, halADC.xA, halADC.xB);
+	pmc_voltage(&pm, halADC.xSUPPLY);
+
+	if (ma.pEX != NULL)
+		ma.pEX();
+}
+
+void halMain()
+{
+	xTaskCreate(taskINIT, "tINIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
+	vTaskStartScheduler();
+}
+
+void ma_av_EH_8()
 {
 	int			j;
 
-	if (td.av_sample_N <= td.av_sample_MAX) {
+	if (ma.av_sample_N <= ma.av_sample_MAX) {
 
-		for (j = 0; j < td.av_variable_N; ++j)
-			td.av_VAL[j] += *td.av_IN[j];
+		for (j = 0; j < ma.av_variable_N; ++j)
+			ma.av_VAL[j] += *ma.av_IN[j];
 
-		td.av_sample_N++;
+		ma.av_sample_N++;
 	}
 	else
-		td.pEX = NULL;
+		ma.pEX = NULL;
 }
 
-float task_av_float_1(float *param, float time)
+float ma_av_float_1(float *param, float time)
 {
-	td.av_IN[0] = param;
-	td.av_VAL[0] = 0.f;
-	td.av_variable_N = 1;
-	td.av_sample_N = 0;
-	td.av_sample_MAX = pm.freq_hz * time;
+	ma.av_IN[0] = param;
+	ma.av_VAL[0] = 0.f;
+	ma.av_variable_N = 1;
+	ma.av_sample_N = 0;
+	ma.av_sample_MAX = pm.freq_hz * time;
 
 	halFence();
 
-	td.pEX = &evAV_8;
+	ma.pEX = &ma_av_EH_8;
 
-	while (td.pEX != NULL)
-		taskYIELD();
+	while (ma.pEX != NULL)
+		vTaskDelay(1);
 
-	td.av_VAL[0] /= (float) td.av_sample_N;
+	ma.av_VAL[0] /= (float) ma.av_sample_N;
 
-	return td.av_VAL[0];
+	return ma.av_VAL[0];
 }
 
-float task_av_float_arg_1(float *param, const char *s)
+float ma_av_float_arg_1(float *param, const char *s)
 {
-	float			time = td.av_default_time;
+	float			time = ma.av_default_time;
 
 	stof(&time, s);
 
-	return task_av_float_1(param, time);
+	return ma_av_float_1(param, time);
 }
 
 SH_DEF(hal_uptime)
 {
+	TickType_t	xTick;
 	int		Day, Hour, Min, Sec;
 
-	Sec = td.uSEC;
+	xTick = xTaskGetTickCount();
 
+	Sec = xTick / configTICK_RATE_HZ;
 	Day = Sec / 86400;
 	Sec -= Day * 86400;
 	Hour = Sec / 3600;
@@ -210,35 +208,25 @@ SH_DEF(hal_uptime)
 
 SH_DEF(hal_cpu_usage)
 {
-	float		Rpc;
+	int		pc;
 
-	Rpc = 100.f * (float) td.usage_T / (float) HZ_AHB;
+	ma.load_count_flag = 1;
+	ma.load_count_value = 0;
 
-	printf("%1f %% (%i)" EOL, &Rpc, td.usage_T / halPWM.freq_hz);
-}
+	vTaskDelay(1000);
 
-SH_DEF(hal_av_default_time)
-{
-	stof(&td.av_default_time, s);
-	printf("%3f (Sec)" EOL, &td.av_default_time);
+	ma.load_count_flag = 0;
+	pc = (ma.load_count_value * 100) / ma.load_count_limit;
+
+	printf("%i %%" EOL, pc);
 }
 
 SH_DEF(hal_reboot)
 {
-	int		End, Del = 3;
-
 	if (pm.lu_region != PMC_LU_DISABLED)
 		return ;
 
-	printf("Reboot in %i second" EOL, Del);
-
-	End = td.uSEC + Del;
-
-	do {
-		taskYIELD();
-	}
-	while (td.uSEC < End);
-
+	vTaskDelay(100);
 	halReset();
 }
 
@@ -247,13 +235,12 @@ SH_DEF(hal_keycodes)
 	int		xC;
 
 	do {
-		while ((xC = shRecv()) < 0)
-			taskYIELD();
+		xC = iodef->getc();
 
-		if (xC == 3 || xC == 4)
+		if (xC == K_ETX || xC == K_EOT)
 			break;
 
-		printf("-- %i" EOL, xC);
+		xprintf(iodef, "-- %i" EOL, xC);
 	}
 	while (1);
 }
