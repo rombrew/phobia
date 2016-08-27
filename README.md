@@ -61,7 +61,7 @@ revision of hardware is in development.
 There are a few videos show the operation of the prototypes.
 
 [![PMC](https://i.ytimg.com/vi/7XdBx24nlt0/default.jpg)](https://www.youtube.com/watch?v=7XdBx24nlt0)
-[![PMC](https://i.ytimg.com/vi/r_TeMXxeZ9c/default.jpg)](https://www.youtube.com/watch?v=r_TeMXxeZ9c)
+[![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
 [![PMC](https://i.ytimg.com/vi/1u1OoLLYefY/default.jpg)](https://www.youtube.com/watch?v=1u1OoLLYefY)
 [![PMC](https://i.ytimg.com/vi/zmCW5BRNJgU/default.jpg)](https://www.youtube.com/watch?v=zmCW5BRNJgU)
 
