@@ -16,28 +16,34 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
 #include "hal/hal.h"
 #include "lib.h"
 #include "m.h"
+#include "main.h"
 #include "pmc.h"
 #include "sh.h"
-#include "task.h"
-
-SH_DEF(pm_lu_threshold_auto);
-SH_DEF(pm_const_E_wb);
-SH_DEF(pm_i_slew_rate_auto);
-SH_DEF(pm_i_gain_auto);
-SH_DEF(pm_p_slew_rate_auto);
 
 #define AP_PRINT_ERROR()	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
 #define AP_WAIT_FOR(expr)	\
-	{ do { if (pm.m_errno != PMC_OK || (expr)) break; taskYIELD(); } while (1);	\
+	{ do { if (pm.m_errno != PMC_OK || (expr)) break; vTaskDelay(1); } while (1);	\
 	if (pm.m_errno != PMC_OK) { AP_PRINT_ERROR(); break; } }
 
 #define AP_WAIT_FOR_IDLE()	AP_WAIT_FOR(pm.m_state == PMC_STATE_IDLE)
 #define AP_EXIT_IF_ERROR()	{ if (pm.m_errno != PMC_OK) break; }
 #define AP_PRINT_AND_EXIT_IF_ERROR()	\
 	{ if (pm.m_errno != PMC_OK) { AP_PRINT_ERROR(); break; } }
+
+void pm_i_slew_rate_auto(const char *s);
+void pm_i_gain_auto(const char *s);
+void pm_const_E_wb(const char *s);
+void pm_lu_threshold_auto(const char *s);
+void pm_p_slew_rate_auto(const char *s);
 
 SH_DEF(ap_identify_base)
 {
@@ -194,35 +200,35 @@ SH_DEF(ap_identify_const_E)
 	if (pm.lu_region == PMC_LU_DISABLED)
 		return ;
 
-	if (td.pEX != NULL)
+	if (ma.pEX != NULL)
 		return ;
 
-	td.av_IN[0] = &pm.lu_X[0];
-	td.av_IN[1] = &pm.lu_X[1];
-	td.av_IN[2] = &pm.lu_X[4];
-	td.av_IN[3] = &pm.drift_Q;
+	ma.av_IN[0] = &pm.lu_X[0];
+	ma.av_IN[1] = &pm.lu_X[1];
+	ma.av_IN[2] = &pm.lu_X[4];
+	ma.av_IN[3] = &pm.drift_Q;
 
-	td.av_VAL[0] = 0.f;
-	td.av_VAL[1] = 0.f;
-	td.av_VAL[2] = 0.f;
-	td.av_VAL[3] = 0.f;
+	ma.av_VAL[0] = 0.f;
+	ma.av_VAL[1] = 0.f;
+	ma.av_VAL[2] = 0.f;
+	ma.av_VAL[3] = 0.f;
 
-	td.av_variable_N = 4;
-	td.av_sample_N = 0;
-	td.av_sample_MAX = pm.freq_hz * pm.T_measure;
+	ma.av_variable_N = 4;
+	ma.av_sample_N = 0;
+	ma.av_sample_MAX = pm.freq_hz * pm.T_measure;
 
 	halFence();
-	td.pEX = &evAV_8;
+	ma.pEX = &ma_av_EH_8;
 
 	do {
-		AP_WAIT_FOR(td.pEX == NULL);
+		AP_WAIT_FOR(ma.pEX == NULL);
 
-		td.av_VAL[0] /= (float) td.av_sample_N;
-		td.av_VAL[1] /= (float) td.av_sample_N;
-		td.av_VAL[2] /= (float) td.av_sample_N;
-		td.av_VAL[3] /= (float) td.av_sample_N;
+		ma.av_VAL[0] /= (float) ma.av_sample_N;
+		ma.av_VAL[1] /= (float) ma.av_sample_N;
+		ma.av_VAL[2] /= (float) ma.av_sample_N;
+		ma.av_VAL[3] /= (float) ma.av_sample_N;
 
-		pm.const_E -= td.av_VAL[3] / td.av_VAL[2];
+		pm.const_E -= ma.av_VAL[3] / ma.av_VAL[2];
 		pm_const_E_wb(EOL);
 	}
 	while (0);
@@ -232,20 +238,21 @@ static void
 ap_wait_for_settle(float wSP, int xT)
 {
 	float			SR;
-	int			uEND;
+	int			uLeft;
 
 	pm.p_set_point_w = wSP;
 
-	td.uTIM = 0;
 	SR = (pm.m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
 		? pm.p_forced_slew_rate_w : pm.p_slew_rate_w;
-	uEND = (int) (100.f * pm.p_set_point_w / SR) + xT;
+	uLeft = (int) (1000.f * pm.p_set_point_w / SR) + xT;
 
 	do {
-		taskYIELD();
+		vTaskDelay(1);
 		AP_EXIT_IF_ERROR();
+
+		uLeft--;
 	}
-	while (td.uTIM < uEND);
+	while (uLeft > 0);
 }
 
 static void
@@ -255,38 +262,38 @@ ev_fsm_J()
 
 	if (pm.m_errno != PMC_OK) {
 
-		td.pEX = NULL;
+		ma.pEX = NULL;
 		return ;
 	}
 
-	switch (td.ap_J_fsm_state) {
+	switch (ma.ap_J_fsm_state) {
 
 		case 0:
-			td.ap_J_fsm_state = 1;
-			td.ap_J_vars[0] = 0.f;
-			td.ap_J_vars[1] = pm.lu_X[4];
+			ma.ap_J_fsm_state = 1;
+			ma.ap_J_vars[0] = 0.f;
+			ma.ap_J_vars[1] = pm.lu_X[4];
 
 			pm.t_value = 0;
-			pm.t_end = pm.freq_hz * td.ap_J_measure_T;
+			pm.t_end = pm.freq_hz * ma.ap_J_measure_T;
 			break;
 
 		case 1:
-			td.ap_J_vars[0] += pm.lu_X[1];
+			ma.ap_J_vars[0] += pm.lu_X[1];
 			pm.t_value++;
 
 			if (pm.t_value >= pm.t_end) {
 
-				td.ap_J_fsm_state = 2;
-				td.ap_J_vars[2] = pm.lu_X[4];
+				ma.ap_J_fsm_state = 2;
+				ma.ap_J_vars[2] = pm.lu_X[4];
 			}
 			break;
 
 		case 2:
-			temp = pm.const_E * td.ap_J_vars[0];
+			temp = pm.const_E * ma.ap_J_vars[0];
 			temp *= 1.5f * pm.const_Zp * pm.const_Zp;
-			temp *= pm.dT / (td.ap_J_vars[2] - td.ap_J_vars[1]);
-			td.ap_J_vars[3] = temp;
-			td.pEX = NULL;
+			temp *= pm.dT / (ma.ap_J_vars[2] - ma.ap_J_vars[1]);
+			ma.ap_J_vars[3] = temp;
+			ma.pEX = NULL;
 			break;
 
 		default:
@@ -296,8 +303,8 @@ ev_fsm_J()
 
 SH_DEF(ap_J_measure_T)
 {
-	stof(&td.ap_J_measure_T, s);
-	printf("%3e (Sec)" EOL, &td.ap_J_measure_T);
+	stof(&ma.ap_J_measure_T, s);
+	printf("%3e (Sec)" EOL, &ma.ap_J_measure_T);
 }
 
 SH_DEF(ap_identify_const_J)
@@ -310,7 +317,7 @@ SH_DEF(ap_identify_const_J)
 	if (!(pm.m_bitmask & PMC_BIT_SERVO_CONTROL_LOOP))
 		return ;
 
-	if (td.pEX != NULL)
+	if (ma.pEX != NULL)
 		return ;
 
 	wSP1 = 2.f * pm.lu_threshold_high;
@@ -336,34 +343,34 @@ SH_DEF(ap_identify_const_J)
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		ap_wait_for_settle(wSP1, 100);
+		ap_wait_for_settle(wSP1, 1000);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		td.ap_J_fsm_state = 0;
+		ma.ap_J_fsm_state = 0;
 
 		halFence();
-		td.pEX = &ev_fsm_J;
+		ma.pEX = &ev_fsm_J;
 
 		ap_wait_for_settle(wSP2, 0);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		halFence();
-		AP_WAIT_FOR(td.pEX == NULL);
+		AP_WAIT_FOR(ma.pEX == NULL);
 
-		J = td.ap_J_vars[3];
+		J = ma.ap_J_vars[3];
 
-		td.ap_J_fsm_state = 0;
+		ma.ap_J_fsm_state = 0;
 
 		halFence();
-		td.pEX = &ev_fsm_J;
+		ma.pEX = &ev_fsm_J;
 
 		ap_wait_for_settle(wSP1, 0);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		halFence();
-		AP_WAIT_FOR(td.pEX == NULL);
+		AP_WAIT_FOR(ma.pEX == NULL);
 
-		pm.const_J = (J + td.ap_J_vars[3]) * .5f;
+		pm.const_J = (J + ma.ap_J_vars[3]) * .5f;
 		printf("J %4e (kgm2)" EOL, &pm.const_J);
 	}
 	while (0);
@@ -398,7 +405,7 @@ SH_DEF(ap_blind_spinup)
 		wSP = 2.f * pm.lu_threshold_high;
 		wSP = (strchr(s, '-') != NULL) ? - wSP : wSP;
 
-		ap_wait_for_settle(wSP, 100);
+		ap_wait_for_settle(wSP, 1000);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
@@ -423,7 +430,7 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
 
-		ap_wait_for_settle(1.f / pm.const_E, 100);
+		ap_wait_for_settle(1.f / pm.const_E, 1000);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		ap_identify_const_E(EOL);

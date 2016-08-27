@@ -16,34 +16,30 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_TASK_
-#define _H_TASK_
+#ifndef _H_MAIN_
+#define _H_MAIN_
 
+#include "lib.h"
 #include "pmc.h"
-#include "sh.h"
 
 typedef struct {
 
-	/* Seconds from Power Up.
+	/* IO interfaces.
 	 * */
-	int			uSEC;
-	int			uDS;
-	int			uTIM;
+	io_ops_t		io_usart;
+	io_ops_t		io_bycan;
 
-	/* CPU usage.
+	/* CPU load counters.
 	 * */
-	int			usage_S;
-	int			usage_T;
+	int			load_count_flag;
+	int			load_count_value;
+	int			load_count_limit;
 
-	/* Task IOMUX.
-	 * */
-	int			mux_TEMP[2];
-
-	/* ADC Event Handler.
+	/* PWM event handler.
 	 * */
 	void			(* pEX) ();
 
-	/* Average Values.
+	/* To obtain an average values.
 	 * */
 	float			*av_IN[8];
 	float			av_VAL[8];
@@ -57,28 +53,15 @@ typedef struct {
 	int			ap_J_fsm_state;
 	float			ap_J_measure_T;
 	float			ap_J_vars[4];
-
 }
-taskDATA_t;
+main_t;
 
-extern taskDATA_t		td;
+extern main_t			ma;
 extern pmc_t			pm;
 
-void taskYIELD();
+void ma_av_EH_8();
+float ma_av_float_1(float *param, float time);
+float ma_av_float_arg_1(float *param, const char *s);
 
-void evAV_8();
-float task_av_float_1(float *param, float time);
-float task_av_float_arg_1(float *param, const char *s);
-
-SH_DEF(hal_uptime);
-SH_DEF(hal_cpu_usage);
-SH_DEF(hal_av_default_time);
-SH_DEF(hal_reboot);
-SH_DEF(hal_keycodes);
-SH_DEF(hal_pwm_freq_hz);
-SH_DEF(hal_pwm_dead_time_ns);
-SH_DEF(hal_pwm_DC);
-SH_DEF(hal_pwm_Z);
-
-#endif /* _H_TASK_ */
+#endif /* _H_MAIN_ */
 

@@ -19,6 +19,7 @@ CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
+CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/ram.ld
@@ -26,7 +27,14 @@ LDFLAGS	+= -Wl,-T,hal/ram.ld
 TTY	= /dev/rfcomm0
 BAUD	= 57600
 
-OBJS	= hal/entry.o \
+OBJS    = freertos/heap_4.o \
+        freertos/list.o \
+        freertos/port.o \
+        freertos/queue.o \
+        freertos/tasks.o \
+        freertos/timers.o
+
+OBJS	+= hal/entry.o \
 	hal/adc.o \
 	hal/can.o \
 	hal/hal.o \
@@ -34,12 +42,12 @@ OBJS	= hal/entry.o \
 	hal/usart.o
 
 OBJS	+= ap.o \
-	cml.o \
 	lib.o \
 	m.o \
+	main.o \
+	pm.o \
 	pmc.o \
 	sh.o \
-	task.o \
 	tel.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))

@@ -19,33 +19,27 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
-#include "adc.h"
-#include "pwm.h"
-#include "usart.h"
-
-#define HZ_AHB			168000000UL
-#define HZ_APB1			(HZ_AHB / 4UL)
-#define HZ_APB2			(HZ_AHB / 2UL)
+#define HAL_APB1_HZ		(hal_CLOCK_CPU_HZ / 4UL)
+#define HAL_APB2_HZ		(hal_CLOCK_CPU_HZ / 2UL)
 
 #define __CCM__			__attribute__ ((section (".ccm")))
 
 enum {
-	LED_GREEN		= 1,
-	LED_ORANGE		= 2,
-	LED_RED			= 4,
-	LED_BLUE		= 8
+	LED_RED			= 1,
+	LED_GREEN		= 2,
+	LED_BLUE		= 4
 };
 
-void halStart();
-int halSysTick();
-void halReset();
-void halLED(int F);
+extern unsigned long		hal_CLOCK_CPU_HZ;
 
+void halStart();
+void halHalt();
+void halReset();
 void halSleep();
 void halFence();
+void halLED(int F);
 
 extern void halMain();
-extern void halTick();
 
 #endif /* _H_HAL_ */
 

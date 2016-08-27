@@ -16,28 +16,64 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
 #include "cmsis/stm32f4xx.h"
+#include "usart.h"
 #include "hal.h"
 
-halUSART_t	 		halUSART;
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
-void irqUSART3() { }
+typedef struct {
 
-void irqDMA1_Stream3()
+	QueueHandle_t	xQueueRX;
+	QueueHandle_t	xQueueTX;
+}
+halUSART_t;
+
+static halUSART_t	halUSART;
+
+void irqUSART3()
 {
-	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
-		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
+	BaseType_t		xWoken = pdFALSE;
+	unsigned int 		SR;
+	char			xC;
+
+	SR = USART3->SR;
+
+	if (SR & USART_SR_RXNE) {
+
+		xC = USART3->DR;
+		xQueueSendToBackFromISR(halUSART.xQueueRX, &xC, &xWoken);
+	}
+
+	if (SR & USART_SR_TXE) {
+
+		if (xQueueReceiveFromISR(halUSART.xQueueTX, &xC, &xWoken) == pdTRUE) {
+
+			USART3->DR = xC;
+		}
+		else {
+			USART3->CR1 &= ~USART_CR1_TXEIE;
+		}
+	}
+
+	portYIELD_FROM_ISR(xWoken);
 }
 
-void usartEnable()
+void usartEnable(int baudRate)
 {
+	if (halUSART.xQueueRX != (QueueHandle_t) 0)
+		return ;
+
+	halUSART.xQueueRX = xQueueCreate(40, sizeof(char));
+	halUSART.xQueueTX = xQueueCreate(80, sizeof(char));
+
 	/* Enable USART3 clock.
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
-
-	/* Enable DMA1 clock.
-	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
 	/* Enable PC10 (TX), PC11 (RX) pins.
 	 * */
@@ -48,59 +84,26 @@ void usartEnable()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HZ_APB1 / halUSART.baudRate;
+	USART3->BRR = HAL_APB1_HZ / baudRate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
-	USART3->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;
+	USART3->CR3 = 0;
 
-	/* Configure DMA for RX.
+	/* Enable IRQ.
 	 * */
-	DMA1->LIFCR |= DMA_LIFCR_CTCIF1 | DMA_LIFCR_CHTIF1 | DMA_LIFCR_CTEIF1
-		| DMA_LIFCR_CDMEIF1 | DMA_LIFCR_CFEIF1;
-	DMA1_Stream1->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream1->M0AR = (unsigned int) halUSART.RX;
-	DMA1_Stream1->NDTR = USART_RXBUF_SZ;
-	DMA1_Stream1->FCR = 0;
-	DMA1_Stream1->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
-		| DMA_SxCR_CIRC;
-
-	DMA1_Stream1->CR |= DMA_SxCR_EN;
-
-	/* Configure DMA for TX.
-	 * */
-	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
-		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
-	DMA1_Stream3->PAR = (unsigned int) &USART3->DR;
-	DMA1_Stream3->M0AR = (unsigned int) halUSART.TX;
-	DMA1_Stream3->NDTR = 0;
-	DMA1_Stream3->FCR = 0;
-	DMA1_Stream3->CR = DMA_SxCR_CHSEL_2 | DMA_SxCR_PL_0 | DMA_SxCR_MINC
-		| DMA_SxCR_DIR_0 | DMA_SxCR_TCIE;
-
-	/* Enable IRQs.
-	 * */
-	NVIC_SetPriority(DMA1_Stream3_IRQn, 11);
 	NVIC_SetPriority(USART3_IRQn, 11);
-	NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 	NVIC_EnableIRQ(USART3_IRQn);
-
-	/* Initial.
-	 * */
-	halUSART.rN = 0;
-	halUSART.tN = 0;
 }
 
 void usartDisable()
 {
-	/* Disable IRQs.
-	 * */
-	NVIC_DisableIRQ(DMA1_Stream3_IRQn);
-	NVIC_DisableIRQ(USART3_IRQn);
+	if (halUSART.xQueueRX == (QueueHandle_t) 0)
+		return ;
 
-	/* Disable DMA.
+	/* Disable IRQ.
 	 * */
-	DMA1_Stream1->CR = 0;
+	NVIC_DisableIRQ(USART3_IRQn);
 
 	/* Disable USART.
 	 * */
@@ -110,68 +113,40 @@ void usartDisable()
 	 * */
 	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER10 | GPIO_MODER_MODER11, 0);
 
-	/* Disable DMA1 clock.
-	 * */
-	RCC->AHB1ENR &= ~RCC_AHB1ENR_DMA1EN;
-
 	/* Disable USART3 clock.
 	 * */
 	RCC->AHB1ENR &= ~RCC_APB1ENR_USART3EN;
+
+	/* Free.
+	 * */
+	vQueueDelete(halUSART.xQueueRX);
+	vQueueDelete(halUSART.xQueueTX);
+	halUSART.xQueueRX = (QueueHandle_t) 0;
 }
 
-int usartRecv()
+int usart_getc()
 {
-	int	rN, rW, xC;
+	char		xC;
 
-	rN = halUSART.rN;
-	rW = USART_RXBUF_SZ - DMA1_Stream1->NDTR;
+	xQueueReceive(halUSART.xQueueRX, &xC, portMAX_DELAY);
 
-	if (rN != rW) {
+	return (int) xC;
+}
 
-		/* There are data.
-		 * */
-		xC = halUSART.RX[rN];
-		halUSART.rN = (rN < (USART_RXBUF_SZ - 1)) ? rN + 1 : 0;
+void usart_putc(int c)
+{
+	char		xC = (char) c;
+
+	if (xQueueSendToBack(halUSART.xQueueTX, &xC, portMAX_DELAY) == pdTRUE) {
+
+		USART3->CR1 |= USART_CR1_TXEIE;
 	}
-	else
-		xC = -1;
-
-	return xC;
 }
 
-static int
-DMA_IsBusy()
+void usart_debug_putc(int c)
 {
-	return (DMA1_Stream3->CR & DMA_SxCR_EN) ? 1 : 0;
-}
+	while (!(USART3->SR & USART_SR_TXE)) ;
 
-static void
-DMA_Send()
-{
-	DMA1->LIFCR |= DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3
-		| DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CFEIF3;
-	DMA1_Stream3->NDTR = halUSART.tN;
-	DMA1_Stream3->CR |= DMA_SxCR_EN;
-
-	halUSART.tN = 0;
-}
-
-int usartSend(int xC)
-{
-	if (DMA_IsBusy())
-		return -1;
-
-	halUSART.TX[halUSART.tN++] = (char) xC;
-
-	if (halUSART.tN >= USART_TXBUF_SZ)
-		DMA_Send();
-
-	return xC;
-}
-
-void usartFlush()
-{
-	if (halUSART.tN > 0 && !DMA_IsBusy())
-		DMA_Send();
+	USART3->DR = c;
 }
 

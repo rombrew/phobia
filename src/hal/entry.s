@@ -37,7 +37,7 @@
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
-	.word	irqDMA1_Stream3
+	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
 	.word	irqDefault
@@ -108,14 +108,6 @@
 
 .section .text
 
-.type irqDefault, function
-.align
-
-irqDefault:
-
-	b.n	irqDefault
-
-
 .global irqReset
 .type irqReset, function
 .align
@@ -157,6 +149,20 @@ bssComp:
 
 	cmp	r2, r1
 	bne.n	bssLoop
+
+	ldr	r2, =(ldSccm)
+	ldr	r1, =(ldEccm)
+
+	b.n	ccmComp
+
+ccmLoop:
+
+	str.w	r0, [r2], #4
+
+ccmComp:
+
+	cmp	r2, r1
+	bne.n	ccmLoop
 
 	bl	halStart
 	bl	halMain

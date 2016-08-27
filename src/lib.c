@@ -16,26 +16,79 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
 #include <stdarg.h>
 
 #include "lib.h"
-#include "sh.h"
 
-#define PUTC(c)				shSend(c)
+io_ops_t		*iodef;
 
-void *memz(void *p, int sz)
+void *memzero(void *d, unsigned long sz)
 {
-	int	*x = p;
+	long			*ld = (long *) d;
 
-	sz /= sizeof(int);
+	if (!((size_t) d & (sizeof(long) - 1UL))) {
 
-	while (sz > 0) {
+		while (sz >= sizeof(long)) {
 
-		*x++ = 0;
+			*ld++ = 0;
+			sz -= sizeof(long);
+		}
+	}
+
+	{
+		char		*cd = (char *) ld;
+
+		while (sz >= 1) {
+
+			*cd++ = 0;
+			sz--;
+		}
+	}
+
+	return d;
+}
+
+void *memset(void *d, int c, unsigned long sz)
+{
+	char		*cd = (char *) d;
+
+	while (sz >= 1) {
+
+		*cd++ = c;
 		sz--;
 	}
 
-	return x;
+	return d;
+}
+
+void *memcpy(void *d, const void *s, unsigned long sz)
+{
+	long			*ld = (long *) d;
+	const long		*ls = (const long *) s;
+
+	if (!((size_t) d & (sizeof(long) - 1UL))
+		&& !((size_t) s & (sizeof(long) - 1UL))) {
+
+		while (sz >= sizeof(long)) {
+
+			*ld++ = *ls++;
+			sz -= sizeof(long);
+		}
+	}
+
+	{
+		char		*cd = (char *) ld;
+		const char	*cs = (const char *) ls;
+
+		while (sz >= 1) {
+
+			*cd++ = *cs++;
+			sz--;
+		}
+	}
+
+	return d;
 }
 
 int strcmp(const char *s, const char *p)
@@ -175,22 +228,20 @@ const char *strtok(const char *s, const char *d)
 	return s;
 }
 
-void putc(char c) { PUTC(c); }
-
-void puts(const char *s)
+void xputs(io_ops_t *_io, const char *s)
 {
-	while (*s) PUTC(*s++);
+	while (*s) _io->putc(*s++);
 }
 
 static void
-fmt_int(int x)
+fmt_int(io_ops_t *_io, int x)
 {
 	char		s[16], *p;
 	int		n;
 
 	if (x < 0) {
 
-		PUTC('-');
+		_io->putc('-');
 		x = -x;
 	}
 
@@ -204,7 +255,7 @@ fmt_int(int x)
 	}
 	while (x);
 
-	while (*p) PUTC(*p++);
+	while (*p) _io->putc(*p++);
 }
 
 inline unsigned int
@@ -221,14 +272,14 @@ ftou(float x)
 }
 
 static void
-fmt_float(float x, int n)
+fmt_float(io_ops_t *_io, float x, int n)
 {
 	int		i, be, ma;
 	float		h;
 
 	if (x < 0) {
 
-		PUTC('-');
+		_io->putc('-');
 		x = - x;
 	}
 
@@ -239,9 +290,9 @@ fmt_float(float x, int n)
 
 		if (ma != 0)
 
-			puts("NaN");
+			xputs(_io, "NaN");
 		else
-			puts("Inf");
+			xputs(_io, "Inf");
 
 		return ;
 	}
@@ -252,12 +303,12 @@ fmt_float(float x, int n)
 
 	x += h;
 	i = (int) x;
-	fmt_int(i);
+	fmt_int(_io, i);
 	x -= i;
 
 	if (x < 1.f) {
 
-		PUTC('.');
+		_io->putc('.');
 
 		while (n > 0) {
 
@@ -265,14 +316,14 @@ fmt_float(float x, int n)
 			i = (int) x;
 			x -= i;
 
-			PUTC('0' + i);
+			_io->putc('0' + i);
 			n--;
 		}
 	}
 }
 
 static void
-fmt_fexp(float x, int n)
+fmt_fexp(io_ops_t *_io, float x, int n)
 {
 	int		i, be, ma;
 	int		de = 0;
@@ -280,7 +331,7 @@ fmt_fexp(float x, int n)
 
 	if (x < 0) {
 
-		PUTC('-');
+		_io->putc('-');
 		x = - x;
 	}
 
@@ -291,9 +342,9 @@ fmt_fexp(float x, int n)
 
 		if (ma != 0)
 
-			puts("NaN");
+			xputs(_io, "NaN");
 		else
-			puts("Inf");
+			xputs(_io, "Inf");
 
 		return ;
 	}
@@ -334,8 +385,8 @@ fmt_fexp(float x, int n)
 	i = (int) x;
 	x -= i;
 
-	PUTC('0' + i);
-	PUTC('.');
+	_io->putc('0' + i);
+	_io->putc('.');
 
 	while (n > 0) {
 
@@ -343,27 +394,24 @@ fmt_fexp(float x, int n)
 		i = (int) x;
 		x -= i;
 
-		PUTC('0' + i);
+		_io->putc('0' + i);
 		n--;
 	}
 
-	PUTC('E');
+	_io->putc('E');
 
 	if (de >= 0)
-		PUTC('+');
+		_io->putc('+');
 
-	fmt_int(de);
+	fmt_int(_io, de);
 }
 
-void printf(const char *fmt, ...)
+void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 {
-        va_list		ap;
-        const char	*s;
+	const char	*s;
 	int		n = 5;
 
-        va_start(ap, fmt);
-
-        while (*fmt) {
+	while (*fmt) {
 
                 if (*fmt == '%') {
 
@@ -375,33 +423,54 @@ void printf(const char *fmt, ...)
 			switch (*fmt) {
 
 				case '%':
-					PUTC('%');
+					_io->putc('%');
 					break;
 
 				case 'i':
-					fmt_int(va_arg(ap, int));
+					fmt_int(_io, va_arg(ap, int));
 					break;
 
 				case 'f':
-					fmt_float(* va_arg(ap, float *), n);
+					fmt_float(_io, * va_arg(ap, float *), n);
 					break;
 
 				case 'e':
-					fmt_fexp(* va_arg(ap, float *), n);
+					fmt_fexp(_io, * va_arg(ap, float *), n);
 					break;
 
 				case 's':
 					s = va_arg(ap, const char *);
-					puts(s);
+					xputs(_io, s);
 					break;
 			}
 		}
                 else
-                        PUTC(*fmt);
+                        _io->putc(*fmt);
 
                 ++fmt;
         }
+}
 
+void xprintf(io_ops_t *_io, const char *fmt, ...)
+{
+        va_list		ap;
+
+        va_start(ap, fmt);
+	xvprintf(_io, fmt, ap);
+        va_end(ap);
+}
+
+void puts(const char *s)
+{
+	xputs(iodef, s);
+}
+
+void printf(const char *fmt, ...)
+{
+        va_list		ap;
+
+        va_start(ap, fmt);
+	xvprintf(iodef, fmt, ap);
         va_end(ap);
 }
 

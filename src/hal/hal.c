@@ -19,19 +19,45 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-extern int ldSvectors;
+extern long			ldSvectors;
+unsigned long 			hal_CLOCK_CPU_HZ;
 
-void irqNMI() { }
-void irqHardFault() { }
-void irqMemoryFault() { }
-void irqBusFault() { }
-void irqUsageFault() { }
-void irqSVCall() { }
-void irqPendSV() { }
+extern void debugTRACE(const char *fmt, ...);
 
-void irqSysTick()
+void irqNMI()
 {
-	halTick();
+	debugTRACE("irq: NMI");
+	halHalt();
+}
+
+void irqHardFault()
+{
+	debugTRACE("irq: HardFault");
+	halHalt();
+}
+
+void irqMemoryFault()
+{
+	debugTRACE("irq: MemoryFault");
+	halHalt();
+}
+
+void irqBusFault()
+{
+	debugTRACE("irq: BusFault");
+	halHalt();
+}
+
+void irqUsageFault()
+{
+	debugTRACE("irq: UsageFault");
+	halHalt();
+}
+
+void irqDefault()
+{
+	debugTRACE("irq: Default");
+	halHalt();
 }
 
 static void
@@ -110,6 +136,10 @@ clockStart()
 	/* Wait till PLL is used.
 	 * */
 	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
+
+	/* Define clock frequency.
+	 * */
+	hal_CLOCK_CPU_HZ = 168000000UL;
 }
 
 static void
@@ -121,11 +151,11 @@ boardStart()
 
 	/* Vector table offset.
 	 * */
-	SCB->VTOR = (int) &ldSvectors;
+	SCB->VTOR = (unsigned long) &ldSvectors;
 
 	/* Configure priority grouping.
 	 * */
-	NVIC_SetPriorityGrouping(4);
+	NVIC_SetPriorityGrouping(3UL);
 
 	/* Enable Programmable voltage detector.
 	 * */
@@ -139,10 +169,6 @@ boardStart()
 	/* Enable LED pins.
 	 * */
 	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER12, GPIO_MODER_MODER12_0);
-
-	/* Configure SysTick (100 Hz).
-	 * */
-	SysTick_Config(HZ_AHB / 100UL);
 
 	__DSB();
 	__ISB();
@@ -158,23 +184,19 @@ void halStart()
 	boardStart();
 }
 
-int halSysTick()
+void halHalt()
 {
-	return SysTick->VAL;
+	__disable_irq();
+	__DSB();
+	__ISB();
+	__WFI();
+
+	for (;;) ;
 }
 
 void halReset()
 {
 	NVIC_SystemReset();
-}
-
-void halLED(int F)
-{
-	if (F & LED_RED)
-
-		GPIOC->BSRRL = (1UL << 12);
-	else
-		GPIOC->BSRRH = (1UL << 12);
 }
 
 void halSleep()
@@ -185,5 +207,14 @@ void halSleep()
 void halFence()
 {
 	__DMB();
+}
+
+void halLED(int F)
+{
+	if (F & LED_RED)
+
+		GPIOC->BSRRL = (1UL << 12);
+	else
+		GPIOC->BSRRH = (1UL << 12);
 }
 

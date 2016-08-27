@@ -16,14 +16,14 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
 #include "hal/hal.h"
-#include "ap.h"
 #include "lib.h"
 #include "m.h"
+#include "main.h"
 #include "pmc.h"
 #include "sh.h"
-#include "task.h"
-#include "tel.h"
 
 SH_DEF(pm_pwm_resolution)
 {
@@ -297,7 +297,7 @@ SH_DEF(pm_lu_X0)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.lu_X[0], s);
+	avg = ma_av_float_arg_1(&pm.lu_X[0], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -305,7 +305,7 @@ SH_DEF(pm_lu_X1)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.lu_X[1], s);
+	avg = ma_av_float_arg_1(&pm.lu_X[1], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -321,7 +321,7 @@ SH_DEF(pm_lu_X4)
 {
 	float			avg, RPM;
 
-	avg = task_av_float_arg_1(&pm.lu_X[4], s);
+	avg = ma_av_float_arg_1(&pm.lu_X[4], s);
 	RPM = 9.5492969f * avg / pm.const_Zp;
 
 	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
@@ -404,7 +404,7 @@ SH_DEF(pm_lu_residual_variance)
 {
 	float			avg;
 
-	avg = sqrtf(task_av_float_arg_1(&pm.lu_residual_variance, s));
+	avg = sqrtf(ma_av_float_arg_1(&pm.lu_residual_variance, s));
 	printf("%4e (SD)" EOL, &avg);
 }
 
@@ -424,7 +424,7 @@ SH_DEF(pm_hf_flux_polarity)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.hf_flux_polarity, s);
+	avg = ma_av_float_arg_1(&pm.hf_flux_polarity, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -495,7 +495,7 @@ SH_DEF(pm_thermal_R)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.thermal_R, s);
+	avg = ma_av_float_arg_1(&pm.thermal_R, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -503,7 +503,7 @@ SH_DEF(pm_thermal_E)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.thermal_E, s);
+	avg = ma_av_float_arg_1(&pm.thermal_E, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -523,7 +523,7 @@ SH_DEF(pm_drift_A)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.drift_A, s);
+	avg = ma_av_float_arg_1(&pm.drift_A, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -531,7 +531,7 @@ SH_DEF(pm_drift_B)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.drift_B, s);
+	avg = ma_av_float_arg_1(&pm.drift_B, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -539,7 +539,7 @@ SH_DEF(pm_drift_Q)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.drift_Q, s);
+	avg = ma_av_float_arg_1(&pm.drift_Q, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -547,7 +547,7 @@ SH_DEF(pm_const_U)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.const_U, s);
+	avg = ma_av_float_arg_1(&pm.const_U, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -832,7 +832,7 @@ SH_DEF(pm_n_power_watt)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.n_power_watt, s);
+	avg = ma_av_float_arg_1(&pm.n_power_watt, s);
 	printf("%1f (W)" EOL, &avg);
 }
 
@@ -840,7 +840,7 @@ SH_DEF(pm_n_temperature_c)
 {
 	float			avg;
 
-	avg = task_av_float_arg_1(&pm.n_temperature_c, s);
+	avg = ma_av_float_arg_1(&pm.n_temperature_c, s);
 	printf("%1f (C)" EOL, &avg);
 }
 
@@ -975,150 +975,4 @@ SH_DEF(pm_update_scal_AB)
 		}
 	}
 }
-
-/* Command list can be generated from source like this.
- * :r !sed -n '/SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' %
- * */
-
-const shCMD_t		cmList[] = {
-
-	SH_ENTRY(ap_identify_base),
-	SH_ENTRY(ap_identify_const_R_abc),
-	SH_ENTRY(ap_identify_const_E),
-	SH_ENTRY(ap_J_measure_T),
-	SH_ENTRY(ap_identify_const_J),
-	SH_ENTRY(ap_blind_spinup),
-	SH_ENTRY(ap_probe_base),
-
-	SH_ENTRY(hal_uptime),
-	SH_ENTRY(hal_cpu_usage),
-	SH_ENTRY(hal_av_default_time),
-	SH_ENTRY(hal_reboot),
-	SH_ENTRY(hal_keycodes),
-	SH_ENTRY(hal_pwm_freq_hz),
-	SH_ENTRY(hal_pwm_dead_time_ns),
-	SH_ENTRY(hal_pwm_DC),
-	SH_ENTRY(hal_pwm_Z),
-
-	SH_ENTRY(pm_pwm_resolution),
-	SH_ENTRY(pm_pwm_minimal_pulse),
-	SH_ENTRY(pm_pwm_dead_time),
-	SH_ENTRY(pm_m_bitmask_high_frequency_injection),
-	SH_ENTRY(pm_m_bitmask_flux_polarity_detection),
-	SH_ENTRY(pm_m_bitmask_thermal_drift_estimation),
-	SH_ENTRY(pm_m_bitmask_bemf_waveform_compensation),
-	SH_ENTRY(pm_m_bitmask_servo_control_loop),
-	SH_ENTRY(pm_m_bitmask_servo_forced_control),
-	SH_ENTRY(pm_m_errno),
-	SH_ENTRY(pm_T_drift),
-	SH_ENTRY(pm_T_hold),
-	SH_ENTRY(pm_T_sine),
-	SH_ENTRY(pm_T_measure),
-	SH_ENTRY(pm_T_end),
-	SH_ENTRY(pm_wave_i_hold_X),
-	SH_ENTRY(pm_wave_i_hold_Y),
-	SH_ENTRY(pm_wave_i_sine),
-	SH_ENTRY(pm_wave_freq_sine_hz),
-	SH_ENTRY(pm_wave_gain_P),
-	SH_ENTRY(pm_wave_gain_I),
-	SH_ENTRY(pm_scal_A0),
-	SH_ENTRY(pm_scal_A1),
-	SH_ENTRY(pm_scal_B0),
-	SH_ENTRY(pm_scal_B1),
-	SH_ENTRY(pm_scal_U0),
-	SH_ENTRY(pm_scal_U1),
-	SH_ENTRY(pm_fault_current_maximal),
-	SH_ENTRY(pm_fault_residual_maximal),
-	SH_ENTRY(pm_fault_drift_maximal),
-	SH_ENTRY(pm_fault_low_voltage),
-	SH_ENTRY(pm_fault_high_voltage),
-	SH_ENTRY(pm_lu_X0),
-	SH_ENTRY(pm_lu_X1),
-	SH_ENTRY(pm_lu_X23),
-	SH_ENTRY(pm_lu_X4),
-	SH_ENTRY(pm_lu_gain_K0),
-	SH_ENTRY(pm_lu_gain_K1),
-	SH_ENTRY(pm_lu_gain_K2),
-	SH_ENTRY(pm_lu_gain_K3),
-	SH_ENTRY(pm_lu_gain_K4),
-	SH_ENTRY(pm_lu_gain_K5),
-	SH_ENTRY(pm_lu_gain_K6),
-	SH_ENTRY(pm_lu_threshold_low),
-	SH_ENTRY(pm_lu_threshold_high),
-	SH_ENTRY(pm_lu_threshold_auto),
-	SH_ENTRY(pm_lu_residual_variance),
-	SH_ENTRY(pm_hf_freq_hz),
-	SH_ENTRY(pm_hf_swing_D),
-	SH_ENTRY(pm_hf_flux_polarity),
-	SH_ENTRY(pm_hf_gain_K0),
-	SH_ENTRY(pm_hf_gain_K1),
-	SH_ENTRY(pm_hf_gain_K2),
-	SH_ENTRY(pm_bemf_DFT),
-	SH_ENTRY(pm_bemf_gain_K),
-	SH_ENTRY(pm_bemf_N),
-	SH_ENTRY(pm_bemf_tune_T),
-	SH_ENTRY(pm_thermal_R),
-	SH_ENTRY(pm_thermal_E),
-	SH_ENTRY(pm_thermal_gain_R0),
-	SH_ENTRY(pm_thermal_gain_R1),
-	SH_ENTRY(pm_drift_A),
-	SH_ENTRY(pm_drift_B),
-	SH_ENTRY(pm_drift_Q),
-	SH_ENTRY(pm_const_U),
-	SH_ENTRY(pm_const_E_wb),
-	SH_ENTRY(pm_const_E_kv),
-	SH_ENTRY(pm_const_R),
-	SH_ENTRY(pm_const_Ld),
-	SH_ENTRY(pm_const_Lq),
-	SH_ENTRY(pm_const_Zp),
-	SH_ENTRY(pm_const_J),
-	SH_ENTRY(pm_i_high_maximal),
-	SH_ENTRY(pm_i_low_maximal),
-	SH_ENTRY(pm_i_power_consumption_maximal),
-	SH_ENTRY(pm_i_power_regeneration_maximal),
-	SH_ENTRY(pm_i_set_point_D),
-	SH_ENTRY(pm_i_set_point_Q),
-	SH_ENTRY(pm_i_slew_rate_D),
-	SH_ENTRY(pm_i_slew_rate_Q),
-	SH_ENTRY(pm_i_slew_rate_auto),
-	SH_ENTRY(pm_i_gain_P_D),
-	SH_ENTRY(pm_i_gain_I_D),
-	SH_ENTRY(pm_i_gain_P_Q),
-	SH_ENTRY(pm_i_gain_I_Q),
-	SH_ENTRY(pm_i_gain_auto),
-	SH_ENTRY(pm_p_nonl_gain_F),
-	SH_ENTRY(pm_p_nonl_range),
-	SH_ENTRY(pm_p_set_point_w_rpm),
-	SH_ENTRY(pm_p_slew_rate_w),
-	SH_ENTRY(pm_p_forced_D),
-	SH_ENTRY(pm_p_forced_slew_rate_w),
-	SH_ENTRY(pm_p_slew_rate_auto),
-	SH_ENTRY(pm_p_track_point_x_g),
-	SH_ENTRY(pm_p_gain_D),
-	SH_ENTRY(pm_p_gain_P),
-	SH_ENTRY(pm_lp_gain_0),
-	SH_ENTRY(pm_lp_gain_1),
-	SH_ENTRY(pm_n_power_watt),
-	SH_ENTRY(pm_n_temperature_c),
-	SH_ENTRY(pm_default),
-	SH_ENTRY(pm_request_zero_drift),
-	SH_ENTRY(pm_request_wave_hold),
-	SH_ENTRY(pm_request_wave_sine),
-	SH_ENTRY(pm_request_calibration),
-	SH_ENTRY(pm_request_start),
-	SH_ENTRY(pm_request_stop),
-	SH_ENTRY(pm_update_const_R),
-	SH_ENTRY(pm_impedance),
-	SH_ENTRY(pm_update_const_L),
-	SH_ENTRY(pm_update_scal_AB),
-
-	SH_ENTRY(tel_decimal),
-	SH_ENTRY(tel_capture),
-	SH_ENTRY(tel_disable),
-	SH_ENTRY(tel_live),
-	SH_ENTRY(tel_flush),
-	SH_ENTRY(tel_info),
-
-	{NULL, NULL}
-};
 
