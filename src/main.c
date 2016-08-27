@@ -123,7 +123,7 @@ void taskINIT(void *pvParameters)
 
 	pmc_default(&pm);
 
-	xTaskCreate(taskSH, "tSH", 2 * 1024, NULL, 1, NULL);
+	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }
@@ -208,7 +208,7 @@ SH_DEF(hal_uptime)
 
 SH_DEF(hal_cpu_usage)
 {
-	int		pc;
+	float		pc;
 
 	ma.load_count_flag = 1;
 	ma.load_count_value = 0;
@@ -216,9 +216,10 @@ SH_DEF(hal_cpu_usage)
 	vTaskDelay(1000);
 
 	ma.load_count_flag = 0;
-	pc = (ma.load_count_value * 100) / ma.load_count_limit;
+	pc = 100.f * (float) (ma.load_count_limit - ma.load_count_value)
+		/ (float) ma.load_count_limit;
 
-	printf("%i %%" EOL, pc);
+	printf("%1f %%" EOL, &pc);
 }
 
 SH_DEF(hal_reboot)

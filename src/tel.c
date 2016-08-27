@@ -19,13 +19,17 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "lib.h"
 #include "m.h"
 #include "main.h"
 #include "pmc.h"
 #include "sh.h"
 
-#define	TELSZ			4000
+#define	TELSZ			20000
 
 typedef struct {
 
@@ -42,7 +46,7 @@ typedef struct {
 }
 tel_t;
 
-static tel_t			tel;
+static tel_t __CCM__		tel;
 
 static void
 telCapture()
@@ -100,7 +104,6 @@ evTEL_0()
 		tel.pIN[5] = (short int) (pm.drift_Q * 1000.f);
 		tel.pIN[6] = (short int) (pm.lu_residual_D * 1000.f);
 		tel.pIN[7] = (short int) (pm.lu_residual_Q * 1000.f);
-
 		tel.pSZ = 8;
 
 		telCapture();
@@ -168,7 +171,6 @@ SH_DEF(tel_capture)
 		evTEL = evTEL_list[nTEL];
 
 		halFence();
-
 		ma.pEX = evTEL;
 	}
 }
@@ -180,12 +182,27 @@ SH_DEF(tel_disable)
 	tel.pZ = tel.pD;
 }
 
+void taskLIVE(void *pvParameters)
+{
+	do {
+		if (tel.pZ != tel.pD) {
+
+			telFlush();
+			tel.pZ = tel.pD;
+		}
+
+		vTaskDelay(10);
+	}
+	while (1);
+}
+
 SH_DEF(tel_live)
 {
 	const int	nMAX = sizeof(evTEL_list) / sizeof(evTEL_list[0]);
 	void 		(* evTEL) ();
 	int		nTEL = 0;
 	int		xC, decmin;
+	TaskHandle_t	xLIVE;
 
 	if (ma.pEX == NULL) {
 
@@ -201,23 +218,19 @@ SH_DEF(tel_live)
 		evTEL = evTEL_list[nTEL];
 
 		halFence();
-
 		ma.pEX = evTEL;
+
+		xTaskCreate(taskLIVE, "tLIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xLIVE);
 
 		do {
 			xC = iodef->getc();
 
 			if (xC == 3 || xC == 4)
 				break;
-
-			if (tel.pZ != tel.pD) {
-
-				telFlush();
-				tel.pZ = tel.pD;
-			}
 		}
 		while (1);
 
+		vTaskDelete(xLIVE);
 		tel.iEN = 0;
 	}
 }

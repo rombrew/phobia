@@ -33,7 +33,7 @@ typedef struct {
 }
 halUSART_t;
 
-static halUSART_t	*pUSART;
+static halUSART_t	halUSART;
 
 void irqUSART3()
 {
@@ -46,12 +46,12 @@ void irqUSART3()
 	if (SR & USART_SR_RXNE) {
 
 		xC = USART3->DR;
-		xQueueSendToBackFromISR(pUSART->xQueueRX, &xC, &xWoken);
+		xQueueSendToBackFromISR(halUSART.xQueueRX, &xC, &xWoken);
 	}
 
 	if (SR & USART_SR_TXE) {
 
-		if (xQueueReceiveFromISR(pUSART->xQueueTX, &xC, &xWoken) == pdTRUE) {
+		if (xQueueReceiveFromISR(halUSART.xQueueTX, &xC, &xWoken) == pdTRUE) {
 
 			USART3->DR = xC;
 		}
@@ -65,16 +65,11 @@ void irqUSART3()
 
 void usartEnable(int baudRate)
 {
-	if (pUSART == NULL) {
-
-		/* Allocate.
-		 * */
-		pUSART = (halUSART_t *) pvPortMalloc(sizeof(halUSART_t));
-		pUSART->xQueueRX = xQueueCreate(40, sizeof(char));
-		pUSART->xQueueTX = xQueueCreate(80, sizeof(char));
-	}
-	else
+	if (halUSART.xQueueRX != (QueueHandle_t) 0)
 		return ;
+
+	halUSART.xQueueRX = xQueueCreate(40, sizeof(char));
+	halUSART.xQueueTX = xQueueCreate(80, sizeof(char));
 
 	/* Enable USART3 clock.
 	 * */
@@ -103,7 +98,7 @@ void usartEnable(int baudRate)
 
 void usartDisable()
 {
-	if (pUSART == NULL)
+	if (halUSART.xQueueRX == (QueueHandle_t) 0)
 		return ;
 
 	/* Disable IRQ.
@@ -124,18 +119,16 @@ void usartDisable()
 
 	/* Free.
 	 * */
-	vQueueDelete(pUSART->xQueueRX);
-	vQueueDelete(pUSART->xQueueTX);
-	vPortFree(pUSART);
-
-	pUSART = NULL;
+	vQueueDelete(halUSART.xQueueRX);
+	vQueueDelete(halUSART.xQueueTX);
+	halUSART.xQueueRX = (QueueHandle_t) 0;
 }
 
 int usart_getc()
 {
 	char		xC;
 
-	xQueueReceive(pUSART->xQueueRX, &xC, portMAX_DELAY);
+	xQueueReceive(halUSART.xQueueRX, &xC, portMAX_DELAY);
 
 	return (int) xC;
 }
@@ -144,7 +137,7 @@ void usart_putc(int c)
 {
 	char		xC = (char) c;
 
-	if (xQueueSendToBack(pUSART->xQueueTX, &xC, portMAX_DELAY) == pdTRUE) {
+	if (xQueueSendToBack(halUSART.xQueueTX, &xC, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
