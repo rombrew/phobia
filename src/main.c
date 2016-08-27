@@ -160,22 +160,28 @@ void ma_av_EH_8()
 
 float ma_av_float_1(float *param, float time)
 {
-	ma.av_IN[0] = param;
-	ma.av_VAL[0] = 0.f;
-	ma.av_variable_N = 1;
-	ma.av_sample_N = 0;
-	ma.av_sample_MAX = pm.freq_hz * time;
+	if (ma.pEX == NULL) {
 
-	halFence();
+		ma.av_IN[0] = param;
+		ma.av_VAL[0] = 0.f;
+		ma.av_variable_N = 1;
+		ma.av_sample_N = 0;
+		ma.av_sample_MAX = pm.freq_hz * time;
 
-	ma.pEX = &ma_av_EH_8;
+		halFence();
+		ma.pEX = &ma_av_EH_8;
 
-	while (ma.pEX != NULL)
-		vTaskDelay(1);
+		while (ma.pEX != NULL)
+			vTaskDelay(1);
 
-	ma.av_VAL[0] /= (float) ma.av_sample_N;
+		ma.av_VAL[0] /= (float) ma.av_sample_N;
 
-	return ma.av_VAL[0];
+		return ma.av_VAL[0];
+	}
+	else {
+
+		return 0.f;
+	}
 }
 
 float ma_av_float_arg_1(float *param, const char *s)

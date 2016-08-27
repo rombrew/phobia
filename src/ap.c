@@ -235,24 +235,30 @@ SH_DEF(ap_identify_const_E)
 }
 
 static void
-ap_wait_for_settle(float wSP, int xT)
+ap_wait_for_settle(float wSP)
 {
-	float			SR;
-	int			uLeft;
+	const float		dT = .1f;
+	const float		thresholdX4 = 20.f;
+	float			leftT, X4, lastX4, dX4;
 
 	pm.p_set_point_w = wSP;
 
-	SR = (pm.m_bitmask & PMC_BIT_SERVO_FORCED_CONTROL)
-		? pm.p_forced_slew_rate_w : pm.p_slew_rate_w;
-	uLeft = (int) (1000.f * pm.p_set_point_w / SR) + xT;
+	leftT = 3.f;
+	lastX4 = ma_av_float_1(pm.lu_X + 4, dT);
 
 	do {
-		vTaskDelay(1);
+		X4 = ma_av_float_1(pm.lu_X + 4, dT);
 		AP_EXIT_IF_ERROR();
 
-		uLeft--;
+		dX4 = X4 - lastX4;
+		lastX4 = X4;
+
+		if (fabsf(dX4) < thresholdX4)
+			break;
+
+		leftT -= dT;
 	}
-	while (uLeft > 0);
+	while (leftT > 0.f);
 }
 
 static void
@@ -343,7 +349,7 @@ SH_DEF(ap_identify_const_J)
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		ap_wait_for_settle(wSP1, 1000);
+		ap_wait_for_settle(wSP1);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		ma.ap_J_fsm_state = 0;
@@ -351,10 +357,7 @@ SH_DEF(ap_identify_const_J)
 		halFence();
 		ma.pEX = &ev_fsm_J;
 
-		ap_wait_for_settle(wSP2, 0);
-		AP_PRINT_AND_EXIT_IF_ERROR();
-
-		halFence();
+		pm.p_set_point_w = wSP2;
 		AP_WAIT_FOR(ma.pEX == NULL);
 
 		J = ma.ap_J_vars[3];
@@ -364,10 +367,7 @@ SH_DEF(ap_identify_const_J)
 		halFence();
 		ma.pEX = &ev_fsm_J;
 
-		ap_wait_for_settle(wSP1, 0);
-		AP_PRINT_AND_EXIT_IF_ERROR();
-
-		halFence();
+		pm.p_set_point_w = wSP1;
 		AP_WAIT_FOR(ma.pEX == NULL);
 
 		pm.const_J = (J + ma.ap_J_vars[3]) * .5f;
@@ -405,7 +405,7 @@ SH_DEF(ap_blind_spinup)
 		wSP = 2.f * pm.lu_threshold_high;
 		wSP = (strchr(s, '-') != NULL) ? - wSP : wSP;
 
-		ap_wait_for_settle(wSP, 1000);
+		ap_wait_for_settle(wSP);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
@@ -430,7 +430,7 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
 
-		ap_wait_for_settle(1.f / pm.const_E, 1000);
+		ap_wait_for_settle(1.f / pm.const_E);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
 		ap_identify_const_E(EOL);
