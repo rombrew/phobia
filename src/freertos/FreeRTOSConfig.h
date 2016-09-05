@@ -95,7 +95,7 @@ extern unsigned long		hal_CLOCK_CPU_HZ;
 
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION	1
-#define configTOTAL_HEAP_SIZE			(16 * 1024)
+#define configTOTAL_HEAP_SIZE			(32 * 1024)
 #define configAPPLICATION_ALLOCATED_HEAP	1
 
 #define configUSE_IDLE_HOOK                     1

@@ -6,6 +6,8 @@ SH_DEF(ap_identify_const_J);
 SH_DEF(ap_blind_spinup);
 SH_DEF(ap_probe_base);
 SH_DEF(ap_probe_hfi);
+SH_DEF(conf_save);
+SH_DEF(conf_info);
 SH_DEF(hal_uptime);
 SH_DEF(hal_cpu_usage);
 SH_DEF(hal_reboot);

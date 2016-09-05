@@ -16,17 +16,15 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_USART_
-#define _H_USART_
+#ifndef _H_FLASH_
+#define _H_FLASH_
 
-extern int 		halUSART_baudRate;
+#define FLASH_SECTOR_MAX		4
 
-void usartEnable();
-void usartDisable();
+extern void * const flash_sector_map[];
 
-int usart_getc();
-void usart_putc(int c);
-void usart_debug_putc(int c);
+void flash_erase(int snb);
+void flash_write(void *d, const void *s, int sz);
 
-#endif /* _H_USART_ */
+#endif /* _H_FLASH_ */
 

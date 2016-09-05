@@ -584,3 +584,28 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
+unsigned int crc32b(const void *s, int sz)
+{
+	const char		*bs = (const char *) s;
+	unsigned int		byte, crc, mask;
+	int			j;
+
+	crc = 0xFFFFFFFF;
+
+	while (sz >= 1) {
+
+		byte = *bs++;
+		crc = crc ^ byte;
+
+		for (j = 7; j >= 0; j--) {
+
+			mask = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+
+		sz--;
+	}
+
+	return ~crc;
+}
+

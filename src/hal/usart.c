@@ -26,6 +26,8 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
+int 			halUSART_baudRate;
+
 typedef struct {
 
 	QueueHandle_t	xQueueRX;
@@ -63,7 +65,7 @@ void irqUSART3()
 	portYIELD_FROM_ISR(xWoken);
 }
 
-void usartEnable(int baudRate)
+void usartEnable()
 {
 	if (halUSART.xQueueRX != (QueueHandle_t) 0)
 		return ;
@@ -84,7 +86,7 @@ void usartEnable(int baudRate)
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HAL_APB1_HZ / baudRate;
+	USART3->BRR = HAL_APB1_HZ / halUSART_baudRate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;

@@ -33,9 +33,11 @@
 #include "pmc.h"
 #include "sh.h"
 
-char 				ucHeap[configTOTAL_HEAP_SIZE];
+#define MA_LOAD_COUNT_DELAY		200
 
-main_t				ma;
+char __CCM__ 			ucHeap[configTOTAL_HEAP_SIZE];
+
+main_t __CCM__			ma;
 pmc_t __CCM__			pm;
 
 extern void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
@@ -86,34 +88,42 @@ void vApplicationIdleHook()
 	}
 }
 
+extern int conf_block_load();
+
 void taskINIT(void *pvParameters)
 {
+	int			rc_conf;
+
 	halLED(LED_RED);
 
 	ma.load_count_flag = 1;
 	ma.load_count_value = 0;
 
-	vTaskDelay(100);
+	vTaskDelay(MA_LOAD_COUNT_DELAY);
 
 	ma.load_count_flag = 0;
-	ma.load_count_limit = ma.load_count_value * 10;
+	ma.load_count_limit = ma.load_count_value;
 
 	ma.io_usart.getc = &usart_getc;
 	ma.io_usart.putc = &usart_putc;
 	iodef = &ma.io_usart;
 
-	/* Config.
-	 * */
-	usartEnable(57600);
+	rc_conf = conf_block_load();
 
-	halPWM.freq_hz = 60000;
-	halPWM.dead_time_ns = 70;
+	if (rc_conf < 0) {
 
-	ma.av_default_time = .2f;
-	ma.ap_J_measure_T = .1f;
+		/* Default.
+		 * */
 
+		halPWM.freq_hz = 60000;
+		halPWM.dead_time_ns = 70;
+		halUSART_baudRate = 57600;
+		ma.av_default_time = .2f;
+		ma.ap_J_measure_T = .1f;
+	}
+
+	usartEnable();
 	pwmEnable();
-	adcEnable();
 
 	pm.freq_hz = (float) halPWM.freq_hz;
 	pm.dT = 1.f / pm.freq_hz;
@@ -121,7 +131,19 @@ void taskINIT(void *pvParameters)
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
 
-	pmc_default(&pm);
+	if (rc_conf == 0) {
+
+		pm.const_Ld_inversed = 1.f / pm.const_Ld;
+		pm.const_Lq_inversed = 1.f / pm.const_Lq;
+	}
+	else {
+		/* Default.
+		 * */
+
+		pmc_default(&pm);
+	}
+
+	adcEnable();
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 
@@ -219,7 +241,7 @@ SH_DEF(hal_cpu_usage)
 	ma.load_count_flag = 1;
 	ma.load_count_value = 0;
 
-	vTaskDelay(1000);
+	vTaskDelay(MA_LOAD_COUNT_DELAY);
 
 	ma.load_count_flag = 0;
 	pc = 100.f * (float) (ma.load_count_limit - ma.load_count_value)

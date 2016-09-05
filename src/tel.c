@@ -46,7 +46,7 @@ typedef struct {
 }
 tel_t;
 
-static tel_t __CCM__		tel;
+static tel_t			tel;
 
 static void
 telCapture()

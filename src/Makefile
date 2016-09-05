@@ -37,11 +37,13 @@ OBJS    = freertos/heap_4.o \
 OBJS	+= hal/entry.o \
 	hal/adc.o \
 	hal/can.o \
+	hal/flash.o \
 	hal/hal.o \
 	hal/pwm.o \
 	hal/usart.o
 
 OBJS	+= ap.o \
+	conf.o \
 	lib.o \
 	m.o \
 	main.o \
