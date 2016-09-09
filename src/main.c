@@ -131,12 +131,8 @@ void taskINIT(void *pvParameters)
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
 
-	if (rc_conf == 0) {
+	if (rc_conf < 0) {
 
-		pm.const_Ld_inversed = 1.f / pm.const_Ld;
-		pm.const_Lq_inversed = 1.f / pm.const_Lq;
-	}
-	else {
 		/* Default.
 		 * */
 

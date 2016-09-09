@@ -26,6 +26,7 @@
 #include "freertos/FreeRTOS.h"
 
 #include "main.h"
+#include "pmc.h"
 #include "lib.h"
 #include "sh.h"
 
@@ -224,6 +225,9 @@ int conf_block_load()
 
 		for (n = 0; conf_vars[n] != NULL; ++n)
 			*conf_vars[n] = block->content[n];
+
+		pm.const_Ld_inversed = 1.f / pm.const_Ld;
+		pm.const_Lq_inversed = 1.f / pm.const_Lq;
 
 		rc = 0;
 	}
