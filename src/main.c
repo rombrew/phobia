@@ -248,8 +248,7 @@ SH_DEF(hal_cpu_usage)
 
 SH_DEF(hal_reboot)
 {
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	vTaskDelay(100);
 	halReset();
@@ -272,8 +271,7 @@ SH_DEF(hal_keycodes)
 
 SH_DEF(hal_pwm_freq_hz)
 {
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&halPWM.freq_hz, s) != NULL) {
 
@@ -290,8 +288,7 @@ SH_DEF(hal_pwm_freq_hz)
 
 SH_DEF(hal_pwm_dead_time_ns)
 {
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
 
@@ -308,8 +305,7 @@ SH_DEF(hal_pwm_DC)
 	int		tokN = 0;
 	int		xA, xB, xC, R;
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	tok = s;
 	s = stoi(&xA, tok);
@@ -341,8 +337,7 @@ SH_DEF(hal_pwm_Z)
 {
 	int		Z;
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&Z, s) != NULL) {
 

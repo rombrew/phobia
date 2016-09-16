@@ -43,14 +43,13 @@ void pm_i_slew_rate_auto(const char *s);
 void pm_i_gain_auto(const char *s);
 void pm_const_E_wb(const char *s);
 void pm_lu_threshold_auto(const char *s);
-void pm_p_slew_rate_auto(const char *s);
+void pm_s_slew_rate_auto(const char *s);
 
 SH_DEF(ap_identify_base)
 {
 	float			IMP[6];
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -124,8 +123,7 @@ SH_DEF(ap_identify_const_R_abc)
 	float			temp[2], iSP, U, R[3], SD;
 	int			xPWM;
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -197,11 +195,8 @@ SH_DEF(ap_identify_const_R_abc)
 
 SH_DEF(ap_identify_const_E)
 {
-	if (pm.lu_region == PMC_LU_DISABLED)
-		return ;
-
-	if (ma.pEX != NULL)
-		return ;
+	AP_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+	AP_ASSERT(ma.pEX == NULL);
 
 	ma.av_IN[0] = &pm.lu_X[0];
 	ma.av_IN[1] = &pm.lu_X[1];
@@ -241,7 +236,7 @@ ap_wait_for_settle(float wSP)
 	const float		thresholdX4 = 20.f;
 	float			leftT, X4, lastX4, dX4;
 
-	pm.p_set_point_w = wSP;
+	pm.s_set_point = wSP;
 
 	leftT = 3.f;
 	lastX4 = ma_av_float_1(pm.lu_X + 4, dT);
@@ -317,33 +312,19 @@ SH_DEF(ap_identify_const_J)
 {
 	float			wSP1, wSP2, J;
 
-	if (pm.lu_region == PMC_LU_DISABLED)
-		return ;
-
-	if (!(pm.m_bitmask & PMC_BIT_SERVO_CONTROL_LOOP))
-		return ;
-
-	if (ma.pEX != NULL)
-		return ;
+	AP_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+	AP_ASSERT(pm.m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP);
+	AP_ASSERT(!(pm.m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP));
+	AP_ASSERT(!(pm.m_bitmask & PMC_BIT_FORCED_CONTROL));
+	AP_ASSERT(ma.pEX == NULL);
 
 	wSP1 = 2.f * pm.lu_threshold_high;
 	wSP2 = 1.f / pm.const_E;
 
-	if (stof(&wSP1, s) != NULL) {
+	if (strchr(s, '-') != NULL) {
 
-		wSP1 *= .10471976f * pm.const_Zp;
-
-		if (stof(&wSP2, strtok(s, " ")) != NULL) {
-
-			wSP2 *= .10471976f * pm.const_Zp;
-		}
-	}
-	else {
-		if (strchr(s, '-') != NULL) {
-
-			wSP1 = - wSP1;
-			wSP2 = - wSP2;
-		}
+		wSP1 = - wSP1;
+		wSP2 = - wSP2;
 	}
 
 	do {
@@ -357,7 +338,7 @@ SH_DEF(ap_identify_const_J)
 		halFence();
 		ma.pEX = &ev_fsm_J;
 
-		pm.p_set_point_w = wSP2;
+		pm.s_set_point = wSP2;
 		AP_WAIT_FOR(ma.pEX == NULL);
 
 		J = ma.ap_J_vars[3];
@@ -367,7 +348,7 @@ SH_DEF(ap_identify_const_J)
 		halFence();
 		ma.pEX = &ev_fsm_J;
 
-		pm.p_set_point_w = wSP1;
+		pm.s_set_point = wSP1;
 		AP_WAIT_FOR(ma.pEX == NULL);
 
 		pm.const_J = (J + ma.ap_J_vars[3]) * .5f;
@@ -380,8 +361,9 @@ SH_DEF(ap_blind_spinup)
 {
 	float			wSP;
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP | PMC_BIT_FORCED_CONTROL;
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -395,10 +377,6 @@ SH_DEF(ap_blind_spinup)
 			AP_WAIT_FOR_IDLE();
 		}
 
-		pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
-		pm.m_bitmask |= (pm.m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION)
-			? 0 : PMC_BIT_SERVO_FORCED_CONTROL;
-
 		pmc_request(&pm, PMC_STATE_START);
 		AP_WAIT_FOR_IDLE();
 
@@ -407,16 +385,13 @@ SH_DEF(ap_blind_spinup)
 
 		ap_wait_for_settle(wSP);
 		AP_PRINT_AND_EXIT_IF_ERROR();
-
-		pm.m_bitmask &= ~PMC_BIT_SERVO_FORCED_CONTROL;
 	}
 	while (0);
 }
 
 SH_DEF(ap_probe_base)
 {
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -426,6 +401,8 @@ SH_DEF(ap_probe_base)
 
 		ap_blind_spinup("f");
 		AP_EXIT_IF_ERROR();
+
+		pm.m_bitmask &= ~PMC_BIT_FORCED_CONTROL;
 
 		ap_identify_const_E(EOL);
 		AP_EXIT_IF_ERROR();
@@ -441,10 +418,9 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_J(EOL);
 		AP_EXIT_IF_ERROR();
 
-		pm_p_slew_rate_auto(EOL);
+		pm_s_slew_rate_auto(EOL);
 
 		pmc_request(&pm, PMC_STATE_STOP);
-		pm.m_bitmask &= ~PMC_BIT_SERVO_CONTROL_LOOP;
 	}
 	while (0);
 }

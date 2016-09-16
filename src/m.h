@@ -19,8 +19,8 @@
 #ifndef _H_M_
 #define _H_M_
 
-#define MPIF			3.14159265f
-#define EPSF			1.2E-7f
+#define M_PI_F			3.14159265f
+#define M_EPS_F			1.2E-7f
 
 inline float
 fabsf(float x) { return __builtin_fabsf(x); }
@@ -28,10 +28,10 @@ fabsf(float x) { return __builtin_fabsf(x); }
 inline float
 sqrtf(float x) { return __builtin_sqrtf(x); }
 
-void mrotf(float y[2], float angle, const float x[2]);
-float matan2f(float y, float x);
-float msinf(float angle);
-float mcosf(float angle);
+void rotf(float y[2], float angle, const float x[2]);
+float atan2f(float y, float x);
+float sinf(float angle);
+float cosf(float angle);
 
 #endif /* _H_M_ */
 

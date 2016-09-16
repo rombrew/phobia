@@ -109,7 +109,7 @@ sim_Tel(float *pTel)
 
 	/* Other.
 	 * */
-	pTel[24] = pm.p_nonl_X4 * 30. / M_PI / m.Zp;
+	pTel[24] = pm.s_nonl_X4 * 30. / M_PI / m.Zp;
 }
 
 static void
@@ -159,16 +159,15 @@ sim_Script(FILE *fdTel)
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = m.PWMR;
-
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. + .1);
+	pm.const_R = m.R * (1. + .0);
 	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. + .3);
+	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -179,11 +178,11 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	pm.m_bitmask |= PMC_BIT_SERVO_CONTROL_LOOP;
 	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-	//pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	pm.m_bitmask |= PMC_BIT_FORCED_CONTROL;
 
-	pm.i_high_maximal = 40.f;
+	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP
+		| PMC_BIT_POSITION_CONTROL_LOOP;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
@@ -193,17 +192,24 @@ sim_Script(FILE *fdTel)
 	m.X[3] += .5;
 	sim_F(fdTel, 1., 0);*/
 
-	pm.p_set_point_w = 1000.f * (2.f * M_PI / 60.f * m.Zp);
+	/*pm.s_set_point = 1000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);
 
-	pm.p_set_point_w = 2000.f * (2.f * M_PI / 60.f * m.Zp);
+	pm.s_set_point = 2000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);
 
-	pm.p_set_point_w = 3000.f * (2.f * M_PI / 60.f * m.Zp);
+	pm.s_set_point = 3000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);
 
-	pm.p_set_point_w = 6000.f * (2.f * M_PI / 60.f * m.Zp);
-	sim_F(fdTel, .2, 0);
+	pm.s_set_point = 6000.f * (2.f * M_PI / 60.f * m.Zp);
+	sim_F(fdTel, .2, 0);*/
+
+	pm.s_set_point = 0.f;
+	pm.p_set_point_revol = 3;
+	sim_F(fdTel, 1., 0);
+
+	pm.p_set_point_revol = -10;
+	sim_F(fdTel, 1., 0);
 }
 
 int main(int argc, char *argv[])

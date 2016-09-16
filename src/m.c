@@ -18,7 +18,7 @@
 
 #include "m.h"
 
-void mrotf(float y[2], float angle, const float x[2])
+void rotf(float y[2], float angle, const float x[2])
 {
 	float		q, s, c, a, b;
 
@@ -34,7 +34,7 @@ void mrotf(float y[2], float angle, const float x[2])
 	y[1] = b * q;
 }
 
-static const float	patan2[] = {
+static const float	m_atan2[] = {
 
 	2.9009235E-1f,
 	- 6.5717929E-2f,
@@ -43,9 +43,12 @@ static const float	patan2[] = {
 	1.5707963E+0f
 };
 
-float matan2f(float y, float x)
+float atan2f(float y, float x)
 {
 	float		y_abs, u, f = 0.f;
+
+	/* FIXME: Only normalized input is acceptable ||x|| = 1.
+	 * */
 
 	y_abs = fabsf(y);
 
@@ -54,27 +57,27 @@ float matan2f(float y, float x)
 		f = x;
 		x = y_abs;
 		y_abs = - f;
-		f = patan2[4];
+		f = m_atan2[4];
 	}
 
 	if (y_abs < x) {
 
-		u = patan2[1] + patan2[0] * y_abs;
-		u = patan2[2] + u * y_abs;
-		u = patan2[3] + u * y_abs;
+		u = m_atan2[1] + m_atan2[0] * y_abs;
+		u = m_atan2[2] + u * y_abs;
+		u = m_atan2[3] + u * y_abs;
 		f += u * y_abs;
 	}
 	else {
-		u = patan2[1] + patan2[0] * x;
-		u = patan2[2] + u * x;
-		u = patan2[3] + u * x;
-		f += patan2[4] - u * x;
+		u = m_atan2[1] + m_atan2[0] * x;
+		u = m_atan2[2] + u * x;
+		u = m_atan2[3] + u * x;
+		f += m_atan2[4] - u * x;
 	}
 
 	return (y < 0.f) ? - f : f;
 }
 
-static const float	psincos[8] = {
+static const float	m_sincos[8] = {
 
 	-1.37729499E-4f,
 	-2.04509846E-4f,
@@ -86,10 +89,13 @@ static const float	psincos[8] = {
 	-3.55250780E-8f,
 };
 
-float msinf(float angle)
+float sinf(float angle)
 {
         float           u;
         int             m = 0;
+
+	/* FIXME: Only +/- pi range is acceptable.
+	 * */
 
         if (angle < 0.f) {
 
@@ -97,21 +103,21 @@ float msinf(float angle)
                 angle = - angle;
         }
 
-        if (angle > (MPIF / 2.f))
-                angle = MPIF - angle;
+        if (angle > (M_PI_F / 2.f))
+                angle = M_PI_F - angle;
 
-        u = psincos[1] + psincos[0] * angle;
-        u = psincos[2] + u * angle;
-        u = psincos[3] + u * angle;
-	u = psincos[4] + u * angle;
-	u = psincos[5] + u * angle;
-	u = psincos[6] + u * angle;
-	u = psincos[7] + u * angle;
+        u = m_sincos[1] + m_sincos[0] * angle;
+        u = m_sincos[2] + u * angle;
+        u = m_sincos[3] + u * angle;
+	u = m_sincos[4] + u * angle;
+	u = m_sincos[5] + u * angle;
+	u = m_sincos[6] + u * angle;
+	u = m_sincos[7] + u * angle;
 
 	return m ? - u : u;
 }
 
-float mcosf(float angle)
+float cosf(float angle)
 {
         float           u;
         int             m = 0;
@@ -119,21 +125,21 @@ float mcosf(float angle)
         if (angle < 0.f)
                 angle = - angle;
 
-        if (angle > (MPIF / 2.f)) {
+        if (angle > (M_PI_F / 2.f)) {
 
                 m = 1;
-                angle = MPIF - angle;
+                angle = M_PI_F - angle;
         }
 
-	angle = (MPIF / 2.f) - angle;
+	angle = (M_PI_F / 2.f) - angle;
 
-	u = psincos[1] + psincos[0] * angle;
-	u = psincos[2] + u * angle;
-	u = psincos[3] + u * angle;
-	u = psincos[4] + u * angle;
-	u = psincos[5] + u * angle;
-	u = psincos[6] + u * angle;
-	u = psincos[7] + u * angle;
+	u = m_sincos[1] + m_sincos[0] * angle;
+	u = m_sincos[2] + u * angle;
+	u = m_sincos[3] + u * angle;
+	u = m_sincos[4] + u * angle;
+	u = m_sincos[5] + u * angle;
+	u = m_sincos[6] + u * angle;
+	u = m_sincos[7] + u * angle;
 
 	return m ? - u : u;
 }

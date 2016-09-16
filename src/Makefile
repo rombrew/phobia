@@ -75,10 +75,10 @@ flash: $(TARGET)
 	@ echo "  FLASH " $(notdir $^)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
 #	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
-	@ picocom -l -b $(BAUD) -pe $(TTY)
+	@ picocom -l -b $(BAUD) -ye $(TTY)
 
 resume:
-	@ picocom -l -b $(BAUD) -pe $(TTY)
+	@ picocom -l -b $(BAUD) -ye $(TTY)
 
 clean:
 	@ echo "  CLEAN "

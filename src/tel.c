@@ -100,7 +100,7 @@ evTEL_0()
 		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
 		tel.pIN[2] = (short int) (pm.lu_X[2] * 4096.f);
 		tel.pIN[3] = (short int) (pm.lu_X[3] * 4096.f);
-		tel.pIN[4] = (short int) (pm.lu_X[4] * 30.f / MPIF / pm.const_Zp);
+		tel.pIN[4] = (short int) (pm.lu_X[4] * 30.f / M_PI_F / pm.const_Zp);
 		tel.pIN[5] = (short int) (pm.drift_Q * 1000.f);
 		tel.pIN[6] = (short int) (pm.lu_residual_D * 1000.f);
 		tel.pIN[7] = (short int) (pm.lu_residual_Q * 1000.f);
@@ -160,19 +160,18 @@ SH_DEF(tel_capture)
 	void 		(* evTEL) ();
 	int		nTEL = 0;
 
-	if (ma.pEX == NULL) {
+	AP_ASSERT(ma.pEX == NULL);
 
-		tel.iEN = 1;
-		tel.sCNT = 0;
-		tel.pZ = tel.pD;
+	tel.iEN = 1;
+	tel.sCNT = 0;
+	tel.pZ = tel.pD;
 
-		stoi(&nTEL, s);
-		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-		evTEL = evTEL_list[nTEL];
+	stoi(&nTEL, s);
+	nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+	evTEL = evTEL_list[nTEL];
 
-		halFence();
-		ma.pEX = evTEL;
-	}
+	halFence();
+	ma.pEX = evTEL;
 }
 
 SH_DEF(tel_disable)
@@ -204,35 +203,34 @@ SH_DEF(tel_live)
 	int		xC, decmin;
 	TaskHandle_t	xLIVE;
 
-	if (ma.pEX == NULL) {
+	AP_ASSERT(ma.pEX == NULL);
 
-		decmin = (int) (pm.freq_hz / 25.f + .5f);
-		tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
+	decmin = (int) (pm.freq_hz / 25.f + .5f);
+	tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
 
-		tel.iEN = 1;
-		tel.sCNT = 0;
-		tel.pZ = tel.pD;
+	tel.iEN = 1;
+	tel.sCNT = 0;
+	tel.pZ = tel.pD;
 
-		stoi(&nTEL, s);
-		nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-		evTEL = evTEL_list[nTEL];
+	stoi(&nTEL, s);
+	nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
+	evTEL = evTEL_list[nTEL];
 
-		halFence();
-		ma.pEX = evTEL;
+	halFence();
+	ma.pEX = evTEL;
 
-		xTaskCreate(taskLIVE, "tLIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xLIVE);
+	xTaskCreate(taskLIVE, "tLIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xLIVE);
 
-		do {
-			xC = iodef->getc();
+	do {
+		xC = iodef->getc();
 
-			if (xC == 3 || xC == 4)
-				break;
-		}
-		while (1);
-
-		vTaskDelete(xLIVE);
-		tel.iEN = 0;
+		if (xC == 3 || xC == 4)
+			break;
 	}
+	while (1);
+
+	vTaskDelete(xLIVE);
+	tel.iEN = 0;
 }
 
 SH_DEF(tel_flush)

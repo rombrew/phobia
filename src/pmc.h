@@ -25,8 +25,9 @@ enum {
 	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
 	PMC_BIT_THERMAL_DRIFT_ESTIMATION	= 0x0008,
 	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0010,
-	PMC_BIT_SERVO_CONTROL_LOOP		= 0x0100,
-	PMC_BIT_SERVO_FORCED_CONTROL		= 0x0200,
+	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0100,
+	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0200,
+	PMC_BIT_FORCED_CONTROL			= 0x0400,
 };
 
 enum {
@@ -220,19 +221,25 @@ typedef struct {
 	float		i_gain_P_Q;
 	float		i_gain_I_Q;
 
-	/* Servo control loop.
+	/* Speed control loop.
 	 * */
-	float		p_nonl_X4;
-	float		p_nonl_gain_F;
-	float		p_nonl_range;
-	float		p_set_point_w;
-	float		p_slew_rate_w;
-	float		p_forced_D;
-	float		p_forced_slew_rate_w;
-	float		p_track_point_w;
-	float		p_track_point_x[2];
-	int		p_track_point_revol;
-	float		p_gain_D;
+	float		s_maximal;
+	float		s_set_point;
+	float		s_slew_rate;
+	float		s_forced_D;
+	float		s_forced_slew_rate;
+	float		s_track_point;
+	float		s_track_point_p[2];
+	float		s_nonl_X4;
+	float		s_nonl_gain_F;
+	float		s_nonl_range;
+	float		s_gain_P;
+
+	/* Position control loop.
+	 * */
+	float		p_set_point[2];
+	float		p_set_point_s;
+	int		p_set_point_revol;
 	float		p_gain_P;
 
 	/* Low-pass gains.

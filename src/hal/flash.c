@@ -54,18 +54,24 @@ flash_lock()
 	FLASH->CR |= FLASH_CR_LOCK;
 }
 
+static void
+flash_wait_for_complete()
+{
+	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
+}
+
 void flash_erase(int snb)
 {
 	flash_unlock();
-
-	while (FLASH->SR & FLASH_SR_BSY) ;
+	flash_wait_for_complete();
 
 	snb = (snb + FLASH_SECTOR_OFFSET) & 0x0F;
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_SER | (snb << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
-	while (FLASH->SR & FLASH_SR_BSY) ;
+	flash_wait_for_complete();
+	FLASH->CR &= ~(FLASH_CR_SER);
 
 	flash_lock();
 }
@@ -76,19 +82,18 @@ void flash_write(void *d, const void *s, int sz)
 	const unsigned int	*us = s;
 
 	flash_unlock();
-
-	while (FLASH->SR & FLASH_SR_BSY) ;
+	flash_wait_for_complete();
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
-	FLASH->CR |= FLASH_CR_STRT;
 
-	while (sz > 4) {
+	while (sz >= 4) {
 
 		*ud++ = *us++;
 		sz -= 4;
 	}
 
-	while (FLASH->SR & FLASH_SR_BSY) ;
+	flash_wait_for_complete();
+	FLASH->CR &= ~(FLASH_CR_PG);
 
 	flash_lock();
 }

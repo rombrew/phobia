@@ -30,7 +30,7 @@
 #include "lib.h"
 #include "sh.h"
 
-#define CONF_VERSION		1
+#define CONF_VERSION		2
 
 typedef struct {
 
@@ -174,12 +174,13 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.i_gain_I_D,
 	(void *) &pm.i_gain_P_Q,
 	(void *) &pm.i_gain_I_Q,
-	(void *) &pm.p_nonl_gain_F,
-	(void *) &pm.p_nonl_range,
-	(void *) &pm.p_slew_rate_w,
-	(void *) &pm.p_forced_D,
-	(void *) &pm.p_forced_slew_rate_w,
-	(void *) &pm.p_gain_D,
+	(void *) &pm.s_maximal,
+	(void *) &pm.s_slew_rate,
+	(void *) &pm.s_forced_D,
+	(void *) &pm.s_forced_slew_rate,
+	(void *) &pm.s_nonl_gain_F,
+	(void *) &pm.s_nonl_range,
+	(void *) &pm.s_gain_P,
 	(void *) &pm.p_gain_P,
 	(void *) &pm.lp_gain[0],
 	(void *) &pm.lp_gain[1],
@@ -200,7 +201,12 @@ conf_block_scan(int vflag)
 
 			if (crc32b(curr, sizeof(conf_block_t) - 4) == curr->crc32) {
 
-				last = (curr->id > last->id) ? curr : last;
+				if (last != NULL) {
+
+					last = (curr->id > last->id) ? curr : last;
+				}
+				else
+					last = curr;
 			}
 		}
 
@@ -321,8 +327,7 @@ SH_DEF(conf_save)
 {
 	int			rc;
 
-	if (pm.lu_region != PMC_LU_DISABLED)
-		return ;
+	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	printf("Flash ... ");
 
@@ -341,7 +346,7 @@ SH_DEF(conf_info)
 	if (block != NULL) {
 
 		printf("ID %i" EOL, block->id);
-		printf("VER %i / %i" EOL, block->version, CONF_VERSION);
+		printf("VER %i (%i)" EOL, block->version, CONF_VERSION);
 	}
 	else {
 		printf("Invalid" EOL);

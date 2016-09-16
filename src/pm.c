@@ -121,21 +121,19 @@ SH_DEF(pm_m_bitmask_bemf_waveform_compensation)
 	pm.m_bitmask = mask;
 }
 
-SH_DEF(pm_m_bitmask_servo_control_loop)
+SH_DEF(pm_m_bitmask_speed_control_loop)
 {
 	int			mask;
 
-	mask = pm_m_bitmask(s, PMC_BIT_SERVO_CONTROL_LOOP);
+	mask = pm_m_bitmask(s, PMC_BIT_SPEED_CONTROL_LOOP);
 
-	if (mask & PMC_BIT_SERVO_CONTROL_LOOP) {
+	if (mask & PMC_BIT_SPEED_CONTROL_LOOP) {
 
-		pm.lu_revol = 0;
-
-		pm.p_set_point_w = 0.f;
-		pm.p_track_point_x[0] = 1.f;
-		pm.p_track_point_x[1] = 0.f;
-		pm.p_track_point_revol = 0;
-		pm.p_track_point_w = 0.f;
+		pm.s_set_point = pm.lu_X[4];
+		pm.s_track_point = pm.lu_X[4];
+		pm.s_nonl_X4 = pm.lu_X[4];
+		pm.s_track_point_p[0] = pm.lu_X[2];
+		pm.s_track_point_p[1] = pm.lu_X[3];
 
 		halFence();
 	}
@@ -143,9 +141,28 @@ SH_DEF(pm_m_bitmask_servo_control_loop)
 	pm.m_bitmask = mask;
 }
 
-SH_DEF(pm_m_bitmask_servo_forced_control)
+SH_DEF(pm_m_bitmask_position_control_loop)
 {
-	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_SERVO_FORCED_CONTROL);
+	int			mask;
+
+	mask = pm_m_bitmask(s, PMC_BIT_POSITION_CONTROL_LOOP);
+
+	if (mask & PMC_BIT_POSITION_CONTROL_LOOP) {
+
+		pm.p_set_point[0] = pm.lu_X[2];
+		pm.p_set_point[1] = pm.lu_X[3];
+		pm.p_set_point_s = pm.lu_X[4];
+		pm.p_set_point_revol = pm.lu_revol;
+
+		halFence();
+	}
+
+	pm.m_bitmask = mask;
+}
+
+SH_DEF(pm_m_bitmask_forced_control)
+{
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_FORCED_CONTROL);
 }
 
 SH_DEF(pm_m_errno)
@@ -313,7 +330,7 @@ SH_DEF(pm_lu_X23)
 {
 	float			g;
 
-	g = matan2f(pm.lu_X[3], pm.lu_X[2]) * 180.f / MPIF;
+	g = atan2f(pm.lu_X[3], pm.lu_X[2]) * 180.f / M_PI_F;
 	printf("%1f (degree) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
 }
 
@@ -710,64 +727,82 @@ SH_DEF(pm_i_gain_auto)
 		&pm.i_gain_I_Q);
 }
 
-SH_DEF(pm_p_nonl_gain_F)
-{
-	stof(&pm.p_nonl_gain_F, s);
-	printf("%2e" EOL, &pm.p_nonl_gain_F);
-}
-
-SH_DEF(pm_p_nonl_range)
-{
-	stof(&pm.p_nonl_range, s);
-	printf("%4e (Rad/S)" EOL, &pm.p_nonl_range);
-}
-
-SH_DEF(pm_p_set_point_w_rpm)
+SH_DEF(pm_s_maximal_rpm)
 {
 	float			RPM;
 
 	if (stof(&RPM, s) != NULL)
-		pm.p_set_point_w = .10471976f * RPM * pm.const_Zp;
+		pm.s_maximal = .10471976f * RPM * pm.const_Zp;
 
-	RPM = 9.5492969f * pm.p_set_point_w / pm.const_Zp;
+	RPM = 9.5492969f * pm.s_maximal / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_w, &RPM);
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.s_maximal, &RPM);
 }
 
-SH_DEF(pm_p_slew_rate_w)
+SH_DEF(pm_s_set_point_rpm)
 {
-	stof(&pm.p_slew_rate_w, s);
-	printf("%4e (Rad/S2)" EOL, &pm.p_slew_rate_w);
+	float			RPM;
+
+	if (stof(&RPM, s) != NULL)
+		pm.s_set_point = .10471976f * RPM * pm.const_Zp;
+
+	RPM = 9.5492969f * pm.s_set_point / pm.const_Zp;
+
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.s_set_point, &RPM);
 }
 
-SH_DEF(pm_p_forced_D)
+SH_DEF(pm_s_slew_rate)
 {
-	stof(&pm.p_forced_D, s);
-	printf("%3f (A)" EOL, &pm.p_forced_D);
+	stof(&pm.s_slew_rate, s);
+	printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
 }
 
-SH_DEF(pm_p_forced_slew_rate_w)
+SH_DEF(pm_s_forced_D)
 {
-	stof(&pm.p_forced_slew_rate_w, s);
-	printf("%4e (Rad/S2)" EOL, &pm.p_forced_slew_rate_w);
+	stof(&pm.s_forced_D, s);
+	printf("%3f (A)" EOL, &pm.s_forced_D);
 }
 
-SH_DEF(pm_p_slew_rate_auto)
+SH_DEF(pm_s_forced_slew_rate)
+{
+	stof(&pm.s_forced_slew_rate, s);
+	printf("%4e (Rad/S2)" EOL, &pm.s_forced_slew_rate);
+}
+
+SH_DEF(pm_s_slew_rate_auto)
 {
 	float			MT;
 
-	if (pm.const_J > EPSF) {
+	if (pm.const_J > M_EPS_F) {
 
 		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
-		pm.p_slew_rate_w = 1.5f * MT * pm.i_high_maximal;
-		pm.p_forced_slew_rate_w = .3f * MT * pm.p_forced_D;
+		pm.s_slew_rate = 1.5f * MT * pm.i_high_maximal;
+		pm.s_forced_slew_rate = .3f * MT * pm.s_forced_D;
 
-		printf("%4e (Rad/S2)" EOL, &pm.p_slew_rate_w);
-		printf("%4e (Rad/S2)" EOL, &pm.p_forced_slew_rate_w);
+		printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
+		printf("%4e (Rad/S2)" EOL, &pm.s_forced_slew_rate);
 	}
 }
 
-SH_DEF(pm_p_track_point_x_g)
+SH_DEF(pm_s_nonl_gain_F)
+{
+	stof(&pm.s_nonl_gain_F, s);
+	printf("%2e" EOL, &pm.s_nonl_gain_F);
+}
+
+SH_DEF(pm_s_nonl_range)
+{
+	stof(&pm.s_nonl_range, s);
+	printf("%4e (Rad/S)" EOL, &pm.s_nonl_range);
+}
+
+SH_DEF(pm_s_gain_P)
+{
+	stof(&pm.s_gain_P, s);
+	printf("%2e" EOL, &pm.s_gain_P);
+}
+
+SH_DEF(pm_p_set_point_g)
 {
 	float			angle, g;
 	int			revol, full;
@@ -792,22 +827,28 @@ SH_DEF(pm_p_track_point_x_g)
 			g -= 360.f;
 		}
 
-		angle = g * (MPIF / 180.f);
-		pm.p_track_point_x[0] = mcosf(angle);
-		pm.p_track_point_x[1] = msinf(angle);
-		pm.p_track_point_revol = revol;
+		angle = g * (M_PI_F / 180.f);
+		pm.p_set_point[0] = cosf(angle);
+		pm.p_set_point[1] = sinf(angle);
+		pm.p_set_point_revol = revol;
 	}
 
-	angle = matan2f(pm.p_track_point_x[1], pm.p_track_point_x[0]);
-	g = angle * (180.f / MPIF);
+	angle = atan2f(pm.p_set_point[1], pm.p_set_point[0]);
+	g = angle * (180.f / M_PI_F);
 
-	printf("%1f (degree) + %i (full revolutions)" EOL, &g, pm.p_track_point_revol);
+	printf("%1f (degree) + %i (full revolutions)" EOL, &g, pm.p_set_point_revol);
 }
 
-SH_DEF(pm_p_gain_D)
+SH_DEF(pm_p_set_point_s_rpm)
 {
-	stof(&pm.p_gain_D, s);
-	printf("%2e" EOL, &pm.p_gain_D);
+	float			RPM;
+
+	if (stof(&RPM, s) != NULL)
+		pm.p_set_point_s = .10471976f * RPM * pm.const_Zp;
+
+	RPM = 9.5492969f * pm.p_set_point_s / pm.const_Zp;
+
+	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_s, &RPM);
 }
 
 SH_DEF(pm_p_gain_P)

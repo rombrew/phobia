@@ -22,6 +22,8 @@
 #include "lib.h"
 #include "pmc.h"
 
+#define AP_ASSERT(x)		if ((x) == 0) { printf("ASSERT: %s" EOL, #x); return ; }
+
 typedef struct {
 
 	/* IO interfaces.
@@ -35,7 +37,7 @@ typedef struct {
 	int			load_count_value;
 	int			load_count_limit;
 
-	/* PWM event handler.
+	/* ADC event handler.
 	 * */
 	void			(* pEX) ();
 
