@@ -30,8 +30,6 @@
 #include "lib.h"
 #include "sh.h"
 
-#define CONF_VERSION		2
-
 typedef struct {
 
 	unsigned int		id;
@@ -197,7 +195,7 @@ conf_block_scan(int vflag)
 	last = NULL;
 
 	do {
-		if (vflag || curr->version == CONF_VERSION) {
+		if (vflag || curr->version == PMC_CONFIG_VERSION) {
 
 			if (crc32b(curr, sizeof(conf_block_t) - 4) == curr->crc32) {
 
@@ -264,7 +262,13 @@ conf_get_sector(const conf_block_t *block)
 {
 	int			n = 0;
 
+	if ((void *) block < flash_sector_map[0])
+		return -1;
+
 	do {
+		if (n >= FLASH_SECTOR_MAX)
+			break;
+
 		if (flash_sector_map[n + 1] > (void *) block)
 			break;
 
@@ -304,7 +308,7 @@ int conf_block_save()
 	temp = pvPortMalloc(sizeof(conf_block_t));
 
 	temp->id = newid;
-	temp->version = CONF_VERSION;
+	temp->version = PMC_CONFIG_VERSION;
 
 	for (n = 0; conf_vars[n] != NULL; ++n)
 		temp->content[n] = *conf_vars[n];
@@ -346,10 +350,10 @@ SH_DEF(conf_info)
 	if (block != NULL) {
 
 		printf("ID %i" EOL, block->id);
-		printf("VER %i (%i)" EOL, block->version, CONF_VERSION);
+		printf("VER %i" EOL, block->version);
 	}
 	else {
-		printf("Invalid" EOL);
+		printf("No Data" EOL);
 	}
 }
 

@@ -245,9 +245,9 @@ SH_DEF(tel_info)
 	freq = pm.freq_hz / (float) tel.sDEC;
 	time = TELSZ * (float) tel.sDEC / pm.freq_hz;
 
-	printf(	"decimal %i" EOL
-		"freq %1f (Hz)" EOL
-		"time %3f (Sec)" EOL,
+	printf(	"DECIMAL %i" EOL
+		"FREQ %1f (Hz)" EOL
+		"TIME %3f (Sec)" EOL,
 		tel.sDEC, &freq, &time);
 }
 

@@ -57,7 +57,7 @@ void blm_Enable(blm_t *m)
 	m->Tsim = 0.; /* Simulation time (Second) */
         m->dT = 1. / 60E+3; /* Time delta */
 	m->sT = 5E-6; /* Solver step */
-	m->PWMR = 1400; /* PWM resolution */
+	m->PWM_resolution = 1400; /* PWM resolution */
 
 	m->sF[0] = 0;
 	m->sF[1] = 0;
@@ -225,7 +225,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->xA = ADC;
+	m->sensor_A = (ADC - 2048) * 1.4648E-2f;
 
 	/* Output voltage of the current sensor B.
 	 * */
@@ -237,13 +237,13 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->xB = ADC;
+	m->sensor_B = (ADC - 2048) * 1.4648E-2f;
 
 	/* Voltage sampling.
 	 * */
 	S1 = m->U;
 
-	U = S1 / 18.4;
+	U = S1 * 27. / (470. + 27.);
 	dU = libGauss() * 3E-3 + 0E-3;
 	U += dU;
 
@@ -251,7 +251,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->xU = ADC;
+	m->supply_U = ADC * 1.4830E-2f;
 }
 
 static void
@@ -260,10 +260,10 @@ blm_Bridge_Solve(blm_t *m)
 	int		temp, Ton[3], pm[3];
 	double		dPWM, dT;
 
-	dPWM = m->dT / m->PWMR / 2.;
-	Ton[0] = (m->uA < 0) ? 0 : (m->uA > m->PWMR) ? m->PWMR : m->uA;
-	Ton[1] = (m->uB < 0) ? 0 : (m->uB > m->PWMR) ? m->PWMR : m->uB;
-	Ton[2] = (m->uC < 0) ? 0 : (m->uC > m->PWMR) ? m->PWMR : m->uC;
+	dPWM = m->dT / m->PWM_resolution / 2.;
+	Ton[0] = (m->uA < 0) ? 0 : (m->uA > m->PWM_resolution) ? m->PWM_resolution : m->uA;
+	Ton[1] = (m->uB < 0) ? 0 : (m->uB > m->PWM_resolution) ? m->PWM_resolution : m->uB;
+	Ton[2] = (m->uC < 0) ? 0 : (m->uC > m->PWM_resolution) ? m->PWM_resolution : m->uC;
 
 	/* Sort Ton values.
 	 * */
@@ -294,7 +294,7 @@ blm_Bridge_Solve(blm_t *m)
 
 	/* Count Up.
 	 * */
-	dT = dPWM * (m->PWMR - Ton[pm[0]]);
+	dT = dPWM * (m->PWM_resolution - Ton[pm[0]]);
 	blm_Solve_Split(m, dT);
 
 	m->sF[pm[0]] = 1;
@@ -328,7 +328,7 @@ blm_Bridge_Solve(blm_t *m)
 
 	m->sF[pm[0]] = 0;
 
-	dT = dPWM * (m->PWMR - Ton[pm[0]]);
+	dT = dPWM * (m->PWM_resolution - Ton[pm[0]]);
 	blm_Solve_Split(m, dT);
 }
 

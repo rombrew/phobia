@@ -22,7 +22,7 @@
 #include "flash.h"
 #include "hal.h"
 
-#define FLASH_SECTOR_OFFSET		8
+#define FLASH_FIRST_SECTOR		8
 
 void * const flash_sector_map[] = {
 
@@ -65,7 +65,7 @@ void flash_erase(int snb)
 	flash_unlock();
 	flash_wait_for_complete();
 
-	snb = (snb + FLASH_SECTOR_OFFSET) & 0x0F;
+	snb = (snb + FLASH_FIRST_SECTOR) & 0x0F;
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_SER | (snb << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;

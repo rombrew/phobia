@@ -71,11 +71,11 @@ void pmc_default(pmc_t *pm)
 	pm->wave_gain_I = 1E-3f;
 
 	pm->scal_A[0] = 0.f;
-	pm->scal_A[1] = 1.4648E-2f;
+	pm->scal_A[1] = 1.f;
 	pm->scal_B[0] = 0.f;
-	pm->scal_B[1] = 1.4648E-2f;
+	pm->scal_B[1] = 1.f;
 	pm->scal_U[0] = 0.f;
-	pm->scal_U[1] = 1.4830E-2f;
+	pm->scal_U[1] = 1.f;
 
 	pm->fault_residual_maximal = 3E+1f;
 	pm->fault_drift_maximal = 1.f;
@@ -1134,12 +1134,12 @@ pm_FSM(pmc_t *pm)
 	}
 }
 
-void pmc_feedback(pmc_t *pm, int xA, int xB)
+void pmc_feedback(pmc_t *pm, float xA, float xB)
 {
 	float		iA, iB;
 
-	iA = pm->scal_A[1] * (xA - 2048) + pm->scal_A[0];
-	iB = pm->scal_B[1] * (xB - 2048) + pm->scal_B[0];
+	iA = pm->scal_A[1] * xA + pm->scal_A[0];
+	iB = pm->scal_B[1] * xB + pm->scal_B[0];
 
 	pm->fb_iA = (iA < - pm->fb_range) ? - pm->fb_range :
 		(iA > pm->fb_range) ? pm->fb_range : iA;
@@ -1158,7 +1158,7 @@ void pmc_feedback(pmc_t *pm, int xA, int xB)
 	}
 }
 
-void pmc_voltage(pmc_t *pm, int xU)
+void pmc_voltage(pmc_t *pm, float xU)
 {
 	float		uS;
 

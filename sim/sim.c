@@ -58,9 +58,9 @@ sim_Tel(float *pTel)
 
 	/* Duty cycle.
 	 * */
-	pTel[6] = m.uA * 100. / (double) m.PWMR;
-	pTel[7] = m.uB * 100. / (double) m.PWMR;
-	pTel[8] = m.uC * 100. / (double) m.PWMR;
+	pTel[6] = m.uA * 100. / (double) m.PWM_resolution;
+	pTel[7] = m.uB * 100. / (double) m.PWM_resolution;
+	pTel[8] = m.uC * 100. / (double) m.PWM_resolution;
 
 	/* Estimated current.
 	 * */
@@ -130,8 +130,8 @@ sim_F(FILE *fdTel, double dT, int Verb)
 
 		/* PMC update.
 		 * */
-		pmc_feedback(&pm, m.xA, m.xB);
-		pmc_voltage(&pm, m.xU);
+		pmc_feedback(&pm, m.sensor_A, m.sensor_B);
+		pmc_voltage(&pm, m.supply_U);
 
 		/* Collect telemetry.
 		 * */
@@ -158,7 +158,7 @@ sim_Script(FILE *fdTel)
 {
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_resolution = m.PWMR;
+	pm.pwm_resolution = m.PWM_resolution;
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
@@ -179,7 +179,7 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, .5, 0);
 
 	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-	pm.m_bitmask |= PMC_BIT_FORCED_CONTROL;
+	//pm.m_bitmask |= PMC_BIT_FORCED_CONTROL;
 
 	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP
 		| PMC_BIT_POSITION_CONTROL_LOOP;

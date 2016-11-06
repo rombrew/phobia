@@ -20,6 +20,8 @@
 #include "pwm.h"
 #include "hal.h"
 
+#define HAL_TIMER_HZ		(HAL_APB2_HZ * 2UL)
+
 halPWM_t			halPWM;
 
 void irqTIM1_UP_TIM10() { }
@@ -30,15 +32,15 @@ void pwmEnable()
 
 	/* Update configuration.
 	 * */
-	R = HAL_APB2_HZ * 2UL / 2UL / halPWM.freq_hz;
+	R = HAL_TIMER_HZ / 2UL / halPWM.freq_hz;
 	R = (R & 1) ? R + 1 : R;
-	halPWM.freq_hz = HAL_APB2_HZ * 2UL / 2UL / R;
+	halPWM.freq_hz = HAL_TIMER_HZ / 2UL / R;
 	halPWM.resolution = R;
 
-	D = ((HAL_APB2_HZ * 2UL / 1000UL) * halPWM.dead_time_ns + 500000UL) / 1000000UL;
+	D = ((HAL_TIMER_HZ / 1000UL) * halPWM.dead_time_ns + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : (D < 256) ? 128 + (D - 128) / 2 : 191;
 	halPWM.dead_time_tk = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255);
-	halPWM.dead_time_ns = halPWM.dead_time_tk * 1000000UL / (HAL_APB2_HZ * 2UL / 1000UL);
+	halPWM.dead_time_ns = halPWM.dead_time_tk * 1000000UL / (HAL_TIMER_HZ / 1000UL);
 
 	/* Enable TIM1 clock.
 	 * */

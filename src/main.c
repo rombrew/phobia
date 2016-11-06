@@ -146,13 +146,57 @@ void taskINIT(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
-void adcIRQ()
+void adcIRQ_feedback()
 {
-	pmc_feedback(&pm, halADC.xA, halADC.xB);
-	pmc_voltage(&pm, halADC.xSUPPLY);
+	pmc_feedback(&pm, halADC.sensor_A, halADC.sensor_B);
+	pmc_voltage(&pm, halADC.supply_U);
 
 	if (ma.pEX != NULL)
 		ma.pEX();
+}
+
+static void
+ma_thermal_job(int xNTC, int xTEMP, int xREF)
+{
+	float			fc, temp;
+
+	ma.thermal_xAVG[0] += xNTC;
+	ma.thermal_xAVG[1] += xTEMP;
+	ma.thermal_xAVG[2] += xREF;
+
+	ma.thermal_sample_N += 1;
+
+	if (ma.thermal_sample_N >= ADC_THERMAL_FREQ_HZ) {
+
+		fc = (float) (ma.thermal_xAVG[0] / ma.thermal_sample_N);
+		ma.thermal_xAVG[0] = 0;
+
+		temp = halADC_CONST.NTC[1] + halADC_CONST.NTC[0] * fc;
+		temp = halADC_CONST.NTC[2] + temp * fc;
+		temp = halADC_CONST.NTC[3] + temp * fc;
+		temp = halADC_CONST.NTC[4] + temp * fc;
+		temp = halADC_CONST.NTC[5] + temp * fc;
+		temp = halADC_CONST.NTC[6] + temp * fc;
+		temp = halADC_CONST.NTC[7] + temp * fc;
+		ma.thermal_NTC = temp;
+
+		fc = (float) (ma.thermal_xAVG[1] / ma.thermal_sample_N);
+		ma.thermal_xAVG[1] = 0;
+
+		ma.thermal_TEMP = halADC_CONST.TEMP_1 * fc + halADC_CONST.TEMP_0;
+
+		fc = (float) (ma.thermal_xAVG[2] / ma.thermal_sample_N);
+		ma.thermal_xAVG[2] = 0;
+
+		ma.thermal_REF = halADC_CONST.REF_1 * fc;
+
+		ma.thermal_sample_N = 0;
+	}
+}
+
+void adcIRQ_thermal()
+{
+	ma_thermal_job(halADC.thermal_xNTC, halADC.thermal_xTEMP, halADC.in_xREF);
 }
 
 void halMain()
@@ -161,7 +205,7 @@ void halMain()
 	vTaskStartScheduler();
 }
 
-void ma_av_EH_8()
+void ma_av_EH()
 {
 	int			j;
 
@@ -187,7 +231,7 @@ float ma_av_float_1(float *param, float time)
 		ma.av_sample_MAX = pm.freq_hz * time;
 
 		halFence();
-		ma.pEX = &ma_av_EH_8;
+		ma.pEX = &ma_av_EH;
 
 		while (ma.pEX != NULL)
 			vTaskDelay(1);
@@ -301,25 +345,27 @@ SH_DEF(hal_pwm_dead_time_ns)
 
 SH_DEF(hal_pwm_DC)
 {
-	const char	*tok;
-	int		tokN = 0;
 	int		xA, xB, xC, R;
+	int		allf = 0;
 
 	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-	tok = s;
-	s = stoi(&xA, tok);
-	tokN += (s != NULL) ? 1 : 0;
+	if (stoi(&xA, s) != NULL) {
 
-	tok = strtok(tok, " ");
-	s = stoi(&xB, tok);
-	tokN += (s != NULL) ? 1 : 0;
+		s = strtok(s, " ");
 
-	tok = strtok(tok, " ");
-	s = stoi(&xC, tok);
-	tokN += (s != NULL) ? 1 : 0;
+		if (stoi(&xB, s) != NULL) {
 
-	if (tokN == 3) {
+			s = strtok(s, " ");
+
+			if (stoi(&xC, s) != NULL) {
+
+				allf = 1;
+			}
+		}
+	}
+
+	if (allf) {
 
 		R = halPWM.resolution;
 
@@ -345,5 +391,19 @@ SH_DEF(hal_pwm_Z)
 
 		printf("Z %i" EOL, Z);
 	}
+}
+
+SH_DEF(hal_thermal)
+{
+	printf("NTC %1f (C)" EOL, &ma.thermal_NTC);
+	printf("TEMP %1f (C)" EOL, &ma.thermal_TEMP);
+	printf("REF %3f (V)" EOL, &ma.thermal_REF);
+}
+
+SH_DEF(hal_version)
+{
+	printf("VERSION %s" EOL, PMC_VERSION);
+	printf("CONFIG %i" EOL, PMC_CONFIG_VERSION);
+	printf("HAL %s" EOL, HAL_REVISION);
 }
 

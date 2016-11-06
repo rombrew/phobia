@@ -19,6 +19,8 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
+#define HAL_REVISION		"rev2"
+
 #define HAL_APB1_HZ		(hal_CLOCK_CPU_HZ / 4UL)
 #define HAL_APB2_HZ		(hal_CLOCK_CPU_HZ / 2UL)
 

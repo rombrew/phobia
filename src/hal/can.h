@@ -33,6 +33,7 @@ void canEnable();
 void canDisable();
 
 void canFilter(int nFilter, int bID, int bMask, int nFifo);
+int canEmpty();
 int canTransmit(int bID, int nBytes, const char bData[8]);
 
 extern void canIRQ();

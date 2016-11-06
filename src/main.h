@@ -19,6 +19,9 @@
 #ifndef _H_MAIN_
 #define _H_MAIN_
 
+#define PMC_VERSION		"127d"
+#define PMC_CONFIG_VERSION	2
+
 #include "lib.h"
 #include "pmc.h"
 
@@ -36,6 +39,14 @@ typedef struct {
 	int			load_count_flag;
 	int			load_count_value;
 	int			load_count_limit;
+
+	/* Thermal information.
+	 * */
+	int			thermal_xAVG[3];
+	int			thermal_sample_N;
+	float			thermal_NTC;
+	float			thermal_TEMP;
+	float			thermal_REF;
 
 	/* ADC event handler.
 	 * */
@@ -61,7 +72,7 @@ main_t;
 extern main_t			ma;
 extern pmc_t			pm;
 
-void ma_av_EH_8();
+void ma_av_EH();
 float ma_av_float_1(float *param, float time);
 float ma_av_float_arg_1(float *param, const char *s);
 

@@ -213,7 +213,7 @@ SH_DEF(ap_identify_const_E)
 	ma.av_sample_MAX = pm.freq_hz * pm.T_measure;
 
 	halFence();
-	ma.pEX = &ma_av_EH_8;
+	ma.pEX = &ma_av_EH;
 
 	do {
 		AP_WAIT_FOR(ma.pEX == NULL);

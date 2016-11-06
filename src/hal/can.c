@@ -22,6 +22,10 @@
 
 #define CAN_TIMEOUT			70000UL
 
+void irqCAN1_TX()
+{
+}
+
 void irqCAN1_RX0()
 {
 }
@@ -110,13 +114,27 @@ void canFilter(int nFilter, int bID, int bMask, int nFifo)
 		CAN1->FFA1R &= ~BIT;
 		CAN1->FFA1R |= (nFifo == 1) ? BIT : 0;
 
-		CAN1->sFilterRegister[nFilter].FR1 = bID;
-		CAN1->sFilterRegister[nFilter].FR2 = bMask;
+		CAN1->sFilterRegister[nFilter].FR1 = (bID << 21);
+		CAN1->sFilterRegister[nFilter].FR2 = (bMask << 21);
 
 		CAN1->FA1R |= BIT;
 	}
 
 	CAN1->FMR &= ~CAN_FMR_FINIT;
+}
+
+int canEmptyMailBox()
+{
+	int		nEmpty = 0;
+
+	if (CAN1->TSR & CAN_TSR_TME0)
+		nEmpty++;
+	if (CAN1->TSR & CAN_TSR_TME1)
+		nEmpty++;
+	if (CAN1->TSR & CAN_TSR_TME2)
+		nEmpty++;
+
+	return nEmpty;
 }
 
 int canTransmit(int bID, int nBytes, const char bData[8])
@@ -130,35 +148,32 @@ int canTransmit(int bID, int nBytes, const char bData[8])
 	else if (CAN1->TSR & CAN_TSR_TME2)
 		nMailBox = 2;
 	else
-		nMailBox = -1;
+		return -1;
 
-	if (nMailBox >= 0) {
+	CAN1->sTxMailBox[nMailBox].TIR = (bID << 21);
+	CAN1->sTxMailBox[nMailBox].TDTR = nBytes;
 
-		if (bID < 0x3FF)
+	CAN1->sTxMailBox[nMailBox].TDLR =
+		((unsigned int) bData[0])
+		| ((unsigned int) bData[1] << 8)
+		| ((unsigned int) bData[2] << 16)
+		| ((unsigned int) bData[3] << 24);
 
-			CAN1->sTxMailBox[nMailBox].TIR = (bID << 21);
-		else
-			CAN1->sTxMailBox[nMailBox].TIR = (bID << 3)
-				| CAN_TI1R_IDE;
+	CAN1->sTxMailBox[nMailBox].TDHR =
+		((unsigned int) bData[4])
+		| ((unsigned int) bData[5] << 8)
+		| ((unsigned int) bData[6] << 16)
+		| ((unsigned int) bData[7] << 24);
 
-		nBytes = (nBytes > 8) ? 8 : nBytes;
-		CAN1->sTxMailBox[nMailBox].TDTR = nBytes;
+	CAN1->sTxMailBox[nMailBox].TIR |= CAN_TI1R_TXRQ;
 
-		CAN1->sTxMailBox[nMailBox].TDLR =
-			(unsigned int) bData[0]
-			| ((unsigned int) bData[1] << 8)
-			| ((unsigned int) bData[2] << 16)
-			| ((unsigned int) bData[3] << 24);
+	return 0;
+}
 
-		CAN1->sTxMailBox[nMailBox].TDHR =
-			(unsigned int) bData[4]
-			| ((unsigned int) bData[5] << 8)
-			| ((unsigned int) bData[6] << 16)
-			| ((unsigned int) bData[7] << 24);
+int canMsgSend(int bID, int nBytes, const char bData[8], int xWay)
+{
+	int		nEmpty;
 
-		CAN1->sTxMailBox[nMailBox].TIR |= CAN_TI1R_TXRQ;
-	}
-
-	return nMailBox;
+	nEmpty = canEmptyMailBox();
 }
 

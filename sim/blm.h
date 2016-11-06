@@ -23,7 +23,7 @@ typedef struct {
 
 	double		Tsim;
 	double		dT, sT;
-	int		PWMR;
+	int		PWM_resolution;
 
 	/* Duty Cycle (Input).
 	 * */
@@ -51,11 +51,11 @@ typedef struct {
 	double		J;
 	double		M[4];
 
-	/* ADC codes (Output).
+	/* ADC result (Output).
 	 * */
-	int		xA;
-	int		xB;
-	int		xU;
+	float		sensor_A;
+	float		sensor_B;
+	float		supply_U;
 }
 blm_t;
 
