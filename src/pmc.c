@@ -769,6 +769,27 @@ p_control(pmc_t *pm)
 }
 
 static void
+w_control(pmc_t *pm)
+{
+	float		iSP, abs_Q;
+
+	abs_Q = fabsf(pm->vsi_Q);
+
+	if (abs_Q > M_EPS_F) {
+
+		iSP = pm->w_set_point_watt * (1.f / 1.5f) / abs_Q;
+	}
+	else {
+		iSP = pm->i_low_maximal;
+	}
+
+	iSP = (pm->w_direction < 0) ? - iSP : iSP;
+
+	pm->i_set_point_D = 0.f;
+	pm->i_set_point_Q = iSP;
+}
+
+static void
 pm_FSM(pmc_t *pm)
 {
 	float			uX, uY, temp;
@@ -1154,6 +1175,7 @@ void pmc_feedback(pmc_t *pm, float xA, float xB)
 		i_control(pm);
 		(pm->m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) ? p_control(pm) : 0 ;
 		(pm->m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP) ? s_control(pm) : 0 ;
+		(pm->m_bitmask & PMC_BIT_POWER_CONTROL_LOOP) ? w_control(pm) : 0 ;
 		lu_post(pm);
 	}
 }

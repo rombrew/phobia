@@ -165,6 +165,11 @@ SH_DEF(pm_m_bitmask_forced_control)
 	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_FORCED_CONTROL);
 }
 
+SH_DEF(pm_m_bitmask_power_control_loop)
+{
+	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_POWER_CONTROL_LOOP);
+}
+
 SH_DEF(pm_m_errno)
 {
 	int		flag;

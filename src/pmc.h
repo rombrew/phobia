@@ -28,6 +28,7 @@ enum {
 	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0100,
 	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0200,
 	PMC_BIT_FORCED_CONTROL			= 0x0400,
+	PMC_BIT_POWER_CONTROL_LOOP		= 0x0800,
 };
 
 enum {
@@ -241,6 +242,11 @@ typedef struct {
 	float		p_set_point_s;
 	int		p_set_point_revol;
 	float		p_gain_P;
+
+	/* Power control loop.
+	 * */
+	float		w_set_point_watt;
+	int		w_direction;
 
 	/* Low-pass gains.
 	 * */

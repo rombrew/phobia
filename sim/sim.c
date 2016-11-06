@@ -179,10 +179,10 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, .5, 0);
 
 	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-	//pm.m_bitmask |= PMC_BIT_FORCED_CONTROL;
+	pm.m_bitmask |= PMC_BIT_POWER_CONTROL_LOOP;
 
-	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP
-		| PMC_BIT_POSITION_CONTROL_LOOP;
+	/*pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP
+		| PMC_BIT_POSITION_CONTROL_LOOP;*/
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
@@ -204,11 +204,10 @@ sim_Script(FILE *fdTel)
 	pm.s_set_point = 6000.f * (2.f * M_PI / 60.f * m.Zp);
 	sim_F(fdTel, .2, 0);*/
 
-	pm.s_set_point = 0.f;
-	pm.p_set_point_revol = 3;
+	pm.w_set_point_watt = 50.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.p_set_point_revol = -10;
+	pm.w_set_point_watt = 20.f;
 	sim_F(fdTel, 1., 0);
 }
 

@@ -28,6 +28,7 @@ SH_DEF(pm_m_bitmask_bemf_waveform_compensation);
 SH_DEF(pm_m_bitmask_speed_control_loop);
 SH_DEF(pm_m_bitmask_position_control_loop);
 SH_DEF(pm_m_bitmask_forced_control);
+SH_DEF(pm_m_bitmask_power_control_loop);
 SH_DEF(pm_m_errno);
 SH_DEF(pm_T_drift);
 SH_DEF(pm_T_hold);
