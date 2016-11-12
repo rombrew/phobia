@@ -168,7 +168,9 @@ boardStart()
 
 	/* Enable LED pins.
 	 * */
-	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER12, GPIO_MODER_MODER12_0);
+	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER3 | GPIO_MODER_MODER4
+			| GPIO_MODER_MODER5, GPIO_MODER_MODER3_0
+			| GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0);
 
 	__DSB();
 	__ISB();
@@ -213,8 +215,20 @@ void halLED(int F)
 {
 	if (F & LED_RED)
 
-		GPIOC->BSRRL = (1UL << 12);
+		GPIOB->BSRRL = (1UL << 3);
 	else
-		GPIOC->BSRRH = (1UL << 12);
+		GPIOB->BSRRH = (1UL << 3);
+
+	if (F & LED_GREEN)
+
+		GPIOB->BSRRL = (1UL << 4);
+	else
+		GPIOB->BSRRH = (1UL << 4);
+
+	if (F & LED_BLUE)
+
+		GPIOB->BSRRL = (1UL << 5);
+	else
+		GPIOB->BSRRH = (1UL << 5);
 }
 
