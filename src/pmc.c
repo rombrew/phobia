@@ -61,7 +61,7 @@ void pmc_default(pmc_t *pm)
 	pm->T_measure = .5f;
 	pm->T_end = .1f;
 
-	pm->fb_range = 25.f;
+	pm->fb_range = 50.f;
 
 	pm->wave_i_hold_X = 2.f;
 	pm->wave_i_hold_Y = 0.f;
@@ -112,7 +112,7 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 25.f;
+	pm->i_high_maximal = 30.f;
 	pm->i_low_maximal = 5.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = - 210.f;
@@ -123,7 +123,7 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->s_maximal = 1200.f;
+	pm->s_maximal = 31416.f;
 	pm->s_slew_rate = 1E+6f;
 	pm->s_forced_D = 5.f;
 	pm->s_forced_slew_rate = 5E+2f;
@@ -1155,12 +1155,10 @@ pm_FSM(pmc_t *pm)
 	}
 }
 
-void pmc_feedback(pmc_t *pm, float xA, float xB)
+void pmc_feedback(pmc_t *pm, float iA, float iB)
 {
-	float		iA, iB;
-
-	iA = pm->scal_A[1] * xA + pm->scal_A[0];
-	iB = pm->scal_B[1] * xB + pm->scal_B[0];
+	iA = pm->scal_A[1] * iA + pm->scal_A[0];
+	iB = pm->scal_B[1] * iB + pm->scal_B[0];
 
 	pm->fb_iA = (iA < - pm->fb_range) ? - pm->fb_range :
 		(iA > pm->fb_range) ? pm->fb_range : iA;
@@ -1180,11 +1178,9 @@ void pmc_feedback(pmc_t *pm, float xA, float xB)
 	}
 }
 
-void pmc_voltage(pmc_t *pm, float xU)
+void pmc_voltage(pmc_t *pm, float uS)
 {
-	float		uS;
-
-	uS = pm->scal_U[1] * xU + pm->scal_U[0];
+	uS = pm->scal_U[1] * uS + pm->scal_U[0];
 
 	pm->const_U += (uS - pm->const_U) * pm->lp_gain[0];
 	pm->const_U_inversed = 1.f / pm->const_U;

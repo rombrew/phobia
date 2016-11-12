@@ -265,8 +265,8 @@ typedef struct {
 pmc_t;
 
 void pmc_default(pmc_t *pm);
-void pmc_feedback(pmc_t *pm, float xA, float xB);
-void pmc_voltage(pmc_t *pm, float xU);
+void pmc_feedback(pmc_t *pm, float iA, float iB);
+void pmc_voltage(pmc_t *pm, float uS);
 void pmc_request(pmc_t *pm, int req);
 
 const char *pmc_strerror(int errno);

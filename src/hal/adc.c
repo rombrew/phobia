@@ -25,8 +25,8 @@ halADC_CONST_t			halADC_CONST = {
 
 	.A_1 = 2.6855E-2f,
 	.B_1 = 2.6855E-2f,
-	.U_1 = 2.8981E-2f,
-	.HVIN_1 = 2.8981E-2f,
+	.U_1 = 1.4830E-2f,
+	.HVIN_1 = 1.4830E-2f,
 
 	/* NTC PN: EWTF05-103H3I-N
 	 * */
@@ -62,13 +62,13 @@ void irqADC()
 		ADC2->SR &= ~ADC_SR_JEOC;
 		ADC3->SR &= ~ADC_SR_JEOC;
 
-		fc = (float) (ADC2->JDR1 - 2048);
+		fc = (float) ((int) ADC2->JDR1 - 2048);
 		halADC.sensor_A = fc * halADC_CONST.A_1;
 
 		fc = (float) (ADC2->JDR2);
 		halADC.supply_U = fc * halADC_CONST.U_1;
 
-		fc = (float) (ADC3->JDR1 - 2048);
+		fc = (float) ((int) ADC3->JDR1 - 2048);
 		halADC.sensor_B = fc * halADC_CONST.B_1;
 
 		fc = (float) (ADC3->JDR2);
@@ -84,8 +84,8 @@ adc_temp_calibration()
 	unsigned short		*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
 	unsigned short		*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
 
-	halADC_CONST.TEMP_0 = 1.375f * (*CAL_TEMP_30) - .375f * (*CAL_TEMP_110);
-	halADC_CONST.TEMP_1 = .0125f * (*CAL_TEMP_110) - .0125f * (*CAL_TEMP_30);
+	halADC_CONST.TEMP_1 = (30.f - 110.f) / (float) (*CAL_TEMP_30 - *CAL_TEMP_110);
+	halADC_CONST.TEMP_0 = 110.f - halADC_CONST.TEMP_1 * (float) (*CAL_TEMP_110);
 }
 
 static void
@@ -172,7 +172,7 @@ void adcEnable()
 	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC3->SMPR1 = 0;
 	ADC3->SMPR2 = 0;
-	ADC3->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ4_0;
+	ADC3->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ3_0;
 
 	/* Update CONST.
 	 * */
