@@ -5,8 +5,7 @@ controller for RC.
 
 ## Hardware specification (rev2)
 
-![PMC rev1](doc/pmc_rev2_top.jpg)
-![PMC rev1](doc/pmc_rev2_bot.jpg)
+[Top](doc/pmc_rev2_top.jpg) and [bottom](doc/pmc_rev2_bot.jpg) view of PCB.
 
 * Separate power and control PCB.
 * Dimension: 90mm x 40mm x 15mm.
@@ -45,7 +44,6 @@ PCB design source files.
 * Some simple motor failures as open circuit or winding short can be detected.
 * BEMF waveform online estimation (EXPERIMENTAL).
 * Operation at current values outside the sensor range (EXPERIMENTAL).
-
 * Non critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
 * Flash storage for all of configurable parameters.
 
