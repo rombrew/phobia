@@ -117,7 +117,6 @@ typedef struct {
 
 	/* Fault limits.
 	 * */
-	float		fault_current_maximal;
 	float		fault_residual_maximal;
 	float		fault_drift_maximal;
 	float		fault_low_voltage;

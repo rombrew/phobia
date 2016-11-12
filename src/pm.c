@@ -285,12 +285,6 @@ SH_DEF(pm_scal_U1)
 	printf("%4e" EOL, &pm.scal_U[1]);
 }
 
-SH_DEF(pm_fault_current_maximal)
-{
-	stof(&pm.fault_current_maximal, s);
-	printf("%3f (A)" EOL, &pm.fault_current_maximal);
-}
-
 SH_DEF(pm_fault_residual_maximal)
 {
 	stof(&pm.fault_residual_maximal, s);
@@ -781,7 +775,7 @@ SH_DEF(pm_s_slew_rate_auto)
 	if (pm.const_J > M_EPS_F) {
 
 		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
-		pm.s_slew_rate = 1.5f * MT * pm.i_high_maximal;
+		pm.s_slew_rate = 1.5f * MT * (pm.const_E / pm.const_Lq);
 		pm.s_forced_slew_rate = .3f * MT * pm.s_forced_D;
 
 		printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
@@ -860,6 +854,18 @@ SH_DEF(pm_p_gain_P)
 {
 	stof(&pm.p_gain_P, s);
 	printf("%2e" EOL, &pm.p_gain_P);
+}
+
+SH_DEF(pm_w_set_point_watt)
+{
+	stof(&pm.w_set_point_watt, s);
+	printf("%1f (W)" EOL, &pm.w_set_point_watt);
+}
+
+SH_DEF(pm_w_direction)
+{
+	stoi(&pm.w_direction, s);
+	printf("%i" EOL, pm.w_direction);
 }
 
 SH_DEF(pm_lp_gain_0)

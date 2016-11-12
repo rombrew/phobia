@@ -77,7 +77,7 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 1.f;
 
-	pm->fault_residual_maximal = 3E+1f;
+	pm->fault_residual_maximal = 5E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
 	pm->fault_high_voltage = 55.f;
@@ -112,8 +112,8 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 30.f;
-	pm->i_low_maximal = 5.f;
+	pm->i_high_maximal = 50.f;
+	pm->i_low_maximal = 10.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = - 210.f;
 	pm->i_slew_rate_D = 4E+3f;
@@ -124,13 +124,13 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_I_Q = 3E-2f;
 
 	pm->s_maximal = 31416.f;
-	pm->s_slew_rate = 1E+6f;
+	pm->s_slew_rate = 2E+6f;
 	pm->s_forced_D = 5.f;
-	pm->s_forced_slew_rate = 5E+2f;
+	pm->s_forced_slew_rate = 2E+2f;
 	pm->s_nonl_gain_F = 1E-2f;
 	pm->s_nonl_range = 90.f;
 	pm->s_gain_P = 5E-2f;
-	pm->p_gain_P = 30.f;
+	pm->p_gain_P = 10.f;
 
 	pm->lp_gain[0] = .1f;
 	pm->lp_gain[1] = .2f;
