@@ -22,7 +22,6 @@ CFLAGS	+= -fno-stack-protector
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= 
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
