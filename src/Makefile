@@ -22,7 +22,7 @@ CFLAGS	+= -fno-stack-protector
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= -Wl,-T,hal/ram.ld
+LDFLAGS	+= 
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
@@ -54,7 +54,7 @@ OBJS	+= ap.o \
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
-all: $(TARGET)
+all: $(TARGET).flash $(TARGET).ram
 
 $(BUILD)/%.o: %.s
 	@ echo "  AS    " $<
@@ -66,15 +66,24 @@ $(BUILD)/%.o: %.c
 	@ $(MK) $(dir $@)
 	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET): $(LIST)
-	@ echo "  LD    " $(notdir $@)
-	@ $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+$(TARGET).flash: $(LIST)
+	@ echo "  LD(F) " $(notdir $@)
+	@ $(CC) $(CFLAGS) $(LDFLAGS) -Wl,-T,hal/flash.ld -o $@ $^
 	@ $(OC) -j .text -j .data -O binary $@
 
-flash: $(TARGET)
+$(TARGET).ram: $(LIST)
+	@ echo "  LD(R) " $(notdir $@)
+	@ $(CC) $(CFLAGS) $(LDFLAGS) -Wl,-T,hal/ram.ld -o $@ $^
+	@ $(OC) -j .text -j .data -O binary $@
+
+flash: $(TARGET).flash
+	@ echo "  FLASH " $(notdir $^)
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
+	@ picocom -l -b $(BAUD) -ye $(TTY)
+
+ram: $(TARGET).ram
 	@ echo "  FLASH " $(notdir $^)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
-#	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
 	@ picocom -l -b $(BAUD) -ye $(TTY)
 
 resume:
