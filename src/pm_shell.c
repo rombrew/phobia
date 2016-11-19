@@ -19,11 +19,11 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
+#include "hal_task.h"
 #include "lib.h"
-#include "m.h"
-#include "main.h"
-#include "pmc.h"
-#include "sh.h"
+#include "pm_control.h"
+#include "pm_math.h"
+#include "shell.h"
 
 SH_DEF(pm_pwm_resolution)
 {
@@ -313,7 +313,7 @@ SH_DEF(pm_lu_X0)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.lu_X[0], s);
+	avg = ts_av_float_arg_1(&pm.lu_X[0], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -321,7 +321,7 @@ SH_DEF(pm_lu_X1)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.lu_X[1], s);
+	avg = ts_av_float_arg_1(&pm.lu_X[1], s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -337,7 +337,7 @@ SH_DEF(pm_lu_X4)
 {
 	float			avg, RPM;
 
-	avg = ma_av_float_arg_1(&pm.lu_X[4], s);
+	avg = ts_av_float_arg_1(&pm.lu_X[4], s);
 	RPM = 9.5492969f * avg / pm.const_Zp;
 
 	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
@@ -420,7 +420,7 @@ SH_DEF(pm_lu_residual_variance)
 {
 	float			avg;
 
-	avg = sqrtf(ma_av_float_arg_1(&pm.lu_residual_variance, s));
+	avg = sqrtf(ts_av_float_arg_1(&pm.lu_residual_variance, s));
 	printf("%4e (SD)" EOL, &avg);
 }
 
@@ -440,7 +440,7 @@ SH_DEF(pm_hf_flux_polarity)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.hf_flux_polarity, s);
+	avg = ts_av_float_arg_1(&pm.hf_flux_polarity, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -511,7 +511,7 @@ SH_DEF(pm_thermal_R)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.thermal_R, s);
+	avg = ts_av_float_arg_1(&pm.thermal_R, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -519,7 +519,7 @@ SH_DEF(pm_thermal_E)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.thermal_E, s);
+	avg = ts_av_float_arg_1(&pm.thermal_E, s);
 	printf("%4e" EOL, &avg);
 }
 
@@ -539,7 +539,7 @@ SH_DEF(pm_drift_A)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.drift_A, s);
+	avg = ts_av_float_arg_1(&pm.drift_A, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -547,7 +547,7 @@ SH_DEF(pm_drift_B)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.drift_B, s);
+	avg = ts_av_float_arg_1(&pm.drift_B, s);
 	printf("%3f (A)" EOL, &avg);
 }
 
@@ -555,7 +555,7 @@ SH_DEF(pm_drift_Q)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.drift_Q, s);
+	avg = ts_av_float_arg_1(&pm.drift_Q, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -563,7 +563,7 @@ SH_DEF(pm_const_U)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.const_U, s);
+	avg = ts_av_float_arg_1(&pm.const_U, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -884,7 +884,7 @@ SH_DEF(pm_n_power_watt)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.n_power_watt, s);
+	avg = ts_av_float_arg_1(&pm.n_power_watt, s);
 	printf("%1f (W)" EOL, &avg);
 }
 
@@ -892,7 +892,7 @@ SH_DEF(pm_n_temperature_c)
 {
 	float			avg;
 
-	avg = ma_av_float_arg_1(&pm.n_temperature_c, s);
+	avg = ts_av_float_arg_1(&pm.n_temperature_c, s);
 	printf("%1f (C)" EOL, &avg);
 }
 

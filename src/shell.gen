@@ -1,0 +1,8 @@
+#!/bin/sh
+# vi: ft=sh
+
+# Run the script if you have added or removed a shell command.
+
+cat *.c | sed -n '/^SH_DEF/s/$/;/p' > shell.gen_h
+cat *.c | sed -n '/^SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' > shell.gen_list
+

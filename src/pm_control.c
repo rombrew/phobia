@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "pmc.h"
-#include "m.h"
+#include "pm_control.h"
+#include "pm_math.h"
 
 static void
 lib_eigenvalues(float X, float Y, float XY, float DQA[3])

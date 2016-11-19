@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PMC_
-#define _H_PMC_
+#ifndef _H_PM_CONTROL_
+#define _H_PM_CONTROL_
 
 enum {
 	PMC_BIT_ZERO_DRIFT_ESTIMATION		= 0x0001,
@@ -273,5 +273,5 @@ const char *pmc_strerror(int errno);
 void pmc_resistance(const float DFT[8], float *R);
 void pmc_impedance(const float DFT[8], float hz, float IMP[6]);
 
-#endif /* _H_PMC_ */
+#endif /* _H_PM_CONTROL_ */
 

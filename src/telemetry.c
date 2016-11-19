@@ -23,30 +23,31 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "hal_task.h"
 #include "lib.h"
-#include "m.h"
-#include "main.h"
-#include "pmc.h"
-#include "sh.h"
+#include "pm_control.h"
+#include "pm_math.h"
+#include "shell.h"
 
-#define	TELSZ			20000
+#define	TEL_SIZE		20000
+#define TEL_VARS_MAX		32
 
 typedef struct {
 
 	int			iEN;
 
-	short int		pIN[8];
+	short int		pIN[TEL_VARS_MAX];
 	int			pSZ;
 
-	int			sAVG[8];
+	int			sAVG[TEL_VARS_MAX];
 	int			sCNT, sDEC;
 
-	short int		pD[TELSZ];
+	short int		pD[TEL_SIZE];
 	short int		*pZ;
 }
-tel_t;
+telemetry_t;
 
-static tel_t			tel;
+static telemetry_t		tel;
 
 static void
 telCapture()
@@ -67,7 +68,7 @@ telCapture()
 		}
 
 		SZ = tel.pZ - tel.pD + tel.pSZ;
-		tel.iEN = (SZ <= TELSZ) ? tel.iEN : 0;
+		tel.iEN = (SZ <= TEL_SIZE) ? tel.iEN : 0;
 
 		tel.sCNT = 0;
 	}
@@ -109,7 +110,7 @@ evTEL_0()
 		telCapture();
 	}
 	else
-		ma.pEX = NULL;
+		ts.pEX = NULL;
 }
 
 static void
@@ -124,7 +125,7 @@ evTEL_1()
 		telCapture();
 	}
 	else
-		ma.pEX = NULL;
+		ts.pEX = NULL;
 }
 
 static void
@@ -138,7 +139,7 @@ evTEL_2()
 		telCapture();
 	}
 	else
-		ma.pEX = NULL;
+		ts.pEX = NULL;
 }
 
 static void (* const evTEL_list[]) () = {
@@ -160,7 +161,7 @@ SH_DEF(tel_capture)
 	void 		(* evTEL) ();
 	int		nTEL = 0;
 
-	AP_ASSERT(ma.pEX == NULL);
+	SH_ASSERT(ts.pEX == NULL);
 
 	tel.iEN = 1;
 	tel.sCNT = 0;
@@ -171,7 +172,7 @@ SH_DEF(tel_capture)
 	evTEL = evTEL_list[nTEL];
 
 	halFence();
-	ma.pEX = evTEL;
+	ts.pEX = evTEL;
 }
 
 SH_DEF(tel_disable)
@@ -203,7 +204,7 @@ SH_DEF(tel_live)
 	int		xC, decmin;
 	TaskHandle_t	xLIVE;
 
-	AP_ASSERT(ma.pEX == NULL);
+	SH_ASSERT(ts.pEX == NULL);
 
 	decmin = (int) (pm.freq_hz / 25.f + .5f);
 	tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
@@ -217,7 +218,7 @@ SH_DEF(tel_live)
 	evTEL = evTEL_list[nTEL];
 
 	halFence();
-	ma.pEX = evTEL;
+	ts.pEX = evTEL;
 
 	xTaskCreate(taskLIVE, "tLIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xLIVE);
 
@@ -243,7 +244,7 @@ SH_DEF(tel_info)
 	float		freq, time;
 
 	freq = pm.freq_hz / (float) tel.sDEC;
-	time = TELSZ * (float) tel.sDEC / pm.freq_hz;
+	time = TEL_SIZE * (float) tel.sDEC / pm.freq_hz;
 
 	printf(	"DECIMAL %i" EOL
 		"FREQ %1f (Hz)" EOL

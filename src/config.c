@@ -25,10 +25,12 @@
 
 #include "freertos/FreeRTOS.h"
 
-#include "main.h"
-#include "pmc.h"
+#include "hal_task.h"
 #include "lib.h"
-#include "sh.h"
+#include "pm_control.h"
+#include "shell.h"
+
+#define CONFIG_VERSION			2
 
 typedef struct {
 
@@ -45,8 +47,8 @@ unsigned int * const conf_vars[] = {
 	(void *) &halPWM.dead_time_ns,
 	(void *) &halUSART_baudRate,
 
-	(void *) &ma.av_default_time,
-	(void *) &ma.ap_J_measure_T,
+	(void *) &ts.av_default_time,
+	(void *) &ts.ap_J_measure_T,
 
 	(void *) &pm.pwm_minimal_pulse,
 	(void *) &pm.pwm_dead_time,
@@ -195,7 +197,7 @@ conf_block_scan(int vflag)
 	last = NULL;
 
 	do {
-		if (vflag || curr->version == PMC_CONFIG_VERSION) {
+		if (vflag || curr->version == CONFIG_VERSION) {
 
 			if (crc32b(curr, sizeof(conf_block_t) - 4) == curr->crc32) {
 
@@ -308,7 +310,7 @@ int conf_block_save()
 	temp = pvPortMalloc(sizeof(conf_block_t));
 
 	temp->id = newid;
-	temp->version = PMC_CONFIG_VERSION;
+	temp->version = CONFIG_VERSION;
 
 	for (n = 0; conf_vars[n] != NULL; ++n)
 		temp->content[n] = *conf_vars[n];
@@ -331,7 +333,7 @@ SH_DEF(conf_save)
 {
 	int			rc;
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	printf("Flash ... ");
 

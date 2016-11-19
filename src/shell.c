@@ -18,7 +18,7 @@
 
 #include <stddef.h>
 
-#include "sh.h"
+#include "shell.h"
 #include "lib.h"
 
 #define SH_CLINE_SZ			80
@@ -553,11 +553,11 @@ void taskSH(void *pvParameters)
 	while (1);
 }
 
-#include "sh.gen_h"
+#include "shell.gen_h"
 
 const shCMD_t		cmList[] = {
 
-#include "sh.gen_list"
+#include "shell.gen_list"
 
 	{NULL, NULL}
 };

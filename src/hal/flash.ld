@@ -15,7 +15,6 @@ SECTIONS
 		ldSvectors = . ;
 
 		KEEP(*(.vectors))
-
 		. = ALIGN(4);
 
 		*(.text)

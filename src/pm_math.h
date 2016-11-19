@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_M_
-#define _H_M_
+#ifndef _H_PM_MATH_
+#define _H_PM_MATH_
 
 #define M_PI_F			3.14159265f
 #define M_EPS_F			1.2E-7f
@@ -33,5 +33,5 @@ float atan2f(float y, float x);
 float sinf(float angle);
 float cosf(float angle);
 
-#endif /* _H_M_ */
+#endif /* _H_PM_MATH_ */
 

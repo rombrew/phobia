@@ -16,23 +16,18 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_MAIN_
-#define _H_MAIN_
-
-#define PMC_VERSION		"127d"
-#define PMC_CONFIG_VERSION	2
+#ifndef _H_HAL_TASK_
+#define _H_HAL_TASK_
 
 #include "lib.h"
-#include "pmc.h"
-
-#define AP_ASSERT(x)		if ((x) == 0) { printf("ASSERT: %s" EOL, #x); return ; }
+#include "pm_control.h"
 
 typedef struct {
 
 	/* IO interfaces.
 	 * */
 	io_ops_t		io_usart;
-	io_ops_t		io_bycan;
+	io_ops_t		io_can;
 
 	/* CPU load counters.
 	 * */
@@ -54,8 +49,8 @@ typedef struct {
 
 	/* To obtain an average values.
 	 * */
-	float			*av_IN[8];
-	float			av_VAL[8];
+	float			*av_IN[4];
+	float			av_VAL[4];
 	int			av_variable_N;
 	int			av_sample_N;
 	int			av_sample_MAX;
@@ -67,14 +62,14 @@ typedef struct {
 	float			ap_J_measure_T;
 	float			ap_J_vars[4];
 }
-main_t;
+task_data_t;
 
-extern main_t			ma;
+extern task_data_t		ts;
 extern pmc_t			pm;
 
-void ma_av_EH();
-float ma_av_float_1(float *param, float time);
-float ma_av_float_arg_1(float *param, const char *s);
+void ts_av_EH();
+float ts_av_float_1(float *param, float time);
+float ts_av_float_arg_1(float *param, const char *s);
 
-#endif /* _H_MAIN_ */
+#endif /* _H_HAL_TASK_ */
 

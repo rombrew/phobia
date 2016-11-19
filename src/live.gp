@@ -1,7 +1,7 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-font 14 "/usr/share/fonts/corefonts/cour.ttf"
+font 16 "/usr/share/fonts/corefonts/cour.ttf"
 batch 1
 scheme 0
 

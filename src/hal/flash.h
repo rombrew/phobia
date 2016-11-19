@@ -23,7 +23,7 @@
 
 extern void * const flash_sector_map[];
 
-void flash_erase(int snb);
+void flash_erase(int sector);
 void flash_write(void *d, const void *s, int sz);
 
 #endif /* _H_FLASH_ */

@@ -9,7 +9,7 @@ controller for RC.
 
 * Separate power and control PCB.
 * Dimension: 90mm x 40mm x 15mm.
-* Weight: 50g (wires not included).
+* Weight: 55g (wires not included).
 * Single supply from 5v to 42v.
 * Phase current up to 50A.
 * Computation core is STM32F405RG, typical load is about 59% at 60kHz PWM.

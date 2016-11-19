@@ -17,7 +17,6 @@ SH_DEF(hal_pwm_dead_time_ns);
 SH_DEF(hal_pwm_DC);
 SH_DEF(hal_pwm_Z);
 SH_DEF(hal_thermal);
-SH_DEF(hal_version);
 SH_DEF(pm_pwm_resolution);
 SH_DEF(pm_pwm_minimal_pulse);
 SH_DEF(pm_pwm_dead_time);

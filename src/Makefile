@@ -1,5 +1,6 @@
 
 BUILD	?= /tmp/pmc
+SCRIPT	?= flash
 TARGET	= $(BUILD)/pmc
 
 CROSS	?= arm-none-eabi-
@@ -22,6 +23,7 @@ CFLAGS	+= -fno-stack-protector
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
+LDFLAGS	+= -Wl,-T,hal/$(SCRIPT).ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
@@ -41,19 +43,19 @@ OBJS	+= hal/entry.o \
 	hal/pwm.o \
 	hal/usart.o
 
-OBJS	+= ap.o \
-	conf.o \
+OBJS	+= ap_shell.o \
+	config.o \
+	hal_task.o \
 	lib.o \
-	m.o \
-	main.o \
-	pm.o \
-	pmc.o \
-	sh.o \
-	tel.o
+	pm_control.o \
+	pm_math.o \
+	pm_shell.o \
+	shell.o \
+	telemetry.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
-all: $(TARGET).flash $(TARGET).ram
+all: $(TARGET)
 
 $(BUILD)/%.o: %.s
 	@ echo "  AS    " $<
@@ -65,27 +67,20 @@ $(BUILD)/%.o: %.c
 	@ $(MK) $(dir $@)
 	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET).flash: $(LIST)
-	@ echo "  LD(F) " $(notdir $@)
-	@ $(CC) $(CFLAGS) $(LDFLAGS) -Wl,-T,hal/flash.ld -o $@ $^
+$(TARGET): $(LIST)
+	@ echo "  LD    " $(notdir $@)
+	@ $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 	@ $(OC) -j .text -j .data -O binary $@
 
-$(TARGET).ram: $(LIST)
-	@ echo "  LD(R) " $(notdir $@)
-	@ $(CC) $(CFLAGS) $(LDFLAGS) -Wl,-T,hal/ram.ld -o $@ $^
-	@ $(OC) -j .text -j .data -O binary $@
-
-flash: $(TARGET).flash
+flash: $(TARGET)
 	@ echo "  FLASH " $(notdir $^)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
-	@ picocom -l -b $(BAUD) -ye $(TTY)
 
-ram: $(TARGET).ram
-	@ echo "  FLASH " $(notdir $^)
+ram: $(TARGET)
+	@ echo "  RAM   " $(notdir $^)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
-	@ picocom -l -b $(BAUD) -ye $(TTY)
 
-resume:
+connect:
 	@ picocom -l -b $(BAUD) -ye $(TTY)
 
 clean:

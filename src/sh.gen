@@ -1,6 +1,0 @@
-#!/bin/sh
-# vi: ft=sh
-
-cat *.c | sed -n '/^SH_DEF/s/$/;/p' > sh.gen_h
-cat *.c | sed -n '/^SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' > sh.gen_list
-

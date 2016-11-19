@@ -23,11 +23,11 @@
 #include "freertos/queue.h"
 
 #include "hal/hal.h"
+#include "hal_task.h"
 #include "lib.h"
-#include "m.h"
-#include "main.h"
-#include "pmc.h"
-#include "sh.h"
+#include "pm_control.h"
+#include "pm_math.h"
+#include "shell.h"
 
 #define AP_PRINT_ERROR()	printf("ERROR %i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno))
 #define AP_WAIT_FOR(expr)	\
@@ -49,7 +49,7 @@ SH_DEF(ap_identify_base)
 {
 	float			IMP[6];
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -123,7 +123,7 @@ SH_DEF(ap_identify_const_R_abc)
 	float			temp[2], iSP, U, R[3], SD;
 	int			xPWM;
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();
@@ -195,35 +195,35 @@ SH_DEF(ap_identify_const_R_abc)
 
 SH_DEF(ap_identify_const_E)
 {
-	AP_ASSERT(pm.lu_region != PMC_LU_DISABLED);
-	AP_ASSERT(ma.pEX == NULL);
+	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+	SH_ASSERT(ts.pEX == NULL);
 
-	ma.av_IN[0] = &pm.lu_X[0];
-	ma.av_IN[1] = &pm.lu_X[1];
-	ma.av_IN[2] = &pm.lu_X[4];
-	ma.av_IN[3] = &pm.drift_Q;
+	ts.av_IN[0] = &pm.lu_X[0];
+	ts.av_IN[1] = &pm.lu_X[1];
+	ts.av_IN[2] = &pm.lu_X[4];
+	ts.av_IN[3] = &pm.drift_Q;
 
-	ma.av_VAL[0] = 0.f;
-	ma.av_VAL[1] = 0.f;
-	ma.av_VAL[2] = 0.f;
-	ma.av_VAL[3] = 0.f;
+	ts.av_VAL[0] = 0.f;
+	ts.av_VAL[1] = 0.f;
+	ts.av_VAL[2] = 0.f;
+	ts.av_VAL[3] = 0.f;
 
-	ma.av_variable_N = 4;
-	ma.av_sample_N = 0;
-	ma.av_sample_MAX = pm.freq_hz * pm.T_measure;
+	ts.av_variable_N = 4;
+	ts.av_sample_N = 0;
+	ts.av_sample_MAX = pm.freq_hz * pm.T_measure;
 
 	halFence();
-	ma.pEX = &ma_av_EH;
+	ts.pEX = &ts_av_EH;
 
 	do {
-		AP_WAIT_FOR(ma.pEX == NULL);
+		AP_WAIT_FOR(ts.pEX == NULL);
 
-		ma.av_VAL[0] /= (float) ma.av_sample_N;
-		ma.av_VAL[1] /= (float) ma.av_sample_N;
-		ma.av_VAL[2] /= (float) ma.av_sample_N;
-		ma.av_VAL[3] /= (float) ma.av_sample_N;
+		ts.av_VAL[0] /= (float) ts.av_sample_N;
+		ts.av_VAL[1] /= (float) ts.av_sample_N;
+		ts.av_VAL[2] /= (float) ts.av_sample_N;
+		ts.av_VAL[3] /= (float) ts.av_sample_N;
 
-		pm.const_E -= ma.av_VAL[3] / ma.av_VAL[2];
+		pm.const_E -= ts.av_VAL[3] / ts.av_VAL[2];
 		pm_const_E_wb(EOL);
 	}
 	while (0);
@@ -239,10 +239,10 @@ ap_wait_for_settle(float wSP)
 	pm.s_set_point = wSP;
 
 	leftT = 3.f;
-	lastX4 = ma_av_float_1(pm.lu_X + 4, dT);
+	lastX4 = ts_av_float_1(pm.lu_X + 4, dT);
 
 	do {
-		X4 = ma_av_float_1(pm.lu_X + 4, dT);
+		X4 = ts_av_float_1(pm.lu_X + 4, dT);
 		AP_EXIT_IF_ERROR();
 
 		dX4 = X4 - lastX4;
@@ -263,38 +263,38 @@ ev_fsm_J()
 
 	if (pm.m_errno != PMC_OK) {
 
-		ma.pEX = NULL;
+		ts.pEX = NULL;
 		return ;
 	}
 
-	switch (ma.ap_J_fsm_state) {
+	switch (ts.ap_J_fsm_state) {
 
 		case 0:
-			ma.ap_J_fsm_state = 1;
-			ma.ap_J_vars[0] = 0.f;
-			ma.ap_J_vars[1] = pm.lu_X[4];
+			ts.ap_J_fsm_state = 1;
+			ts.ap_J_vars[0] = 0.f;
+			ts.ap_J_vars[1] = pm.lu_X[4];
 
 			pm.t_value = 0;
-			pm.t_end = pm.freq_hz * ma.ap_J_measure_T;
+			pm.t_end = pm.freq_hz * ts.ap_J_measure_T;
 			break;
 
 		case 1:
-			ma.ap_J_vars[0] += pm.lu_X[1];
+			ts.ap_J_vars[0] += pm.lu_X[1];
 			pm.t_value++;
 
 			if (pm.t_value >= pm.t_end) {
 
-				ma.ap_J_fsm_state = 2;
-				ma.ap_J_vars[2] = pm.lu_X[4];
+				ts.ap_J_fsm_state = 2;
+				ts.ap_J_vars[2] = pm.lu_X[4];
 			}
 			break;
 
 		case 2:
-			temp = pm.const_E * ma.ap_J_vars[0];
+			temp = pm.const_E * ts.ap_J_vars[0];
 			temp *= 1.5f * pm.const_Zp * pm.const_Zp;
-			temp *= pm.dT / (ma.ap_J_vars[2] - ma.ap_J_vars[1]);
-			ma.ap_J_vars[3] = temp;
-			ma.pEX = NULL;
+			temp *= pm.dT / (ts.ap_J_vars[2] - ts.ap_J_vars[1]);
+			ts.ap_J_vars[3] = temp;
+			ts.pEX = NULL;
 			break;
 
 		default:
@@ -304,19 +304,20 @@ ev_fsm_J()
 
 SH_DEF(ap_J_measure_T)
 {
-	stof(&ma.ap_J_measure_T, s);
-	printf("%3e (Sec)" EOL, &ma.ap_J_measure_T);
+	stof(&ts.ap_J_measure_T, s);
+	printf("%3e (Sec)" EOL, &ts.ap_J_measure_T);
 }
 
 SH_DEF(ap_identify_const_J)
 {
 	float			wSP1, wSP2, J;
 
-	AP_ASSERT(pm.lu_region != PMC_LU_DISABLED);
-	AP_ASSERT(pm.m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP);
-	AP_ASSERT(!(pm.m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP));
-	AP_ASSERT(!(pm.m_bitmask & PMC_BIT_FORCED_CONTROL));
-	AP_ASSERT(ma.pEX == NULL);
+	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+	SH_ASSERT(pm.m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP);
+	SH_ASSERT(!(pm.m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP));
+	SH_ASSERT(!(pm.m_bitmask & PMC_BIT_FORCED_CONTROL));
+	SH_ASSERT(!(pm.m_bitmask & PMC_BIT_POWER_CONTROL_LOOP));
+	SH_ASSERT(ts.pEX == NULL);
 
 	wSP1 = 2.f * pm.lu_threshold_high;
 	wSP2 = 1.f / pm.const_E;
@@ -333,25 +334,25 @@ SH_DEF(ap_identify_const_J)
 		ap_wait_for_settle(wSP1);
 		AP_PRINT_AND_EXIT_IF_ERROR();
 
-		ma.ap_J_fsm_state = 0;
+		ts.ap_J_fsm_state = 0;
 
 		halFence();
-		ma.pEX = &ev_fsm_J;
+		ts.pEX = &ev_fsm_J;
 
 		pm.s_set_point = wSP2;
-		AP_WAIT_FOR(ma.pEX == NULL);
+		AP_WAIT_FOR(ts.pEX == NULL);
 
-		J = ma.ap_J_vars[3];
+		J = ts.ap_J_vars[3];
 
-		ma.ap_J_fsm_state = 0;
+		ts.ap_J_fsm_state = 0;
 
 		halFence();
-		ma.pEX = &ev_fsm_J;
+		ts.pEX = &ev_fsm_J;
 
 		pm.s_set_point = wSP1;
-		AP_WAIT_FOR(ma.pEX == NULL);
+		AP_WAIT_FOR(ts.pEX == NULL);
 
-		pm.const_J = (J + ma.ap_J_vars[3]) * .5f;
+		pm.const_J = (J + ts.ap_J_vars[3]) * .5f;
 		printf("J %4e (kgm2)" EOL, &pm.const_J);
 	}
 	while (0);
@@ -361,7 +362,7 @@ SH_DEF(ap_blind_spinup)
 {
 	float			wSP;
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP | PMC_BIT_FORCED_CONTROL;
 
@@ -391,7 +392,7 @@ SH_DEF(ap_blind_spinup)
 
 SH_DEF(ap_probe_base)
 {
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	do {
 		AP_PRINT_AND_EXIT_IF_ERROR();

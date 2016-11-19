@@ -60,14 +60,14 @@ flash_wait_for_complete()
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void flash_erase(int snb)
+void flash_erase(int sector)
 {
 	flash_unlock();
 	flash_wait_for_complete();
 
-	snb = (snb + FLASH_FIRST_SECTOR) & 0x0F;
+	sector = (sector + FLASH_FIRST_SECTOR) & 0x0F;
 
-	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_SER | (snb << 3) | FLASH_CR_SER;
+	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_SER | (sector << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
 	flash_wait_for_complete();

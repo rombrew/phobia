@@ -16,7 +16,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "m.h"
+#include "pm_math.h"
 
 void rotf(float y[2], float angle, const float x[2])
 {

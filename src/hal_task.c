@@ -28,16 +28,16 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
-#include "main.h"
+#include "hal_task.h"
 #include "lib.h"
-#include "pmc.h"
-#include "sh.h"
+#include "pm_control.h"
+#include "shell.h"
 
-#define MA_LOAD_COUNT_DELAY		200
+#define TS_LOAD_COUNT_DELAY		200
 
 char __CCM__ 			ucHeap[configTOTAL_HEAP_SIZE];
 
-main_t __CCM__			ma;
+task_data_t __CCM__		ts;
 pmc_t __CCM__			pm;
 
 extern void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
@@ -76,9 +76,9 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 
 void vApplicationIdleHook()
 {
-	if (ma.load_count_flag) {
+	if (ts.load_count_flag) {
 
-		ma.load_count_value += 1;
+		ts.load_count_value += 1;
 
 		halFence();
 	}
@@ -96,17 +96,17 @@ void taskINIT(void *pvParameters)
 
 	halLED(LED_RED);
 
-	ma.load_count_flag = 1;
-	ma.load_count_value = 0;
+	ts.load_count_flag = 1;
+	ts.load_count_value = 0;
 
-	vTaskDelay(MA_LOAD_COUNT_DELAY);
+	vTaskDelay(TS_LOAD_COUNT_DELAY);
 
-	ma.load_count_flag = 0;
-	ma.load_count_limit = ma.load_count_value;
+	ts.load_count_flag = 0;
+	ts.load_count_limit = ts.load_count_value;
 
-	ma.io_usart.getc = &usart_getc;
-	ma.io_usart.putc = &usart_putc;
-	iodef = &ma.io_usart;
+	ts.io_usart.getc = &usart_getc;
+	ts.io_usart.putc = &usart_putc;
+	iodef = &ts.io_usart;
 
 	rc_conf = conf_block_load();
 
@@ -118,8 +118,8 @@ void taskINIT(void *pvParameters)
 		halPWM.freq_hz = 60000;
 		halPWM.dead_time_ns = 70;
 		halUSART_baudRate = 57600;
-		ma.av_default_time = .2f;
-		ma.ap_J_measure_T = .1f;
+		ts.av_default_time = .2f;
+		ts.ap_J_measure_T = .1f;
 	}
 
 	usartEnable();
@@ -151,8 +151,8 @@ void adcIRQ_feedback()
 	pmc_feedback(&pm, halADC.sensor_A, halADC.sensor_B);
 	pmc_voltage(&pm, halADC.supply_U);
 
-	if (ma.pEX != NULL)
-		ma.pEX();
+	if (ts.pEX != NULL)
+		ts.pEX();
 }
 
 static void
@@ -160,16 +160,16 @@ ma_thermal_job(int xNTC, int xTEMP, int xREF)
 {
 	float			fc, temp;
 
-	ma.thermal_xAVG[0] += xNTC;
-	ma.thermal_xAVG[1] += xTEMP;
-	ma.thermal_xAVG[2] += xREF;
+	ts.thermal_xAVG[0] += xNTC;
+	ts.thermal_xAVG[1] += xTEMP;
+	ts.thermal_xAVG[2] += xREF;
 
-	ma.thermal_sample_N += 1;
+	ts.thermal_sample_N += 1;
 
-	if (ma.thermal_sample_N >= ADC_THERMAL_FREQ_HZ) {
+	if (ts.thermal_sample_N >= ADC_THERMAL_FREQ_HZ) {
 
-		fc = (float) (ma.thermal_xAVG[0] / ma.thermal_sample_N);
-		ma.thermal_xAVG[0] = 0;
+		fc = (float) (ts.thermal_xAVG[0] / ts.thermal_sample_N);
+		ts.thermal_xAVG[0] = 0;
 
 		temp = halADC_CONST.NTC[1] + halADC_CONST.NTC[0] * fc;
 		temp = halADC_CONST.NTC[2] + temp * fc;
@@ -178,19 +178,19 @@ ma_thermal_job(int xNTC, int xTEMP, int xREF)
 		temp = halADC_CONST.NTC[5] + temp * fc;
 		temp = halADC_CONST.NTC[6] + temp * fc;
 		temp = halADC_CONST.NTC[7] + temp * fc;
-		ma.thermal_NTC = temp;
+		ts.thermal_NTC = temp;
 
-		fc = (float) (ma.thermal_xAVG[1] / ma.thermal_sample_N);
-		ma.thermal_xAVG[1] = 0;
+		fc = (float) (ts.thermal_xAVG[1] / ts.thermal_sample_N);
+		ts.thermal_xAVG[1] = 0;
 
-		ma.thermal_TEMP = halADC_CONST.TEMP_1 * fc + halADC_CONST.TEMP_0;
+		ts.thermal_TEMP = halADC_CONST.TEMP_1 * fc + halADC_CONST.TEMP_0;
 
-		fc = (float) (ma.thermal_xAVG[2] / ma.thermal_sample_N);
-		ma.thermal_xAVG[2] = 0;
+		fc = (float) (ts.thermal_xAVG[2] / ts.thermal_sample_N);
+		ts.thermal_xAVG[2] = 0;
 
-		ma.thermal_REF = halADC_CONST.REF_1 * fc;
+		ts.thermal_REF = halADC_CONST.REF_1 * fc;
 
-		ma.thermal_sample_N = 0;
+		ts.thermal_sample_N = 0;
 	}
 }
 
@@ -205,40 +205,40 @@ void halMain()
 	vTaskStartScheduler();
 }
 
-void ma_av_EH()
+void ts_av_EH()
 {
 	int			j;
 
-	if (ma.av_sample_N <= ma.av_sample_MAX) {
+	if (ts.av_sample_N <= ts.av_sample_MAX) {
 
-		for (j = 0; j < ma.av_variable_N; ++j)
-			ma.av_VAL[j] += *ma.av_IN[j];
+		for (j = 0; j < ts.av_variable_N; ++j)
+			ts.av_VAL[j] += *ts.av_IN[j];
 
-		ma.av_sample_N++;
+		ts.av_sample_N++;
 	}
 	else
-		ma.pEX = NULL;
+		ts.pEX = NULL;
 }
 
-float ma_av_float_1(float *param, float time)
+float ts_av_float_1(float *param, float time)
 {
-	if (ma.pEX == NULL) {
+	if (ts.pEX == NULL) {
 
-		ma.av_IN[0] = param;
-		ma.av_VAL[0] = 0.f;
-		ma.av_variable_N = 1;
-		ma.av_sample_N = 0;
-		ma.av_sample_MAX = pm.freq_hz * time;
+		ts.av_IN[0] = param;
+		ts.av_VAL[0] = 0.f;
+		ts.av_variable_N = 1;
+		ts.av_sample_N = 0;
+		ts.av_sample_MAX = pm.freq_hz * time;
 
 		halFence();
-		ma.pEX = &ma_av_EH;
+		ts.pEX = &ts_av_EH;
 
-		while (ma.pEX != NULL)
+		while (ts.pEX != NULL)
 			vTaskDelay(1);
 
-		ma.av_VAL[0] /= (float) ma.av_sample_N;
+		ts.av_VAL[0] /= (float) ts.av_sample_N;
 
-		return ma.av_VAL[0];
+		return ts.av_VAL[0];
 	}
 	else {
 
@@ -246,13 +246,13 @@ float ma_av_float_1(float *param, float time)
 	}
 }
 
-float ma_av_float_arg_1(float *param, const char *s)
+float ts_av_float_arg_1(float *param, const char *s)
 {
-	float			time = ma.av_default_time;
+	float			time = ts.av_default_time;
 
 	stof(&time, s);
 
-	return ma_av_float_1(param, time);
+	return ts_av_float_1(param, time);
 }
 
 SH_DEF(hal_uptime)
@@ -278,21 +278,21 @@ SH_DEF(hal_cpu_usage)
 {
 	float		pc;
 
-	ma.load_count_flag = 1;
-	ma.load_count_value = 0;
+	ts.load_count_flag = 1;
+	ts.load_count_value = 0;
 
-	vTaskDelay(MA_LOAD_COUNT_DELAY);
+	vTaskDelay(TS_LOAD_COUNT_DELAY);
 
-	ma.load_count_flag = 0;
-	pc = 100.f * (float) (ma.load_count_limit - ma.load_count_value)
-		/ (float) ma.load_count_limit;
+	ts.load_count_flag = 0;
+	pc = 100.f * (float) (ts.load_count_limit - ts.load_count_value)
+		/ (float) ts.load_count_limit;
 
 	printf("%1f %%" EOL, &pc);
 }
 
 SH_DEF(hal_reboot)
 {
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	vTaskDelay(100);
 	halReset();
@@ -315,7 +315,7 @@ SH_DEF(hal_keycodes)
 
 SH_DEF(hal_pwm_freq_hz)
 {
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&halPWM.freq_hz, s) != NULL) {
 
@@ -332,7 +332,7 @@ SH_DEF(hal_pwm_freq_hz)
 
 SH_DEF(hal_pwm_dead_time_ns)
 {
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
 
@@ -348,7 +348,7 @@ SH_DEF(hal_pwm_DC)
 	int		xA, xB, xC, R;
 	int		allf = 0;
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&xA, s) != NULL) {
 
@@ -383,7 +383,7 @@ SH_DEF(hal_pwm_Z)
 {
 	int		Z;
 
-	AP_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
 	if (stoi(&Z, s) != NULL) {
 
@@ -395,15 +395,8 @@ SH_DEF(hal_pwm_Z)
 
 SH_DEF(hal_thermal)
 {
-	printf("NTC %1f (C)" EOL, &ma.thermal_NTC);
-	printf("TEMP %1f (C)" EOL, &ma.thermal_TEMP);
-	printf("REF %3f (V)" EOL, &ma.thermal_REF);
-}
-
-SH_DEF(hal_version)
-{
-	printf("VERSION %s" EOL, PMC_VERSION);
-	printf("CONFIG %i" EOL, PMC_CONFIG_VERSION);
-	printf("HAL %s" EOL, HAL_REVISION);
+	printf("NTC %1f (C)" EOL, &ts.thermal_NTC);
+	printf("TEMP %1f (C)" EOL, &ts.thermal_TEMP);
+	printf("REF %3f (V)" EOL, &ts.thermal_REF);
 }
 
