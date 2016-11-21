@@ -172,8 +172,10 @@ int canTransmit(int bID, int nBytes, const char bData[8])
 
 int canMsgSend(int bID, int nBytes, const char bData[8], int xWay)
 {
-	int		nEmpty;
+	/*int		nEmpty;
 
-	nEmpty = canEmptyMailBox();
+	nEmpty = canEmptyMailBox();*/
+
+	return 0;
 }
 
