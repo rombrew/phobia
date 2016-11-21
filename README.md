@@ -52,8 +52,8 @@ PCB design source files.
 * Analyse of rapid transient modes. Introduce an iron saturation model.
 * Implement an application protocol via CAN.
 * Make a detailed documentation.
-* Fix hardware to switch off 12v supply rail during boot or reset. Use TPS61040
-  + BC857C as voltage booster with load disconnect.
+* Fix the hardware to switch off 12v supply rail during boot or reset. Use
+  TPS61040 and BC857C as voltage booster with load disconnect.
 * Add a voltage reference REF3033 as aplifiers and ADC supply.
 * Remove the mounting holes from PCB, make a compaction, optimize BOM, prepare
   for automated soldering.

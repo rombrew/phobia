@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_BLM_
-#define _H_BLM_
+#ifndef _H_BL_MODEL_
+#define _H_BL_MODEL_
 
 typedef struct {
 
@@ -62,5 +62,5 @@ blm_t;
 void blm_Enable(blm_t *m);
 void blm_Update(blm_t *m);
 
-#endif /* _H_BLDC_ */
+#endif /* _H_BL_MODEL_ */
 

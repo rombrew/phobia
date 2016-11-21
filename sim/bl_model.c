@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "blm.h"
+#include "bl_model.h"
 #include "lib.h"
 
 void blm_AB_DQ(double R, double A, double B, double *D, double *Q)

@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_SH_
-#define _H_SH_
+#ifndef _H_SHELL_
+#define _H_SHELL_
 
 #define K_ETX			0x03
 #define K_EOT			0x04
@@ -39,5 +39,5 @@ shCMD_t;
 
 void taskSH(void *pvParameters);
 
-#endif /* _H_SH_ */
+#endif /* _H_SHELL_ */
 

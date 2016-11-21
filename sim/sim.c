@@ -22,8 +22,8 @@
 #include <errno.h>
 #include <math.h>
 
-#include "blm.h"
-#include "pmc.h"
+#include "bl_model.h"
+#include "pm_control.h"
 #include "lib.h"
 
 #define TEL_FILE	"/tmp/TEL"
