@@ -28,7 +28,7 @@
 #define FIFO_DEC(I, SZ)                 (((I) > 0) ? (I) - 1 : (SZ) - 1)
 
 static const char
-SH_PROMPT[] = "# ",
+SH_PROMPT[] = "(pmc) ",
 SH_BACKSPACE[] = "\b \b";
 
 enum {
