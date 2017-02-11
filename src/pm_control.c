@@ -80,7 +80,7 @@ void pmc_default(pmc_t *pm)
 	pm->fault_residual_maximal = 5E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
-	pm->fault_high_voltage = 55.f;
+	pm->fault_high_voltage = 75.f;
 
 	pm->lu_gain_K[0] = 2E-1f;
 	pm->lu_gain_K[1] = 2E-1f;
@@ -98,7 +98,7 @@ void pmc_default(pmc_t *pm)
 	pm->hf_gain_K[1] = 2E+1f;
 	pm->hf_gain_K[2] = 5E-3f;
 
-        pm->bemf_gain_K = 1E-4f;
+        pm->bemf_gain_K = 5E-4f;
 	pm->bemf_N = 9;
 
 	pm->thermal_gain_R[0] = 20.f;
@@ -112,7 +112,7 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 50.f;
+	pm->i_high_maximal = 20.f;
 	pm->i_low_maximal = 10.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = - 210.f;
@@ -127,7 +127,7 @@ void pmc_default(pmc_t *pm)
 	pm->s_slew_rate = 2E+6f;
 	pm->s_forced_D = 5.f;
 	pm->s_forced_slew_rate = 2E+2f;
-	pm->s_nonl_gain_F = 1E-2f;
+	pm->s_nonl_gain_F = 2E-2f;
 	pm->s_nonl_range = 90.f;
 	pm->s_gain_P = 5E-2f;
 	pm->p_gain_P = 10.f;
@@ -215,36 +215,36 @@ bemf_tune(pmc_t *pm, float eD, float eQ)
 {
 	float           *DFT = pm->bemf_DFT;
         float           *TEMP = pm->bemf_TEMP;
-	float		A, B, D, Q;
+	float		A, B, imp_R, scale;
+	float		Aq, Bq, imp_Lq, LWq;
 	int		nu = 0;
 
-	A = pm->const_Ld * pm->freq_hz;
-	B = - (pm->const_Ld * pm->freq_hz - pm->const_R);
+	eD *= pm->bemf_gain_K;
+	eQ *= pm->bemf_gain_K;
 
-	eD = (pm->lu_X[4] < 0.f) ? - eD : eD;
-	D = A * eD + B * TEMP[32];
-	TEMP[32] = eD;
-	D *= pm->bemf_gain_K;
+	LWq = pm->const_Lq * fabsf(pm->lu_X[4]);
+	scale = 1.f / (pm->const_R + LWq * (pm->bemf_N + 1));
 
-	A = pm->const_Lq * pm->freq_hz;
-	B = - (pm->const_Lq * pm->freq_hz - pm->const_R);
+	LWq *= scale;
 
-	eQ = (pm->lu_X[4] < 0.f) ? - eQ : eQ;
-	Q = A * eQ + B * TEMP[33];
-	TEMP[33] = eQ;
-	Q *= pm->bemf_gain_K;
+	imp_R = pm->const_R * scale;
+	imp_Lq = LWq;
 
 	while (nu < pm->bemf_N) {
 
 		A = *TEMP++;
 		B = *TEMP++;
 
-		*DFT++ += D * A;
-		*DFT++ += D * B;
+		Aq = imp_R * A + imp_Lq * B;
+		Bq = imp_R * B - imp_Lq * A;
 
-		*DFT++ += Q * A;
-		*DFT++ += Q * B;
+		DFT++;
+		DFT++;
 
+		*DFT++ += eQ * Aq;
+		*DFT++ += eQ * Bq;
+
+		imp_Lq += LWq;
 		++nu;
 	}
 }
@@ -258,10 +258,9 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 	float		F[2], K, G, H;
 	int             nu = 0;
 
-	if (pm->bemf_tune_T > 0) {
+	if (pm->lu_region == PMC_LU_HIGH_REGION) {
 
 		bemf_tune(pm, eD, eQ);
-		pm->bemf_tune_T--;
 	}
 
         /* Obtain the rotor position with advance.
@@ -274,7 +273,7 @@ bemf_update(pmc_t *pm, float eD, float eQ)
 	D = 0.f;
 	Q = 0.f;
 
-	K = pm->lu_X[4] * pm->dT / M_PI_F;
+	K = fabsf(pm->lu_X[4]) * pm->dT / M_PI_F;
 	G = K;
 
 	while (nu < pm->bemf_N) {
@@ -378,6 +377,8 @@ lu_update(pmc_t *pm)
 
 	if (pm->lu_region == PMC_LU_LOW_REGION) {
 
+		/*FIXME: what if forced control with E=0 ? */
+
 		if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
 
 			hf_update(pm, eD, eQ);
@@ -398,10 +399,10 @@ lu_update(pmc_t *pm)
 	 * */
 	pm_solve_2(pm);
 
-	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
-
-		bemf_update(pm, eD, eQ);
-	}
+	/* BEMF waveform.
+	 * */
+	(pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION)
+		? bemf_update(pm, eD, eQ) : 0;
 }
 
 static void

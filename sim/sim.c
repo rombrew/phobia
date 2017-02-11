@@ -58,9 +58,9 @@ sim_Tel(float *pTel)
 
 	/* Duty cycle.
 	 * */
-	pTel[6] = m.uA * 100. / (double) m.PWM_resolution;
-	pTel[7] = m.uB * 100. / (double) m.PWM_resolution;
-	pTel[8] = m.uC * 100. / (double) m.PWM_resolution;
+	pTel[6] = (double) m.uA * 100. / (double) m.PWM_resolution;
+	pTel[7] = (double) m.uB * 100. / (double) m.PWM_resolution;
+	pTel[8] = (double) m.uC * 100. / (double) m.PWM_resolution;
 
 	/* Estimated current.
 	 * */
@@ -82,40 +82,56 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[13] = pm.lu_X[4] * 30. / M_PI / m.Zp;
 
-	/* .
+	/* Nonl filter speed.
 	 * */
-	pTel[14] = 0.f;
+	pTel[14] = pm.s_nonl_X4 * 30. / M_PI / m.Zp;
 
-	/* VSI voltage.
+	/* VSI voltage (XY).
 	 * */
 	pTel[15] = pm.vsi_X;
 	pTel[16] = pm.vsi_Y;
 
+	/* VSI voltage (DQ).
+	 * */
+	pTel[17] = pm.vsi_D;
+	pTel[18] = pm.vsi_Q;
+
 	/* Measurement residual.
 	 * */
-	pTel[17] = pm.lu_residual_D;
-	pTel[18] = pm.lu_residual_Q;
+	pTel[19] = pm.lu_residual_D;
+	pTel[20] = pm.lu_residual_Q;
 
 	/* Zero Drift.
 	 * */
-	pTel[19] = pm.drift_A;
-	pTel[20] = pm.drift_B;
-	pTel[21] = pm.drift_Q;
+	pTel[21] = pm.drift_A;
+	pTel[22] = pm.drift_B;
+	pTel[23] = pm.drift_Q;
 
 	/* Informational.
 	 * */
-	pTel[22] = pm.n_power_watt;
-	pTel[23] = pm.n_temperature_c;
+	pTel[24] = pm.n_power_watt;
+	pTel[25] = pm.n_temperature_c;
 
-	/* Other.
+	/* BEMF.
 	 * */
-	pTel[24] = pm.s_nonl_X4 * 30. / M_PI / m.Zp;
+	pTel[40] = pm.bemf_DFT[2] * 100.;
+	pTel[41] = pm.bemf_DFT[3] * 100.;
+	pTel[42] = pm.bemf_DFT[6] * 100.;
+	pTel[43] = pm.bemf_DFT[7] * 100.;
+	pTel[44] = pm.bemf_DFT[10] * 100.;
+	pTel[45] = pm.bemf_DFT[11] * 100.;
+	pTel[46] = pm.bemf_DFT[14] * 100.;
+	pTel[47] = pm.bemf_DFT[15] * 100.;
+	pTel[48] = pm.bemf_DFT[18] * 100.;
+	pTel[49] = pm.bemf_DFT[19] * 100.;
+	pTel[50] = pm.bemf_DFT[22] * 100.;
+	pTel[51] = pm.bemf_DFT[23] * 100.;
 }
 
 static void
 sim_F(FILE *fdTel, double dT, int Verb)
 {
-	const int	szTel = 40;
+	const int	szTel = 80;
 	float		Tel[szTel];
 	double		Tin, Tend;
 
@@ -165,9 +181,9 @@ sim_Script(FILE *fdTel)
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. + .0);
-	pm.const_Ld = m.Ld * (1. - .0);
-	pm.const_Lq = m.Lq * (1. + .0);
+	pm.const_R = m.R * (1. + .1);
+	pm.const_Ld = m.Ld * (1. + .1);
+	pm.const_Lq = m.Lq * (1. + .1);
 	pm.const_E = m.E * (1. - .0);
 
 	pm.const_Ld_inversed = 1.f / pm.const_Ld;
@@ -178,37 +194,34 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-	pm.m_bitmask |= PMC_BIT_POWER_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
+	//pm.m_bitmask |= PMC_BIT_POWER_CONTROL_LOOP;
 
-	/*pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP
-		| PMC_BIT_POSITION_CONTROL_LOOP;*/
+	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
+
+	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	pm.bemf_N = 9;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	/*sim_F(fdTel, 1., 0);
+	pm.s_set_point = -15000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, 4., 0);
 
-	m.X[3] += .5;
+	/*pm.s_set_point = 10000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, 2., 0);
+
+	pm.s_set_point = 18000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, 2., 0);
+
+	pm.s_set_point = 1000. * pm.const_Zp * M_PI / 30.;
 	sim_F(fdTel, 1., 0);*/
 
-	/*pm.s_set_point = 1000.f * (2.f * M_PI / 60.f * m.Zp);
-	sim_F(fdTel, .2, 0);
-
-	pm.s_set_point = 2000.f * (2.f * M_PI / 60.f * m.Zp);
-	sim_F(fdTel, .2, 0);
-
-	pm.s_set_point = 3000.f * (2.f * M_PI / 60.f * m.Zp);
-	sim_F(fdTel, .2, 0);
-
-	pm.s_set_point = 6000.f * (2.f * M_PI / 60.f * m.Zp);
-	sim_F(fdTel, .2, 0);*/
-
-	pm.w_set_point_watt = 50.f;
+	pm.s_set_point = -100. * pm.const_Zp * M_PI / 30.;
 	sim_F(fdTel, 1., 0);
 
-	pm.w_set_point_watt = 20.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_set_point = 15000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, 4., 0);
 }
 
 int main(int argc, char *argv[])

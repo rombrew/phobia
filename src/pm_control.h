@@ -158,7 +158,7 @@ typedef struct {
 	/* BEMF waveform compensation.
 	 * */
 	float           bemf_DFT[64];
-	float           bemf_TEMP[34];
+	float           bemf_TEMP[32];
 	float           bemf_gain_K;
 	int		bemf_N;
 	int		bemf_tune_T;

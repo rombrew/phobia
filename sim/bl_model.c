@@ -84,7 +84,7 @@ void blm_Enable(blm_t *m)
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 12.;
+	m->U = 61.;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 2E-6;
+	m->M[2] = 1E-8;
 	m->M[3] = 0E-3;
 }
 
@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 5.) * 0E-2;
+	E1 *= 1. + sin(X[3] * 2.) * 7E-2 + cos(X[3] * 1.) * 3E-2 + sin(X[3] * 6.) * 5E-2;
 
 	/* Voltage from VSI.
 	 * */
@@ -217,7 +217,7 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Output voltage of the current sensor A.
 	 * */
-	U = S1 * 55E-3 + Uref / 2.;
+	U = S1 * 55E-3 * (1. + 0E-2) + Uref / 2.;
 	dU = libGauss() * 3E-3 + 27E-3;
 	U += dU;
 
