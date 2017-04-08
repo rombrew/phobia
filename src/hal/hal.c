@@ -232,3 +232,25 @@ void halLED(int F)
 		GPIOB->BSRRH = (1UL << 5);
 }
 
+int halENC()
+{
+	int		ENC = 0;
+
+	if (GPIOC->IDR & (1UL << 6)) {
+
+		ENC |= ENC_A;
+	}
+
+	if (GPIOC->IDR & (1UL << 7)) {
+
+		ENC |= ENC_B;
+	}
+
+	if (GPIOC->IDR & (1UL << 8)) {
+
+		ENC |= ENC_C;
+	}
+
+	return ENC;
+}
+

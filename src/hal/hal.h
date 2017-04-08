@@ -30,6 +30,12 @@ enum {
 	LED_BLUE		= 4
 };
 
+enum {
+	ENC_A			= 1,
+	ENC_B			= 2,
+	ENC_C			= 4
+};
+
 extern unsigned long		hal_CLOCK_CPU_HZ;
 
 void halStart();
@@ -38,6 +44,7 @@ void halReset();
 void halSleep();
 void halFence();
 void halLED(int F);
+int halENC();
 
 extern void halMain();
 

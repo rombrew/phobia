@@ -80,7 +80,7 @@ void pmc_default(pmc_t *pm)
 	pm->fault_residual_maximal = 5E+1f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
-	pm->fault_high_voltage = 75.f;
+	pm->fault_high_voltage = 52.f;
 
 	pm->lu_gain_K[0] = 2E-1f;
 	pm->lu_gain_K[1] = 2E-1f;
@@ -113,9 +113,9 @@ void pmc_default(pmc_t *pm)
 	pm->const_J = 0.f;
 
 	pm->i_high_maximal = 20.f;
-	pm->i_low_maximal = 10.f;
+	pm->i_low_maximal = 5.f;
 	pm->i_power_consumption_maximal = 1050.f;
-	pm->i_power_regeneration_maximal = - 210.f;
+	pm->i_power_regeneration_maximal = -210.f;
 	pm->i_slew_rate_D = 4E+3f;
 	pm->i_slew_rate_Q = 4E+3f;
 	pm->i_gain_P_D = 2E-1f;

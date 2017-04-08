@@ -90,11 +90,65 @@ void vApplicationIdleHook()
 
 extern int conf_block_load();
 
+void taskAPP(void *pvParameters)
+{
+	int		xENC;
+	int		RPM;
+
+	do {
+		vTaskDelay(50);
+
+		xENC = halENC();
+
+		if ((xENC & ENC_A) == 0) {
+
+			if (pm.lu_region == PMC_LU_DISABLED) {
+
+				pm.m_errno = PMC_OK;
+
+				pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+				vTaskDelay(250);
+
+				pmc_request(&pm, PMC_STATE_START);
+				vTaskDelay(100);
+
+				RPM = 3000;
+			}
+			else {
+				RPM =	(RPM == 3000) ? 6000 :
+					(RPM == 6000) ? 7500 : 3000 ;
+			}
+
+			pm.s_set_point = .10471976f * RPM * pm.const_Zp;
+			vTaskDelay(500);
+		}
+
+		if ((xENC & ENC_B) == 0) {
+
+			RPM = 0;
+			pm.s_set_point = 0;
+			vTaskDelay(200);
+
+			pmc_request(&pm, PMC_STATE_STOP);
+			vTaskDelay(200);
+		}
+
+		if (pm.lu_region != PMC_LU_DISABLED) {
+
+			halLED(LED_GREEN);
+		}
+		else {
+			halLED(LED_RED);
+		}
+	}
+	while (1);
+}
+
 void taskINIT(void *pvParameters)
 {
 	int			rc_conf;
 
-	halLED(LED_RED);
+	halLED(LED_RED | LED_GREEN);
 
 	ts.load_count_flag = 1;
 	ts.load_count_value = 0;
@@ -142,6 +196,7 @@ void taskINIT(void *pvParameters)
 	adcEnable();
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
+	xTaskCreate(taskAPP, "tAPP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }
