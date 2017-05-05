@@ -94,6 +94,7 @@ void taskAPP(void *pvParameters)
 {
 	int		xENC;
 	int		RPM;
+	int		iDIR = 1;
 
 	do {
 		vTaskDelay(50);
@@ -121,7 +122,7 @@ void taskAPP(void *pvParameters)
 					(RPM == 6000) ? 7000 : 3000 ;
 			}
 
-			pm.s_set_point = .10471976f * RPM * pm.const_Zp;
+			pm.s_set_point = .10471976f * iDIR * RPM * pm.const_Zp;
 			vTaskDelay(500);
 		}
 
@@ -133,6 +134,12 @@ void taskAPP(void *pvParameters)
 
 			pmc_request(&pm, PMC_STATE_STOP);
 			vTaskDelay(200);
+		}
+
+		if ((xENC & (ENC_A | ENC_B)) == 0) {
+
+			iDIR = (iDIR < 0) ? 1 : -1;
+			vTaskDelay(500);
 		}
 
 		if (pm.lu_region != PMC_LU_DISABLED) {
