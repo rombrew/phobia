@@ -30,7 +30,7 @@
 #include "pm_control.h"
 #include "shell.h"
 
-#define CONFIG_VERSION			2
+#define CONFIG_VERSION			3
 
 typedef struct {
 
@@ -53,11 +53,11 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.pwm_minimal_pulse,
 	(void *) &pm.pwm_dead_time,
 	(void *) &pm.m_bitmask,
-	(void *) &pm.T_drift,
-	(void *) &pm.T_hold,
-	(void *) &pm.T_sine,
-	(void *) &pm.T_measure,
-	(void *) &pm.T_end,
+	(void *) &pm.tm_drift,
+	(void *) &pm.tm_hold,
+	(void *) &pm.tm_sine,
+	(void *) &pm.tm_measure,
+	(void *) &pm.tm_end,
 	(void *) &pm.fb_range,
 	(void *) &pm.wave_i_hold_X,
 	(void *) &pm.wave_i_hold_Y,
@@ -72,9 +72,12 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.scal_U[0],
 	(void *) &pm.scal_U[1],
 	(void *) &pm.fault_residual_maximal,
+	(void *) &pm.fault_residual_maximal_hold,
 	(void *) &pm.fault_drift_maximal,
 	(void *) &pm.fault_low_voltage,
+	(void *) &pm.fault_low_voltage_hold,
 	(void *) &pm.fault_high_voltage,
+	(void *) &pm.fault_high_voltage_hold,
 	(void *) &pm.lu_gain_K[0],
 	(void *) &pm.lu_gain_K[1],
 	(void *) &pm.lu_gain_K[2],

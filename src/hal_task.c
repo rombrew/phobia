@@ -115,8 +115,10 @@ void taskAPP(void *pvParameters)
 				RPM = 3000;
 			}
 			else {
-				RPM =	(RPM == 3000) ? 6000 :
-					(RPM == 6000) ? 7500 : 3000 ;
+				RPM =	(RPM == 3000) ? 4000 :
+					(RPM == 4000) ? 5000 :
+					(RPM == 5000) ? 6000 :
+					(RPM == 6000) ? 7000 : 3000 ;
 			}
 
 			pm.s_set_point = .10471976f * RPM * pm.const_Zp;

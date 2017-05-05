@@ -210,7 +210,7 @@ SH_DEF(ap_identify_const_E)
 
 	ts.av_variable_N = 4;
 	ts.av_sample_N = 0;
-	ts.av_sample_MAX = pm.freq_hz * pm.T_measure;
+	ts.av_sample_MAX = pm.freq_hz * pm.tm_measure;
 
 	halFence();
 	ts.pEX = &ts_av_EH;

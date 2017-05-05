@@ -55,11 +55,11 @@ void pmc_default(pmc_t *pm)
 	pm->m_phase = 0;
 	pm->m_errno = 0;
 
-	pm->T_drift = .1f;
-	pm->T_hold = .5f;
-	pm->T_sine = .2f;
-	pm->T_measure = .5f;
-	pm->T_end = .1f;
+	pm->tm_drift = .1f;
+	pm->tm_hold = .5f;
+	pm->tm_sine = .2f;
+	pm->tm_measure = .5f;
+	pm->tm_end = .1f;
 
 	pm->fb_range = 50.f;
 
@@ -77,10 +77,13 @@ void pmc_default(pmc_t *pm)
 	pm->scal_U[0] = 0.f;
 	pm->scal_U[1] = 1.f;
 
-	pm->fault_residual_maximal = 5E+1f;
+	pm->fault_residual_maximal = 50.f;
+	pm->fault_residual_maximal_hold = 1E-4f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
+	pm->fault_low_voltage_hold = 2.f;
 	pm->fault_high_voltage = 52.f;
+	pm->fault_high_voltage_hold = 0.f;
 
 	pm->lu_gain_K[0] = 2E-1f;
 	pm->lu_gain_K[1] = 2E-1f;
@@ -338,6 +341,7 @@ lu_update(pmc_t *pm)
 	float		*X = pm->lu_X, Z[2];
 	float		iX, iY, iD, iQ;
 	float		eD, eQ, eR, dR;
+	int		t_hold;
 
 	iX = pm->fb_iA - pm->drift_A;
 	iY = .57735027f * iX + 1.1547005f * (pm->fb_iB - pm->drift_B);
@@ -359,9 +363,18 @@ lu_update(pmc_t *pm)
 
 	if (pm->lu_residual_variance > pm->fault_residual_maximal) {
 
-		pm->m_state = PMC_STATE_END;
-		pm->m_phase = 0;
-		pm->m_errno = PMC_ERROR_STABILITY_LOSS;
+		t_hold = pm->freq_hz * pm->fault_residual_maximal_hold;
+		pm->fault_residual_maximal_t++;
+
+		if (pm->fault_residual_maximal_t > t_hold) {
+
+			pm->m_state = PMC_STATE_END;
+			pm->m_phase = 0;
+			pm->m_errno = PMC_ERROR_STABILITY_LOSS;
+		}
+	}
+	else {
+		pm->fault_residual_maximal_t = 0;
 	}
 
 	/* Measurement update.
@@ -810,7 +823,7 @@ pm_FSM(pmc_t *pm)
 				pm->wave_temp[1] = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_drift;
+				pm->t_end = pm->freq_hz * pm->tm_drift;
 
 				pm->m_errno = PMC_OK;
 				pm->m_phase++;
@@ -850,7 +863,7 @@ pm_FSM(pmc_t *pm)
 				pm->wave_temp[1] = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_hold;
+				pm->t_end = pm->freq_hz * pm->tm_hold;
 
 				pm->m_errno = PMC_OK;
 				pm->m_phase++;
@@ -894,7 +907,7 @@ pm_FSM(pmc_t *pm)
 						pm->wave_DFT[3] = pm->wave_i_hold_Y;
 
 						pm->t_value = 0;
-						pm->t_end = pm->freq_hz * pm->T_measure;
+						pm->t_end = pm->freq_hz * pm->tm_measure;
 
 						pm->m_phase++;
 					}
@@ -944,7 +957,7 @@ pm_FSM(pmc_t *pm)
 				}
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_sine;
+				pm->t_end = pm->freq_hz * pm->tm_sine;
 
 				pm->m_errno = PMC_OK;
 				pm->m_phase++;
@@ -991,7 +1004,7 @@ pm_FSM(pmc_t *pm)
 				pm->wave_DFT[1] = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_measure;
+				pm->t_end = pm->freq_hz * pm->tm_measure;
 
 				pm->m_errno = PMC_OK;
 				pm->m_phase++;
@@ -1107,7 +1120,7 @@ pm_FSM(pmc_t *pm)
 				pm->i_set_point_Q = 0.f;
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_end;
+				pm->t_end = pm->freq_hz * pm->tm_end;
 
 				pm->m_phase++;
 			}
@@ -1133,7 +1146,7 @@ pm_FSM(pmc_t *pm)
 				pm->pDC(0, 0, 0);
 
 				pm->t_value = 0;
-				pm->t_end = pm->freq_hz * pm->T_end;
+				pm->t_end = pm->freq_hz * pm->tm_end;
 
 				pm->m_phase++;
 			}
@@ -1181,6 +1194,8 @@ void pmc_feedback(pmc_t *pm, float iA, float iB)
 
 void pmc_voltage(pmc_t *pm, float uS)
 {
+	int			t_hold;
+
 	uS = pm->scal_U[1] * uS + pm->scal_U[0];
 
 	pm->const_U += (uS - pm->const_U) * pm->lp_gain[0];
@@ -1193,10 +1208,19 @@ void pmc_voltage(pmc_t *pm, float uS)
 		if (pm->lu_region != PMC_LU_DISABLED
 				|| pm->m_state != PMC_STATE_IDLE) {
 
-			pm->m_state = PMC_STATE_END;
-			pm->m_phase = 0;
-			pm->m_errno = PMC_ERROR_LOW_VOLTAGE;
+			t_hold = pm->freq_hz * pm->fault_low_voltage_hold;
+			pm->fault_low_voltage_t++;
+
+			if (pm->fault_low_voltage_t < t_hold) {
+
+				pm->m_state = PMC_STATE_END;
+				pm->m_phase = 0;
+				pm->m_errno = PMC_ERROR_LOW_VOLTAGE;
+			}
 		}
+	}
+	else {
+		pm->fault_low_voltage_t = 0;
 	}
 
 	/* High voltage.
@@ -1206,10 +1230,19 @@ void pmc_voltage(pmc_t *pm, float uS)
 		if (pm->lu_region != PMC_LU_DISABLED
 				|| pm->m_state != PMC_STATE_IDLE) {
 
-			pm->m_state = PMC_STATE_END;
-			pm->m_phase = 0;
-			pm->m_errno = PMC_ERROR_HIGH_VOLTAGE;
+			t_hold = pm->freq_hz * pm->fault_high_voltage_hold;
+			pm->fault_high_voltage_t++;
+
+			if (pm->fault_high_voltage_t < t_hold) {
+
+				pm->m_state = PMC_STATE_END;
+				pm->m_phase = 0;
+				pm->m_errno = PMC_ERROR_HIGH_VOLTAGE;
+			}
 		}
+	}
+	else {
+		pm->fault_high_voltage_t = 0;
 	}
 }
 

@@ -183,34 +183,34 @@ SH_DEF(pm_m_errno)
 	printf("%i: %s" EOL, pm.m_errno, pmc_strerror(pm.m_errno));
 }
 
-SH_DEF(pm_T_drift)
+SH_DEF(pm_tm_drift)
 {
-	stof(&pm.T_drift, s);
-	printf("%3f (Sec)" EOL, &pm.T_drift);
+	stof(&pm.tm_drift, s);
+	printf("%3f (Sec)" EOL, &pm.tm_drift);
 }
 
-SH_DEF(pm_T_hold)
+SH_DEF(pm_tm_hold)
 {
-	stof(&pm.T_hold, s);
-	printf("%3f (Sec)" EOL, &pm.T_hold);
+	stof(&pm.tm_hold, s);
+	printf("%3f (Sec)" EOL, &pm.tm_hold);
 }
 
-SH_DEF(pm_T_sine)
+SH_DEF(pm_tm_sine)
 {
-	stof(&pm.T_sine, s);
-	printf("%3f (Sec)" EOL, &pm.T_sine);
+	stof(&pm.tm_sine, s);
+	printf("%3f (Sec)" EOL, &pm.tm_sine);
 }
 
-SH_DEF(pm_T_measure)
+SH_DEF(pm_tm_measure)
 {
-	stof(&pm.T_measure, s);
-	printf("%3f (Sec)" EOL, &pm.T_measure);
+	stof(&pm.tm_measure, s);
+	printf("%3f (Sec)" EOL, &pm.tm_measure);
 }
 
-SH_DEF(pm_T_end)
+SH_DEF(pm_tm_end)
 {
-	stof(&pm.T_end, s);
-	printf("%3f (Sec)" EOL, &pm.T_end);
+	stof(&pm.tm_end, s);
+	printf("%3f (Sec)" EOL, &pm.tm_end);
 }
 
 SH_DEF(pm_wave_i_hold_X)
@@ -291,6 +291,12 @@ SH_DEF(pm_fault_residual_maximal)
 	printf("%4e" EOL, &pm.fault_residual_maximal);
 }
 
+SH_DEF(pm_fault_residual_maximal_hold)
+{
+	stof(&pm.fault_residual_maximal_hold, s);
+	printf("%4f (Sec)" EOL, &pm.fault_residual_maximal_hold);
+}
+
 SH_DEF(pm_fault_drift_maximal)
 {
 	stof(&pm.fault_drift_maximal, s);
@@ -303,10 +309,22 @@ SH_DEF(pm_fault_low_voltage)
 	printf("%3f (V)" EOL, &pm.fault_low_voltage);
 }
 
+SH_DEF(pm_fault_low_voltage_hold)
+{
+	stof(&pm.fault_low_voltage_hold, s);
+	printf("%3f (Sec)" EOL, &pm.fault_low_voltage_hold);
+}
+
 SH_DEF(pm_fault_high_voltage)
 {
 	stof(&pm.fault_high_voltage, s);
 	printf("%3f (V)" EOL, &pm.fault_high_voltage);
+}
+
+SH_DEF(pm_fault_high_voltage_hold)
+{
+	stof(&pm.fault_high_voltage_hold, s);
+	printf("%3f (Sec)" EOL, &pm.fault_high_voltage_hold);
 }
 
 SH_DEF(pm_lu_X0)

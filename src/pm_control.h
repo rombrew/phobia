@@ -86,11 +86,11 @@ typedef struct {
 
 	/* Timer configuration.
 	 * */
-	float		T_drift;
-	float		T_hold;
-	float		T_sine;
-	float		T_measure;
-	float		T_end;
+	float		tm_drift;
+	float		tm_hold;
+	float		tm_sine;
+	float		tm_measure;
+	float		tm_end;
 
 	/* Current feedback.
 	 * */
@@ -118,9 +118,18 @@ typedef struct {
 	/* Fault limits.
 	 * */
 	float		fault_residual_maximal;
+	float		fault_residual_maximal_hold;
 	float		fault_drift_maximal;
 	float		fault_low_voltage;
+	float		fault_low_voltage_hold;
 	float		fault_high_voltage;
+	float		fault_high_voltage_hold;
+
+	/* Fault timers.
+	 * */
+	int		fault_residual_maximal_t;
+	int		fault_low_voltage_t;
+	int		fault_high_voltage_t;
 
 	/* Actual VSI voltage.
 	 * */
