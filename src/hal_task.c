@@ -101,7 +101,26 @@ void taskAPP(void *pvParameters)
 
 		xENC = halENC();
 
-		if ((xENC & ENC_A) == 0) {
+		if ((xENC & ENC_B) == 0) {
+
+			if (RPM == 0) {
+
+				if ((xENC & ENC_A) == 0) {
+
+					iDIR = (iDIR < 0) ? 1 : -1;
+					vTaskDelay(500);
+				}
+			}
+			else {
+				RPM = 0;
+				pm.s_set_point = 0;
+				vTaskDelay(300);
+
+				pmc_request(&pm, PMC_STATE_STOP);
+				vTaskDelay(200);
+			}
+		}
+		else if ((xENC & ENC_A) == 0) {
 
 			if (pm.lu_region == PMC_LU_DISABLED) {
 
@@ -123,22 +142,6 @@ void taskAPP(void *pvParameters)
 			}
 
 			pm.s_set_point = .10471976f * iDIR * RPM * pm.const_Zp;
-			vTaskDelay(500);
-		}
-
-		if ((xENC & ENC_B) == 0) {
-
-			RPM = 0;
-			pm.s_set_point = 0;
-			vTaskDelay(200);
-
-			pmc_request(&pm, PMC_STATE_STOP);
-			vTaskDelay(200);
-		}
-
-		if ((xENC & (ENC_A | ENC_B)) == 0) {
-
-			iDIR = (iDIR < 0) ? 1 : -1;
 			vTaskDelay(500);
 		}
 
