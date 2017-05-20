@@ -64,11 +64,8 @@ A significant part of the functions are already implemented in software.
 However, there are still many issues have no resolution or have experimental
 status.
 
-There are a few videos show the operation of the prototypes (outdated).
+There are a few videos show the operation of the prototypes (may be outdated).
 
-[![PMC](https://i.ytimg.com/vi/7XdBx24nlt0/default.jpg)](https://www.youtube.com/watch?v=7XdBx24nlt0)
+[![PMC](https://i.ytimg.com/vi/n_E2ThFQvD4/default.jpg)](https://www.youtube.com/watch?v=n_E2ThFQvD4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
-[![PMC](https://i.ytimg.com/vi/1u1OoLLYefY/default.jpg)](https://www.youtube.com/watch?v=1u1OoLLYefY)
-[![PMC](https://i.ytimg.com/vi/zmCW5BRNJgU/default.jpg)](https://www.youtube.com/watch?v=zmCW5BRNJgU)
-
 
