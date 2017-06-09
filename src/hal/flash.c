@@ -24,20 +24,6 @@
 
 #define FLASH_FIRST_SECTOR		8
 
-void * const flash_sector_map[] = {
-
-	/* Base addresses.
-	 * */
-	(void *) 0x08080000,
-	(void *) 0x080A0000,
-	(void *) 0x080C0000,
-	(void *) 0x080E0000,
-
-	/* The End.
-	 * */
-	(void *) 0x08100000,
-};
-
 static void
 flash_unlock()
 {
@@ -55,22 +41,22 @@ flash_lock()
 }
 
 static void
-flash_wait_for_complete()
+flash_wait_BSY()
 {
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void flash_erase(int sector)
+void flash_erase(int N)
 {
 	flash_unlock();
-	flash_wait_for_complete();
+	flash_wait_BSY();
 
-	sector = (sector + FLASH_FIRST_SECTOR) & 0x0F;
+	N = (N + FLASH_FIRST_SECTOR) & 0x0F;
 
-	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_SER | (sector << 3) | FLASH_CR_SER;
+	FLASH->CR = FLASH_CR_PSIZE_1 | (N << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
-	flash_wait_for_complete();
+	flash_wait_BSY();
 	FLASH->CR &= ~(FLASH_CR_SER);
 
 	flash_lock();
@@ -82,7 +68,7 @@ void flash_write(void *d, const void *s, int sz)
 	const unsigned int	*us = s;
 
 	flash_unlock();
-	flash_wait_for_complete();
+	flash_wait_BSY();
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
 
@@ -92,7 +78,7 @@ void flash_write(void *d, const void *s, int sz)
 		sz -= 4;
 	}
 
-	flash_wait_for_complete();
+	flash_wait_BSY();
 	FLASH->CR &= ~(FLASH_CR_PG);
 
 	flash_lock();

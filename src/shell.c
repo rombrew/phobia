@@ -473,7 +473,7 @@ shLineNULL()
 	gSH.hMD = 0;
 }
 
-void taskSH(void *pvParameters)
+void taskSH(void *pData)
 {
 	int		xC;
 

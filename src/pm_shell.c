@@ -514,17 +514,6 @@ SH_DEF(pm_bemf_N)
 	printf("%i" EOL, pm.bemf_N);
 }
 
-SH_DEF(pm_bemf_tune_T)
-{
-	float		T;
-
-	if (stof(&T, s) != NULL && T > 0.f) {
-
-		pm.bemf_tune_T = pm.freq_hz * T;
-		printf("+ %3f (Sec)" EOL, &T);
-	}
-}
-
 SH_DEF(pm_thermal_R)
 {
 	float			avg;
@@ -730,9 +719,9 @@ SH_DEF(pm_i_gain_I_Q)
 SH_DEF(pm_i_gain_auto)
 {
 	pm.i_gain_P_D = (.5f * pm.const_Ld * pm.freq_hz - pm.const_R);
-	pm.i_gain_I_D = 5e-2f * pm.const_Ld * pm.freq_hz;
+	pm.i_gain_I_D = 5E-2f * pm.const_Ld * pm.freq_hz;
 	pm.i_gain_P_Q = (.5f * pm.const_Lq * pm.freq_hz - pm.const_R);
-	pm.i_gain_I_Q = 5e-2f * pm.const_Lq * pm.freq_hz;
+	pm.i_gain_I_Q = 5E-2f * pm.const_Lq * pm.freq_hz;
 
 	printf(	"P_D %2e" EOL
 		"I_D %2e" EOL
@@ -793,8 +782,8 @@ SH_DEF(pm_s_slew_rate_auto)
 	if (pm.const_J > M_EPS_F) {
 
 		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
-		pm.s_slew_rate = 1.5f * MT * (pm.const_E / pm.const_Lq);
-		pm.s_forced_slew_rate = .3f * MT * pm.s_forced_D;
+		pm.s_slew_rate = 1.5f * MT * pm.i_high_maximal;
+		pm.s_forced_slew_rate = .25f * MT * pm.s_forced_D;
 
 		printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
 		printf("%4e (Rad/S2)" EOL, &pm.s_forced_slew_rate);
@@ -916,8 +905,9 @@ SH_DEF(pm_n_temperature_c)
 
 SH_DEF(pm_default)
 {
-	if (pm.lu_region == PMC_LU_DISABLED)
-		pmc_default(&pm);
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	pmc_default(&pm);
 }
 
 SH_DEF(pm_request_zero_drift)
@@ -950,24 +940,6 @@ SH_DEF(pm_request_stop)
 	pmc_request(&pm, PMC_STATE_STOP);
 }
 
-SH_DEF(pm_update_const_R)
-{
-	float			R;
-
-	if (pm.m_state == PMC_STATE_IDLE) {
-
-		R = 0.f;
-
-		pmc_resistance(pm.wave_DFT, &R);
-		pm.const_R += R;
-
-		pm.wave_DFT[0] = 0.f;
-		pm.wave_DFT[1] = 0.f;
-
-		printf("%4e (Ohm)" EOL, &pm.const_R);
-	}
-}
-
 SH_DEF(pm_impedance)
 {
 	float		IMP[6];
@@ -983,66 +955,81 @@ SH_DEF(pm_impedance)
 		IMP + 0, IMP + 1, IMP + 2, IMP + 3, IMP + 4, IMP + 5);
 }
 
+SH_DEF(pm_update_const_R)
+{
+	float			R;
+
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	R = 0.f;
+
+	pmc_resistance(pm.wave_DFT, &R);
+	pm.const_R += R;
+
+	pm.wave_DFT[0] = 0.f;
+	pm.wave_DFT[1] = 0.f;
+
+	printf("%4e (Ohm)" EOL, &pm.const_R);
+}
+
 SH_DEF(pm_update_const_L)
 {
 	float		IMP[6];
 
-	if (pm.m_state == PMC_STATE_IDLE) {
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
 
-		if (fabsf(IMP[2]) < 45.f) {
+	if (fabsf(IMP[2]) < 45.f) {
 
-			pm.const_Ld = IMP[0];
-			pm.const_Lq = IMP[1];
-		}
-		else {
-			pm.const_Ld = IMP[1];
-			pm.const_Lq = IMP[0];
-		}
-
-		pm.const_Ld_inversed = 1.f / pm.const_Ld;
-		pm.const_Lq_inversed = 1.f / pm.const_Lq;
-
-		printf("Ld %4e (H)" EOL, &pm.const_Ld);
-		printf("Lq %4e (H)" EOL, &pm.const_Lq);
+		pm.const_Ld = IMP[0];
+		pm.const_Lq = IMP[1];
 	}
+	else {
+		pm.const_Ld = IMP[1];
+		pm.const_Lq = IMP[0];
+	}
+
+	pm.const_Ld_inversed = 1.f / pm.const_Ld;
+	pm.const_Lq_inversed = 1.f / pm.const_Lq;
+
+	printf("Ld %4e (H)" EOL, &pm.const_Ld);
+	printf("Lq %4e (H)" EOL, &pm.const_Lq);
 }
 
 SH_DEF(pm_update_scal_AB)
 {
-	float		gainA, gainB, fixA, fixB, ref;
+	float		gA, gB, fA, fB, ref;
 
-	if (pm.m_state == PMC_STATE_IDLE) {
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-		if (stof(&ref, s) != NULL && ref != 0.f) {
+	if (stof(&ref, s) != NULL && ref != 0.f) {
 
-			gainA = pm.wave_DFT[0] / ref;
-			gainB = pm.wave_DFT[1] / ref;
+		gA = pm.wave_DFT[0] / ref;
+		gB = pm.wave_DFT[1] / ref;
 
-			fixA = 100.f * (gainA - 1.f);
-			fixB = 100.f * (gainB - 1.f);
+		fA = 100.f * (gA - 1.f);
+		fB = 100.f * (gB - 1.f);
 
-			printf(	"FIX_A %2f %%" EOL
-				"FIX_B %2f %%" EOL
-				"A1 %4e" EOL
-				"B1 %4e" EOL,
-				&fixA, &fixB,
-				&pm.scal_A[1], &pm.scal_B[1]);
-		}
-		else {
-			gainA = pm.wave_DFT[0] / pm.wave_DFT[1];
-			fixA = 100.f * (gainA - 1.f);
+		printf(	"FIX_A %2f %%" EOL
+			"FIX_B %2f %%" EOL
+			"A1 %4e" EOL
+			"B1 %4e" EOL,
+			&fA, &fB,
+			&pm.scal_A[1], &pm.scal_B[1]);
+	}
+	else {
+		gA = pm.wave_DFT[0] / pm.wave_DFT[1];
+		fA = 100.f * (gA - 1.f);
 
-			gainA = sqrtf(gainA);
-			pm.scal_A[1] /= gainA;
-			pm.scal_B[1] *= gainA;
+		gA = sqrtf(gA);
+		pm.scal_A[1] = 1.f / gA;
+		pm.scal_B[1] = gA;
 
-			printf(	"FIX %2f %%" EOL
-				"A1 %4e" EOL
-				"B1 %4e" EOL,
-				&fixA, &pm.scal_A[1], &pm.scal_B[1]);
-		}
+		printf(	"FIX %2f %%" EOL
+			"A1 %4e" EOL
+			"B1 %4e" EOL,
+			&fA, &pm.scal_A[1], &pm.scal_B[1]);
 	}
 }
 

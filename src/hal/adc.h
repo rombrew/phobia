@@ -19,7 +19,7 @@
 #ifndef _H_ADC_
 #define _H_ADC_
 
-#define ADC_THERMAL_FREQ_HZ			100UL
+#define ADC_THERMAL_FREQ_HZ			10UL
 
 typedef struct {
 
@@ -43,10 +43,6 @@ typedef struct {
 	/* Thermal sensor.
 	 * */
 	int		thermal_xTEMP;
-
-	/* Reference voltage.
-	 * */
-	int		in_xREF;
 }
 halADC_t;
 
@@ -59,7 +55,6 @@ typedef struct {
 	float			NTC[8];
 	float			TEMP_0;
 	float			TEMP_1;
-	float			REF_1;
 }
 halADC_CONST_t;
 
@@ -70,7 +65,6 @@ void adcEnable();
 void adcDisable();
 
 extern void adcIRQ_feedback();
-extern void adcIRQ_thermal();
 
 #endif /* _H_ADC_ */
 

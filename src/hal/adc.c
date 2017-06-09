@@ -38,8 +38,6 @@ halADC_CONST_t			halADC_CONST = {
 		4.6735139E-4f,
 		-3.3537976E-1f,
 		1.7679703E+2f},
-
-	.REF_1 = 8.0566E-4f,
 };
 
 void irqADC()
@@ -52,9 +50,6 @@ void irqADC()
 
 		halADC.thermal_xNTC = ADC1->JDR1;
 		halADC.thermal_xTEMP = ADC1->JDR2;
-		halADC.in_xREF = ADC1->JDR3;
-
-		adcIRQ_thermal();
 	}
 
 	if (ADC2->SR & ADC_SR_JEOC) {
@@ -65,13 +60,13 @@ void irqADC()
 		fc = (float) ((int) ADC2->JDR1 - 2048);
 		halADC.sensor_A = fc * halADC_CONST.A_1;
 
-		fc = (float) (ADC2->JDR2);
+		fc = (float) ((int) ADC2->JDR2);
 		halADC.supply_U = fc * halADC_CONST.U_1;
 
 		fc = (float) ((int) ADC3->JDR1 - 2048);
 		halADC.sensor_B = fc * halADC_CONST.B_1;
 
-		fc = (float) (ADC3->JDR2);
+		fc = (float) ((int) ADC3->JDR2);
 		halADC.external_HVIN = fc * halADC_CONST.HVIN_1;
 
 		adcIRQ_feedback();
@@ -100,8 +95,8 @@ timerEnable()
 	TIM2->CR1 = TIM_CR1_ARPE;
 	TIM2->CR2 = TIM_CR2_MMS_1;
 	TIM2->CNT = 0;
-	TIM2->PSC = 99UL;
-	TIM2->ARR = HAL_APB1_HZ * 2UL / 100UL / ADC_THERMAL_FREQ_HZ;
+	TIM2->PSC = 999UL;
+	TIM2->ARR = HAL_APB1_HZ * 2UL / 1000UL / ADC_THERMAL_FREQ_HZ;
 	TIM2->RCR = 0;
 
 	/* Start TIM2.
@@ -144,18 +139,16 @@ void adcEnable()
 	 * */
 	ADC->CCR = ADC_CCR_TSVREFE | ADC_CCR_ADCPRE_0;
 
-	/* Configure ADC1 on PC2-IN12 (thermal_NTC) IN16 (thermal_TEMP) IN17 (in_REF).
+	/* Configure ADC1 on PC2-IN12 (thermal_NTC) IN16 (thermal_TEMP).
 	 * */
 	ADC1->CR1 = ADC_CR1_SCAN;
 	ADC1->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_1 | ADC_CR2_JEXTSEL_0;
-	ADC1->SMPR1 = ADC_SMPR1_SMP17_2 | ADC_SMPR1_SMP17_1
-		| ADC_SMPR1_SMP17_0 | ADC_SMPR1_SMP16_2
-		| ADC_SMPR1_SMP16_1 | ADC_SMPR1_SMP16_0
-		| ADC_SMPR1_SMP12_2 | ADC_SMPR1_SMP12_1
-		| ADC_SMPR1_SMP12_0;
+	ADC1->SMPR1 = ADC_SMPR1_SMP16_2 | ADC_SMPR1_SMP16_1
+		| ADC_SMPR1_SMP16_0 | ADC_SMPR1_SMP12_2
+		| ADC_SMPR1_SMP12_1 | ADC_SMPR1_SMP12_0;
 	ADC1->SMPR2 = 0;
-	ADC1->JSQR = ADC_JSQR_JL_1 | ADC_JSQR_JSQ2_3 | ADC_JSQR_JSQ2_2
-		| ADC_JSQR_JSQ3_4 | ADC_JSQR_JSQ4_4 | ADC_JSQR_JSQ4_0;
+	ADC1->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ3_3 | ADC_JSQR_JSQ3_2
+		| ADC_JSQR_JSQ4_4;
 
 	/* Configure ADC2 on PC3-IN13 (sensor_A) PA2-IN2 (supply_U).
 	 * */
@@ -196,6 +189,10 @@ void adcEnable()
 
 void adcDisable()
 {
+	/* Disable IRQ.
+	 * */
+	NVIC_DisableIRQ(ADC_IRQn);
+
 	/* Disable thermal trigger.
 	 * */
 	timerDisable();

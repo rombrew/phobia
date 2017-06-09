@@ -84,7 +84,7 @@ void blm_Enable(blm_t *m)
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 61.;
+	m->U = 41.;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 2.) * 7E-2 + cos(X[3] * 1.) * 3E-2 + sin(X[3] * 6.) * 5E-2;
+	E1 *= 1. + sin(X[3] * 2.) * 0E-2 + cos(X[3] * 1.) * 0E-2 + sin(X[3] * 6.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */

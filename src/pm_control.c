@@ -81,8 +81,8 @@ void pmc_default(pmc_t *pm)
 	pm->fault_residual_maximal_hold = 1E-4f;
 	pm->fault_drift_maximal = 1.f;
 	pm->fault_low_voltage =  5.f;
-	pm->fault_low_voltage_hold = 2.f;
-	pm->fault_high_voltage = 52.f;
+	pm->fault_low_voltage_hold = 1.f;
+	pm->fault_high_voltage = 55.f;
 	pm->fault_high_voltage_hold = 0.f;
 
 	pm->lu_gain_K[0] = 2E-1f;
@@ -115,7 +115,7 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 20.f;
+	pm->i_high_maximal = 25.f;
 	pm->i_low_maximal = 5.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = -210.f;
@@ -126,10 +126,10 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->s_maximal = 31416.f;
-	pm->s_slew_rate = 2E+6f;
+	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
+	pm->s_slew_rate = 5E+6f;
 	pm->s_forced_D = 5.f;
-	pm->s_forced_slew_rate = 2E+2f;
+	pm->s_forced_slew_rate = 250.f;
 	pm->s_nonl_gain_F = 2E-2f;
 	pm->s_nonl_range = 90.f;
 	pm->s_gain_P = 5E-2f;
@@ -857,6 +857,7 @@ pm_FSM(pmc_t *pm)
 
 			if (pm->m_phase == 0) {
 
+				pm->pDC(0, 0, 0);
 				pm->pZ(0);
 
 				pm->wave_temp[0] = 0.f;
@@ -926,6 +927,7 @@ pm_FSM(pmc_t *pm)
 
 			if (pm->m_phase == 0) {
 
+				pm->pDC(0, 0, 0);
 				pm->pZ(0);
 
 				pm->lu_X[2] = 1.f;
@@ -997,6 +999,7 @@ pm_FSM(pmc_t *pm)
 
 			if (pm->m_phase == 0) {
 
+				pm->pDC(0, 0, 0);
 				pm->pZ(4);
 
 				pm->wave_temp[0] = 0.f;
@@ -1052,7 +1055,6 @@ pm_FSM(pmc_t *pm)
 			}
 
 			pm->lu_region = PMC_LU_LOW_REGION;
-			pm->pZ(0);
 
 			pm->lu_X[0] = 0.f;
 			pm->lu_X[1] = 0.f;
@@ -1068,18 +1070,12 @@ pm_FSM(pmc_t *pm)
 			pm->drift_B = 0.f;
 			pm->drift_Q = 0.f;
 
-			if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
+			pm->hf_CS[0] = 1.;
+			pm->hf_CS[1] = 0.;
+			pm->hf_flux_polarity = 0.f;
 
-				pm->hf_CS[0] = 1.;
-				pm->hf_CS[1] = 0.;
-				pm->hf_flux_polarity = 0.f;
-			}
-
-			if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
-
-				pm->bemf_D = 0.f;
-				pm->bemf_Q = 0.f;
-			}
+			pm->bemf_D = 0.f;
+			pm->bemf_Q = 0.f;
 
 			pm->thermal_R = 0.f;
 			pm->thermal_E = 0.f;
@@ -1091,22 +1087,19 @@ pm_FSM(pmc_t *pm)
 			pm->i_integral_D = 0.f;
 			pm->i_integral_Q = 0.f;
 
-			if (pm->m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP) {
+			pm->s_set_point = 0.f;
+			pm->s_track_point = 0.f;
+			pm->s_nonl_X4 = 0.f;
+			pm->s_track_point_p[0] = 1.f;
+			pm->s_track_point_p[1] = 0.f;
 
-				pm->s_set_point = 0.f;
-				pm->s_track_point = 0.f;
-				pm->s_nonl_X4 = 0.f;
-				pm->s_track_point_p[0] = 1.f;
-				pm->s_track_point_p[1] = 0.f;
-			}
+			pm->p_set_point[0] = 1.f;
+			pm->p_set_point[1] = 0.f;
+			pm->p_set_point_s = 0.f;
+			pm->p_set_point_revol = 0;
 
-			if (pm->m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) {
-
-				pm->p_set_point[0] = 1.f;
-				pm->p_set_point[1] = 0.f;
-				pm->p_set_point_s = 0.f;
-				pm->p_set_point_revol = 0;
-			}
+			pm->pDC(0, 0, 0);
+			pm->pZ(0);
 
 			pm->m_state = PMC_STATE_IDLE;
 			pm->m_phase = 0;
@@ -1143,7 +1136,7 @@ pm_FSM(pmc_t *pm)
 			if (pm->m_phase == 0) {
 
 				pm->lu_region = PMC_LU_DISABLED;
-				pm->pDC(0, 0, 0);
+				pm->pZ(7);
 
 				pm->t_value = 0;
 				pm->t_end = pm->freq_hz * pm->tm_end;
@@ -1155,8 +1148,6 @@ pm_FSM(pmc_t *pm)
 
 				if (pm->t_value < pm->t_end) ;
 				else {
-					pm->pZ(7);
-
 					pm->m_state = PMC_STATE_IDLE;
 					pm->m_phase = 0;
 				}
@@ -1185,9 +1176,23 @@ void pmc_feedback(pmc_t *pm, float iA, float iB)
 
 		lu_update(pm);
 		i_control(pm);
-		(pm->m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) ? p_control(pm) : 0 ;
-		(pm->m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP) ? s_control(pm) : 0 ;
-		(pm->m_bitmask & PMC_BIT_POWER_CONTROL_LOOP) ? w_control(pm) : 0 ;
+
+		if (pm->m_bitmask & PMC_BIT_POWER_CONTROL_LOOP) {
+
+			w_control(pm);
+		}
+		else {
+			if (pm->m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP) {
+
+				if (pm->m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) {
+
+					p_control(pm);
+				}
+
+				s_control(pm);
+			}
+		}
+
 		lu_post(pm);
 	}
 }

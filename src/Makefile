@@ -9,7 +9,7 @@ OC	= $(CROSS)objcopy
 MK	= mkdir -p
 RM	= rm -rf
 
-CFLAGS	= -std=gnu99 -pipe
+CFLAGS	= -static -std=gnu99 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion

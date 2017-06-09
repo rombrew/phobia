@@ -29,166 +29,95 @@
 #include "pm_math.h"
 #include "shell.h"
 
-#define	TEL_SIZE		20000
-#define TEL_VARS_MAX		32
+#define	TEL_SIZE		1024
+#define TEL_MAX			16
 
 typedef struct {
 
-	int			iEN;
+	int			enabled;
 
-	short int		pIN[TEL_VARS_MAX];
-	int			pSZ;
+	short int		fifo[TEL_SIZE][TEL_MAX];
+	int			fifo_N;
 
-	int			sAVG[TEL_VARS_MAX];
-	int			sCNT, sDEC;
-
-	short int		pD[TEL_SIZE];
-	short int		*pZ;
+	int			decimal;
+	int			tick;
 }
 telemetry_t;
 
 static telemetry_t		tel;
 
-static void
-telCapture()
+void tel_bare_enabled(int en)
 {
-	int			j, SZ;
+	tel.enabled = en;
+}
 
-	for (j = 0; j < tel.pSZ; ++j)
-		tel.sAVG[j] += tel.pIN[j];
+static void
+tel_fifo_put()
+{
+	short int		*m;
 
-	tel.sCNT++;
+	m = tel.fifo[tel.fifo_N];
+	tel.fifo_N = (tel.fifo_N < (TEL_SIZE - 1)) ? tel.fifo_N + 1 : 0;
 
-	if (tel.sCNT >= tel.sDEC) {
+	m[0] = (short int) (pm.lu_X[0] * 1000.f);
+	m[1] = (short int) (pm.lu_X[1] * 1000.f);
+	m[2] = (short int) (pm.lu_X[2] * 4096.f);
+	m[3] = (short int) (pm.lu_X[3] * 4096.f);
+	m[4] = (short int) (pm.lu_X[4] * 30.f / M_PI_F / pm.const_Zp);
+	m[5] = (short int) (pm.drift_Q * 1000.f);
+	m[6] = (short int) (pm.lu_residual_D * 1000.f);
+	m[7] = (short int) (pm.lu_residual_Q * 1000.f);
+	m[8] = (short int) 0;
+}
 
-		for (j = 0; j < tel.pSZ; ++j) {
+void tel_collect()
+{
+	if (pm.lu_region == PMC_LU_DISABLED) {
 
-			*tel.pZ++ = tel.sAVG[j] / tel.sCNT;
-			tel.sAVG[j] = 0;
+		tel.enabled = 0;
+	}
+
+	if (tel.enabled != 0) {
+
+		tel.tick++;
+
+		if (tel.tick < tel.decimal) ;
+		else {
+
+			tel.tick = 0;
+			tel_fifo_put();
 		}
-
-		SZ = tel.pZ - tel.pD + tel.pSZ;
-		tel.iEN = (SZ <= TEL_SIZE) ? tel.iEN : 0;
-
-		tel.sCNT = 0;
 	}
 }
 
-static void
-telFlush()
+SH_DEF(tel_enabled)
 {
-	short int		*pZ, *pEnd;
-	int			j;
-
-	pZ = tel.pD;
-	pEnd = tel.pZ;
-
-	while (pZ < pEnd) {
-
-		for (j = 0; j < tel.pSZ; ++j)
-			printf("%i ", *pZ++);
-
-		puts(EOL);
-	}
+	stoi(&tel.enabled, s);
+	printf("%i" EOL, tel.enabled);
 }
-
-static void
-evTEL_0()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.lu_X[0] * 1000.f);
-		tel.pIN[1] = (short int) (pm.lu_X[1] * 1000.f);
-		tel.pIN[2] = (short int) (pm.lu_X[2] * 4096.f);
-		tel.pIN[3] = (short int) (pm.lu_X[3] * 4096.f);
-		tel.pIN[4] = (short int) (pm.lu_X[4] * 30.f / M_PI_F / pm.const_Zp);
-		tel.pIN[5] = (short int) (pm.drift_Q * 1000.f);
-		tel.pIN[6] = (short int) (pm.lu_residual_D * 1000.f);
-		tel.pIN[7] = (short int) (pm.lu_residual_Q * 1000.f);
-		tel.pSZ = 8;
-
-		telCapture();
-	}
-	else
-		ts.pEX = NULL;
-}
-
-static void
-evTEL_1()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) (pm.fb_iA * 1000.f);
-		tel.pIN[1] = (short int) (pm.fb_iB * 1000.f);
-		tel.pSZ = 2;
-
-		telCapture();
-	}
-	else
-		ts.pEX = NULL;
-}
-
-static void
-evTEL_2()
-{
-	if (tel.iEN) {
-
-		tel.pIN[0] = (short int) 0;
-		tel.pSZ = 1;
-
-		telCapture();
-	}
-	else
-		ts.pEX = NULL;
-}
-
-static void (* const evTEL_list[]) () = {
-
-	&evTEL_0,
-	&evTEL_1,
-	&evTEL_2,
-};
 
 SH_DEF(tel_decimal)
 {
-	stoi(&tel.sDEC, s);
-	printf("%i" EOL, tel.sDEC);
+	stoi(&tel.decimal, s);
+	printf("%i" EOL, tel.decimal);
 }
 
-SH_DEF(tel_capture)
+static void
+taskLIVE(void *pData)
 {
-	const int	nMAX = sizeof(evTEL_list) / sizeof(evTEL_list[0]);
-	void 		(* evTEL) ();
-	int		nTEL = 0;
+	short int 	*m;
+	int		j;
 
-	SH_ASSERT(ts.pEX == NULL);
-
-	tel.iEN = 1;
-	tel.sCNT = 0;
-	tel.pZ = tel.pD;
-
-	stoi(&nTEL, s);
-	nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-	evTEL = evTEL_list[nTEL];
-
-	halFence();
-	ts.pEX = evTEL;
-}
-
-SH_DEF(tel_disable)
-{
-	tel.iEN = 0;
-	tel.sCNT = 0;
-	tel.pZ = tel.pD;
-}
-
-void taskLIVE(void *pvParameters)
-{
 	do {
-		if (tel.pZ != tel.pD) {
+		if (tel.fifo_N != 0) {
 
-			telFlush();
-			tel.pZ = tel.pD;
+			tel.fifo_N = 0;
+			m = tel.fifo[tel.fifo_N];
+
+			for (j = 0; j < TEL_MAX; ++j)
+				printf("%i ", m[j]);
+
+			puts(EOL);
 		}
 
 		vTaskDelay(10);
@@ -198,27 +127,20 @@ void taskLIVE(void *pvParameters)
 
 SH_DEF(tel_live)
 {
-	const int	nMAX = sizeof(evTEL_list) / sizeof(evTEL_list[0]);
-	void 		(* evTEL) ();
-	int		nTEL = 0;
-	int		xC, decmin;
 	TaskHandle_t	xLIVE;
+	int		enval, decval, min;
+	int		xC;
 
-	SH_ASSERT(ts.pEX == NULL);
+	enval = tel.enabled;
+	decval = tel.decimal;
 
-	decmin = (int) (pm.freq_hz / 25.f + .5f);
-	tel.sDEC = (tel.sDEC < decmin) ? decmin : tel.sDEC;
-
-	tel.iEN = 1;
-	tel.sCNT = 0;
-	tel.pZ = tel.pD;
-
-	stoi(&nTEL, s);
-	nTEL = (nTEL < 0) ? 0 : (nTEL > nMAX) ? nMAX : nTEL;
-	evTEL = evTEL_list[nTEL];
+	min = (int) (pm.freq_hz / 50.f + .5f);
+	tel.decimal = (tel.decimal < min) ? min : tel.decimal;
+	tel.fifo_N = 0;
 
 	halFence();
-	ts.pEX = evTEL;
+
+	tel.enabled = 1;
 
 	xTaskCreate(taskLIVE, "tLIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xLIVE);
 
@@ -231,24 +153,34 @@ SH_DEF(tel_live)
 	while (1);
 
 	vTaskDelete(xLIVE);
-	tel.iEN = 0;
+
+	tel.decimal = decval;
+	tel.enabled = enval;
 }
 
 SH_DEF(tel_flush)
 {
-	telFlush();
-}
+	short int		*m;
+	int			j, fifo_j, enval;
 
-SH_DEF(tel_info)
-{
-	float		freq, time;
+	enval = tel.enabled;
+	tel.enabled = 0;
 
-	freq = pm.freq_hz / (float) tel.sDEC;
-	time = TEL_SIZE * (float) tel.sDEC / pm.freq_hz;
+	halFence();
 
-	printf(	"DECIMAL %i" EOL
-		"FREQ %1f (Hz)" EOL
-		"TIME %3f (Sec)" EOL,
-		tel.sDEC, &freq, &time);
+	fifo_j = (tel.fifo_N < (TEL_SIZE - 1)) ? tel.fifo_N + 1 : 0;
+
+	while (fifo_j != tel.fifo_N) {
+
+		m = tel.fifo[fifo_j];
+		fifo_j = (fifo_j < (TEL_SIZE - 1)) ? fifo_j + 1 : 0;
+
+		for (j = 0; j < TEL_MAX; ++j)
+			printf("%i ", m[j]);
+
+		puts(EOL);
+	}
+
+	tel.enabled = enval;
 }
 

@@ -199,29 +199,29 @@ sim_Script(FILE *fdTel)
 
 	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
 
-	pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
-	pm.bemf_N = 9;
+	//pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
+	//pm.bemf_N = 9;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	pm.s_set_point = -15000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, 4., 0);
-
-	/*pm.s_set_point = 10000. * pm.const_Zp * M_PI / 30.;
+	pm.s_set_point = 50000. * pm.const_Zp * M_PI / 30.;
 	sim_F(fdTel, 2., 0);
 
-	pm.s_set_point = 18000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, 2., 0);
-
-	pm.s_set_point = 1000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, 1., 0);*/
-
-	pm.s_set_point = -100. * pm.const_Zp * M_PI / 30.;
+	pm.i_set_point_D = -5.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_set_point = 15000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, 4., 0);
+	pm.i_set_point_D = -10.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.i_set_point_D = -15.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.i_set_point_D = -20.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.i_set_point_D = -25.f;
+	sim_F(fdTel, 1., 0);
 }
 
 int main(int argc, char *argv[])

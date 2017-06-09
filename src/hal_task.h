@@ -37,15 +37,12 @@ typedef struct {
 
 	/* Thermal information.
 	 * */
-	int			thermal_xAVG[3];
-	int			thermal_sample_N;
 	float			thermal_NTC;
 	float			thermal_TEMP;
-	float			thermal_REF;
 
-	/* ADC event handler.
+	/* IRQ callback.
 	 * */
-	void			(* pEX) ();
+	void			(* p_irq_callback) ();
 
 	/* To obtain an average values.
 	 * */
@@ -67,7 +64,7 @@ task_data_t;
 extern task_data_t		ts;
 extern pmc_t			pm;
 
-void ts_av_EH();
+void ts_av_handler();
 float ts_av_float_1(float *param, float time);
 float ts_av_float_arg_1(float *param, const char *s);
 

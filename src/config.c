@@ -196,7 +196,7 @@ conf_block_scan(int vflag)
 {
 	conf_block_t			*curr, *last;
 
-	curr = flash_sector_map[0];
+	curr = (void *) FLASH_STORAGE_BASE;
 	last = NULL;
 
 	do {
@@ -215,7 +215,7 @@ conf_block_scan(int vflag)
 
 		curr += 1;
 
-		if ((void *) curr >= flash_sector_map[FLASH_SECTOR_MAX - 1])
+		if ((void *) curr >= (void *) FLASH_STORAGE_END)
 			break;
 	}
 	while (1);
@@ -265,23 +265,11 @@ conf_is_block_dirty(const conf_block_t *block)
 static int
 conf_get_sector(const conf_block_t *block)
 {
-	int			n = 0;
+	int			N;
 
-	if ((void *) block < flash_sector_map[0])
-		return -1;
+	N = ((long int) block - FLASH_STORAGE_BASE) / FLASH_SECTOR_SIZE;
 
-	do {
-		if (n >= FLASH_SECTOR_MAX)
-			break;
-
-		if (flash_sector_map[n + 1] > (void *) block)
-			break;
-
-		++n;
-	}
-	while (1);
-
-	return n;
+	return N;
 }
 
 int conf_block_save()
@@ -297,12 +285,12 @@ int conf_block_save()
 		newid = block->id + 1;
 		block += 1;
 
-		if ((void *) block >= flash_sector_map[FLASH_SECTOR_MAX - 1])
-			block = flash_sector_map[0];
+		if ((void *) block >= (void *) FLASH_STORAGE_END)
+			block = (void *) FLASH_STORAGE_BASE;
 	}
 	else {
 		newid = 1;
-		block = flash_sector_map[0];
+		block = (void *) FLASH_STORAGE_BASE;
 	}
 
 	if (conf_is_block_dirty(block)) {

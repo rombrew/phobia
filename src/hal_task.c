@@ -88,9 +88,7 @@ void vApplicationIdleHook()
 	}
 }
 
-extern int conf_block_load();
-
-void taskAPP(void *pvParameters)
+void taskAPP(void *pData)
 {
 	int		xENC;
 	int		RPM;
@@ -156,7 +154,9 @@ void taskAPP(void *pvParameters)
 	while (1);
 }
 
-void taskINIT(void *pvParameters)
+extern int conf_block_load();
+
+void taskINIT(void *pData)
 {
 	int			rc_conf;
 
@@ -213,57 +213,17 @@ void taskINIT(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
+extern void tel_collect();
+
 void adcIRQ_feedback()
 {
 	pmc_feedback(&pm, halADC.sensor_A, halADC.sensor_B);
 	pmc_voltage(&pm, halADC.supply_U);
 
-	if (ts.pEX != NULL)
-		ts.pEX();
-}
+	tel_collect();
 
-static void
-ma_thermal_job(int xNTC, int xTEMP, int xREF)
-{
-	float			fc, temp;
-
-	ts.thermal_xAVG[0] += xNTC;
-	ts.thermal_xAVG[1] += xTEMP;
-	ts.thermal_xAVG[2] += xREF;
-
-	ts.thermal_sample_N += 1;
-
-	if (ts.thermal_sample_N >= ADC_THERMAL_FREQ_HZ) {
-
-		fc = (float) (ts.thermal_xAVG[0] / ts.thermal_sample_N);
-		ts.thermal_xAVG[0] = 0;
-
-		temp = halADC_CONST.NTC[1] + halADC_CONST.NTC[0] * fc;
-		temp = halADC_CONST.NTC[2] + temp * fc;
-		temp = halADC_CONST.NTC[3] + temp * fc;
-		temp = halADC_CONST.NTC[4] + temp * fc;
-		temp = halADC_CONST.NTC[5] + temp * fc;
-		temp = halADC_CONST.NTC[6] + temp * fc;
-		temp = halADC_CONST.NTC[7] + temp * fc;
-		ts.thermal_NTC = temp;
-
-		fc = (float) (ts.thermal_xAVG[1] / ts.thermal_sample_N);
-		ts.thermal_xAVG[1] = 0;
-
-		ts.thermal_TEMP = halADC_CONST.TEMP_1 * fc + halADC_CONST.TEMP_0;
-
-		fc = (float) (ts.thermal_xAVG[2] / ts.thermal_sample_N);
-		ts.thermal_xAVG[2] = 0;
-
-		ts.thermal_REF = halADC_CONST.REF_1 * fc;
-
-		ts.thermal_sample_N = 0;
-	}
-}
-
-void adcIRQ_thermal()
-{
-	ma_thermal_job(halADC.thermal_xNTC, halADC.thermal_xTEMP, halADC.in_xREF);
+	if (ts.p_irq_callback != NULL)
+		ts.p_irq_callback();
 }
 
 void halMain()
@@ -272,7 +232,25 @@ void halMain()
 	vTaskStartScheduler();
 }
 
-void ts_av_EH()
+void ts_thermal_convert()
+{
+	float			fc, temp;
+
+	fc = (float) halADC.thermal_xNTC;
+	temp = halADC_CONST.NTC[1] + halADC_CONST.NTC[0] * fc;
+	temp = halADC_CONST.NTC[2] + temp * fc;
+	temp = halADC_CONST.NTC[3] + temp * fc;
+	temp = halADC_CONST.NTC[4] + temp * fc;
+	temp = halADC_CONST.NTC[5] + temp * fc;
+	temp = halADC_CONST.NTC[6] + temp * fc;
+	temp = halADC_CONST.NTC[7] + temp * fc;
+	ts.thermal_NTC = temp;
+
+	fc = (float) halADC.thermal_xTEMP;
+	ts.thermal_TEMP = halADC_CONST.TEMP_1 * fc + halADC_CONST.TEMP_0;
+}
+
+void ts_av_handler()
 {
 	int			j;
 
@@ -284,12 +262,12 @@ void ts_av_EH()
 		ts.av_sample_N++;
 	}
 	else
-		ts.pEX = NULL;
+		ts.p_irq_callback = NULL;
 }
 
 float ts_av_float_1(float *param, float time)
 {
-	if (ts.pEX == NULL) {
+	if (ts.p_irq_callback == NULL) {
 
 		ts.av_IN[0] = param;
 		ts.av_VAL[0] = 0.f;
@@ -298,9 +276,9 @@ float ts_av_float_1(float *param, float time)
 		ts.av_sample_MAX = pm.freq_hz * time;
 
 		halFence();
-		ts.pEX = &ts_av_EH;
+		ts.p_irq_callback = &ts_av_handler;
 
-		while (ts.pEX != NULL)
+		while (ts.p_irq_callback != NULL)
 			vTaskDelay(1);
 
 		ts.av_VAL[0] /= (float) ts.av_sample_N;
@@ -462,8 +440,9 @@ SH_DEF(hal_pwm_Z)
 
 SH_DEF(hal_thermal)
 {
+	ts_thermal_convert();
+
 	printf("NTC %1f (C)" EOL, &ts.thermal_NTC);
 	printf("TEMP %1f (C)" EOL, &ts.thermal_TEMP);
-	printf("REF %3f (V)" EOL, &ts.thermal_REF);
 }
 

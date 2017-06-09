@@ -170,7 +170,6 @@ typedef struct {
 	float           bemf_TEMP[32];
 	float           bemf_gain_K;
 	int		bemf_N;
-	int		bemf_tune_T;
 	float		bemf_D;
 	float		bemf_Q;
 

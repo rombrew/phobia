@@ -19,11 +19,13 @@
 #ifndef _H_FLASH_
 #define _H_FLASH_
 
+#define FLASH_STORAGE_BASE__		0x08080000
+#define FLASH_SECTOR_SIZE		0x00020000
 #define FLASH_SECTOR_MAX		4
 
-extern void * const flash_sector_map[];
+#define FLASH_STORAGE_END		(FLASH_STORAGE_BASE + FLASH_SECTOR_SIZE * FLASH_SECTOR_MAX)
 
-void flash_erase(int sector);
+void flash_erase(int N);
 void flash_write(void *d, const void *s, int sz);
 
 #endif /* _H_FLASH_ */

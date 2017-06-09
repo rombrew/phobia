@@ -37,7 +37,7 @@ typedef struct {
 }
 shCMD_t;
 
-void taskSH(void *pvParameters);
+void taskSH(void *pData);
 
 #endif /* _H_SHELL_ */
 
