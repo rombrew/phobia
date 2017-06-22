@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -98,16 +98,19 @@ typedef struct {
 	float		fb_iA;
 	float		fb_iB;
 
-	/* Wave configuration.
+	/* Probing variables.
 	 * */
-	float		wave_i_hold_X;
-	float		wave_i_hold_Y;
-	float		wave_i_sine;
-	float		wave_freq_sine_hz;
-	float		wave_gain_P;
-	float		wave_gain_I;
-	float		wave_temp[4];
-	float		wave_DFT[8];
+	float		pb_i_hold;
+	float		pb_i_hold_Q;
+	float		pb_i_sine;
+	float		pb_freq_sine_hz;
+	float		pb_speed_low;
+	float		pb_speed_high;
+	float		pb_settle_threshold;
+	float		pb_gain_P;
+	float		pb_gain_I;
+	float		pb_temp[4];
+	float		pb_DFT[8];
 
 	/* Scale constants.
 	 * */
@@ -144,8 +147,8 @@ typedef struct {
 	float		lu_X[5];
 	int		lu_revol;
 	float		lu_gain_K[7];
-	float		lu_threshold_low;
-	float		lu_threshold_high;
+	float		lu_low_threshold;
+	float		lu_high_threshold;
 	float		lu_temp[2];
 
 	/* Measurement residual.
@@ -161,8 +164,6 @@ typedef struct {
 	float		hf_flux_polarity;
 	float		hf_CS[2];
 	float		hf_gain_K[3];
-	// TODO: Add saliency distortion compensation
-	//float		hf_;
 
 	/* BEMF waveform compensation.
 	 * */
@@ -173,16 +174,9 @@ typedef struct {
 	float		bemf_D;
 	float		bemf_Q;
 
-	/* ABC deviations.
-	 * */
-	/*float		abc_DR_A;
-	float		abc_DR_B;
-	float		abc_DR_C;*/
-
 	/* Thermal drift.
 	 * */
 	float		thermal_R;
-	float		thermal_E;
 	float		thermal_gain_R[2];
 
 	/* Zero drift.
@@ -194,16 +188,13 @@ typedef struct {
 	/* Supply voltage.
 	 * */
 	float		const_U;
-	float		const_U_inversed;
 
 	/* Electrical constants.
 	 * */
 	float		const_E;
 	float		const_R;
 	float		const_Ld;
-	float		const_Ld_inversed;
 	float		const_Lq;
-	float		const_Lq_inversed;
 
 	/* Mechanical constants.
 	 * */
@@ -212,8 +203,8 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
-	float		i_high_maximal;
 	float		i_low_maximal;
+	float		i_high_maximal;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -279,7 +270,7 @@ void pmc_request(pmc_t *pm, int req);
 const char *pmc_strerror(int errno);
 
 void pmc_resistance(const float DFT[8], float *R);
-void pmc_impedance(const float DFT[8], float hz, float IMP[6]);
+void pmc_impedance(const float DFT[8], float freq_hz, float IMP[6]);
 
 #endif /* _H_PM_CONTROL_ */
 

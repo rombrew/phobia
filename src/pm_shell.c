@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -186,67 +186,93 @@ SH_DEF(pm_m_errno)
 SH_DEF(pm_tm_drift)
 {
 	stof(&pm.tm_drift, s);
-	printf("%3f (Sec)" EOL, &pm.tm_drift);
+	printf("%3f (s)" EOL, &pm.tm_drift);
 }
 
 SH_DEF(pm_tm_hold)
 {
 	stof(&pm.tm_hold, s);
-	printf("%3f (Sec)" EOL, &pm.tm_hold);
+	printf("%3f (s)" EOL, &pm.tm_hold);
 }
 
 SH_DEF(pm_tm_sine)
 {
 	stof(&pm.tm_sine, s);
-	printf("%3f (Sec)" EOL, &pm.tm_sine);
+	printf("%3f (s)" EOL, &pm.tm_sine);
 }
 
 SH_DEF(pm_tm_measure)
 {
 	stof(&pm.tm_measure, s);
-	printf("%3f (Sec)" EOL, &pm.tm_measure);
+	printf("%3f (s)" EOL, &pm.tm_measure);
 }
 
 SH_DEF(pm_tm_end)
 {
 	stof(&pm.tm_end, s);
-	printf("%3f (Sec)" EOL, &pm.tm_end);
+	printf("%3f (s)" EOL, &pm.tm_end);
 }
 
-SH_DEF(pm_wave_i_hold_X)
+SH_DEF(pm_pb_i_hold)
 {
-	stof(&pm.wave_i_hold_X, s);
-	printf("%3f (A)" EOL, &pm.wave_i_hold_X);
+	stof(&pm.pb_i_hold, s);
+	printf("%3f (A)" EOL, &pm.pb_i_hold);
 }
 
-SH_DEF(pm_wave_i_hold_Y)
+SH_DEF(pm_pb_i_hold_Q)
 {
-	stof(&pm.wave_i_hold_Y, s);
-	printf("%3f (A)" EOL, &pm.wave_i_hold_Y);
+	stof(&pm.pb_i_hold_Q, s);
+	printf("%3f (A)" EOL, &pm.pb_i_hold_Q);
 }
 
-SH_DEF(pm_wave_i_sine)
+SH_DEF(pm_pb_i_sine)
 {
-	stof(&pm.wave_i_sine, s);
-	printf("%3f (A)" EOL, &pm.wave_i_sine);
+	stof(&pm.pb_i_sine, s);
+	printf("%3f (A)" EOL, &pm.pb_i_sine);
 }
 
-SH_DEF(pm_wave_freq_sine_hz)
+SH_DEF(pm_pb_freq_sine_hz)
 {
-	stof(&pm.wave_freq_sine_hz, s);
-	printf("%1f (Hz)" EOL, &pm.wave_freq_sine_hz);
+	stof(&pm.pb_freq_sine_hz, s);
+	printf("%1f (Hz)" EOL, &pm.pb_freq_sine_hz);
 }
 
-SH_DEF(pm_wave_gain_P)
+SH_DEF(pm_pb_speed_low)
 {
-	stof(&pm.wave_gain_P, s);
-	printf("%2e" EOL, &pm.wave_gain_P);
+	float			rpm;
+
+	stof(&pm.pb_speed_low, s);
+	rpm = 9.5492969f * pm.pb_speed_low / pm.const_Zp;
+
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.pb_speed_low, &rpm);
 }
 
-SH_DEF(pm_wave_gain_I)
+SH_DEF(pm_pb_speed_high)
 {
-	stof(&pm.wave_gain_I, s);
-	printf("%2e" EOL, &pm.wave_gain_I);
+	float			rpm;
+
+	stof(&pm.pb_speed_high, s);
+	rpm = 9.5492969f * pm.pb_speed_high / pm.const_Zp;
+
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.pb_speed_high, &rpm);
+}
+
+SH_DEF(pm_pb_settle_threshold)
+{
+	stof(&pm.pb_settle_threshold, s);
+	printf("%2f (rad/s)" EOL, &pm.pb_settle_threshold);
+}
+
+SH_DEF(pm_pb_gain_P)
+{
+	stof(&pm.pb_gain_P, s);
+	printf("%2e" EOL, &pm.pb_gain_P);
+}
+
+SH_DEF(pm_pb_gain_I)
+{
+	stof(&pm.pb_gain_I, s);
+	printf("%2e" EOL, &pm.pb_gain_I);
 }
 
 SH_DEF(pm_scal_A0)
@@ -294,7 +320,7 @@ SH_DEF(pm_fault_residual_maximal)
 SH_DEF(pm_fault_residual_maximal_hold)
 {
 	stof(&pm.fault_residual_maximal_hold, s);
-	printf("%4f (Sec)" EOL, &pm.fault_residual_maximal_hold);
+	printf("%4f (s)" EOL, &pm.fault_residual_maximal_hold);
 }
 
 SH_DEF(pm_fault_drift_maximal)
@@ -312,7 +338,7 @@ SH_DEF(pm_fault_low_voltage)
 SH_DEF(pm_fault_low_voltage_hold)
 {
 	stof(&pm.fault_low_voltage_hold, s);
-	printf("%3f (Sec)" EOL, &pm.fault_low_voltage_hold);
+	printf("%3f (s)" EOL, &pm.fault_low_voltage_hold);
 }
 
 SH_DEF(pm_fault_high_voltage)
@@ -324,7 +350,7 @@ SH_DEF(pm_fault_high_voltage)
 SH_DEF(pm_fault_high_voltage_hold)
 {
 	stof(&pm.fault_high_voltage_hold, s);
-	printf("%3f (Sec)" EOL, &pm.fault_high_voltage_hold);
+	printf("%3f (s)" EOL, &pm.fault_high_voltage_hold);
 }
 
 SH_DEF(pm_lu_X0)
@@ -348,17 +374,17 @@ SH_DEF(pm_lu_X23)
 	float			g;
 
 	g = atan2f(pm.lu_X[3], pm.lu_X[2]) * 180.f / M_PI_F;
-	printf("%1f (degree) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
+	printf("%1f (g) [%3f %3f]" EOL, &g, &pm.lu_X[2], &pm.lu_X[3]);
 }
 
 SH_DEF(pm_lu_X4)
 {
-	float			avg, RPM;
+	float			avg, rpm;
 
 	avg = ts_av_float_arg_1(&pm.lu_X[4], s);
-	RPM = 9.5492969f * avg / pm.const_Zp;
+	rpm = 9.5492969f * avg / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM) " EOL, &avg, &RPM);
+	printf("%4e (rad/s) %1f (rpm) " EOL, &avg, &rpm);
 }
 
 SH_DEF(pm_lu_gain_K0)
@@ -403,35 +429,24 @@ SH_DEF(pm_lu_gain_K6)
 	printf("%2e" EOL, &pm.lu_gain_K[6]);
 }
 
-SH_DEF(pm_lu_threshold_low)
+SH_DEF(pm_lu_low_threshold)
 {
-	float			RPM;
+	float			rpm;
 
-	stof(&pm.lu_threshold_low, s);
-	RPM = 9.5492969f * pm.lu_threshold_low / pm.const_Zp;
+	stof(&pm.lu_low_threshold, s);
+	rpm = 9.5492969f * pm.lu_low_threshold / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_low, &RPM);
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.lu_low_threshold, &rpm);
 }
 
-SH_DEF(pm_lu_threshold_high)
+SH_DEF(pm_lu_high_threshold)
 {
-	float			RPM;
+	float			rpm;
 
-	stof(&pm.lu_threshold_high, s);
-	RPM = 9.5492969f * pm.lu_threshold_high / pm.const_Zp;
+	stof(&pm.lu_high_threshold, s);
+	rpm = 9.5492969f * pm.lu_high_threshold / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.lu_threshold_high, &RPM);
-}
-
-SH_DEF(pm_lu_threshold_auto)
-{
-	pm.lu_threshold_low = 5E-3f * pm.const_U / pm.const_E;
-	pm.lu_threshold_high = pm.lu_threshold_low + 50.f;
-
-	printf(	"LO %4e (Rad/S)" EOL
-		"HI %4e (Rad/S)" EOL,
-		&pm.lu_threshold_low,
-		&pm.lu_threshold_high);
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.lu_high_threshold, &rpm);
 }
 
 SH_DEF(pm_lu_residual_variance)
@@ -439,7 +454,7 @@ SH_DEF(pm_lu_residual_variance)
 	float			avg;
 
 	avg = sqrtf(ts_av_float_arg_1(&pm.lu_residual_variance, s));
-	printf("%4e (SD)" EOL, &avg);
+	printf("%3f (A)" EOL, &avg);
 }
 
 SH_DEF(pm_hf_freq_hz)
@@ -522,14 +537,6 @@ SH_DEF(pm_thermal_R)
 	printf("%4e" EOL, &avg);
 }
 
-SH_DEF(pm_thermal_E)
-{
-	float			avg;
-
-	avg = ts_av_float_arg_1(&pm.thermal_E, s);
-	printf("%4e" EOL, &avg);
-}
-
 SH_DEF(pm_thermal_gain_R0)
 {
 	stof(&pm.thermal_gain_R[0], s);
@@ -581,7 +588,7 @@ SH_DEF(pm_const_E_wb)
 	stof(&pm.const_E, s);
 	const_Kv = 5.513289f / (pm.const_E * pm.const_Zp);
 
-	printf("%4e (Wb) %1f (RPM/V)" EOL, &pm.const_E, &const_Kv);
+	printf("%4e (Wb) %1f (rpm/v)" EOL, &pm.const_E, &const_Kv);
 }
 
 SH_DEF(pm_const_E_kv)
@@ -596,7 +603,7 @@ SH_DEF(pm_const_E_kv)
 
 	const_Kv = 5.513289f / (pm.const_E * pm.const_Zp);
 
-	printf("%4e (Wb) %1f (RPM/V)" EOL, &pm.const_E, &const_Kv);
+	printf("%4e (Wb) %1f (rpm/v)" EOL, &pm.const_E, &const_Kv);
 }
 
 SH_DEF(pm_const_R)
@@ -607,17 +614,13 @@ SH_DEF(pm_const_R)
 
 SH_DEF(pm_const_Ld)
 {
-	if (stof(&pm.const_Ld, s) != NULL)
-		pm.const_Ld_inversed = 1.f / pm.const_Ld;
-
+	stof(&pm.const_Ld, s);
 	printf("%4e (H)" EOL, &pm.const_Ld);
 }
 
 SH_DEF(pm_const_Lq)
 {
-	if (stof(&pm.const_Lq, s) != NULL)
-		pm.const_Lq_inversed = 1.f / pm.const_Lq;
-
+	stof(&pm.const_Lq, s);
 	printf("%4e (H)" EOL, &pm.const_Lq);
 }
 
@@ -672,13 +675,13 @@ SH_DEF(pm_i_set_point_Q)
 SH_DEF(pm_i_slew_rate_D)
 {
 	stof(&pm.i_slew_rate_D, s);
-	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_D);
+	printf("%2e (A/s)" EOL, &pm.i_slew_rate_D);
 }
 
 SH_DEF(pm_i_slew_rate_Q)
 {
 	stof(&pm.i_slew_rate_Q, s);
-	printf("%2e (A/Sec)" EOL, &pm.i_slew_rate_Q);
+	printf("%2e (A/s)" EOL, &pm.i_slew_rate_Q);
 }
 
 SH_DEF(pm_i_slew_rate_auto)
@@ -686,8 +689,8 @@ SH_DEF(pm_i_slew_rate_auto)
 	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
 	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
 
-	printf(	"D %1f (A/Sec)" EOL
-		"Q %1f (A/Sec)" EOL,
+	printf(	"D %2e (A/s)" EOL
+		"Q %2e (A/s)" EOL,
 		&pm.i_slew_rate_D,
 		&pm.i_slew_rate_Q);
 }
@@ -735,32 +738,32 @@ SH_DEF(pm_i_gain_auto)
 
 SH_DEF(pm_s_maximal_rpm)
 {
-	float			RPM;
+	float			rpm;
 
-	if (stof(&RPM, s) != NULL)
-		pm.s_maximal = .10471976f * RPM * pm.const_Zp;
+	if (stof(&rpm, s) != NULL)
+		pm.s_maximal = .10471976f * rpm * pm.const_Zp;
 
-	RPM = 9.5492969f * pm.s_maximal / pm.const_Zp;
+	rpm = 9.5492969f * pm.s_maximal / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.s_maximal, &RPM);
+	printf("%4e (rad/s) %1f (rpm)" EOL, &pm.s_maximal, &rpm);
 }
 
 SH_DEF(pm_s_set_point_rpm)
 {
-	float			RPM;
+	float			rpm;
 
-	if (stof(&RPM, s) != NULL)
-		pm.s_set_point = .10471976f * RPM * pm.const_Zp;
+	if (stof(&rpm, s) != NULL)
+		pm.s_set_point = .10471976f * rpm * pm.const_Zp;
 
-	RPM = 9.5492969f * pm.s_set_point / pm.const_Zp;
+	rpm = 9.5492969f * pm.s_set_point / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.s_set_point, &RPM);
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.s_set_point, &rpm);
 }
 
 SH_DEF(pm_s_slew_rate)
 {
 	stof(&pm.s_slew_rate, s);
-	printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
+	printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate);
 }
 
 SH_DEF(pm_s_forced_D)
@@ -772,7 +775,7 @@ SH_DEF(pm_s_forced_D)
 SH_DEF(pm_s_forced_slew_rate)
 {
 	stof(&pm.s_forced_slew_rate, s);
-	printf("%4e (Rad/S2)" EOL, &pm.s_forced_slew_rate);
+	printf("%2e (rad/s/s)" EOL, &pm.s_forced_slew_rate);
 }
 
 SH_DEF(pm_s_slew_rate_auto)
@@ -783,10 +786,10 @@ SH_DEF(pm_s_slew_rate_auto)
 
 		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
 		pm.s_slew_rate = 1.5f * MT * pm.i_high_maximal;
-		pm.s_forced_slew_rate = .25f * MT * pm.s_forced_D;
+		pm.s_forced_slew_rate = MT * pm.s_forced_D / 4.f;
 
-		printf("%4e (Rad/S2)" EOL, &pm.s_slew_rate);
-		printf("%4e (Rad/S2)" EOL, &pm.s_forced_slew_rate);
+		printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate);
+		printf("%2e (rad/s/s)" EOL, &pm.s_forced_slew_rate);
 	}
 }
 
@@ -799,7 +802,7 @@ SH_DEF(pm_s_nonl_gain_F)
 SH_DEF(pm_s_nonl_range)
 {
 	stof(&pm.s_nonl_range, s);
-	printf("%4e (Rad/S)" EOL, &pm.s_nonl_range);
+	printf("%2f (rad/s)" EOL, &pm.s_nonl_range);
 }
 
 SH_DEF(pm_s_gain_P)
@@ -842,19 +845,19 @@ SH_DEF(pm_p_set_point_g)
 	angle = atan2f(pm.p_set_point[1], pm.p_set_point[0]);
 	g = angle * (180.f / M_PI_F);
 
-	printf("%1f (degree) + %i (full revolutions)" EOL, &g, pm.p_set_point_revol);
+	printf("%1f (g) + %i (full revolutions)" EOL, &g, pm.p_set_point_revol);
 }
 
 SH_DEF(pm_p_set_point_s_rpm)
 {
-	float			RPM;
+	float			rpm;
 
-	if (stof(&RPM, s) != NULL)
-		pm.p_set_point_s = .10471976f * RPM * pm.const_Zp;
+	if (stof(&rpm, s) != NULL)
+		pm.p_set_point_s = .10471976f * rpm * pm.const_Zp;
 
-	RPM = 9.5492969f * pm.p_set_point_s / pm.const_Zp;
+	rpm = 9.5492969f * pm.p_set_point_s / pm.const_Zp;
 
-	printf("%4e (Rad/S) %1f (RPM)" EOL, &pm.p_set_point_s, &RPM);
+	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.p_set_point_s, &rpm);
 }
 
 SH_DEF(pm_p_gain_P)
@@ -915,12 +918,12 @@ SH_DEF(pm_request_zero_drift)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 }
 
-SH_DEF(pm_request_wave_hold)
+SH_DEF(pm_request_pb_hold)
 {
 	pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 }
 
-SH_DEF(pm_request_wave_sine)
+SH_DEF(pm_request_pb_sine)
 {
 	pmc_request(&pm, PMC_STATE_WAVE_SINE);
 }
@@ -944,14 +947,14 @@ SH_DEF(pm_impedance)
 {
 	float		IMP[6];
 
-	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+	pmc_impedance(pm.pb_DFT, pm.pb_freq_sine_hz, IMP);
 
 	printf(	"L1 %4e (H)" EOL
 		"L2 %4e (H)" EOL
-		"E %1f (degree)" EOL
+		"E %2f" EOL
 		"R1 %4e (Ohm)" EOL
 		"R2 %4e (Ohm)" EOL
-		"E %1f (degree)" EOL,
+		"E %2f" EOL,
 		IMP + 0, IMP + 1, IMP + 2, IMP + 3, IMP + 4, IMP + 5);
 }
 
@@ -961,13 +964,11 @@ SH_DEF(pm_update_const_R)
 
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-	R = 0.f;
-
-	pmc_resistance(pm.wave_DFT, &R);
+	pmc_resistance(pm.pb_DFT, &R);
 	pm.const_R += R;
 
-	pm.wave_DFT[0] = 0.f;
-	pm.wave_DFT[1] = 0.f;
+	pm.pb_DFT[0] = 0.f;
+	pm.pb_DFT[1] = 0.f;
 
 	printf("%4e (Ohm)" EOL, &pm.const_R);
 }
@@ -978,9 +979,9 @@ SH_DEF(pm_update_const_L)
 
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-	pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
+	pmc_impedance(pm.pb_DFT, pm.pb_freq_sine_hz, IMP);
 
-	if (fabsf(IMP[2]) < 45.f) {
+	if (fabsf(IMP[2]) < (M_PI_F / 4.f)) {
 
 		pm.const_Ld = IMP[0];
 		pm.const_Lq = IMP[1];
@@ -989,9 +990,6 @@ SH_DEF(pm_update_const_L)
 		pm.const_Ld = IMP[1];
 		pm.const_Lq = IMP[0];
 	}
-
-	pm.const_Ld_inversed = 1.f / pm.const_Ld;
-	pm.const_Lq_inversed = 1.f / pm.const_Lq;
 
 	printf("Ld %4e (H)" EOL, &pm.const_Ld);
 	printf("Lq %4e (H)" EOL, &pm.const_Lq);
@@ -1005,28 +1003,28 @@ SH_DEF(pm_update_scal_AB)
 
 	if (stof(&ref, s) != NULL && ref != 0.f) {
 
-		gA = pm.wave_DFT[0] / ref;
-		gB = pm.wave_DFT[1] / ref;
+		gA = pm.pb_DFT[0] / ref;
+		gB = pm.pb_DFT[1] / ref;
 
 		fA = 100.f * (gA - 1.f);
 		fB = 100.f * (gB - 1.f);
 
-		printf(	"FIX_A %2f %%" EOL
-			"FIX_B %2f %%" EOL
+		printf(	"FIX_A %2f (%%)" EOL
+			"FIX_B %2f (%%)" EOL
 			"A1 %4e" EOL
 			"B1 %4e" EOL,
 			&fA, &fB,
 			&pm.scal_A[1], &pm.scal_B[1]);
 	}
 	else {
-		gA = pm.wave_DFT[0] / pm.wave_DFT[1];
+		gA = pm.pb_DFT[0] / pm.pb_DFT[1];
 		fA = 100.f * (gA - 1.f);
 
 		gA = sqrtf(gA);
 		pm.scal_A[1] = 1.f / gA;
 		pm.scal_B[1] = gA;
 
-		printf(	"FIX %2f %%" EOL
+		printf(	"FIX %2f (%%)" EOL
 			"A1 %4e" EOL
 			"B1 %4e" EOL,
 			&fA, &pm.scal_A[1], &pm.scal_B[1]);

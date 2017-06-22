@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -52,12 +52,6 @@ typedef struct {
 	int			av_sample_N;
 	int			av_sample_MAX;
 	float			av_default_time;
-
-	/* J estimation.
-	 * */
-	int			ap_J_fsm_state;
-	float			ap_J_measure_T;
-	float			ap_J_vars[4];
 }
 task_data_t;
 
@@ -66,6 +60,8 @@ extern pmc_t			pm;
 
 void ts_av_handler();
 float ts_av_float_1(float *param, float time);
+int ts_av_float_4(float *param_0, float *param_1, float *param_2,
+		float *param_3, float *result, float time);
 float ts_av_float_arg_1(float *param, const char *s);
 
 #endif /* _H_HAL_TASK_ */

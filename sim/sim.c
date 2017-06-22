@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -112,6 +112,11 @@ sim_Tel(float *pTel)
 	pTel[24] = pm.n_power_watt;
 	pTel[25] = pm.n_temperature_c;
 
+	pTel[26] = pm.thermal_R;
+	pTel[27] = 0.f;
+	pTel[28] = pm.pb_temp[0];
+	pTel[29] = pm.pb_temp[1];
+
 	/* BEMF.
 	 * */
 	pTel[40] = pm.bemf_DFT[2] * 100.;
@@ -181,47 +186,35 @@ sim_Script(FILE *fdTel)
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. + .1);
-	pm.const_Ld = m.Ld * (1. + .1);
-	pm.const_Lq = m.Lq * (1. + .1);
+	pm.const_R = m.R * (1. + .0);
+	pm.const_Ld = m.Ld * (1. + .0);
+	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
-
-	pm.const_Ld_inversed = 1.f / pm.const_Ld;
-	pm.const_Lq_inversed = 1.f / pm.const_Lq;
-
 	pm.const_Zp = m.Zp;
 
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-	//pm.m_bitmask |= PMC_BIT_POWER_CONTROL_LOOP;
-
 	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
-
-	//pm.m_bitmask |= PMC_BIT_BEMF_WAVEFORM_COMPENSATION;
-	//pm.bemf_N = 9;
+	//pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	pm.s_set_point = 50000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, 2., 0);
+	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_D = -5.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_set_point = 2000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_D = -10.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_D = -15.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_set_point = 2000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);
 
-	pm.i_set_point_D = -20.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.i_set_point_D = -25.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);
 }
 
 int main(int argc, char *argv[])

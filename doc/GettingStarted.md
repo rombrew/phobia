@@ -1,7 +1,7 @@
 ## Overview
 
 This manual gives a basic info about Phobia Motor Controller (PMC). Look into
-other docs for specific questions.
+other docs for specific issues.
 
 ## Hardware
 
@@ -10,64 +10,41 @@ from repo and order fabrication and assembly somewhere.
 
 	$ hg clone https://bitbucket.org/amaora/phobia-pcb
 
+The aim of our PCB design is to optimize electrical and thermal performance.
+We are not trying to cram all the components into a small volume. However, we
+sometimes cross the border of quality in favor of PCB size.
+
 ## Software
 
-You can upload software through USART or SWD. To configure PMC you need a
-terminal program. We suggest you satisfy the following requirements.
+There is two parts of software. Numerical model of BLDC with the motor control
+code is in "sim" directory. Full firmware code is in "src" directory.
 
-* arm-none-eabi toolchain
-* [stmflasher](https://bitbucket.org/amaora/stmflasher)
-* [picocom](https://github.com/npat-efault/picocom)
+The model enables us to develop control code in fast cycle without hardware
+tests. It is complete enough to take into account all of motor parameters.
 
-Adapt our Makefile if you need any other toolchain or flasher or terminal.
+The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
+toolchain for Cortex-M4F target.
 
 	$ hg clone https://bitbucket.org/amaora/phobia
 	$ cd phobia/src
 	$ make flash
 
-Once software is uploaded you should configure PMC through USART or CAN. There
-is command line interface for this.
+We use [stmflasher](https://bitbucket.org/amaora/stmflasher) to upload the
+firmware into MCU. You should have a serial port connected to the board USART
+pins and boot pin shorted to the +3.3v. Alternatively, you can use SWD.
 
-## Basic configuration
+After the firmware is loaded the command line interface (CLI) will be available
+via the serial port. We use [picocom](https://github.com/npat-efault/picocom)
+terminal program.
 
-Connect the motor to the terminals. Remove any load from motor to allow it
-rotate freely.
+	$ make connect
 
-You can reset PM if you are not sure that current configuration is correct.
+## Further reading
 
-	# pm_default
+[Command Line Interface](CLI.md)
+[Motor Identification](MotorIdentification.md)
+[Trouble Shooting](TroubleShooting.md)
 
-Provide the number of the rotor pole pairs if you need a correct printouts of
-rpm/v constant and mechanical speed.
-
-	# pm_const_Zp <n>
-
-Try automated motor probe.
-
-	# ap_probe_base
-
-All identified parameters will be printed out. Verify they are within the
-permissible range. During the probe motor will rotate on final stages.
-
-## Usage
-
-Once configuration is done you can run the motor with controlled torque or
-speed or absolute position. Without HFI you will need a blind spinup to go into
-the high speed region.
-
-	# ap_blind_spinup
-
-Set Q axis current in torque control mode.
-
-	# pm_i_set_point_Q <A>
-
-Set RPM or absolute position in servo mode.
-
-	# pm_p_set_point_w_rpm <rpm>
-	# pm_p_track_point_x_g <x>
-
-By default PMC is in servo mode after a blind spinup. It can be disabled as
-follows.
-
-	# pm_m_bitmask_servo_control_loop 0
+[State Observer](StateObserver.md)
+[High Frequency Injection](HFI.md)
 

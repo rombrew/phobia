@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "pm_control.h"
 #include "shell.h"
 
-#define CONFIG_VERSION			3
+#define CONFIG_VERSION			4
 
 typedef struct {
 
@@ -46,9 +46,7 @@ unsigned int * const conf_vars[] = {
 	(void *) &halPWM.freq_hz,
 	(void *) &halPWM.dead_time_ns,
 	(void *) &halUSART_baudRate,
-
 	(void *) &ts.av_default_time,
-	(void *) &ts.ap_J_measure_T,
 
 	(void *) &pm.pwm_minimal_pulse,
 	(void *) &pm.pwm_dead_time,
@@ -59,12 +57,15 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.tm_measure,
 	(void *) &pm.tm_end,
 	(void *) &pm.fb_range,
-	(void *) &pm.wave_i_hold_X,
-	(void *) &pm.wave_i_hold_Y,
-	(void *) &pm.wave_i_sine,
-	(void *) &pm.wave_freq_sine_hz,
-	(void *) &pm.wave_gain_P,
-	(void *) &pm.wave_gain_I,
+	(void *) &pm.pb_i_hold,
+	(void *) &pm.pb_i_hold_Q,
+	(void *) &pm.pb_i_sine,
+	(void *) &pm.pb_freq_sine_hz,
+	(void *) &pm.pb_speed_low,
+	(void *) &pm.pb_speed_high,
+	(void *) &pm.pb_settle_threshold,
+	(void *) &pm.pb_gain_P,
+	(void *) &pm.pb_gain_I,
 	(void *) &pm.scal_A[0],
 	(void *) &pm.scal_A[1],
 	(void *) &pm.scal_B[0],
@@ -85,8 +86,8 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.lu_gain_K[4],
 	(void *) &pm.lu_gain_K[5],
 	(void *) &pm.lu_gain_K[6],
-	(void *) &pm.lu_threshold_low,
-	(void *) &pm.lu_threshold_high,
+	(void *) &pm.lu_low_threshold,
+	(void *) &pm.lu_high_threshold,
 	(void *) &pm.hf_freq_hz,
 	(void *) &pm.hf_swing_D,
 	(void *) &pm.hf_gain_K[0],
@@ -196,7 +197,7 @@ conf_block_scan(int vflag)
 {
 	conf_block_t			*curr, *last;
 
-	curr = (void *) FLASH_STORAGE_BASE;
+	curr = (void *) FLASH_BASE_A;
 	last = NULL;
 
 	do {
@@ -215,7 +216,7 @@ conf_block_scan(int vflag)
 
 		curr += 1;
 
-		if ((void *) curr >= (void *) FLASH_STORAGE_END)
+		if ((void *) curr >= (void *) FLASH_END_A)
 			break;
 	}
 	while (1);
@@ -234,9 +235,6 @@ int conf_block_load()
 
 		for (n = 0; conf_vars[n] != NULL; ++n)
 			*conf_vars[n] = block->content[n];
-
-		pm.const_Ld_inversed = 1.f / pm.const_Ld;
-		pm.const_Lq_inversed = 1.f / pm.const_Lq;
 
 		rc = 0;
 	}
@@ -267,7 +265,7 @@ conf_get_sector(const conf_block_t *block)
 {
 	int			N;
 
-	N = ((long int) block - FLASH_STORAGE_BASE) / FLASH_SECTOR_SIZE;
+	N = ((long int) block - FLASH_BASE_A) / FLASH_SECTOR_SIZE;
 
 	return N;
 }
@@ -285,12 +283,12 @@ int conf_block_save()
 		newid = block->id + 1;
 		block += 1;
 
-		if ((void *) block >= (void *) FLASH_STORAGE_END)
-			block = (void *) FLASH_STORAGE_BASE;
+		if ((void *) block >= (void *) FLASH_END_A)
+			block = (void *) FLASH_BASE_A;
 	}
 	else {
 		newid = 1;
-		block = (void *) FLASH_STORAGE_BASE;
+		block = (void *) FLASH_BASE_A;
 	}
 
 	if (conf_is_block_dirty(block)) {

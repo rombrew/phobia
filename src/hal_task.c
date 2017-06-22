@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -185,7 +185,6 @@ void taskINIT(void *pData)
 		halPWM.dead_time_ns = 70;
 		halUSART_baudRate = 57600;
 		ts.av_default_time = .2f;
-		ts.ap_J_measure_T = .1f;
 	}
 
 	usartEnable();
@@ -288,6 +287,44 @@ float ts_av_float_1(float *param, float time)
 	else {
 
 		return 0.f;
+	}
+}
+
+int ts_av_float_4(float *param_0, float *param_1, float *param_2,
+		float *param_3, float *result, float time)
+{
+	if (ts.p_irq_callback == NULL) {
+
+		ts.av_IN[0] = param_0;
+		ts.av_IN[1] = param_1;
+		ts.av_IN[2] = param_2;
+		ts.av_IN[3] = param_3;
+
+		ts.av_VAL[0] = 0.f;
+		ts.av_VAL[1] = 0.f;
+		ts.av_VAL[2] = 0.f;
+		ts.av_VAL[3] = 0.f;
+
+		ts.av_variable_N = 4;
+		ts.av_sample_N = 0;
+		ts.av_sample_MAX = pm.freq_hz * time;
+
+		halFence();
+		ts.p_irq_callback = &ts_av_handler;
+
+		while (ts.p_irq_callback != NULL)
+			vTaskDelay(1);
+
+		result[0] = ts.av_VAL[0] / (float) ts.av_sample_N;
+		result[1] = ts.av_VAL[1] / (float) ts.av_sample_N;
+		result[2] = ts.av_VAL[2] / (float) ts.av_sample_N;
+		result[3] = ts.av_VAL[3] / (float) ts.av_sample_N;
+
+		return 4;
+	}
+	else {
+
+		return 0;
 	}
 }
 

@@ -1,7 +1,13 @@
 # Phobia Motor Controller
 
 PMC is an open project that aims to build the quality three-phase BLDC motor
-controller for RC.
+controller for RC and robotics.
+
+We develop PMC with hope that it could be applicable to the various cases. We
+implement only the vector control as we think this is only right way. You may
+want to consider PMC as a platform for experimentation with motor control
+techniques. Or you could just use PMC in your application. In any case, we
+are pleased to offer our solution in the field of motor control.
 
 ## Hardware specification (rev2)
 
@@ -16,7 +22,7 @@ controller for RC.
 * Power MOSFETs are CSD18532Q5B, 60v, 2.5 mOhm, actual switching time is about 50ns.
 * Two current sensing shunts 0.5 mOhm, amplifiers are AD8417.
 * Measurement of supply voltage, external voltage input.
-* Temperature measurement using NTC resistor.
+* Temperature measurement with NTC resistor.
 * Interface to a quadrature encoder or hall sensors.
 * Managed through USART or CAN.
 * Also SWD, DAC/ADC, BOOT/RESET pins are available.
@@ -29,7 +35,7 @@ PCB design source files.
 
 ## Software features
 
-* Sensor-less vector control. All the code of motor control was written from
+* Sensorless vector control. All the code of motor control was written from
   scratch, no external libs are used, portable as it is C code.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC bus.
 * Fast and robust rotor position estimation algorithm based on Luenberger
@@ -60,12 +66,13 @@ PCB design source files.
 
 ## Current Status
 
-A significant part of the functions are already implemented in software.
-However, there are still many issues have no resolution or have experimental
-status.
+Now we can declare that PMC is ready to use in most applications. But there is
+still a lot of unresolved issues.
 
-There are a few videos show the operation of the prototypes (may be outdated).
+There are a few videos that show the operation of the prototypes (may be outdated).
 
 [![PMC](https://i.ytimg.com/vi/n_E2ThFQvD4/default.jpg)](https://www.youtube.com/watch?v=n_E2ThFQvD4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
+
+Read more in [Getting Started](doc/GettingStarted.md).
 

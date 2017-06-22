@@ -1,9 +1,9 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-font 16 "/usr/share/fonts/corefonts/cour.ttf"
+font 18 "/usr/share/fonts/corefonts/cour.ttf"
 screenpath "/tmp"
-windowsize 800 600
+windowsize 1200 900
 
 batch 20000
 defstyle line 1
@@ -11,17 +11,17 @@ defstyle line 1
 load 0 -1 float 80 "/tmp/TEL"
 
 group 0 0
-deflabel 0 "Time (Sec)"
+deflabel 0 "Time (s)"
 
 page "m.X[0], m.X[1], pm.lu_X[0], pm.lu_X[1]"
-label 1 "(Ampere)"
+label 1 "(A)"
 figure 0 1 "m.X[0] (D)"
 figure 0 2 "m.X[1] (Q)"
 figure 0 9 "pm.lu_X[0] (D)"
 figure 0 10 "pm.lu_X[1] (Q)"
 
 page "m.X[2], pm.lu_X[4], pm.s_nonl_X4"
-label 1 "(RPM)"
+label 1 "(rpm)"
 figure 0 3 "m.X[2]"
 figure 0 13 "pm.lu_X[4]"
 figure 0 14 "pm.s_nonl_X4"
@@ -42,12 +42,12 @@ figure 0 7 "m.uB"
 figure 0 8 "m.uC"
 
 page "pm.vsi_X / pm.vsi_Y"
-label 0 "(Volt)"
-label 1 "(Volt)"
+label 0 "(V)"
+label 1 "(V)"
 figure 15 16 "pm.vsi_X / pm.vsi_Y"
 
 page "pm.vsi_D, pm.vsi_Q"
-label 1 "(Volt)"
+label 1 "(V)"
 figure 0 17 "pm.vsi_D"
 figure 0 18 "pm.vsi_Q"
 
@@ -57,12 +57,26 @@ figure 0 19 "pm.lu_residual_D"
 figure 0 20 "pm.lu_residual_Q"
 
 page "pm.n_power_watt"
-label 1 "(Watt)"
+label 1 "(W)"
 figure 0 24 "pm.n_power_watt"
 
 page "pm.drift_Q"
-label 1 "(Volt)"
+label 1 "(V)"
 figure 0 23 "pm.drift_Q"
+
+page "pm.n_temperature_c"
+label 1 "(C)"
+figure 0 25 "pm.n_temperature_c"
+
+page "pm.thermal_E"
+label 1 "(%)"
+figure 0 26 "pm.thermal_R"
+figure 0 27 "pm.thermal_E"
+
+page "pm.pb_temp"
+label 1 "(%)"
+figure 0 28 "pm.pb_temp"
+figure 0 29 "pm.pb_temp"
 
 page "pm.bemf_DFT[2], pm.bemf_DFT[2] (x1)"
 label 1 "(%)"

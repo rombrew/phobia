@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2016 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,8 +44,74 @@
 void pm_i_slew_rate_auto(const char *s);
 void pm_i_gain_auto(const char *s);
 void pm_const_E_wb(const char *s);
-void pm_lu_threshold_auto(const char *s);
 void pm_s_slew_rate_auto(const char *s);
+void pm_update_const_L(const char *s);
+void pm_update_scal_AB(const char *s);
+
+SH_DEF(ap_calibrate)
+{
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	do {
+		AP_ERROR_BARRIER();
+
+		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+
+		AP_WAIT_FOR_IDLE();
+		AP_ERROR_BARRIER();
+
+		pmc_request(&pm, PMC_STATE_CALIBRATION);
+
+		AP_WAIT_FOR_IDLE();
+		AP_ERROR_BARRIER();
+
+		pm_update_scal_AB(EOL);
+	}
+	while (0);
+
+	AP_PRINT_ERROR();
+}
+
+SH_DEF(ap_blind_turn)
+{
+	float		temp[2];
+
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	temp[0] = pm.pb_freq_sine_hz;
+	temp[1] = pm.tm_sine;
+
+	do {
+		AP_ERROR_BARRIER();
+
+		pm.pb_freq_sine_hz = 1.f;
+		pm.tm_sine = 1.f;
+
+		if (stof(&pm.tm_sine, s) != NULL) {
+
+			s = strtok(s, " ");
+			stof(&pm.pb_freq_sine_hz, s);
+		}
+
+		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+		AP_WAIT_FOR_IDLE();
+		AP_ERROR_BARRIER();
+
+		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
+		AP_WAIT_FOR_IDLE();
+		AP_ERROR_BARRIER();
+
+		pmc_request(&pm, PMC_STATE_WAVE_SINE);
+		AP_WAIT_FOR_IDLE();
+		AP_ERROR_BARRIER();
+	}
+	while (0);
+
+	pm.pb_freq_sine_hz = temp[0];
+	pm.tm_sine = temp[1];
+
+	AP_PRINT_ERROR();
+}
 
 SH_DEF(ap_identify_base)
 {
@@ -57,71 +123,36 @@ SH_DEF(ap_identify_base)
 		AP_ERROR_BARRIER();
 
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
-
-		printf("A0 %3f (A)" EOL, &pm.scal_A[0]);
-		printf("B0 %3f (A)" EOL, &pm.scal_B[0]);
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_resistance(pm.wave_DFT, IMP);
+		pmc_resistance(pm.pb_DFT, IMP);
 		pm.const_R += IMP[0];
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_resistance(pm.wave_DFT, IMP);
+		pmc_resistance(pm.pb_DFT, IMP);
 		pm.const_R += IMP[0];
 
 		printf("R %4e (Ohm)" EOL, &pm.const_R);
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
-
-		if (fabsf(IMP[2]) < 45.f) {
-
-			pm.const_Ld = IMP[0];
-			pm.const_Lq = IMP[1];
-		}
-		else {
-			pm.const_Ld = IMP[1];
-			pm.const_Lq = IMP[0];
-		}
+		pm_update_const_L(EOL);
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_impedance(pm.wave_DFT, pm.wave_freq_sine_hz, IMP);
-
-		if (fabsf(IMP[2]) < 45.f) {
-
-			pm.const_Ld = IMP[0];
-			pm.const_Lq = IMP[1];
-		}
-		else {
-			pm.const_Ld = IMP[1];
-			pm.const_Lq = IMP[0];
-		}
-
-		pm.const_Ld_inversed = 1.f / pm.const_Ld;
-		pm.const_Lq_inversed = 1.f / pm.const_Lq;
-
-		printf("Ld %4e (H)" EOL, &pm.const_Ld);
-		printf("Lq %4e (H)" EOL, &pm.const_Lq);
-
+		pm_update_const_L(EOL);
 		pm_i_slew_rate_auto(EOL);
 		pm_i_gain_auto(EOL);
 	}
@@ -137,13 +168,13 @@ SH_DEF(ap_identify_const_R_abc)
 
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
+	temp[0] = pm.pb_i_hold;
+	temp[1] = pm.pb_i_hold_Q;
+
 	do {
 		AP_ERROR_BARRIER();
 
-		temp[0] = pm.wave_i_hold_X;
-		temp[1] = pm.wave_i_hold_Y;
-
-		iSP = pm.wave_i_hold_X;
+		iSP = pm.pb_i_hold;
 		stof(&iSP, s);
 
 		printf("SP %3f (A)" EOL, &iSP);
@@ -154,41 +185,38 @@ SH_DEF(ap_identify_const_R_abc)
 
 		printf("U: %i (tk) %2f %%" EOL, xPWM, &U);
 
-		pm.wave_i_hold_X = iSP;
-		pm.wave_i_hold_Y = 0.f;
+		pm.pb_i_hold = iSP;
+		pm.pb_i_hold_Q = 0.f;
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_resistance(pm.wave_DFT, R + 0);
+		pmc_resistance(pm.pb_DFT, R + 0);
 		R[0] += pm.const_R;
 
 		printf("R[a] %4e (Ohm)" EOL, &R[0]);
 
-		pm.wave_i_hold_X = - .5f * iSP;
-		pm.wave_i_hold_Y = .8660254f * iSP;
+		pm.pb_i_hold = - .5f * iSP;
+		pm.pb_i_hold_Q = .8660254f * iSP;
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_resistance(pm.wave_DFT, R + 1);
+		pmc_resistance(pm.pb_DFT, R + 1);
 		R[1] += pm.const_R;
 
 		printf("R[b] %4e (Ohm)" EOL, &R[1]);
 
-		pm.wave_i_hold_X = - .5f * iSP;
-		pm.wave_i_hold_Y = - .8660254f * iSP;
+		pm.pb_i_hold = - .5f * iSP;
+		pm.pb_i_hold_Q = - .8660254f * iSP;
 
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		pmc_resistance(pm.wave_DFT, R + 2);
+		pmc_resistance(pm.pb_DFT, R + 2);
 		R[2] += pm.const_R;
 
 		printf("R[c] %4e (Ohm)" EOL, &R[2]);
@@ -200,46 +228,28 @@ SH_DEF(ap_identify_const_R_abc)
 		SD = 100.f * SD / pm.const_R;
 
 		printf("R %4e (Ohm) SD %1f %%" EOL, &pm.const_R, &SD);
-
-		pm.wave_i_hold_X = temp[0];
-		pm.wave_i_hold_Y = temp[1];
 	}
 	while (0);
+
+	pm.pb_i_hold = temp[0];
+	pm.pb_i_hold_Q = temp[1];
 
 	AP_PRINT_ERROR();
 }
 
 SH_DEF(ap_identify_const_E)
 {
+	float			AVG[4];
+
 	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
-	SH_ASSERT(ts.p_irq_callback == NULL);
-
-	ts.av_IN[0] = &pm.lu_X[0];
-	ts.av_IN[1] = &pm.lu_X[1];
-	ts.av_IN[2] = &pm.lu_X[4];
-	ts.av_IN[3] = &pm.drift_Q;
-
-	ts.av_VAL[0] = 0.f;
-	ts.av_VAL[1] = 0.f;
-	ts.av_VAL[2] = 0.f;
-	ts.av_VAL[3] = 0.f;
-
-	ts.av_variable_N = 4;
-	ts.av_sample_N = 0;
-	ts.av_sample_MAX = pm.freq_hz * pm.tm_measure;
-
-	halFence();
-	ts.p_irq_callback = &ts_av_handler;
 
 	do {
-		AP_WAIT_FOR(ts.p_irq_callback == NULL);
+		ts_av_float_4(&pm.lu_X[0], &pm.lu_X[1], &pm.lu_X[4],
+				&pm.drift_Q, AVG, pm.tm_measure);
 
-		ts.av_VAL[0] /= (float) ts.av_sample_N;
-		ts.av_VAL[1] /= (float) ts.av_sample_N;
-		ts.av_VAL[2] /= (float) ts.av_sample_N;
-		ts.av_VAL[3] /= (float) ts.av_sample_N;
+		AP_ERROR_BARRIER();
 
-		pm.const_E -= ts.av_VAL[3] / ts.av_VAL[2];
+		pm.const_E -= AVG[3] / AVG[2];
 		pm_const_E_wb(EOL);
 	}
 	while (0);
@@ -251,7 +261,6 @@ static void
 ap_wait_for_settle(float wSP)
 {
 	const float		dT = .1f;
-	const float		thresholdX4 = 20.f;
 	float			leftT, X4, lastX4, dX4;
 
 	pm.s_set_point = wSP;
@@ -267,7 +276,7 @@ ap_wait_for_settle(float wSP)
 		dX4 = X4 - lastX4;
 		lastX4 = X4;
 
-		if (fabsf(dX4) < thresholdX4)
+		if (fabsf(dX4) < pm.pb_settle_threshold)
 			break;
 
 		leftT -= dT;
@@ -275,103 +284,47 @@ ap_wait_for_settle(float wSP)
 	while (leftT > 0.f);
 }
 
-static void
-ap_J_fsm_handler()
-{
-	float		temp;
-
-	if (pm.m_errno != PMC_OK) {
-
-		ts.p_irq_callback = NULL;
-		return ;
-	}
-
-	switch (ts.ap_J_fsm_state) {
-
-		case 0:
-			ts.ap_J_fsm_state = 1;
-			ts.ap_J_vars[0] = 0.f;
-			ts.ap_J_vars[1] = pm.lu_X[4];
-
-			pm.t_value = 0;
-			pm.t_end = pm.freq_hz * ts.ap_J_measure_T;
-			break;
-
-		case 1:
-			ts.ap_J_vars[0] += pm.lu_X[1];
-			pm.t_value++;
-
-			if (pm.t_value >= pm.t_end) {
-
-				ts.ap_J_fsm_state = 2;
-				ts.ap_J_vars[2] = pm.lu_X[4];
-			}
-			break;
-
-		case 2:
-			temp = pm.const_E * ts.ap_J_vars[0];
-			temp *= 1.5f * pm.const_Zp * pm.const_Zp;
-			temp *= pm.dT / (ts.ap_J_vars[2] - ts.ap_J_vars[1]);
-			ts.ap_J_vars[3] = temp;
-			ts.p_irq_callback = NULL;
-			break;
-
-		default:
-			break;
-	}
-}
-
-SH_DEF(ap_J_measure_T)
-{
-	stof(&ts.ap_J_measure_T, s);
-	printf("%3e (Sec)" EOL, &ts.ap_J_measure_T);
-}
-
 SH_DEF(ap_identify_const_J)
 {
-	float			wSP1, wSP2, J;
+	float			J0, J1, X1, X40, X41;
 
 	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
 	SH_ASSERT(pm.m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP);
 	SH_ASSERT((pm.m_bitmask & PMC_BIT_POSITION_CONTROL_LOOP) == 0);
 	SH_ASSERT((pm.m_bitmask & PMC_BIT_FORCED_CONTROL) == 0);
-	SH_ASSERT(ts.p_irq_callback == NULL);
-
-	wSP1 = 2.f * pm.lu_threshold_high;
-	wSP2 = 1.f / pm.const_E;
-
-	if (strchr(s, '-') != NULL) {
-
-		wSP1 = - wSP1;
-		wSP2 = - wSP2;
-	}
+	SH_ASSERT((pm.m_bitmask & PMC_BIT_POWER_CONTROL_LOOP) == 0);
 
 	do {
 		AP_ERROR_BARRIER();
 
-		ap_wait_for_settle(wSP1);
+		ap_wait_for_settle(pm.pb_speed_low);
 		AP_ERROR_BARRIER();
 
-		ts.ap_J_fsm_state = 0;
+		X40 = pm.lu_X[4];
+		pm.s_set_point = pm.pb_speed_high;
 
-		halFence();
-		ts.p_irq_callback = &ap_J_fsm_handler;
-		pm.s_set_point = wSP2;
+		X1 = ts_av_float_1(pm.lu_X + 1, pm.tm_measure);
+		X41 = pm.lu_X[4];
 
-		AP_WAIT_FOR(ts.p_irq_callback == NULL);
 		AP_ERROR_BARRIER();
 
-		J = ts.ap_J_vars[3];
-		ts.ap_J_fsm_state = 0;
+		J0 = pm.const_E * (X1 * pm.tm_measure)
+			* 1.5f * (pm.const_Zp * pm.const_Zp)
+			* pm.dT / (X41 - X40);
 
-		halFence();
-		ts.p_irq_callback = &ap_J_fsm_handler;
-		pm.s_set_point = wSP1;
+		X40 = pm.lu_X[4];
+		pm.s_set_point = pm.pb_speed_low;
 
-		AP_WAIT_FOR(ts.p_irq_callback == NULL);
+		X1 = ts_av_float_1(pm.lu_X + 1, pm.tm_measure);
+		X41 = pm.lu_X[4];
+
 		AP_ERROR_BARRIER();
 
-		pm.const_J = (J + ts.ap_J_vars[3]) * .5f;
+		J1 = pm.const_E * (X1 * pm.tm_measure)
+			* 1.5f * (pm.const_Zp * pm.const_Zp)
+			* pm.dT / (X41 - X40);
+
+		pm.const_J = (J0 + J1) / 2.f;
 		printf("J %4e (kgm2)" EOL, &pm.const_J);
 	}
 	while (0);
@@ -381,10 +334,9 @@ SH_DEF(ap_identify_const_J)
 
 SH_DEF(ap_blind_spinup)
 {
-	float			wSP;
-
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
+	pm.m_bitmask &= ~(PMC_BIT_POSITION_CONTROL_LOOP | PMC_BIT_POWER_CONTROL_LOOP);
 	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP | PMC_BIT_FORCED_CONTROL;
 
 	do {
@@ -394,20 +346,18 @@ SH_DEF(ap_blind_spinup)
 
 			pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 			AP_WAIT_FOR_IDLE();
+			AP_ERROR_BARRIER();
 
 			pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 			AP_WAIT_FOR_IDLE();
+			AP_ERROR_BARRIER();
 		}
 
 		pmc_request(&pm, PMC_STATE_START);
-
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 
-		wSP = 2.f * pm.lu_threshold_high;
-		wSP = (strchr(s, '-') != NULL) ? - wSP : wSP;
-
-		ap_wait_for_settle(wSP);
+		ap_wait_for_settle(pm.pb_speed_low);
 		AP_ERROR_BARRIER();
 	}
 	while (0);
@@ -433,13 +383,11 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_E(EOL);
 		AP_ERROR_BARRIER();
 
-		ap_wait_for_settle(1.f / pm.const_E);
+		ap_wait_for_settle(pm.pb_speed_high);
 		AP_ERROR_BARRIER();
 
 		ap_identify_const_E(EOL);
 		AP_ERROR_BARRIER();
-
-		pm_lu_threshold_auto(EOL);
 
 		ap_identify_const_J(EOL);
 		AP_ERROR_BARRIER();
@@ -469,9 +417,6 @@ SH_DEF(ap_probe_hfi)
 		pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
-		AP_WAIT_FOR_IDLE();
-
-		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 
 		pmc_request(&pm, PMC_STATE_START);

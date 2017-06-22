@@ -1,14 +1,19 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-font 16 "/usr/share/fonts/corefonts/cour.ttf"
+font 18 "/usr/share/fonts/corefonts/cour.ttf"
+screenpath "/tmp"
+windowsize 1200 900
+
 batch 1
-scheme 0
+defstyle line 1
 
 load 0 500 text "/dev/rfcomm0"
 
+group 0 0
+deflabel 0 "Time (tick)"
+
 page 1 "DQ Current"
-label 0 "Tick"
 label 1 "Current (mA)"
 figure -1 0 "D"
 figure -1 1 "Q"
