@@ -43,6 +43,7 @@ void halHalt();
 void halReset();
 void halSleep();
 void halFence();
+void halBoostConverter(int F);
 void halLED(int F);
 int halENC();
 

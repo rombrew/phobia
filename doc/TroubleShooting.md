@@ -1,7 +1,7 @@
 ## Overview
 
-This page explains how to to overcome the difficulties that may arise when
-working with PMC.
+This page explains how to overcome the difficulties that may arise when working
+with PMC.
 
 ## Error condition
 
@@ -19,14 +19,14 @@ It may return the following values.
 * "Current Sensor B" the same for current sensor B.
 * "Open Circuit" means that we apply the full voltage but current is still
   zero. If sensors is ok this may be caused by open circuit in motor phases or
-  its connection. Also it may happen if power bridge is dead.
+  its connection. Also it may happen if power stage is dead.
 * "Over Current" this cannot be, we think that current is always under control.
 * "Low Voltage" supply voltage is below the fault threshold.
 * "High Voltage" supply voltage is above the fault threshold.
 * "Stability Loss" means that state observer is no longer understand what is
   happening. It may be caused by inconsistency of model with real motor. We
-  cannot predict everything, if the motor is damaged it definitely will cause
-  this error.
+  cannot predict everything, if the motor has been damaged it definitely will
+  cause this error.
 
 Reset the error to be able to try again.
 

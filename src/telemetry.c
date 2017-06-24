@@ -67,7 +67,14 @@ tel_fifo_put()
 	m[5] = (short int) (pm.drift_Q * 1000.f);
 	m[6] = (short int) (pm.lu_residual_D * 1000.f);
 	m[7] = (short int) (pm.lu_residual_Q * 1000.f);
-	m[8] = (short int) 0;
+	m[8] = (short int) (pm.fb_iA * 1000.f);
+	m[9] = (short int) (pm.fb_iB * 1000.f);
+	m[10] = (short int) (pm.const_U * 1000.f);
+	m[11] = (short int) (pm.n_power_watt * 10.f);
+	m[12] = 0;
+	m[13] = 0;
+	m[14] = 0;
+	m[15] = 0;
 }
 
 void tel_collect()

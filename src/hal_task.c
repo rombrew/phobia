@@ -160,7 +160,7 @@ void taskINIT(void *pData)
 {
 	int			rc_conf;
 
-	halLED(LED_RED | LED_GREEN);
+	halLED(LED_BLUE);
 
 	ts.load_count_flag = 1;
 	ts.load_count_value = 0;
@@ -189,6 +189,7 @@ void taskINIT(void *pData)
 
 	usartEnable();
 	pwmEnable();
+	halBoostConverter(1);
 
 	pm.freq_hz = (float) halPWM.freq_hz;
 	pm.dT = 1.f / pm.freq_hz;
@@ -207,7 +208,7 @@ void taskINIT(void *pData)
 	adcEnable();
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
-	xTaskCreate(taskAPP, "tAPP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	//xTaskCreate(taskAPP, "tAPP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }

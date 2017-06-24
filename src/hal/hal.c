@@ -106,14 +106,14 @@ clockStart()
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE
 			| (7UL << 24) | (0UL << 16)
-			| (168UL << 6) | (4UL << 0);
+			| (168UL << 6) | (6UL << 0);
 	}
 	else {
 		/* From HSI.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI
 			| (7UL << 24) | (0UL << 16)
-			| (84UL << 6) | (4UL << 0);
+			| (168UL << 6) | (8UL << 0);
 	}
 
 	/* Enable PLL.
@@ -168,9 +168,9 @@ boardStart()
 
 	/* Enable LED pins.
 	 * */
-	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER3 | GPIO_MODER_MODER4
-			| GPIO_MODER_MODER5, GPIO_MODER_MODER3_0
-			| GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0);
+	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER5 | GPIO_MODER_MODER6
+			| GPIO_MODER_MODER7, GPIO_MODER_MODER5_0
+			| GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
 
 	__DSB();
 	__ISB();
@@ -188,6 +188,8 @@ void halStart()
 
 void halHalt()
 {
+	halLED(LED_RED | LED_GREEN | LED_BLUE);
+
 	__disable_irq();
 	__DSB();
 	__ISB();
@@ -211,25 +213,38 @@ void halFence()
 	__DMB();
 }
 
+void halBoostConverter(int F)
+{
+	if (F) {
+
+		MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, GPIO_MODER_MODER2_0);
+		GPIOB->BSRRL = (1UL << 2);
+	}
+	else {
+		MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, 0);
+		GPIOB->BSRRH = (1UL << 2);
+	}
+}
+
 void halLED(int F)
 {
 	if (F & LED_RED)
 
-		GPIOB->BSRRL = (1UL << 3);
-	else
-		GPIOB->BSRRH = (1UL << 3);
-
-	if (F & LED_GREEN)
-
-		GPIOB->BSRRL = (1UL << 4);
-	else
-		GPIOB->BSRRH = (1UL << 4);
-
-	if (F & LED_BLUE)
-
 		GPIOB->BSRRL = (1UL << 5);
 	else
 		GPIOB->BSRRH = (1UL << 5);
+
+	if (F & LED_GREEN)
+
+		GPIOB->BSRRL = (1UL << 6);
+	else
+		GPIOB->BSRRH = (1UL << 6);
+
+	if (F & LED_BLUE)
+
+		GPIOB->BSRRL = (1UL << 7);
+	else
+		GPIOB->BSRRH = (1UL << 7);
 }
 
 int halENC()

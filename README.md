@@ -3,19 +3,19 @@
 PMC is an open project that aims to build the quality three-phase BLDC motor
 controller for RC and robotics.
 
+![PMC](doc/pmc_rev3.jpg)
+
 We develop PMC with hope that it could be applicable to the various cases. We
 implement only the vector control as we think this is only right way. You may
 want to consider PMC as a platform for experimentation with motor control
 techniques. Or you could just use PMC in your application. In any case, we
 are pleased to offer our solution in the field of motor control.
 
-## Hardware specification (rev2)
-
-[Top](doc/pmc_rev2_top.jpg) and [bottom](doc/pmc_rev2_bot.jpg) view of PCB.
+## Hardware specification (rev3)
 
 * Separate power and control PCB.
 * Dimension: 90mm x 40mm x 15mm.
-* Weight: 55g (wires not included).
+* Weight: 50g (wires not included).
 * Single supply from 5v to 42v.
 * Phase current up to 50A.
 * Computation core is STM32F405RG, typical load is about 59% at 60kHz PWM.
@@ -58,19 +58,16 @@ PCB design source files.
 * Analyse of rapid transient modes. Introduce an iron saturation model.
 * Implement an application protocol via CAN.
 * Make a detailed documentation.
-* Fix the hardware to switch off 12v supply rail during boot or reset. Use
-  TPS61040 and BC857C as voltage booster with load disconnect.
-* Add a voltage reference REF3033 as aplifiers and ADC supply.
-* Remove the mounting holes from PCB, make a compaction, optimize BOM, prepare
-  for automated soldering.
 
 ## Current Status
 
 Now we can declare that PMC is ready to use in most applications. But there is
-still a lot of unresolved issues.
+still a lot of unresolved issues. It may be difficult to configure the PMC for
+a specific motor.
 
 There are a few videos that show the operation of the prototypes (may be outdated).
 
+[![PMC](https://i.ytimg.com/vi/NfofEPY1jME/default.jpg)](https://www.youtube.com/watch?v=NfofEPY1jME)
 [![PMC](https://i.ytimg.com/vi/n_E2ThFQvD4/default.jpg)](https://www.youtube.com/watch?v=n_E2ThFQvD4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
 

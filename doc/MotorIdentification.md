@@ -104,7 +104,7 @@ state observer.
 To identify E you have to run in closed loop. Also the rotor should rotate at
 significant speed. We do a blind spinup to reach this condition.
 
-	# pm_pb_s_low_rpm <rpm>
+	# pm_pb_speed_low_rpm <rpm>
 	# ap_blind_spinup
 
 Then you need to make the identification. It measures the voltage discrepancy
@@ -124,8 +124,8 @@ loop gains if you want to improve control performance.
 You may need to adjust two speed values we going to step between which. They
 should be much different.
 
-	# pm_pb_s_low_rpm <rpm>
-	# pm_pb_s_high_rpm <rpm>
+	# pm_pb_speed_low_rpm <rpm>
+	# pm_pb_speed_high_rpm <rpm>
 
 To begin you have to run in closed loop with enabled only speed control.
 

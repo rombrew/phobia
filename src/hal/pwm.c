@@ -95,11 +95,6 @@ void pwmEnable()
 			| GPIO_MODER_MODER14 | GPIO_MODER_MODER15,
 			GPIO_MODER_MODER13_1 | GPIO_MODER_MODER14_1
 			| GPIO_MODER_MODER15_1);
-
-	/* Enable 12V boost converter.
-	 * */
-	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, GPIO_MODER_MODER2_0);
-	GPIOB->BSRRL = (1UL << 2);
 }
 
 void pwmDisable()

@@ -14,15 +14,13 @@ group 0 0
 deflabel 0 "Time (tick)"
 
 page 1 "DQ Current"
-label 1 "Current (mA)"
-figure -1 0 "D"
-figure -1 1 "Q"
+label 1 "(mA)"
+figure -1 0 "pm.lu_X[0]"
+figure -1 1 "pm.lu_X[1]"
 
 page 2 "Electrical Position"
-label 0 "Tick"
-label 1 "Position"
-figure -1 2 "Cos"
-figure -1 3 "Sin"
+figure -1 2 "pm.lu_X[2]"
+figure -1 3 "pm.lu_X[3]"
 
 page 3 "Mechanical Speed"
 label 0 "Tick"
