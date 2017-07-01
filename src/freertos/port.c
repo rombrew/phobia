@@ -273,7 +273,8 @@ static void prvTaskExitError( void )
 void vPortSVCHandler( void )
 {
 	__asm volatile (
-					"	ldr	r3, pxCurrentTCBConst2		\n" /* Restore the context. */
+					"	movw	r3, #:lower16:pxCurrentTCB	\n" /* Restore the context. */
+					"	movt	r3, #:upper16:pxCurrentTCB	\n"
 					"	ldr r1, [r3]					\n" /* Use pxCurrentTCBConst to get the pxCurrentTCB address. */
 					"	ldr r0, [r1]					\n" /* The first item in pxCurrentTCB is the task top of stack. */
 					"	ldmia r0!, {r4-r11, r14}		\n" /* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
@@ -282,9 +283,6 @@ void vPortSVCHandler( void )
 					"	mov r0, #0 						\n"
 					"	msr	basepri, r0					\n"
 					"	bx r14							\n"
-					"									\n"
-					"	.align 4						\n"
-					"pxCurrentTCBConst2: .word pxCurrentTCB				\n"
 				);
 }
 /*-----------------------------------------------------------*/
@@ -292,7 +290,8 @@ void vPortSVCHandler( void )
 static void prvPortStartFirstTask( void )
 {
 	__asm volatile(
-					" ldr r0, =0xE000ED08 	\n" /* Use the NVIC offset register to locate the stack. */
+					" movw r0, #0xED08 		\n" /* Use the NVIC offset register to locate the stack. */
+					" movt r0, #0xE000 		\n"
 					" ldr r0, [r0] 			\n"
 					" ldr r0, [r0] 			\n"
 					" msr msp, r0			\n" /* Set the msp back to the start of the stack. */
@@ -441,7 +440,8 @@ void xPortPendSVHandler( void )
 	"	mrs r0, psp							\n"
 	"	isb									\n"
 	"										\n"
-	"	ldr	r3, pxCurrentTCBConst			\n" /* Get the location of the current TCB. */
+	"	movw	r3, #:lower16:pxCurrentTCB	\n" /* Get the location of the current TCB. */
+	"	movt	r3, #:upper16:pxCurrentTCB	\n"
 	"	ldr	r2, [r3]						\n"
 	"										\n"
 	"	tst r14, #0x10						\n" /* Is the task using the FPU context?  If so, push high vfp registers. */
@@ -483,8 +483,6 @@ void xPortPendSVHandler( void )
 	"										\n"
 	"	bx r14								\n"
 	"										\n"
-	"	.align 4							\n"
-	"pxCurrentTCBConst: .word pxCurrentTCB	\n"
 	::"i"(configMAX_SYSCALL_INTERRUPT_PRIORITY)
 	);
 }
@@ -690,7 +688,9 @@ static void vPortEnableVFP( void )
 {
 	__asm volatile
 	(
-		"	ldr.w r0, =0xE000ED88		\n" /* The FPU enable bits are in the CPACR. */
+		"	movw r0, #0xED88 		\n" /* The FPU enable bits are in the CPACR. */
+		"	movt r0, #0xE000 		\n"
+
 		"	ldr r1, [r0]				\n"
 		"								\n"
 		"	orr r1, r1, #( 0xf << 20 )	\n" /* Enable CP10 and CP11 coprocessors, then save back. */
