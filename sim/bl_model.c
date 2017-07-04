@@ -71,28 +71,28 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 57E-3;
+	m->R = 22E-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
-	m->Q = 18.;
+	m->Q = 11.;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 14E-6;
-	m->Lq = 22E-6;
+	m->Ld = 7E-6;
+	m->Lq = 11E-6;
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 41.;
+	m->U = 28.;
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 7;
+	m->Zp = 14;
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 380.; /* Total RPM per Volt */
+	Kv = 280.; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 2E-7;
+	m->M[2] = 5E-1;
 	m->M[3] = 0E-3;
 }
 
@@ -217,19 +217,19 @@ blm_Bridge_Sample(blm_t *m)
 
 	/* Output voltage of the current sensor A.
 	 * */
-	U = S1 * 55E-3 * (1. + 0E-2) + Uref / 2.;
-	dU = libGauss() * 3E-3 + 27E-3;
+	U = S1 * 30E-3 + Uref / 2.;
+	dU = libGauss() * 3E-3 + 17E-3;
 	U += dU;
 
 	/* ADC conversion.
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->sensor_A = (ADC - 2048) * 1.4648E-2f;
+	m->sensor_A = (ADC - 2048) * 2.6855E-2;
 
 	/* Output voltage of the current sensor B.
 	 * */
-	U = S2 * 55E-3 + Uref / 2.;
+	U = S2 * 30E-3 + Uref / 2.;
 	dU = libGauss() * 3E-3 - 11E-3;
 	U += dU;
 
@@ -237,7 +237,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->sensor_B = (ADC - 2048) * 1.4648E-2f;
+	m->sensor_B = (ADC - 2048) * 2.6855E-2;
 
 	/* Voltage sampling.
 	 * */
@@ -251,7 +251,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->supply_U = ADC * 1.4830E-2f;
+	m->supply_U = ADC * 1.4830E-2;
 }
 
 static void

@@ -100,37 +100,21 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[19] = pm.lu_residual_D;
 	pTel[20] = pm.lu_residual_Q;
+	pTel[21] = sqrt(pm.lu_residual_variance);
 
 	/* Zero Drift.
 	 * */
-	pTel[21] = pm.drift_A;
-	pTel[22] = pm.drift_B;
-	pTel[23] = pm.drift_Q;
+	pTel[22] = pm.drift_A;
+	pTel[23] = pm.drift_B;
+	pTel[24] = pm.drift_Q;
 
 	/* Informational.
 	 * */
-	pTel[24] = pm.n_power_watt;
-	pTel[25] = pm.n_temperature_c;
+	pTel[25] = pm.n_power_watt;
+	pTel[26] = pm.n_temperature_c;
 
-	pTel[26] = pm.thermal_R;
-	pTel[27] = 0.f;
-	pTel[28] = pm.pb_temp[0];
-	pTel[29] = pm.pb_temp[1];
-
-	/* BEMF.
+	/*
 	 * */
-	pTel[40] = pm.bemf_DFT[2] * 100.;
-	pTel[41] = pm.bemf_DFT[3] * 100.;
-	pTel[42] = pm.bemf_DFT[6] * 100.;
-	pTel[43] = pm.bemf_DFT[7] * 100.;
-	pTel[44] = pm.bemf_DFT[10] * 100.;
-	pTel[45] = pm.bemf_DFT[11] * 100.;
-	pTel[46] = pm.bemf_DFT[14] * 100.;
-	pTel[47] = pm.bemf_DFT[15] * 100.;
-	pTel[48] = pm.bemf_DFT[18] * 100.;
-	pTel[49] = pm.bemf_DFT[19] * 100.;
-	pTel[50] = pm.bemf_DFT[22] * 100.;
-	pTel[51] = pm.bemf_DFT[23] * 100.;
 }
 
 static void
@@ -186,7 +170,7 @@ sim_Script(FILE *fdTel)
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. + .0);
+	pm.const_R = m.R * (1. - .2);
 	pm.const_Ld = m.Ld * (1. + .0);
 	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
@@ -195,25 +179,36 @@ sim_Script(FILE *fdTel)
 	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
-	//pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
+	//pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
+	pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
+	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);
 
-	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	/*pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	sim_F(fdTel, .5, 0);*/
+
+	pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_set_point = 2000. * pm.const_Zp * M_PI / 30.;
+	pm.i_set_point_Q = -50.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_set_point = 2000. * pm.const_Zp * M_PI / 30.;
+	m.M[2] = 5E-5;
+
+	pm.i_set_point_Q = 50.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
+	pm.i_set_point_Q = 0.f;
+	sim_F(fdTel, .5, 0);
+
+	m.M[2] = 5E-1;
+
+	pm.i_set_point_Q = 5.f;
 	sim_F(fdTel, .5, 0);
 }
 

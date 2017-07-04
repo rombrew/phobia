@@ -28,7 +28,7 @@
 #define SH_DEF(name)		void name(const char *s)
 #define SH_ENTRY(name)		{ #name, &name}
 
-#define SH_ASSERT(x)		if ((x) == 0) { printf("ASSERT: %s" EOL, #x); return ; }
+#define SH_ASSERT(x)		if ((x) == 0) { printf("FAILED: %s" EOL, #x); return ; }
 
 typedef struct {
 

@@ -2,24 +2,27 @@
 BUILD	?= /tmp/pmc
 SCRIPT	?= flash
 TARGET	= $(BUILD)/pmc
+IMAGE	= $(TARGET).img
 
 CROSS	?= arm-none-eabi-
 CC	= $(CROSS)gcc
 OC	= $(CROSS)objcopy
+GDB     = $(CROSS)gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-CFLAGS	= -static -std=gnu99 -pipe
+CFLAGS	= -std=gnu99 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -O3 -flto
+CFLAGS	+= -O3 -flto -g3
+CFLAGS	+= -static -fno-pic -fno-PIC -fno-pie -fno-PIE
+CFLAGS	+= -fno-hosted
+CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
 CFLAGS	+= -ffinite-math-only
 CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
-CFLAGS	+= -fno-hosted
-CFLAGS	+= -fno-stack-protector
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
@@ -70,15 +73,22 @@ $(BUILD)/%.o: %.c
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)
 	@ $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-	@ $(OC) -j .text -j .data -O binary $@
 
-flash: $(TARGET)
-	@ echo "  FLASH " $(notdir $^)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -v -g +0
+$(IMAGE): $(TARGET)
+	@ echo "  OC    " $(notdir $@)
+	@ $(OC) -j .text -j .data -O binary $< $@
 
-ram: $(TARGET)
-	@ echo "  RAM   " $(notdir $^)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $(TARGET) -Mr -v -g +0
+flash: $(IMAGE)
+	@ echo "  FLASH " $(notdir $<)
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v -g +0
+
+ram: $(IMAGE)
+	@ echo "  RAM   " $(notdir $<)
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -Mr -v -g +0
+
+gdb: $(TARGET)
+	@ echo "  GDB   " $(notdir $<)
+	@ $(GDB) $<
 
 connect:
 	@ picocom -l -b $(BAUD) -ye $(TTY)

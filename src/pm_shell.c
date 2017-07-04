@@ -431,22 +431,26 @@ SH_DEF(pm_lu_gain_K6)
 
 SH_DEF(pm_lu_low_threshold)
 {
-	float			rpm;
+	float			rads, rpm;
 
 	stof(&pm.lu_low_threshold, s);
-	rpm = 9.5492969f * pm.lu_low_threshold / pm.const_Zp;
 
-	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.lu_low_threshold, &rpm);
+	rads = pm.lu_low_threshold * pm.const_E;
+	rpm = 9.5492969f * rads / pm.const_Zp;
+
+	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_low_threshold, &rads, &rpm);
 }
 
 SH_DEF(pm_lu_high_threshold)
 {
-	float			rpm;
+	float			rads, rpm;
 
 	stof(&pm.lu_high_threshold, s);
-	rpm = 9.5492969f * pm.lu_high_threshold / pm.const_Zp;
 
-	printf("%2f (rad/s) %1f (rpm)" EOL, &pm.lu_high_threshold, &rpm);
+	rads = pm.lu_high_threshold * pm.const_E;
+	rpm = 9.5492969f * rads / pm.const_Zp;
+
+	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_high_threshold, &rads, &rpm);
 }
 
 SH_DEF(pm_lu_residual_variance)

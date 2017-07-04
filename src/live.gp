@@ -8,34 +8,45 @@ windowsize 1200 900
 batch 1
 defstyle line 1
 
-load 0 500 text "/dev/rfcomm0"
+load 0 1024 text "/dev/rfcomm0"
 
 group 0 0
 deflabel 0 "Time (tick)"
 
-page 1 "DQ Current"
+page "DQ Current"
 label 1 "(mA)"
 figure -1 0 "pm.lu_X[0]"
 figure -1 1 "pm.lu_X[1]"
 
-page 2 "Electrical Position"
+page "E. Position"
 figure -1 2 "pm.lu_X[2]"
 figure -1 3 "pm.lu_X[3]"
 
-page 3 "Mechanical Speed"
-label 0 "Tick"
-label 1 "Mechanical Speed (RPM)"
-figure -1 4 "S"
+page "Mechanical Speed"
+label 1 "(rpm)"
+figure -1 4 "pm.lu_X[4]"
 
-page 4 "Q Drift"
-label 0 "Tick"
-label 1 "Q Drift (mV)"
-figure -1 5 "Q"
+page "Q Drift"
+label 1 "(mV)"
+figure -1 5 "pm.drift_Q"
 
-page 5 "DQ Residual"
-label 0 "Tick"
-label 1 "Residual (mV)"
-figure -1 6 "D"
-figure -1 7 "Q"
+page "DQ Residual"
+label 1 "(mA)"
+figure -1 6 "pm.lu_residual_D"
+figure -1 7 "pm.lu_residual_Q"
+
+page "AB Current"
+label 1 "(mA)"
+figure -1 8 "pm.fb_iA"
+figure -1 9 "pm.fb_iB"
+
+page "Supply Voltage"
+label 1 "(mV)"
+figure -1 10 "pm.const_U"
+
+page "Power Consumption"
+label 1 "(W/10)"
+figure -1 11 "pm.n_power_watt"
+
 
 

@@ -74,7 +74,7 @@ SH_DEF(ap_calibrate)
 
 SH_DEF(ap_blind_turn)
 {
-	float		temp[2];
+	float		temp[2], R;
 
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
@@ -91,6 +91,12 @@ SH_DEF(ap_blind_turn)
 
 			s = strtok(s, " ");
 			stof(&pm.pb_freq_sine_hz, s);
+
+			if (pm.pb_freq_sine_hz > M_EPS_F)
+				pm.tm_sine /= pm.pb_freq_sine_hz;
+
+			pm.tm_sine = (pm.tm_sine < 0.f) ? 0.f :
+				(pm.tm_sine > 60.f) ? 60.f : pm.tm_sine ;
 		}
 
 		pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
@@ -100,6 +106,9 @@ SH_DEF(ap_blind_turn)
 		pmc_request(&pm, PMC_STATE_WAVE_HOLD);
 		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
+
+		pmc_resistance(pm.pb_DFT, &R);
+		pm.const_R += R;
 
 		pmc_request(&pm, PMC_STATE_WAVE_SINE);
 		AP_WAIT_FOR_IDLE();
@@ -284,6 +293,44 @@ ap_wait_for_settle(float wSP)
 	while (leftT > 0.f);
 }
 
+static void
+ap_J_handler()
+{
+	if (ts.av_sample_N <= ts.av_sample_MAX) {
+
+		if (ts.av_sample_N == 0)
+			ts.av_VAL[1] = pm.lu_X[4];
+
+		ts.av_VAL[0] += pm.lu_X[1];
+		ts.av_sample_N++;
+	}
+	else {
+		ts.av_VAL[2] = pm.lu_X[4];
+		ts.p_irq_callback = NULL;
+	}
+}
+
+static void
+ap_J_float_1(float *X1, float *X40, float *X41, float time)
+{
+	if (ts.p_irq_callback == NULL) {
+
+		ts.av_VAL[0] = 0.f;
+		ts.av_sample_N = 0;
+		ts.av_sample_MAX = pm.freq_hz * time;
+
+		halFence();
+		ts.p_irq_callback = &ap_J_handler;
+
+		while (ts.p_irq_callback != NULL)
+			vTaskDelay(1);
+
+		*X1 = ts.av_VAL[0] / (float) ts.av_sample_N;
+		*X40 = ts.av_VAL[1];
+		*X41 = ts.av_VAL[2];
+	}
+}
+
 SH_DEF(ap_identify_const_J)
 {
 	float			J0, J1, X1, X40, X41;
@@ -300,24 +347,16 @@ SH_DEF(ap_identify_const_J)
 		ap_wait_for_settle(pm.pb_speed_low);
 		AP_ERROR_BARRIER();
 
-		X40 = pm.lu_X[4];
 		pm.s_set_point = pm.pb_speed_high;
-
-		X1 = ts_av_float_1(pm.lu_X + 1, pm.tm_measure);
-		X41 = pm.lu_X[4];
-
+		ap_J_float_1(&X1, &X40, &X41, pm.tm_measure);
 		AP_ERROR_BARRIER();
 
 		J0 = pm.const_E * (X1 * pm.tm_measure)
 			* 1.5f * (pm.const_Zp * pm.const_Zp)
 			* pm.dT / (X41 - X40);
 
-		X40 = pm.lu_X[4];
 		pm.s_set_point = pm.pb_speed_low;
-
-		X1 = ts_av_float_1(pm.lu_X + 1, pm.tm_measure);
-		X41 = pm.lu_X[4];
-
+		ap_J_float_1(&X1, &X40, &X41, pm.tm_measure);
 		AP_ERROR_BARRIER();
 
 		J1 = pm.const_E * (X1 * pm.tm_measure)

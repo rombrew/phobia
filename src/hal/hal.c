@@ -145,10 +145,6 @@ clockStart()
 static void
 boardStart()
 {
-	/* Enable FPU.
-	 * */
-	SCB->CPACR |= (3UL << 20) | (3UL << 22);
-
 	/* Vector table offset.
 	 * */
 	SCB->VTOR = (unsigned long) &ldSvectors;
@@ -172,12 +168,9 @@ boardStart()
 			| GPIO_MODER_MODER7, GPIO_MODER_MODER5_0
 			| GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
 
-	__DSB();
-	__ISB();
-
-	/* Enable interrupts.
+	/* Enable FPU.
 	 * */
-	__enable_irq();
+	SCB->CPACR |= (3UL << 20) | (3UL << 22);
 }
 
 void halStart()
@@ -191,8 +184,6 @@ void halHalt()
 	halLED(LED_RED | LED_GREEN | LED_BLUE);
 
 	__disable_irq();
-	__DSB();
-	__ISB();
 	__WFI();
 
 	for (;;) ;

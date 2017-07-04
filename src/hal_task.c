@@ -35,7 +35,7 @@
 
 #define TS_LOAD_COUNT_DELAY		200
 
-char __CCM__ 			ucHeap[configTOTAL_HEAP_SIZE];
+char	ucHeap[configTOTAL_HEAP_SIZE];
 
 task_data_t __CCM__		ts;
 pmc_t __CCM__			pm;
@@ -86,72 +86,6 @@ void vApplicationIdleHook()
 
 		halSleep();
 	}
-}
-
-void taskAPP(void *pData)
-{
-	int		xENC;
-	int		RPM;
-	int		iDIR = 1;
-
-	do {
-		vTaskDelay(50);
-
-		xENC = halENC();
-
-		if ((xENC & ENC_B) == 0) {
-
-			if (RPM == 0) {
-
-				if ((xENC & ENC_A) == 0) {
-
-					iDIR = (iDIR < 0) ? 1 : -1;
-					vTaskDelay(500);
-				}
-			}
-			else {
-				RPM = 0;
-				pm.s_set_point = 0;
-				vTaskDelay(300);
-
-				pmc_request(&pm, PMC_STATE_STOP);
-				vTaskDelay(200);
-			}
-		}
-		else if ((xENC & ENC_A) == 0) {
-
-			if (pm.lu_region == PMC_LU_DISABLED) {
-
-				pm.m_errno = PMC_OK;
-
-				pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
-				vTaskDelay(250);
-
-				pmc_request(&pm, PMC_STATE_START);
-				vTaskDelay(100);
-
-				RPM = 3000;
-			}
-			else {
-				RPM =	(RPM == 3000) ? 4000 :
-					(RPM == 4000) ? 5000 :
-					(RPM == 5000) ? 6000 :
-					(RPM == 6000) ? 7000 : 3000 ;
-			}
-
-			pm.s_set_point = .10471976f * iDIR * RPM * pm.const_Zp;
-			vTaskDelay(500);
-		}
-
-		if (pm.lu_region != PMC_LU_DISABLED) {
-
-			halLED(LED_GREEN);
-		}
-		else {
-			halLED(LED_RED);
-		}
-	}
-	while (1);
 }
 
 extern int conf_block_load();
@@ -208,7 +142,6 @@ void taskINIT(void *pData)
 	adcEnable();
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
-	//xTaskCreate(taskAPP, "tAPP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }

@@ -88,21 +88,21 @@ void pmc_default(pmc_t *pm)
 	pm->fault_high_voltage = 55.f;
 	pm->fault_high_voltage_hold = 0.f;
 
-	pm->lu_gain_K[0] = 2E-1f;
-	pm->lu_gain_K[1] = 2E-1f;
+	pm->lu_gain_K[0] = 5E-1f;
+	pm->lu_gain_K[1] = 5E-1f;
 	pm->lu_gain_K[2] = 5E-3f;
 	pm->lu_gain_K[3] = 5E+0f;
 	pm->lu_gain_K[4] = 7E+0f;
-	pm->lu_gain_K[5] = 1E-3f;
+	pm->lu_gain_K[5] = 2E-3f;
 	pm->lu_gain_K[6] = 2E-3f;
-	pm->lu_low_threshold = 5E-2f;
-	pm->lu_high_threshold = 7E-2f;
+	pm->lu_low_threshold = 0.1f;
+	pm->lu_high_threshold = 0.17f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
 	pm->hf_gain_K[0] = 1E-2f;
-	pm->hf_gain_K[1] = 2E+1f;
-	pm->hf_gain_K[2] = 4E-3f;
+	pm->hf_gain_K[1] = 1E+1f;
+	pm->hf_gain_K[2] = 2E-3f;
 
         pm->bemf_gain_K = 5E-4f;
 	pm->bemf_N = 9;
@@ -118,8 +118,8 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 25.f;
-	pm->i_low_maximal = 5.f;
+	pm->i_high_maximal = 20.f;
+	pm->i_low_maximal = 20.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = -210.f;
 	pm->i_slew_rate_D = 4E+3f;
@@ -402,10 +402,8 @@ lu_update(pmc_t *pm)
 
 		if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
 
-			/* FIXME: Need to completely redo.
-			 * */
-			/*eR = eQ * X[1];
-			pm->thermal_R += eR * pm->lu_gain_K[5];*/
+			eR = (X[1] < -.7f) ? eQ : (X[1] > .7f) ? -eQ : 0.f;
+			pm->thermal_R += eR * pm->lu_gain_K[5];
 		}
 	}
 	else {

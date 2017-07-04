@@ -59,8 +59,8 @@ tel_fifo_put()
 	m = tel.fifo[tel.fifo_N];
 	tel.fifo_N = (tel.fifo_N < (TEL_SIZE - 1)) ? tel.fifo_N + 1 : 0;
 
-	m[0] = (short int) (pm.lu_X[0] * 1000.f);
-	m[1] = (short int) (pm.lu_X[1] * 1000.f);
+	m[0] = (short int) (pm.lu_X[0] * 500.f);
+	m[1] = (short int) (pm.lu_X[1] * 500.f);
 	m[2] = (short int) (pm.lu_X[2] * 4096.f);
 	m[3] = (short int) (pm.lu_X[3] * 4096.f);
 	m[4] = (short int) (pm.lu_X[4] * 30.f / M_PI_F / pm.const_Zp);
