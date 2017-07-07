@@ -428,12 +428,8 @@ SH_DEF(ap_probe_base)
 		ap_identify_const_E(EOL);
 		AP_ERROR_BARRIER();
 
-		ap_identify_const_J(EOL);
-		AP_ERROR_BARRIER();
-
-		pm_s_slew_rate_auto(EOL);
 		pmc_request(&pm, PMC_STATE_STOP);
-
+		AP_WAIT_FOR_IDLE();
 		AP_ERROR_BARRIER();
 	}
 	while (0);
@@ -463,5 +459,29 @@ SH_DEF(ap_probe_hfi)
 
 	}
 	while (0);
+}
+
+SH_DEF(ap_probe_speed_control)
+{
+	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+
+	do {
+		AP_ERROR_BARRIER();
+
+		ap_blind_spinup(EOL);
+		AP_ERROR_BARRIER();
+
+		pm.m_bitmask &= ~PMC_BIT_FORCED_CONTROL;
+
+		ap_identify_const_J(EOL);
+		AP_ERROR_BARRIER();
+
+		pmc_request(&pm, PMC_STATE_STOP);
+
+		AP_ERROR_BARRIER();
+	}
+	while (0);
+
+	AP_PRINT_ERROR();
 }
 

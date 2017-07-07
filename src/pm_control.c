@@ -63,12 +63,12 @@ void pmc_default(pmc_t *pm)
 
 	pm->fb_range = 50.f;
 
-	pm->pb_i_hold = 2.f;
+	pm->pb_i_hold = 5.f;
 	pm->pb_i_hold_Q = 0.f;
-	pm->pb_i_sine = 1.f;
-	pm->pb_freq_sine_hz = pm->freq_hz / 12.f;
+	pm->pb_i_sine = 2.f;
+	pm->pb_freq_sine_hz = pm->freq_hz / 16.f;
 	pm->pb_speed_low = 500.f;
-	pm->pb_speed_high = 1200.f;
+	pm->pb_speed_high = 1700.f;
 	pm->pb_settle_threshold = 20.f;
 	pm->pb_gain_P = 1E-2f;
 	pm->pb_gain_I = 1E-3f;
@@ -94,15 +94,15 @@ void pmc_default(pmc_t *pm)
 	pm->lu_gain_K[3] = 5E+0f;
 	pm->lu_gain_K[4] = 7E+0f;
 	pm->lu_gain_K[5] = 2E-3f;
-	pm->lu_gain_K[6] = 2E-3f;
-	pm->lu_low_threshold = 0.1f;
-	pm->lu_high_threshold = 0.17f;
+	pm->lu_low_threshold = .2f;
+	pm->lu_high_threshold = .3f;
 
-	pm->hf_freq_hz = pm->freq_hz / 12.f;
+	pm->hf_freq_hz = pm->freq_hz / 16.f;
 	pm->hf_swing_D = 1.f;
 	pm->hf_gain_K[0] = 1E-2f;
-	pm->hf_gain_K[1] = 1E+1f;
+	pm->hf_gain_K[1] = 3E+1f;
 	pm->hf_gain_K[2] = 2E-3f;
+	pm->hf_gain_E = 0.f;
 
         pm->bemf_gain_K = 5E-4f;
 	pm->bemf_N = 9;
@@ -118,8 +118,8 @@ void pmc_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_high_maximal = 20.f;
-	pm->i_low_maximal = 20.f;
+	pm->i_maximal = 20.f;
+	pm->i_maximal_low = 10.f;
 	pm->i_power_consumption_maximal = 1050.f;
 	pm->i_power_regeneration_maximal = -210.f;
 	pm->i_slew_rate_D = 4E+3f;
@@ -129,12 +129,13 @@ void pmc_default(pmc_t *pm)
 	pm->i_gain_P_Q = 2E-1f;
 	pm->i_gain_I_Q = 3E-2f;
 
-	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
+	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 16.f);
 	pm->s_slew_rate = 5E+6f;
+	pm->s_slew_rate_low = 5E+2f;
+	pm->s_slew_rate_forced = 3E+2f;
 	pm->s_forced_D = 5.f;
-	pm->s_forced_slew_rate = 250.f;
 	pm->s_nonl_gain_F = 2E-2f;
-	pm->s_nonl_range = 90.f;
+	pm->s_nonl_range = 95.f;
 	pm->s_gain_P = 5E-2f;
 	pm->p_gain_P = 10.f;
 
@@ -192,7 +193,17 @@ static void
 hf_update(pmc_t *pm, float eD, float eQ)
 {
 	float		*X = pm->lu_X;
-	float		eR, dR, C2;
+	float		eR, dR, C2, temp[2];
+
+	temp[0] = eD;
+	temp[1] = eQ;
+
+	dR = - X[1] * pm->hf_gain_E;
+	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+	rotf(temp, dR, temp);
+
+	eD = temp[0];
+	eQ = temp[1];
 
 	eR = pm->hf_CS[1] * eQ;
 	dR = pm->hf_gain_K[0] * eR;
@@ -387,40 +398,41 @@ lu_update(pmc_t *pm)
 	X[0] += pm->lu_gain_K[0] * eD;
 	X[1] += pm->lu_gain_K[1] * eQ;
 
-	eR = (X[4] < 0.f) ? - eD : eD;
-	dR = pm->lu_gain_K[2] * eR;
-	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-	rotf(X + 2, dR, X + 2);
-	X[4] += pm->lu_gain_K[3] * eR - pm->lu_gain_K[4] * eQ;
+	if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION
+			&& pm->lu_region == PMC_LU_LOW_REGION) {
 
-	if (pm->lu_region == PMC_LU_LOW_REGION) {
-
-		if (pm->m_bitmask & PMC_BIT_HIGH_FREQUENCY_INJECTION) {
-
-			hf_update(pm, eD, eQ);
-		}
-
-		if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
-
-			eR = (X[1] < -.7f) ? eQ : (X[1] > .7f) ? -eQ : 0.f;
-			pm->thermal_R += eR * pm->lu_gain_K[5];
-		}
+		/* Only HFI in this case.
+		 * */
+		hf_update(pm, eD, eQ);
 	}
 	else {
+		/* Luenberger observer of the rotor flux linkage.
+		 * */
+		eR = (X[4] < 0.f) ? - eD : eD;
+		dR = pm->lu_gain_K[2] * eR;
+		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+		rotf(X + 2, dR, X + 2);
+		X[4] += pm->lu_gain_K[3] * eR - pm->lu_gain_K[4] * eQ;
+	}
+
+	if (pm->lu_region == PMC_LU_HIGH_REGION) {
+
 		if (pm->m_bitmask & PMC_BIT_ZERO_DRIFT_ESTIMATION) {
 		}
 
-		pm->drift_Q += pm->lu_gain_K[6] * eQ;
+		/* Zero Drift on Q axis.
+		 * */
+		pm->drift_Q += pm->lu_gain_K[5] * eQ;
 	}
 
 	/* Time update.
 	 * */
 	pm_solve_2(pm);
 
-	/* BEMF waveform.
-	 * */
 	if (pm->m_bitmask & PMC_BIT_BEMF_WAVEFORM_COMPENSATION) {
 
+		/* BEMF waveform.
+		 * */
 		bemf_update(pm, eD, eQ);
 	}
 }
@@ -461,8 +473,6 @@ lu_post(pmc_t *pm)
 	pm->drift_Q = (pm->drift_Q < - pm->const_U) ? - pm->const_U
 		: (pm->drift_Q > pm->const_U) ? pm->const_U : pm->drift_Q;
 
-	/* Informational variables.
-	 * */
 	if (pm->m_bitmask & PMC_BIT_THERMAL_DRIFT_ESTIMATION) {
 
 		pm->thermal_R = (pm->thermal_R < - .3f) ? - .3f
@@ -576,7 +586,7 @@ static void
 i_control(pmc_t *pm)
 {
 	float		sp_D, sp_Q, eD, eQ, uX, uY;
-	float		uD, uQ, wP, temp;
+	float		uD, uQ, wP, dR, uHF[2], temp;
 
 	sp_D = pm->i_set_point_D;
 	sp_Q = pm->i_set_point_Q;
@@ -584,7 +594,7 @@ i_control(pmc_t *pm)
 	/* Current constraints.
 	 * */
 	temp = (pm->lu_region == PMC_LU_HIGH_REGION)
-		? pm->i_high_maximal : pm->i_low_maximal;
+		? pm->i_maximal : pm->i_maximal_low;
 	sp_D = (sp_D > temp) ? temp : (sp_D < - temp) ? - temp : sp_D;
 	sp_Q = (sp_Q > temp) ? temp : (sp_Q < - temp) ? - temp : sp_Q;
 
@@ -656,7 +666,16 @@ i_control(pmc_t *pm)
 			&& pm->lu_region == PMC_LU_LOW_REGION) {
 
 		temp = 2.f * M_PI_F * pm->const_Ld * pm->hf_freq_hz;
-		uD += pm->hf_CS[0] * pm->hf_swing_D * temp;
+		uHF[0] = pm->hf_CS[0] * pm->hf_swing_D * temp;
+		uHF[1] = 0.f;
+
+		dR = pm->lu_X[1] * pm->hf_gain_E;
+		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
+		rotf(uHF, dR, uHF);
+
+		uD += uHF[0];
+		uQ += uHF[1];
+
 		rotf(pm->hf_CS, 2.f * M_PI_F * pm->hf_freq_hz * pm->dT, pm->hf_CS);
 	}
 
@@ -670,14 +689,9 @@ static void
 s_control(pmc_t *pm)
 {
 	float		iSP, wSP, eD, temp;
-	int		forced;
+	int		forced = 0;
 
 	wSP = pm->s_set_point;
-
-	/* Forced control.
-	 * */
-	forced = ((pm->m_bitmask & PMC_BIT_FORCED_CONTROL)
-			&& (pm->lu_region == PMC_LU_LOW_REGION)) ? 1 : 0;
 
 	/* Speed constraints.
 	 * */
@@ -686,7 +700,22 @@ s_control(pmc_t *pm)
 
 	/* Slew rate.
 	 * */
-	temp = forced ? pm->s_forced_slew_rate * pm->dT : pm->s_slew_rate * pm->dT;
+	if (pm->lu_region == PMC_LU_HIGH_REGION) {
+
+		temp = pm->s_slew_rate;
+	}
+	else {
+		if (pm->m_bitmask & PMC_BIT_FORCED_CONTROL) {
+
+			temp = pm->s_slew_rate_forced;
+			forced = 1;
+		}
+		else {
+			temp = pm->s_slew_rate_low;
+		}
+	}
+
+	temp *= pm->dT;
 	pm->s_track_point = (pm->s_track_point < wSP - temp)
 		? pm->s_track_point + temp : (pm->s_track_point > wSP + temp)
 		? pm->s_track_point - temp : wSP;
@@ -801,7 +830,7 @@ w_control(pmc_t *pm)
 		iSP = pm->w_set_point_watt * (1.f / 1.5f) / abs_Q;
 	}
 	else {
-		iSP = pm->i_low_maximal;
+		iSP = pm->i_maximal_low;
 	}
 
 	iSP = (pm->w_direction < 0) ? - iSP : iSP;

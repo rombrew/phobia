@@ -30,7 +30,7 @@
 #include "pm_control.h"
 #include "shell.h"
 
-#define CONFIG_VERSION			4
+#define CONFIG_VERSION			5
 
 typedef struct {
 
@@ -168,8 +168,8 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.const_Lq,
 	(void *) &pm.const_Zp,
 	(void *) &pm.const_J,
-	(void *) &pm.i_high_maximal,
-	(void *) &pm.i_low_maximal,
+	(void *) &pm.i_maximal,
+	(void *) &pm.i_maximal_low,
 	(void *) &pm.i_power_consumption_maximal,
 	(void *) &pm.i_power_regeneration_maximal,
 	(void *) &pm.i_slew_rate_D,
@@ -180,8 +180,9 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.i_gain_I_Q,
 	(void *) &pm.s_maximal,
 	(void *) &pm.s_slew_rate,
+	(void *) &pm.s_slew_rate_low,
+	(void *) &pm.s_slew_rate_forced,
 	(void *) &pm.s_forced_D,
-	(void *) &pm.s_forced_slew_rate,
 	(void *) &pm.s_nonl_gain_F,
 	(void *) &pm.s_nonl_range,
 	(void *) &pm.s_gain_P,

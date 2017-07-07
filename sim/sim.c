@@ -170,7 +170,7 @@ sim_Script(FILE *fdTel)
 	pmc_default(&pm);
 
 	pm.const_U = m.U;
-	pm.const_R = m.R * (1. - .2);
+	pm.const_R = m.R * (1. - .0);
 	pm.const_Ld = m.Ld * (1. + .0);
 	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
@@ -180,8 +180,8 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, .5, 0);
 
 	//pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
-	pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
-	//pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
+	//pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
+	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
 
 	pmc_request(&pm, PMC_STATE_START);
 	sim_F(fdTel, .1, 0);

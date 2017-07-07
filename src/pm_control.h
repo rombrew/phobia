@@ -146,7 +146,7 @@ typedef struct {
 	int		lu_region;
 	float		lu_X[5];
 	int		lu_revol;
-	float		lu_gain_K[7];
+	float		lu_gain_K[6];
 	float		lu_low_threshold;
 	float		lu_high_threshold;
 	float		lu_temp[2];
@@ -164,6 +164,7 @@ typedef struct {
 	float		hf_flux_polarity;
 	float		hf_CS[2];
 	float		hf_gain_K[3];
+	float		hf_gain_E;
 
 	/* BEMF waveform compensation.
 	 * */
@@ -203,8 +204,8 @@ typedef struct {
 
 	/* Current control loop.
 	 * */
-	float		i_low_maximal;
-	float		i_high_maximal;
+	float		i_maximal;
+	float		i_maximal_low;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -225,8 +226,9 @@ typedef struct {
 	float		s_maximal;
 	float		s_set_point;
 	float		s_slew_rate;
+	float		s_slew_rate_low;
+	float		s_slew_rate_forced;
 	float		s_forced_D;
-	float		s_forced_slew_rate;
 	float		s_track_point;
 	float		s_track_point_p[2];
 	float		s_nonl_X4;

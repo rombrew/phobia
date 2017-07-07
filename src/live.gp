@@ -8,7 +8,8 @@ windowsize 1200 900
 batch 1
 defstyle line 1
 
-load 0 1024 text "/dev/rfcomm0"
+#load 0 1024 text "/dev/rfcomm0"
+load 0 1024 text "/tmp/tel.txt"
 
 group 0 0
 deflabel 0 "Time (tick)"
