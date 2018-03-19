@@ -18,7 +18,28 @@
 
 #include "pm_math.h"
 
-void rotf(float y[2], float angle, const float x[2])
+static const float	lt_atan2f[] = {
+
+	2.9009235E-1f,
+	- 6.5717929E-2f,
+	6.6529250E-2f,
+	9.9397328E-1f,
+	1.5707963E+0f
+};
+
+static const float	lt_sincosf[] = {
+
+	-1.37729499E-4f,
+	-2.04509846E-4f,
+	8.63928854E-3f,
+	-2.43287243E-4f,
+	-1.66562291E-1f,
+	-2.23787462E-5f,
+	1.00000193E+0f,
+	-3.55250780E-8f,
+};
+
+void pm_rotf(float y[2], float angle, const float x[2])
 {
 	float		q, s, c, a, b;
 
@@ -34,20 +55,11 @@ void rotf(float y[2], float angle, const float x[2])
 	y[1] = b * q;
 }
 
-static const float	m_atan2[] = {
-
-	2.9009235E-1f,
-	- 6.5717929E-2f,
-	6.6529250E-2f,
-	9.9397328E-1f,
-	1.5707963E+0f
-};
-
-float atan2f(float y, float x)
+float pm_atan2f(float y, float x)
 {
 	float		y_abs, u, f = 0.f;
 
-	/* FIXME: Only normalized input is acceptable ||x|| = 1.
+	/* NOTE: Only normalized input is acceptable ||x|| = 1.
 	 * */
 
 	y_abs = fabsf(y);
@@ -57,44 +69,32 @@ float atan2f(float y, float x)
 		f = x;
 		x = y_abs;
 		y_abs = - f;
-		f = m_atan2[4];
+		f = lt_atan2f[4];
 	}
 
 	if (y_abs < x) {
 
-		u = m_atan2[1] + m_atan2[0] * y_abs;
-		u = m_atan2[2] + u * y_abs;
-		u = m_atan2[3] + u * y_abs;
+		u = lt_atan2f[1] + lt_atan2f[0] * y_abs;
+		u = lt_atan2f[2] + u * y_abs;
+		u = lt_atan2f[3] + u * y_abs;
 		f += u * y_abs;
 	}
 	else {
-		u = m_atan2[1] + m_atan2[0] * x;
-		u = m_atan2[2] + u * x;
-		u = m_atan2[3] + u * x;
-		f += m_atan2[4] - u * x;
+		u = lt_atan2f[1] + lt_atan2f[0] * x;
+		u = lt_atan2f[2] + u * x;
+		u = lt_atan2f[3] + u * x;
+		f += lt_atan2f[4] - u * x;
 	}
 
 	return (y < 0.f) ? - f : f;
 }
 
-static const float	m_sincos[8] = {
-
-	-1.37729499E-4f,
-	-2.04509846E-4f,
-	8.63928854E-3f,
-	-2.43287243E-4f,
-	-1.66562291E-1f,
-	-2.23787462E-5f,
-	1.00000193E+0f,
-	-3.55250780E-8f,
-};
-
-float sinf(float angle)
+float pm_sinf(float angle)
 {
         float           u;
         int             m = 0;
 
-	/* FIXME: Only +/- pi range is acceptable.
+	/* NOTE: Only +PI/-PI range is acceptable.
 	 * */
 
         if (angle < 0.f) {
@@ -106,18 +106,18 @@ float sinf(float angle)
         if (angle > (M_PI_F / 2.f))
                 angle = M_PI_F - angle;
 
-        u = m_sincos[1] + m_sincos[0] * angle;
-        u = m_sincos[2] + u * angle;
-        u = m_sincos[3] + u * angle;
-	u = m_sincos[4] + u * angle;
-	u = m_sincos[5] + u * angle;
-	u = m_sincos[6] + u * angle;
-	u = m_sincos[7] + u * angle;
+        u = lt_sincosf[1] + lt_sincosf[0] * angle;
+        u = lt_sincosf[2] + u * angle;
+        u = lt_sincosf[3] + u * angle;
+	u = lt_sincosf[4] + u * angle;
+	u = lt_sincosf[5] + u * angle;
+	u = lt_sincosf[6] + u * angle;
+	u = lt_sincosf[7] + u * angle;
 
 	return m ? - u : u;
 }
 
-float cosf(float angle)
+float pm_cosf(float angle)
 {
         float           u;
         int             m = 0;
@@ -133,14 +133,76 @@ float cosf(float angle)
 
 	angle = (M_PI_F / 2.f) - angle;
 
-	u = m_sincos[1] + m_sincos[0] * angle;
-	u = m_sincos[2] + u * angle;
-	u = m_sincos[3] + u * angle;
-	u = m_sincos[4] + u * angle;
-	u = m_sincos[5] + u * angle;
-	u = m_sincos[6] + u * angle;
-	u = m_sincos[7] + u * angle;
+	u = lt_sincosf[1] + lt_sincosf[0] * angle;
+	u = lt_sincosf[2] + u * angle;
+	u = lt_sincosf[3] + u * angle;
+	u = lt_sincosf[4] + u * angle;
+	u = lt_sincosf[5] + u * angle;
+	u = lt_sincosf[6] + u * angle;
+	u = lt_sincosf[7] + u * angle;
 
 	return m ? - u : u;
+}
+
+float pm_DFT_const_R(const float DFT[8])
+{
+	float			D, X, Y, E, R = 0.;
+
+	D = sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
+
+	if (D > 0.f) {
+
+		X = DFT[2] / D;
+		Y = DFT[3] / D;
+
+		E = DFT[0] * X + DFT[1] * Y;
+		R = E / D;
+	}
+
+	return R;
+}
+
+static void
+pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
+{
+	float		B, D, la1, la2;
+
+	B = X + Y;
+	D = B * B - 4.f * (X * Y - M * M);
+
+	if (D > 0.f) {
+
+		D = sqrtf(D);
+		la1 = (B - D) * .5f;
+		la2 = (B + D) * .5f;
+
+		B = Y - la1;
+		D = sqrtf(B * B + M * M);
+		B /= D;
+		D = - M / D;
+		B = pm_atan2f(D, B);
+
+		DQA[0] = la1;
+		DQA[1] = la2;
+		DQA[2] = B;
+	}
+}
+
+void pm_DFT_const_L(const float DFT[8], float freq, float LDQ[3])
+{
+	float			DX, DY, W;
+	float			LX, LY, LM;
+
+	DX = DFT[0] * DFT[0] + DFT[1] * DFT[1];
+	DY = DFT[4] * DFT[4] + DFT[5] * DFT[5];
+	W = 2.f * M_PI_F * freq;
+
+	LX = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / (DX * W);
+	LY = (DFT[6] * DFT[5] - DFT[7] * DFT[4]) / (DY * W);
+	LM = (DFT[6] * DFT[1] - DFT[7] * DFT[0]) / (DX * W);
+	LM += (DFT[2] * DFT[5] - DFT[3] * DFT[4]) / (DY * W);
+	LM *= .5f;
+
+	pm_DFT_eigenvalues(LX, LY, LM, LDQ);
 }
 

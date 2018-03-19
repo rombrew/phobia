@@ -16,28 +16,37 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_SHELL_
-#define _H_SHELL_
+#ifndef _H_REGFILE_
+#define _H_REGFILE_
 
-#define K_ETX			0x03
-#define K_EOT			0x04
-#define K_SO			0x0E
-#define K_DLE			0x10
-#define K_ESC			0x1B
+#define REG_CONFIG_VERSION		7
 
-#define SH_DEF(name)		void name(const char *s)
-#define SH_ENTRY(name)		{ #name, &name}
-
-#define SH_ASSERT(x)		if ((x) == 0) { printf("FAILED: %s" EOL, #x); return ; }
+enum {
+	REG_INT			= 0x0001,
+	REG_F_EXP		= 0x0002,
+	REG_F_LONG		= 0x0004,
+	REG_I_HEX		= 0x0008,
+	REG_CONFIG		= 0x0010,
+	REG_READ_ONLY		= 0x0020,
+};
 
 typedef struct {
 
 	const char		*sym;
-	void			(* proc) (const char *);
+	int			bits;
+
+	union {
+
+		float		*f;
+		int		*i;
+	}
+	link;
+
+	void			(* proc) (void *reg, void *lval, const void *rval);
 }
-sh_cmd_t;
+reg_t;
 
-void taskSH(void *pData);
+extern const reg_t	regfile[];
 
-#endif /* _H_SHELL_ */
+#endif /* _H_REGFILE_ */
 

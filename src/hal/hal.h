@@ -19,35 +19,61 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
-#define HAL_APB1_HZ		(hal_CLOCK_CPU_HZ / 4UL)
-#define HAL_APB2_HZ		(hal_CLOCK_CPU_HZ / 2UL)
+#define HAL_APB1_HZ		(hal.clock_cpu_hz / 4)
+#define HAL_APB2_HZ		(hal.clock_cpu_hz / 2)
 
 #define __CCM__			__attribute__ ((section (".ccm")))
 
 enum {
-	LED_RED			= 1,
-	LED_GREEN		= 2,
-	LED_BLUE		= 4
+	LEG_A			= 1,
+	LEG_B			= 2,
+	LEG_C			= 4
 };
 
-enum {
-	ENC_A			= 1,
-	ENC_B			= 2,
-	ENC_C			= 4
-};
+typedef struct {
 
-extern unsigned long		hal_CLOCK_CPU_HZ;
+	int		clock_cpu_hz;
+	int		usart_baud_rate;
 
-void halStart();
-void halHalt();
-void halReset();
-void halSleep();
-void halFence();
-void halBoostConverter(int F);
-void halLED(int F);
-int halENC();
+	int		pwm_freq_hz;
+	int		pwm_resolution;
+	int		pwm_dead_time_ns;
 
-extern void halMain();
+	float		adc_current_A;
+	float		adc_current_B;
+	float		adc_voltage_U;
+	float		adc_voltage_A;
+	float		adc_voltage_B;
+	float		adc_voltage_C;
+	int		adc_thermal_PCB_NTC;
+	int		adc_thermal_EXT_NTC;
+	int		adc_thermal_TEMP;
+
+	struct {
+
+		float		GA;
+		float		GV;
+		float		NTC[4];
+		float		TEMP[2];
+	}
+	adc_const;
+}
+hal_t;
+
+extern hal_t		hal;
+
+void hal_startup();
+
+void hal_halt();
+void hal_reset();
+void hal_sleep();
+void hal_fence();
+
+void hal_boost_converter(int x);
+void hal_set_LED(int x);
+int hal_get_HALL();
+
+extern void hal_main();
 
 #endif /* _H_HAL_ */
 

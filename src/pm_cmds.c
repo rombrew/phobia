@@ -25,35 +25,9 @@
 #include "pm_math.h"
 #include "shell.h"
 
-SH_DEF(pm_pwm_resolution)
+SH_DEF(pm_pwm_R)
 {
-	printf("%i" EOL, pm.pwm_resolution);
-}
-
-static void
-pm_pwm_int_modify(int *param, const char *s)
-{
-	float		scal_G;
-	int		ns;
-
-	scal_G = 1e-9f * pm.freq_hz * pm.pwm_resolution;
-
-	if (stoi(&ns, s) != NULL)
-		*param = (int) (ns * scal_G + .5f);
-
-	ns = (int) (*param / scal_G + .5f);
-
-	printf("%i (tk) %i (ns)" EOL, *param, ns);
-}
-
-SH_DEF(pm_pwm_minimal_pulse)
-{
-	pm_pwm_int_modify(&pm.pwm_minimal_pulse, s);
-}
-
-SH_DEF(pm_pwm_dead_time)
-{
-	pm_pwm_int_modify(&pm.pwm_dead_time, s);
+	printf("%i" EOL, pm.pwm_R);
 }
 
 static int
@@ -99,11 +73,6 @@ SH_DEF(pm_m_bitmask_flux_polarity_detection)
 	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_FLUX_POLARITY_DETECTION);
 }
 
-SH_DEF(pm_m_bitmask_thermal_drift_estimation)
-{
-	pm.m_bitmask = pm_m_bitmask(s, PMC_BIT_THERMAL_DRIFT_ESTIMATION);
-}
-
 SH_DEF(pm_m_bitmask_bemf_waveform_compensation)
 {
 	int			mask;
@@ -134,6 +103,7 @@ SH_DEF(pm_m_bitmask_speed_control_loop)
 		pm.s_nonl_X4 = pm.lu_X[4];
 		pm.s_track_point_p[0] = pm.lu_X[2];
 		pm.s_track_point_p[1] = pm.lu_X[3];
+		pm.s_integral = 0.f;
 
 		halFence();
 	}
@@ -297,40 +267,40 @@ SH_DEF(pm_pb_gain_I)
 	printf("%2e" EOL, &pm.pb_gain_I);
 }
 
-SH_DEF(pm_scal_A0)
+SH_DEF(pm_scal_A_0)
 {
-	stof(&pm.scal_A[0], s);
-	printf("%3f (A)" EOL, &pm.scal_A[0]);
+	stof(&pm.scal_A_0, s);
+	printf("%3f (A)" EOL, &pm.scal_A_0);
 }
 
-SH_DEF(pm_scal_A1)
+SH_DEF(pm_scal_A_1)
 {
-	stof(&pm.scal_A[1], s);
-	printf("%4e" EOL, &pm.scal_A[1]);
+	stof(&pm.scal_A_1, s);
+	printf("%4e" EOL, &pm.scal_A_1);
 }
 
-SH_DEF(pm_scal_B0)
+SH_DEF(pm_scal_B_0)
 {
-	stof(&pm.scal_B[0], s);
-	printf("%3f (A)" EOL, &pm.scal_B[0]);
+	stof(&pm.scal_B_0, s);
+	printf("%3f (A)" EOL, &pm.scal_B_0);
 }
 
-SH_DEF(pm_scal_B1)
+SH_DEF(pm_scal_B_1)
 {
-	stof(&pm.scal_B[1], s);
-	printf("%4e" EOL, &pm.scal_B[1]);
+	stof(&pm.scal_B_1, s);
+	printf("%4e" EOL, &pm.scal_B_1);
 }
 
-SH_DEF(pm_scal_U0)
+SH_DEF(pm_scal_U_0)
 {
-	stof(&pm.scal_U[0], s);
-	printf("%3f (V)" EOL, &pm.scal_U[0]);
+	stof(&pm.scal_U_0, s);
+	printf("%3f (V)" EOL, &pm.scal_U_0);
 }
 
-SH_DEF(pm_scal_U1)
+SH_DEF(pm_scal_U_1)
 {
-	stof(&pm.scal_U[1], s);
-	printf("%4e" EOL, &pm.scal_U[1]);
+	stof(&pm.scal_U_1, s);
+	printf("%4e" EOL, &pm.scal_U_1);
 }
 
 SH_DEF(pm_fault_residual_maximal)
@@ -409,64 +379,64 @@ SH_DEF(pm_lu_X4)
 	printf("%4e (rad/s) %1f (rpm) " EOL, &avg, &rpm);
 }
 
-SH_DEF(pm_lu_gain_K0)
+SH_DEF(pm_lu_gain_DA)
 {
-	stof(&pm.lu_gain_K[0], s);
-	printf("%2e" EOL, &pm.lu_gain_K[0]);
+	stof(&pm.lu_gain_DA, s);
+	printf("%2e" EOL, &pm.lu_gain_DA);
 }
 
-SH_DEF(pm_lu_gain_K1)
+SH_DEF(pm_lu_gain_QA)
 {
-	stof(&pm.lu_gain_K[1], s);
-	printf("%2e" EOL, &pm.lu_gain_K[1]);
+	stof(&pm.lu_gain_QA, s);
+	printf("%2e" EOL, &pm.lu_gain_QA);
 }
 
-SH_DEF(pm_lu_gain_K2)
+SH_DEF(pm_lu_gain_DP)
 {
-	stof(&pm.lu_gain_K[2], s);
-	printf("%2e" EOL, &pm.lu_gain_K[2]);
+	stof(&pm.lu_gain_DP, s);
+	printf("%2e" EOL, &pm.lu_gain_DP);
 }
 
-SH_DEF(pm_lu_gain_K3)
+SH_DEF(pm_lu_gain_DS)
 {
-	stof(&pm.lu_gain_K[3], s);
-	printf("%2e" EOL, &pm.lu_gain_K[3]);
+	stof(&pm.lu_gain_DS, s);
+	printf("%2e" EOL, &pm.lu_gain_DS);
 }
 
-SH_DEF(pm_lu_gain_K4)
+SH_DEF(pm_lu_gain_QS)
 {
-	stof(&pm.lu_gain_K[4], s);
-	printf("%2e" EOL, &pm.lu_gain_K[4]);
+	stof(&pm.lu_gain_QS, s);
+	printf("%2e" EOL, &pm.lu_gain_QS);
 }
 
-SH_DEF(pm_lu_gain_K5)
+SH_DEF(pm_lu_gain_QZ)
 {
-	stof(&pm.lu_gain_K[5], s);
-	printf("%2e" EOL, &pm.lu_gain_K[5]);
+	stof(&pm.lu_gain_QZ, s);
+	printf("%2e" EOL, &pm.lu_gain_QZ);
 }
 
-SH_DEF(pm_lu_low_threshold)
+SH_DEF(pm_lu_threshold_low)
 {
 	float			rads, rpm;
 
-	stof(&pm.lu_low_threshold, s);
+	stof(&pm.lu_threshold_low, s);
 
-	rads = pm.lu_low_threshold / pm.const_E;
+	rads = pm.lu_threshold_low / pm.const_E;
 	rpm = 9.5492969f * rads / pm.const_Zp;
 
-	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_low_threshold, &rads, &rpm);
+	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_threshold_low, &rads, &rpm);
 }
 
-SH_DEF(pm_lu_high_threshold)
+SH_DEF(pm_lu_threshold_high)
 {
 	float			rads, rpm;
 
-	stof(&pm.lu_high_threshold, s);
+	stof(&pm.lu_threshold_high, s);
 
-	rads = pm.lu_high_threshold / pm.const_E;
+	rads = pm.lu_threshold_high / pm.const_E;
 	rpm = 9.5492969f * rads / pm.const_Zp;
 
-	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_high_threshold, &rads, &rpm);
+	printf("%3f (V) %2f (rad/s) %1f (rpm)" EOL, &pm.lu_threshold_high, &rads, &rpm);
 }
 
 SH_DEF(pm_lu_residual_variance)
@@ -497,35 +467,22 @@ SH_DEF(pm_hf_flux_polarity)
 	printf("%4e" EOL, &avg);
 }
 
-SH_DEF(pm_hf_gain_K0)
+SH_DEF(pm_hf_gain_P)
 {
-	stof(&pm.hf_gain_K[0], s);
-	printf("%2e" EOL, &pm.hf_gain_K[0]);
+	stof(&pm.hf_gain_P, s);
+	printf("%2e" EOL, &pm.hf_gain_P);
 }
 
-SH_DEF(pm_hf_gain_K1)
+SH_DEF(pm_hf_gain_S)
 {
-	stof(&pm.hf_gain_K[1], s);
-	printf("%2e" EOL, &pm.hf_gain_K[1]);
+	stof(&pm.hf_gain_S, s);
+	printf("%2e" EOL, &pm.hf_gain_S);
 }
 
-SH_DEF(pm_hf_gain_K2)
+SH_DEF(pm_hf_gain_F)
 {
-	stof(&pm.hf_gain_K[2], s);
-	printf("%2e" EOL, &pm.hf_gain_K[2]);
-}
-
-SH_DEF(pm_hf_gain_E)
-{
-	stof(&pm.hf_gain_E, s);
-	printf("%2e" EOL, &pm.hf_gain_E);
-}
-
-SH_DEF(pm_hf_gain_E_auto)
-{
-	pm.hf_gain_E = pm.const_Lq / pm.const_E;
-
-	printf("%2e" EOL, &pm.hf_gain_E);
+	stof(&pm.hf_gain_F, s);
+	printf("%2e" EOL, &pm.hf_gain_F);
 }
 
 SH_DEF(pm_bemf_DFT)
@@ -546,10 +503,30 @@ SH_DEF(pm_bemf_DFT)
 	}
 }
 
-SH_DEF(pm_bemf_gain_K)
+SH_DEF(pm_bemf_DFT_clean)
 {
-	stof(&pm.bemf_gain_K, s);
-	printf("%2e" EOL, &pm.bemf_gain_K);
+	float			*DFT = pm.bemf_DFT;
+	int			i;
+
+	for (i = 0; i < pm.bemf_N; ++i) {
+
+		*DFT++ = 0.f;
+		*DFT++ = 0.f;
+		*DFT++ = 0.f;
+		*DFT++ = 0.f;
+	}
+}
+
+SH_DEF(pm_bemf_gain_D)
+{
+	stof(&pm.bemf_gain_D, s);
+	printf("%2e" EOL, &pm.bemf_gain_D);
+}
+
+SH_DEF(pm_bemf_gain_Q)
+{
+	stof(&pm.bemf_gain_Q, s);
+	printf("%2e" EOL, &pm.bemf_gain_Q);
 }
 
 SH_DEF(pm_bemf_N)
@@ -560,26 +537,6 @@ SH_DEF(pm_bemf_N)
 		(pm.bemf_N > 14) ? 14 : pm.bemf_N;
 
 	printf("%i" EOL, pm.bemf_N);
-}
-
-SH_DEF(pm_thermal_R)
-{
-	float			avg;
-
-	avg = ts_av_float_arg_1(&pm.thermal_R, s);
-	printf("%4e" EOL, &avg);
-}
-
-SH_DEF(pm_thermal_gain_R0)
-{
-	stof(&pm.thermal_gain_R[0], s);
-	printf("%1f" EOL, &pm.thermal_gain_R[0]);
-}
-
-SH_DEF(pm_thermal_gain_R1)
-{
-	stof(&pm.thermal_gain_R[1], s);
-	printf("%4e" EOL, &pm.thermal_gain_R[1]);
 }
 
 SH_DEF(pm_drift_A)
@@ -606,11 +563,11 @@ SH_DEF(pm_drift_Q)
 	printf("%3f (V)" EOL, &avg);
 }
 
-SH_DEF(pm_const_U)
+SH_DEF(pm_const_lpf_U)
 {
 	float			avg;
 
-	avg = ts_av_float_arg_1(&pm.const_U, s);
+	avg = ts_av_float_arg_1(&pm.const_lpf_U, s);
 	printf("%3f (V)" EOL, &avg);
 }
 
@@ -719,8 +676,8 @@ SH_DEF(pm_i_slew_rate_Q)
 
 SH_DEF(pm_i_slew_rate_auto)
 {
-	pm.i_slew_rate_D = .2f * pm.const_U / pm.const_Ld;
-	pm.i_slew_rate_Q = .2f * pm.const_U / pm.const_Lq;
+	pm.i_slew_rate_D = .2f * pm.const_lpf_U / pm.const_Ld;
+	pm.i_slew_rate_Q = .2f * pm.const_lpf_U / pm.const_Lq;
 
 	printf(	"D %2e (A/s)" EOL
 		"Q %2e (A/s)" EOL,
@@ -799,12 +756,6 @@ SH_DEF(pm_s_slew_rate)
 	printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate);
 }
 
-SH_DEF(pm_s_slew_rate_low)
-{
-	stof(&pm.s_slew_rate_low, s);
-	printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate_low);
-}
-
 SH_DEF(pm_s_slew_rate_forced)
 {
 	stof(&pm.s_slew_rate_forced, s);
@@ -825,11 +776,9 @@ SH_DEF(pm_s_slew_rate_auto)
 
 		MT = pm.const_Zp * pm.const_Zp * pm.const_E / pm.const_J;
 		pm.s_slew_rate = 1.5f * MT * pm.i_maximal;
-		pm.s_slew_rate_low = .2f * pm.s_slew_rate;
 		pm.s_slew_rate_forced = MT * pm.s_forced_D / 4.f;
 
 		printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate);
-		printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate_low);
 		printf("%2e (rad/s/s)" EOL, &pm.s_slew_rate_forced);
 	}
 }
@@ -850,6 +799,12 @@ SH_DEF(pm_s_gain_P)
 {
 	stof(&pm.s_gain_P, s);
 	printf("%2e" EOL, &pm.s_gain_P);
+}
+
+SH_DEF(pm_s_gain_I)
+{
+	stof(&pm.s_gain_I, s);
+	printf("%2e" EOL, &pm.s_gain_I);
 }
 
 SH_DEF(pm_p_set_point_g)
@@ -921,30 +876,22 @@ SH_DEF(pm_w_direction)
 
 SH_DEF(pm_lp_gain_0)
 {
-	stof(&pm.lp_gain[0], s);
-	printf("%2e" EOL, &pm.lp_gain[0]);
+	stof(&pm.lp_gain_0, s);
+	printf("%2e" EOL, &pm.lp_gain_0);
 }
 
 SH_DEF(pm_lp_gain_1)
 {
-	stof(&pm.lp_gain[1], s);
-	printf("%2e" EOL, &pm.lp_gain[1]);
+	stof(&pm.lp_gain_1, s);
+	printf("%2e" EOL, &pm.lp_gain_1);
 }
 
-SH_DEF(pm_n_power_watt)
+SH_DEF(pm_n_power_lpf)
 {
 	float			avg;
 
-	avg = ts_av_float_arg_1(&pm.n_power_watt, s);
+	avg = ts_av_float_arg_1(&pm.n_power_lpf, s);
 	printf("%1f (W)" EOL, &avg);
-}
-
-SH_DEF(pm_n_temperature_c)
-{
-	float			avg;
-
-	avg = ts_av_float_arg_1(&pm.n_temperature_c, s);
-	printf("%1f (C)" EOL, &avg);
 }
 
 SH_DEF(pm_default)
@@ -1038,37 +985,20 @@ SH_DEF(pm_update_const_L)
 
 SH_DEF(pm_update_scal_AB)
 {
-	float		gA, gB, fA, fB, ref;
+	float		gain, pc;
 
 	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
 
-	if (stof(&ref, s) != NULL && ref != 0.f) {
+	gain = pm.pb_DFT[0] / pm.pb_DFT[1];
+	pc = 100.f * (gain - 1.f);
 
-		gA = pm.pb_DFT[0] / ref;
-		gB = pm.pb_DFT[1] / ref;
+	gain = sqrtf(gain);
+	pm.scal_A_1 = 1.f / gain;
+	pm.scal_B_1 = gain;
 
-		fA = 100.f * (gA - 1.f);
-		fB = 100.f * (gB - 1.f);
-
-		printf(	"FIX_A %2f (%%)" EOL
-			"FIX_B %2f (%%)" EOL
-			"A1 %4e" EOL
-			"B1 %4e" EOL,
-			&fA, &fB,
-			&pm.scal_A[1], &pm.scal_B[1]);
-	}
-	else {
-		gA = pm.pb_DFT[0] / pm.pb_DFT[1];
-		fA = 100.f * (gA - 1.f);
-
-		gA = sqrtf(gA);
-		pm.scal_A[1] = 1.f / gA;
-		pm.scal_B[1] = gA;
-
-		printf(	"FIX %2f (%%)" EOL
-			"A1 %4e" EOL
-			"B1 %4e" EOL,
-			&fA, &pm.scal_A[1], &pm.scal_B[1]);
-	}
+	printf(	"FIX %2f (%%)" EOL
+		"A1 %4e" EOL
+		"B1 %4e" EOL,
+		&pc, &pm.scal_A_1, &pm.scal_B_1);
 }
 

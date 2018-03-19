@@ -10,8 +10,8 @@ RM      = rm -rf
 CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto -g3
 LFLAGS	= -lm -g3
 
-OBJS	= lib.o bl_model.o sim.o
-OBJS	+= pm_control.o
+OBJS	= blm.o lib.o sim.o
+OBJS	+= pm.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

@@ -19,10 +19,8 @@
 #ifndef _H_USART_
 #define _H_USART_
 
-extern int 		halUSART_baudRate;
-
-void usartEnable();
-void usartDisable();
+void usart_enable();
+void usart_disable();
 
 int usart_getc();
 void usart_putc(int c);

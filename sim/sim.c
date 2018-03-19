@@ -22,8 +22,8 @@
 #include <errno.h>
 #include <math.h>
 
-#include "bl_model.h"
-#include "pm_control.h"
+#include "blm.h"
+#include "pm.h"
 #include "lib.h"
 
 #define TEL_FILE	"/tmp/TEL"
@@ -34,9 +34,9 @@ static pmc_t		pm;
 static void
 blmDC(int uA, int uB, int uC)
 {
-	m.uA = uA;
-	m.uB = uB;
-	m.uC = uC;
+	m.PWM_xA = uA;
+	m.PWM_xB = uB;
+	m.PWM_xC = uC;
 }
 
 static void
@@ -58,9 +58,9 @@ sim_Tel(float *pTel)
 
 	/* Duty cycle.
 	 * */
-	pTel[6] = (double) m.uA * 100. / (double) m.PWM_resolution;
-	pTel[7] = (double) m.uB * 100. / (double) m.PWM_resolution;
-	pTel[8] = (double) m.uC * 100. / (double) m.PWM_resolution;
+	pTel[6] = (double) m.PWM_xA * 100. / (double) m.PWM_R;
+	pTel[7] = (double) m.PWM_xB * 100. / (double) m.PWM_R;
+	pTel[8] = (double) m.PWM_xC * 100. / (double) m.PWM_R;
 
 	/* Estimated current.
 	 * */
@@ -82,9 +82,9 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[13] = pm.lu_X[4] * 30. / M_PI / m.Zp;
 
-	/* Nonl filter speed.
+	/* Zero Drift Q.
 	 * */
-	pTel[14] = pm.s_nonl_X4 * 30. / M_PI / m.Zp;
+	pTel[14] = pm.lu_drift_Q;
 
 	/* VSI voltage (XY).
 	 * */
@@ -93,36 +93,28 @@ sim_Tel(float *pTel)
 
 	/* VSI voltage (DQ).
 	 * */
-	pTel[17] = pm.vsi_D;
-	pTel[18] = pm.vsi_Q;
+	pTel[17] = pm.vsi_lpf_D;
+	pTel[18] = pm.vsi_lpf_Q;
 
 	/* Measurement residual.
 	 * */
 	pTel[19] = pm.lu_residual_D;
 	pTel[20] = pm.lu_residual_Q;
-	pTel[21] = sqrt(pm.lu_residual_variance);
-
-	/* Zero Drift.
-	 * */
-	pTel[22] = pm.drift_A;
-	pTel[23] = pm.drift_B;
-	pTel[24] = pm.drift_Q;
-
+	pTel[21] = sqrt(pm.lu_residual_lpf);
+	
 	/* Informational.
 	 * */
-	pTel[25] = pm.n_power_watt;
-	pTel[26] = pm.n_temperature_c;
-
-	/*
-	 * */
+	pTel[25] = pm.n_power_lpf;
 }
 
 static void
 sim_F(FILE *fdTel, double dT, int Verb)
 {
-	const int	szTel = 80;
+	const int	szTel = 40;
 	float		Tel[szTel];
 	double		Tin, Tend;
+
+	pmfb_t		fb;
 
 	Tin = m.Tsim;
 	Tend = Tin + dT;
@@ -133,10 +125,19 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		blm_Update(&m);
 
-		/* PMC update.
+		fb.iA = m.ADC_iA;
+		fb.iB = m.ADC_iB;
+		fb.uS = m.ADC_uS;
+
+		/* PM update.
 		 * */
-		pmc_feedback(&pm, m.sensor_A, m.sensor_B);
-		pmc_voltage(&pm, m.supply_U);
+		pm_feedback(&pm, &fb);
+
+		if (pm.error != PM_OK) {
+
+			printf("ERROR: %s\n", pm_strerror(pm.error));
+			exit(1);
+		}
 
 		/* Collect telemetry.
 		 * */
@@ -163,52 +164,30 @@ sim_Script(FILE *fdTel)
 {
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_resolution = m.PWM_resolution;
+	pm.pwm_R = m.PWM_R;
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pmc_default(&pm);
+	pm_default(&pm);
 
-	pm.const_U = m.U;
+	pm.const_lpf_U = m.U;
 	pm.const_R = m.R * (1. - .0);
 	pm.const_Ld = m.Ld * (1. + .0);
 	pm.const_Lq = m.Lq * (1. + .0);
 	pm.const_E = m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
-	pmc_request(&pm, PMC_STATE_ZERO_DRIFT);
+	pm.b_FORCED = 0;
+	pm.b_HFI = 0;
+	pm.b_LOOP = 1;
+
+	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
-	//pm.m_bitmask |= PMC_BIT_SPEED_CONTROL_LOOP;
-	//pm.m_bitmask |= PMC_BIT_THERMAL_DRIFT_ESTIMATION;
-	pm.m_bitmask |= PMC_BIT_HIGH_FREQUENCY_INJECTION;
-
-	pmc_request(&pm, PMC_STATE_START);
+	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .1, 0);
 
-	/*pm.s_set_point = 5000. * pm.const_Zp * M_PI / 30.;
-	sim_F(fdTel, .5, 0);*/
-
-	pm.i_set_point_Q = 5.f;
-	sim_F(fdTel, .5, 0);
-
-	pm.i_set_point_Q = -50.f;
-	sim_F(fdTel, .5, 0);
-
-	pm.i_set_point_Q = 5.f;
-	sim_F(fdTel, .5, 0);
-
-	m.M[2] = 5E-5;
-
-	pm.i_set_point_Q = 50.f;
-	sim_F(fdTel, .5, 0);
-
-	pm.i_set_point_Q = 0.f;
-	sim_F(fdTel, .5, 0);
-
-	m.M[2] = 5E-1;
-
-	pm.i_set_point_Q = 5.f;
+	pm.s_set_point = 500.f;
 	sim_F(fdTel, .5, 0);
 }
 
@@ -224,7 +203,7 @@ int main(int argc, char *argv[])
 	if (fdTel == NULL) {
 
 		fprintf(stderr, "fopen: %s", strerror(errno));
-		exit(errno);
+		exit(2);
 	}
 
 	sim_Script(fdTel);

@@ -20,25 +20,12 @@
 #include "adc.h"
 #include "hal.h"
 
-halADC_t			halADC;
-halADC_CONST_t			halADC_CONST = {
+#define	ADC_REFERENCE_VOLTAGE			3.3
+#define ADC_RESOLUTION				4096
+#define ADC_CURRENT_SHUNT_RESISTANCE		5E-3
+#define ADC_AMPLIFIER_GAIN			60
 
-	.A_1 = 2.6855E-2f,
-	.B_1 = 2.6855E-2f,
-	.U_1 = 1.4830E-2f,
-	.HVIN_1 = 1.4830E-2f,
-
-	/* NTC PN: EWTF05-103H3I-N
-	 * */
-	.NTC = {-6.5874724E-22f,
-		1.0000274E-17f,
-		-6.2750268E-14f,
-		2.1018330E-10f,
-		-4.0750417E-7f,
-		4.6735139E-4f,
-		-3.3537976E-1f,
-		1.7679703E+2f},
-};
+#define ADC_THERMAL_FREQ_HZ			10
 
 void irqADC()
 {
@@ -58,33 +45,51 @@ void irqADC()
 		ADC3->SR &= ~ADC_SR_JEOC;
 
 		fc = (float) ((int) ADC2->JDR1 - 2048);
-		halADC.sensor_A = fc * halADC_CONST.A_1;
+		hal.adc_current_A = fc * hal.adc_const.GA;
 
 		fc = (float) ((int) ADC2->JDR2);
-		halADC.supply_U = fc * halADC_CONST.U_1;
+		hal.adc_voltage_U = fc * hal.adc_const.GV;
 
 		fc = (float) ((int) ADC3->JDR1 - 2048);
-		halADC.sensor_B = fc * halADC_CONST.B_1;
+		hal.adc_current_B = fc * hal.adc_const.GA;
 
 		fc = (float) ((int) ADC3->JDR2);
-		halADC.external_HVIN = fc * halADC_CONST.HVIN_1;
+		hal.adc_voltage_A = fc * hal.adc_const.GV;
 
-		adcIRQ_feedback();
+		adc_IRQ();
 	}
 }
 
 static void
-adc_temp_calibration()
+adc_const_setup()
 {
 	unsigned short		*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
 	unsigned short		*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
 
-	halADC_CONST.TEMP_1 = (30.f - 110.f) / (float) (*CAL_TEMP_30 - *CAL_TEMP_110);
-	halADC_CONST.TEMP_0 = 110.f - halADC_CONST.TEMP_1 * (float) (*CAL_TEMP_110);
+	hal.adc_const.GA = ADC_REFERENCE_VOLTAGE
+		/ (double) ADC_RESOLUTION
+		/ (double) ADC_CURRENT_SHUNT_RESISTANCE
+		/ (double) ADC_AMPLIFIER_GAIN;
+
+	hal.adc_const.GV = ADC_REFERENCE_VOLTAGE
+		/ (double) ADC_RESOLUTION;
+
+		1.4830E-2f;
+
+	/* NTC PN: EWTF05-103H3I-N
+	 * */
+	hal.adc_const.NTC = {
+		-6.3691189E-9f,
+		4.4011365E-5f,
+		-1.2073269E-1f,
+		1.4068824E+2f},
+
+	hal.adc_const.TEMP[1] = (30.f - 110.f) / (float) (*CAL_TEMP_30 - *CAL_TEMP_110);
+	hal.adc_const.TEMP[0] = 110.f - hal.adc_const.TEMP[1] * (float) (*CAL_TEMP_110);
 }
 
 static void
-timerEnable()
+tim2_enable()
 {
 	/* Enable TIM2 clock.
 	 * */
@@ -106,7 +111,7 @@ timerEnable()
 }
 
 static void
-timerDisable()
+tim2_disable()
 {
 	/* Disable TIM2.
 	 * */
@@ -118,7 +123,7 @@ timerDisable()
 }
 
 
-void adcEnable()
+void adc_enable()
 {
 	/* Enable ADC clock.
 	 * */
@@ -169,7 +174,7 @@ void adcEnable()
 
 	/* Update CONST.
 	 * */
-	adc_temp_calibration();
+	adc_const_setup();
 
 	/* Enable ADC.
 	 * */
@@ -179,7 +184,7 @@ void adcEnable()
 
 	/* Enable thermal trigger.
 	 * */
-	timerEnable();
+	tim2_enable();
 
 	/* Enable IRQ.
 	 * */
@@ -187,7 +192,7 @@ void adcEnable()
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 
-void adcDisable()
+void adc_disable()
 {
 	/* Disable IRQ.
 	 * */
@@ -195,7 +200,7 @@ void adcDisable()
 
 	/* Disable thermal trigger.
 	 * */
-	timerDisable();
+	tim2_disable();
 
 	/* Disable PA0 PA1 PA2 PC2 PC3 pins.
 	 * */

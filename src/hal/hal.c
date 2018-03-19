@@ -61,7 +61,7 @@ void irqDefault()
 }
 
 static void
-clockStart()
+clock_start()
 {
 	int		HSERDY, HSEN = 0;
 
@@ -143,7 +143,7 @@ clockStart()
 }
 
 static void
-boardStart()
+board_start()
 {
 	/* Vector table offset.
 	 * */
@@ -173,15 +173,15 @@ boardStart()
 	SCB->CPACR |= (3UL << 20) | (3UL << 22);
 }
 
-void halStart()
+void hal_startup()
 {
-	clockStart();
-	boardStart();
+	clock_start();
+	board_start();
 }
 
-void halHalt()
+void hal_halt()
 {
-	halLED(LED_RED | LED_GREEN | LED_BLUE);
+	hal_set_LED(1);
 
 	__disable_irq();
 	__WFI();
@@ -189,24 +189,24 @@ void halHalt()
 	for (;;) ;
 }
 
-void halReset()
+void hal_system_reset()
 {
 	NVIC_SystemReset();
 }
 
-void halSleep()
+void hal_sleep()
 {
 	__WFI();
 }
 
-void halFence()
+void hal_fence()
 {
 	__DMB();
 }
 
-void halBoostConverter(int F)
+void hal_boost_converter(int x)
 {
-	if (F) {
+	if (x != 0) {
 
 		MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, GPIO_MODER_MODER2_0);
 		GPIOB->BSRRL = (1UL << 2);
@@ -217,46 +217,36 @@ void halBoostConverter(int F)
 	}
 }
 
-void halLED(int F)
+void hal_set_LED(int x)
 {
-	if (F & LED_RED)
+	if (x != 0) {
 
 		GPIOB->BSRRL = (1UL << 5);
-	else
+	}
+	else {
 		GPIOB->BSRRH = (1UL << 5);
-
-	if (F & LED_GREEN)
-
-		GPIOB->BSRRL = (1UL << 6);
-	else
-		GPIOB->BSRRH = (1UL << 6);
-
-	if (F & LED_BLUE)
-
-		GPIOB->BSRRL = (1UL << 7);
-	else
-		GPIOB->BSRRH = (1UL << 7);
+	}
 }
 
-int halENC()
+int hal_get_HALL()
 {
-	int		ENC = 0;
+	int		HALL = 0;
 
 	if (GPIOC->IDR & (1UL << 6)) {
 
-		ENC |= ENC_A;
+		HALL |= LEG_A;
 	}
 
 	if (GPIOC->IDR & (1UL << 7)) {
 
-		ENC |= ENC_B;
+		HALL |= LEG_B;
 	}
 
 	if (GPIOC->IDR & (1UL << 8)) {
 
-		ENC |= ENC_C;
+		HALL |= LEG_C;
 	}
 
-	return ENC;
+	return HALL;
 }
 

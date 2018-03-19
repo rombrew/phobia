@@ -127,7 +127,7 @@ void taskINIT(void *pData)
 
 	pm.freq_hz = (float) halPWM.freq_hz;
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_resolution = halPWM.resolution;
+	pm.pwm_R = halPWM.resolution;
 	pm.pDC = &pwmDC;
 	pm.pZ = &pwmZ;
 
@@ -324,7 +324,7 @@ SH_DEF(hal_keycodes)
 		if (xC == K_ETX || xC == K_EOT)
 			break;
 
-		xprintf(iodef, "-- %i" EOL, xC);
+		printf("-- %2x" EOL, xC);
 	}
 	while (1);
 }
@@ -340,7 +340,7 @@ SH_DEF(hal_pwm_freq_hz)
 
 		pm.freq_hz = (float) halPWM.freq_hz;
 		pm.dT = 1.f / pm.freq_hz;
-		pm.pwm_resolution = halPWM.resolution;
+		pm.pwm_R = halPWM.resolution;
 	}
 
 	printf("%i (Hz)" EOL, halPWM.freq_hz);

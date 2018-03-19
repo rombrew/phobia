@@ -19,28 +19,11 @@
 #ifndef _H_PWM_
 #define _H_PWM_
 
-enum {
-	PWM_A			= 1,
-	PWM_B			= 2,
-	PWM_C			= 4,
-};
+void pwm_enable();
+void pwm_disable();
 
-typedef struct {
-
-	int		freq_hz;
-	int		resolution;
-	int		dead_time_ns;
-	int		dead_time_tk;
-}
-halPWM_t;
-
-extern halPWM_t			halPWM;
-
-void pwmEnable();
-void pwmDisable();
-
-void pwmDC(int uA, int uB, int uC);
-void pwmZ(int Z);
+void pwm_DC(int uA, int uB, int uC);
+void pwm_Z(int xZ);
 
 #endif /* _H_BRIDGE_ */
 

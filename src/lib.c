@@ -153,6 +153,35 @@ int strspl(const char *s, const char *p, int n)
 	return l;
 }
 
+const char *strstr(const char *s, const char *p)
+{
+	const char		*a, *b;
+
+	if (*p == 0)
+		return s;
+
+	for (b = p; *s != 0; ++s) {
+
+		if (*s != *b)
+			continue;
+
+		a = s;
+
+		do {
+			if (*b == 0)
+				return s;
+
+			if (*a++ != *b++)
+				break;
+		}
+		while (1);
+
+		b = s;
+	}
+
+	return NULL;
+}
+
 char *strcpy(char *d, const char *s)
 {
 	do {
@@ -231,6 +260,29 @@ const char *strtok(const char *s, const char *d)
 void xputs(io_ops_t *_io, const char *s)
 {
 	while (*s) _io->putc(*s++);
+}
+
+static void
+fmt_hexb(io_ops_t *_io, int x)
+{
+	int		n, c;
+
+	n = (x & 0xF0) >> 8;
+	c = (n < 10) ? '0' + n : 'A' + (n - 10);
+	_io->putc(c);
+
+	n = (x & 0x0F);
+	c = (n < 10) ? '0' + n : 'A' + (n - 10);
+	_io->putc(c);
+}
+
+static void
+fmt_hexl(io_ops_t *_io, unsigned long x)
+{
+	fmt_hexb(_io, (x & 0xFF000000) >> 24);
+	fmt_hexb(_io, (x & 0x00FF0000) >> 16);
+	fmt_hexb(_io, (x & 0x0000FF00) >> 8);
+	fmt_hexb(_io, (x & 0x000000FF));
 }
 
 static void
@@ -424,6 +476,16 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
 				case '%':
 					_io->putc('%');
+					break;
+
+				case 'x':
+					if (n == 2) {
+
+						fmt_hexb(_io, va_arg(ap, int));
+					}
+					else {
+						fmt_hexl(_io, va_arg(ap, unsigned long));
+					}
 					break;
 
 				case 'i':

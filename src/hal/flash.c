@@ -46,14 +46,14 @@ flash_wait_BSY()
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void flash_erase(int N)
+void flash_erase(int n)
 {
 	flash_unlock();
 	flash_wait_BSY();
 
-	N = (N + FLASH_FIRST_SECTOR) & 0x0F;
+	n = (n + FLASH_FIRST_SECTOR) & 0x0F;
 
-	FLASH->CR = FLASH_CR_PSIZE_1 | (N << 3) | FLASH_CR_SER;
+	FLASH->CR = FLASH_CR_PSIZE_1 | (n << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
 	flash_wait_BSY();
@@ -62,20 +62,20 @@ void flash_erase(int N)
 	flash_lock();
 }
 
-void flash_write(void *d, const void *s, int sz)
+void flash_write(void *d, const void *s, unsigned long sz)
 {
-	unsigned int		*ud = d;
-	const unsigned int	*us = s;
+	long			*ldst = d;
+	const long		*lsrc = s;
 
 	flash_unlock();
 	flash_wait_BSY();
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
 
-	while (sz >= 4) {
+	while (sz >= sizeof(long)) {
 
-		*ud++ = *us++;
-		sz -= 4;
+		*ldst++ = *lsrc++;
+		sz -= sizeof(long);
 	}
 
 	flash_wait_BSY();

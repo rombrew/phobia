@@ -19,37 +19,41 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
-#include "hal/flash.h"
 #include "hal/pwm.h"
 #include "hal/usart.h"
-
-#include "freertos/FreeRTOS.h"
 
 #include "hal_task.h"
 #include "lib.h"
 #include "pm_control.h"
+#include "regfile.h"
 #include "shell.h"
 
-#define CONFIG_VERSION			5
+#define REG(link, unit, bits, proc)	{ #link "\0" unit, bits, { (void *) &link }, proc }
+#define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
 
-typedef struct {
+static void
+reg_proc_default(reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
 
-	unsigned int		id;
-	unsigned int		version;
-	unsigned int		content[1021];
-	unsigned int 		crc32;
+		*lval = *reg->link.i;
+	}
+
+	if (rval != NULL) {
+
+		*reg->link.i = *rval;
+	}
 }
-conf_block_t;
 
-unsigned int * const conf_vars[] = {
+const reg_t		regfile[] = {
 
-	(void *) &halPWM.freq_hz,
-	(void *) &halPWM.dead_time_ns,
-	(void *) &halUSART_baudRate,
-	(void *) &ts.av_default_time,
+	REG(hal.usart_baud_rate, "", REG_INT | REG_CONFIG, NULL),
+	REG(hal.pwm_freq_hz, "Hz", REG_INT | REG_CONFIG, NULL),
+	REG(hal.pwm_dead_time_ns, "ns", REG_INT | REG_CONFIG, NULL),
+	REG(ts.av_default_time, "s", REG_CONFIG | REG_F_LONG, NULL),
+	REG(pm.b_zero_drift_estimation, "", REG_INT | REG_CONFIG, NULL),
 
-	(void *) &pm.pwm_minimal_pulse,
-	(void *) &pm.pwm_dead_time,
+	/*
 	(void *) &pm.m_bitmask,
 	(void *) &pm.tm_drift,
 	(void *) &pm.tm_hold,
@@ -66,12 +70,12 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.pb_settle_threshold,
 	(void *) &pm.pb_gain_P,
 	(void *) &pm.pb_gain_I,
-	(void *) &pm.scal_A[0],
-	(void *) &pm.scal_A[1],
-	(void *) &pm.scal_B[0],
-	(void *) &pm.scal_B[1],
-	(void *) &pm.scal_U[0],
-	(void *) &pm.scal_U[1],
+	(void *) &pm.scal_A_0,
+	(void *) &pm.scal_A_1,
+	(void *) &pm.scal_B_0,
+	(void *) &pm.scal_B_1,
+	(void *) &pm.scal_U_0,
+	(void *) &pm.scal_U_1,
 	(void *) &pm.fault_residual_maximal,
 	(void *) &pm.fault_residual_maximal_hold,
 	(void *) &pm.fault_drift_maximal,
@@ -79,20 +83,21 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.fault_low_voltage_hold,
 	(void *) &pm.fault_high_voltage,
 	(void *) &pm.fault_high_voltage_hold,
-	(void *) &pm.lu_gain_K[0],
-	(void *) &pm.lu_gain_K[1],
-	(void *) &pm.lu_gain_K[2],
-	(void *) &pm.lu_gain_K[3],
-	(void *) &pm.lu_gain_K[4],
-	(void *) &pm.lu_gain_K[5],
-	(void *) &pm.lu_gain_K[6],
-	(void *) &pm.lu_low_threshold,
-	(void *) &pm.lu_high_threshold,
+	(void *) &pm.lu_gain_DA,
+	(void *) &pm.lu_gain_QA,
+	(void *) &pm.lu_gain_DP,
+	(void *) &pm.lu_gain_DS,
+	(void *) &pm.lu_gain_QS,
+	(void *) &pm.lu_gain_QZ,
+	(void *) &pm.lu_boost_slope,
+	(void *) &pm.lu_boost_gain,
+	(void *) &pm.lu_threshold_low,
+	(void *) &pm.lu_threshold_high,
 	(void *) &pm.hf_freq_hz,
 	(void *) &pm.hf_swing_D,
-	(void *) &pm.hf_gain_K[0],
-	(void *) &pm.hf_gain_K[1],
-	(void *) &pm.hf_gain_K[2],
+	(void *) &pm.hf_gain_P,
+	(void *) &pm.hf_gain_S,
+	(void *) &pm.hf_gain_F,
 	(void *) &pm.bemf_DFT[0],
 	(void *) &pm.bemf_DFT[1],
 	(void *) &pm.bemf_DFT[2],
@@ -157,11 +162,10 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.bemf_DFT[61],
 	(void *) &pm.bemf_DFT[62],
 	(void *) &pm.bemf_DFT[63],
-	(void *) &pm.bemf_gain_K,
+	(void *) &pm.bemf_gain_D,
+	(void *) &pm.bemf_gain_Q,
 	(void *) &pm.bemf_N,
-	(void *) &pm.thermal_gain_R[0],
-	(void *) &pm.thermal_gain_R[1],
-	(void *) &pm.const_U,
+	(void *) &pm.const_lpf_U,
 	(void *) &pm.const_E,
 	(void *) &pm.const_R,
 	(void *) &pm.const_Ld,
@@ -180,172 +184,142 @@ unsigned int * const conf_vars[] = {
 	(void *) &pm.i_gain_I_Q,
 	(void *) &pm.s_maximal,
 	(void *) &pm.s_slew_rate,
-	(void *) &pm.s_slew_rate_low,
 	(void *) &pm.s_slew_rate_forced,
 	(void *) &pm.s_forced_D,
 	(void *) &pm.s_nonl_gain_F,
 	(void *) &pm.s_nonl_range,
 	(void *) &pm.s_gain_P,
+	(void *) &pm.s_gain_I,
 	(void *) &pm.p_gain_P,
-	(void *) &pm.lp_gain[0],
-	(void *) &pm.lp_gain[1],
+	(void *) &pm.lp_gain_0,
+	(void *) &pm.lp_gain_1,
+	(void *) &pm.lp_gain_2,
+	(void *) &pm.lp_gain_3,
+	*/
 
-	NULL
+	{ NULL, 0, { NULL }, NULL }
 };
 
-static conf_block_t *
-conf_block_scan(int vflag)
+static void
+reg_getval(const reg_t *reg, void *lval)
 {
-	conf_block_t			*curr, *last;
+	if (reg->proc != NULL) {
 
-	curr = (void *) FLASH_BASE_A;
-	last = NULL;
+		reg->proc((reg_t *) reg, lval, NULL);
+	}
+	else {
+		* (int *) lval = *reg->link.i;
+	}
+}
 
-	do {
-		if (vflag || curr->version == CONFIG_VERSION) {
+static void
+reg_setval(reg_t *reg, const void *rval)
+{
+	if ((reg->bits & REG_READ_ONLY) == 0) {
 
-			if (crc32b(curr, sizeof(conf_block_t) - 4) == curr->crc32) {
+		if (reg->proc != NULL) {
 
-				if (last != NULL) {
+			reg->proc(reg, NULL, rval);
+		}
+		else {
+			*reg->link.i = * (int *) rval;
+		}
+	}
+}
 
-					last = (curr->id > last->id) ? curr : last;
-				}
-				else
-					last = curr;
-			}
+static void
+reg_printout(const reg_t *reg)
+{
+	const char		*fmt;
+	float			f;
+	int			n;
+
+	printf("%s%s%s [%i] %s = ",
+			(reg->bits & REG_INT) ? "I" : "F",
+			(reg->bits & REG_CONFIG) ? "C" : " ",
+			(reg->bits & REG_READ_ONLY) ? "R" : " ",
+			reg - regfile, reg->sym);
+
+	if (reg->bits & REG_INT) {
+
+		reg_getval(reg, &n);
+
+		fmt = (reg->bits & REG_I_HEX) ? "%8x" : "%i";
+
+		printf(fmt, n);
+	}
+	else {
+		reg_getval(reg, &f);
+
+		if (reg->bits & REG_F_EXP) {
+
+			fmt = (reg->bits & REG_F_LONG) ? "%4e" : "%2e";
+		}
+		else {
+			fmt = (reg->bits & REG_F_LONG) ? "%3f" : "%1f";
 		}
 
-		curr += 1;
-
-		if ((void *) curr >= (void *) FLASH_END_A)
-			break;
+		printf(fmt, &f);
 	}
-	while (1);
 
-	return last;
+	fmt = reg->sym + strlen(reg->sym) + 1;
+
+	if (*fmt != 0) {
+
+		printf(" (%s)", fmt);
+	}
+
+	puts(EOL);
 }
 
-int conf_block_load()
+SH_DEF(reg_list)
 {
-	conf_block_t		*block;
-	int			n, rc = -1;
+	const reg_t		*reg;
 
-	block = conf_block_scan(0);
+	for (reg = regfile; reg->sym != NULL; ++reg) {
 
-	if (block != NULL) {
+		if (strstr(reg->sym, s) != NULL) {
 
-		for (n = 0; conf_vars[n] != NULL; ++n)
-			*conf_vars[n] = block->content[n];
-
-		rc = 0;
+			reg_printout(reg);
+		}
 	}
-
-	return rc;
 }
 
-static int
-conf_is_block_dirty(const conf_block_t *block)
+SH_DEF(reg_set)
 {
-	const unsigned int	*us, *ue;
-	int			dirty = 0;
+	const reg_t		*reg;
+	float			f;
+	int			n;
 
-	us = (const unsigned int *) block;
-	ue = (const unsigned int *) (block + 1);
+	if (stoi(&n, s) != NULL) {
 
-	while (us < ue) {
+		if (n >= 0 && n < REG_MAX) {
 
-		if (*us++ != 0xFFFFFFFF)
-			dirty = 1;
+			reg = regfile + n;
+			s = strtok(s, " ");
+
+			if (reg->bits & REG_INT) {
+
+				if (stoi(&n, s) != NULL) {
+
+					reg_setval(reg, &n);
+				}
+			}
+			else {
+				if (stof(&f, s) != NULL) {
+
+					reg_setval(reg, &f);
+				}
+			}
+
+			reg_printout(reg);
+		}
 	}
-
-	return dirty;
 }
 
-static int
-conf_get_sector(const conf_block_t *block)
+SH_DEF(reg_import)
 {
-	int			N;
+	const reg_t		*reg;
 
-	N = ((long int) block - FLASH_BASE_A) / FLASH_SECTOR_SIZE;
-
-	return N;
-}
-
-int conf_block_save()
-{
-	conf_block_t		*block, *temp;
-	unsigned int		newid;
-	int			n, rc;
-
-	block = conf_block_scan(1);
-
-	if (block != NULL) {
-
-		newid = block->id + 1;
-		block += 1;
-
-		if ((void *) block >= (void *) FLASH_END_A)
-			block = (void *) FLASH_BASE_A;
-	}
-	else {
-		newid = 1;
-		block = (void *) FLASH_BASE_A;
-	}
-
-	if (conf_is_block_dirty(block)) {
-
-		flash_erase(conf_get_sector(block));
-	}
-
-	temp = pvPortMalloc(sizeof(conf_block_t));
-
-	temp->id = newid;
-	temp->version = CONFIG_VERSION;
-
-	for (n = 0; conf_vars[n] != NULL; ++n)
-		temp->content[n] = *conf_vars[n];
-
-	for (; n < sizeof(temp->content) / 4; ++n)
-		temp->content[n] = 0xFFFFFFFF;
-
-	temp->crc32 = crc32b(temp, sizeof(conf_block_t) - 4);
-
-	flash_write(block, temp, sizeof(conf_block_t));
-
-	vPortFree(temp);
-
-	rc = (crc32b(block, sizeof(conf_block_t) - 4) == block->crc32) ? 0 : -1;
-
-	return rc;
-}
-
-SH_DEF(conf_save)
-{
-	int			rc;
-
-	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
-
-	printf("Flash ... ");
-
-	rc = conf_block_save();
-
-	printf("%s" EOL, (rc == 0) ? "Done" : "Failed");
-}
-
-SH_DEF(conf_info)
-{
-	conf_block_t		*block;
-
-	block = conf_block_scan(0);
-	block = (block == NULL) ? conf_block_scan(1) : block;
-
-	if (block != NULL) {
-
-		printf("ID %i" EOL, block->id);
-		printf("VER %i" EOL, block->version);
-	}
-	else {
-		printf("No Data" EOL);
-	}
 }
 

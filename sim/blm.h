@@ -16,24 +16,24 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_BL_MODEL_
-#define _H_BL_MODEL_
+#ifndef _H_BLM_
+#define _H_BLM_
 
 typedef struct {
 
 	double		Tsim;
 	double		dT, sT;
-	int		PWM_resolution;
+	int		PWM_R;
 
 	/* Duty Cycle (Input).
 	 * */
-	int		uA;
-	int		uB;
-	int		uC;
+	int		PWM_xA;
+	int		PWM_xB;
+	int		PWM_xC;
 
 	/* State of VSI.
 	 * */
-	int		sF[3];
+	int		VSI[3];
 
 	/* Motor variabes.
 	 * */
@@ -53,14 +53,18 @@ typedef struct {
 
 	/* ADC result (Output).
 	 * */
-	float		sensor_A;
-	float		sensor_B;
-	float		supply_U;
+	float		ADC_iA;
+	float		ADC_iB;
+	float		ADC_uS;
+
+	float		ADC_uA;
+	float		ADC_uB;
+	float		ADC_uC;
 }
 blm_t;
 
 void blm_Enable(blm_t *m);
 void blm_Update(blm_t *m);
 
-#endif /* _H_BL_MODEL_ */
+#endif /* _H_BLM_ */
 

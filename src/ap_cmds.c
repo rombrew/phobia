@@ -23,6 +23,7 @@
 #include "freertos/queue.h"
 
 #include "hal/hal.h"
+#include "hal/pwm.h"
 #include "hal_task.h"
 #include "lib.h"
 #include "pm_control.h"
@@ -47,6 +48,8 @@ void pm_const_E_wb(const char *s);
 void pm_s_slew_rate_auto(const char *s);
 void pm_update_const_L(const char *s);
 void pm_update_scal_AB(const char *s);
+void tel_bare_enabled(int i);
+void tel_bare_decimal(int i);
 
 SH_DEF(ap_calibrate)
 {
@@ -188,8 +191,8 @@ SH_DEF(ap_identify_const_R_abc)
 
 		printf("SP %3f (A)" EOL, &iSP);
 
-		U = iSP * pm.const_R / pm.const_U;
-		xPWM = U * pm.pwm_resolution;
+		U = iSP * pm.const_R / pm.const_lpf_U;
+		xPWM = U * pm.pwm_R;
 		U *= 100.f;
 
 		printf("U: %i (tk) %2f %%" EOL, xPWM, &U);
@@ -482,6 +485,80 @@ SH_DEF(ap_probe_speed_control)
 	}
 	while (0);
 
+	AP_PRINT_ERROR();
+}
+
+SH_DEF(ap_test_current_ramp)
+{
+	float		base_i, ramp_i;
+	int		xHold = 15;
+
+	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+
+	base_i = 1.f;
+	ramp_i = 50.f;
+
+	stof(&ramp_i, s);
+
+	do {
+		AP_ERROR_BARRIER();
+
+		tel_bare_decimal(1);
+		tel_bare_enabled(1);
+
+		pm.i_set_point_Q = base_i;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+
+		pm.i_set_point_Q = ramp_i;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+
+		tel_bare_enabled(0);
+
+		pm.i_set_point_Q = base_i;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+	}
+	while (0);
+
+	AP_PRINT_ERROR();
+}
+
+SH_DEF(ap_test_speed_ramp)
+{
+	float			base_rpm, ramp_rpm;
+	int			xHold = 330;
+
+	SH_ASSERT(pm.lu_region != PMC_LU_DISABLED);
+	SH_ASSERT(pm.m_bitmask & PMC_BIT_SPEED_CONTROL_LOOP);
+
+	base_rpm = 700.f;
+	ramp_rpm = 5000.f;
+
+	stof(&ramp_rpm, s);
+
+	do {
+		AP_ERROR_BARRIER();
+
+		tel_bare_decimal(halPWM.freq_hz / 1000);
+		tel_bare_enabled(1);
+
+		pm.s_set_point = .10471976f * base_rpm * pm.const_Zp;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+
+		pm.s_set_point = .10471976f * ramp_rpm * pm.const_Zp;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+
+		pm.s_set_point = .10471976f * base_rpm * pm.const_Zp;
+		vTaskDelay(xHold);
+		AP_ERROR_BARRIER();
+	}
+	while (0);
+
+	tel_bare_enabled(0);
 	AP_PRINT_ERROR();
 }
 

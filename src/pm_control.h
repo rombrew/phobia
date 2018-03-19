@@ -20,192 +20,133 @@
 #define _H_PM_CONTROL_
 
 enum {
-	PMC_BIT_ZERO_DRIFT_ESTIMATION		= 0x0001,
-	PMC_BIT_HIGH_FREQUENCY_INJECTION	= 0x0002,
-	PMC_BIT_FLUX_POLARITY_DETECTION		= 0x0004,
-	PMC_BIT_THERMAL_DRIFT_ESTIMATION	= 0x0008,
-	PMC_BIT_BEMF_WAVEFORM_COMPENSATION	= 0x0010,
-	PMC_BIT_SPEED_CONTROL_LOOP		= 0x0100,
-	PMC_BIT_POSITION_CONTROL_LOOP		= 0x0200,
-	PMC_BIT_FORCED_CONTROL			= 0x0400,
-	PMC_BIT_POWER_CONTROL_LOOP		= 0x0800,
-};
-
-enum {
-	PMC_STATE_IDLE				= 0,
-	PMC_STATE_ZERO_DRIFT,
-	PMC_STATE_WAVE_HOLD,
-	PMC_STATE_WAVE_SINE,
-	PMC_STATE_CALIBRATION,
-	PMC_STATE_START,
-	PMC_STATE_STOP,
-	PMC_STATE_END
-};
-
-enum {
-	PMC_LU_DISABLED				= 0,
-	PMC_LU_LOW_REGION,
-	PMC_LU_HIGH_REGION
-};
-
-enum {
-	PMC_OK					= 0,
-	PMC_ERROR_CURRENT_SENSOR_A,
-	PMC_ERROR_CURRENT_SENSOR_B,
-	PMC_ERROR_OPEN_CIRCUIT,
-	PMC_ERROR_OVERCURRENT,
-	PMC_ERROR_LOW_VOLTAGE,
-	PMC_ERROR_HIGH_VOLTAGE,
-	PMC_ERROR_STABILITY_LOSS,
+	PM_LU_DISABLED				= 0,
+	PM_LU_OPEN_LOOP,
+	PM_LU_CLOSED_LOW,
+	PM_LU_CLOSED_HIGH,
 };
 
 typedef struct {
 
-	/* Frequency (Hz).
-	 * */
+	float		iA;
+	float		iB;
+	float		uS;
+
+	float		uA;
+	float		uB;
+	float		uC;
+
+	int		hall;
+	float		sensor;
+}
+pmfb_t;
+
+typedef struct {
+
 	float		freq_hz;
 	float		dT;
+	int		pwm_R;
+	int		pwm_MP;
 
-	/* PWM configuration.
-	 * */
-	int		pwm_resolution;
-	int		pwm_minimal_pulse;
-	int		pwm_dead_time;
+	int		error;
+	int		rc[8];
 
-	/* FSM variables.
-	 * */
-	int		m_bitmask;
-	int		m_state;
-	int		m_phase;
-	int		m_errno;
+	int		b_FORCED;
+	int		b_HFI;
+	int		b_LOOP;
 
-	/* Timer variables.
-	 * */
-	int		t_value;
-	int		t_end;
+	int		fsm_state;
+	int		fsm_phase;
+	int		fsm_phase_2;
 
-	/* Timer configuration.
-	 * */
-	float		tm_drift;
+	int		tm_value;
+	int		tm_end;
+
+	float		tm_skip;
+	float		tm_probe;
 	float		tm_hold;
-	float		tm_sine;
-	float		tm_measure;
-	float		tm_end;
 
-	/* Current feedback.
-	 * */
-	float		fb_range;
+	float		adjust_IA[2];
+	float		adjust_IB[2];
+	float		adjust_US[2];
+	float		adjust_UA[2];
+	float		adjust_UB[2];
+	float		adjust_UC[2];
+
+	float		fb_i_range;
+
 	float		fb_iA;
 	float		fb_iB;
 
-	/* Probing variables.
-	 * */
-	float		pb_i_hold;
-	float		pb_i_hold_Q;
-	float		pb_i_sine;
-	float		pb_freq_sine_hz;
-	float		pb_speed_low;
-	float		pb_speed_high;
-	float		pb_settle_threshold;
-	float		pb_gain_P;
-	float		pb_gain_I;
-	float		pb_temp[4];
-	float		pb_DFT[8];
+	float		fb_uA;
+	float		fb_uB;
+	float		fb_uC;
 
-	/* Scale constants.
-	 * */
-	float		scal_A[2];
-	float		scal_B[2];
-	float		scal_U[2];
+	float		probe_i_hold;
+	float		probe_i_hold_Q;
+	float		probe_i_sine;
+	float		probe_freq_sine_hz;
+	float		probe_speed_low;
+	float		probe_speed_high;
+	float		probe_gain_P;
+	float		probe_gain_I;
+	float		probe_DFT[8];
 
-	/* Fault limits.
-	 * */
-	float		fault_residual_maximal;
-	float		fault_residual_maximal_hold;
-	float		fault_drift_maximal;
-	float		fault_low_voltage;
-	float		fault_low_voltage_hold;
-	float		fault_high_voltage;
-	float		fault_high_voltage_hold;
+	float		temp[8];
 
-	/* Fault timers.
-	 * */
-	int		fault_residual_maximal_t;
-	int		fault_low_voltage_t;
-	int		fault_high_voltage_t;
+	float		fault_zero_drift_maximal;
+	float		fault_voltage_tolerance;
+	float		fault_current_tolerance;
+	float		fault_lu_residual_maximal;
+	float		fault_lu_drift_Q_maximal;
+	float		fault_supply_voltage_low;
+	float		fault_supply_voltage_high;
 
-	/* Actual VSI voltage.
-	 * */
 	float		vsi_X;
 	float		vsi_Y;
-	float		vsi_D;
-	float		vsi_Q;
+	float		vsi_lpf_D;
+	float		vsi_lpf_Q;
 
-	/* Luenberger observer.
-	 * */
 	int		lu_region;
 	float		lu_X[5];
+	float		lu_drift_Q;
 	int		lu_revol;
-	float		lu_gain_K[6];
-	float		lu_low_threshold;
-	float		lu_high_threshold;
-	float		lu_temp[2];
+	float		lu_gain_DA;
+	float		lu_gain_QA;
+	float		lu_gain_DP;
+	float		lu_gain_DS;
+	float		lu_gain_QS;
+	float		lu_gain_QZ;
+	float		lu_boost_slope;
+	float		lu_boost_gain;
+	float		lu_BEMF_low;
+	float		lu_BEMF_high;
+	float		lu_forced_D;
+	float		lu_forced_accel;
 
-	/* Measurement residual.
-	 * */
 	float		lu_residual_D;
 	float		lu_residual_Q;
-	float		lu_residual_variance;
+	float		lu_residual_lpf;
 
-	/* HFI observer.
-	 * */
 	float		hf_freq_hz;
 	float		hf_swing_D;
 	float		hf_flux_polarity;
 	float		hf_CS[2];
-	float		hf_gain_K[3];
-	float		hf_gain_E;
+	float		hf_gain_P;
+	float		hf_gain_S;
+	float		hf_gain_F;
 
-	/* BEMF waveform compensation.
-	 * */
-	float           bemf_DFT[64];
-	float           bemf_TEMP[32];
-	float           bemf_gain_K;
-	int		bemf_N;
-	float		bemf_D;
-	float		bemf_Q;
-
-	/* Thermal drift.
-	 * */
-	float		thermal_R;
-	float		thermal_gain_R[2];
-
-	/* Zero drift.
-	 * */
-	float		drift_A;
-	float		drift_B;
-	float		drift_Q;
-
-	/* Supply voltage.
-	 * */
-	float		const_U;
-
-	/* Electrical constants.
-	 * */
+	float		const_lpf_U;
 	float		const_E;
 	float		const_R;
 	float		const_Ld;
 	float		const_Lq;
 
-	/* Mechanical constants.
-	 * */
 	int		const_Zp;
 	float		const_J;
 
-	/* Current control loop.
-	 * */
 	float		i_maximal;
-	float		i_maximal_low;
+	float		i_maximal_weak;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -221,58 +162,34 @@ typedef struct {
 	float		i_gain_P_Q;
 	float		i_gain_I_Q;
 
-	/* Speed control loop.
-	 * */
 	float		s_maximal;
 	float		s_set_point;
 	float		s_slew_rate;
-	float		s_slew_rate_low;
-	float		s_slew_rate_forced;
-	float		s_forced_D;
 	float		s_track_point;
-	float		s_track_point_p[2];
-	float		s_nonl_X4;
-	float		s_nonl_gain_F;
-	float		s_nonl_range;
+	float		s_integral;
 	float		s_gain_P;
+	float		s_gain_I;
 
-	/* Position control loop.
-	 * */
-	float		p_set_point[2];
+	float		p_set_point_DQ[2];
 	float		p_set_point_s;
 	int		p_set_point_revol;
 	float		p_gain_P;
+	float		p_gain_I;
 
-	/* Power control loop.
-	 * */
-	float		w_set_point_watt;
-	int		w_direction;
+	float		lpf_gain_LU;
+	float		lpf_gain_VSI;
+	float		lpf_gain_U;
 
-	/* Low-pass gains.
-	 * */
-	float		lp_gain[2];
+	float		n_power_lpf;
 
-	/* Informational.
-	 * */
-	float		n_power_watt;
-	float		n_temperature_c;
-
-	/* Control interface.
-	 * */
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
 }
 pmc_t;
 
-void pmc_default(pmc_t *pm);
-void pmc_feedback(pmc_t *pm, float iA, float iB);
-void pmc_voltage(pmc_t *pm, float uS);
-void pmc_request(pmc_t *pm, int req);
-
-const char *pmc_strerror(int errno);
-
-void pmc_resistance(const float DFT[8], float *R);
-void pmc_impedance(const float DFT[8], float freq_hz, float IMP[6]);
+void pm_default(pmc_t *pm);
+void pm_vsi_control(pmc_t *pm, float uX, float uY);
+void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 #endif /* _H_PM_CONTROL_ */
 

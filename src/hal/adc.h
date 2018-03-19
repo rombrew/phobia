@@ -19,52 +19,10 @@
 #ifndef _H_ADC_
 #define _H_ADC_
 
-#define ADC_THERMAL_FREQ_HZ			10UL
+void adc_enable();
+void adc_disable();
 
-typedef struct {
-
-	/* Current sensors.
-	 * */
-	float		sensor_A;
-	float		sensor_B;
-
-	/* Supply voltage.
-	 * */
-	float		supply_U;
-
-	/* External voltage.
-	 * */
-	float		external_HVIN;
-
-	/* NTC resistor.
-	 * */
-	int		thermal_xNTC;
-
-	/* Thermal sensor.
-	 * */
-	int		thermal_xTEMP;
-}
-halADC_t;
-
-typedef struct {
-
-	float			A_1;
-	float			B_1;
-	float			U_1;
-	float			HVIN_1;
-	float			NTC[8];
-	float			TEMP_0;
-	float			TEMP_1;
-}
-halADC_CONST_t;
-
-extern halADC_t			halADC;
-extern halADC_CONST_t		halADC_CONST;
-
-void adcEnable();
-void adcDisable();
-
-extern void adcIRQ_feedback();
+extern void adc_IRQ();
 
 #endif /* _H_ADC_ */
 

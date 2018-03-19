@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_HAL_TASK_
-#define _H_HAL_TASK_
+#ifndef _H_TASK_
+#define _H_TASK_
 
 #include "lib.h"
 #include "pm_control.h"
@@ -64,5 +64,5 @@ int ts_av_float_4(float *param_0, float *param_1, float *param_2,
 		float *param_3, float *result, float time);
 float ts_av_float_arg_1(float *param, const char *s);
 
-#endif /* _H_HAL_TASK_ */
+#endif /* _H_TASK_ */
 

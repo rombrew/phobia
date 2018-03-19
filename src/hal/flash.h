@@ -19,14 +19,14 @@
 #ifndef _H_FLASH_
 #define _H_FLASH_
 
-#define FLASH_BASE_A			0x08080000
-#define FLASH_SECTOR_SIZE		0x00020000
-#define FLASH_SECTOR_MAX		4
+#define FLASH_RAM_BASE			0x08080000
+#define FLASH_RAM_SECTOR		0x00020000
+#define FLASH_RAM_SECTOR_N		4
 
-#define FLASH_END_A			(FLASH_BASE_A + FLASH_SECTOR_SIZE * FLASH_SECTOR_MAX)
+#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_SECTOR_N)
 
-void flash_erase(int N);
-void flash_write(void *d, const void *s, int sz);
+void flash_erase(int n);
+void flash_write(void *d, const void *s, unsigned long sz);
 
 #endif /* _H_FLASH_ */
 

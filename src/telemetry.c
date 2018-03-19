@@ -46,9 +46,14 @@ telemetry_t;
 
 static telemetry_t		tel;
 
-void tel_bare_enabled(int en)
+void tel_bare_enabled(int i)
 {
-	tel.enabled = en;
+	tel.enabled = i;
+}
+
+void tel_bare_decimal(int i)
+{
+	tel.decimal = i;
 }
 
 static void
@@ -59,21 +64,21 @@ tel_fifo_put()
 	m = tel.fifo[tel.fifo_N];
 	tel.fifo_N = (tel.fifo_N < (TEL_SIZE - 1)) ? tel.fifo_N + 1 : 0;
 
-	m[0] = (short int) (pm.lu_X[0] * 500.f);
-	m[1] = (short int) (pm.lu_X[1] * 500.f);
-	m[2] = (short int) (pm.lu_X[2] * 4096.f);
-	m[3] = (short int) (pm.lu_X[3] * 4096.f);
+	m[0] = (short int) (pm.lu_X[0] * 100.f);
+	m[1] = (short int) (pm.lu_X[1] * 100.f);
+	m[2] = (short int) (pm.lu_X[2] * 1000.f);
+	m[3] = (short int) (pm.lu_X[3] * 1000.f);
 	m[4] = (short int) (pm.lu_X[4] * 30.f / M_PI_F / pm.const_Zp);
 	m[5] = (short int) (pm.drift_Q * 1000.f);
 	m[6] = (short int) (pm.lu_residual_D * 1000.f);
 	m[7] = (short int) (pm.lu_residual_Q * 1000.f);
-	m[8] = (short int) (pm.fb_iA * 1000.f);
-	m[9] = (short int) (pm.fb_iB * 1000.f);
-	m[10] = (short int) (pm.const_U * 1000.f);
-	m[11] = (short int) (pm.n_power_watt * 10.f);
-	m[12] = 0;
-	m[13] = 0;
-	m[14] = 0;
+	m[8] = (short int) (pm.vsi_D * 500.f);
+	m[9] = (short int) (pm.vsi_Q * 500.f);
+	m[10] = (short int) (pm.fb_iA * 100.f);
+	m[11] = (short int) (pm.fb_iB * 100.f);
+	m[12] = (short int) (pm.const_U * 500.f);
+	m[13] = (short int) (pm.n_power_watt * 10.f);
+	m[14] = (short int) (pm.s_nonl_X4 * 30.f / M_PI_F / pm.const_Zp);
 	m[15] = 0;
 }
 
@@ -141,7 +146,7 @@ SH_DEF(tel_live)
 	enval = tel.enabled;
 	decval = tel.decimal;
 
-	min = (int) (pm.freq_hz / 50.f + .5f);
+	min = (int) (pm.freq_hz / 20.f + .5f);
 	tel.decimal = (tel.decimal < min) ? min : tel.decimal;
 	tel.fifo_N = 0;
 

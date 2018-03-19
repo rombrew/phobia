@@ -2,7 +2,7 @@
 BUILD	?= /tmp/pmc
 SCRIPT	?= flash
 TARGET	= $(BUILD)/pmc
-IMAGE	= $(TARGET).img
+IMAGE	= $(TARGET).b
 
 CROSS	?= arm-none-eabi-
 CC	= $(CROSS)gcc
@@ -47,6 +47,7 @@ OBJS	+= hal/entry.o \
 	hal/usart.o
 
 OBJS	+= ap_shell.o \
+	regfile.o \
 	config.o \
 	hal_task.o \
 	lib.o \

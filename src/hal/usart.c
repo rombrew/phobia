@@ -26,8 +26,6 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
-int 			halUSART_baudRate;
-
 typedef struct {
 
 	QueueHandle_t	xQueueRX;
@@ -65,11 +63,10 @@ void irqUSART3()
 	portYIELD_FROM_ISR(xWoken);
 }
 
-void usartEnable()
+void usart_enable()
 {
-	if (halUSART.xQueueRX != (QueueHandle_t) 0)
-		return ;
-
+	/* Alloc queues.
+	 */
 	halUSART.xQueueRX = xQueueCreate(40, sizeof(char));
 	halUSART.xQueueTX = xQueueCreate(80, sizeof(char));
 
@@ -86,7 +83,7 @@ void usartEnable()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HAL_APB1_HZ / halUSART_baudRate;
+	USART3->BRR = HAL_APB1_HZ / hal.usart_baud_rate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
@@ -98,11 +95,8 @@ void usartEnable()
 	NVIC_EnableIRQ(USART3_IRQn);
 }
 
-void usartDisable()
+void usart_disable()
 {
-	if (halUSART.xQueueRX == (QueueHandle_t) 0)
-		return ;
-
 	/* Disable IRQ.
 	 * */
 	NVIC_DisableIRQ(USART3_IRQn);
@@ -119,11 +113,10 @@ void usartDisable()
 	 * */
 	RCC->AHB1ENR &= ~RCC_APB1ENR_USART3EN;
 
-	/* Free.
+	/* Free queues.
 	 * */
 	vQueueDelete(halUSART.xQueueRX);
 	vQueueDelete(halUSART.xQueueTX);
-	halUSART.xQueueRX = (QueueHandle_t) 0;
 }
 
 int usart_getc()

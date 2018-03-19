@@ -20,27 +20,24 @@
 #include "pwm.h"
 #include "hal.h"
 
-#define HAL_TIMER_HZ		(HAL_APB2_HZ * 2UL)
-
-halPWM_t			halPWM;
+#define HAL_TIM1_HZ		(HAL_APB2_HZ * 2UL)
 
 void irqTIM1_UP_TIM10() { }
 
-void pwmEnable()
+void pwm_enable()
 {
 	int		R, D;
 
 	/* Update configuration.
 	 * */
-	R = HAL_TIMER_HZ / 2UL / halPWM.freq_hz;
+	R = HAL_TIM1_HZ / 2UL / hal.pwm_freq_hz;
 	R = (R & 1) ? R + 1 : R;
-	halPWM.freq_hz = HAL_TIMER_HZ / 2UL / R;
-	halPWM.resolution = R;
+	hal.pwm_freq_hz = HAL_TIM1_HZ / 2UL / R;
+	hal.pwm_resolution = R;
 
-	D = ((HAL_TIMER_HZ / 1000UL) * halPWM.dead_time_ns + 500000UL) / 1000000UL;
-	D = (D < 128) ? D : (D < 256) ? 128 + (D - 128) / 2 : 191;
-	halPWM.dead_time_tk = ((D < 128) ? D : (D < 192) ? 128 + (D - 128) * 2 : 255);
-	halPWM.dead_time_ns = halPWM.dead_time_tk * 1000000UL / (HAL_TIMER_HZ / 1000UL);
+	D = ((HAL_TIM1_HZ / 1000UL) * hal.pwm_dead_time_ns + 500000UL) / 1000000UL;
+	D = (D < 128) ? D : 128;
+	hal.pwm_dead_time_ns = D * 1000000UL / (HAL_TIM1_HZ / 1000UL);
 
 	/* Enable TIM1 clock.
 	 * */
@@ -97,7 +94,7 @@ void pwmEnable()
 			| GPIO_MODER_MODER15_1);
 }
 
-void pwmDisable()
+void pwm_disable()
 {
 	/* Disable pins.
 	 * */
@@ -116,43 +113,37 @@ void pwmDisable()
 	RCC->APB2ENR &= ~RCC_APB2ENR_TIM1EN;
 }
 
-void pwmDC(int uA, int uB, int uC)
+void pwm_DC(int uA, int uB, int uC)
 {
 	TIM1->CCR1 = uA;
 	TIM1->CCR2 = uB;
 	TIM1->CCR3 = uC;
 }
 
-void pwmZ(int Z)
+void pwm_Z(int xZ)
 {
-	if (Z & PWM_A) {
+	if (xZ & LEG_A) {
 
-		TIM1->CCER &= ~TIM_CCER_CC1NE;
-		TIM1->CCMR1 &= ~TIM_CCMR1_OC1M_1;
+		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
 	}
 	else {
-		TIM1->CCER |= TIM_CCER_CC1NE;
-		TIM1->CCMR1 |= TIM_CCMR1_OC1M_1;
+		TIM1->CCER |= (TIM_CCER_CC1NE | TIM_CCER_CC1E);
 	}
 
-	if (Z & PWM_B) {
+	if (uB < 0) {
 
-		TIM1->CCER &= ~TIM_CCER_CC2NE;
-		TIM1->CCMR1 &= ~TIM_CCMR1_OC2M_1;
+		TIM1->CCER &= ~(TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
 	else {
-		TIM1->CCER |= TIM_CCER_CC2NE;
-		TIM1->CCMR1 |= TIM_CCMR1_OC2M_1;
+		TIM1->CCER |= (TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
 
-	if (Z & PWM_C) {
+	if (uC < 0) {
 
-		TIM1->CCER &= ~TIM_CCER_CC3NE;
-		TIM1->CCMR2 &= ~TIM_CCMR2_OC3M_1;
+		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}
 	else {
-		TIM1->CCER |= TIM_CCER_CC3NE;
-		TIM1->CCMR2 |= TIM_CCMR2_OC3M_1;
+		TIM1->CCER |= (TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}
 
 	TIM1->EGR |= TIM_EGR_COMG;
