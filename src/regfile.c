@@ -19,20 +19,18 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
-#include "hal/pwm.h"
-#include "hal/usart.h"
 
-#include "hal_task.h"
 #include "lib.h"
+#include "main.h"
 #include "pm_control.h"
 #include "regfile.h"
 #include "shell.h"
 
-#define REG(link, unit, bits, proc)	{ #link "\0" unit, bits, { (void *) &link }, proc }
+#define REG(link, comment, bits, proc)	{ #link "\0" comment, bits, { (void *) &link }, proc }
 #define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
 
 static void
-reg_proc_default(reg_t *reg, int *lval, const int *rval)
+reg_proc_default(const reg_t *reg, int *lval, const int *rval)
 {
 	if (lval != NULL) {
 
@@ -47,155 +45,64 @@ reg_proc_default(reg_t *reg, int *lval, const int *rval)
 
 const reg_t		regfile[] = {
 
-	REG(hal.usart_baud_rate, "", REG_INT | REG_CONFIG, NULL),
-	REG(hal.pwm_freq_hz, "Hz", REG_INT | REG_CONFIG, NULL),
-	REG(hal.pwm_dead_time_ns, "ns", REG_INT | REG_CONFIG, NULL),
-	REG(ts.av_default_time, "s", REG_CONFIG | REG_F_LONG, NULL),
-	REG(pm.b_zero_drift_estimation, "", REG_INT | REG_CONFIG, NULL),
+	REG(hal.USART_baud_rate,	"",	REG_INT | REG_CONFIG, NULL),
+	REG(hal.PWM_freq_hz,		"Hz",	REG_INT | REG_CONFIG, NULL),
+	REG(hal.PWM_dead_time_ns,	"ns",	REG_INT | REG_CONFIG, NULL),
+	REG(ap.ntc_PCB.r_balance,	"Ohm",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_PCB.r_ntc_0,		"Ohm",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_PCB.ta_0,		"C",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_PCB.betta,		"",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_EXT.r_balance,	"Ohm",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_EXT.r_ntc_0,		"Ohm",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_EXT.ta_0,		"C",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(ap.ntc_EXT.betta,		"",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(pm.pwm_R,			"",	REG_INT | REG_READ_ONLY, NULL),
+	REG(pm.pwm_MP,			"",	REG_INT | REG_CONFIG, NULL),
+	REG(pm.error,			"",	REG_INT | REG_READ_ONLY, NULL),
+	REG(pm.b_FORCED,		"",	REG_INT | REG_CONFIG, NULL),
+	REG(pm.b_HFI,			"",	REG_INT | REG_CONFIG, NULL),
+	REG(pm.b_SENSOR,		"",	REG_INT | REG_CONFIG, NULL),
+	REG(pm.b_LOOP,			"",	REG_INT | REG_CONFIG, NULL),
+	REG(pm.tm_skip,			"s",	REG_CONFIG, NULL),
+	REG(pm.tm_probe,		"s",	REG_CONFIG, NULL),
+	REG(pm.tm_hold,			"s",	REG_CONFIG, NULL),
+	REG(pm.adjust_IA[0],		"A",	REG_CONFIG, NULL),
+	REG(pm.adjust_IA[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.adjust_IB[0],		"A",	REG_CONFIG, NULL),
+	REG(pm.adjust_IB[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.adjust_US[0],		"V",	REG_CONFIG, NULL),
+	REG(pm.adjust_US[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.adjust_UA[0],		"V",	REG_CONFIG, NULL),
+	REG(pm.adjust_UA[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.adjust_UB[0],		"V",	REG_CONFIG, NULL),
+	REG(pm.adjust_UB[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.adjust_UC[0],		"V",	REG_CONFIG, NULL),
+	REG(pm.adjust_UC[1],		"",	REG_F_EXP | REG_CONFIG, NULL),
+	REG(pm.fb_i_range,		"A",	REG_CONFIG, NULL),
+	REG(pm.fb_iA,			"A",	REG_READ_ONLY, NULL),
+	REG(pm.fb_iB,			"A",	REG_READ_ONLY, NULL),
+	REG(pm.fb_uA,			"V",	REG_READ_ONLY, NULL),
+	REG(pm.fb_uB,			"V",	REG_READ_ONLY, NULL),
+	REG(pm.fb_uC,			"V",	REG_READ_ONLY, NULL),
+	REG(pm.probe_i_hold,		"A",	REG_CONFIG, NULL),
+	REG(pm.probe_i_hold_Q,		"A",	REG_CONFIG, NULL),
+	REG(pm.probe_i_sine,		"A",	REG_CONFIG, NULL),
+	REG(pm.probe_freq_sine_hz,	"Hz",	REG_CONFIG, NULL),
+	REG(pm.probe_gain_P,		"",	REG_F_EXP | REG_F_SHORT | REG_CONFIG, NULL),
+	REG(pm.probe_gain_I,		"",	REG_F_EXP | REG_F_SHORT | REG_CONFIG, NULL),
+	REG(pm.fault_zero_drift_maximal,	"A",	REG_CONFIG, NULL),
+	REG(pm.fault_voltage_tolerance,		"V",	REG_CONFIG, NULL),
+	REG(pm.fault_current_tolerance,		"A",	REG_CONFIG, NULL),
+	REG(pm.fault_adjust_tolerance,		"",	REG_F_EXP | REG_F_SHORT | REG_CONFIG, NULL),
+	REG(pm.fault_lu_residual_maximal,	"A",	REG_F_SHORT | REG_CONFIG, NULL),
+	REG(pm.fault_lu_drift_Q_maximal,	"V",	REG_CONFIG, NULL),
+	REG(pm.fault_supply_voltage_low,	"V",	REG_CONFIG, NULL),
+	REG(pm.fault_supply_voltage_high,	"V",	REG_CONFIG, NULL),
+	REG(pm.vsi_lpf_D,		"V",	REG_READ_ONLY, NULL),
+	REG(pm.vsi_lpf_Q,		"V",	REG_READ_ONLY, NULL),
+	REG(pm.lu_power_lpf,		"W",	REG_F_SHORT | REG_READ_ONLY, NULL),
+	REG(pm.lu_residual_D,		"A",	REG_READ_ONLY, NULL),
 
-	/*
-	(void *) &pm.m_bitmask,
-	(void *) &pm.tm_drift,
-	(void *) &pm.tm_hold,
-	(void *) &pm.tm_sine,
-	(void *) &pm.tm_measure,
-	(void *) &pm.tm_end,
-	(void *) &pm.fb_range,
-	(void *) &pm.pb_i_hold,
-	(void *) &pm.pb_i_hold_Q,
-	(void *) &pm.pb_i_sine,
-	(void *) &pm.pb_freq_sine_hz,
-	(void *) &pm.pb_speed_low,
-	(void *) &pm.pb_speed_high,
-	(void *) &pm.pb_settle_threshold,
-	(void *) &pm.pb_gain_P,
-	(void *) &pm.pb_gain_I,
-	(void *) &pm.scal_A_0,
-	(void *) &pm.scal_A_1,
-	(void *) &pm.scal_B_0,
-	(void *) &pm.scal_B_1,
-	(void *) &pm.scal_U_0,
-	(void *) &pm.scal_U_1,
-	(void *) &pm.fault_residual_maximal,
-	(void *) &pm.fault_residual_maximal_hold,
-	(void *) &pm.fault_drift_maximal,
-	(void *) &pm.fault_low_voltage,
-	(void *) &pm.fault_low_voltage_hold,
-	(void *) &pm.fault_high_voltage,
-	(void *) &pm.fault_high_voltage_hold,
-	(void *) &pm.lu_gain_DA,
-	(void *) &pm.lu_gain_QA,
-	(void *) &pm.lu_gain_DP,
-	(void *) &pm.lu_gain_DS,
-	(void *) &pm.lu_gain_QS,
-	(void *) &pm.lu_gain_QZ,
-	(void *) &pm.lu_boost_slope,
-	(void *) &pm.lu_boost_gain,
-	(void *) &pm.lu_threshold_low,
-	(void *) &pm.lu_threshold_high,
-	(void *) &pm.hf_freq_hz,
-	(void *) &pm.hf_swing_D,
-	(void *) &pm.hf_gain_P,
-	(void *) &pm.hf_gain_S,
-	(void *) &pm.hf_gain_F,
-	(void *) &pm.bemf_DFT[0],
-	(void *) &pm.bemf_DFT[1],
-	(void *) &pm.bemf_DFT[2],
-	(void *) &pm.bemf_DFT[3],
-	(void *) &pm.bemf_DFT[4],
-	(void *) &pm.bemf_DFT[5],
-	(void *) &pm.bemf_DFT[6],
-	(void *) &pm.bemf_DFT[7],
-	(void *) &pm.bemf_DFT[8],
-	(void *) &pm.bemf_DFT[9],
-	(void *) &pm.bemf_DFT[10],
-	(void *) &pm.bemf_DFT[11],
-	(void *) &pm.bemf_DFT[12],
-	(void *) &pm.bemf_DFT[13],
-	(void *) &pm.bemf_DFT[14],
-	(void *) &pm.bemf_DFT[15],
-	(void *) &pm.bemf_DFT[16],
-	(void *) &pm.bemf_DFT[17],
-	(void *) &pm.bemf_DFT[18],
-	(void *) &pm.bemf_DFT[19],
-	(void *) &pm.bemf_DFT[20],
-	(void *) &pm.bemf_DFT[21],
-	(void *) &pm.bemf_DFT[22],
-	(void *) &pm.bemf_DFT[23],
-	(void *) &pm.bemf_DFT[24],
-	(void *) &pm.bemf_DFT[25],
-	(void *) &pm.bemf_DFT[26],
-	(void *) &pm.bemf_DFT[27],
-	(void *) &pm.bemf_DFT[28],
-	(void *) &pm.bemf_DFT[29],
-	(void *) &pm.bemf_DFT[30],
-	(void *) &pm.bemf_DFT[31],
-	(void *) &pm.bemf_DFT[32],
-	(void *) &pm.bemf_DFT[33],
-	(void *) &pm.bemf_DFT[34],
-	(void *) &pm.bemf_DFT[35],
-	(void *) &pm.bemf_DFT[36],
-	(void *) &pm.bemf_DFT[37],
-	(void *) &pm.bemf_DFT[38],
-	(void *) &pm.bemf_DFT[39],
-	(void *) &pm.bemf_DFT[40],
-	(void *) &pm.bemf_DFT[41],
-	(void *) &pm.bemf_DFT[42],
-	(void *) &pm.bemf_DFT[43],
-	(void *) &pm.bemf_DFT[44],
-	(void *) &pm.bemf_DFT[45],
-	(void *) &pm.bemf_DFT[46],
-	(void *) &pm.bemf_DFT[47],
-	(void *) &pm.bemf_DFT[48],
-	(void *) &pm.bemf_DFT[49],
-	(void *) &pm.bemf_DFT[50],
-	(void *) &pm.bemf_DFT[51],
-	(void *) &pm.bemf_DFT[52],
-	(void *) &pm.bemf_DFT[53],
-	(void *) &pm.bemf_DFT[54],
-	(void *) &pm.bemf_DFT[55],
-	(void *) &pm.bemf_DFT[56],
-	(void *) &pm.bemf_DFT[57],
-	(void *) &pm.bemf_DFT[58],
-	(void *) &pm.bemf_DFT[59],
-	(void *) &pm.bemf_DFT[60],
-	(void *) &pm.bemf_DFT[61],
-	(void *) &pm.bemf_DFT[62],
-	(void *) &pm.bemf_DFT[63],
-	(void *) &pm.bemf_gain_D,
-	(void *) &pm.bemf_gain_Q,
-	(void *) &pm.bemf_N,
-	(void *) &pm.const_lpf_U,
-	(void *) &pm.const_E,
-	(void *) &pm.const_R,
-	(void *) &pm.const_Ld,
-	(void *) &pm.const_Lq,
-	(void *) &pm.const_Zp,
-	(void *) &pm.const_J,
-	(void *) &pm.i_maximal,
-	(void *) &pm.i_maximal_low,
-	(void *) &pm.i_power_consumption_maximal,
-	(void *) &pm.i_power_regeneration_maximal,
-	(void *) &pm.i_slew_rate_D,
-	(void *) &pm.i_slew_rate_Q,
-	(void *) &pm.i_gain_P_D,
-	(void *) &pm.i_gain_I_D,
-	(void *) &pm.i_gain_P_Q,
-	(void *) &pm.i_gain_I_Q,
-	(void *) &pm.s_maximal,
-	(void *) &pm.s_slew_rate,
-	(void *) &pm.s_slew_rate_forced,
-	(void *) &pm.s_forced_D,
-	(void *) &pm.s_nonl_gain_F,
-	(void *) &pm.s_nonl_range,
-	(void *) &pm.s_gain_P,
-	(void *) &pm.s_gain_I,
-	(void *) &pm.p_gain_P,
-	(void *) &pm.lp_gain_0,
-	(void *) &pm.lp_gain_1,
-	(void *) &pm.lp_gain_2,
-	(void *) &pm.lp_gain_3,
-	*/
 
 	{ NULL, 0, { NULL }, NULL }
 };
@@ -213,7 +120,7 @@ reg_getval(const reg_t *reg, void *lval)
 }
 
 static void
-reg_setval(reg_t *reg, const void *rval)
+reg_setval(const reg_t *reg, const void *rval)
 {
 	if ((reg->bits & REG_READ_ONLY) == 0) {
 
@@ -227,18 +134,27 @@ reg_setval(reg_t *reg, const void *rval)
 	}
 }
 
-static void
-reg_printout(const reg_t *reg)
+void reg_GET(int n, void *lval)
+{
+	if (n >= 0 && n < REG_MAX) {
+
+		reg_getval(regfile + n, lval);
+	}
+}
+
+void reg_SET(int n, const void *rval)
+{
+	if (n >= 0 && n < REG_MAX) {
+
+		reg_setval(regfile + n, rval);
+	}
+}
+
+void reg_print_fmt(const reg_t *reg)
 {
 	const char		*fmt;
 	float			f;
 	int			n;
-
-	printf("%s%s%s [%i] %s = ",
-			(reg->bits & REG_INT) ? "I" : "F",
-			(reg->bits & REG_CONFIG) ? "C" : " ",
-			(reg->bits & REG_READ_ONLY) ? "R" : " ",
-			reg - regfile, reg->sym);
 
 	if (reg->bits & REG_INT) {
 
@@ -251,75 +167,101 @@ reg_printout(const reg_t *reg)
 	else {
 		reg_getval(reg, &f);
 
-		if (reg->bits & REG_F_EXP) {
-
-			fmt = (reg->bits & REG_F_LONG) ? "%4e" : "%2e";
-		}
-		else {
-			fmt = (reg->bits & REG_F_LONG) ? "%3f" : "%1f";
-		}
+		fmt = (reg->bits & REG_F_EXP) ?
+			(reg->bits & REG_F_SHORT) ? "%2e" : "%4e" :
+			(reg->bits & REG_F_SHORT) ? "%1f" : "%3f" ;
 
 		printf(fmt, &f);
 	}
-
-	fmt = reg->sym + strlen(reg->sym) + 1;
-
-	if (*fmt != 0) {
-
-		printf(" (%s)", fmt);
-	}
-
-	puts(EOL);
 }
 
 SH_DEF(reg_list)
 {
 	const reg_t		*reg;
+	const char		*comment;
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
 
 		if (strstr(reg->sym, s) != NULL) {
 
-			reg_printout(reg);
+			printf("%s%s%s [%i] %s = ",
+					(reg->bits & REG_INT) ? "I" : "F",
+					(reg->bits & REG_CONFIG) ? "C" : ".",
+					(reg->bits & REG_READ_ONLY) ? "R" : ".",
+					(int) (reg - regfile), reg->sym);
+
+			reg_print_fmt(reg);
+
+			comment = reg->sym + strlen(reg->sym) + 1;
+
+			if (*comment != 0) {
+
+				printf(" (%s)", comment);
+			}
+
+			puts(EOL);
 		}
 	}
 }
 
 SH_DEF(reg_set)
 {
-	const reg_t		*reg;
+	const reg_t		*reg = NULL;
 	float			f;
 	int			n;
 
 	if (stoi(&n, s) != NULL) {
 
-		if (n >= 0 && n < REG_MAX) {
-
+		if (n >= 0 && n < REG_MAX)
 			reg = regfile + n;
-			s = strtok(s, " ");
+	}
+	else {
+		for (reg = regfile; reg->sym != NULL; ++reg) {
 
-			if (reg->bits & REG_INT) {
-
-				if (stoi(&n, s) != NULL) {
-
-					reg_setval(reg, &n);
-				}
-			}
-			else {
-				if (stof(&f, s) != NULL) {
-
-					reg_setval(reg, &f);
-				}
-			}
-
-			reg_printout(reg);
+			if (strcmp(reg->sym, s) == 0)
+				break;
 		}
+
+		if (reg->sym == NULL)
+			reg = NULL;
+	}
+
+	if (reg != NULL) {
+
+		s = strtok(s, " ");
+
+		if (reg->bits & REG_INT) {
+
+			if (stoi(&n, s) != NULL) {
+
+				reg_setval(reg, &n);
+			}
+		}
+		else {
+			if (stof(&f, s) != NULL) {
+
+				reg_setval(reg, &f);
+			}
+		}
+
+		reg_print_fmt(reg);
+		puts(EOL);
 	}
 }
 
-SH_DEF(reg_import)
+SH_DEF(reg_export)
 {
 	const reg_t		*reg;
 
+	for (reg = regfile; reg->sym != NULL; ++reg) {
+
+		if (reg->bits & REG_CONFIG) {
+
+			printf("reg_set %s ", reg->sym);
+
+			reg_print_fmt(reg);
+			puts(EOL);
+		}
+	}
 }
 

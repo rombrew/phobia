@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,17 +16,19 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_FLASH_
-#define _H_FLASH_
+#ifndef _H_NTC_
+#define _H_NTC_
 
-#define FLASH_RAM_BASE			0x08080000
-#define FLASH_RAM_SECTOR		0x00020000
-#define FLASH_RAM_SECTOR_N		4
+typedef struct {
 
-#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_SECTOR_N)
+	float		r_balance;
+	float		r_ntc_0;
+	float		ta_0;
+	float		betta;
+}
+ntc_t;
 
-void FLASH_erase(int n);
-void FLASH_write(void *d, const void *s, unsigned long sz);
+float ntc_temperature(ntc_t *ntc, float u);
 
-#endif /* _H_FLASH_ */
+#endif /* _H_NTC_ */
 

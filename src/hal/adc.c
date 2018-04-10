@@ -17,26 +17,34 @@
 */
 
 #include "cmsis/stm32f4xx.h"
-#include "adc.h"
 #include "hal.h"
 
-#define	ADC_REFERENCE_VOLTAGE			3.3
-#define ADC_RESOLUTION				4096
-#define ADC_CURRENT_SHUNT_RESISTANCE		5E-3
-#define ADC_AMPLIFIER_GAIN			60
+typedef struct {
 
-#define ADC_THERMAL_FREQ_HZ			10
+	int		channel_sel;
+}
+HAL_ADC_t;
+
+static HAL_ADC_t		hal_ADC;
 
 void irqADC()
 {
-	float			fc;
+	unsigned long		CH;
+	float			fadc;
+	int			adc;
 
 	if (ADC1->SR & ADC_SR_JEOC) {
 
 		ADC1->SR &= ~ADC_SR_JEOC;
 
-		halADC.thermal_xNTC = ADC1->JDR1;
-		halADC.thermal_xTEMP = ADC1->JDR2;
+		adc = (int) ADC1->JDR1;
+		hal.ADC_thermal_PCB_NTC = (float) (adc) * hal.ADC_const.NTC;
+
+		adc = (int) ADC1->JDR2;
+		hal.ADC_thermal_EXT_NTC = (float) (adc) * hal.ADC_const.NTC;
+
+		fadc = (float) ADC1->JDR3;
+		hal.ADC_thermal_TEMP = hal.ADC_const.TEMP[1] * fadc + hal.ADC_const.TEMP[0];
 	}
 
 	if (ADC2->SR & ADC_SR_JEOC) {
@@ -44,48 +52,65 @@ void irqADC()
 		ADC2->SR &= ~ADC_SR_JEOC;
 		ADC3->SR &= ~ADC_SR_JEOC;
 
-		fc = (float) ((int) ADC2->JDR1 - 2048);
-		hal.adc_current_A = fc * hal.adc_const.GA;
+		adc = (int) ADC2->JDR1;
+		hal.ADC_current_A = (float) (adc - 2048) * hal.ADC_const.GA;
 
-		fc = (float) ((int) ADC2->JDR2);
-		hal.adc_voltage_U = fc * hal.adc_const.GV;
+		adc = (int) ADC2->JDR2;
+		hal.ADC_voltage_U = (float) (adc) * hal.ADC_const.GU;
 
-		fc = (float) ((int) ADC3->JDR1 - 2048);
-		hal.adc_current_B = fc * hal.adc_const.GA;
+		adc = (int) ADC3->JDR1;
+		hal.ADC_current_B = (float) (adc - 2048) * hal.ADC_const.GA;
 
-		fc = (float) ((int) ADC3->JDR2);
-		hal.adc_voltage_A = fc * hal.adc_const.GV;
+		adc = (int) ADC2->JDR2;
+		fadc = (float) (adc) * hal.ADC_const.GU;
 
-		adc_IRQ();
+		switch (hal_ADC.channel_sel) {
+
+			case 0:
+				CH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B);
+				hal.ADC_voltage_A = fadc;
+				hal_ADC.channel_sel = 1;
+				break;
+
+			case 1:
+				CH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C);
+				hal.ADC_voltage_B = fadc;
+				hal_ADC.channel_sel = 2;
+				break;
+
+			case 2:
+				CH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A);
+				hal.ADC_voltage_C = fadc;
+				hal_ADC.channel_sel = 0;
+				break;
+
+			default:
+				hal_ADC.channel_sel = 0;
+				break;
+		}
+
+		MODIFY_REG(ADC3->JSQR, 0x1F << 15, CH << 15);
+
+		ADC_IRQ();
 	}
 }
 
 static void
-adc_const_setup()
+ADC_const_setup()
 {
 	unsigned short		*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
 	unsigned short		*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
 
-	hal.adc_const.GA = ADC_REFERENCE_VOLTAGE
-		/ (double) ADC_RESOLUTION
-		/ (double) ADC_CURRENT_SHUNT_RESISTANCE
-		/ (double) ADC_AMPLIFIER_GAIN;
+	hal.ADC_const.GA = hal.ADC_reference_voltage / (float) hal.ADC_resolution
+		/ hal.ADC_current_shunt_resistance / hal.ADC_amplifier_gain;
 
-	hal.adc_const.GV = ADC_REFERENCE_VOLTAGE
-		/ (double) ADC_RESOLUTION;
+	hal.ADC_const.GU = hal.ADC_reference_voltage / (float) hal.ADC_resolution
+		/ hal.ADC_voltage_divider_gain;
 
-		1.4830E-2f;
+	hal.ADC_const.NTC = 1.f / (float) hal.ADC_resolution;
 
-	/* NTC PN: EWTF05-103H3I-N
-	 * */
-	hal.adc_const.NTC = {
-		-6.3691189E-9f,
-		4.4011365E-5f,
-		-1.2073269E-1f,
-		1.4068824E+2f},
-
-	hal.adc_const.TEMP[1] = (30.f - 110.f) / (float) (*CAL_TEMP_30 - *CAL_TEMP_110);
-	hal.adc_const.TEMP[0] = 110.f - hal.adc_const.TEMP[1] * (float) (*CAL_TEMP_110);
+	hal.ADC_const.TEMP[1] = (30.f - 110.f) / (float) (*CAL_TEMP_30 - *CAL_TEMP_110);
+	hal.ADC_const.TEMP[0] = 110.f - hal.ADC_const.TEMP[1] * (float) (*CAL_TEMP_110);
 }
 
 static void
@@ -95,13 +120,13 @@ tim2_enable()
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 
-	/* Configure TIM2.
+	/* Configure TIM2 (1 Hz).
 	 * */
 	TIM2->CR1 = TIM_CR1_ARPE;
 	TIM2->CR2 = TIM_CR2_MMS_1;
 	TIM2->CNT = 0;
-	TIM2->PSC = 999UL;
-	TIM2->ARR = HAL_APB1_HZ * 2UL / 1000UL / ADC_THERMAL_FREQ_HZ;
+	TIM2->PSC = 9999UL;
+	TIM2->ARR = HAL_APB1_HZ * 2UL / 10000UL;
 	TIM2->RCR = 0;
 
 	/* Start TIM2.
@@ -122,59 +147,61 @@ tim2_disable()
 	RCC->APB1ENR &= ~RCC_APB1ENR_TIM2EN;
 }
 
-
-void adc_enable()
+void ADC_enable()
 {
 	/* Enable ADC clock.
 	 * */
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN | RCC_APB2ENR_ADC3EN;
 
-	/* Enable analog PA0 PA1 PA2 PC2 PC3 pins.
+	/* Enable analog GPIO.
 	 * */
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER0 | GPIO_MODER_MODER1
-			| GPIO_MODER_MODER2,
-			GPIO_MODER_MODER0_0 | GPIO_MODER_MODER0_1
-			| GPIO_MODER_MODER1_0 | GPIO_MODER_MODER1_1
-			| GPIO_MODER_MODER2_0 | GPIO_MODER_MODER2_1);
-	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER2 | GPIO_MODER_MODER3,
-			GPIO_MODER_MODER2_0 | GPIO_MODER_MODER2_1
-			| GPIO_MODER_MODER3_0 | GPIO_MODER_MODER3_1);
+	GPIO_set_mode_ANALOG(GPIO_ADC_CURRENT_A);
+	GPIO_set_mode_ANALOG(GPIO_ADC_CURRENT_B);
+	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_U);
+	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_A);
+	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_B);
+	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_C);
+	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
+	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
 
-	/* Common configuration (clock = 21 MHz).
+	/* Common configuration (21 MHz).
 	 * */
 	ADC->CCR = ADC_CCR_TSVREFE | ADC_CCR_ADCPRE_0;
 
-	/* Configure ADC1 on PC2-IN12 (thermal_NTC) IN16 (thermal_TEMP).
+	/* Configure ADC1.
 	 * */
 	ADC1->CR1 = ADC_CR1_SCAN;
 	ADC1->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_1 | ADC_CR2_JEXTSEL_0;
-	ADC1->SMPR1 = ADC_SMPR1_SMP16_2 | ADC_SMPR1_SMP16_1
-		| ADC_SMPR1_SMP16_0 | ADC_SMPR1_SMP12_2
-		| ADC_SMPR1_SMP12_1 | ADC_SMPR1_SMP12_0;
-	ADC1->SMPR2 = 0;
-	ADC1->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ3_3 | ADC_JSQR_JSQ3_2
-		| ADC_JSQR_JSQ4_4;
+	ADC1->SMPR1 = 0x07FFFFFF;
+	ADC1->SMPR2 = 0x3FFFFFFF;
+	ADC1->JSQR = ADC_JSQR_JL_1
+		| (XGPIO_GET_CH(GPIO_ADC_PCB_NTC) << 5)
+		| (XGPIO_GET_CH(GPIO_ADC_EXT_NTC) << 10)
+		| (16UL << 15);
 
-	/* Configure ADC2 on PC3-IN13 (sensor_A) PA2-IN2 (supply_U).
+	/* Configure ADC2.
 	 * */
 	ADC2->CR1 = ADC_CR1_SCAN | ADC_CR1_JEOCIE;
 	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC2->SMPR1 = 0;
 	ADC2->SMPR2 = 0;
-	ADC2->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ3_3 | ADC_JSQR_JSQ3_2
-		| ADC_JSQR_JSQ3_0 | ADC_JSQR_JSQ4_1;
+	ADC2->JSQR = ADC_JSQR_JL_0
+		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 10)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 15);
 
-	/* Configure ADC3 on PA1-IN1 (sensor_B) PA0-IN0 (external_HVIN).
+	/* Configure ADC3.
 	 * */
 	ADC3->CR1 = ADC_CR1_SCAN;
 	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC3->SMPR1 = 0;
 	ADC3->SMPR2 = 0;
-	ADC3->JSQR = ADC_JSQR_JL_0 | ADC_JSQR_JSQ3_0;
+	ADC3->JSQR = ADC_JSQR_JL_0
+		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 10)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 15);
 
 	/* Update CONST.
 	 * */
-	adc_const_setup();
+	ADC_const_setup();
 
 	/* Enable ADC.
 	 * */
@@ -182,7 +209,7 @@ void adc_enable()
 	ADC2->CR2 |= ADC_CR2_ADON;
 	ADC3->CR2 |= ADC_CR2_ADON;
 
-	/* Enable thermal trigger.
+	/* Enable TIM2.
 	 * */
 	tim2_enable();
 
@@ -192,21 +219,26 @@ void adc_enable()
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 
-void adc_disable()
+void ADC_disable()
 {
 	/* Disable IRQ.
 	 * */
 	NVIC_DisableIRQ(ADC_IRQn);
 
-	/* Disable thermal trigger.
+	/* Disable TIM2.
 	 * */
 	tim2_disable();
 
-	/* Disable PA0 PA1 PA2 PC2 PC3 pins.
+	/* Disable GPIO.
 	 * */
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER0 | GPIO_MODER_MODER1
-			| GPIO_MODER_MODER2, 0);
-	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER2 | GPIO_MODER_MODER3, 0);
+	GPIO_set_mode_INPUT(GPIO_ADC_CURRENT_A);
+	GPIO_set_mode_INPUT(GPIO_ADC_CURRENT_B);
+	GPIO_set_mode_INPUT(GPIO_ADC_VOLTAGE_U);
+	GPIO_set_mode_INPUT(GPIO_ADC_VOLTAGE_A);
+	GPIO_set_mode_INPUT(GPIO_ADC_VOLTAGE_B);
+	GPIO_set_mode_INPUT(GPIO_ADC_VOLTAGE_C);
+	GPIO_set_mode_INPUT(GPIO_ADC_PCB_NTC);
+	GPIO_set_mode_INPUT(GPIO_ADC_EXT_NTC);
 
 	/* Disable ADC.
 	 * */

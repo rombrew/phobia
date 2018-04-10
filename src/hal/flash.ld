@@ -6,13 +6,13 @@ MEMORY
 	FLASH (rx)	: ORIGIN = 0x08000000, LENGTH = 1024K
 }
 
-ldStack = 0x10000000 + 64K;
+ld_Stack = 0x10000000 + 64K;
 
 SECTIONS
 {
 	.text : ALIGN(4)
 	{
-		ldSvectors = . ;
+		ld_Svectors = . ;
 
 		KEEP(*(.vectors))
 		. = ALIGN(4);
@@ -23,44 +23,44 @@ SECTIONS
 		*(.rodata.*)
 
 		. = ALIGN(4);
-		ldEtext = . ;
+		ld_Etext = . ;
 
 	} > FLASH
 
-	.data : AT (ldEtext) ALIGN(4)
+	.data : AT (ld_Etext) ALIGN(4)
 	{
-		ldSdata = . ;
+		ld_Sdata = . ;
 
 		*(.data)
 		*(.data.*)
 
 		. = ALIGN(4);
-		ldEdata = . ;
+		ld_Edata = . ;
 
 	} > RAM
 
 	.bss : ALIGN(4)
 	{
-		ldSbss = . ;
+		ld_Sbss = . ;
 
 		*(.bss)
 		*(.bss.*)
 		*(COMMON)
 
 		. = ALIGN(4);
-		ldEbss = . ;
+		ld_Ebss = . ;
 
 	} > RAM
 
 	.ccm : ALIGN(4)
 	{
-		ldSccm = . ;
+		ld_Sccm = . ;
 
 		*(.ccm)
 		*(.ccm.*)
 
 		. = ALIGN(4);
-		ldEccm = . ;
+		ld_Eccm = . ;
 
 	} > CCM
 }

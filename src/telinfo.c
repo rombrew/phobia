@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,17 +16,44 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_FLASH_
-#define _H_FLASH_
+#include <stddef.h>
 
-#define FLASH_RAM_BASE			0x08080000
-#define FLASH_RAM_SECTOR		0x00020000
-#define FLASH_RAM_SECTOR_N		4
+#include "freertos/FreeRTOS.h"
 
-#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_SECTOR_N)
+#include "lib.h"
+#include "main.h"
+#include "shell.h"
+#include "telinfo.h"
 
-void FLASH_erase(int n);
-void FLASH_write(void *d, const void *s, unsigned long sz);
+void telinfo_default(telinfo_t *ti)
+{
+	ti->in[0] = &regfile[5];
+	ti->in[1] = &regfile[5];
+}
 
-#endif /* _H_FLASH_ */
+void telinfo_capture(telinfo_t *ti)
+{
+	const reg_t		*reg;
+	int			j;
+
+	ti->i = (ti->en != 0) ? ti->i + 1 : 0;
+
+	if (ti->i >= ti->d) {
+
+		ti->i = 0;
+
+		for (j = 0; j < TEL_INPUT_MAX; ++j) {
+
+			reg = ti->in[j];
+			ti->data[ti->n][j] = (reg != NULL) ?
+				* (unsigned long *) reg->link.i : 0;
+		}
+
+		ti->n = (ti->n < (TEL_DATA_MAX - 1)) ? ti->n + 1 : 0;
+	}
+}
+
+SH_DEF(ti_flush)
+{
+}
 

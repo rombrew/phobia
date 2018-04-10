@@ -35,6 +35,7 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_skip;
 
+			pm->error = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
@@ -68,8 +69,6 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 				pm->error = PM_ERROR_ZERO_DRIFT_FAULT;
 			else if (fabsf(pm->adjust_IB[0]) > pm->fault_zero_drift_maximal) 
 				pm->error = PM_ERROR_ZERO_DRIFT_FAULT;
-			else
-				pm->error = PM_OK;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -237,7 +236,7 @@ pm_fsm_state_power_stage_test(pmc_t *pm)
 static void
 pm_fsm_state_adjust_current(pmc_t *pm)
 {
-	float			eA, uX, gain;
+	float			eA, uX, mean;
 	float			uMAX;
 
 	switch (pm->fsm_phase) {
@@ -251,16 +250,17 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->temp[2] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_probe;
+			pm->tm_end = pm->freq_hz * pm->tm_skip;
 
 			pm->error = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
-		case 1:
+		case 2:
 			pm->temp[1] += pm->fb_iA;
 			pm->temp[2] += - pm->fb_iB;
 
+		case 1:
 			eA = pm->probe_i_hold - pm->fb_iA;
 			pm->temp[0] += pm->probe_gain_I * eA;
 			uX = pm->probe_gain_P * eA + pm->temp[0];
@@ -278,23 +278,27 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			pm->tm_value++;
 
-			if (pm->tm_value >= pm->tm_end)
-				pm->fsm_phase = 2;
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->tm_value = 0;
+				pm->tm_end = pm->freq_hz * pm->tm_probe;
+
+				pm->fsm_phase += 1;
+			}
 			break;
 
-		case 2:
+		case 3:
 			pm->temp[1] /= pm->tm_end;
 			pm->temp[2] /= pm->tm_end;
 
-			gain = sqrtf(pm->temp[2] / pm->temp[1]);
+			mean = (pm->temp[2] + pm->temp[1]) / 2.f;
+			pm->adjust_IA[1] *= mean / pm->temp[1];
+			pm->adjust_IB[1] *= mean / pm->temp[2];
 
-			if (fabsf(1.f - gain) < 2E-2f) {
-
-				pm->adjust_IA[1] = gain;
-				pm->adjust_IB[1] = 1.f / gain;
-			}
-			else {
-			}
+			if (fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance)
+				pm->error = PM_ERROR_ADJUST_TOLERANCE_FAULT;
+			else if (fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance)
+				pm->error = PM_ERROR_ADJUST_TOLERANCE_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -323,7 +327,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->temp[1] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_hold;
 
 			pm->error = PM_OK;
 			pm->fsm_phase = 1;
@@ -363,7 +367,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->tm_value = 0;
-				pm->tm_end = pm->freq_hz * pm->tm_hold;
+				pm->tm_end = pm->freq_hz * pm->tm_probe;
 
 				pm->fsm_phase += 1;
 			}
@@ -563,6 +567,56 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 }
 
 static void
+pm_fsm_state_probe_const_e(pmc_t *pm)
+{
+	switch (pm->fsm_phase) {
+
+		case 0:
+			pm->temp[0] = 0.f;
+			pm->temp[1] = 0.f;
+
+			pm->tm_value = 0;
+			pm->tm_end = pm->freq_hz * pm->tm_probe;
+
+			pm->fsm_phase = 1;
+			break;
+
+		case 1:
+			pm->temp[0] += pm->lu_X[4];
+			pm->temp[1] += pm->lu_drift_Q;
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end)
+				pm->fsm_phase = 2;
+			break;
+
+		case 2:
+			pm->const_E += - pm->temp[1] / pm->temp[0];
+
+			pm->fsm_state = PM_STATE_IDLE;
+			pm->fsm_phase = 0;
+			break;
+	}
+}
+
+static void
+pm_fsm_state_probe_const_j(pmc_t *pm)
+{
+	switch (pm->fsm_phase) {
+
+		case 0:
+			break;
+
+		case 3:
+			/*J0 = pm->const_E * (X1 * pm->tm_probe)
+				* 1.5f * (pm->const_Zp * pm->const_Zp)
+				* pm->dT / (X41 - X40);*/
+			break;
+	}
+}
+
+static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -628,6 +682,14 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_lu_shutdown(pm);
 			break;
 
+		case PM_STATE_PROBE_CONST_E:
+			pm_fsm_state_probe_const_e(pm);
+			break;
+
+		case PM_STATE_PROBE_CONST_J:
+			pm_fsm_state_probe_const_j(pm);
+			break;
+
 		case PM_STATE_HALT:
 		default:
 			pm_fsm_state_halt(pm);
@@ -665,6 +727,16 @@ void pm_fsm_req(pmc_t *pm, int req)
 			pm->fsm_phase = 0;
 			break;
 
+		case PM_STATE_PROBE_CONST_E:
+		case PM_STATE_PROBE_CONST_J:
+
+			if (pm->lu_region != PM_LU_CLOSED_HIGH)
+				break;
+
+			pm->fsm_state = req;
+			pm->fsm_phase = 0;
+			break;
+
 		case PM_STATE_HALT:
 
 			pm->fsm_state = req;
@@ -686,9 +758,12 @@ const char *pm_strerror(int error)
 		"Power Stage Fault",
 		"Current Loop Fault",
 		"Over Current",
+		"Adjust Tolerance Fault",
 		"Supply Voltage LOW",
 		"Supply Voltage HIGH",
-		"LU Residual Unstable"
+		"LU Residual Unstable",
+		"LU Speed HIGH",
+		"LU Drift HIGH"
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);

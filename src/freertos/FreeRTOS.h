@@ -1061,3 +1061,5 @@ typedef struct xSTATIC_TIMER
 
 #endif /* INC_FREERTOS_H */
 
+#include "utility.h"
+

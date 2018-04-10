@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,17 +16,41 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_FLASH_
-#define _H_FLASH_
+#include "ntc.h"
 
-#define FLASH_RAM_BASE			0x08080000
-#define FLASH_RAM_SECTOR		0x00020000
-#define FLASH_RAM_SECTOR_N		4
+#define M_LOG2F		0.69314718f
 
-#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_SECTOR_N)
+static float
+fastlog2f(float x)
+{
+	union {
+		float		f;
+		unsigned long	i;
+	}
+	u = { x }, m;
 
-void FLASH_erase(int n);
-void FLASH_write(void *d, const void *s, unsigned long sz);
+	float			y;
 
-#endif /* _H_FLASH_ */
+	y = (float) u.i * (1.f / (1UL << 23)) - 127.f;
+
+	if (1) {
+
+		m.i = (u.i & 0x7FFFFF) | (0x7F << 23);
+		y += m.f * (1.f - .33333333f * m.f) - .66666667f;
+	}
+
+	return y;
+}
+
+float ntc_temperature(ntc_t *ntc, float u)
+{
+	float			r_ntc, log, temp;
+
+	r_ntc = (u > 0.f) ? ntc->r_balance / (1.f / u - 1.f) : 0.f;
+
+	log = fastlog2f(r_ntc / ntc->r_ntc_0) * M_LOG2F;
+	temp = 1.f / (1.f / (ntc->ta_0 + 273.f) + log / ntc->betta) - 273.f;
+
+	return temp;
+}
 

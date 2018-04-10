@@ -4,7 +4,7 @@ SCRIPT	?= flash
 TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
-CROSS	?= arm-none-eabi-
+CROSS	?= armv7m-none-eabi-
 CC	= $(CROSS)gcc
 OC	= $(CROSS)objcopy
 GDB     = $(CROSS)gdb
@@ -15,8 +15,8 @@ CFLAGS	= -std=gnu99 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -O3 -flto -g3
-CFLAGS	+= -static -fno-pic -fno-PIC -fno-pie -fno-PIE
+CFLAGS	+= -O3 -flto
+#CFLAGS	+= -static -fno-pic -fno-PIC -fno-pie -fno-PIE
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
@@ -42,20 +42,21 @@ OBJS	+= hal/entry.o \
 	hal/adc.o \
 	hal/can.o \
 	hal/flash.o \
+	hal/gpio.o \
 	hal/hal.o \
 	hal/pwm.o \
 	hal/usart.o
 
-OBJS	+= ap_shell.o \
-	regfile.o \
-	config.o \
-	hal_task.o \
+OBJS	+= flash.o \
 	lib.o \
+	main.o \
+	ntc.o \
 	pm_control.o \
+	pm_fsm.o \
 	pm_math.o \
-	pm_shell.o \
+	regfile.o \
 	shell.o \
-	telemetry.o
+	telinfo.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

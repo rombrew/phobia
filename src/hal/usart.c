@@ -18,22 +18,18 @@
 
 #include <stddef.h>
 
-#include "cmsis/stm32f4xx.h"
-#include "usart.h"
-#include "hal.h"
-
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
+#include "cmsis/stm32f4xx.h"
+#include "hal.h"
 
 typedef struct {
 
-	QueueHandle_t	xQueueRX;
-	QueueHandle_t	xQueueTX;
+	QueueHandle_t	xRX;
+	QueueHandle_t	xTX;
 }
-halUSART_t;
+HAL_USART_t;
 
-static halUSART_t	halUSART;
+static HAL_USART_t	hal_USART;
 
 void irqUSART3()
 {
@@ -46,12 +42,12 @@ void irqUSART3()
 	if (SR & USART_SR_RXNE) {
 
 		xC = USART3->DR;
-		xQueueSendToBackFromISR(halUSART.xQueueRX, &xC, &xWoken);
+		xQueueSendToBackFromISR(hal_USART.xRX, &xC, &xWoken);
 	}
 
 	if (SR & USART_SR_TXE) {
 
-		if (xQueueReceiveFromISR(halUSART.xQueueTX, &xC, &xWoken) == pdTRUE) {
+		if (xQueueReceiveFromISR(hal_USART.xTX, &xC, &xWoken) == pdTRUE) {
 
 			USART3->DR = xC;
 		}
@@ -63,12 +59,12 @@ void irqUSART3()
 	portYIELD_FROM_ISR(xWoken);
 }
 
-void usart_enable()
+void USART_enable()
 {
 	/* Alloc queues.
 	 */
-	halUSART.xQueueRX = xQueueCreate(40, sizeof(char));
-	halUSART.xQueueTX = xQueueCreate(80, sizeof(char));
+	hal_USART.xRX = xQueueCreate(20, sizeof(char));
+	hal_USART.xTX = xQueueCreate(40, sizeof(char));
 
 	/* Enable USART3 clock.
 	 * */
@@ -83,7 +79,7 @@ void usart_enable()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HAL_APB1_HZ / hal.usart_baud_rate;
+	USART3->BRR = HAL_APB1_HZ / hal.USART_baud_rate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;
@@ -95,7 +91,7 @@ void usart_enable()
 	NVIC_EnableIRQ(USART3_IRQn);
 }
 
-void usart_disable()
+void USART_disable()
 {
 	/* Disable IRQ.
 	 * */
@@ -115,30 +111,30 @@ void usart_disable()
 
 	/* Free queues.
 	 * */
-	vQueueDelete(halUSART.xQueueRX);
-	vQueueDelete(halUSART.xQueueTX);
+	vQueueDelete(hal_USART.xRX);
+	vQueueDelete(hal_USART.xTX);
 }
 
-int usart_getc()
+int USART_getc()
 {
 	char		xC;
 
-	xQueueReceive(halUSART.xQueueRX, &xC, portMAX_DELAY);
+	xQueueReceive(hal_USART.xRX, &xC, portMAX_DELAY);
 
 	return (int) xC;
 }
 
-void usart_putc(int c)
+void USART_putc(int c)
 {
 	char		xC = (char) c;
 
-	if (xQueueSendToBack(halUSART.xQueueTX, &xC, portMAX_DELAY) == pdTRUE) {
+	if (xQueueSendToBack(hal_USART.xTX, &xC, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
 }
 
-void usart_debug_putc(int c)
+void USART_debug_putc(int c)
 {
 	while (!(USART3->SR & USART_SR_TXE)) ;
 

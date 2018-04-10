@@ -120,7 +120,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 2.) * 0E-2 + cos(X[3] * 1.) * 0E-2 + sin(X[3] * 6.) * 0E-2;
+	E1 *= 1. + sin(X[3] * 3.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */
@@ -224,7 +224,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_iA = (ADC - 2048) * 2.6855E-2;
+	m->ADC_A = (ADC - 2048) * 2.6855E-2;
 
 	/* Output voltage of the current sensor B.
 	 * */
@@ -236,7 +236,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_iB = (ADC - 2048) * 2.6855E-2;
+	m->ADC_B = (ADC - 2048) * 2.6855E-2;
 
 	/* Voltage sampling.
 	 * */
@@ -250,7 +250,7 @@ blm_Bridge_Sample(blm_t *m)
 	 * */
 	ADC = (int) (U / Uref * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_uS = ADC * 1.4830E-2;
+	m->ADC_U = ADC * 1.4830E-2;
 }
 
 static void
@@ -260,9 +260,10 @@ blm_Bridge_Solve(blm_t *m)
 	double		dTIM, dT;
 
 	dTIM = m->dT / m->PWM_R / 2.;
-	Ton[0] = (m->PWM_xA < 0) ? 0 : (m->PWM_xA > m->PWM_R) ? m->PWM_R : m->PWM_xA;
-	Ton[1] = (m->PWM_xB < 0) ? 0 : (m->PWM_xB > m->PWM_R) ? m->PWM_R : m->PWM_xB;
-	Ton[2] = (m->PWM_xC < 0) ? 0 : (m->PWM_xC > m->PWM_R) ? m->PWM_R : m->PWM_xC;
+
+	Ton[0] = (m->PWM_A < 0) ? 0 : (m->PWM_A > m->PWM_R) ? m->PWM_R : m->PWM_A;
+	Ton[1] = (m->PWM_B < 0) ? 0 : (m->PWM_B > m->PWM_R) ? m->PWM_R : m->PWM_B;
+	Ton[2] = (m->PWM_C < 0) ? 0 : (m->PWM_C > m->PWM_R) ? m->PWM_R : m->PWM_C;
 
 	/* Sort Ton values.
 	 * */

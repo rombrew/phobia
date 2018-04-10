@@ -19,8 +19,14 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
-#define HAL_APB1_HZ		(hal.clock_cpu_hz / 4)
-#define HAL_APB2_HZ		(hal.clock_cpu_hz / 2)
+#include "adc.h"
+#include "flash.h"
+#include "gpio.h"
+#include "pwm.h"
+#include "usart.h"
+
+#define HAL_APB1_HZ		(clock_cpu_hz / 4UL)
+#define HAL_APB2_HZ		(clock_cpu_hz / 2UL)
 
 #define __CCM__			__attribute__ ((section (".ccm")))
 
@@ -32,46 +38,47 @@ enum {
 
 typedef struct {
 
-	int		clock_cpu_hz;
-	int		usart_baud_rate;
+	int		USART_baud_rate;
 
-	int		pwm_freq_hz;
-	int		pwm_resolution;
-	int		pwm_dead_time_ns;
+	int		PWM_freq_hz;
+	int		PWM_resolution;
+	int		PWM_dead_time_ns;
 
-	float		adc_current_A;
-	float		adc_current_B;
-	float		adc_voltage_U;
-	float		adc_voltage_A;
-	float		adc_voltage_B;
-	float		adc_voltage_C;
-	int		adc_thermal_PCB_NTC;
-	int		adc_thermal_EXT_NTC;
-	int		adc_thermal_TEMP;
+	float		ADC_reference_voltage;
+	int		ADC_resolution;
+	float		ADC_current_shunt_resistance;
+	float		ADC_amplifier_gain;
+	float		ADC_voltage_divider_gain;
+
+	float		ADC_current_A;
+	float		ADC_current_B;
+	float		ADC_voltage_U;
+	float		ADC_voltage_A;
+	float		ADC_voltage_B;
+	float		ADC_voltage_C;
+	float		ADC_thermal_PCB_NTC;
+	float		ADC_thermal_EXT_NTC;
+	float		ADC_thermal_TEMP;
 
 	struct {
 
 		float		GA;
-		float		GV;
-		float		NTC[4];
+		float		GU;
+		float		NTC;
 		float		TEMP[2];
 	}
-	adc_const;
+	ADC_const;
 }
-hal_t;
+HAL_t;
 
-extern hal_t		hal;
+extern unsigned long	clock_cpu_hz;
+extern HAL_t		hal;
 
 void hal_startup();
 
-void hal_halt();
-void hal_reset();
+void hal_system_reset();
 void hal_sleep();
 void hal_fence();
-
-void hal_boost_converter(int x);
-void hal_set_LED(int x);
-int hal_get_HALL();
 
 extern void hal_main();
 

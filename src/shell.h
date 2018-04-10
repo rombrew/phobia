@@ -26,9 +26,6 @@
 #define K_ESC			0x1B
 
 #define SH_DEF(name)		void name(const char *s)
-#define SH_ENTRY(name)		{ #name, &name}
-
-#define SH_ASSERT(x)		if ((x) == 0) { printf("FAILED: %s" EOL, #x); return ; }
 
 typedef struct {
 

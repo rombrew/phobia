@@ -19,45 +19,41 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-extern long			ldSvectors;
-unsigned long 			hal_CLOCK_CPU_HZ;
+extern long		ld_Svectors;
+unsigned long		clock_cpu_hz;
+
+HAL_t			hal;
 
 extern void debugTRACE(const char *fmt, ...);
 
 void irqNMI()
 {
 	debugTRACE("irq: NMI");
-	halHalt();
 }
 
 void irqHardFault()
 {
 	debugTRACE("irq: HardFault");
-	halHalt();
 }
 
 void irqMemoryFault()
 {
 	debugTRACE("irq: MemoryFault");
-	halHalt();
 }
 
 void irqBusFault()
 {
 	debugTRACE("irq: BusFault");
-	halHalt();
 }
 
 void irqUsageFault()
 {
 	debugTRACE("irq: UsageFault");
-	halHalt();
 }
 
 void irqDefault()
 {
 	debugTRACE("irq: Default");
-	halHalt();
 }
 
 static void
@@ -139,7 +135,7 @@ clock_start()
 
 	/* Define clock frequency.
 	 * */
-	hal_CLOCK_CPU_HZ = 168000000UL;
+	clock_cpu_hz = 168000000UL;
 }
 
 static void
@@ -147,7 +143,7 @@ board_start()
 {
 	/* Vector table offset.
 	 * */
-	SCB->VTOR = (unsigned long) &ldSvectors;
+	SCB->VTOR = (unsigned long) &ld_Svectors;
 
 	/* Configure priority grouping.
 	 * */
@@ -179,16 +175,6 @@ void hal_startup()
 	board_start();
 }
 
-void hal_halt()
-{
-	hal_set_LED(1);
-
-	__disable_irq();
-	__WFI();
-
-	for (;;) ;
-}
-
 void hal_system_reset()
 {
 	NVIC_SystemReset();
@@ -202,51 +188,5 @@ void hal_sleep()
 void hal_fence()
 {
 	__DMB();
-}
-
-void hal_boost_converter(int x)
-{
-	if (x != 0) {
-
-		MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, GPIO_MODER_MODER2_0);
-		GPIOB->BSRRL = (1UL << 2);
-	}
-	else {
-		MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER2, 0);
-		GPIOB->BSRRH = (1UL << 2);
-	}
-}
-
-void hal_set_LED(int x)
-{
-	if (x != 0) {
-
-		GPIOB->BSRRL = (1UL << 5);
-	}
-	else {
-		GPIOB->BSRRH = (1UL << 5);
-	}
-}
-
-int hal_get_HALL()
-{
-	int		HALL = 0;
-
-	if (GPIOC->IDR & (1UL << 6)) {
-
-		HALL |= LEG_A;
-	}
-
-	if (GPIOC->IDR & (1UL << 7)) {
-
-		HALL |= LEG_B;
-	}
-
-	if (GPIOC->IDR & (1UL << 8)) {
-
-		HALL |= LEG_C;
-	}
-
-	return HALL;
 }
 

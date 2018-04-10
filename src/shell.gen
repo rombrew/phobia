@@ -3,6 +3,5 @@
 
 # Run the script if you have added or removed any shell command.
 
-cat *.c | sed -n '/^SH_DEF/s/$/;/p' > shell.gen_h
-cat *.c | sed -n '/^SH_DEF/s/SH_DEF(\(.*\))/SH_ENTRY(\1),/p' > shell.gen_list
+cat *.c | sed -n '/^SH_DEF/p' > shell.list
 

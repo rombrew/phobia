@@ -51,14 +51,14 @@ void pm_default(pmc_t *pm)
 	pm->probe_i_hold_Q = 0.f;
 	pm->probe_i_sine = 1.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 16.f;
-	pm->probe_speed_low = 500.f;
-	pm->probe_speed_high = 1700.f;
+	pm->probe_speed_ramp = 1100.f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
 	pm->fault_zero_drift_maximal = 1.f;
 	pm->fault_voltage_tolerance = 1.f;
 	pm->fault_current_tolerance = 1.f;
+	pm->fault_adjust_tolerance = 3E-2f;
 	pm->fault_lu_residual_maximal = 50.f;
 	pm->fault_lu_drift_Q_maximal = 7.f;
 	pm->fault_supply_voltage_low = 5.f;
@@ -68,12 +68,14 @@ void pm_default(pmc_t *pm)
 	pm->lu_gain_QA = 5E-1f;
 	pm->lu_gain_DP = 5E-3f;
 	pm->lu_gain_DS = 5E+0f;
-	pm->lu_gain_QS = 5E+0f;
-	pm->lu_gain_QZ = 2E-3f;
+	pm->lu_gain_QS = 1E+0f;
+	pm->lu_gain_QZ = 5E-3f;
 	pm->lu_boost_slope = .2f;
 	pm->lu_boost_gain = 7.f;
 	pm->lu_BEMF_low = .2f;
 	pm->lu_BEMF_high = .3f;
+	pm->lu_forced_D = 5.f;
+	pm->lu_forced_accel = 1500.f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
@@ -92,7 +94,7 @@ void pm_default(pmc_t *pm)
 	pm->i_maximal = 50.f;
 	pm->i_maximal_weak = 10.f;
 	pm->i_power_consumption_maximal = 2050.f;
-	pm->i_power_regeneration_maximal = - 1050.f;
+	pm->i_power_regeneration_maximal = -1050.f;
 	pm->i_slew_rate_D = 5E+4f;
 	pm->i_slew_rate_Q = 5E+4f;
 	pm->i_gain_P_D = 2E-1f;
@@ -107,9 +109,20 @@ void pm_default(pmc_t *pm)
 	pm->p_gain_P = 50.f;
 	pm->p_gain_I = 0.f;
 
+	pm->lpf_gain_POWER = .1f;
 	pm->lpf_gain_LU = .1f;
 	pm->lpf_gain_VSI = .1f;
 	pm->lpf_gain_U = .1f;
+}
+
+void pm_tune_current_loop(pmc_t *pm)
+{
+	pm->i_slew_rate_D = .2f * pm->const_lpf_U / pm->const_Ld;
+	pm->i_slew_rate_Q = .2f * pm->const_lpf_U / pm->const_Lq;
+	pm->i_gain_P_D = (.5f * pm->const_Ld * pm->freq_hz - pm->const_R);
+	pm->i_gain_I_D = 5E-2f * pm->const_Ld * pm->freq_hz;
+	pm->i_gain_P_Q = (.5f * pm->const_Lq * pm->freq_hz - pm->const_R);
+	pm->i_gain_I_Q = 5E-2f * pm->const_Lq * pm->freq_hz;
 }
 
 static void
@@ -221,8 +234,8 @@ pm_LU_update(pmc_t *pm)
 	iX = pm->fb_iA;
 	iY = .57735027f * iX + 1.1547005f * pm->fb_iB;
 
-	/*pm->n_power_lpf += (1.5f * (iX * pm->vsi_X + iY * pm->vsi_Y) - pm->n_power_lpf)
-		* pm->lp_gain_0;*/
+	pm->lu_power_lpf += (1.5f * (iX * pm->vsi_X + iY * pm->vsi_Y) - pm->lu_power_lpf)
+		* pm->lpf_gain_POWER;
 
 	iD = X[2] * iX + X[3] * iY;
 	iQ = X[2] * iY - X[3] * iX;
@@ -312,13 +325,13 @@ pm_LU_job(pmc_t *pm)
 
 	if (fabsf(pm->lu_X[4]) > X4MAX) {
 
-		pm->error = PM_ERROR_LU_SPEED_MAXIMAL;
+		pm->error = PM_ERROR_LU_SPEED_HIGH;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
 	if (fabsf(pm->lu_drift_Q) > pm->fault_lu_drift_Q_maximal) {
 
-		pm->error = PM_ERROR_LU_DRIFT_MAXIMAL;
+		pm->error = PM_ERROR_LU_DRIFT_HIGH;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 }
@@ -571,20 +584,20 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
 	float		A, B, U;
 
-	A = pm->adjust_IA[1] * fb->iA + pm->adjust_IA[0];
-	B = pm->adjust_IB[1] * fb->iB + pm->adjust_IB[0];
+	A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
+	B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
 
 	pm->fb_iA = (A < - pm->fb_i_range) ? - pm->fb_i_range :
 		(A > pm->fb_i_range) ? pm->fb_i_range : A;
 	pm->fb_iB = (B < - pm->fb_i_range) ? - pm->fb_i_range :
 		(B > pm->fb_i_range) ? pm->fb_i_range : B;
 
-	U = pm->adjust_US[1] * fb->uS + pm->adjust_US[0];
+	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
 	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->lpf_gain_U;
 
-	pm->fb_uA = pm->adjust_UA[1] * fb->uA + pm->adjust_UA[0];
-	pm->fb_uB = pm->adjust_UB[1] * fb->uB + pm->adjust_UB[0];
-	pm->fb_uC = pm->adjust_UC[1] * fb->uC + pm->adjust_UC[0];
+	pm->fb_uA = pm->adjust_UA[1] * fb->voltage_A + pm->adjust_UA[0];
+	pm->fb_uB = pm->adjust_UB[1] * fb->voltage_B + pm->adjust_UB[0];
+	pm->fb_uC = pm->adjust_UC[1] * fb->voltage_C + pm->adjust_UC[0];
 
 	pm_FSM(pm);
 

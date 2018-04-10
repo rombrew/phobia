@@ -32,11 +32,11 @@ static blm_t		m;
 static pmc_t		pm;
 
 static void
-blmDC(int uA, int uB, int uC)
+blmDC(int A, int B, int C)
 {
-	m.PWM_xA = uA;
-	m.PWM_xB = uB;
-	m.PWM_xC = uC;
+	m.PWM_A = A;
+	m.PWM_B = B;
+	m.PWM_C = C;
 }
 
 static void
@@ -58,9 +58,9 @@ sim_Tel(float *pTel)
 
 	/* Duty cycle.
 	 * */
-	pTel[6] = (double) m.PWM_xA * 100. / (double) m.PWM_R;
-	pTel[7] = (double) m.PWM_xB * 100. / (double) m.PWM_R;
-	pTel[8] = (double) m.PWM_xC * 100. / (double) m.PWM_R;
+	pTel[6] = (double) m.PWM_A * 100. / (double) m.PWM_R;
+	pTel[7] = (double) m.PWM_B * 100. / (double) m.PWM_R;
+	pTel[8] = (double) m.PWM_C * 100. / (double) m.PWM_R;
 
 	/* Estimated current.
 	 * */
@@ -101,10 +101,10 @@ sim_Tel(float *pTel)
 	pTel[19] = pm.lu_residual_D;
 	pTel[20] = pm.lu_residual_Q;
 	pTel[21] = sqrt(pm.lu_residual_lpf);
-	
+
 	/* Informational.
 	 * */
-	pTel[25] = pm.n_power_lpf;
+	pTel[25] = pm.lu_power_lpf;
 }
 
 static void
@@ -125,9 +125,9 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		blm_Update(&m);
 
-		fb.iA = m.ADC_iA;
-		fb.iB = m.ADC_iB;
-		fb.uS = m.ADC_uS;
+		fb.current_A = m.ADC_A;
+		fb.current_B = m.ADC_B;
+		fb.voltage_U = m.ADC_U;
 
 		/* PM update.
 		 * */
@@ -177,17 +177,33 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
-	pm.b_FORCED = 0;
+	pm.b_FORCED = 1;
 	pm.b_HFI = 0;
 	pm.b_LOOP = 1;
+
+	pm_tune_current_loop(&pm);
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);
 
+	if (0) {
+
+		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
+		sim_F(fdTel, 1., 0);
+
+		printf("%4e (Ohm)\n", pm.const_R);
+
+		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
+		sim_F(fdTel, 1., 0);
+
+		printf("%4e (H)\n", pm.const_Ld);
+		printf("%4e (H)\n", pm.const_Lq);
+	}
+
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .1, 0);
 
-	pm.s_set_point = 500.f;
+	pm.s_set_point = 1000.f;
 	sim_F(fdTel, .5, 0);
 }
 

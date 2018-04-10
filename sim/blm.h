@@ -27,9 +27,9 @@ typedef struct {
 
 	/* Duty Cycle (Input).
 	 * */
-	int		PWM_xA;
-	int		PWM_xB;
-	int		PWM_xC;
+	int		PWM_A;
+	int		PWM_B;
+	int		PWM_C;
 
 	/* State of VSI.
 	 * */
@@ -53,13 +53,13 @@ typedef struct {
 
 	/* ADC result (Output).
 	 * */
-	float		ADC_iA;
-	float		ADC_iB;
-	float		ADC_uS;
+	float		ADC_A;
+	float		ADC_B;
+	float		ADC_U;
 
-	float		ADC_uA;
-	float		ADC_uB;
-	float		ADC_uC;
+	float		ADC_UA;
+	float		ADC_UB;
+	float		ADC_UC;
 }
 blm_t;
 

@@ -488,7 +488,8 @@ void taskSH(void *pData)
 					|| (c == '.')
 					|| (c == '-')
 					|| (c == '+')
-					|| (c == '%')) {
+					|| (c == '[')
+					|| (c == ']')) {
 
 				sh_line_putc(c);
 			}
@@ -553,11 +554,15 @@ void taskSH(void *pData)
 	while (1);
 }
 
-#include "shell.gen_h"
+#undef SH_DEF
+#define SH_DEF(name)	void name(const char *s);
+#include "shell.list"
 
 const sh_cmd_t		cmlist[] = {
 
-#include "shell.gen_list"
+#undef SH_DEF
+#define SH_DEF(name)	{ #name, &name},
+#include "shell.list"
 
 	{NULL, NULL}
 };

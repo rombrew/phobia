@@ -18,12 +18,11 @@
 
 #include <stddef.h>
 
-#include "hal/hal.h"
-#include "hal/flash.h"
-
 #include "freertos/FreeRTOS.h"
+#include "hal/hal.h"
 
 #include "lib.h"
+#include "main.h"
 #include "regfile.h"
 #include "shell.h"
 
@@ -47,7 +46,7 @@ flash_block_scan()
 	do {
 		if (block->version == REG_CONFIG_VERSION) {
 
-			if (crc32b(bk, sizeof(conf_block_t) - 4) == block->crc32) {
+			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
 
 				if (last != NULL) {
 
@@ -71,7 +70,7 @@ flash_block_scan()
 
 int flash_block_load()
 {
-	reg_t			*reg;
+	const reg_t		*reg;
 	flash_block_t		*block;
 	unsigned long		*content;
 	int			rc = -1;
@@ -80,7 +79,7 @@ int flash_block_load()
 
 	if (block != NULL) {
 
-		content = bk->content;
+		content = block->content;
 
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -127,11 +126,12 @@ flash_get_sector(const flash_block_t *block)
 static int
 flash_block_write()
 {
+	const reg_t		*reg;
 	flash_block_t		*block, *temp;
 	unsigned int		number;
 	int			n, rc;
 
-	block = conf_block_scan();
+	block = flash_block_scan();
 
 	if (block != NULL) {
 
@@ -146,12 +146,12 @@ flash_block_write()
 		block = (void *) FLASH_RAM_BASE;
 	}
 
-	if (conf_is_block_dirty(block)) {
+	if (flash_is_block_dirty(block)) {
 
-		flash_erase(conf_get_sector(block));
+		FLASH_erase(flash_get_sector(block));
 	}
 
-	temp = pvPortMalloc(sizeof(flash_block_t));
+	temp = malloc(sizeof(flash_block_t));
 
 	if (temp != NULL) {
 
@@ -171,9 +171,9 @@ flash_block_write()
 
 		temp->crc32 = crc32b(temp, sizeof(flash_block_t) - 4);
 
-		flash_write(block, temp, sizeof(flash_block_t));
+		FLASH_write(block, temp, sizeof(flash_block_t));
 
-		vPortFree(temp);
+		free(temp);
 	}
 
 	rc = (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) ? 0 : -1;
@@ -185,7 +185,8 @@ SH_DEF(flash_write)
 {
 	int			rc;
 
-	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
+	if (pm.lu_region != PM_LU_DISABLED)
+		return ;
 
 	printf("Flash ... ");
 
@@ -198,7 +199,7 @@ SH_DEF(flash_info)
 {
 	flash_block_t		*block;
 
-	block = conf_block_scan();
+	block = flash_block_scan();
 
 	printf("%s" EOL, (block != NULL) ? "Valid" : "Null");
 }

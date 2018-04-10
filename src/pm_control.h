@@ -26,15 +26,21 @@ enum {
 	PM_LU_CLOSED_HIGH,
 };
 
+enum {
+	PM_HALL_A				= 1,
+	PM_HALL_B				= 2,
+	PM_HALL_C				= 4,
+};
+
 typedef struct {
 
-	float		iA;
-	float		iB;
-	float		uS;
+	float		current_A;
+	float		current_B;
+	float		voltage_U;
 
-	float		uA;
-	float		uB;
-	float		uC;
+	float		voltage_A;
+	float		voltage_B;
+	float		voltage_C;
 
 	int		hall;
 	float		sensor;
@@ -53,6 +59,7 @@ typedef struct {
 
 	int		b_FORCED;
 	int		b_HFI;
+	int		b_SENSOR;
 	int		b_LOOP;
 
 	int		fsm_state;
@@ -82,12 +89,13 @@ typedef struct {
 	float		fb_uB;
 	float		fb_uC;
 
+	int		fb_hall;
+
 	float		probe_i_hold;
 	float		probe_i_hold_Q;
 	float		probe_i_sine;
 	float		probe_freq_sine_hz;
-	float		probe_speed_low;
-	float		probe_speed_high;
+	float		probe_speed_ramp;
 	float		probe_gain_P;
 	float		probe_gain_I;
 	float		probe_DFT[8];
@@ -97,6 +105,7 @@ typedef struct {
 	float		fault_zero_drift_maximal;
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
+	float		fault_adjust_tolerance;
 	float		fault_lu_residual_maximal;
 	float		fault_lu_drift_Q_maximal;
 	float		fault_supply_voltage_low;
@@ -106,6 +115,12 @@ typedef struct {
 	float		vsi_Y;
 	float		vsi_lpf_D;
 	float		vsi_lpf_Q;
+
+	float		lu_power_lpf;
+
+	float		lu_residual_D;
+	float		lu_residual_Q;
+	float		lu_residual_lpf;
 
 	int		lu_region;
 	float		lu_X[5];
@@ -124,10 +139,6 @@ typedef struct {
 	float		lu_forced_D;
 	float		lu_forced_accel;
 
-	float		lu_residual_D;
-	float		lu_residual_Q;
-	float		lu_residual_lpf;
-
 	float		hf_freq_hz;
 	float		hf_swing_D;
 	float		hf_flux_polarity;
@@ -135,6 +146,8 @@ typedef struct {
 	float		hf_gain_P;
 	float		hf_gain_S;
 	float		hf_gain_F;
+
+	float		hall_;
 
 	float		const_lpf_U;
 	float		const_E;
@@ -176,11 +189,10 @@ typedef struct {
 	float		p_gain_P;
 	float		p_gain_I;
 
+	float		lpf_gain_POWER;
 	float		lpf_gain_LU;
 	float		lpf_gain_VSI;
 	float		lpf_gain_U;
-
-	float		n_power_lpf;
 
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
@@ -188,7 +200,9 @@ typedef struct {
 pmc_t;
 
 void pm_default(pmc_t *pm);
-void pm_vsi_control(pmc_t *pm, float uX, float uY);
+void pm_tune_current_loop(pmc_t *pm);
+
+void pm_VSI_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 #endif /* _H_PM_CONTROL_ */

@@ -24,7 +24,7 @@
 enum {
 	REG_INT			= 0x0001,
 	REG_F_EXP		= 0x0002,
-	REG_F_LONG		= 0x0004,
+	REG_F_SHORT		= 0x0004,
 	REG_I_HEX		= 0x0008,
 	REG_CONFIG		= 0x0010,
 	REG_READ_ONLY		= 0x0020,
@@ -42,11 +42,16 @@ typedef struct {
 	}
 	link;
 
-	void			(* proc) (void *reg, void *lval, const void *rval);
+	void			(* proc) (const void *reg, void *lval, const void *rval);
 }
 reg_t;
 
 extern const reg_t	regfile[];
+
+void reg_GET(int n, void *lval);
+void reg_SET(int n, const void *rval);
+
+void reg_print_fmt(const reg_t *reg);
 
 #endif /* _H_REGFILE_ */
 

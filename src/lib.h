@@ -53,7 +53,7 @@ void printf(const char *fmt, ...);
 const char *stoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-unsigned int crc32b(const void *s, int sz);
+unsigned long crc32b(const void *s, int sz);
 
 #endif /* _H_LIB_ */
 

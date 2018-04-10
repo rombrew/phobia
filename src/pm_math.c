@@ -18,33 +18,34 @@
 
 #include "pm_math.h"
 
-static const float	lt_atan2f[] = {
+static const float	lt_atanf[] = {
 
-	2.9009235E-1f,
-	- 6.5717929E-2f,
-	6.6529250E-2f,
-	9.9397328E-1f,
-	1.5707963E+0f
+	-8.9550074E-3f,
+	 4.5295657E-2f,
+	-1.0939535E-1f,
+	 1.9063993E-1f,
+	-3.3214334E-1f,
+	 9.9995555E-1f,
 };
 
 static const float	lt_sincosf[] = {
 
-	-1.37729499E-4f,
-	-2.04509846E-4f,
-	8.63928854E-3f,
-	-2.43287243E-4f,
-	-1.66562291E-1f,
-	-2.23787462E-5f,
-	1.00000193E+0f,
-	-3.55250780E-8f,
+	-1.3772950E-4f,
+	-2.0450985E-4f,
+	 8.6392885E-3f,
+	-2.4328724E-4f,
+	-1.6656229E-1f,
+	-2.2378746E-5f,
+	 1.0000019E+0f,
+	-3.5525078E-8f,
 };
 
-void pm_rotf(float y[2], float angle, const float x[2])
+void pm_rotf(float y[2], float r, const float x[2])
 {
-	float		q, s, c, a, b;
+	float           q, s, c, a, b;
 
-	q = angle * angle;
-	s = angle - q * angle * (.16666667f - 8.3333333E-3f * q);
+	q = r * r;
+	s = r - q * r * (.16666667f - 8.3333333E-3f * q);
 	c = 1.f - q * (.5f - 4.1666667E-2f * q);
 
 	a = c * x[0] - s * x[1];
@@ -55,93 +56,80 @@ void pm_rotf(float y[2], float angle, const float x[2])
 	y[1] = b * q;
 }
 
+static float
+pm_atanf(float x)
+{
+	float		u, x2;
+
+	x2 = x * x;
+
+	u = lt_atanf[0];
+	u = lt_atanf[1] + u * x2;
+	u = lt_atanf[2] + u * x2;
+	u = lt_atanf[3] + u * x2;
+	u = lt_atanf[4] + u * x2;
+	u = lt_atanf[5] + u * x2;
+
+	return u * x;
+}
+
 float pm_atan2f(float y, float x)
 {
-	float		y_abs, u, f = 0.f;
+	float		u;
 
-	/* NOTE: Only normalized input is acceptable ||x|| = 1.
-	 * */
+	if (fabsf(x) > fabsf(y)) {
 
-	y_abs = fabsf(y);
-
-	if (x < 0.f) {
-
-		f = x;
-		x = y_abs;
-		y_abs = - f;
-		f = lt_atan2f[4];
-	}
-
-	if (y_abs < x) {
-
-		u = lt_atan2f[1] + lt_atan2f[0] * y_abs;
-		u = lt_atan2f[2] + u * y_abs;
-		u = lt_atan2f[3] + u * y_abs;
-		f += u * y_abs;
+		u = pm_atanf(y / x);
+		u += (x < 0.f) ? (y < 0.f) ? - M_PI_F : M_PI_F : 0.f;
 	}
 	else {
-		u = lt_atan2f[1] + lt_atan2f[0] * x;
-		u = lt_atan2f[2] + u * x;
-		u = lt_atan2f[3] + u * x;
-		f += lt_atan2f[4] - u * x;
+		u = - pm_atanf(x / y);
+		u += (y < 0.f) ? - M_PI_F / 2.f : M_PI_F / 2.f;
 	}
 
-	return (y < 0.f) ? - f : f;
+	return u;
 }
 
-float pm_sinf(float angle)
+static float
+pm_sincosf(float x)
 {
-        float           u;
-        int             m = 0;
+	float		u;
 
-	/* NOTE: Only +PI/-PI range is acceptable.
-	 * */
+	u = lt_sincosf[0];
+        u = lt_sincosf[1] + u * x;
+        u = lt_sincosf[2] + u * x;
+        u = lt_sincosf[3] + u * x;
+	u = lt_sincosf[4] + u * x;
+	u = lt_sincosf[5] + u * x;
+	u = lt_sincosf[6] + u * x;
+	u = lt_sincosf[7] + u * x;
 
-        if (angle < 0.f) {
-
-                m = 1;
-                angle = - angle;
-        }
-
-        if (angle > (M_PI_F / 2.f))
-                angle = M_PI_F - angle;
-
-        u = lt_sincosf[1] + lt_sincosf[0] * angle;
-        u = lt_sincosf[2] + u * angle;
-        u = lt_sincosf[3] + u * angle;
-	u = lt_sincosf[4] + u * angle;
-	u = lt_sincosf[5] + u * angle;
-	u = lt_sincosf[6] + u * angle;
-	u = lt_sincosf[7] + u * angle;
-
-	return m ? - u : u;
+	return u;
 }
 
-float pm_cosf(float angle)
+float pm_sinf(float x)
+{
+        float           x_abs, u;
+
+	x_abs = fabsf(x);
+
+	if (x_abs > (M_PI_F / 2.f))
+		x_abs = M_PI_F - x_abs;
+
+	u = pm_sincosf(x_abs);
+	u = (x < 0.f) ? - u : u;
+
+	return u;
+}
+
+float pm_cosf(float x)
 {
         float           u;
-        int             m = 0;
 
-        if (angle < 0.f)
-                angle = - angle;
+	x = (M_PI_F / 2.f) - fabsf(x);
+	u = (x < 0.f) ? - pm_sincosf(- x) : pm_sincosf(x);
 
-        if (angle > (M_PI_F / 2.f)) {
-
-                m = 1;
-                angle = M_PI_F - angle;
-        }
-
-	angle = (M_PI_F / 2.f) - angle;
-
-	u = lt_sincosf[1] + lt_sincosf[0] * angle;
-	u = lt_sincosf[2] + u * angle;
-	u = lt_sincosf[3] + u * angle;
-	u = lt_sincosf[4] + u * angle;
-	u = lt_sincosf[5] + u * angle;
-	u = lt_sincosf[6] + u * angle;
-	u = lt_sincosf[7] + u * angle;
-
-	return m ? - u : u;
+	return u;
 }
 
 float pm_DFT_const_R(const float DFT[8])

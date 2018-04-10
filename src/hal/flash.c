@@ -19,13 +19,12 @@
 #include <stddef.h>
 
 #include "cmsis/stm32f4xx.h"
-#include "flash.h"
 #include "hal.h"
 
 #define FLASH_FIRST_SECTOR		8
 
 static void
-flash_unlock()
+FLASH_unlock()
 {
 	if (FLASH->CR & FLASH_CR_LOCK) {
 
@@ -35,40 +34,40 @@ flash_unlock()
 }
 
 static void
-flash_lock()
+FLASH_lock()
 {
 	FLASH->CR |= FLASH_CR_LOCK;
 }
 
 static void
-flash_wait_BSY()
+FLASH_wait_BSY()
 {
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void flash_erase(int n)
+void FLASH_erase(int n)
 {
-	flash_unlock();
-	flash_wait_BSY();
+	FLASH_unlock();
+	FLASH_wait_BSY();
 
 	n = (n + FLASH_FIRST_SECTOR) & 0x0F;
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | (n << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
-	flash_wait_BSY();
+	FLASH_wait_BSY();
 	FLASH->CR &= ~(FLASH_CR_SER);
 
-	flash_lock();
+	FLASH_lock();
 }
 
-void flash_write(void *d, const void *s, unsigned long sz)
+void FLASH_write(void *d, const void *s, unsigned long sz)
 {
 	long			*ldst = d;
 	const long		*lsrc = s;
 
-	flash_unlock();
-	flash_wait_BSY();
+	FLASH_unlock();
+	FLASH_wait_BSY();
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
 
@@ -78,9 +77,9 @@ void flash_write(void *d, const void *s, unsigned long sz)
 		sz -= sizeof(long);
 	}
 
-	flash_wait_BSY();
+	FLASH_wait_BSY();
 	FLASH->CR &= ~(FLASH_CR_PG);
 
-	flash_lock();
+	FLASH_lock();
 }
 

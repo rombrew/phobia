@@ -1,7 +1,7 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-defstyle line 1
+defstyle line 2
 
 load 0 -1 float 40 "/tmp/TEL"
 
@@ -33,11 +33,11 @@ page "pm.lu_drift_Q"
 label 1 "(V)"
 figure 0 14 "pm.lu_drift_Q"
 
-page "PWM: m.uA, m.uB, m.uC"
+page "PWM: m.PWM_A, m.PWM_B, m.PWM_C"
 label 1 "(%)"
-figure 0 6 "m.uA"
-figure 0 7 "m.uB"
-figure 0 8 "m.uC"
+figure 0 6 "m.PWM_A"
+figure 0 7 "m.PWM_B"
+figure 0 8 "m.PWM_C"
 
 page "PWM: pm.vsi_X / pm.vsi_Y"
 label 0 "(V)"

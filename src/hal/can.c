@@ -17,7 +17,6 @@
 */
 
 #include "cmsis/stm32f4xx.h"
-#include "can.h"
 #include "hal.h"
 
 #define CAN_TIMEOUT			70000UL

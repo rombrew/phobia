@@ -19,10 +19,10 @@
 #ifndef _H_ADC_
 #define _H_ADC_
 
-void adc_enable();
-void adc_disable();
+void ADC_enable();
+void ADC_disable();
 
-extern void adc_IRQ();
+extern void ADC_IRQ();
 
 #endif /* _H_ADC_ */
 

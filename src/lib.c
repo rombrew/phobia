@@ -310,12 +310,12 @@ fmt_int(io_ops_t *_io, int x)
 	while (*p) _io->putc(*p++);
 }
 
-inline unsigned int
+inline unsigned long
 ftou(float x)
 {
 	union {
 		float		f;
-		unsigned int	i;
+		unsigned long	i;
 	} u;
 
 	u.f = x;
@@ -646,10 +646,10 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-unsigned int crc32b(const void *s, int sz)
+unsigned long crc32b(const void *s, int sz)
 {
 	const char		*bs = (const char *) s;
-	unsigned int		byte, crc, mask;
+	unsigned long		byte, crc, mask;
 	int			j;
 
 	crc = 0xFFFFFFFF;

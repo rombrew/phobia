@@ -4,10 +4,11 @@ TARGET	= $(BUILD)/sim
 
 CC	= gcc
 LD	= gcc
+GDB	= gdb
 MK	= mkdir -p
 RM      = rm -rf
 
-CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto -g3
+CFLAGS	= -std=gnu99 -pipe -Wall -Og -flto -g3
 LFLAGS	= -lm -g3
 
 OBJS	= blm.o lib.o sim.o
@@ -27,8 +28,12 @@ $(TARGET): $(LIST)
 	@ $(LD) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 run: $(TARGET)
-	@ echo "  RUN	" $(notdir $^)
-	@ $(TARGET)
+	@ echo "  RUN	" $(notdir $<)
+	@ $<
+
+debug: $(TARGET)
+	@ echo "  GDB	" $(notdir $<)
+	@ $(GDB) $<
 
 clean:
 	@ echo "  CLEAN "

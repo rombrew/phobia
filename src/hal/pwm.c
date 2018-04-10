@@ -17,27 +17,26 @@
 */
 
 #include "cmsis/stm32f4xx.h"
-#include "pwm.h"
 #include "hal.h"
 
 #define HAL_TIM1_HZ		(HAL_APB2_HZ * 2UL)
 
 void irqTIM1_UP_TIM10() { }
 
-void pwm_enable()
+void PWM_enable()
 {
 	int		R, D;
 
 	/* Update configuration.
 	 * */
-	R = HAL_TIM1_HZ / 2UL / hal.pwm_freq_hz;
+	R = HAL_TIM1_HZ / 2UL / hal.PWM_freq_hz;
 	R = (R & 1) ? R + 1 : R;
-	hal.pwm_freq_hz = HAL_TIM1_HZ / 2UL / R;
-	hal.pwm_resolution = R;
+	hal.PWM_freq_hz = HAL_TIM1_HZ / 2UL / R;
+	hal.PWM_resolution = R;
 
-	D = ((HAL_TIM1_HZ / 1000UL) * hal.pwm_dead_time_ns + 500000UL) / 1000000UL;
+	D = ((HAL_TIM1_HZ / 1000UL) * hal.PWM_dead_time_ns + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : 128;
-	hal.pwm_dead_time_ns = D * 1000000UL / (HAL_TIM1_HZ / 1000UL);
+	hal.PWM_dead_time_ns = D * 1000000UL / (HAL_TIM1_HZ / 1000UL);
 
 	/* Enable TIM1 clock.
 	 * */
@@ -70,38 +69,32 @@ void pwm_enable()
 	TIM1->CR1 |= TIM_CR1_CEN;
 	TIM1->RCR = 1;
 
-	/* Enable PA8 PA9 PA10 PB13 PB14 PB15 pins.
+	/* Enable TIM1 pins.
 	 * */
-	MODIFY_REG(GPIOA->AFR[1], (15UL << 0) | (15UL << 4) | (15UL << 8),
-			(1UL << 0) | (1UL << 4) | (1UL << 8));
-	MODIFY_REG(GPIOB->AFR[1], (15UL << 20) | (15UL << 24) | (15UL << 28),
-			(1UL << 20) | (1UL << 24) | (1UL << 28));
-	MODIFY_REG(GPIOA->OSPEEDR, GPIO_OSPEEDER_OSPEEDR8
-			| GPIO_OSPEEDER_OSPEEDR9 | GPIO_OSPEEDER_OSPEEDR10,
-			GPIO_OSPEEDER_OSPEEDR8_0 | GPIO_OSPEEDER_OSPEEDR9_0
-			| GPIO_OSPEEDER_OSPEEDR10_0);
-	MODIFY_REG(GPIOB->OSPEEDR, GPIO_OSPEEDER_OSPEEDR13
-			| GPIO_OSPEEDER_OSPEEDR14 | GPIO_OSPEEDER_OSPEEDR15,
-			GPIO_OSPEEDER_OSPEEDR13_0 | GPIO_OSPEEDER_OSPEEDR14_0
-			| GPIO_OSPEEDER_OSPEEDR15_0);
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER8
-			| GPIO_MODER_MODER9 | GPIO_MODER_MODER10,
-			GPIO_MODER_MODER8_1 | GPIO_MODER_MODER9_1
-			| GPIO_MODER_MODER10_1);
-	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER13
-			| GPIO_MODER_MODER14 | GPIO_MODER_MODER15,
-			GPIO_MODER_MODER13_1 | GPIO_MODER_MODER14_1
-			| GPIO_MODER_MODER15_1);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH1N);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH2N);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH3N);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH1);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH2);
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH3);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH1N);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2N);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3N);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH1);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
+	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
 }
 
-void pwm_disable()
+void PWM_disable()
 {
 	/* Disable pins.
 	 * */
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER8
-			| GPIO_MODER_MODER9 | GPIO_MODER_MODER10, 0);
-	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER13
-			| GPIO_MODER_MODER14 | GPIO_MODER_MODER15, 0);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH1N);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH2N);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH3N);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH1);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH2);
+	GPIO_set_mode_INPUT(GPIO_TIM1_CH3);
 
 	/* Disable TIM1.
 	 * */
@@ -113,16 +106,16 @@ void pwm_disable()
 	RCC->APB2ENR &= ~RCC_APB2ENR_TIM1EN;
 }
 
-void pwm_DC(int uA, int uB, int uC)
+void PWM_set_DC(int A, int B, int C)
 {
-	TIM1->CCR1 = uA;
-	TIM1->CCR2 = uB;
-	TIM1->CCR3 = uC;
+	TIM1->CCR1 = A;
+	TIM1->CCR2 = B;
+	TIM1->CCR3 = C;
 }
 
-void pwm_Z(int xZ)
+void PWM_set_Z(int Z)
 {
-	if (xZ & LEG_A) {
+	if (Z & LEG_A) {
 
 		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
 	}
@@ -130,7 +123,7 @@ void pwm_Z(int xZ)
 		TIM1->CCER |= (TIM_CCER_CC1NE | TIM_CCER_CC1E);
 	}
 
-	if (uB < 0) {
+	if (Z & LEG_B) {
 
 		TIM1->CCER &= ~(TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
@@ -138,7 +131,7 @@ void pwm_Z(int xZ)
 		TIM1->CCER |= (TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
 
-	if (uC < 0) {
+	if (Z & LEG_C) {
 
 		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}

@@ -19,11 +19,11 @@
 #ifndef _H_PWM_
 #define _H_PWM_
 
-void pwm_enable();
-void pwm_disable();
+void PWM_enable();
+void PWM_disable();
 
-void pwm_DC(int uA, int uB, int uC);
-void pwm_Z(int xZ);
+void PWM_set_DC(int A, int B, int C);
+void PWM_set_Z(int Z);
 
-#endif /* _H_BRIDGE_ */
+#endif /* _H_PWM_ */
 
