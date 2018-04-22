@@ -57,7 +57,7 @@ void irqDefault()
 }
 
 static void
-clock_start()
+clock_startup()
 {
 	int		HSERDY, HSEN = 0;
 
@@ -139,7 +139,7 @@ clock_start()
 }
 
 static void
-board_start()
+board_startup()
 {
 	/* Vector table offset.
 	 * */
@@ -158,12 +158,6 @@ board_start()
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
 		| RCC_AHB1ENR_GPIOCEN;
 
-	/* Enable LED pins.
-	 * */
-	MODIFY_REG(GPIOB->MODER, GPIO_MODER_MODER5 | GPIO_MODER_MODER6
-			| GPIO_MODER_MODER7, GPIO_MODER_MODER5_0
-			| GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
-
 	/* Enable FPU.
 	 * */
 	SCB->CPACR |= (3UL << 20) | (3UL << 22);
@@ -171,8 +165,8 @@ board_start()
 
 void hal_startup()
 {
-	clock_start();
-	board_start();
+	clock_startup();
+	board_startup();
 }
 
 void hal_system_reset()

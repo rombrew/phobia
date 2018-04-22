@@ -23,32 +23,6 @@
 
 io_ops_t		*iodef;
 
-void *memzero(void *d, unsigned long sz)
-{
-	long			*ld = (long *) d;
-
-	if (!((size_t) d & (sizeof(long) - 1UL))) {
-
-		while (sz >= sizeof(long)) {
-
-			*ld++ = 0;
-			sz -= sizeof(long);
-		}
-	}
-
-	{
-		char		*cd = (char *) ld;
-
-		while (sz >= 1) {
-
-			*cd++ = 0;
-			sz--;
-		}
-	}
-
-	return d;
-}
-
 void *memset(void *d, int c, unsigned long sz)
 {
 	char		*cd = (char *) d;
@@ -310,23 +284,16 @@ fmt_int(io_ops_t *_io, int x)
 	while (*p) _io->putc(*p++);
 }
 
-inline unsigned long
-ftou(float x)
+static void
+fmt_float(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
 		unsigned long	i;
-	} u;
+	}
+	u = { x };
 
-	u.f = x;
-
-	return u.i;
-}
-
-static void
-fmt_float(io_ops_t *_io, float x, int n)
-{
-	int		i, be, ma;
+	int		i;
 	float		h;
 
 	if (x < 0) {
@@ -335,12 +302,9 @@ fmt_float(io_ops_t *_io, float x, int n)
 		x = - x;
 	}
 
-	be = (ftou(x) >> 23) & 0xFF;
-	ma = ftou(x) & 0x7FFFFF;
+	if ((0xFF & (u.i >> 23)) == 0xFF) {
 
-	if (be == 0xFF) {
-
-		if (ma != 0)
+		if ((u.i & 0x7FFFFF) != 0)
 
 			xputs(_io, "NaN");
 		else
@@ -377,8 +341,13 @@ fmt_float(io_ops_t *_io, float x, int n)
 static void
 fmt_fexp(io_ops_t *_io, float x, int n)
 {
-	int		i, be, ma;
-	int		de = 0;
+	union {
+		float		f;
+		unsigned long	i;
+	}
+	u = { x };
+
+	int		i, e;
 	float		h;
 
 	if (x < 0) {
@@ -387,12 +356,9 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 		x = - x;
 	}
 
-	be = (ftou(x) >> 23) & 0xFF;
-	ma = ftou(x) & 0x7FFFFF;
+	if ((0xFF & (u.i >> 23)) == 0xFF) {
 
-	if (be == 0xFF) {
-
-		if (ma != 0)
+		if ((u.i & 0x7FFFFF) != 0)
 
 			xputs(_io, "NaN");
 		else
@@ -400,20 +366,19 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 		return ;
 	}
-	else if (be != 0) {
+	else {
+		e = 0;
 
 		do {
-			be = ((ftou(x) >> 23) & 0xFF) - 127;
-
-			if (be < 0) {
+			if (x < 1.f) {
 
 				x *= 10.f;
-				de--;
+				e--;
 			}
-			else if (be > 3) {
+			else if (x > 10.f) {
 
 				x /= 10.f;
-				de++;
+				e++;
 			}
 			else
 				break;
@@ -426,12 +391,11 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 		h /= 10.f;
 
 	x += h;
-	i = (int) x;
 
-	if (i > 9) {
+	if (x > 10.f) {
 
 		x /= 10.f;
-		de++;
+		e++;
 	}
 
 	i = (int) x;
@@ -452,10 +416,10 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 	_io->putc('E');
 
-	if (de >= 0)
+	if (e >= 0)
 		_io->putc('+');
 
-	fmt_int(_io, de);
+	fmt_int(_io, e);
 }
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
@@ -498,6 +462,10 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
 				case 'e':
 					fmt_fexp(_io, * va_arg(ap, float *), n);
+					break;
+
+				case 'c':
+					_io->putc(va_arg(ap, int));
 					break;
 
 				case 's':

@@ -16,7 +16,6 @@ CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
 CFLAGS	+= -O3 -flto
-#CFLAGS	+= -static -fno-pic -fno-PIC -fno-pie -fno-PIE
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
@@ -26,7 +25,7 @@ CFLAGS	+= -fno-trapping-math
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= -Wl,-T,hal/$(SCRIPT).ld
+LDFLAGS	+= -Wl,-T,hal/link.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
@@ -47,7 +46,8 @@ OBJS	+= hal/entry.o \
 	hal/pwm.o \
 	hal/usart.o
 
-OBJS	+= flash.o \
+OBJS	+= apfunc.o \
+	flash.o \
 	lib.o \
 	main.o \
 	ntc.o \

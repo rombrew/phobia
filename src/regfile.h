@@ -22,18 +22,16 @@
 #define REG_CONFIG_VERSION		7
 
 enum {
-	REG_INT			= 0x0001,
-	REG_F_EXP		= 0x0002,
-	REG_F_SHORT		= 0x0004,
-	REG_I_HEX		= 0x0008,
-	REG_CONFIG		= 0x0010,
-	REG_READ_ONLY		= 0x0020,
+	REG_NORMAL		= 0,
+	REG_CONFIG,
+	REG_READ_ONLY
 };
 
 typedef struct {
 
 	const char		*sym;
-	int			bits;
+	const char		*fmt;
+	int			mode;
 
 	union {
 

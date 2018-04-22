@@ -26,7 +26,7 @@
 
 typedef struct {
 
-	int		en;
+	int		mode;
 
 	const reg_t	*in[TEL_INPUT_MAX];
 
@@ -35,11 +35,13 @@ typedef struct {
 
 	unsigned long	data[TEL_DATA_MAX][TEL_INPUT_MAX];
 	int		n;
-}	
+}
 telinfo_t;
 
 void telinfo_default(telinfo_t *ti);
 void telinfo_capture(telinfo_t *ti);
+void telinfo_enable(telinfo_t *ti, int freq);
+void telinfo_disable(telinfo_t *ti);
 
 #endif /* _H_TELINFO_ */
 

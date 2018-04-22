@@ -97,10 +97,10 @@ void pm_default(pmc_t *pm)
 	pm->i_power_regeneration_maximal = -1050.f;
 	pm->i_slew_rate_D = 5E+4f;
 	pm->i_slew_rate_Q = 5E+4f;
-	pm->i_gain_P_D = 2E-1f;
-	pm->i_gain_I_D = 3E-2f;
-	pm->i_gain_P_Q = 2E-1f;
-	pm->i_gain_I_Q = 3E-2f;
+	pm->i_gain_PD = 2E-1f;
+	pm->i_gain_ID = 3E-2f;
+	pm->i_gain_PQ = 2E-1f;
+	pm->i_gain_IQ = 3E-2f;
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 16.f);
 	pm->s_slew_rate = 5E+6f;
@@ -112,17 +112,17 @@ void pm_default(pmc_t *pm)
 	pm->lpf_gain_POWER = .1f;
 	pm->lpf_gain_LU = .1f;
 	pm->lpf_gain_VSI = .1f;
-	pm->lpf_gain_U = .1f;
+	pm->lpf_gain_US = .1f;
 }
 
 void pm_tune_current_loop(pmc_t *pm)
 {
 	pm->i_slew_rate_D = .2f * pm->const_lpf_U / pm->const_Ld;
 	pm->i_slew_rate_Q = .2f * pm->const_lpf_U / pm->const_Lq;
-	pm->i_gain_P_D = (.5f * pm->const_Ld * pm->freq_hz - pm->const_R);
-	pm->i_gain_I_D = 5E-2f * pm->const_Ld * pm->freq_hz;
-	pm->i_gain_P_Q = (.5f * pm->const_Lq * pm->freq_hz - pm->const_R);
-	pm->i_gain_I_Q = 5E-2f * pm->const_Lq * pm->freq_hz;
+	pm->i_gain_PD = (.5f * pm->const_Ld * pm->freq_hz - pm->const_R);
+	pm->i_gain_ID = 5E-2f * pm->const_Ld * pm->freq_hz;
+	pm->i_gain_PQ = (.5f * pm->const_Lq * pm->freq_hz - pm->const_R);
+	pm->i_gain_IQ = 5E-2f * pm->const_Lq * pm->freq_hz;
 }
 
 static void
@@ -252,7 +252,7 @@ pm_LU_update(pmc_t *pm)
 
 	if (pm->lu_residual_lpf > pm->fault_lu_residual_maximal) {
 
-		pm->error = PM_ERROR_LU_RESIDUAL_UNSTABLE;
+		pm->err_no = PM_ERROR_LU_RESIDUAL_UNSTABLE;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
@@ -325,13 +325,13 @@ pm_LU_job(pmc_t *pm)
 
 	if (fabsf(pm->lu_X[4]) > X4MAX) {
 
-		pm->error = PM_ERROR_LU_SPEED_HIGH;
+		pm->err_no = PM_ERROR_LU_SPEED_HIGH;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
 	if (fabsf(pm->lu_drift_Q) > pm->fault_lu_drift_Q_maximal) {
 
-		pm->error = PM_ERROR_LU_DRIFT_HIGH;
+		pm->err_no = PM_ERROR_LU_DRIFT_HIGH;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 }
@@ -469,17 +469,17 @@ pm_current_control(pmc_t *pm)
 		uHF = pm->hf_CS[0] * pm->hf_swing_D * temp * pm->const_Ld;
 	}
 
-	uD = pm->i_gain_P_D * eD + uHF;
-	uQ = pm->i_gain_P_Q * eQ;
+	uD = pm->i_gain_PD * eD + uHF;
+	uQ = pm->i_gain_PQ * eQ;
 
 	temp = (2.f / 3.f) * pm->const_lpf_U;
 
-	pm->i_integral_D += pm->i_gain_I_D * eD;
+	pm->i_integral_D += pm->i_gain_ID * eD;
 	pm->i_integral_D = (pm->i_integral_D > temp) ? temp :
 		(pm->i_integral_D < - temp) ? - temp : pm->i_integral_D;
 	uD += pm->i_integral_D;
 
-	pm->i_integral_Q += pm->i_gain_I_Q * eQ;
+	pm->i_integral_Q += pm->i_gain_IQ * eQ;
 	pm->i_integral_Q = (pm->i_integral_Q > temp) ? temp :
 		(pm->i_integral_Q < - temp) ? - temp : pm->i_integral_Q;
 	uQ += pm->i_integral_Q;
@@ -593,7 +593,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		(B > pm->fb_i_range) ? pm->fb_i_range : B;
 
 	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
-	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->lpf_gain_U;
+	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->lpf_gain_US;
 
 	pm->fb_uA = pm->adjust_UA[1] * fb->voltage_A + pm->adjust_UA[0];
 	pm->fb_uB = pm->adjust_UB[1] * fb->voltage_B + pm->adjust_UB[0];
@@ -610,13 +610,13 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (pm->const_lpf_U < pm->fault_supply_voltage_low) {
 
-			pm->error = PM_ERROR_SUPPLY_VOLTAGE_LOW;
+			pm->err_no = PM_ERROR_SUPPLY_VOLTAGE_LOW;
 			pm_fsm_req(pm, PM_STATE_HALT);
 		}
 
 		if (pm->const_lpf_U > pm->fault_supply_voltage_high) {
 
-			pm->error = PM_ERROR_SUPPLY_VOLTAGE_HIGH;
+			pm->err_no = PM_ERROR_SUPPLY_VOLTAGE_HIGH;
 			pm_fsm_req(pm, PM_STATE_HALT);
 		}
 

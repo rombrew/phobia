@@ -42,7 +42,10 @@ typedef struct {
 	float		voltage_B;
 	float		voltage_C;
 
-	int		hall;
+	int		hall_A;
+	int		hall_B;
+	int		hall_C;
+
 	float		sensor;
 }
 pmfb_t;
@@ -54,8 +57,8 @@ typedef struct {
 	int		pwm_R;
 	int		pwm_MP;
 
-	int		error;
-	int		rc[8];
+	int		err_no;
+	int		err_bb[8];
 
 	int		b_FORCED;
 	int		b_HFI;
@@ -89,7 +92,9 @@ typedef struct {
 	float		fb_uB;
 	float		fb_uC;
 
-	int		fb_hall;
+	int		fb_hall_A;
+	int		fb_hall_B;
+	int		fb_hall_C;
 
 	float		probe_i_hold;
 	float		probe_i_hold_Q;
@@ -170,10 +175,10 @@ typedef struct {
 	float		i_track_point_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
-	float		i_gain_P_D;
-	float		i_gain_I_D;
-	float		i_gain_P_Q;
-	float		i_gain_I_Q;
+	float		i_gain_PD;
+	float		i_gain_ID;
+	float		i_gain_PQ;
+	float		i_gain_IQ;
 
 	float		s_maximal;
 	float		s_set_point;
@@ -192,7 +197,7 @@ typedef struct {
 	float		lpf_gain_POWER;
 	float		lpf_gain_LU;
 	float		lpf_gain_VSI;
-	float		lpf_gain_U;
+	float		lpf_gain_US;
 
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);

@@ -59,13 +59,8 @@ void irqUSART3()
 	portYIELD_FROM_ISR(xWoken);
 }
 
-void USART_enable()
+void USART_startup()
 {
-	/* Alloc queues.
-	 */
-	hal_USART.xRX = xQueueCreate(20, sizeof(char));
-	hal_USART.xTX = xQueueCreate(40, sizeof(char));
-
 	/* Enable USART3 clock.
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
@@ -76,6 +71,11 @@ void USART_enable()
 			(7UL << 8) | (7UL << 12));
 	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER10 | GPIO_MODER_MODER11,
 			GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1);
+
+	/* Alloc queues.
+	 * */
+	hal_USART.xRX = xQueueCreate(20, sizeof(char));
+	hal_USART.xTX = xQueueCreate(40, sizeof(char));
 
 	/* Configure USART.
 	 * */
@@ -89,30 +89,6 @@ void USART_enable()
 	 * */
 	NVIC_SetPriority(USART3_IRQn, 11);
 	NVIC_EnableIRQ(USART3_IRQn);
-}
-
-void USART_disable()
-{
-	/* Disable IRQ.
-	 * */
-	NVIC_DisableIRQ(USART3_IRQn);
-
-	/* Disable USART.
-	 * */
-	USART3->CR1 = 0;
-
-	/* Disable PC10 PC11 pins.
-	 * */
-	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER10 | GPIO_MODER_MODER11, 0);
-
-	/* Disable USART3 clock.
-	 * */
-	RCC->AHB1ENR &= ~RCC_APB1ENR_USART3EN;
-
-	/* Free queues.
-	 * */
-	vQueueDelete(hal_USART.xRX);
-	vQueueDelete(hal_USART.xTX);
 }
 
 int USART_getc()

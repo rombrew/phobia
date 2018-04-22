@@ -62,6 +62,22 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 	debugTRACE("FreeRTOS Hook: Stack Overflow in \"%s\" Task \r\n", pcTaskName);
 }
 
+void taskTERM(void *pData)
+{
+	TickType_t			xWake;
+
+	xWake = xTaskGetTickCount();
+
+	do {
+		vTaskDelayUntil(&xWake, (TickType_t) 1000);
+
+		ap.t_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
+		ap.t_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
+		ap.t_TEMP = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
+	}
+	while (1);
+}
+
 void taskINIT(void *pData)
 {
 	int			rc_flash;
@@ -89,10 +105,9 @@ void taskINIT(void *pData)
 		 * */
 
 		hal.USART_baud_rate = 57600;
-		hal.PWM_freq_hz = 60000;
+		hal.PWM_freq_hz = 62500;
 		hal.PWM_dead_time_ns = 70;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_resolution = 4096;
 		hal.ADC_current_shunt_resistance = 500E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
@@ -105,8 +120,9 @@ void taskINIT(void *pData)
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 	}
 
-	USART_enable();
-	PWM_enable();
+	ADC_startup();
+	PWM_startup();
+	USART_startup();
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_CONVERTER);
 	GPIO_set_HIGH(GPIO_BOOST_CONVERTER);
@@ -125,10 +141,10 @@ void taskINIT(void *pData)
 		pm_default(&pm);
 	}
 
-	ADC_enable();
 	GPIO_set_LOW(GPIO_LED);
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
+	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }
@@ -141,6 +157,14 @@ void ADC_IRQ()
 	fb.current_B = hal.ADC_current_B;
 	fb.voltage_U = hal.ADC_voltage_U;
 
+	fb.voltage_A = hal.ADC_voltage_A;
+	fb.voltage_B = hal.ADC_voltage_B;
+	fb.voltage_C = hal.ADC_voltage_C;
+
+	fb.hall_A = GPIO_get_VALUE(GPIO_HALL_A);
+	fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
+	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
+
 	pm_feedback(&pm, &fb);
 	telinfo_capture(&ti);
 }
@@ -151,7 +175,7 @@ void hal_main()
 	vTaskStartScheduler();
 }
 
-SH_DEF(hal_uptime)
+SH_DEF(ap_uptime)
 {
 	TickType_t	xTick;
 	int		Day, Hour, Min, Sec;
@@ -183,7 +207,7 @@ void vApplicationIdleHook()
 	}
 }
 
-SH_DEF(hal_cpu_usage)
+SH_DEF(ap_cpu_usage)
 {
 	float		pc;
 
@@ -200,19 +224,14 @@ SH_DEF(hal_cpu_usage)
 	printf("%1f %%" EOL, &pc);
 }
 
-SH_DEF(hal_thermal)
+SH_DEF(ap_thermal)
 {
-	float		temp_PCB, temp_EXT;
-
-	temp_PCB = ntc_temperature(&ap.ntc_PCB, hal.ADC_thermal_PCB_NTC);
-	temp_EXT = ntc_temperature(&ap.ntc_EXT, hal.ADC_thermal_EXT_NTC);
-
-	printf("PCB NTC %1f (C)" EOL, &temp_PCB);
-	printf("EXT NTC %1f (C)" EOL, &temp_EXT);
-	printf("TEMP    %1f (C)" EOL, &hal.ADC_thermal_TEMP);
+	printf("PCB NTC %1f (C)" EOL, &ap.t_PCB);
+	printf("EXT NTC %1f (C)" EOL, &ap.t_EXT);
+	printf("TEMP    %1f (C)" EOL, &ap.t_TEMP);
 }
 
-SH_DEF(hal_reboot)
+SH_DEF(ap_reboot)
 {
 	if (pm.lu_region != PM_LU_DISABLED)
 		return ;
@@ -221,86 +240,3 @@ SH_DEF(hal_reboot)
 	hal_system_reset();
 }
 
-/*
-SH_DEF(hal_pwm_freq_hz)
-{
-	if (pm.lu_region != PM_LU_DISABLED)
-		return ;
-
-	if (stoi(&halPWM.freq_hz, s) != NULL) {
-
-		pwmDisable();
-		pwmEnable();
-
-		pm.freq_hz = (float) halPWM.freq_hz;
-		pm.dT = 1.f / pm.freq_hz;
-		pm.pwm_R = halPWM.resolution;
-	}
-
-	printf("%i (Hz)" EOL, halPWM.freq_hz);
-}
-
-SH_DEF(hal_pwm_dead_time_ns)
-{
-	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
-
-	if (stoi(&halPWM.dead_time_ns, s) != NULL) {
-
-		pwmDisable();
-		pwmEnable();
-	}
-
-	printf("%i (tk) %i (ns)" EOL, halPWM.dead_time_tk, halPWM.dead_time_ns);
-}
-*/
-/*
-SH_DEF(hal_pwm_DC)
-{
-	int		xA, xB, xC, R;
-	int		allf = 0;
-
-	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
-
-	if (stoi(&xA, s) != NULL) {
-
-		s = strtok(s, " ");
-
-		if (stoi(&xB, s) != NULL) {
-
-			s = strtok(s, " ");
-
-			if (stoi(&xC, s) != NULL) {
-
-				allf = 1;
-			}
-		}
-	}
-
-	if (allf) {
-
-		R = halPWM.resolution;
-
-		xA = (xA < 0) ? 0 : (xA > R) ? R : xA;
-		xB = (xB < 0) ? 0 : (xB > R) ? R : xB;
-		xC = (xC < 0) ? 0 : (xC > R) ? R : xC;
-
-		pwmDC(xA, xB, xC);
-
-		printf("DC %i %i %i" EOL, xA, xB, xC);
-	}
-}
-
-SH_DEF(hal_pwm_Z)
-{
-	int		Z;
-
-	SH_ASSERT(pm.lu_region == PMC_LU_DISABLED);
-
-	if (stoi(&Z, s) != NULL) {
-
-		pwmZ(Z);
-
-		printf("Z %i" EOL, Z);
-	}
-}
-*/

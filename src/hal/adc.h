@@ -19,8 +19,8 @@
 #ifndef _H_ADC_
 #define _H_ADC_
 
-void ADC_enable();
-void ADC_disable();
+void ADC_startup();
+float ADC_get_VALUE(int xGPIO);
 
 extern void ADC_IRQ();
 

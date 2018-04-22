@@ -45,7 +45,6 @@ typedef struct {
 	int		PWM_dead_time_ns;
 
 	float		ADC_reference_voltage;
-	int		ADC_resolution;
 	float		ADC_current_shunt_resistance;
 	float		ADC_amplifier_gain;
 	float		ADC_voltage_divider_gain;
@@ -56,15 +55,12 @@ typedef struct {
 	float		ADC_voltage_A;
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
-	float		ADC_thermal_PCB_NTC;
-	float		ADC_thermal_EXT_NTC;
-	float		ADC_thermal_TEMP;
 
 	struct {
 
 		float		GA;
 		float		GU;
-		float		NTC;
+		float		GS;
 		float		TEMP[2];
 	}
 	ADC_const;

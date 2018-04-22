@@ -38,6 +38,7 @@
 #define GPIO_ADC_VOLTAGE_C		XGPIO_DEF3('C', 1, 11)
 #define GPIO_ADC_PCB_NTC		XGPIO_DEF3('C', 3, 13)
 #define GPIO_ADC_EXT_NTC		XGPIO_DEF3('A', 0, 0)
+#define GPIO_ADC_INTERNAL_TEMP		XGPIO_DEF3('J', 0, 0)
 
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 0)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 0)

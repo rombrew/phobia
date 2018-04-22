@@ -21,12 +21,12 @@
 
 #define FLASH_RAM_BASE			0x08080000
 #define FLASH_RAM_SECTOR		0x00020000
-#define FLASH_RAM_SECTOR_N		4
+#define FLASH_RAM_MAX			4
 
-#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_SECTOR_N)
+#define FLASH_RAM_END			(FLASH_RAM_BASE + FLASH_RAM_SECTOR * FLASH_RAM_MAX)
 
-void FLASH_erase(int n);
-void FLASH_write(void *d, const void *s, unsigned long sz);
+void FLASH_erase(int N);
+void FLASH_write(void *flash, const void *s, unsigned long sz);
 
 #endif /* _H_FLASH_ */
 

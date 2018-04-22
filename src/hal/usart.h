@@ -19,9 +19,7 @@
 #ifndef _H_USART_
 #define _H_USART_
 
-void USART_enable();
-void USART_disable();
-
+void USART_startup();
 int USART_getc();
 void USART_putc(int c);
 void USART_debug_putc(int c);

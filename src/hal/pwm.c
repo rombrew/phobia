@@ -23,7 +23,7 @@
 
 void irqTIM1_UP_TIM10() { }
 
-void PWM_enable()
+void PWM_startup()
 {
 	int		R, D;
 
@@ -83,27 +83,6 @@ void PWM_enable()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH1);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
-}
-
-void PWM_disable()
-{
-	/* Disable pins.
-	 * */
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH1N);
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH2N);
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH3N);
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH1);
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH2);
-	GPIO_set_mode_INPUT(GPIO_TIM1_CH3);
-
-	/* Disable TIM1.
-	 * */
-	TIM1->CR1 = 0;
-	TIM1->CR2 = 0;
-
-	/* Disable clock.
-	 * */
-	RCC->APB2ENR &= ~RCC_APB2ENR_TIM1EN;
 }
 
 void PWM_set_DC(int A, int B, int C)

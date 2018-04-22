@@ -19,6 +19,7 @@
 #include <stddef.h>
 
 #include "freertos/FreeRTOS.h"
+#include "hal/hal.h"
 
 #include "lib.h"
 #include "main.h"
@@ -29,6 +30,8 @@ void telinfo_default(telinfo_t *ti)
 {
 	ti->in[0] = &regfile[5];
 	ti->in[1] = &regfile[5];
+	ti->in[2] = &regfile[5];
+	ti->in[3] = &regfile[5];
 }
 
 void telinfo_capture(telinfo_t *ti)
@@ -36,24 +39,55 @@ void telinfo_capture(telinfo_t *ti)
 	const reg_t		*reg;
 	int			j;
 
-	ti->i = (ti->en != 0) ? ti->i + 1 : 0;
+	if (ti->mode != 0) {
 
-	if (ti->i >= ti->d) {
+		ti->i++;
 
-		ti->i = 0;
+		if (ti->i >= ti->d) {
 
-		for (j = 0; j < TEL_INPUT_MAX; ++j) {
+			ti->i = 0;
 
-			reg = ti->in[j];
-			ti->data[ti->n][j] = (reg != NULL) ?
-				* (unsigned long *) reg->link.i : 0;
+			for (j = 0; j < TEL_INPUT_MAX; ++j) {
+
+				reg = ti->in[j];
+				ti->data[ti->n][j] = (reg != NULL) ?
+					* (unsigned long *) reg->link.i : 0;
+			}
+
+			ti->n++;
+
+			if (ti->n >= TEL_DATA_MAX) {
+
+				if (ti->mode == 1)
+					ti->mode = 0;
+				else
+					ti->n = 0;
+			}
 		}
-
-		ti->n = (ti->n < (TEL_DATA_MAX - 1)) ? ti->n + 1 : 0;
 	}
+}
+
+void telinfo_enable(telinfo_t *ti, int freq)
+{
+	ti->d = (hal.PWM_freq_hz + freq / 2) / freq;
+	ti->i = 0;
+	ti->n = 0;
+
+	hal_fence();
+	ti->mode = 1;
+}
+
+void telinfo_disable(telinfo_t *ti)
+{
+	ti->mode = 0;
+}
+
+void telinfo_flush(telinfo_t *ti)
+{
 }
 
 SH_DEF(ti_flush)
 {
+	telinfo_flush(&ti);
 }
 

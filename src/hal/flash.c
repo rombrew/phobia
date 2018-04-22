@@ -21,8 +21,6 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define FLASH_FIRST_SECTOR		8
-
 static void
 FLASH_unlock()
 {
@@ -45,14 +43,14 @@ FLASH_wait_BSY()
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void FLASH_erase(int n)
+void FLASH_erase(int N)
 {
 	FLASH_unlock();
 	FLASH_wait_BSY();
 
-	n = (n + FLASH_FIRST_SECTOR) & 0x0F;
+	N = (N + 8) & 0x0F;
 
-	FLASH->CR = FLASH_CR_PSIZE_1 | (n << 3) | FLASH_CR_SER;
+	FLASH->CR = FLASH_CR_PSIZE_1 | (N << 3) | FLASH_CR_SER;
 	FLASH->CR |= FLASH_CR_STRT;
 
 	FLASH_wait_BSY();
@@ -61,10 +59,10 @@ void FLASH_erase(int n)
 	FLASH_lock();
 }
 
-void FLASH_write(void *d, const void *s, unsigned long sz)
+void FLASH_write(void *flash, const void *s, unsigned long sz)
 {
-	long			*ldst = d;
-	const long		*lsrc = s;
+	long			*ld = flash;
+	const long		*ls = s;
 
 	FLASH_unlock();
 	FLASH_wait_BSY();
@@ -73,7 +71,7 @@ void FLASH_write(void *d, const void *s, unsigned long sz)
 
 	while (sz >= sizeof(long)) {
 
-		*ldst++ = *lsrc++;
+		*ld++ = *ls++;
 		sz -= sizeof(long);
 	}
 

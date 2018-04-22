@@ -83,7 +83,7 @@ int flash_block_load()
 
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
-			if (reg->bits & REG_CONFIG) {
+			if (reg->mode == REG_CONFIG) {
 
 				* (unsigned long *) reg->link.i = *content++;
 			}
@@ -151,7 +151,7 @@ flash_block_write()
 		FLASH_erase(flash_get_sector(block));
 	}
 
-	temp = malloc(sizeof(flash_block_t));
+	temp = pvPortMalloc(sizeof(flash_block_t));
 
 	if (temp != NULL) {
 
@@ -160,7 +160,7 @@ flash_block_write()
 
 		for (reg = regfile, n = 0; reg->sym != NULL; ++reg) {
 
-			if (reg->bits & REG_CONFIG) {
+			if (reg->mode == REG_CONFIG) {
 
 				temp->content[n++] = * (unsigned long *) reg->link.i;
 			}
@@ -173,7 +173,7 @@ flash_block_write()
 
 		FLASH_write(block, temp, sizeof(flash_block_t));
 
-		free(temp);
+		vPortFree(temp);
 	}
 
 	rc = (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) ? 0 : -1;

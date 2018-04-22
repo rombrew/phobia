@@ -35,7 +35,7 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_skip;
 
-			pm->error = PM_OK;
+			pm->err_no = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
@@ -66,9 +66,9 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->adjust_IB[0] -= pm->temp[1] / pm->tm_end;
 
 			if (fabsf(pm->adjust_IA[0]) > pm->fault_zero_drift_maximal)
-				pm->error = PM_ERROR_ZERO_DRIFT_FAULT;
+				pm->err_no = PM_ERROR_ZERO_DRIFT_FAULT;
 			else if (fabsf(pm->adjust_IB[0]) > pm->fault_zero_drift_maximal) 
-				pm->error = PM_ERROR_ZERO_DRIFT_FAULT;
+				pm->err_no = PM_ERROR_ZERO_DRIFT_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -176,7 +176,7 @@ pm_fsm_state_power_stage_test(pmc_t *pm)
 			bits |= (fabsf(pm->temp[2] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
 				? 4 : (fabsf(pm->temp[2]) < pm->fault_voltage_tolerance) ? 0 : 64;
 
-			pm->rc[pm->fsm_phase_2] = bits;
+			pm->err_bb[pm->fsm_phase_2] = bits;
 
 			if (pm->fsm_phase_2 < 6) {
 
@@ -189,28 +189,28 @@ pm_fsm_state_power_stage_test(pmc_t *pm)
 			break;
 
 		case 5:
-			if (		pm->rc[0] == 0
-					&& pm->rc[1] == 7
-					&& pm->rc[2] == 0
-					&& pm->rc[3] == 7
-					&& pm->rc[4] == 0
-					&& pm->rc[5] == 7
-					&& pm->rc[6] == 0) {
+			if (		pm->err_bb[0] == 0
+					&& pm->err_bb[1] == 7
+					&& pm->err_bb[2] == 0
+					&& pm->err_bb[3] == 7
+					&& pm->err_bb[4] == 0
+					&& pm->err_bb[5] == 7
+					&& pm->err_bb[6] == 0) {
 
-				pm->error = PM_OK;
+				pm->err_no = PM_OK;
 			}
-			else if (	pm->rc[0] == 0
-					&& (pm->rc[1] & 1) != 0
-					&& (pm->rc[2] & 1) == 0
-					&& (pm->rc[3] & 2) != 0
-					&& (pm->rc[4] & 2) == 0
-					&& (pm->rc[5] & 4) != 0
-					&& (pm->rc[6] & 4) == 0) {
+			else if (	pm->err_bb[0] == 0
+					&& (pm->err_bb[1] & 1) != 0
+					&& (pm->err_bb[2] & 1) == 0
+					&& (pm->err_bb[3] & 2) != 0
+					&& (pm->err_bb[4] & 2) == 0
+					&& (pm->err_bb[5] & 4) != 0
+					&& (pm->err_bb[6] & 4) == 0) {
 
-				pm->error = PM_ERROR_NO_MOTOR_CONNECTED;
+				pm->err_no = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
 			else {
-				pm->error = PM_ERORR_POWER_STAGE_FAULT;
+				pm->err_no = PM_ERORR_POWER_STAGE_FAULT;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -220,14 +220,14 @@ pm_fsm_state_power_stage_test(pmc_t *pm)
 
 	if (fabsf(pm->fb_iA) > pm->fault_current_tolerance) {
 
-		pm->error = PM_ERROR_OVER_CURRENT;
+		pm->err_no = PM_ERROR_OVER_CURRENT;
 		pm->fsm_state = PM_STATE_HALT;
 		pm->fsm_phase = 0;
 	}
 
 	if (fabsf(pm->fb_iB) > pm->fault_current_tolerance) {
 
-		pm->error = PM_ERROR_OVER_CURRENT;
+		pm->err_no = PM_ERROR_OVER_CURRENT;
 		pm->fsm_state = PM_STATE_HALT;
 		pm->fsm_phase = 0;
 	}
@@ -252,7 +252,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_skip;
 
-			pm->error = PM_OK;
+			pm->err_no = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
@@ -269,7 +269,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			if (fabsf(uX) > uMAX) {
 
-				pm->error = PM_ERROR_CURRENT_LOOP_FAULT;
+				pm->err_no = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 			}
@@ -296,9 +296,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->adjust_IB[1] *= mean / pm->temp[2];
 
 			if (fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance)
-				pm->error = PM_ERROR_ADJUST_TOLERANCE_FAULT;
+				pm->err_no = PM_ERROR_ADJUST_TOLERANCE_FAULT;
 			else if (fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance)
-				pm->error = PM_ERROR_ADJUST_TOLERANCE_FAULT;
+				pm->err_no = PM_ERROR_ADJUST_TOLERANCE_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -329,7 +329,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_hold;
 
-			pm->error = PM_OK;
+			pm->err_no = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
@@ -354,7 +354,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			if (fabsf(uX) > uMAX || fabsf(uY) > uMAX) {
 
-				pm->error = PM_ERROR_CURRENT_LOOP_FAULT;
+				pm->err_no = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 			}
@@ -428,7 +428,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_skip;
 
-			pm->error = PM_OK;
+			pm->err_no = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
