@@ -19,11 +19,10 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
+#include "pm/pm.h"
 
 #include "lib.h"
 #include "main.h"
-#include "pm_control.h"
-#include "pm_fsm.h"
 #include "regfile.h"
 #include "shell.h"
 #include "telinfo.h"
@@ -254,6 +253,13 @@ void reg_SET(int n, const void *rval)
 	}
 }
 
+static void
+reg_print_info(const reg_t *reg)
+{
+	printf("%c [%i] %s = ", (int) "NCR " [reg->mode],
+			(int) (reg - regfile), reg->sym);
+}
+
 void reg_print_fmt(const reg_t *reg)
 {
 	const char		*unit;
@@ -288,9 +294,7 @@ SH_DEF(reg_list)
 
 		if (strstr(reg->sym, s) != NULL) {
 
-			printf("%s [%i] %s = ", (int) "NCR " [reg->mode],
-					(int) (reg - regfile), reg->sym);
-
+			reg_print_info(reg);
 			reg_print_fmt(reg);
 		}
 	}
@@ -320,7 +324,7 @@ SH_DEF(reg_set)
 
 	if (reg != NULL) {
 
-		s = strtok(s, " ");
+		s = sh_args(s);
 
 		if (reg->fmt[1] == 'i') {
 
@@ -336,6 +340,7 @@ SH_DEF(reg_set)
 			}
 		}
 
+		reg_print_info(reg);
 		reg_print_fmt(reg);
 	}
 }

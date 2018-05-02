@@ -25,11 +25,11 @@ io_ops_t		*iodef;
 
 void *memset(void *d, int c, unsigned long sz)
 {
-	char		*cd = (char *) d;
+	char		*xd = (char *) d;
 
 	while (sz >= 1) {
 
-		*cd++ = c;
+		*xd++ = c;
 		sz--;
 	}
 
@@ -41,8 +41,8 @@ void *memcpy(void *d, const void *s, unsigned long sz)
 	long			*ld = (long *) d;
 	const long		*ls = (const long *) s;
 
-	if (!((size_t) d & (sizeof(long) - 1UL))
-		&& !((size_t) s & (sizeof(long) - 1UL))) {
+	if (((size_t) d & (sizeof(long) - 1UL)) == 0
+		&& ((size_t) s & (sizeof(long) - 1UL)) == 0) {
 
 		while (sz >= sizeof(long)) {
 
@@ -52,12 +52,12 @@ void *memcpy(void *d, const void *s, unsigned long sz)
 	}
 
 	{
-		char		*cd = (char *) ld;
-		const char	*cs = (const char *) ls;
+		char		*xd = (char *) ld;
+		const char	*xs = (const char *) ls;
 
 		while (sz >= 1) {
 
-			*cd++ = *cs++;
+			*xd++ = *xs++;
 			sz--;
 		}
 	}
@@ -150,7 +150,7 @@ const char *strstr(const char *s, const char *p)
 		}
 		while (1);
 
-		b = s;
+		b = p;
 	}
 
 	return NULL;
@@ -219,14 +219,6 @@ const char *strchr(const char *s, int c)
 		++s;
 	}
 	while (1);
-
-	return s;
-}
-
-const char *strtok(const char *s, const char *d)
-{
-	while (*s != 0 && strchr(d, *s) == NULL) ++s;
-	while (*s != 0 && strchr(d, *s) != NULL) ++s;
 
 	return s;
 }
@@ -318,9 +310,18 @@ fmt_float(io_ops_t *_io, float x, int n)
 		h /= 10.f;
 
 	x += h;
-	i = (int) x;
-	fmt_int(_io, i);
-	x -= i;
+
+	if (x < 2147483647.f) {
+
+		i = (int) x;
+		fmt_int(_io, i);
+		x -= i;
+	}
+	else {
+		xputs(_io, "FFF");
+
+		return ;
+	}
 
 	if (x < 1.f) {
 
@@ -370,12 +371,12 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 		e = 0;
 
 		do {
-			if (x < 1.f) {
+			if (x > 0.f && x < 1.f) {
 
 				x *= 10.f;
 				e--;
 			}
-			else if (x > 10.f) {
+			else if (x >= 10.f) {
 
 				x /= 10.f;
 				e++;
@@ -392,7 +393,7 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 	x += h;
 
-	if (x > 10.f) {
+	if (x >= 10.f) {
 
 		x /= 10.f;
 		e++;
@@ -470,7 +471,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
 				case 's':
 					s = va_arg(ap, const char *);
-					xputs(_io, s);
+					xputs(_io, (s != NULL) ? s : "(null)");
 					break;
 			}
 		}

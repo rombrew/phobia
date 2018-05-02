@@ -16,9 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "pm_control.h"
-#include "pm_fsm.h"
-#include "pm_math.h"
+#include "pm.h"
+#include "pm_m.h"
 
 void pm_default(pmc_t *pm)
 {
@@ -51,7 +50,7 @@ void pm_default(pmc_t *pm)
 	pm->probe_i_hold_Q = 0.f;
 	pm->probe_i_sine = 1.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 16.f;
-	pm->probe_speed_ramp = 1100.f;
+	pm->probe_speed_ramp = 1700.f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
@@ -75,7 +74,7 @@ void pm_default(pmc_t *pm)
 	pm->lu_BEMF_low = .2f;
 	pm->lu_BEMF_high = .3f;
 	pm->lu_forced_D = 5.f;
-	pm->lu_forced_accel = 1500.f;
+	pm->lu_forced_accel = 500.f;
 
 	pm->hf_freq_hz = pm->freq_hz / 12.f;
 	pm->hf_swing_D = 1.f;
@@ -83,7 +82,6 @@ void pm_default(pmc_t *pm)
 	pm->hf_gain_S = 5E+1f;
 	pm->hf_gain_F = 2E-3f;
 
-	pm->const_lpf_U = 0.f;
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;
@@ -266,6 +264,8 @@ pm_LU_update(pmc_t *pm)
 			(pm->i_set_point_Q > M_EPS_F) ? dS : 0.f;
 
 		X[4] += dS;
+
+		pm->lu_drift_Q += pm->lu_gain_QZ * eQ;
 	}
 	else {
 		if (pm->b_HFI != 0 && pm->lu_region == PM_LU_CLOSED_LOW) {
@@ -317,7 +317,6 @@ pm_LU_job(pmc_t *pm)
 		if (BEMF > pm->lu_BEMF_high) {
 
 			pm->lu_region = PM_LU_CLOSED_HIGH;
-			pm->lu_drift_Q = 0.f;
 		}
 	}
 

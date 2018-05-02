@@ -19,9 +19,10 @@
 #ifndef _H_MAIN_
 #define _H_MAIN_
 
+#include "pm/pm.h"
+
 #include "lib.h"
 #include "ntc.h"
-#include "pm_control.h"
 #include "telinfo.h"
 
 typedef struct {

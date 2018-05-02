@@ -1,18 +1,18 @@
 
 MEMORY
 {
+	FLASH (rx)	: ORIGIN = 0x08000000, LENGTH = 512K
 	RAM (rwx)	: ORIGIN = 0x20000000, LENGTH = 128K
 	CCM (rw)	: ORIGIN = 0x10000000, LENGTH = 64K
-	FLASH (rx)	: ORIGIN = 0x08000000, LENGTH = 1024K
 }
 
-ld_Stack = 0x10000000 + 64K;
+ld_stack = ORIGIN(CCM) + LENGTH(CCM);
 
 SECTIONS
 {
 	.text : ALIGN(4)
 	{
-		ld_Svectors = . ;
+		ld_begin_vectors = . ;
 
 		KEEP(*(.vectors))
 		. = ALIGN(4);
@@ -23,44 +23,44 @@ SECTIONS
 		*(.rodata.*)
 
 		. = ALIGN(4);
-		ld_Etext = . ;
+		ld_end_text = . ;
 
 	} > FLASH
 
-	.data : AT (ld_Etext) ALIGN(4)
+	.data : AT (ld_end_text) ALIGN(4)
 	{
-		ld_Sdata = . ;
+		ld_begin_data = . ;
 
 		*(.data)
 		*(.data.*)
 
 		. = ALIGN(4);
-		ld_Edata = . ;
+		ld_end_data = . ;
 
 	} > RAM
 
-	.bss : ALIGN(4)
+	.bss (NOLOAD) : ALIGN(4)
 	{
-		ld_Sbss = . ;
+		ld_begin_bss = . ;
 
 		*(.bss)
 		*(.bss.*)
 		*(COMMON)
 
 		. = ALIGN(4);
-		ld_Ebss = . ;
+		ld_end_bss = . ;
 
 	} > RAM
 
-	.ccm : ALIGN(4)
+	.ccm (NOLOAD) : ALIGN(4)
 	{
-		ld_Sccm = . ;
+		ld_begin_ccm = . ;
 
 		*(.ccm)
 		*(.ccm.*)
 
 		. = ALIGN(4);
-		ld_Eccm = . ;
+		ld_end_ccm = . ;
 
 	} > CCM
 }

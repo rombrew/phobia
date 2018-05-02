@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PM_CONTROL_
-#define _H_PM_CONTROL_
+#ifndef _H_PM_
+#define _H_PM_
 
 enum {
 	PM_LU_DISABLED				= 0,
@@ -27,9 +27,35 @@ enum {
 };
 
 enum {
-	PM_HALL_A				= 1,
-	PM_HALL_B				= 2,
-	PM_HALL_C				= 4,
+	PM_STATE_IDLE				= 0,
+	PM_STATE_ZERO_DRIFT,
+	PM_STATE_POWER_STAGE_TEST,
+	PM_STATE_ADJUST_VOLTAGE,
+	PM_STATE_ADJUST_CURRENT,
+	PM_STATE_PROBE_CONST_R,
+	PM_STATE_PROBE_CONST_L,
+	PM_STATE_LU_INITIATE,
+	PM_STATE_LU_SHUTDOWN,
+	PM_STATE_PROBE_CONST_E,
+	PM_STATE_PROBE_CONST_J,
+	PM_STATE_ADJUST_HALL,
+	PM_STATE_ADJUST_SENSOR,
+	PM_STATE_HALT,
+};
+
+enum {
+	PM_OK					= 0,
+	PM_ERROR_ZERO_DRIFT_FAULT,
+	PM_ERROR_NO_MOTOR_CONNECTED,
+	PM_ERORR_POWER_STAGE_FAULT,
+	PM_ERROR_CURRENT_LOOP_FAULT,
+	PM_ERROR_OVER_CURRENT,
+	PM_ERROR_ADJUST_TOLERANCE_FAULT,
+	PM_ERROR_SUPPLY_VOLTAGE_LOW,
+	PM_ERROR_SUPPLY_VOLTAGE_HIGH,
+	PM_ERROR_LU_RESIDUAL_UNSTABLE,
+	PM_ERROR_LU_SPEED_HIGH,
+	PM_ERROR_LU_DRIFT_HIGH,
 };
 
 typedef struct {
@@ -210,5 +236,10 @@ void pm_tune_current_loop(pmc_t *pm);
 void pm_VSI_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
-#endif /* _H_PM_CONTROL_ */
+void pm_FSM(pmc_t *pm);
+void pm_fsm_req(pmc_t *pm, int req);
+
+const char *pm_strerror(int n);
+
+#endif /* _H_PM_ */
 

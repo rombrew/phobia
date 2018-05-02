@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PM_MATH_
-#define _H_PM_MATH_
+#ifndef _H_PM_M_
+#define _H_PM_M_
 
 #define M_PI_F			3.14159265f
 #define M_EPS_F			1.2E-7f
@@ -38,7 +38,7 @@ float pm_sinf(float x);
 float pm_cosf(float x);
 
 float pm_DFT_const_R(const float DFT[8]);
-void pm_DFT_const_L(const float DFT[8], float freq, float LDQ[3]);
+void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[3]);
 
 #endif /* _H_PM_MATH_ */
 

@@ -30,6 +30,7 @@
 #define XGPIO_GET_CH(XGPIO)		(((XGPIO) >> 8) & 0xF)
 #define XGPIO_GET_FUNC(XGPIO)		(((XGPIO) >> 12) & 0xF)
 
+/*
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 2, 2)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('C', 0, 10)
 #define GPIO_ADC_VOLTAGE_U		XGPIO_DEF3('A', 1, 1)
@@ -38,6 +39,18 @@
 #define GPIO_ADC_VOLTAGE_C		XGPIO_DEF3('C', 1, 11)
 #define GPIO_ADC_PCB_NTC		XGPIO_DEF3('C', 3, 13)
 #define GPIO_ADC_EXT_NTC		XGPIO_DEF3('A', 0, 0)
+*/
+/* rev3.
+ * */
+#define GPIO_ADC_CURRENT_A		XGPIO_DEF3('C', 3, 13)
+#define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 1, 1)
+#define GPIO_ADC_VOLTAGE_U		XGPIO_DEF3('A', 2, 2)
+#define GPIO_ADC_VOLTAGE_A		XGPIO_DEF3('A', 0, 0)
+#define GPIO_ADC_VOLTAGE_B		XGPIO_DEF3('A', 0, 0)
+#define GPIO_ADC_VOLTAGE_C		XGPIO_DEF3('A', 0, 0)
+#define GPIO_ADC_PCB_NTC		XGPIO_DEF3('C', 2, 12)
+#define GPIO_ADC_EXT_NTC		XGPIO_DEF3('C', 1, 11)
+
 #define GPIO_ADC_INTERNAL_TEMP		XGPIO_DEF3('J', 0, 0)
 
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 0)
@@ -76,7 +89,8 @@
 #define GPIO_HALL_C			GPIO_TIM3_CH3
 
 #define GPIO_BOOST_CONVERTER		XGPIO_DEF2('B', 2)
-#define GPIO_LED			XGPIO_DEF2('C', 12)
+//#define GPIO_LED			XGPIO_DEF2('C', 12)
+#define GPIO_LED			XGPIO_DEF2('B', 5)
 
 void GPIO_set_mode_INPUT(int xGPIO);
 void GPIO_set_mode_OUTPUT(int xGPIO);

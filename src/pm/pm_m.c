@@ -16,7 +16,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "pm_math.h"
+#include "pm_m.h"
 
 static const float	lt_atanf[] = {
 
@@ -161,8 +161,8 @@ pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
 	if (D > 0.f) {
 
 		D = sqrtf(D);
-		la1 = (B - D) * .5f;
-		la2 = (B + D) * .5f;
+		la1 = (B - D) / 2.f;
+		la2 = (B + D) / 2.f;
 
 		B = Y - la1;
 		D = sqrtf(B * B + M * M);
@@ -176,20 +176,21 @@ pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
 	}
 }
 
-void pm_DFT_const_L(const float DFT[8], float freq, float LDQ[3])
+void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[3])
 {
-	float			DX, DY, W;
+	float			DX, DY, WR;
 	float			LX, LY, LM;
 
-	DX = DFT[0] * DFT[0] + DFT[1] * DFT[1];
-	DY = DFT[4] * DFT[4] + DFT[5] * DFT[5];
-	W = 2.f * M_PI_F * freq;
+	WR = 2.f * M_PI_F * freq_hz;
 
-	LX = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / (DX * W);
-	LY = (DFT[6] * DFT[5] - DFT[7] * DFT[4]) / (DY * W);
-	LM = (DFT[6] * DFT[1] - DFT[7] * DFT[0]) / (DX * W);
-	LM += (DFT[2] * DFT[5] - DFT[3] * DFT[4]) / (DY * W);
-	LM *= .5f;
+	DX = (DFT[0] * DFT[0] + DFT[1] * DFT[1]) * WR;
+	DY = (DFT[4] * DFT[4] + DFT[5] * DFT[5]) * WR;
+
+	LX = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / DX;
+	LY = (DFT[6] * DFT[5] - DFT[7] * DFT[4]) / DY;
+	LM = (DFT[6] * DFT[1] - DFT[7] * DFT[0]) / DX;
+	LM += (DFT[2] * DFT[5] - DFT[3] * DFT[4]) / DY;
+	LM /= 2.f;
 
 	pm_DFT_eigenvalues(LX, LY, LM, LDQ);
 }

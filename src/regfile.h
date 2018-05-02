@@ -19,7 +19,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		7
+#define REG_CONFIG_VERSION		9
 
 enum {
 	REG_NORMAL		= 0,
@@ -30,6 +30,7 @@ enum {
 typedef struct {
 
 	const char		*sym;
+
 	const char		*fmt;
 	int			mode;
 

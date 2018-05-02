@@ -1,3 +1,8 @@
+SH_DEF(ap_pm_default)
+SH_DEF(ap_pm_tune_current_loop)
+SH_DEF(ap_pm_strerror)
+SH_DEF(ap_probe_base)
+SH_DEF(ap_probe_spinup)
 SH_DEF(test_PWM_set_DC)
 SH_DEF(test_PWM_set_Z)
 SH_DEF(test_current_ramp)

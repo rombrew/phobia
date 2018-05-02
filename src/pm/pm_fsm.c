@@ -16,9 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "pm_control.h"
-#include "pm_fsm.h"
-#include "pm_math.h"
+#include "pm.h"
+#include "pm_m.h"
 
 static void
 pm_fsm_state_zero_drift(pmc_t *pm)
@@ -730,7 +729,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
 
-			if (pm->lu_region != PM_LU_CLOSED_HIGH)
+			if (pm->lu_region == PM_LU_DISABLED)
 				break;
 
 			pm->fsm_state = req;
@@ -748,7 +747,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 	}
 }
 
-const char *pm_strerror(int error)
+const char *pm_strerror(int n)
 {
 	const char	*list[] = {
 
@@ -768,7 +767,7 @@ const char *pm_strerror(int error)
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);
 
-	return (error >= 0 && error < lmax) ? list[error] : "";
+	return (n >= 0 && n < lmax) ? list[n] : "";
 }
 
 

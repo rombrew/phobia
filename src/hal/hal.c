@@ -19,7 +19,7 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-extern long		ld_Svectors;
+extern long		ld_begin_vectors;
 unsigned long		clock_cpu_hz;
 
 HAL_t			hal;
@@ -54,6 +54,26 @@ void irqUsageFault()
 void irqDefault()
 {
 	debugTRACE("irq: Default");
+}
+
+static void
+base_startup()
+{
+	/* Enable CCM RAM clock.
+	 * */
+	RCC->AHB1ENR |= RCC_AHB1ENR_CCMDATARAMEN;
+
+	/* Enable FPU.
+	 * */
+	SCB->CPACR |= (3UL << 20) | (3UL << 22);
+
+	/* Vector table offset.
+	 * */
+	SCB->VTOR = (unsigned long) &ld_begin_vectors;
+
+	/* Configure priority grouping.
+	 * */
+	NVIC_SetPriorityGrouping(3UL);
 }
 
 static void
@@ -138,16 +158,10 @@ clock_startup()
 	clock_cpu_hz = 168000000UL;
 }
 
-static void
-board_startup()
+void hal_startup()
 {
-	/* Vector table offset.
-	 * */
-	SCB->VTOR = (unsigned long) &ld_Svectors;
-
-	/* Configure priority grouping.
-	 * */
-	NVIC_SetPriorityGrouping(3UL);
+	base_startup();
+	clock_startup();
 
 	/* Enable Programmable voltage detector.
 	 * */
@@ -157,16 +171,6 @@ board_startup()
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
 		| RCC_AHB1ENR_GPIOCEN;
-
-	/* Enable FPU.
-	 * */
-	SCB->CPACR |= (3UL << 20) | (3UL << 22);
-}
-
-void hal_startup()
-{
-	clock_startup();
-	board_startup();
 }
 
 void hal_system_reset()

@@ -133,9 +133,9 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		if (pm.error != PM_OK) {
+		if (pm.err_no != PM_OK) {
 
-			printf("ERROR: %s\n", pm_strerror(pm.error));
+			printf("ERROR: %s\n", pm_strerror(pm.err_no));
 			exit(1);
 		}
 
@@ -174,7 +174,7 @@ sim_Script(FILE *fdTel)
 	pm.const_R = m.R * (1. - .0);
 	pm.const_Ld = m.Ld * (1. + .0);
 	pm.const_Lq = m.Lq * (1. + .0);
-	pm.const_E = m.E * (1. - .0);
+	pm.const_E = 0*m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
 	pm.b_FORCED = 1;
@@ -203,8 +203,13 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .1, 0);
 
-	pm.s_set_point = 1000.f;
+	pm.s_set_point = 500.f;
+	sim_F(fdTel, 1.5, 0);
+
+	pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
 	sim_F(fdTel, .5, 0);
+
+	printf("%4e (Wb)\n", pm.const_E);
 }
 
 int main(int argc, char *argv[])

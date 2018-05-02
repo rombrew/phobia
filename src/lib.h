@@ -42,7 +42,6 @@ char *strcpy(char *d, const char *s);
 char *strncpy(char *d, const char *s, int n);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
-const char *strtok(const char *s, const char *d);
 
 void xputs(io_ops_t *_io, const char *s);
 void xprintf(io_ops_t *_io, const char *fmt, ...);

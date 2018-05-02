@@ -24,12 +24,12 @@
 
 typedef struct {
 
-	QueueHandle_t	xRX;
-	QueueHandle_t	xTX;
+	QueueHandle_t		xRX;
+	QueueHandle_t		xTX;
 }
 HAL_USART_t;
 
-static HAL_USART_t	hal_USART;
+static HAL_USART_t		hal_USART;
 
 void irqUSART3()
 {

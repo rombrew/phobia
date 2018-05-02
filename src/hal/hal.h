@@ -28,7 +28,7 @@
 #define HAL_APB1_HZ		(clock_cpu_hz / 4UL)
 #define HAL_APB2_HZ		(clock_cpu_hz / 2UL)
 
-#define __CCM__			__attribute__ ((section (".ccm")))
+#define __CCM__			__attribute__ (( section(".ccm") ))
 
 enum {
 	LEG_A			= 1,

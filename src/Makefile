@@ -29,6 +29,7 @@ LDFLAGS	+= -Wl,-T,hal/link.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
+#BAUD	= 460800
 
 OBJS    = freertos/heap_4.o \
         freertos/list.o \
@@ -46,14 +47,15 @@ OBJS	+= hal/entry.o \
 	hal/pwm.o \
 	hal/usart.o
 
+OBJS	+= pm/pm.o \
+	pm/pm_fsm.o \
+	pm/pm_m.o
+
 OBJS	+= apfunc.o \
 	flash.o \
 	lib.o \
 	main.o \
 	ntc.o \
-	pm_control.o \
-	pm_fsm.o \
-	pm_math.o \
 	regfile.o \
 	shell.o \
 	telinfo.o
@@ -62,10 +64,10 @@ LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
 all: $(TARGET)
 
-$(BUILD)/%.o: %.s
-	@ echo "  AS    " $<
-	@ $(MK) $(dir $@)
-	@ $(CC) -c $(CFLAGS) -o $@ $<
+#$(BUILD)/%.o: %.s
+#	@ echo "  AS    " $<
+#	@ $(MK) $(dir $@)
+#	@ $(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
@@ -78,15 +80,11 @@ $(TARGET): $(LIST)
 
 $(IMAGE): $(TARGET)
 	@ echo "  OC    " $(notdir $@)
-	@ $(OC) -j .text -j .data -O binary $< $@
+	@ $(OC) -j .text -j .data -O binary -S $< $@
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v -g +0
-
-ram: $(IMAGE)
-	@ echo "  RAM   " $(notdir $<)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -Mr -v -g +0
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)
