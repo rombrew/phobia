@@ -1,6 +1,5 @@
 
 BUILD	?= /tmp/pmc
-SCRIPT	?= flash
 TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
@@ -15,7 +14,7 @@ CFLAGS	= -std=gnu99 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -O3 -flto
+CFLAGS	+= -Os -flto -g3
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
@@ -29,14 +28,12 @@ LDFLAGS	+= -Wl,-T,hal/link.ld
 
 TTY	= /dev/rfcomm0
 BAUD	= 57600
-#BAUD	= 460800
 
 OBJS    = freertos/heap_4.o \
         freertos/list.o \
         freertos/port.o \
         freertos/queue.o \
-        freertos/tasks.o \
-        freertos/timers.o
+        freertos/tasks.o
 
 OBJS	+= hal/entry.o \
 	hal/adc.o \
@@ -51,11 +48,11 @@ OBJS	+= pm/pm.o \
 	pm/pm_fsm.o \
 	pm/pm_m.o
 
-OBJS	+= apfunc.o \
-	flash.o \
+OBJS	+= flash.o \
 	lib.o \
 	main.o \
 	ntc.o \
+	pmfunc.o \
 	regfile.o \
 	shell.o \
 	telinfo.o
@@ -63,11 +60,6 @@ OBJS	+= apfunc.o \
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
 all: $(TARGET)
-
-#$(BUILD)/%.o: %.s
-#	@ echo "  AS    " $<
-#	@ $(MK) $(dir $@)
-#	@ $(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<

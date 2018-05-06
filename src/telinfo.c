@@ -21,15 +21,16 @@
 #include "freertos/FreeRTOS.h"
 #include "hal/hal.h"
 
+#include "telinfo.h"
 #include "lib.h"
 #include "main.h"
+#include "regfile.h"
 #include "shell.h"
-#include "telinfo.h"
 
 void telinfo_default(telinfo_t *ti)
 {
-	ti->in[0] = &regfile[5];
-	ti->in[1] = &regfile[5];
+	ti->in[0] = reg_search("pm.fb_iA");
+	ti->in[1] = reg_search("pm.fb_iA");
 	ti->in[2] = &regfile[5];
 	ti->in[3] = &regfile[5];
 }
@@ -50,6 +51,9 @@ void telinfo_capture(telinfo_t *ti)
 			for (j = 0; j < TEL_INPUT_MAX; ++j) {
 
 				reg = ti->in[j];
+
+				//reg_getval(reg, );
+
 				ti->data[ti->n][j] = (reg != NULL) ?
 					* (unsigned long *) reg->link.i : 0;
 			}
@@ -58,10 +62,7 @@ void telinfo_capture(telinfo_t *ti)
 
 			if (ti->n >= TEL_DATA_MAX) {
 
-				if (ti->mode == 1)
-					ti->mode = 0;
-				else
-					ti->n = 0;
+				ti->mode = 0;
 			}
 		}
 	}
@@ -84,6 +85,36 @@ void telinfo_disable(telinfo_t *ti)
 
 void telinfo_flush(telinfo_t *ti)
 {
+	const reg_t		*reg;
+	int			n, j;
+
+	for (j = 0; j < TEL_INPUT_MAX; ++j) {
+
+		reg = ti->in[j];
+
+		if (reg != NULL) {
+
+			printf("%s ", reg->sym);
+		}
+	}
+
+	puts(EOL);
+
+	for (n = 0; n < TEL_DATA_MAX; ++n) {
+
+		for (j = 0; j < TEL_INPUT_MAX; ++j) {
+
+			reg = ti->in[j];
+
+			if (reg != NULL) {
+
+				printf(reg->fmt, (float *) &ti->data[n][j]);
+				puts(" ");
+			}
+		}
+
+		puts(EOL);
+	}
 }
 
 SH_DEF(ti_flush)

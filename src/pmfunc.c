@@ -25,22 +25,45 @@
 
 #include "lib.h"
 #include "main.h"
+#include "regfile.h"
 #include "shell.h"
 #include "telinfo.h"
 
-#define AP_ERROR_BARRIER()	\
-	{ if (pm.err_no != PM_OK) { break; } }
+#define PM_WAIT_FOR_IDLE()	if (pm_wait_for_IDLE() != 0) break
 
-#define AP_PRINT_ERROR()	\
-	{ if (pm.err_no != PM_OK) { printf("ERR %i: %s" EOL, \
-		pm.err_no, pm_strerror(pm.err_no)); } }
+static void
+pm_print_error_reason()
+{
+	if (pm.err_reason != PM_OK) {
 
-#define AP_WAIT_FOR(expr)	\
-	{ do { if (pm.err_no != PM_OK || (expr)) break; vTaskDelay(1); } while (1); }
+		printf("ERR %i: %s" EOL, pm.err_reason,
+				pm_strerror(pm.err_reason));
+	}
+}
 
-#define AP_WAIT_FOR_IDLE()	AP_WAIT_FOR(pm.fsm_state == PM_STATE_IDLE)
+static int
+pm_wait_for_IDLE()
+{
+	int			rc = 0;
 
-SH_DEF(ap_pm_default)
+	do {
+		if (pm.fsm_state == PM_STATE_IDLE)
+			break;
+
+		if (pm.err_reason != PM_OK) {
+
+			rc = pm.err_reason;
+			break;
+		}
+
+		vTaskDelay(1);
+	}
+	while (1);
+
+	return rc;
+}
+
+SH_DEF(pm_call_default)
 {
 	if (pm.lu_region != PM_LU_DISABLED)
 		return;
@@ -48,7 +71,7 @@ SH_DEF(ap_pm_default)
 	pm_default(&pm);
 }
 
-SH_DEF(ap_pm_tune_current_loop)
+SH_DEF(pm_call_tune_current_loop)
 {
 	if (pm.lu_region != PM_LU_DISABLED)
 		return;
@@ -56,69 +79,58 @@ SH_DEF(ap_pm_tune_current_loop)
 	pm_tune_current_loop(&pm);
 }
 
-SH_DEF(ap_pm_strerror)
+SH_DEF(pm_error_reason)
 {
-	printf("%i: %s" EOL, pm.err_no, pm_strerror(pm.err_no));
+	pm_print_error_reason();
 }
 
-SH_DEF(ap_probe_base)
+SH_DEF(pm_probe_base)
 {
 	if (pm.lu_region != PM_LU_DISABLED)
 		return;
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+		PM_WAIT_FOR_IDLE();
 
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
+		reg_print_fmt(reg_search("pm.adjust_IA[0]"), 1);
+		reg_print_fmt(reg_search("pm.adjust_IB[0]"), 1);
 
 		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_TEST);
-
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();*/
+		PM_WAIT_FOR_IDLE();*/
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
-
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
+		PM_WAIT_FOR_IDLE();
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
+		PM_WAIT_FOR_IDLE();
 
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
-
-		printf("R %4e (Ohm)" EOL, &pm.const_R);
+		reg_print_fmt(reg_search("pm.const_R"), 1);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
-
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
+		PM_WAIT_FOR_IDLE();
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
+		PM_WAIT_FOR_IDLE();
 
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
-
-		printf("Ld %4e (H)" EOL, &pm.const_Ld);
-		printf("Lq %4e (H)" EOL, &pm.const_Lq);
+		reg_print_fmt(reg_search("pm.const_Ld"), 1);
+		reg_print_fmt(reg_search("pm.const_Lq"), 1);
 
 		pm_tune_current_loop(&pm);
 	}
 	while (0);
 
-	AP_PRINT_ERROR();
+	pm_print_error_reason();
 }
 
-SH_DEF(ap_probe_spinup)
+SH_DEF(pm_probe_spinup)
 {
 	if (pm.lu_region != PM_LU_DISABLED)
 		return;
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-
-		AP_WAIT_FOR_IDLE();
-		AP_ERROR_BARRIER();
+		PM_WAIT_FOR_IDLE();
 
 		pm.s_set_point = 500.f;
 
@@ -126,19 +138,19 @@ SH_DEF(ap_probe_spinup)
 		 * */
 
 		vTaskDelay(1000);
-		AP_ERROR_BARRIER();
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
 
 		vTaskDelay(500);
-		AP_ERROR_BARRIER();
+
+		reg_print_fmt(reg_search("pm.const_E_kv"), 1);
 	}
 	while (0);
 
-	AP_PRINT_ERROR();
+	pm_print_error_reason();
 }
 
-SH_DEF(test_PWM_set_DC)
+SH_DEF(pm_test_PWM_set_DC)
 {
 	int		xDC;
 
@@ -154,7 +166,7 @@ SH_DEF(test_PWM_set_DC)
 	}
 }
 
-SH_DEF(test_PWM_set_Z)
+SH_DEF(pm_test_PWM_set_Z)
 {
 	int		xZ;
 
@@ -167,7 +179,7 @@ SH_DEF(test_PWM_set_Z)
 	}
 }
 
-SH_DEF(test_current_ramp)
+SH_DEF(pm_test_current_ramp)
 {
 	float		iSP;
 	int		xHold = 5;
@@ -192,7 +204,7 @@ SH_DEF(test_current_ramp)
 	telinfo_disable(&ti);
 }
 
-SH_DEF(test_speed_ramp)
+SH_DEF(pm_test_speed_ramp)
 {
 	float			wSP;
 	int			xHold = 300;

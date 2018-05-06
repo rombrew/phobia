@@ -34,9 +34,9 @@ typedef struct {
 }
 sh_cmd_t;
 
-const char *sh_args(const char *s);
+const char *sh_next_arg(const char *s);
 
-void taskSH(void *pData);
+void taskSH(void *); 
 
 #endif /* _H_SHELL_ */
 

@@ -504,7 +504,7 @@ sh_line_null(sh_t *sh)
 	sh->mHIST = 0;
 }
 
-const char *sh_args(const char *s)
+const char *sh_next_arg(const char *s)
 {
 	int			n;
 

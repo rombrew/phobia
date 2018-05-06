@@ -93,48 +93,38 @@
 
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION	1
-#define configTOTAL_HEAP_SIZE			32768
+#define configTOTAL_HEAP_SIZE			25000
 #define configAPPLICATION_ALLOCATED_HEAP	0
 
 #define configUSE_IDLE_HOOK                     1
 #define configUSE_TICK_HOOK                     0
 #define configCHECK_FOR_STACK_OVERFLOW          1
 #define configUSE_MALLOC_FAILED_HOOK            1
-#define configUSE_DAEMON_TASK_STARTUP_HOOK      0
 
 #define configGENERATE_RUN_TIME_STATS           0
 #define configUSE_TRACE_FACILITY                0
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
 
 #define configUSE_CO_ROUTINES                   0
-#define configMAX_CO_ROUTINE_PRIORITIES         1
-
 #define configUSE_TIMERS			0
-#define configTIMER_TASK_PRIORITY		2
-#define configTIMER_QUEUE_LENGTH		5
-#define configTIMER_TASK_STACK_DEPTH		128
 
 #define INCLUDE_vTaskDelete			1
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay			1
 
-#ifdef __NVIC_PRIO_BITS
-	#define configPRIO_BITS       		__NVIC_PRIO_BITS
-#else
-	#define configPRIO_BITS       		4        /* 15 priority levels */
-#endif
+#define configPRIO_BITS       			4        /* 15 priority levels */
 
 #define configKERNEL_INTERRUPT_PRIORITY 		(15 << (8 - configPRIO_BITS))
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 		(5  << (8 - configPRIO_BITS))
 
-#define configASSERT(x)	if ((x) == 0) vAssertCalled(__FILE__, __LINE__)
+#define configASSERT(x)		if ((x) == 0) vAssertCalled(__FILE__, __LINE__)
 
 #define vPortSVCHandler		irqSVCall
 #define xPortPendSVHandler	irqPendSV
 #define xPortSysTickHandler	irqSysTick
 
-extern unsigned long	clock_cpu_hz;
+extern unsigned long clock_cpu_hz;
 extern void vAssertCalled(const char *file, int line);
 
 #endif /* FREERTOS_CONFIG_H */

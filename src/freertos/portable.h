@@ -130,7 +130,10 @@ must be set in the compiler's include path. */
 extern "C" {
 #endif
 
-#include "mpu_wrappers.h"
+//#include "mpu_wrappers.h"
+#define PRIVILEGED_FUNCTION
+#define PRIVILEGED_DATA
+#define portUSING_MPU_WRAPPERS 0
 
 /*
  * Setup the stack of a new task so it is ready to be placed under the

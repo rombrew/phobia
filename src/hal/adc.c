@@ -116,8 +116,6 @@ void ADC_startup()
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_A);
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_B);
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_C);
-	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
-	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
 
 	/* Common configuration (21 MHz).
 	 * */
@@ -154,7 +152,7 @@ void ADC_startup()
 	 * */
 	ADC_const_setup();
 
-	/* Alloc Mutex.
+	/* Alloc Semaphore.
 	 * */
 	hal_ADC.xSem = xSemaphoreCreateMutex();
 

@@ -57,5 +57,7 @@ extern telinfo_t		ti;
 
 extern int flash_block_load();
 
+void lowTRACE(const char *fmt, ...);
+
 #endif /* _H_MAIN_ */
 

@@ -30,7 +30,7 @@ extern long ld_end_bss;
 extern long ld_begin_ccm;
 extern long ld_end_ccm;
 
-void irqReset() __attribute__ (( noreturn ));
+void irqReset();
 void irqNMI();
 void irqHardFault();
 void irqMemoryFault();
@@ -167,17 +167,12 @@ __init_bss(long *d, long *e)
 
 void irqReset()
 {
-	
-
 	__init_data(&ld_end_text, &ld_begin_data, &ld_end_data);
 	__init_bss(&ld_begin_bss, &ld_end_bss);
 	__init_bss(&ld_begin_ccm, &ld_end_ccm);
 
 	hal_startup();
-
 	hal_main();
 	hal_system_reset();
-
-	for (;;) ;
 }
 

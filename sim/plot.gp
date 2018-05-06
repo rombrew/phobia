@@ -58,7 +58,7 @@ page "Residual Variance"
 label 1 "(A)"
 figure 0 21 "pm.lu_residual_lpf"
 
-page "pm.n_power_lpf"
+page "pm.lu_power_lpf"
 label 1 "(W)"
-figure 0 25 "pm.n_power_lpf"
+figure 0 25 "pm.lu_power_lpf"
 

@@ -48,6 +48,20 @@ reg_proc_fsm_state(const reg_t *reg, int *lval, const int *rval)
 }
 
 static void
+reg_proc_m(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = (*reg->link.f) * 1000.f;
+	}
+
+	if (rval != NULL) {
+
+		*reg->link.f = (*rval) / 1000.f;
+	}
+}
+
+static void
 reg_proc_rpm(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
@@ -99,15 +113,15 @@ const reg_t		regfile[] = {
 
 	REG(pm.pwm_R,				"",	"%i",	REG_READ_ONLY, NULL),
 	REG(pm.pwm_MP,				"",	"%i",	REG_CONFIG, NULL),
-	REG(pm.err_no,				"",	"%i",	REG_READ_ONLY, NULL),
+	REG(pm.err_reason,			"",	"%i",	REG_READ_ONLY, NULL),
 	REG(pm.b_FORCED,			"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.b_HFI,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.b_SENSOR,			"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.b_LOOP,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.fsm_state,			"",	"%i",	REG_NORMAL, &reg_proc_fsm_state),
-	REG(pm.tm_skip,				"s",	"%3f",	REG_CONFIG, NULL),
-	REG(pm.tm_probe,			"s",	"%3f",	REG_CONFIG, NULL),
-	REG(pm.tm_hold,				"s",	"%3f",	REG_CONFIG, NULL),
+	REG_E(pm.tm_skip, "_ms",		"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
+	REG_E(pm.tm_probe, "_ms",		"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
+	REG_E(pm.tm_hold, "_ms",		"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
 	REG(pm.adjust_IA[0],			"A",	"%3f",	REG_CONFIG, NULL),
 	REG(pm.adjust_IA[1],			"",	"%4e",	REG_CONFIG, NULL),
 	REG(pm.adjust_IB[0],			"A",	"%3f",	REG_CONFIG, NULL),
@@ -120,7 +134,7 @@ const reg_t		regfile[] = {
 	REG(pm.adjust_UB[1],			"",	"%4e",	REG_CONFIG, NULL),
 	REG(pm.adjust_UC[0],			"V",	"%3f",	REG_CONFIG, NULL),
 	REG(pm.adjust_UC[1],			"",	"%4e",	REG_CONFIG, NULL),
-	REG(pm.fb_i_range,			"A",	"%3f",	REG_CONFIG, NULL),
+	REG(pm.fb_current_range,		"A",	"%3f",	REG_CONFIG, NULL),
 	REG(pm.fb_iA,				"A",	"%3f",	REG_READ_ONLY, NULL),
 	REG(pm.fb_iB,				"A",	"%3f",	REG_READ_ONLY, NULL),
 	REG(pm.fb_uA,				"V",	"%3f",	REG_READ_ONLY, NULL),
@@ -163,8 +177,10 @@ const reg_t		regfile[] = {
 	REG(pm.lu_gain_DS,			"",	"%2e",	REG_CONFIG, NULL),
 	REG(pm.lu_gain_QS,			"",	"%2e",	REG_CONFIG, NULL),
 	REG(pm.lu_gain_QZ,			"",	"%2e",	REG_CONFIG, NULL),
-	REG(pm.lu_BEMF_low,			"V",	"%3f",	REG_CONFIG, NULL),
-	REG(pm.lu_BEMF_high,			"V",	"%3f",	REG_CONFIG, NULL),
+	REG(pm.lu_boost_slope,			"",	"%2e",	REG_CONFIG, NULL),
+	REG(pm.lu_boost_gain,			"",	"%2e",	REG_CONFIG, NULL),
+	REG_E(pm.lu_BEMF_low, "_mV",		"mV",	"%1f",	REG_CONFIG, &reg_proc_m),
+	REG_E(pm.lu_BEMF_high, "_mV",		"mV",	"%1f",	REG_CONFIG, &reg_proc_m),
 	REG(pm.lu_forced_D,			"A",	"%3f",	REG_CONFIG, NULL),
 	REG(pm.lu_forced_accel,		"rad/s/s",	"%3e",	REG_CONFIG, NULL),
 	REG_E(pm.lu_forced_accel, "_rpm","rpm/s",	"%3e",	REG_NORMAL, &reg_proc_rpm),
@@ -210,20 +226,18 @@ const reg_t		regfile[] = {
 	{ NULL, NULL, 0, { NULL }, NULL }
 };
 
-static void
-reg_getval(const reg_t *reg, void *lval)
+void reg_getval(const reg_t *reg, void *lval)
 {
 	if (reg->proc != NULL) {
 
-		reg->proc((reg_t *) reg, lval, NULL);
+		reg->proc(reg, lval, NULL);
 	}
 	else {
-		* (int *) lval = *reg->link.i;
+		* (unsigned long *) lval = * (unsigned long *) reg->link.i;
 	}
 }
 
-static void
-reg_setval(const reg_t *reg, const void *rval)
+void reg_setval(const reg_t *reg, const void *rval)
 {
 	if (reg->mode != REG_READ_ONLY) {
 
@@ -232,9 +246,66 @@ reg_setval(const reg_t *reg, const void *rval)
 			reg->proc(reg, NULL, rval);
 		}
 		else {
-			*reg->link.i = * (int *) rval;
+			* (unsigned long *) reg->link.i = * (unsigned long *) rval;
 		}
 	}
+}
+
+void reg_print_fmt(const reg_t *reg, int full)
+{
+	union {
+		float		f;
+		int		i;
+	} u;
+
+	const char		*su;
+
+	if (reg != NULL) {
+
+		if (full != 0) {
+
+			printf("%c [%i] %s = ", (int) "NCR " [reg->mode],
+					(int) (reg - regfile), reg->sym);
+		}
+
+		reg_getval(reg, &u);
+
+		if (reg->fmt[1] == 'i') {
+
+			printf(reg->fmt, u.i);
+		}
+		else {
+			printf(reg->fmt, &u.f);
+		}
+
+		if (full != 0) {
+
+			su = reg->sym + strlen(reg->sym) + 1;
+
+			if (*su != 0) {
+
+				printf(" (%s)", su);
+			}
+		}
+
+		puts(EOL);
+	}
+}
+
+const reg_t *reg_search(const char *sym)
+{
+	const reg_t		*reg;
+
+	for (reg = regfile; reg->sym != NULL; ++reg) {
+
+		if (strcmp(reg->sym, sym) == 0)
+			break;
+	}
+
+	if (reg->sym == NULL)
+		reg = NULL;
+
+	return reg;
 }
 
 void reg_GET(int n, void *lval)
@@ -253,39 +324,6 @@ void reg_SET(int n, const void *rval)
 	}
 }
 
-static void
-reg_print_info(const reg_t *reg)
-{
-	printf("%c [%i] %s = ", (int) "NCR " [reg->mode],
-			(int) (reg - regfile), reg->sym);
-}
-
-void reg_print_fmt(const reg_t *reg)
-{
-	const char		*unit;
-	float			f;
-	int			n;
-
-	if (reg->fmt[1] == 'i') {
-
-		reg_getval(reg, &n);
-		printf(reg->fmt, n);
-	}
-	else {
-		reg_getval(reg, &f);
-		printf(reg->fmt, &f);
-	}
-
-	unit = reg->sym + strlen(reg->sym) + 1;
-
-	if (*unit != 0) {
-
-		printf(" (%s)", unit);
-	}
-
-	puts(EOL);
-}
-
 SH_DEF(reg_list)
 {
 	const reg_t		*reg;
@@ -294,16 +332,19 @@ SH_DEF(reg_list)
 
 		if (strstr(reg->sym, s) != NULL) {
 
-			reg_print_info(reg);
-			reg_print_fmt(reg);
+			reg_print_fmt(reg, 1);
 		}
 	}
 }
 
 SH_DEF(reg_set)
 {
+	union {
+		float		f;
+		int		i;
+	} u;
+
 	const reg_t		*reg = NULL;
-	float			f;
 	int			n;
 
 	if (stoi(&n, s) != NULL) {
@@ -312,36 +353,28 @@ SH_DEF(reg_set)
 			reg = regfile + n;
 	}
 	else {
-		for (reg = regfile; reg->sym != NULL; ++reg) {
-
-			if (strcmp(reg->sym, s) == 0)
-				break;
-		}
-
-		if (reg->sym == NULL)
-			reg = NULL;
+		reg = reg_search(s);
 	}
 
 	if (reg != NULL) {
 
-		s = sh_args(s);
+		s = sh_next_arg(s);
 
 		if (reg->fmt[1] == 'i') {
 
-			if (stoi(&n, s) != NULL) {
+			if (stoi(&u.i, s) != NULL) {
 
-				reg_setval(reg, &n);
+				reg_setval(reg, &u);
 			}
 		}
 		else {
-			if (stof(&f, s) != NULL) {
+			if (stof(&u.f, s) != NULL) {
 
-				reg_setval(reg, &f);
+				reg_setval(reg, &u);
 			}
 		}
-
-		reg_print_info(reg);
-		reg_print_fmt(reg);
+		
+		reg_print_fmt(reg, 1);
 	}
 }
 
@@ -355,7 +388,7 @@ SH_DEF(reg_export)
 
 			printf("reg_set %s ", reg->sym);
 
-			reg_print_fmt(reg);
+			reg_print_fmt(reg, 0);
 		}
 	}
 }

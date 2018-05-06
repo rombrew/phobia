@@ -19,50 +19,49 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
+#define CLOCK_CRYSTAL_HZ		12000000UL
+#define CLOCK_CPU_TARGET_HZ		168000000UL
+
 extern long		ld_begin_vectors;
 unsigned long		clock_cpu_hz;
 
 HAL_t			hal;
 
-extern void debugTRACE(const char *fmt, ...);
+extern void lowTRACE(const char *fmt, ...);
 
 void irqNMI()
 {
-	debugTRACE("irq: NMI");
+	lowTRACE("IRQ: NMI \r\n");
 }
 
 void irqHardFault()
 {
-	debugTRACE("irq: HardFault");
+	lowTRACE("IRQ: HardFault \r\n");
 }
 
 void irqMemoryFault()
 {
-	debugTRACE("irq: MemoryFault");
+	lowTRACE("IRQ: MemoryFault \r\n");
 }
 
 void irqBusFault()
 {
-	debugTRACE("irq: BusFault");
+	lowTRACE("IRQ: BusFault \r\n");
 }
 
 void irqUsageFault()
 {
-	debugTRACE("irq: UsageFault");
+	lowTRACE("IRQ: UsageFault \r\n");
 }
 
 void irqDefault()
 {
-	debugTRACE("irq: Default");
+	lowTRACE("IRQ: Default \r\n");
 }
 
 static void
 base_startup()
 {
-	/* Enable CCM RAM clock.
-	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_CCMDATARAMEN;
-
 	/* Enable FPU.
 	 * */
 	SCB->CPACR |= (3UL << 20) | (3UL << 22);
@@ -79,6 +78,7 @@ base_startup()
 static void
 clock_startup()
 {
+	unsigned long	CLOCK, PLLQ, PLLP, PLLN, PLLM;
 	int		HSERDY, HSEN = 0;
 
 	/* Enable HSI.
@@ -113,24 +113,39 @@ clock_startup()
 
 	/* Set AHB/APB1/APB2 prescalers.
 	 * */
-	RCC->CFGR &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
 	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
 
 	if (HSERDY) {
 
 		/* From HSE.
 		 * */
-		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE
-			| (7UL << 24) | (0UL << 16)
-			| (168UL << 6) | (6UL << 0);
+		CLOCK = CLOCK_CRYSTAL_HZ;
+		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
 	}
 	else {
 		/* From HSI.
 		 * */
-		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI
-			| (7UL << 24) | (0UL << 16)
-			| (168UL << 6) | (8UL << 0);
+		CLOCK = 16000000UL;
+		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
 	}
+
+	PLLP = 2;
+
+	PLLM = (CLOCK + 1999999UL) / 2000000UL;
+	CLOCK /= PLLM;
+
+	PLLN = (PLLP * CLOCK_CPU_TARGET_HZ) / CLOCK;
+	CLOCK *= PLLN;
+
+	PLLQ = (CLOCK + 47999999UL) / 48000000UL;
+
+	RCC->PLLCFGR |= (PLLQ << 24)
+		| ((PLLP / 2UL - 1UL) << 16)
+		| (PLLN << 6) | (PLLM << 0);
+
+	/* Define clock frequency.
+	 * */
+	clock_cpu_hz = CLOCK / PLLP;
 
 	/* Enable PLL.
 	 * */
@@ -146,23 +161,16 @@ clock_startup()
 
 	/* Select PLL.
 	 * */
-	RCC->CFGR &= ~RCC_CFGR_SW;
 	RCC->CFGR |= RCC_CFGR_SW_PLL;
 
 	/* Wait till PLL is used.
 	 * */
 	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
-
-	/* Define clock frequency.
-	 * */
-	clock_cpu_hz = 168000000UL;
 }
 
-void hal_startup()
+static void
+periph_startup()
 {
-	base_startup();
-	clock_startup();
-
 	/* Enable Programmable voltage detector.
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
@@ -171,6 +179,13 @@ void hal_startup()
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
 		| RCC_AHB1ENR_GPIOCEN;
+}
+
+void hal_startup()
+{
+	base_startup();
+	clock_startup();
+	periph_startup();
 }
 
 void hal_system_reset()

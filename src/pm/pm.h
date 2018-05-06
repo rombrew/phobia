@@ -54,6 +54,7 @@ enum {
 	PM_ERROR_SUPPLY_VOLTAGE_LOW,
 	PM_ERROR_SUPPLY_VOLTAGE_HIGH,
 	PM_ERROR_LU_RESIDUAL_UNSTABLE,
+	PM_ERROR_LU_INVALID_OPERATION,
 	PM_ERROR_LU_SPEED_HIGH,
 	PM_ERROR_LU_DRIFT_HIGH,
 };
@@ -83,7 +84,7 @@ typedef struct {
 	int		pwm_R;
 	int		pwm_MP;
 
-	int		err_no;
+	int		err_reason;
 	int		err_bb[8];
 
 	int		b_FORCED;
@@ -109,7 +110,7 @@ typedef struct {
 	float		adjust_UB[2];
 	float		adjust_UC[2];
 
-	float		fb_i_range;
+	float		fb_current_range;
 
 	float		fb_iA;
 	float		fb_iB;

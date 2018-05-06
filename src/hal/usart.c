@@ -112,7 +112,7 @@ void USART_putc(int c)
 
 void USART_debug_putc(int c)
 {
-	while (!(USART3->SR & USART_SR_TXE)) ;
+	while ((USART3->SR & USART_SR_TXE) == 0) ;
 
 	USART3->DR = c;
 }

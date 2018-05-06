@@ -28,12 +28,12 @@
 #define LOAD_COUNT_DELAY		100
 
 application_t			ap;
-pmc_t __CCM__			pm;
+pmc_t				pm __CCM__;
 telinfo_t			ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
-void debugTRACE(const char *fmt, ...)
+void lowTRACE(const char *fmt, ...)
 {
 	va_list		ap;
 	io_ops_t	ops = {
@@ -49,17 +49,17 @@ void debugTRACE(const char *fmt, ...)
 
 void vAssertCalled(const char *file, int line)
 {
-	debugTRACE("FreeRTOS: ASSERT %s:%i \r\n", file, line);
+	lowTRACE("FreeRTOS: Wrong condition in %s:%i" EOL, file, line);
 }
 
 void vApplicationMallocFailedHook()
 {
-	debugTRACE("FreeRTOS Hook: Heap Allocation Failed \r\n");
+	lowTRACE("FreeRTOS Hook: Heap Allocation Failed" EOL);
 }
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 {
-	debugTRACE("FreeRTOS Hook: Stack Overflow in \"%s\" Task \r\n", pcTaskName);
+	lowTRACE("FreeRTOS Hook: Stack Overflow in \"%s\" Task" EOL, pcTaskName);
 }
 
 void taskTERM(void *pData)
@@ -67,6 +67,9 @@ void taskTERM(void *pData)
 	TickType_t			xWake;
 
 	xWake = xTaskGetTickCount();
+
+	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
+	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
 
 	do {
 		vTaskDelayUntil(&xWake, (TickType_t) 1000);
@@ -124,9 +127,6 @@ void taskINIT(void *pData)
 	PWM_startup();
 	USART_startup();
 
-	GPIO_set_mode_OUTPUT(GPIO_BOOST_CONVERTER);
-	GPIO_set_HIGH(GPIO_BOOST_CONVERTER);
-
 	pm.freq_hz = (float) hal.PWM_freq_hz;
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_R = hal.PWM_resolution;
@@ -140,6 +140,9 @@ void taskINIT(void *pData)
 
 		pm_default(&pm);
 	}
+
+	GPIO_set_mode_OUTPUT(GPIO_BOOST_CONVERTER);
+	GPIO_set_HIGH(GPIO_BOOST_CONVERTER);
 
 	GPIO_set_LOW(GPIO_LED);
 
@@ -226,9 +229,9 @@ SH_DEF(ap_cpu_usage)
 
 SH_DEF(ap_thermal)
 {
-	printf("PCB NTC %1f (C)" EOL, &ap.t_PCB);
-	printf("EXT NTC %1f (C)" EOL, &ap.t_EXT);
-	printf("TEMP    %1f (C)" EOL, &ap.t_TEMP);
+	reg_print_fmt(reg_search("ap.t_PCB"), 1);
+	reg_print_fmt(reg_search("ap.t_EXT"), 1);
+	reg_print_fmt(reg_search("ap.t_TEMP"), 1);
 }
 
 SH_DEF(ap_reboot)
@@ -236,7 +239,6 @@ SH_DEF(ap_reboot)
 	if (pm.lu_region != PM_LU_DISABLED)
 		return ;
 
-	vTaskDelay(100);
 	hal_system_reset();
 }
 
