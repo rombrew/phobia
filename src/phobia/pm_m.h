@@ -22,15 +22,8 @@
 #define M_PI_F			3.14159265f
 #define M_EPS_F			1.2E-7f
 
-#ifndef _MATH_H
-
-inline float
-fabsf(float x) { return __builtin_fabsf(x); }
-
-inline float
-sqrtf(float x) { return __builtin_sqrtf(x); }
-
-#endif /* _MATH_H */
+inline float pm_fabsf(float x) { return __builtin_fabsf(x); }
+inline float pm_sqrtf(float x) { return __builtin_sqrtf(x); }
 
 void pm_rotf(float y[2], float r, const float x[2]);
 float pm_atan2f(float y, float x);

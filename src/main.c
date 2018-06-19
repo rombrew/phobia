@@ -28,7 +28,7 @@
 #define LOAD_COUNT_DELAY		100
 
 application_t			ap;
-pmc_t				pm __CCM__;
+pmc_t __RAM_CCM			pm;
 telinfo_t			ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
@@ -141,8 +141,8 @@ void taskINIT(void *pData)
 		pm_default(&pm);
 	}
 
-	GPIO_set_mode_OUTPUT(GPIO_BOOST_CONVERTER);
-	GPIO_set_HIGH(GPIO_BOOST_CONVERTER);
+	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
+	GPIO_set_HIGH(GPIO_BOOST_12V);
 
 	GPIO_set_LOW(GPIO_LED);
 

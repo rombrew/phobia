@@ -19,7 +19,6 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
-#include "pm/pm.h"
 
 #include "lib.h"
 #include "main.h"
@@ -115,8 +114,8 @@ const reg_t		regfile[] = {
 	REG(pm.pwm_MP,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.err_reason,			"",	"%i",	REG_READ_ONLY, NULL),
 	REG(pm.b_FORCED,			"",	"%i",	REG_CONFIG, NULL),
-	REG(pm.b_HFI,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.b_SENSOR,			"",	"%i",	REG_CONFIG, NULL),
+	REG(pm.b_HFI,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.b_LOOP,				"",	"%i",	REG_CONFIG, NULL),
 	REG(pm.fsm_state,			"",	"%i",	REG_NORMAL, &reg_proc_fsm_state),
 	REG_E(pm.tm_skip, "_ms",		"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
@@ -373,7 +372,7 @@ SH_DEF(reg_set)
 				reg_setval(reg, &u);
 			}
 		}
-		
+
 		reg_print_fmt(reg, 1);
 	}
 }

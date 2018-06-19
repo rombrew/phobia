@@ -17,10 +17,14 @@
 */
 
 #include <stddef.h>
+#include <stdio.h>
 
 #include "freertos/FreeRTOS.h"
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
+
+#define GPIO_USART_TX			XGPIO_DEF4('C', 10, 0, 7)
+#define GPIO_USART_RX			XGPIO_DEF4('C', 11, 0, 7)
 
 typedef struct {
 
@@ -65,12 +69,10 @@ void USART_startup()
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
 
-	/* Enable PC10 (TX), PC11 (RX) pins.
+	/* Enable USART3 pins.
 	 * */
-	MODIFY_REG(GPIOC->AFR[1], (15UL << 8) | (15UL << 12),
-			(7UL << 8) | (7UL << 12));
-	MODIFY_REG(GPIOC->MODER, GPIO_MODER_MODER10 | GPIO_MODER_MODER11,
-			GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1);
+	GPIO_set_mode_FUNCTION(GPIO_USART_TX);
+	GPIO_set_mode_FUNCTION(GPIO_USART_RX);
 
 	/* Alloc queues.
 	 * */
@@ -79,7 +81,7 @@ void USART_startup()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = HAL_APB1_HZ / hal.USART_baud_rate;
+	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baud_rate;
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	USART3->CR2 = 0;

@@ -19,7 +19,7 @@
 #ifndef _H_MAIN_
 #define _H_MAIN_
 
-#include "pm/pm.h"
+#include "phobia/pm.h"
 
 #include "lib.h"
 #include "ntc.h"

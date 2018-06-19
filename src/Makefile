@@ -30,32 +30,29 @@ TTY	= /dev/rfcomm0
 BAUD	= 57600
 
 OBJS    = freertos/heap_4.o \
-        freertos/list.o \
-        freertos/port.o \
-        freertos/queue.o \
-        freertos/tasks.o
-
-OBJS	+= hal/entry.o \
-	hal/adc.o \
-	hal/can.o \
-	hal/flash.o \
-	hal/gpio.o \
-	hal/hal.o \
-	hal/pwm.o \
-	hal/usart.o
-
-OBJS	+= pm/pm.o \
-	pm/pm_fsm.o \
-	pm/pm_m.o
-
-OBJS	+= flash.o \
-	lib.o \
-	main.o \
-	ntc.o \
-	pmfunc.o \
-	regfile.o \
-	shell.o \
-	telinfo.o
+	  freertos/list.o \
+	  freertos/port.o \
+	  freertos/queue.o \
+	  freertos/tasks.o \
+	  hal/entry.o \
+	  hal/adc.o \
+	  hal/can.o \
+	  hal/flash.o \
+	  hal/gpio.o \
+	  hal/hal.o \
+	  hal/pwm.o \
+	  hal/usart.o \
+	  phobia/pm.o \
+	  phobia/pm_fsm.o \
+	  phobia/pm_m.o \
+	  flash.o \
+	  lib.o \
+	  main.o \
+	  ntc.o \
+	  pmfunc.o \
+	  regfile.o \
+	  shell.o \
+	  telinfo.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
@@ -68,7 +65,7 @@ $(BUILD)/%.o: %.c
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)
-	@ $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@ $(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(IMAGE): $(TARGET)
 	@ echo "  OC    " $(notdir $@)

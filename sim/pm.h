@@ -1,2 +1,2 @@
-#include "../src/pm/pm.h"
-#include "../src/pm/pm_m.h"
+#include "../src/phobia/pm.h"
+#include "../src/phobia/pm_m.h"

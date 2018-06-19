@@ -1,12 +1,11 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-defstyle line 2
-
 load 0 -1 float 40 "/tmp/TEL"
 
 group 0 0
-deflabel 0 "Time (s)"
+deflabel 0 "(ms)"
+defscale 0 1000 0
 
 page "DQ Current"
 label 1 "(A)"
@@ -61,4 +60,10 @@ figure 0 21 "pm.lu_residual_lpf"
 page "pm.lu_power_lpf"
 label 1 "(W)"
 figure 0 25 "pm.lu_power_lpf"
+
+page "pm.lu_mode"
+figure 0 26 "pm.lu_mode"
+
+page "pm.hfi_CS[1]"
+figure 0 27 "pm.hfi_CS[1]"
 

@@ -22,8 +22,26 @@
 enum {
 	PM_LU_DISABLED				= 0,
 	PM_LU_OPEN_LOOP,
-	PM_LU_CLOSED_LOW,
-	PM_LU_CLOSED_HIGH,
+	PM_LU_CLOSED_ESTIMATE_FLUX,
+	PM_LU_CLOSED_ESTIMATE_HFI,
+	PM_LU_CLOSED_SENSOR_HALL,
+};
+
+enum {
+	PM_HALL_DISABLED			= 0,
+	PM_HALL_ENABLED_ON_LOW_SPEED,
+	PM_HALL_ENABLED_EVERYWHERE
+};
+
+enum {
+	PM_HFI_DISABLED				= 0,
+	PM_HFI_ENABLED,
+	PM_HFI_ENABLED_WITH_FLUX_POLARITY_DETECTION
+};
+
+enum {
+	PM_LOOP_CURRENT_CONTROL			= 0,
+	PM_LOOP_SPEED_CONTROL,
 };
 
 enum {
@@ -87,9 +105,8 @@ typedef struct {
 	int		err_reason;
 	int		err_bb[8];
 
-	int		b_FORCED;
+	int		b_HALL;
 	int		b_HFI;
-	int		b_SENSOR;
 	int		b_LOOP;
 
 	int		fsm_state;
@@ -111,14 +128,11 @@ typedef struct {
 	float		adjust_UC[2];
 
 	float		fb_current_range;
-
-	float		fb_iA;
-	float		fb_iB;
-
-	float		fb_uA;
-	float		fb_uB;
-	float		fb_uC;
-
+	float		fb_current_A;
+	float		fb_current_B;
+	float		fb_voltage_A;
+	float		fb_voltage_B;
+	float		fb_voltage_C;
 	int		fb_hall_A;
 	int		fb_hall_B;
 	int		fb_hall_C;
@@ -138,8 +152,8 @@ typedef struct {
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
 	float		fault_adjust_tolerance;
-	float		fault_lu_residual_maximal;
-	float		fault_lu_drift_Q_maximal;
+	float		fault_flux_residual_maximal;
+	float		fault_flux_drift_Q_maximal;
 	float		fault_supply_voltage_low;
 	float		fault_supply_voltage_high;
 
@@ -147,41 +161,53 @@ typedef struct {
 	float		vsi_Y;
 	float		vsi_lpf_D;
 	float		vsi_lpf_Q;
+	float		vsi_lpf_watt;
+	float		vsi_gain_LP;
+	float		vsi_gain_LW;
 
-	float		lu_power_lpf;
-
-	float		lu_residual_D;
-	float		lu_residual_Q;
-	float		lu_residual_lpf;
-
-	int		lu_region;
+	float		lu_current_X;
+	float		lu_current_Y;
 	float		lu_X[5];
-	float		lu_drift_Q;
+	int		lu_mode;
 	int		lu_revol;
-	float		lu_gain_DA;
-	float		lu_gain_QA;
-	float		lu_gain_DP;
-	float		lu_gain_DS;
-	float		lu_gain_QS;
-	float		lu_gain_QZ;
-	float		lu_boost_slope;
-	float		lu_boost_gain;
-	float		lu_BEMF_low;
-	float		lu_BEMF_high;
-	float		lu_forced_D;
-	float		lu_forced_accel;
 
-	float		hf_freq_hz;
-	float		hf_swing_D;
-	float		hf_flux_polarity;
-	float		hf_CS[2];
-	float		hf_gain_P;
-	float		hf_gain_S;
-	float		hf_gain_F;
+	float		forced_X[5];
+	float		forced_hold_D;
+	float		forced_accel;
+	float		forced_tolerance;
+
+	float		flux_X[5];
+	float		flux_drift_Q;
+	float		flux_residual_D;
+	float		flux_residual_Q;
+	float		flux_residual_lpf;
+	float		flux_gain_LP;
+	float		flux_gain_DA;
+	float		flux_gain_QA;
+	float		flux_gain_DP;
+	float		flux_gain_DS;
+	float		flux_gain_QS;
+	float		flux_gain_QZ;
+	float		flux_BEMF_low;
+	float		flux_BEMF_high;
+
+	float		hfi_X[5];
+	float		hfi_lpf_D;
+	float		hfi_lpf_Q;
+	float		hfi_freq_hz;
+	float		hfi_swing_D;
+	float		hfi_flux_polarity;
+	float		hfi_CS[2];
+	float		hfi_gain_H;
+	float		hfi_gain_P;
+	float		hfi_gain_S;
+	float		hfi_gain_F;
 
 	float		hall_;
 
 	float		const_lpf_U;
+	float		const_gain_LP;
+
 	float		const_E;
 	float		const_R;
 	float		const_Ld;
@@ -191,7 +217,6 @@ typedef struct {
 	float		const_J;
 
 	float		i_maximal;
-	float		i_maximal_weak;
 	float		i_power_consumption_maximal;
 	float		i_power_regeneration_maximal;
 	float		i_set_point_D;
@@ -209,7 +234,7 @@ typedef struct {
 
 	float		s_maximal;
 	float		s_set_point;
-	float		s_slew_rate;
+	float		s_accel;
 	float		s_track_point;
 	float		s_integral;
 	float		s_gain_P;
@@ -221,11 +246,6 @@ typedef struct {
 	float		p_gain_P;
 	float		p_gain_I;
 
-	float		lpf_gain_POWER;
-	float		lpf_gain_LU;
-	float		lpf_gain_VSI;
-	float		lpf_gain_US;
-
 	void 		(* pDC) (int, int, int);
 	void 		(* pZ) (int);
 }
@@ -234,7 +254,7 @@ pmc_t;
 void pm_default(pmc_t *pm);
 void pm_tune_current_loop(pmc_t *pm);
 
-void pm_VSI_control(pmc_t *pm, float uX, float uY);
+void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);

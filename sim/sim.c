@@ -84,7 +84,7 @@ sim_Tel(float *pTel)
 
 	/* Zero Drift Q.
 	 * */
-	pTel[14] = pm.lu_drift_Q;
+	pTel[14] = pm.flux_drift_Q;
 
 	/* VSI voltage (XY).
 	 * */
@@ -98,13 +98,16 @@ sim_Tel(float *pTel)
 
 	/* Measurement residual.
 	 * */
-	pTel[19] = pm.lu_residual_D;
-	pTel[20] = pm.lu_residual_Q;
-	pTel[21] = sqrt(pm.lu_residual_lpf);
+	pTel[19] = pm.flux_residual_D;
+	pTel[20] = pm.flux_residual_Q;
+	pTel[21] = sqrt(pm.flux_residual_lpf);
 
 	/* Informational.
 	 * */
-	pTel[25] = pm.lu_power_lpf;
+	pTel[25] = pm.vsi_lpf_watt;
+
+	pTel[26] = pm.lu_mode;
+	pTel[27] = pm.hfi_CS[1];
 }
 
 static void
@@ -177,9 +180,8 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
-	pm.b_FORCED = 1;
-	pm.b_HFI = 0;
-	pm.b_LOOP = 0;
+	pm.b_HFI = 1;
+	pm.b_LOOP = 1;
 
 	pm_tune_current_loop(&pm);
 
@@ -203,15 +205,19 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .1, 0);
 
-	pm.i_set_point_Q = 50.f;
-	sim_F(fdTel, 2., 0);
+	pm.s_set_point = 5000.f;
+	sim_F(fdTel, .5, 0);
+
+	m.X[2] /= 2.;
+
+	sim_F(fdTel, .5, 0);
 }
 
 int main(int argc, char *argv[])
 {
 	FILE		*fdTel;
 
-	libStart();
+	lib_start();
 	blm_Enable(&m);
 
 	fdTel = fopen(TEL_FILE, "wb");
@@ -225,7 +231,7 @@ int main(int argc, char *argv[])
 	sim_Script(fdTel);
 
 	fclose(fdTel);
-	libStop();
+	lib_stop();
 
 	return 0;
 }

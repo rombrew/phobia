@@ -31,6 +31,9 @@ SECTIONS
 	{
 		ld_begin_data = . ;
 
+		*(.ramfunc)
+		*(.ramfunc.*)
+
 		*(.data)
 		*(.data.*)
 
@@ -52,12 +55,12 @@ SECTIONS
 
 	} > RAM
 
-	.ccm (NOLOAD) : ALIGN(4)
+	.ccmram (NOLOAD) : ALIGN(4)
 	{
 		ld_begin_ccm = . ;
 
-		*(.ccm)
-		*(.ccm.*)
+		*(.ccmram)
+		*(.ccmram.*)
 
 		. = ALIGN(4);
 		ld_end_ccm = . ;

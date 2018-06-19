@@ -19,7 +19,14 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define HAL_TIM1_HZ		(HAL_APB2_HZ * 2UL)
+#define GPIO_TIM1_CH1N			XGPIO_DEF4('B', 13, 0, 1)
+#define GPIO_TIM1_CH2N			XGPIO_DEF4('B', 14, 0, 1)
+#define GPIO_TIM1_CH3N			XGPIO_DEF4('B', 15, 0, 1)
+#define GPIO_TIM1_CH1			XGPIO_DEF4('A', 8, 0, 1)
+#define GPIO_TIM1_CH2			XGPIO_DEF4('A', 9, 0, 1)
+#define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
+
+#define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
 
 void irqTIM1_UP_TIM10() { }
 
@@ -29,14 +36,14 @@ void PWM_startup()
 
 	/* Update configuration.
 	 * */
-	R = HAL_TIM1_HZ / 2UL / hal.PWM_freq_hz;
+	R = CLOCK_TIM1_HZ / 2UL / hal.PWM_freq_hz;
 	R = (R & 1) ? R + 1 : R;
-	hal.PWM_freq_hz = HAL_TIM1_HZ / 2UL / R;
+	hal.PWM_freq_hz = CLOCK_TIM1_HZ / 2UL / R;
 	hal.PWM_resolution = R;
 
-	D = ((HAL_TIM1_HZ / 1000UL) * hal.PWM_dead_time_ns + 500000UL) / 1000000UL;
+	D = ((CLOCK_TIM1_HZ / 1000UL) * hal.PWM_dead_time_ns + 500000UL) / 1000000UL;
 	D = (D < 128) ? D : 128;
-	hal.PWM_dead_time_ns = D * 1000000UL / (HAL_TIM1_HZ / 1000UL);
+	hal.PWM_dead_time_ns = D * 1000000UL / (CLOCK_TIM1_HZ / 1000UL);
 
 	/* Enable TIM1 clock.
 	 * */

@@ -77,7 +77,7 @@ float pm_atan2f(float y, float x)
 {
 	float		u;
 
-	if (fabsf(x) > fabsf(y)) {
+	if (pm_fabsf(x) > pm_fabsf(y)) {
 
 		u = pm_atanf(y / x);
 		u += (x < 0.f) ? (y < 0.f) ? - M_PI_F : M_PI_F : 0.f;
@@ -111,7 +111,7 @@ float pm_sinf(float x)
 {
         float           x_abs, u;
 
-	x_abs = fabsf(x);
+	x_abs = pm_fabsf(x);
 
 	if (x_abs > (M_PI_F / 2.f))
 		x_abs = M_PI_F - x_abs;
@@ -126,7 +126,7 @@ float pm_cosf(float x)
 {
         float           u;
 
-	x = (M_PI_F / 2.f) - fabsf(x);
+	x = (M_PI_F / 2.f) - pm_fabsf(x);
 	u = (x < 0.f) ? - pm_sincosf(- x) : pm_sincosf(x);
 
 	return u;
@@ -136,7 +136,7 @@ float pm_DFT_const_R(const float DFT[8])
 {
 	float			D, X, Y, E, R = 0.;
 
-	D = sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
+	D = pm_sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
 
 	if (D > 0.f) {
 
@@ -160,12 +160,12 @@ pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
 
 	if (D > 0.f) {
 
-		D = sqrtf(D);
+		D = pm_sqrtf(D);
 		la1 = (B - D) / 2.f;
 		la2 = (B + D) / 2.f;
 
 		B = Y - la1;
-		D = sqrtf(B * B + M * M);
+		D = pm_sqrtf(B * B + M * M);
 		B /= D;
 		D = - M / D;
 		B = pm_atan2f(D, B);

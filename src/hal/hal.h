@@ -25,15 +25,23 @@
 #include "pwm.h"
 #include "usart.h"
 
-#define HAL_APB1_HZ		(clock_cpu_hz / 4UL)
-#define HAL_APB2_HZ		(clock_cpu_hz / 2UL)
+#define GPIO_HALL_A			XGPIO_DEF2('C', 6)
+#define GPIO_HALL_B			XGPIO_DEF2('C', 7)
+#define GPIO_HALL_C			XGPIO_DEF2('C', 8)
 
-#define __CCM__			__attribute__ (( section(".ccm") ))
+#define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
+#define GPIO_LED			XGPIO_DEF2('B', 5)
+
+#define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
+#define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
+
+#define __RAM_CCM			__attribute__ (( section(".ccmram") ))
+#define __RAM_FUNC			__attribute__ (( section(".ramfunc") ))
 
 enum {
-	LEG_A			= 1,
-	LEG_B			= 2,
-	LEG_C			= 4
+	LEG_A				= 1,
+	LEG_B				= 2,
+	LEG_C				= 4
 };
 
 typedef struct {
@@ -67,8 +75,8 @@ typedef struct {
 }
 HAL_t;
 
-extern unsigned long	clock_cpu_hz;
-extern HAL_t		hal;
+extern unsigned long		clock_cpu_hz;
+extern HAL_t			hal;
 
 void hal_startup();
 

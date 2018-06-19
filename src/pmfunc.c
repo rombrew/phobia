@@ -20,8 +20,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "hal/hal.h"
-#include "pm/pm.h"
-#include "pm/pm_m.h"
+#include "phobia/pm.h"
 
 #include "lib.h"
 #include "main.h"
@@ -182,12 +181,12 @@ SH_DEF(pm_test_PWM_set_Z)
 SH_DEF(pm_test_current_ramp)
 {
 	float		iSP;
-	int		xHold = 5;
+	int		xHold = 3;
 
 	if (pm.lu_region == PM_LU_DISABLED)
 		return;
 
-	telinfo_enable(&ti, hal.PWM_freq_hz);
+	telinfo_enable(&ti, 0);
 
 	do {
 		iSP = pm.i_set_point_Q;

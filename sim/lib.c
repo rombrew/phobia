@@ -35,7 +35,7 @@ lib_t;
 
 static lib_t		lib;
 
-void libStart()
+void lib_start()
 {
 	FILE		*fseed;
 	unsigned int	r = 0;
@@ -65,7 +65,7 @@ void libStart()
 	}
 }
 
-void libStop()
+void lib_stop()
 {
 	FILE		*fseed;
 
@@ -78,7 +78,7 @@ void libStop()
 	}
 }
 
-double libRand()
+double lib_rand()
 {
 	double		x, a, b;
 
@@ -95,13 +95,13 @@ double libRand()
 	return x;
 }
 
-double libGauss()
+double lib_gauss()
 {
 	double		s, x;
 
 	do {
-		s = 2. * libRand() - 1.;
-		x = 2. * libRand() - 1.;
+		s = 2. * lib_rand() - 1.;
+		x = 2. * lib_rand() - 1.;
 		s = s * s + x * x;
 	}
 	while (s >= 1.);

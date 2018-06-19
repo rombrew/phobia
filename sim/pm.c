@@ -1,5 +1,3 @@
-#include <math.h>
-
-#include "../src/pm/pm.c"
-#include "../src/pm/pm_fsm.c"
-#include "../src/pm/pm_m.c"
+#include "../src/phobia/pm.c"
+#include "../src/phobia/pm_fsm.c"
+#include "../src/phobia/pm_m.c"

@@ -9,10 +9,9 @@ MK	= mkdir -p
 RM      = rm -rf
 
 CFLAGS	= -std=gnu99 -pipe -Wall -Og -flto -g3
-LFLAGS	= -lm -g3
+LFLAGS	= -lm
 
-OBJS	= blm.o lib.o sim.o
-OBJS	+= pm.o
+OBJS	= blm.o lib.o sim.o pm.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
@@ -25,7 +24,7 @@ $(BUILD)/%.o: %.c
 
 $(TARGET): $(LIST)
 	@ echo "  LD    " $(notdir $@)
-	@ $(LD) $(CFLAGS) $(LFLAGS) -o $@ $^
+	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
 
 run: $(TARGET)
 	@ echo "  RUN	" $(notdir $<)

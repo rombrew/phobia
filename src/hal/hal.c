@@ -22,10 +22,10 @@
 #define CLOCK_CRYSTAL_HZ		12000000UL
 #define CLOCK_CPU_TARGET_HZ		168000000UL
 
-extern long		ld_begin_vectors;
-unsigned long		clock_cpu_hz;
+extern long			ld_begin_vectors;
+unsigned long			clock_cpu_hz;
 
-HAL_t			hal;
+HAL_t				hal;
 
 extern void lowTRACE(const char *fmt, ...);
 

@@ -70,7 +70,14 @@ void telinfo_capture(telinfo_t *ti)
 
 void telinfo_enable(telinfo_t *ti, int freq)
 {
-	ti->d = (hal.PWM_freq_hz + freq / 2) / freq;
+	if (freq > 0) {
+
+		ti->d = (hal.PWM_freq_hz + freq / 2) / freq;
+	}
+	else {
+		ti->d = 1;
+	}
+
 	ti->i = 0;
 	ti->n = 0;
 

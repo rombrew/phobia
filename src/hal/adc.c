@@ -42,13 +42,13 @@ void irqADC()
 		ADC3->SR &= ~ADC_SR_JEOC;
 
 		xADC = (int) ADC2->JDR1;
-		hal.ADC_current_A = (float) (xADC - 2048) * hal.ADC_const.GA;
+		hal.ADC_current_A = (float) (xADC - 2047) * hal.ADC_const.GA;
 
 		xADC = (int) ADC2->JDR2;
 		hal.ADC_voltage_U = (float) (xADC) * hal.ADC_const.GU;
 
 		xADC = (int) ADC3->JDR1;
-		hal.ADC_current_B = (float) (xADC - 2048) * hal.ADC_const.GA;
+		hal.ADC_current_B = (float) (xADC - 2047) * hal.ADC_const.GA;
 
 		xADC = (int) ADC2->JDR2;
 		fADC = (float) (xADC) * hal.ADC_const.GU;
