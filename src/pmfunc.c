@@ -62,17 +62,17 @@ pm_wait_for_IDLE()
 	return rc;
 }
 
-SH_DEF(pm_call_default)
+SH_DEF(pm_func_default)
 {
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	pm_default(&pm);
 }
 
-SH_DEF(pm_call_tune_current_loop)
+SH_DEF(pm_func_tune_current_loop)
 {
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	pm_tune_current_loop(&pm);
@@ -85,15 +85,15 @@ SH_DEF(pm_error_reason)
 
 SH_DEF(pm_probe_base)
 {
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		PM_WAIT_FOR_IDLE();
 
-		reg_print_fmt(reg_search("pm.adjust_IA[0]"), 1);
-		reg_print_fmt(reg_search("pm.adjust_IB[0]"), 1);
+		reg_print_fmt(&regfile[ID_PM_ADJUST_IA_0_], 1);
+		reg_print_fmt(&regfile[ID_PM_ADJUST_IB_0_], 1);
 
 		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_TEST);
 		PM_WAIT_FOR_IDLE();*/
@@ -104,7 +104,7 @@ SH_DEF(pm_probe_base)
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 		PM_WAIT_FOR_IDLE();
 
-		reg_print_fmt(reg_search("pm.const_R"), 1);
+		reg_print_fmt(&regfile[ID_PM_CONST_R], 1);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
 		PM_WAIT_FOR_IDLE();
@@ -112,8 +112,8 @@ SH_DEF(pm_probe_base)
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
 		PM_WAIT_FOR_IDLE();
 
-		reg_print_fmt(reg_search("pm.const_Ld"), 1);
-		reg_print_fmt(reg_search("pm.const_Lq"), 1);
+		reg_print_fmt(&regfile[ID_PM_CONST_LD], 1);
+		reg_print_fmt(&regfile[ID_PM_CONST_LQ], 1);
 
 		pm_tune_current_loop(&pm);
 	}
@@ -124,7 +124,7 @@ SH_DEF(pm_probe_base)
 
 SH_DEF(pm_probe_spinup)
 {
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	do {
@@ -142,7 +142,7 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay(500);
 
-		reg_print_fmt(reg_search("pm.const_E_kv"), 1);
+		reg_print_fmt(&regfile[ID_PM_CONST_E_KV], 1);
 	}
 	while (0);
 
@@ -153,7 +153,7 @@ SH_DEF(pm_test_PWM_set_DC)
 {
 	int		xDC;
 
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	if (stoi(&xDC, s) != NULL) {
@@ -169,7 +169,7 @@ SH_DEF(pm_test_PWM_set_Z)
 {
 	int		xZ;
 
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	if (stoi(&xZ, s) != NULL) {
@@ -183,7 +183,7 @@ SH_DEF(pm_test_current_ramp)
 	float		iSP;
 	int		xHold = 3;
 
-	if (pm.lu_region == PM_LU_DISABLED)
+	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
 	telinfo_enable(&ti, 0);
@@ -208,7 +208,7 @@ SH_DEF(pm_test_speed_ramp)
 	float			wSP;
 	int			xHold = 300;
 
-	if (pm.lu_region == PM_LU_DISABLED)
+	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
 	telinfo_enable(&ti, 1000);

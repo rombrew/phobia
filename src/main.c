@@ -74,9 +74,9 @@ void taskTERM(void *pData)
 	do {
 		vTaskDelayUntil(&xWake, (TickType_t) 1000);
 
-		ap.t_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-		ap.t_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
-		ap.t_TEMP = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
+		ap.tc_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
+		ap.tc_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
+		ap.tc_TEMP = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
 	}
 	while (1);
 }
@@ -229,14 +229,14 @@ SH_DEF(ap_cpu_usage)
 
 SH_DEF(ap_thermal)
 {
-	reg_print_fmt(reg_search("ap.t_PCB"), 1);
-	reg_print_fmt(reg_search("ap.t_EXT"), 1);
-	reg_print_fmt(reg_search("ap.t_TEMP"), 1);
+	reg_print_fmt(&regfile[ID_AP_TC_PCB], 1);
+	reg_print_fmt(&regfile[ID_AP_TC_EXT], 1);
+	reg_print_fmt(&regfile[ID_AP_TC_TEMP], 1);
 }
 
 SH_DEF(ap_reboot)
 {
-	if (pm.lu_region != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED)
 		return ;
 
 	hal_system_reset();

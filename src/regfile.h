@@ -22,9 +22,13 @@
 #define REG_CONFIG_VERSION		11
 
 enum {
-	REG_NORMAL		= 0,
+	REG_VIRTUAL		= 0,
 	REG_CONFIG,
 	REG_READ_ONLY
+};
+
+enum {
+#include "regdefs.h"
 };
 
 typedef struct {
@@ -49,9 +53,7 @@ extern const reg_t	regfile[];
 
 void reg_getval(const reg_t *reg, void *lval);
 void reg_setval(const reg_t *reg, const void *rval);
-
 void reg_print_fmt(const reg_t *reg, int full);
-const reg_t *reg_search(const char *sym);
 
 void reg_GET(int n, void *lval);
 void reg_SET(int n, const void *rval);

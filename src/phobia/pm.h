@@ -20,6 +20,11 @@
 #define _H_PM_
 
 enum {
+	PM_ABC_THREE_PHASE			= 0,
+	PM_ABC_TWO_PHASE,
+};
+
+enum {
 	PM_LU_DISABLED				= 0,
 	PM_LU_OPEN_LOOP,
 	PM_LU_CLOSED_ESTIMATE_FLUX,
@@ -105,9 +110,10 @@ typedef struct {
 	int		err_reason;
 	int		err_bb[8];
 
-	int		b_HALL;
-	int		b_HFI;
-	int		b_LOOP;
+	int		config_ABC;
+	int		config_HALL;
+	int		config_HFI;
+	int		config_LOOP;
 
 	int		fsm_state;
 	int		fsm_phase;
@@ -127,7 +133,7 @@ typedef struct {
 	float		adjust_UB[2];
 	float		adjust_UC[2];
 
-	float		fb_current_range;
+	float		fb_current_clamp;
 	float		fb_current_A;
 	float		fb_current_B;
 	float		fb_voltage_A;
@@ -137,9 +143,9 @@ typedef struct {
 	int		fb_hall_B;
 	int		fb_hall_C;
 
-	float		probe_i_hold;
-	float		probe_i_hold_Q;
-	float		probe_i_sine;
+	float		probe_current_hold;
+	float		probe_current_hold_Q;
+	float		probe_current_sine;
 	float		probe_freq_sine_hz;
 	float		probe_speed_ramp;
 	float		probe_gain_P;
@@ -165,8 +171,8 @@ typedef struct {
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
 
-	float		lu_current_X;
-	float		lu_current_Y;
+	float		lu_fb_X;
+	float		lu_fb_Y;
 	float		lu_X[5];
 	int		lu_mode;
 	int		lu_revol;
@@ -192,27 +198,23 @@ typedef struct {
 	float		flux_BEMF_high;
 
 	float		hfi_X[5];
-	float		hfi_lpf_D;
-	float		hfi_lpf_Q;
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
 	float		hfi_flux_polarity;
 	float		hfi_CS[2];
-	float		hfi_gain_H;
 	float		hfi_gain_P;
 	float		hfi_gain_S;
 	float		hfi_gain_F;
 
+	float		hall_X[5];
 	float		hall_;
 
 	float		const_lpf_U;
 	float		const_gain_LP;
-
 	float		const_E;
 	float		const_R;
 	float		const_Ld;
 	float		const_Lq;
-
 	int		const_Zp;
 	float		const_J;
 

@@ -23,9 +23,10 @@ void pm_default(pmc_t *pm)
 {
 	pm->pwm_MP = 8;
 
-	pm->b_HALL = 0;
-	pm->b_HFI = 0;
-	pm->b_LOOP = 1;
+	pm->config_ABC = PM_ABC_THREE_PHASE;
+	pm->config_HALL = PM_HALL_DISABLED;
+	pm->config_HFI = PM_HFI_DISABLED;
+	pm->config_LOOP = PM_LOOP_SPEED_CONTROL;
 
 	pm->tm_skip = 50E-3f;
 	pm->tm_probe = 200E-3f;
@@ -44,11 +45,11 @@ void pm_default(pmc_t *pm)
 	pm->adjust_UC[0] = 0.f;
 	pm->adjust_UC[1] = 1.f;
 
-	pm->fb_current_range = 50.f;
+	pm->fb_current_clamp = 50.f;
 
-	pm->probe_i_hold = 5.f;
-	pm->probe_i_hold_Q = 0.f;
-	pm->probe_i_sine = 1.f;
+	pm->probe_current_hold = 10.f;
+	pm->probe_current_hold_Q = 0.f;
+	pm->probe_current_sine = 10.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 16.f;
 	pm->probe_speed_ramp = 1700.f;
 	pm->probe_gain_P = 1E-2f;
@@ -67,7 +68,7 @@ void pm_default(pmc_t *pm)
 	pm->vsi_gain_LW = 5E-1f;
 
 	pm->forced_hold_D = 10.f;
-	pm->forced_accel = 2E+3f;
+	pm->forced_accel = 1E+3f;
 	pm->forced_tolerance = 1.f;
 
 	pm->flux_gain_LP = 1E-1f;
@@ -77,12 +78,11 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_DS = 5E+0f;
 	pm->flux_gain_QS = 1E+0f;
 	pm->flux_gain_QZ = 5E-3f;
-	pm->flux_BEMF_low = 1100E-3f;
-	pm->flux_BEMF_high = 1200E-3f;
+	pm->flux_BEMF_low = 200E-3f;
+	pm->flux_BEMF_high = 400E-3f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
 	pm->hfi_swing_D = 1.f;
-	pm->hfi_gain_H = 1E-1f;
 	pm->hfi_gain_P = 5E-2f;
 	pm->hfi_gain_S = 7E+1f;
 	pm->hfi_gain_F = 2E-3f;
@@ -95,9 +95,9 @@ void pm_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_maximal = 10.f;
+	pm->i_maximal = 30.f;
 	pm->i_power_consumption_maximal = 2050.f;
-	pm->i_power_regeneration_maximal = -1050.f;
+	pm->i_power_regeneration_maximal = -1.f;
 	pm->i_slew_rate_D = 5E+4f;
 	pm->i_slew_rate_Q = 5E+4f;
 	pm->i_gain_PD = 2E-1f;
@@ -107,8 +107,9 @@ void pm_default(pmc_t *pm)
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 16.f);
 	pm->s_accel = 5E+6f;
-	pm->s_gain_P = 1E-2f;
+	pm->s_gain_P = 2E-2f;
 	pm->s_gain_I = 1E-3f;
+
 	pm->p_gain_P = 50.f;
 	pm->p_gain_I = 0.f;
 }
@@ -124,7 +125,7 @@ void pm_tune_current_loop(pmc_t *pm)
 }
 
 static void
-pm_equation_3(pmc_t *pm, float D[], const float X[])
+pm_equation_3(pmc_t *pm, float D[3], const float X[5])
 {
 	float		uD, uQ, X4, X5, R1, E1, fluxD, fluxQ;
 
@@ -145,7 +146,7 @@ pm_equation_3(pmc_t *pm, float D[], const float X[])
 }
 
 static void
-pm_solve_2(pmc_t *pm, float X[])
+pm_solve_2(pmc_t *pm, float X[5])
 {
 	float		D1[3], D2[3], X2[5];
 	float		dT = pm->dT;
@@ -169,9 +170,8 @@ pm_solve_2(pmc_t *pm, float X[])
 }
 
 static void
-pm_flux_measure(pmc_t *pm, float Z[2])
+pm_clamped_measure(pmc_t *pm, float X[5], float Z[2])
 {
-	float		*X = pm->flux_X;
 	float		iA, iB, iX, iY;
 
 	iX = X[2] * X[0] - X[3] * X[1];
@@ -180,10 +180,10 @@ pm_flux_measure(pmc_t *pm, float Z[2])
 	iA = iX;
 	iB = - .5f * iX + .8660254f * iY;
 
-	iA = (iA < - pm->fb_current_range) ? - pm->fb_current_range :
-		(iA > pm->fb_current_range) ? pm->fb_current_range : iA;
-	iB = (iB < - pm->fb_current_range) ? - pm->fb_current_range :
-		(iB > pm->fb_current_range) ? pm->fb_current_range : iB;
+	iA = (iA < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
+		(iA > pm->fb_current_clamp) ? pm->fb_current_clamp : iA;
+	iB = (iB < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
+		(iB > pm->fb_current_clamp) ? pm->fb_current_clamp : iB;
 
 	iX = iA;
 	iY = .57735027f * iA + 1.1547005f * iB;
@@ -198,10 +198,10 @@ pm_flux_update(pmc_t *pm)
 	float		*X = pm->flux_X, Z[2];
 	float		iD, iQ, eD, eQ, eR, dR;
 
-	iD = X[2] * pm->lu_current_X + X[3] * pm->lu_current_Y;
-	iQ = X[2] * pm->lu_current_Y - X[3] * pm->lu_current_X;
+	iD = X[2] * pm->lu_fb_X + X[3] * pm->lu_fb_Y;
+	iQ = X[2] * pm->lu_fb_Y - X[3] * pm->lu_fb_X;
 
-	pm_flux_measure(pm, Z);
+	pm_clamped_measure(pm, X, Z);
 
 	eD = iD - Z[0];
 	eQ = iQ - Z[1];
@@ -214,7 +214,7 @@ pm_flux_update(pmc_t *pm)
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
 
-	if (pm->const_E > M_EPS_F) {
+	if (pm->const_E != 0.f) {
 
 		eR = (X[4] < 0.f) ? - eD : eD;
 		dR = pm->flux_gain_DP * eR;
@@ -248,29 +248,16 @@ static void
 pm_hfi_update(pmc_t *pm)
 {
 	float		*X = pm->hfi_X;
-	float		eD, eQ, eR, dR, C2;
+	float		iD, iQ, eD, eQ, eR, dR, C2;
 
-	/*X[0] = X[2] * pm->lu_current_X + X[3] * pm->lu_current_Y;
-	X[1] = X[2] * pm->lu_current_Y - X[3] * pm->lu_current_X;
-
-	eD = X[0] - pm->hfi_lpf_D;
-	eQ = X[1] - pm->hfi_lpf_Q;
-
-	pm->hfi_lpf_D += (X[0] - pm->hfi_lpf_D) * 5E-1f;
-	pm->hfi_lpf_Q += (X[1] - pm->hfi_lpf_Q) * 5E-1f;*/
-
-	float		iD, iQ, temp1, temp2;
-
-	iD = X[2] * pm->lu_current_X + X[3] * pm->lu_current_Y;
-	iQ = X[2] * pm->lu_current_Y - X[3] * pm->lu_current_X;
+	iD = X[2] * pm->lu_fb_X + X[3] * pm->lu_fb_Y;
+	iQ = X[2] * pm->lu_fb_Y - X[3] * pm->lu_fb_X;
 
 	eD = iD - X[0];
 	eQ = iQ - X[1];
 
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
-
-	// -----------
 
 	eR = pm->hfi_CS[1] * eQ;
 	dR = pm->hfi_gain_P * eR;
@@ -279,7 +266,7 @@ pm_hfi_update(pmc_t *pm)
 
 	X[4] += pm->hfi_gain_S * eR;
 
-	if (pm->b_HFI == PM_HFI_ENABLED_WITH_FLUX_POLARITY_DETECTION) {
+	if (pm->config_HFI == PM_HFI_ENABLED_WITH_FLUX_POLARITY_DETECTION) {
 
 		C2 = pm->hfi_CS[0] * pm->hfi_CS[0] - pm->hfi_CS[1] * pm->hfi_CS[1];
 		pm->hfi_flux_polarity += eD * C2 * pm->hfi_gain_F;
@@ -297,23 +284,27 @@ pm_hfi_update(pmc_t *pm)
 		}
 	}
 
-	//pm_rotf(X + 2, X[4] * pm->dT, X + 2);
 	pm_solve_2(pm, X);
 }
 
 static void
 pm_hall_update(pmc_t *pm)
 {
+	/* TODO
+	 * */
 }
 
 static void
 pm_forced_update(pmc_t *pm)
 {
 	float		*X = pm->forced_X;
-	float		dS, bMAX;
+	float		flux_X, flux_Y, dS, bMAX;
 
-	X[0] = X[2] * pm->lu_current_X + X[3] * pm->lu_current_Y;
-	X[1] = X[2] * pm->lu_current_Y - X[3] * pm->lu_current_X;
+	flux_X = pm->flux_X[2] * pm->flux_X[0] - pm->flux_X[3] * pm->flux_X[1];
+	flux_Y = pm->flux_X[3] * pm->flux_X[0] + pm->flux_X[2] * pm->flux_X[1];
+
+	X[0] = X[2] * flux_X + X[3] * flux_Y;
+	X[1] = X[2] * flux_Y - X[3] * flux_X;
 
 	dS = pm->forced_accel * pm->dT;
 	bMAX = pm->flux_BEMF_high * 2.f - pm->flux_BEMF_low;
@@ -340,17 +331,14 @@ static void
 pm_lu_FSM(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
-	float		BEMF;
 
-	pm->lu_current_X = pm->fb_current_A;
-	pm->lu_current_Y = .57735027f * pm->fb_current_A
+	pm->lu_fb_X = pm->fb_current_A;
+	pm->lu_fb_Y = .57735027f * pm->fb_current_A
 		+ 1.1547005f * pm->fb_current_B;
 
-	pm_flux_update(pm);
-
-	BEMF = pm_fabsf(X[4] * pm->const_E);
-
 	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_FLUX) {
+
+		pm_flux_update(pm);
 
 		X[0] = pm->flux_X[0];
 		X[1] = pm->flux_X[1];
@@ -358,13 +346,13 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->flux_X[3];
 		X[4] = pm->flux_X[4];
 
-		if (BEMF < pm->flux_BEMF_low) {
+		if (pm_fabsf(X[4] * pm->const_E) < pm->flux_BEMF_low) {
 
-			if (pm->b_HALL != PM_HALL_DISABLED) {
+			if (pm->config_HALL != PM_HALL_DISABLED) {
 
 				pm->lu_mode = PM_LU_CLOSED_SENSOR_HALL;
 			}
-			else if (pm->b_HFI != PM_HFI_DISABLED) {
+			else if (pm->config_HFI != PM_HFI_DISABLED) {
 
 				pm->lu_mode = PM_LU_CLOSED_ESTIMATE_HFI;
 
@@ -373,9 +361,6 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hfi_X[2] = X[2];
 				pm->hfi_X[3] = X[3];
 				pm->hfi_X[4] = X[4];
-
-				pm->hfi_lpf_D = X[0];
-				pm->hfi_lpf_Q = X[1];
 			}
 			else {
 				pm->lu_mode = PM_LU_OPEN_LOOP;
@@ -398,9 +383,15 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (BEMF > pm->flux_BEMF_high) {
+		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_BEMF_high) {
 
 			pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
+
+			pm->flux_X[0] = X[0];
+			pm->flux_X[1] = X[1];
+			pm->flux_X[2] = X[2];
+			pm->flux_X[3] = X[3];
+			pm->flux_X[4] = X[4];
 		}
 	}
 	else if (pm->lu_mode == PM_LU_CLOSED_SENSOR_HALL) {
@@ -409,6 +400,7 @@ pm_lu_FSM(pmc_t *pm)
 	}
 	else if (pm->lu_mode == PM_LU_OPEN_LOOP) {
 
+		pm_flux_update(pm);
 		pm_forced_update(pm);
 
 		X[0] = pm->forced_X[0];
@@ -417,7 +409,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (BEMF > pm->flux_BEMF_high) {
+		if (pm_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_BEMF_high) {
 
 			pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
 		}
@@ -580,10 +572,6 @@ pm_current_control(pmc_t *pm)
 	eD = pm->i_track_point_D - X[0];
 	eQ = pm->i_track_point_Q - X[1];
 
-	// delayed feedback in not good
-	//eD = pm->i_track_point_D - (X[2] * pm->lu_current_X + X[3] * pm->lu_current_Y);
-	//eQ = pm->i_track_point_Q - (X[2] * pm->lu_current_Y - X[3] * pm->lu_current_X);
-
 	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
 
 		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
@@ -651,7 +639,7 @@ pm_speed_control(pmc_t *pm)
 		iSP = pm->s_gain_P * eD;
 
 		pm->s_integral += (X[1] - pm->s_integral) * pm->s_gain_I;
-		//iSP += pm->s_integral;
+		iSP += pm->s_integral;
 
 		pm->i_set_point_D = 0.f;
 		pm->i_set_point_Q = iSP;
@@ -725,10 +713,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
 	B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
 
-	A = (A < - pm->fb_current_range) ? - pm->fb_current_range :
-		(A > pm->fb_current_range) ? pm->fb_current_range : A;
-	B = (B < - pm->fb_current_range) ? - pm->fb_current_range :
-		(B > pm->fb_current_range) ? pm->fb_current_range : B;
+	A = (A < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
+		(A > pm->fb_current_clamp) ? pm->fb_current_clamp : A;
+	B = (B < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
+		(B > pm->fb_current_clamp) ? pm->fb_current_clamp : B;
 
 	pm->fb_current_A = A;
 	pm->fb_current_B = B;
@@ -761,7 +749,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm_fsm_req(pm, PM_STATE_HALT);
 		}
 
-		if (pm->b_LOOP == PM_LOOP_SPEED_CONTROL) {
+		if (pm->config_LOOP == PM_LOOP_SPEED_CONTROL) {
 
 			pm_speed_control(pm);
 		}

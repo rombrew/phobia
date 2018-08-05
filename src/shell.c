@@ -57,13 +57,13 @@ sh_t;
 
 #undef SH_DEF
 #define SH_DEF(name)	void name(const char *s);
-#include "shell.list"
+#include "shdefs.h"
 
 const sh_cmd_t		cmLIST[] = {
 
 #undef SH_DEF
 #define SH_DEF(name)	{ #name, &name},
-#include "shell.list"
+#include "shdefs.h"
 
 	{NULL, NULL}
 };

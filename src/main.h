@@ -45,9 +45,9 @@ typedef struct {
 
 	/* Thermal.
 	 * */
-	float			t_PCB;
-	float			t_EXT;
-	float			t_TEMP;
+	float			tc_PCB;
+	float			tc_EXT;
+	float			tc_TEMP;
 }
 application_t;
 

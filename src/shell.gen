@@ -1,7 +1,0 @@
-#!/bin/sh
-# vi: ft=sh
-
-# Run the script if you have added or removed any shell command.
-
-cat *.c | sed -n '/^SH_DEF/p' > shell.list
-

@@ -29,8 +29,8 @@
 
 void telinfo_default(telinfo_t *ti)
 {
-	ti->in[0] = reg_search("pm.fb_iA");
-	ti->in[1] = reg_search("pm.fb_iA");
+	ti->in[0] = &regfile[ID_PM_FB_CURRENT_A];
+	ti->in[1] = &regfile[ID_PM_FB_CURRENT_B];
 	ti->in[2] = &regfile[5];
 	ti->in[3] = &regfile[5];
 }
@@ -52,8 +52,6 @@ void telinfo_capture(telinfo_t *ti)
 
 				reg = ti->in[j];
 
-				//reg_getval(reg, );
-
 				ti->data[ti->n][j] = (reg != NULL) ?
 					* (unsigned long *) reg->link.i : 0;
 			}
@@ -70,7 +68,7 @@ void telinfo_capture(telinfo_t *ti)
 
 void telinfo_enable(telinfo_t *ti, int freq)
 {
-	if (freq > 0) {
+	if (freq > 0 && freq <= hal.PWM_freq_hz) {
 
 		ti->d = (hal.PWM_freq_hz + freq / 2) / freq;
 	}
@@ -93,6 +91,7 @@ void telinfo_disable(telinfo_t *ti)
 void telinfo_flush(telinfo_t *ti)
 {
 	const reg_t		*reg;
+	const char		*su;
 	int			n, j;
 
 	for (j = 0; j < TEL_INPUT_MAX; ++j) {
@@ -101,7 +100,16 @@ void telinfo_flush(telinfo_t *ti)
 
 		if (reg != NULL) {
 
-			printf("%s ", reg->sym);
+			puts(reg->sym);
+
+			su = reg->sym + strlen(reg->sym) + 1;
+
+			if (*su != 0) {
+
+				printf(" (%s)", su);
+			}
+
+			puts(";");
 		}
 	}
 
@@ -115,8 +123,15 @@ void telinfo_flush(telinfo_t *ti)
 
 			if (reg != NULL) {
 
-				printf(reg->fmt, (float *) &ti->data[n][j]);
-				puts(" ");
+				if (reg->fmt[1] == 'i') {
+
+					printf(reg->fmt, (int) ti->data[n][j]);
+				}
+				else {
+					printf(reg->fmt, (float *) &ti->data[n][j]);
+				}
+
+				puts(";");
 			}
 		}
 
@@ -126,6 +141,16 @@ void telinfo_flush(telinfo_t *ti)
 
 SH_DEF(ti_flush)
 {
+	telinfo_flush(&ti);
+}
+
+SH_DEF(ti_live)
+{
+	int		freq = 0;
+
+	stoi(&freq, s);
+
+	telinfo_enable(&ti, freq);
 	telinfo_flush(&ti);
 }
 

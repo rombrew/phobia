@@ -180,7 +180,7 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
-	pm.b_HFI = 1;
+	pm.b_HFI = 0;
 	pm.b_LOOP = 1;
 
 	pm_tune_current_loop(&pm);

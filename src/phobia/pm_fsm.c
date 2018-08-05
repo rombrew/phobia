@@ -260,7 +260,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->temp[2] += - pm->fb_current_B;
 
 		case 1:
-			eA = pm->probe_i_hold - pm->fb_current_A;
+			eA = pm->probe_current_hold - pm->fb_current_A;
 			pm->temp[0] += pm->probe_gain_I * eA;
 			uX = pm->probe_gain_P * eA + pm->temp[0];
 
@@ -319,8 +319,8 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
-			pm->probe_DFT[2] = pm->probe_i_hold;
-			pm->probe_DFT[3] = pm->probe_i_hold_Q;
+			pm->probe_DFT[2] = pm->probe_current_hold;
+			pm->probe_DFT[3] = pm->probe_current_hold_Q;
 
 			pm->temp[0] = 0.f;
 			pm->temp[1] = 0.f;
@@ -333,15 +333,15 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			break;
 
 		case 2:
-			pm->probe_DFT[0] += pm->vsi_X - pm->probe_i_hold * pm->const_R;
-			pm->probe_DFT[1] += pm->vsi_Y - pm->probe_i_hold_Q * pm->const_R;
+			pm->probe_DFT[0] += pm->vsi_X - pm->probe_current_hold * pm->const_R;
+			pm->probe_DFT[1] += pm->vsi_Y - pm->probe_current_hold_Q * pm->const_R;
 
 		case 1:
 			iX = pm->fb_current_A;
 			iY = .57735027f * pm->fb_current_A + 1.1547005f * pm->fb_current_B;
 
-			eX = pm->probe_i_hold - iX;
-			eY = pm->probe_i_hold_Q - iY;
+			eX = pm->probe_current_hold - iX;
+			eY = pm->probe_current_hold_Q - iY;
 
 			pm->temp[0] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->temp[0];
@@ -411,12 +411,12 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			Z = (pm->const_Ld < pm->const_Lq) ? pm->const_Ld : pm->const_Lq;
 			Z = 2.f * M_PI_F * Z * pm->probe_freq_sine_hz;
 			Z = pm->const_R * pm->const_R + Z * Z;
-			pm->temp[3] = pm->probe_i_sine * pm_sqrtf(Z);
+			pm->temp[3] = pm->probe_current_sine * pm_sqrtf(Z);
 
-			if (pm_fabsf(pm->probe_i_hold_Q) > M_EPS_F) {
+			if (pm_fabsf(pm->probe_current_hold_Q) > M_EPS_F) {
 
-				pm->temp[4] = pm->probe_i_hold * pm->const_R;
-				pm->temp[5] = pm->probe_i_hold_Q * pm->const_R;
+				pm->temp[4] = pm->probe_current_hold * pm->const_R;
+				pm->temp[5] = pm->probe_current_hold_Q * pm->const_R;
 			}
 			else {
 				pm->temp[4] = 0.f;
@@ -496,11 +496,11 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->vsi_lpf_Q = 0.f;
 			pm->vsi_lpf_watt = 0.f;
 
-			if (pm->b_HALL != PM_HALL_DISABLED) {
+			if (pm->config_HALL != PM_HALL_DISABLED) {
 
 				pm->lu_mode = PM_LU_CLOSED_SENSOR_HALL;
 			}
-			else if (pm->b_HFI != PM_HFI_DISABLED) {
+			else if (pm->config_HFI != PM_HFI_DISABLED) {
 
 				pm->lu_mode = PM_LU_CLOSED_ESTIMATE_HFI;
 			}
@@ -534,8 +534,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->hfi_X[2] = 1.f;
 			pm->hfi_X[3] = 0.f;
 			pm->hfi_X[4] = 0.f;
-			pm->hfi_lpf_D = 0.f;
-			pm->hfi_lpf_Q = 0.f;
 			pm->hfi_CS[0] = 1.f;
 			pm->hfi_CS[1] = 0.f;
 			pm->hfi_flux_polarity = 0.f;
