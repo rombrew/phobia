@@ -25,6 +25,12 @@ enum {
 };
 
 enum {
+	PM_LDQ_NON_SALIENT_POLE			= 0,	// assumes (Ld = Lq)
+	PM_LDQ_SALIENT_POLE,				// assumes (Ld > Lq)
+	PM_LDQ_SATURATION_SALIENCY			// assumes (Ld < Lq)
+};
+
+enum {
 	PM_LU_DISABLED				= 0,
 	PM_LU_OPEN_LOOP,
 	PM_LU_CLOSED_ESTIMATE_FLUX,
@@ -78,8 +84,6 @@ enum {
 	PM_ERROR_SUPPLY_VOLTAGE_HIGH,
 	PM_ERROR_LU_RESIDUAL_UNSTABLE,
 	PM_ERROR_LU_INVALID_OPERATION,
-	PM_ERROR_LU_SPEED_HIGH,
-	PM_ERROR_LU_DRIFT_HIGH,
 };
 
 typedef struct {
@@ -104,6 +108,7 @@ typedef struct {
 
 	float		freq_hz;
 	float		dT;
+
 	int		pwm_R;
 	int		pwm_MP;
 
@@ -111,6 +116,8 @@ typedef struct {
 	int		err_bb[8];
 
 	int		config_ABC;
+	int		config_LDQ;
+
 	int		config_HALL;
 	int		config_HFI;
 	int		config_LOOP;
@@ -147,22 +154,23 @@ typedef struct {
 	float		probe_current_hold_Q;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
+	float		probe_speed_low;
 	float		probe_speed_ramp;
 	float		probe_gain_P;
 	float		probe_gain_I;
 	float		probe_DFT[8];
 
-	float		temp[8];
+	float		temporal[8];
 
 	float		fault_zero_drift_maximal;
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
 	float		fault_adjust_tolerance;
 	float		fault_flux_residual_maximal;
-	float		fault_flux_drift_Q_maximal;
 	float		fault_supply_voltage_low;
 	float		fault_supply_voltage_high;
 
+	int		vsi_clamp_to_null;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_lpf_D;
@@ -180,7 +188,7 @@ typedef struct {
 	float		forced_X[5];
 	float		forced_hold_D;
 	float		forced_accel;
-	float		forced_tolerance;
+	float		forced_setpoint;
 
 	float		flux_X[5];
 	float		flux_drift_Q;
@@ -219,14 +227,14 @@ typedef struct {
 	float		const_J;
 
 	float		i_maximal;
-	float		i_power_consumption_maximal;
-	float		i_power_regeneration_maximal;
-	float		i_set_point_D;
-	float		i_set_point_Q;
+	float		i_watt_consumption_maximal;
+	float		i_watt_regeneration_maximal;
+	float		i_setpoint_D;
+	float		i_setpoint_Q;
 	float		i_slew_rate_D;
 	float		i_slew_rate_Q;
-	float		i_track_point_D;
-	float		i_track_point_Q;
+	float		i_track_D;
+	float		i_track_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_gain_PD;
@@ -235,16 +243,16 @@ typedef struct {
 	float		i_gain_IQ;
 
 	float		s_maximal;
-	float		s_set_point;
+	float		s_setpoint;
 	float		s_accel;
-	float		s_track_point;
+	float		s_track;
 	float		s_integral;
 	float		s_gain_P;
 	float		s_gain_I;
 
-	float		p_set_point_DQ[2];
-	float		p_set_point_s;
-	int		p_set_point_revol;
+	float		p_setpoint_DQ[2];
+	float		p_setpoint_s;
+	int		p_setpoint_revol;
 	float		p_gain_P;
 	float		p_gain_I;
 
@@ -253,8 +261,8 @@ typedef struct {
 }
 pmc_t;
 
-void pm_default(pmc_t *pm);
-void pm_tune_current_loop(pmc_t *pm);
+void pm_config_default(pmc_t *pm);
+void pm_config_tune_current_loop(pmc_t *pm);
 
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);

@@ -23,7 +23,7 @@
 
 #include "lib.h"
 #include "ntc.h"
-#include "telinfo.h"
+#include "teli.h"
 
 typedef struct {
 
@@ -53,7 +53,7 @@ application_t;
 
 extern application_t		ap;
 extern pmc_t			pm;
-extern telinfo_t		ti;
+extern teli_t			ti;
 
 extern int flash_block_load();
 

@@ -64,6 +64,6 @@ figure 0 25 "pm.lu_power_lpf"
 page "pm.lu_mode"
 figure 0 26 "pm.lu_mode"
 
-page "pm.hfi_CS[1]"
-figure 0 27 "pm.hfi_CS[1]"
+page "pm.flux_drift_R"
+figure 0 28 "pm.flux_drift_R"
 

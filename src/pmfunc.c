@@ -26,7 +26,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "telinfo.h"
+#include "teli.h"
 
 #define PM_WAIT_FOR_IDLE()	if (pm_wait_for_IDLE() != 0) break
 
@@ -62,20 +62,20 @@ pm_wait_for_IDLE()
 	return rc;
 }
 
-SH_DEF(pm_func_default)
+SH_DEF(pm_default)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
-	pm_default(&pm);
+	pm_config_default(&pm);
 }
 
-SH_DEF(pm_func_tune_current_loop)
+SH_DEF(pm_tune_current_loop)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
-	pm_tune_current_loop(&pm);
+	pm_config_tune_current_loop(&pm);
 }
 
 SH_DEF(pm_error_reason)
@@ -115,7 +115,7 @@ SH_DEF(pm_probe_base)
 		reg_print_fmt(&regfile[ID_PM_CONST_LD], 1);
 		reg_print_fmt(&regfile[ID_PM_CONST_LQ], 1);
 
-		pm_tune_current_loop(&pm);
+		pm_config_tune_current_loop(&pm);
 	}
 	while (0);
 
@@ -124,6 +124,8 @@ SH_DEF(pm_probe_base)
 
 SH_DEF(pm_probe_spinup)
 {
+	int			xWait;
+
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
@@ -131,16 +133,15 @@ SH_DEF(pm_probe_spinup)
 		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 		PM_WAIT_FOR_IDLE();
 
-		pm.s_set_point = 500.f;
+		pm.s_setpoint = pm.probe_speed_low;
 
-		/* FIXME: Wait for transient is done.
-		 * */
+		xWait = (int) (pm.s_setpoint / pm.forced_accel * 1000.f);
+		xWait += 100;
 
-		vTaskDelay(1000);
+		vTaskDelay(xWait);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
-
-		vTaskDelay(500);
+		PM_WAIT_FOR_IDLE();
 
 		reg_print_fmt(&regfile[ID_PM_CONST_E_KV], 1);
 	}
@@ -151,7 +152,7 @@ SH_DEF(pm_probe_spinup)
 
 SH_DEF(pm_test_PWM_set_DC)
 {
-	int		xDC;
+	int			xDC;
 
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
@@ -167,7 +168,7 @@ SH_DEF(pm_test_PWM_set_DC)
 
 SH_DEF(pm_test_PWM_set_Z)
 {
-	int		xZ;
+	int			xZ;
 
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
@@ -180,27 +181,25 @@ SH_DEF(pm_test_PWM_set_Z)
 
 SH_DEF(pm_test_current_ramp)
 {
-	float		iSP;
-	int		xHold = 3;
+	float			iSP;
+	int			xHold = 3;
 
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
-	telinfo_enable(&ti, 0);
+	teli_enable(&ti, 0);
 
 	do {
-		iSP = pm.i_set_point_Q;
+		iSP = pm.i_setpoint_Q;
 		vTaskDelay(xHold);
 
-		pm.i_set_point_Q = pm.i_maximal;
+		pm.i_setpoint_Q = pm.i_maximal;
 		vTaskDelay(xHold);
 
-		pm.i_set_point_Q = iSP;
+		pm.i_setpoint_Q = iSP;
 		vTaskDelay(xHold);
 	}
 	while (0);
-
-	telinfo_disable(&ti);
 }
 
 SH_DEF(pm_test_speed_ramp)
@@ -211,20 +210,18 @@ SH_DEF(pm_test_speed_ramp)
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
-	telinfo_enable(&ti, 1000);
+	teli_enable(&ti, 1000);
 
 	do {
-		wSP = pm.s_set_point;
+		wSP = pm.s_setpoint;
 		vTaskDelay(xHold);
 
-		pm.s_set_point = pm.probe_speed_ramp;
+		pm.s_setpoint = pm.probe_speed_ramp;
 		vTaskDelay(xHold);
 
-		pm.s_set_point = wSP;
+		pm.s_setpoint = wSP;
 		vTaskDelay(xHold);
 	}
 	while (0);
-
-	telinfo_disable(&ti);
 }
 

@@ -28,8 +28,8 @@
 #define LOAD_COUNT_DELAY		100
 
 application_t			ap;
-pmc_t __RAM_CCM			pm;
-telinfo_t			ti;
+pmc_t 				pm __section_ccmram;
+teli_t				ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
@@ -138,8 +138,10 @@ void taskINIT(void *pData)
 		/* Default.
 		 * */
 
-		pm_default(&pm);
+		pm_config_default(&pm);
 	}
+
+	teli_default(&ti);
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
@@ -169,7 +171,7 @@ void ADC_IRQ()
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
 	pm_feedback(&pm, &fb);
-	telinfo_capture(&ti);
+	teli_capture(&ti);
 }
 
 void hal_main()

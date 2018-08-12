@@ -52,7 +52,7 @@ OBJS    = freertos/heap_4.o \
 	  pmfunc.o \
 	  regfile.o \
 	  shell.o \
-	  telinfo.o
+	  teli.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

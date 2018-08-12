@@ -21,21 +21,27 @@
 #include "freertos/FreeRTOS.h"
 #include "hal/hal.h"
 
-#include "telinfo.h"
+#include "teli.h"
 #include "lib.h"
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
 
-void telinfo_default(telinfo_t *ti)
+void teli_default(teli_t *ti)
 {
 	ti->in[0] = &regfile[ID_PM_FB_CURRENT_A];
 	ti->in[1] = &regfile[ID_PM_FB_CURRENT_B];
-	ti->in[2] = &regfile[5];
-	ti->in[3] = &regfile[5];
+	ti->in[2] = &regfile[ID_PM_LU_X_0_];
+	ti->in[3] = &regfile[ID_PM_LU_X_1_];
+	ti->in[4] = &regfile[ID_PM_LU_X_2_];
+	ti->in[5] = &regfile[ID_PM_LU_X_3_];
+	ti->in[6] = &regfile[ID_PM_LU_X_4__RPM];
+	ti->in[7] = &regfile[ID_PM_FLUX_DRIFT_Q];
+	ti->in[8] = &regfile[ID_PM_FLUX_RESIDUAL_LPF];
+	ti->in[9] = &regfile[ID_PM_VSI_LPF_WATT];
 }
 
-void telinfo_capture(telinfo_t *ti)
+void teli_capture(teli_t *ti)
 {
 	const reg_t		*reg;
 	int			j;
@@ -52,8 +58,13 @@ void telinfo_capture(telinfo_t *ti)
 
 				reg = ti->in[j];
 
-				ti->data[ti->n][j] = (reg != NULL) ?
-					* (unsigned long *) reg->link.i : 0;
+				if (reg != NULL) {
+
+					reg_getval(reg, (void *) &ti->data[ti->n][j]);
+				}
+				else {
+					ti->data[ti->n][j] = 0;
+				}
 			}
 
 			ti->n++;
@@ -66,7 +77,7 @@ void telinfo_capture(telinfo_t *ti)
 	}
 }
 
-void telinfo_enable(telinfo_t *ti, int freq)
+void teli_enable(teli_t *ti, int freq)
 {
 	if (freq > 0 && freq <= hal.PWM_freq_hz) {
 
@@ -83,12 +94,12 @@ void telinfo_enable(telinfo_t *ti, int freq)
 	ti->mode = 1;
 }
 
-void telinfo_disable(telinfo_t *ti)
+void teli_disable(teli_t *ti)
 {
 	ti->mode = 0;
 }
 
-void telinfo_flush(telinfo_t *ti)
+void teli_flush(teli_t *ti)
 {
 	const reg_t		*reg;
 	const char		*su;
@@ -106,7 +117,7 @@ void telinfo_flush(telinfo_t *ti)
 
 			if (*su != 0) {
 
-				printf(" (%s)", su);
+				printf("_[%s]", su);
 			}
 
 			puts(";");
@@ -139,18 +150,27 @@ void telinfo_flush(telinfo_t *ti)
 	}
 }
 
-SH_DEF(ti_flush)
+SH_DEF(tel_default)
 {
-	telinfo_flush(&ti);
+	teli_default(&ti);
 }
 
-SH_DEF(ti_live)
+SH_DEF(tel_reg_assign)
 {
-	int		freq = 0;
+}
+
+SH_DEF(tel_flush)
+{
+	teli_flush(&ti);
+}
+
+SH_DEF(tel_live)
+{
+	/*int		freq = 0;
 
 	stoi(&freq, s);
 
-	telinfo_enable(&ti, freq);
-	telinfo_flush(&ti);
+	teli_enable(&ti, freq);
+	teli_flush(&ti);*/
 }
 

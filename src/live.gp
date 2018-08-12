@@ -2,7 +2,7 @@
 # vi: ft=conf
 
 batch 1
-delim ;
+space ";"
 
 load 0 1000 text "/dev/rfcomm0"
 mkpages -1

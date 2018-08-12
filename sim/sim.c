@@ -180,8 +180,8 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E * (1. - .0);
 	pm.const_Zp = m.Zp;
 
-	pm.b_HFI = 0;
-	pm.b_LOOP = 1;
+	pm.config_HFI = 0;
+	pm.config_LOOP = 1;
 
 	pm_tune_current_loop(&pm);
 
@@ -203,9 +203,9 @@ sim_Script(FILE *fdTel)
 	}
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-	sim_F(fdTel, .1, 0);
+	sim_F(fdTel, .5, 0);
 
-	pm.s_set_point = 5000.f;
+	pm.s_setpoint = 5000.f;
 	sim_F(fdTel, .5, 0);
 
 	m.X[2] /= 2.;

@@ -35,8 +35,8 @@
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
-#define __RAM_CCM			__attribute__ (( section(".ccmram") ))
-#define __RAM_FUNC			__attribute__ (( section(".ramfunc") ))
+#define __section_ccmram		__attribute__ (( section(".ccmram") ))
+#define __section_ramfunc		__attribute__ (( section(".ramfunc") ))
 
 enum {
 	LEG_A				= 1,

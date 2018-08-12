@@ -151,7 +151,7 @@ float pm_DFT_const_R(const float DFT[8])
 }
 
 static void
-pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
+pm_DFT_eigenvalues(float X, float Y, float M, float DQ[4])
 {
 	float		B, D, la1, la2;
 
@@ -166,17 +166,15 @@ pm_DFT_eigenvalues(float X, float Y, float M, float DQA[3])
 
 		B = Y - la1;
 		D = pm_sqrtf(B * B + M * M);
-		B /= D;
-		D = - M / D;
-		B = pm_atan2f(D, B);
 
-		DQA[0] = la1;
-		DQA[1] = la2;
-		DQA[2] = B;
+		DQ[0] = la1;
+		DQ[1] = la2;
+		DQ[2] = B / D;
+		DQ[3] = - M / D;
 	}
 }
 
-void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[3])
+void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[4])
 {
 	float			DX, DY, WR;
 	float			LX, LY, LM;
