@@ -66,10 +66,10 @@ void taskTERM(void *pData)
 {
 	TickType_t			xWake;
 
-	xWake = xTaskGetTickCount();
-
 	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
 	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
+
+	xWake = xTaskGetTickCount();
 
 	do {
 		vTaskDelayUntil(&xWake, (TickType_t) 1000);
@@ -141,8 +141,6 @@ void taskINIT(void *pData)
 		pm_config_default(&pm);
 	}
 
-	teli_default(&ti);
-
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
 
@@ -150,6 +148,8 @@ void taskINIT(void *pData)
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+
+	teli_default(&ti);
 
 	vTaskDelete(NULL);
 }

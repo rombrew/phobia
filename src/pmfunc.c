@@ -40,8 +40,7 @@ pm_print_error_reason()
 	}
 }
 
-static int
-pm_wait_for_IDLE()
+int pm_wait_for_IDLE()
 {
 	int			rc = 0;
 

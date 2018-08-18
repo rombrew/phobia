@@ -30,9 +30,9 @@ void pm_config_default(pmc_t *pm)
 	pm->config_HFI = PM_HFI_DISABLED;
 	pm->config_LOOP = PM_LOOP_SPEED_CONTROL;
 
-	pm->tm_skip = 50E-3f;
-	pm->tm_probe = 200E-3f;
-	pm->tm_hold = 500E-3;
+	pm->tm_skip = .05f;
+	pm->tm_probe = .2f;
+	pm->tm_hold = .5f;
 
 	pm->adjust_IA[0] = 0.f;
 	pm->adjust_IA[1] = 1.f;
@@ -79,8 +79,8 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DS = 5E+0f;
 	pm->flux_gain_QS = 1E+0f;
 	pm->flux_gain_QZ = 5E-3f;
-	pm->flux_BEMF_low = 200E-3f;
-	pm->flux_BEMF_high = 400E-3f;
+	pm->flux_BEMF_low = .2f;
+	pm->flux_BEMF_high = .4f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
 	pm->hfi_swing_D = 1.f;

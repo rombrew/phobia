@@ -47,20 +47,6 @@ reg_proc_fsm_state(const reg_t *reg, int *lval, const int *rval)
 }
 
 static void
-reg_proc_m(const reg_t *reg, float *lval, const float *rval)
-{
-	if (lval != NULL) {
-
-		*lval = (*reg->link.f) * 1000.f;
-	}
-
-	if (rval != NULL) {
-
-		*reg->link.f = (*rval) / 1000.f;
-	}
-}
-
-static void
 reg_proc_rpm(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
@@ -123,9 +109,9 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.fsm_state,				"",	"%i",	REG_VIRTUAL, &reg_proc_fsm_state),
 
-	REG_DEF_E(pm.tm_skip, "_ms",			"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
-	REG_DEF_E(pm.tm_probe, "_ms",			"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
-	REG_DEF_E(pm.tm_hold, "_ms",			"ms",	"%1f",	REG_CONFIG, &reg_proc_m),
+	REG_DEF(pm.tm_skip, 				"s",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(pm.tm_probe, 				"s",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(pm.tm_hold, 				"s",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.adjust_IA[0],			"A",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.adjust_IA[1],			"",	"%4e",	REG_CONFIG, NULL),
@@ -200,8 +186,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_DS,			"",	"%2e",	REG_CONFIG, NULL),
 	REG_DEF(pm.flux_gain_QS,			"",	"%2e",	REG_CONFIG, NULL),
 	REG_DEF(pm.flux_gain_QZ,			"",	"%2e",	REG_CONFIG, NULL),
-	REG_DEF_E(pm.flux_BEMF_low, "_mV",		"mV",	"%1f",	REG_CONFIG, &reg_proc_m),
-	REG_DEF_E(pm.flux_BEMF_high, "_mV",		"mV",	"%1f",	REG_CONFIG, &reg_proc_m),
+	REG_DEF(pm.flux_BEMF_low,			"V",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(pm.flux_BEMF_high,			"V",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.hfi_freq_hz,				"Hz",	"%1f",	REG_CONFIG, NULL),
 	REG_DEF(pm.hfi_swing_D,				"A",	"%3f",	REG_CONFIG, NULL),

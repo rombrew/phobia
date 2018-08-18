@@ -56,6 +56,7 @@ extern pmc_t			pm;
 extern teli_t			ti;
 
 extern int flash_block_load();
+extern int pm_wait_for_IDLE();
 
 void lowTRACE(const char *fmt, ...);
 
