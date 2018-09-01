@@ -20,6 +20,7 @@
 #define _H_HAL_
 
 #include "adc.h"
+#include "can.h"
 #include "flash.h"
 #include "gpio.h"
 #include "pwm.h"
@@ -63,6 +64,10 @@ typedef struct {
 	float		ADC_voltage_A;
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
+
+	unsigned long	CAN_msg_ID;
+	int		CAN_msg_len;
+	unsigned char	CAN_msg_payload[8];
 
 	struct {
 

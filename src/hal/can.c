@@ -19,25 +19,47 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define CAN_TIMEOUT			70000UL
+#define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
+#define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-void irqCAN1_TX()
+void irqCAN1_TX() { }
+
+static void
+irqCAN1_RX(int fifo)
 {
+	unsigned long		temp;
+
+	hal.CAN_msg_ID = (CAN1->sFIFOMailBox[fifo].RIR >> 21);
+	hal.CAN_msg_len = (int) (CAN1->sFIFOMailBox[fifo].RDTR & 0xFUL);
+
+	temp = CAN1->sFIFOMailBox[fifo].RDLR;
+	
+	hal.CAN_msg_payload[0] = (unsigned char) (temp & 0xFFUL);
+	hal.CAN_msg_payload[1] = (unsigned char) ((temp >> 8) & 0xFFUL);
+	hal.CAN_msg_payload[2] = (unsigned char) ((temp >> 16) & 0xFFUL);
+	hal.CAN_msg_payload[3] = (unsigned char) ((temp >> 24) & 0xFFUL);
+
+	if (hal.CAN_msg_len > 4) {
+
+		temp = CAN1->sFIFOMailBox[fifo].RDHR;
+
+		hal.CAN_msg_payload[4] = (unsigned char) (temp & 0xFFUL);
+		hal.CAN_msg_payload[5] = (unsigned char) ((temp >> 8) & 0xFFUL);
+		hal.CAN_msg_payload[6] = (unsigned char) ((temp >> 16) & 0xFFUL);
+		hal.CAN_msg_payload[7] = (unsigned char) ((temp >> 24) & 0xFFUL);
+	}
+
+	if (fifo == 0) CAN1->RF0R |= CAN_RF0R_RFOM0;
+	else CAN1->RF1R |= CAN_RF1R_RFOM1;
+
+	CAN_IRQ();
 }
 
-void irqCAN1_RX0()
-{
-}
+void irqCAN1_RX0() { irqCAN1_RX(0); }
+void irqCAN1_RX1() { irqCAN1_RX(1); }
+void irqCAN1_SCE() { }
 
-void irqCAN1_RX1()
-{
-}
-
-void irqCAN1_SCE()
-{
-}
-
-void canEnable()
+void CAN_startup()
 {
 	int		INAK, N = 0;
 
@@ -45,14 +67,12 @@ void canEnable()
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_CAN1EN;
 
-	/* Enable PA11 (RX), PA12 (TX) pins.
+	/* Enable CAN1 pins.
 	 * */
-	MODIFY_REG(GPIOA->AFR[1], (15UL << 12) | (15UL << 16),
-			(9UL << 12) | (9UL << 16));
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER11 | GPIO_MODER_MODER12,
-			GPIO_MODER_MODER11_1 | GPIO_MODER_MODER12_1);
+	GPIO_set_mode_FUNCTION(GPIO_CAN_RX);
+	GPIO_set_mode_FUNCTION(GPIO_CAN_TX);
 
-	/* Mode initialization.
+	/* Mode Initialization.
 	 * */
 	CAN1->MCR = CAN_MCR_INRQ;
 
@@ -60,7 +80,7 @@ void canEnable()
 		INAK = CAN1->MSR & CAN_MSR_INAK;
 		N++;
 	}
-	while (!INAK && N < CAN_TIMEOUT);
+	while (INAK == 0 && N < 70000UL);
 
 	CAN1->IER = CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
 	CAN1->BTR = (5UL << 20) | (6UL << 16) | (2UL);
@@ -74,107 +94,65 @@ void canEnable()
 	NVIC_EnableIRQ(CAN1_RX1_IRQn);
 	NVIC_EnableIRQ(CAN1_SCE_IRQn);
 
-	/* Mode normal.
+	/* Go to Normal mode.
 	 * */
-	CAN1->MCR &= ~CAN_MCR_INRQ;
-}
-
-void canDisable()
-{
-	/* Disable IRQs.
-	 * */
-	NVIC_DisableIRQ(CAN1_RX0_IRQn);
-	NVIC_DisableIRQ(CAN1_RX1_IRQn);
-	NVIC_DisableIRQ(CAN1_SCE_IRQn);
-
-	/* Disable pins.
-	 * */
-	MODIFY_REG(GPIOA->MODER, GPIO_MODER_MODER11 | GPIO_MODER_MODER12, 0);
-
-	/* Disable CAN1 clock.
-	 * */
-	RCC->APB1ENR &= ~RCC_APB1ENR_CAN1EN;
-}
-
-void canFilter(int nFilter, int bID, int bMask, int nFifo)
-{
-	int		BIT;
-
-	CAN1->FMR |= CAN_FMR_FINIT;
-
-	BIT = 1UL << nFilter;
-	CAN1->FA1R &= ~BIT;
-
-	if (bID != 0) {
-
-		CAN1->FM1R &= ~BIT;
-		CAN1->FS1R |= BIT;
-
-		CAN1->FFA1R &= ~BIT;
-		CAN1->FFA1R |= (nFifo == 1) ? BIT : 0;
-
-		CAN1->sFilterRegister[nFilter].FR1 = (bID << 21);
-		CAN1->sFilterRegister[nFilter].FR2 = (bMask << 21);
-
-		CAN1->FA1R |= BIT;
-	}
-
 	CAN1->FMR &= ~CAN_FMR_FINIT;
 }
 
-int canEmptyMailBox()
+void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long MA)
 {
-	int		nEmpty = 0;
+	unsigned long	bfilt = (1UL << nfilt);
 
-	if (CAN1->TSR & CAN_TSR_TME0)
-		nEmpty++;
-	if (CAN1->TSR & CAN_TSR_TME1)
-		nEmpty++;
-	if (CAN1->TSR & CAN_TSR_TME2)
-		nEmpty++;
+	CAN1->FMR |= CAN_FMR_FINIT;
 
-	return nEmpty;
+	CAN1->FM1R &= ~bfilt;
+	CAN1->FS1R |= bfilt;
+
+	CAN1->FFA1R &= ~bfilt;
+	CAN1->FFA1R |= (fifo == 1) ? bfilt : 0UL;
+
+	CAN1->sFilterRegister[nfilt].FR1 = (ID << 21);
+	CAN1->sFilterRegister[nfilt].FR2 = (MA << 21) + 6UL;
+
+	CAN1->FA1R |= bfilt;
+
+	CAN1->MCR &= ~CAN_MCR_INRQ;
 }
 
-int canTransmit(int bID, int nBytes, const char bData[8])
+void CAN_send(int ID, int len, const unsigned char payload[8])
 {
-	int		nMailBox;
+	int		mailbox;
 
 	if (CAN1->TSR & CAN_TSR_TME0)
-		nMailBox = 0;
+		mailbox = 0;
 	else if (CAN1->TSR & CAN_TSR_TME1)
-		nMailBox = 1;
+		mailbox = 1;
 	else if (CAN1->TSR & CAN_TSR_TME2)
-		nMailBox = 2;
-	else
-		return -1;
+		mailbox = 2;
+	else {
+		/* Message is discarded.
+		 * */
+		return ;
+	}
 
-	CAN1->sTxMailBox[nMailBox].TIR = (bID << 21);
-	CAN1->sTxMailBox[nMailBox].TDTR = nBytes;
+	CAN1->sTxMailBox[mailbox].TIR = (ID << 21);
+	CAN1->sTxMailBox[mailbox].TDTR = len;
 
-	CAN1->sTxMailBox[nMailBox].TDLR =
-		((unsigned int) bData[0])
-		| ((unsigned int) bData[1] << 8)
-		| ((unsigned int) bData[2] << 16)
-		| ((unsigned int) bData[3] << 24);
+	CAN1->sTxMailBox[mailbox].TDLR =
+		((unsigned long) payload[0])
+		| ((unsigned long) payload[1] << 8)
+		| ((unsigned long) payload[2] << 16)
+		| ((unsigned long) payload[3] << 24);
 
-	CAN1->sTxMailBox[nMailBox].TDHR =
-		((unsigned int) bData[4])
-		| ((unsigned int) bData[5] << 8)
-		| ((unsigned int) bData[6] << 16)
-		| ((unsigned int) bData[7] << 24);
+	if (len > 4) {
 
-	CAN1->sTxMailBox[nMailBox].TIR |= CAN_TI1R_TXRQ;
+		CAN1->sTxMailBox[mailbox].TDHR =
+			((unsigned long) payload[4])
+			| ((unsigned long) payload[5] << 8)
+			| ((unsigned long) payload[6] << 16)
+			| ((unsigned long) payload[7] << 24);
+	}
 
-	return 0;
-}
-
-int canMsgSend(int bID, int nBytes, const char bData[8], int xWay)
-{
-	/*int		nEmpty;
-
-	nEmpty = canEmptyMailBox();*/
-
-	return 0;
+	CAN1->sTxMailBox[mailbox].TIR |= CAN_TI0R_TXRQ;
 }
 

@@ -20,7 +20,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "hal/hal.h"
-#include "phobia/pm.h"
 
 #include "lib.h"
 #include "main.h"
@@ -31,12 +30,12 @@
 #define PM_WAIT_FOR_IDLE()	if (pm_wait_for_IDLE() != 0) break
 
 static void
-pm_print_error_reason()
+pm_print_fail_reason()
 {
-	if (pm.err_reason != PM_OK) {
+	if (pm.fail_reason != PM_OK) {
 
-		printf("ERR %i: %s" EOL, pm.err_reason,
-				pm_strerror(pm.err_reason));
+		printf("ERR %i: %s" EOL, pm.fail_reason,
+				pm_strerror(pm.fail_reason));
 	}
 }
 
@@ -48,9 +47,9 @@ int pm_wait_for_IDLE()
 		if (pm.fsm_state == PM_STATE_IDLE)
 			break;
 
-		if (pm.err_reason != PM_OK) {
+		if (pm.fail_reason != PM_OK) {
 
-			rc = pm.err_reason;
+			rc = pm.fail_reason;
 			break;
 		}
 
@@ -61,7 +60,7 @@ int pm_wait_for_IDLE()
 	return rc;
 }
 
-SH_DEF(pm_default)
+SH_DEF(pm_config_default_req)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
@@ -69,7 +68,7 @@ SH_DEF(pm_default)
 	pm_config_default(&pm);
 }
 
-SH_DEF(pm_tune_current_loop)
+SH_DEF(pm_config_tune_current_loop_req)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
@@ -77,9 +76,9 @@ SH_DEF(pm_tune_current_loop)
 	pm_config_tune_current_loop(&pm);
 }
 
-SH_DEF(pm_error_reason)
+SH_DEF(pm_fail_reason)
 {
-	pm_print_error_reason();
+	pm_print_fail_reason();
 }
 
 SH_DEF(pm_probe_base)
@@ -91,8 +90,8 @@ SH_DEF(pm_probe_base)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		PM_WAIT_FOR_IDLE();
 
-		reg_print_fmt(&regfile[ID_PM_ADJUST_IA_0_], 1);
-		reg_print_fmt(&regfile[ID_PM_ADJUST_IB_0_], 1);
+		reg_print_fmt(&regfile[ID_PM_ADJUST_IA_0], 1);
+		reg_print_fmt(&regfile[ID_PM_ADJUST_IB_0], 1);
 
 		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_TEST);
 		PM_WAIT_FOR_IDLE();*/
@@ -118,7 +117,7 @@ SH_DEF(pm_probe_base)
 	}
 	while (0);
 
-	pm_print_error_reason();
+	pm_print_fail_reason();
 }
 
 SH_DEF(pm_probe_spinup)
@@ -146,7 +145,35 @@ SH_DEF(pm_probe_spinup)
 	}
 	while (0);
 
-	pm_print_error_reason();
+	pm_print_fail_reason();
+}
+
+SH_DEF(pm_fsm_req_lu_initiate)
+{
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return;
+
+	do {
+		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+		PM_WAIT_FOR_IDLE();
+	}
+	while (0);
+
+	pm_print_fail_reason();
+}
+
+SH_DEF(pm_fsm_req_lu_shutdown)
+{
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return;
+
+	do {
+		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+		PM_WAIT_FOR_IDLE();
+	}
+	while (0);
+
+	pm_print_fail_reason();
 }
 
 SH_DEF(pm_test_PWM_set_DC)

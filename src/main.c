@@ -65,6 +65,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 void taskTERM(void *pData)
 {
 	TickType_t			xWake;
+	float				i_temp, i_derated;
 
 	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
 	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
@@ -72,11 +73,49 @@ void taskTERM(void *pData)
 	xWake = xTaskGetTickCount();
 
 	do {
-		vTaskDelayUntil(&xWake, (TickType_t) 1000);
+		/* 10 Hz.
+		 * */
+		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
-		ap.tc_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-		ap.tc_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
-		ap.tc_TEMP = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
+		ap.temp_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
+		ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
+		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
+
+		if (pm.lu_mode != PM_LU_DISABLED) {
+
+			i_derated = pm.i_maximal;
+
+			/* Derate current if PCB is overheat.
+			 * */
+
+			if (ap.temp_PCB < ap.temp_PCB_overheat) {
+
+				i_temp = pm.i_maximal;
+			}
+			else if (ap.temp_PCB < (ap.temp_PCB_overheat + ap.temp_superheat)) {
+
+				i_temp = pm.i_maximal + (ap.temp_current_PCB_derated - pm.i_maximal)
+					* (ap.temp_PCB - ap.temp_PCB_overheat) / ap.temp_superheat;
+			}
+			else {
+				i_temp = ap.temp_current_PCB_derated;
+			}
+
+			i_derated = (i_temp < i_derated) ? i_temp : i_derated;
+			pm.i_derated = i_derated;
+
+			/* Monitor for battery voltage.
+			 * */
+
+			if (pm.const_lpf_U < ap.batt_voltage_low) {
+
+				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+			}
+			else if (pm.const_lpf_U > ap.batt_voltage_high) {
+
+				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+			}
+		}
 	}
 	while (1);
 }
@@ -108,7 +147,7 @@ void taskINIT(void *pData)
 		 * */
 
 		hal.USART_baud_rate = 57600;
-		hal.PWM_freq_hz = 62500;
+		hal.PWM_freq_hz = 60000;
 		hal.PWM_dead_time_ns = 70;
 		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_current_shunt_resistance = 500E-6f;
@@ -121,6 +160,13 @@ void taskINIT(void *pData)
 		ap.ntc_PCB.betta = 3435.f;
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
+
+		ap.temp_PCB_overheat = 120.f;
+		ap.temp_superheat = 10.f;
+		ap.temp_current_PCB_derated = 25.f;
+
+		ap.batt_voltage_low = 6.0f;
+		ap.batt_voltage_high = 54.0f;
 	}
 
 	ADC_startup();
@@ -180,7 +226,7 @@ void hal_main()
 	vTaskStartScheduler();
 }
 
-SH_DEF(ap_uptime)
+SH_DEF(rtos_uptime)
 {
 	TickType_t	xTick;
 	int		Day, Hour, Min, Sec;
@@ -212,7 +258,7 @@ void vApplicationIdleHook()
 	}
 }
 
-SH_DEF(ap_cpu_usage)
+SH_DEF(rtos_cpu_usage)
 {
 	float		pc;
 
@@ -226,17 +272,27 @@ SH_DEF(ap_cpu_usage)
 	pc = 100.f * (float) (ap.lc_idle - ap.lc_tick)
 		/ (float) ap.lc_idle;
 
-	printf("%1f %%" EOL, &pc);
+	printf("%1f (%%)" EOL, &pc);
 }
 
-SH_DEF(ap_thermal)
+SH_DEF(rtos_tasklist)
 {
-	reg_print_fmt(&regfile[ID_AP_TC_PCB], 1);
-	reg_print_fmt(&regfile[ID_AP_TC_EXT], 1);
-	reg_print_fmt(&regfile[ID_AP_TC_TEMP], 1);
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return ;
+
+	vTaskList();
 }
 
-SH_DEF(ap_reboot)
+SH_DEF(rtos_freeheap)
+{
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return ;
+
+	printf("Free %i Ever %i" EOL, xPortGetFreeHeapSize(),
+			xPortGetMinimumEverFreeHeapSize());
+}
+
+SH_DEF(rtos_reboot)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return ;

@@ -31,11 +31,11 @@ void teli_default(teli_t *ti)
 {
 	ti->in[0] = &regfile[ID_PM_FB_CURRENT_A];
 	ti->in[1] = &regfile[ID_PM_FB_CURRENT_B];
-	ti->in[2] = &regfile[ID_PM_LU_X_0_];
-	ti->in[3] = &regfile[ID_PM_LU_X_1_];
-	ti->in[4] = &regfile[ID_PM_LU_X_2_];
-	ti->in[5] = &regfile[ID_PM_LU_X_3_];
-	ti->in[6] = &regfile[ID_PM_LU_X_4__RPM];
+	ti->in[2] = &regfile[ID_PM_LU_X_0];
+	ti->in[3] = &regfile[ID_PM_LU_X_1];
+	ti->in[4] = &regfile[ID_PM_LU_X_2];
+	ti->in[5] = &regfile[ID_PM_LU_X_3];
+	ti->in[6] = &regfile[ID_PM_LU_X_4_RPM];
 	ti->in[7] = &regfile[ID_PM_FLUX_DRIFT_Q];
 	ti->in[8] = &regfile[ID_PM_FLUX_RESIDUAL_LPF];
 	ti->in[9] = &regfile[ID_PM_VSI_LPF_WATT];

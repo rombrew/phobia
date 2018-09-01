@@ -3912,6 +3912,8 @@ TCB_t *pxTCB;
 
 #if ( ( configUSE_TRACE_FACILITY == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
 
+extern void printf(const char *fmt, ...);
+
 	static char *prvWriteNameToBuffer( char *pcBuffer, const char *pcTaskName )
 	{
 	size_t x;
@@ -3938,11 +3940,11 @@ TCB_t *pxTCB;
 
 #if ( ( configUSE_TRACE_FACILITY == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
 
-	void vTaskList( char * pcWriteBuffer )
+	void vTaskList( void )
 	{
 	TaskStatus_t *pxTaskStatusArray;
-	volatile UBaseType_t uxArraySize, x;
-	char cStatus;
+	UBaseType_t uxArraySize, x;
+	char cStatus, pcBuffer[configMAX_TASK_NAME_LEN];
 
 		/*
 		 * PLEASE NOTE:
@@ -3968,10 +3970,6 @@ TCB_t *pxTCB;
 		 * through a call to vTaskList().
 		 */
 
-
-		/* Make sure the write buffer does not contain a string. */
-		*pcWriteBuffer = 0x00;
-
 		/* Take a snapshot of the number of tasks in case it changes while this
 		function is executing. */
 		uxArraySize = uxCurrentNumberOfTasks;
@@ -3979,12 +3977,14 @@ TCB_t *pxTCB;
 		/* Allocate an array index for each task.  NOTE!  if
 		configSUPPORT_DYNAMIC_ALLOCATION is set to 0 then pvPortMalloc() will
 		equate to NULL. */
-		pxTaskStatusArray = pvPortMalloc( uxCurrentNumberOfTasks * sizeof( TaskStatus_t ) );
+		pxTaskStatusArray = pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
 
 		if( pxTaskStatusArray != NULL )
 		{
 			/* Generate the (binary) data. */
 			uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, NULL );
+
+			printf("Name    \tState \tPri \tStack \tNum\r\n");
 
 			/* Create a human readable table from the binary data. */
 			for( x = 0; x < uxArraySize; x++ )
@@ -4010,12 +4010,14 @@ TCB_t *pxTCB;
 				}
 
 				/* Write the task name to the string, padding with spaces so it
-				can be printed in tabular form more easily. */
-				pcWriteBuffer = prvWriteNameToBuffer( pcWriteBuffer, pxTaskStatusArray[ x ].pcTaskName );
+				   can be printed in tabular form more easily. */
+				prvWriteNameToBuffer( pcBuffer, pxTaskStatusArray[ x ].pcTaskName );
 
 				/* Write the rest of the string. */
-				sprintf( pcWriteBuffer, "\t%c\t%u\t%u\t%u\r\n", cStatus, ( unsigned int ) pxTaskStatusArray[ x ].uxCurrentPriority, ( unsigned int ) pxTaskStatusArray[ x ].usStackHighWaterMark, ( unsigned int ) pxTaskStatusArray[ x ].xTaskNumber );
-				pcWriteBuffer += strlen( pcWriteBuffer );
+				printf("%s\t%c\t%i\t%i\t%i\r\n", pcBuffer, cStatus,
+						( int ) pxTaskStatusArray[ x ].uxCurrentPriority,
+						( int ) pxTaskStatusArray[ x ].usStackHighWaterMark,
+						( int ) pxTaskStatusArray[ x ].xTaskNumber );
 			}
 
 			/* Free the array again.  NOTE!  If configSUPPORT_DYNAMIC_ALLOCATION

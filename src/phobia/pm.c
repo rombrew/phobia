@@ -30,7 +30,7 @@ void pm_config_default(pmc_t *pm)
 	pm->config_HFI = PM_HFI_DISABLED;
 	pm->config_LOOP = PM_LOOP_SPEED_CONTROL;
 
-	pm->tm_skip = .05f;
+	pm->tm_skip = .02f;
 	pm->tm_probe = .2f;
 	pm->tm_hold = .5f;
 
@@ -63,8 +63,6 @@ void pm_config_default(pmc_t *pm)
 	pm->fault_current_tolerance = 1.f;
 	pm->fault_adjust_tolerance = 3E-2f;
 	pm->fault_flux_residual_maximal = 90.f;
-	pm->fault_supply_voltage_low = 5.f;
-	pm->fault_supply_voltage_high = 55.f;
 
 	pm->vsi_gain_LP = 1E-1f;
 	pm->vsi_gain_LW = 5E-1f;
@@ -284,7 +282,7 @@ pm_hfi_update(pmc_t *pm)
 
 	X[4] += pm->hfi_gain_S * eR;
 
-	if (pm->config_HFI == PM_HFI_ENABLED_WITH_FLUX_POLARITY_DETECTION) {
+	if (1) {
 
 		C2 = pm->hfi_CS[0] * pm->hfi_CS[0] - pm->hfi_CS[1] * pm->hfi_CS[1];
 		pm->hfi_flux_polarity += eD * C2 * pm->hfi_gain_F;
@@ -428,7 +426,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (pm_fabsf(pm->forced_X[4] * pm->const_E) > pm->flux_BEMF_low
+		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_BEMF_low
 				&& pm_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_BEMF_high) {
 
 			pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
@@ -441,27 +439,15 @@ pm_validate(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
-	if (pm->const_lpf_U < pm->fault_supply_voltage_low) {
-
-		pm->err_reason = PM_ERROR_SUPPLY_VOLTAGE_LOW;
-		pm_fsm_req(pm, PM_STATE_HALT);
-	}
-
-	if (pm->const_lpf_U > pm->fault_supply_voltage_high) {
-
-		pm->err_reason = PM_ERROR_SUPPLY_VOLTAGE_HIGH;
-		pm_fsm_req(pm, PM_STATE_HALT);
-	}
-
 	if (pm->flux_residual_lpf > pm->fault_flux_residual_maximal) {
 
-		pm->err_reason = PM_ERROR_LU_RESIDUAL_UNSTABLE;
+		pm->fail_reason = PM_ERROR_LU_RESIDUAL_UNSTABLE;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
 	if (X[0] == X[0]) ;
 	else {
-		pm->err_reason = PM_ERROR_LU_INVALID_OPERATION;
+		pm->fail_reason = PM_ERROR_LU_INVALID_OPERATION;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 }
@@ -574,7 +560,7 @@ pm_current_control(pmc_t *pm)
 		sQ = 0.f;
 	}
 
-	iMAX = pm->i_maximal;
+	iMAX = (pm->i_maximal < pm->i_derated) ? pm->i_maximal : pm->i_derated;
 
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
 	sQ = (sQ > iMAX) ? iMAX : (sQ < - iMAX) ? - iMAX : sQ;

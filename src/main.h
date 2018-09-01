@@ -32,6 +32,10 @@ typedef struct {
 	io_ops_t		io_USART;
 	io_ops_t		io_CAN;
 
+	/* CAN interface.
+	 * */
+	int			can_node_ID;
+
 	/* CPU load.
 	 * */
 	int			lc_flag;
@@ -45,9 +49,20 @@ typedef struct {
 
 	/* Thermal.
 	 * */
-	float			tc_PCB;
-	float			tc_EXT;
-	float			tc_TEMP;
+	float			temp_PCB;
+	float			temp_EXT;
+	float			temp_INT;
+
+	/* Overheat.
+	 * */
+	float			temp_PCB_overheat;
+	float			temp_superheat;
+	float			temp_current_PCB_derated;
+
+	/* Battery voltage.
+	 * */
+	float			batt_voltage_low;
+	float			batt_voltage_high;
 }
 application_t;
 

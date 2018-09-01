@@ -93,14 +93,21 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.ntc_EXT.ta_0,			"C",	"%1f",	REG_CONFIG, NULL),
 	REG_DEF(ap.ntc_EXT.betta,			"",	"%1f",	REG_CONFIG, NULL),
 
-	REG_DEF(ap.tc_PCB,				"C",	"%1f",	REG_READ_ONLY, NULL),
-	REG_DEF(ap.tc_EXT,				"C",	"%1f",	REG_READ_ONLY, NULL),
-	REG_DEF(ap.tc_TEMP,				"C",	"%1f",	REG_READ_ONLY, NULL),
+	REG_DEF(ap.temp_PCB,				"C",	"%1f",	REG_READ_ONLY, NULL),
+	REG_DEF(ap.temp_EXT,				"C",	"%1f",	REG_READ_ONLY, NULL),
+	REG_DEF(ap.temp_INT,				"C",	"%1f",	REG_READ_ONLY, NULL),
+
+	REG_DEF(ap.temp_PCB_overheat,			"C",	"%1f",	REG_CONFIG, NULL),
+	REG_DEF(ap.temp_superheat,			"C",	"%1f",	REG_CONFIG, NULL),
+	REG_DEF(ap.temp_current_PCB_derated,		"A",	"%3f",	REG_CONFIG, NULL),
+
+	REG_DEF(ap.batt_voltage_low,			"V",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(ap.batt_voltage_high,			"V",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.pwm_R,				"",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(pm.pwm_MP,				"",	"%i",	REG_CONFIG, NULL),
 
-	REG_DEF(pm.err_reason,				"",	"%i",	REG_READ_ONLY, NULL),
+	REG_DEF(pm.fail_reason,				"",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(pm.config_ABC,				"",	"%i",	REG_CONFIG, NULL),
 	REG_DEF(pm.config_LDQ,				"",	"%i",	REG_CONFIG, NULL),
 	REG_DEF(pm.config_HALL,				"",	"%i",	REG_CONFIG, NULL),
@@ -149,8 +156,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_current_tolerance,		"A",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.fault_adjust_tolerance,		"",	"%2e",	REG_CONFIG, NULL),
 	REG_DEF(pm.fault_flux_residual_maximal,		"A",	"%2f",	REG_CONFIG, NULL),
-	REG_DEF(pm.fault_supply_voltage_low,		"V",	"%3f",	REG_CONFIG, NULL),
-	REG_DEF(pm.fault_supply_voltage_high,		"V",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.vsi_clamp_to_null,			"",	"%i",	REG_VIRTUAL, NULL),
 	REG_DEF(pm.vsi_lpf_D,				"V",	"%3f",	REG_READ_ONLY, NULL),
@@ -255,6 +260,51 @@ void reg_setval(const reg_t *reg, const void *rval)
 	}
 }
 
+static void
+reg_print_help(int n)
+{
+	switch (n) {
+
+		case ID_PM_CONFIG_ABC:
+			printf("%i = Three Phase" EOL, PM_ABC_THREE_PHASE);
+			printf("%i = Two Phase" EOL, PM_ABC_TWO_PHASE);
+			break;
+
+		case ID_PM_CONFIG_LDQ:
+			printf("%i = Non Salient Pole (Ld = Lq)" EOL, PM_LDQ_NON_SALIENT_POLE);
+			printf("%i = Salient Pole (Ld > Lq)" EOL, PM_LDQ_SALIENT_POLE);
+			printf("%i = Saturation Saliency (Ld < Lq)" EOL, PM_LDQ_SATURATION_SALIENCY);
+			break;
+
+		case ID_PM_CONFIG_HFI:
+			printf("%i = Diabled" EOL, PM_HFI_DISABLED);
+			printf("%i = Enabled" EOL, PM_HFI_ENABLED);
+			break;
+
+		case ID_PM_CONFIG_LOOP:
+			printf("%i = Current Control" EOL, PM_LOOP_CURRENT_CONTROL);
+			printf("%i = Speed Control" EOL, PM_LOOP_SPEED_CONTROL);
+			break;
+
+		case ID_PM_FSM_STATE:
+			printf("%i = IDLE" EOL, PM_STATE_IDLE);
+			printf("%i = Zero Drift" EOL, PM_STATE_ZERO_DRIFT);
+			printf("%i = Power Stage Test" EOL, PM_STATE_POWER_STAGE_TEST);
+			printf("%i = Adjust Voltage" EOL, PM_STATE_ADJUST_VOLTAGE);
+			printf("%i = Adjust Current" EOL, PM_STATE_ADJUST_CURRENT);
+			printf("%i = Probe Const R" EOL, PM_STATE_PROBE_CONST_R);
+			printf("%i = Probe Const L" EOL, PM_STATE_PROBE_CONST_L);
+			printf("%i = LU Initiate" EOL, PM_STATE_LU_INITIATE);
+			printf("%i = LU Shutdown" EOL, PM_STATE_LU_SHUTDOWN);
+			printf("%i = Probe Const E" EOL, PM_STATE_PROBE_CONST_E);
+			printf("%i = HALT" EOL, PM_STATE_HALT);
+			break;
+
+		default:
+			break;
+	}
+}
+
 void reg_print_fmt(const reg_t *reg, int full)
 {
 	union {
@@ -293,6 +343,11 @@ void reg_print_fmt(const reg_t *reg, int full)
 		}
 
 		puts(EOL);
+
+		if (full == 2) {
+
+			reg_print_help((int) (reg - regfile));
+		}
 	}
 }
 
@@ -372,7 +427,7 @@ SH_DEF(reg)
 			}
 		}
 
-		reg_print_fmt(reg, 1);
+		reg_print_fmt(reg, 2);
 	}
 	else {
 		for (reg = regfile; reg->sym != NULL; ++reg) {

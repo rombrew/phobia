@@ -171,7 +171,7 @@ sim_Script(FILE *fdTel)
 	pm.pDC = &blmDC;
 	pm.pZ = &blmZ;
 
-	pm_default(&pm);
+	pm_config_default(&pm);
 
 	pm.const_lpf_U = m.U;
 	pm.const_R = m.R * (1. - .0);
@@ -183,7 +183,7 @@ sim_Script(FILE *fdTel)
 	pm.config_HFI = 0;
 	pm.config_LOOP = 1;
 
-	pm_tune_current_loop(&pm);
+	pm_config_tune_current_loop(&pm);
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .5, 0);

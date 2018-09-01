@@ -101,7 +101,7 @@ clock_startup()
 		HSERDY = RCC->CR & RCC_CR_HSERDY;
 		HSEN++;
 	}
-	while (!HSERDY && HSEN < HSE_STARTUP_TIMEOUT);
+	while (!HSERDY && HSEN < 20000UL);
 
 	/* Enable power interface clock.
 	 * */

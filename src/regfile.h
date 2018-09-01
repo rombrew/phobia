@@ -19,7 +19,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		12
+#define REG_CONFIG_VERSION		13
 
 enum {
 	REG_VIRTUAL		= 0,

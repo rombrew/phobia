@@ -40,14 +40,12 @@ enum {
 
 enum {
 	PM_HALL_DISABLED			= 0,
-	PM_HALL_ENABLED_ON_LOW_SPEED,
-	PM_HALL_ENABLED_EVERYWHERE
+	PM_HALL_ENABLED
 };
 
 enum {
 	PM_HFI_DISABLED				= 0,
-	PM_HFI_ENABLED,
-	PM_HFI_ENABLED_WITH_FLUX_POLARITY_DETECTION
+	PM_HFI_ENABLED
 };
 
 enum {
@@ -80,8 +78,6 @@ enum {
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_OVER_CURRENT,
 	PM_ERROR_ADJUST_TOLERANCE_FAULT,
-	PM_ERROR_SUPPLY_VOLTAGE_LOW,
-	PM_ERROR_SUPPLY_VOLTAGE_HIGH,
 	PM_ERROR_LU_RESIDUAL_UNSTABLE,
 	PM_ERROR_LU_INVALID_OPERATION,
 };
@@ -112,8 +108,8 @@ typedef struct {
 	int		pwm_R;
 	int		pwm_MP;
 
-	int		err_reason;
-	int		err_bb[8];
+	int		fail_reason;
+	int		fail_bb[8];
 
 	int		config_ABC;
 	int		config_LDQ;
@@ -167,8 +163,6 @@ typedef struct {
 	float		fault_current_tolerance;
 	float		fault_adjust_tolerance;
 	float		fault_flux_residual_maximal;
-	float		fault_supply_voltage_low;
-	float		fault_supply_voltage_high;
 
 	int		vsi_clamp_to_null;
 	float		vsi_X;
@@ -227,6 +221,7 @@ typedef struct {
 	float		const_J;
 
 	float		i_maximal;
+	float		i_derated;
 	float		i_watt_consumption_maximal;
 	float		i_watt_regeneration_maximal;
 	float		i_setpoint_D;

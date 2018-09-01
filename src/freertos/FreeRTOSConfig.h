@@ -102,8 +102,8 @@
 #define configUSE_MALLOC_FAILED_HOOK            1
 
 #define configGENERATE_RUN_TIME_STATS           0
-#define configUSE_TRACE_FACILITY                0
-#define configUSE_STATS_FORMATTING_FUNCTIONS    0
+#define configUSE_TRACE_FACILITY                1
+#define configUSE_STATS_FORMATTING_FUNCTIONS    2
 
 #define configUSE_CO_ROUTINES                   0
 #define configUSE_TIMERS			0
@@ -112,6 +112,7 @@
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay			1
+#define INCLUDE_xTaskGetHandle			1
 
 #define configPRIO_BITS       			4        /* 15 priority levels */
 

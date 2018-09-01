@@ -2,5 +2,5 @@
 # vi: ft=sh
 
 cat *.c apps/*.c | sed -n 's/^[^#]*\(SH_DEF(.\+)\).*$/\1/p' > shdefs.h
-cat regfile.c | sed -n 's/^[^#]*\(REG_DEF_\?E\?(.\+)\).*$/\U\1/p' | sed 's/REG_DEF(\([^, ]\+\) *,.\+)/ID_\1,/;s/REG_DEF_E(\([^, ]\+\) *,[^,]*\"\([^, ]\+\)\".\+)/ID_\1\2,/;s/\.\|\[\|\]/_/g' > regdefs.h
+cat regfile.c | sed -n 's/^[^#]*\(REG_DEF_\?E\?(.\+)\).*$/\U\1/p' | sed 's/REG_DEF(\([^, ]\+\) *,.\+)/ID_\1,/;s/REG_DEF_E(\([^, ]\+\) *,[^,]*\"\([^, ]\+\)\".\+)/ID_\1\2,/;s/\.\|\[/_/g;s/\]//g' > regdefs.h
 
