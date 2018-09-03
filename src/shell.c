@@ -19,7 +19,7 @@
 #include <stddef.h>
 
 #include "shell.h"
-#include "lib.h"
+#include "libc.h"
 
 #define SH_CLINE_SZ			84
 #define SH_HISTORY_SZ			440
@@ -168,6 +168,8 @@ sh_common_match(sh_t *sh)
 	sp = NULL;
 	cmd = cmLIST;
 
+	sh->cNUM = 0;
+
 	do {
 		id = cmd->sym;
 
@@ -178,6 +180,8 @@ sh_common_match(sh_t *sh)
 
 			n = (sp != NULL) ? strspl(sp, id, n) : strlen(id);
 			sp = id;
+
+			sh->cNUM++;
 		}
 
 		++cmd;
@@ -359,6 +363,7 @@ sh_evaluate(sh_t *sh)
 static void
 sh_complete(sh_t *sh, int xDIR)
 {
+	const char		space = ' ';
 	char			*s;
 
 	if (sh->mCOMP == 0) {
@@ -369,7 +374,7 @@ sh_complete(sh_t *sh, int xDIR)
 
 			/* Do not complete with trailing spaces.
 			 * */
-			if (*s == ' ')
+			if (*s == space)
 				return ;
 
 			++s;
@@ -380,7 +385,23 @@ sh_complete(sh_t *sh, int xDIR)
 		sh_common_match(sh);
 		puts(sh->cLINE + sh->cEOL);
 
-		if (sh->cEOL <= sh->cEON) {
+		if (sh->cNUM == 1) {
+
+			/* Exact match.
+			 * */
+			sh->cEOL = sh->cEON;
+
+			if (sh->cEOL < (SH_CLINE_SZ - 2)) {
+
+				/* Put trailing space since completion is done.
+				 * */
+				sh->cLINE[sh->cEOL++] = space;
+				sh->cLINE[sh->cEOL] = 0;
+
+				iodef->putc(space);
+			}
+		}
+		else if (sh->cEOL <= sh->cEON) {
 
 			/* Enter completion mode.
 			 * */

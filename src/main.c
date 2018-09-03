@@ -87,7 +87,6 @@ void taskTERM(void *pData)
 
 			/* Derate current if PCB is overheat.
 			 * */
-
 			if (ap.temp_PCB < ap.temp_PCB_overheat) {
 
 				i_temp = pm.i_maximal;
@@ -106,7 +105,6 @@ void taskTERM(void *pData)
 
 			/* Monitor for battery voltage.
 			 * */
-
 			if (pm.const_lpf_U < ap.batt_voltage_low) {
 
 				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
@@ -288,7 +286,7 @@ SH_DEF(rtos_freeheap)
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return ;
 
-	printf("Free %i Ever %i" EOL, xPortGetFreeHeapSize(),
+	printf("Free %i (Minimum Ever %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
 }
 

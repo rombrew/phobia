@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,27 +22,6 @@
 void CAN_startup();
 
 extern void CAN_IRQ();
-
-/*
-#define CAN_MASK_BASE_ID		0xFFE00000UL
-#define CAN_MASK_EXTENDED_ID		0xFFFFFFF8UL
-
-typedef struct {
-
-	int		id;
-	char		payload[8];
-}
-can_msg_t;
-
-void canEnable();
-void canDisable();
-
-void canFilter(int nFilter, int bID, int bMask, int nFifo);
-int canEmpty();
-int canTransmit(int bID, int nBytes, const char bData[8]);
-
-extern void canIRQ();
-*/
 
 #endif /* _H_CAN_ */
 

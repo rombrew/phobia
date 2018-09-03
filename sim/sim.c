@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -136,9 +136,9 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		if (pm.err_reason != PM_OK) {
+		if (pm.fail_reason != PM_OK) {
 
-			printf("ERR: %s\n", pm_strerror(pm.err_reason));
+			printf("ERR: %s\n", pm_strerror(pm.fail_reason));
 			exit(1);
 		}
 

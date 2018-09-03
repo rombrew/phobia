@@ -3984,7 +3984,7 @@ extern void printf(const char *fmt, ...);
 			/* Generate the (binary) data. */
 			uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, NULL );
 
-			printf("Name    \tState \tPri \tStack \tNum\r\n");
+			printf("Name      \tState \tPri \tStack \tNum \r\n");
 
 			/* Create a human readable table from the binary data. */
 			for( x = 0; x < uxArraySize; x++ )
@@ -4014,14 +4014,14 @@ extern void printf(const char *fmt, ...);
 				prvWriteNameToBuffer( pcBuffer, pxTaskStatusArray[ x ].pcTaskName );
 
 				/* Write the rest of the string. */
-				printf("%s\t%c\t%i\t%i\t%i\r\n", pcBuffer, cStatus,
+				printf("%s \t%c \t%i \t%i \t%i \r\n", pcBuffer, cStatus,
 						( int ) pxTaskStatusArray[ x ].uxCurrentPriority,
 						( int ) pxTaskStatusArray[ x ].usStackHighWaterMark,
 						( int ) pxTaskStatusArray[ x ].xTaskNumber );
 			}
 
 			/* Free the array again.  NOTE!  If configSUPPORT_DYNAMIC_ALLOCATION
-			is 0 then vPortFree() will be #defined to nothing. */
+			   is 0 then vPortFree() will be #defined to nothing. */
 			vPortFree( pxTaskStatusArray );
 		}
 		else

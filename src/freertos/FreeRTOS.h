@@ -1061,7 +1061,7 @@ typedef struct xSTATIC_TIMER
 
 #endif /* INC_FREERTOS_H */
 
-/* Added FreeRTOS includes.
+/* Place all of FreeRTOS includes.
  * */
 #include "queue.h"
 #include "semphr.h"

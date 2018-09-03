@@ -21,7 +21,7 @@
 
 #include "phobia/pm.h"
 
-#include "lib.h"
+#include "libc.h"
 #include "ntc.h"
 #include "teli.h"
 

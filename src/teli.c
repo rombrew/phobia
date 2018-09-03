@@ -22,7 +22,7 @@
 #include "hal/hal.h"
 
 #include "teli.h"
-#include "lib.h"
+#include "libc.h"
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"

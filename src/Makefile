@@ -47,7 +47,7 @@ OBJS    = freertos/heap_4.o \
 	  phobia/pm_m.o \
 	  flash.o \
 	  ifcan.o \
-	  lib.o \
+	  libc.o \
 	  main.o \
 	  ntc.o \
 	  pmfunc.o \

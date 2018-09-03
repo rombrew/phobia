@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ irqCAN1_RX(int fifo)
 	hal.CAN_msg_len = (int) (CAN1->sFIFOMailBox[fifo].RDTR & 0xFUL);
 
 	temp = CAN1->sFIFOMailBox[fifo].RDLR;
-	
+
 	hal.CAN_msg_payload[0] = (unsigned char) (temp & 0xFFUL);
 	hal.CAN_msg_payload[1] = (unsigned char) ((temp >> 8) & 0xFFUL);
 	hal.CAN_msg_payload[2] = (unsigned char) ((temp >> 16) & 0xFFUL);
@@ -99,7 +99,7 @@ void CAN_startup()
 	CAN1->FMR &= ~CAN_FMR_FINIT;
 }
 
-void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long MA)
+void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID)
 {
 	unsigned long	bfilt = (1UL << nfilt);
 
@@ -112,7 +112,7 @@ void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long MA)
 	CAN1->FFA1R |= (fifo == 1) ? bfilt : 0UL;
 
 	CAN1->sFilterRegister[nfilt].FR1 = (ID << 21);
-	CAN1->sFilterRegister[nfilt].FR2 = (MA << 21) + 6UL;
+	CAN1->sFilterRegister[nfilt].FR2 = (mID << 21) + 6UL;
 
 	CAN1->FA1R |= bfilt;
 

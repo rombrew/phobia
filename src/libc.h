@@ -1,6 +1,6 @@
 /*
    Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2017 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_LIB_
-#define _H_LIB_
+#ifndef _H_LIBC_
+#define _H_LIBC_
 
 #define EOL			"\r\n"
 
@@ -30,7 +30,6 @@ io_ops_t;
 
 extern io_ops_t		*iodef;
 
-void *memzero(void *d, unsigned long sz);
 void *memset(void *d, int c, unsigned long sz);
 void *memcpy(void *d, const void *s, unsigned long sz);
 
@@ -54,5 +53,5 @@ const char *stof(float *x, const char *s);
 
 unsigned long crc32b(const void *s, int sz);
 
-#endif /* _H_LIB_ */
+#endif /* _H_LIBC_ */
 
