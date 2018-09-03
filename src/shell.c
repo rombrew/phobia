@@ -370,15 +370,10 @@ sh_complete(sh_t *sh, int xDIR)
 
 		s = sh->cLINE;
 
-		while (*s) {
-
-			/* Do not complete with trailing spaces.
-			 * */
-			if (*s == space)
-				return ;
-
-			++s;
-		}
+		/* Do not complete with trailing spaces.
+		 * */
+		if (strchr(s, space) != NULL)
+			return ;
 
 		/* Complete to the common substring.
 		 * */
