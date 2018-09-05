@@ -107,7 +107,7 @@ sh_exact_match_call(sh_t *sh)
 		if (id == NULL)
 			break;
 
-		if (!strcmp(sh->cLINE, id)) {
+		if (strcmp(sh->cLINE, id) == 0) {
 
 			/* Call the function.
 			 * */
@@ -139,11 +139,11 @@ sh_cyclic_match(sh_t *sh, int xDIR)
 
 		id = cmd->sym;
 
-		if (!strpcmp(sh->cLINE, id)) {
+		if (strcmpe(sh->cLINE, id) == 0) {
 
 			/* Copy the command name.
 			 * */
-			strncpy(sh->cLINE, id, (SH_CLINE_SZ - 2));
+			strcpyn(sh->cLINE, id, (SH_CLINE_SZ - 2));
 
 			break;
 		}
@@ -176,9 +176,9 @@ sh_common_match(sh_t *sh)
 		if (id == NULL)
 			break;
 
-		if (!strpcmp(sh->cLINE, id)) {
+		if (strcmpe(sh->cLINE, id) == 0) {
 
-			n = (sp != NULL) ? strspl(sp, id, n) : strlen(id);
+			n = (sp != NULL) ? strcmpn(sp, id, n) : strlen(id);
 			sp = id;
 
 			sh->cNUM++;
@@ -193,7 +193,7 @@ sh_common_match(sh_t *sh)
 		if (n > (SH_CLINE_SZ - 2))
 			n = (SH_CLINE_SZ - 2);
 
-		strncpy(sh->cLINE, sp, n);
+		strcpyn(sh->cLINE, sp, n);
 		sh->cEON = n;
 	}
 	else

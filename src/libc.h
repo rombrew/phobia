@@ -34,11 +34,11 @@ void *memset(void *d, int c, unsigned long sz);
 void *memcpy(void *d, const void *s, unsigned long sz);
 
 int strcmp(const char *s, const char *p);
-int strpcmp(const char *s, const char *p);
-int strspl(const char *s, const char *p, int x);
+int strcmpe(const char *s, const char *p);
+int strcmpn(const char *s, const char *p, int x);
 const char *strstr(const char *s, const char *p);
 char *strcpy(char *d, const char *s);
-char *strncpy(char *d, const char *s, int n);
+char *strcpyn(char *d, const char *s, int n);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
 

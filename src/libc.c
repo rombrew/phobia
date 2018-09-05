@@ -83,7 +83,7 @@ int strcmp(const char *s, const char *p)
 	return c;
 }
 
-int strpcmp(const char *s, const char *p)
+int strcmpe(const char *s, const char *p)
 {
 	char		c;
 
@@ -104,7 +104,7 @@ int strpcmp(const char *s, const char *p)
 	return c;
 }
 
-int strspl(const char *s, const char *p, int n)
+int strcmpn(const char *s, const char *p, int n)
 {
 	char		c;
 	int		l = 0;
@@ -170,7 +170,7 @@ char *strcpy(char *d, const char *s)
 	return d;
 }
 
-char *strncpy(char *d, const char *s, int n)
+char *strcpyn(char *d, const char *s, int n)
 {
 	do {
 		if (n <= 0) {
