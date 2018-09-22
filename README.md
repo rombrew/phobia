@@ -14,24 +14,24 @@ controller for RC and robotics.
 * Lightweight capacitor bank (3 x 2.2uF + 3 x 220uF).
 * PWM frequency from 20 to 80 kHz.
 * Sensors:
-  * Two current shunts (0.33 mOhm) with amplifiers (AD8417) give a measuring range of 75A.
-  * Supply voltage from 0 to 60v.
-  * Three terminal voltages from 0 to 60v.
-  * Temperature of PCB with NTC resistor.
+	* Two current shunts (0.33 mOhm) with amplifiers (AD8417) give a measuring range of 75A.
+	* Supply voltage from 0 to 60v.
+	* Three terminal voltages from 0 to 60v.
+	* Temperature of PCB with NTC resistor.
 * Interfaces:
-  * Hall sensors or incremental encoder (5v pull-up).
-  * External NTC resistor (e.g. motor temperature control).
-  * CAN with optional termination resistor on PCB (3.3v).
-  * USART to bootload and configure (3.3v).
-  * Combined port: SPI, ADC, DAC, GPIO (3.3v).
-  * Combined port: I2C, PPM, USART, GPIO (3.3v pull-up).
-  * BOOT and RESET pins to use embedded bootloader.
-  * SWD to hardware debug.
+	* Hall sensors or incremental encoder (5v pull-up).
+	* External NTC resistor (e.g. motor temperature control).
+	* CAN with optional termination resistor on PCB (3.3v).
+	* USART to bootload and configure (3.3v).
+	* Combined port: SPI, ADC, DAC, GPIO (3.3v).
+	* Combined port: I2C, PPM, USART, GPIO (3.3v pull-up).
+	* BOOT and RESET pins to use embedded bootloader.
+	* SWD to hardware debug.
 * Power:
-  * Supply to 5v buck (up to 1A).
-  * 5v to 12v boost (up to 100 mA but mosfet drivers can consume all of this current).
-  * 5v to 3.3v ldo (up to 400 mA).
-  * 5v to 3.3vREF optional reference voltage (accuracy 0.2%, 25 mA).
+	* Supply to 5v buck (up to 1A).
+	* 5v to 12v boost (up to 100 mA but mosfet drivers can consume all of this current).
+	* 5v to 3.3v ldo (up to 400 mA).
+	* 5v to 3.3vREF optional reference voltage (accuracy 0.2%, 25 mA).
 * STM32F4xx microcontroller (60% typical computational load).
 * Anti-spark circuit: No.
 * Reverse polarity protection: No.
@@ -48,17 +48,17 @@ PCB design source files.
 * Fast and robust flux linkage estimation algorithm based on Luenberger
   observer with gain scheduling.
 * Operation at low or zero speed:
-  * Forced control that applies a current vector without feedback to force rotor turn.
-  * High frequency injection (HFI) based on magnetic saliency.
-  * Hall sensors or incremental encoder (**TODO**).
+	* Forced control that applies a current vector without feedback to force rotor turn.
+	* High frequency injection (HFI) based on magnetic saliency.
+	* Hall sensors or incremental encoder (**TODO**).
 * Control loops:
-  * Torque control through current control loop is always enabled.
-  * Simple speed PI control loop.
-  * Servo operation (**TODO**).
+	* Torque control through current control loop is always enabled.
+	* Simple speed PI control loop.
+	* Servo operation (**TODO**).
 * Adjustable limits:
-  * Phase current (with adjustable derate from overheat).
-  * Power consumption and regeneration.
-  * Maximal speed and acceleration.
+	* Phase current (with adjustable derate from overheat).
+	* Power consumption and regeneration.
+ 	* Maximal speed and acceleration.
 * Automated motor parameters identification with no additional tools.
 * Self test of hardware to diagnose troubles (**TODO**).
 * Smooth start when the motor is already running (**TODO**).
