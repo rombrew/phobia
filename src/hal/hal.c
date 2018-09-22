@@ -79,7 +79,7 @@ static void
 clock_startup()
 {
 	unsigned long	CLOCK, PLLQ, PLLP, PLLN, PLLM;
-	int		HSERDY, HSEN = 0;
+	int		HSE, N = 0;
 
 	/* Enable HSI.
 	 * */
@@ -98,10 +98,10 @@ clock_startup()
 	/* Wait till HSE is ready.
 	 * */
 	do {
-		HSERDY = RCC->CR & RCC_CR_HSERDY;
-		HSEN++;
+		HSE = RCC->CR & RCC_CR_HSERDY;
+		N++;
 	}
-	while (!HSERDY && HSEN < 20000UL);
+	while (HSE == 0 && N < 20000UL);
 
 	/* Enable power interface clock.
 	 * */
@@ -115,7 +115,7 @@ clock_startup()
 	 * */
 	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
 
-	if (HSERDY) {
+	if (HSE != 0) {
 
 		/* From HSE.
 		 * */
@@ -127,6 +127,8 @@ clock_startup()
 		 * */
 		CLOCK = 16000000UL;
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
+
+		/* TODO: Raise warning here */
 	}
 
 	PLLP = 2;
@@ -186,6 +188,11 @@ void hal_startup()
 	base_startup();
 	clock_startup();
 	periph_startup();
+}
+
+int hal_clock_crystal()
+{
+	return (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC_HSE) ? CLOCK_CRYSTAL_HZ : 0;
 }
 
 void hal_system_reset()

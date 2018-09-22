@@ -1061,9 +1061,13 @@ typedef struct xSTATIC_TIMER
 
 #endif /* INC_FREERTOS_H */
 
-/* Place all of FreeRTOS includes.
+/* Include all of FreeRTOS headers.
  * */
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
+
+/* Provide libc prototypes.
+ * */
+#include "libc.h"
 

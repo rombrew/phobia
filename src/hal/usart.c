@@ -20,8 +20,8 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define GPIO_USART_TX			XGPIO_DEF4('C', 10, 0, 7)
-#define GPIO_USART_RX			XGPIO_DEF4('C', 11, 0, 7)
+#define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
+#define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
 
 typedef struct {
 
@@ -68,8 +68,8 @@ void USART_startup()
 
 	/* Enable USART3 pins.
 	 * */
-	GPIO_set_mode_FUNCTION(GPIO_USART_TX);
-	GPIO_set_mode_FUNCTION(GPIO_USART_RX);
+	GPIO_set_mode_FUNCTION(GPIO_USART3_TX);
+	GPIO_set_mode_FUNCTION(GPIO_USART3_RX);
 
 	/* Alloc queues.
 	 * */

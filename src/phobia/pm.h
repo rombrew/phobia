@@ -56,7 +56,8 @@ enum {
 enum {
 	PM_STATE_IDLE				= 0,
 	PM_STATE_ZERO_DRIFT,
-	PM_STATE_POWER_STAGE_TEST,
+	PM_STATE_POWER_STAGE_SELF_TEST,
+	PM_STATE_DEVIATION_SELF_TEST,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
@@ -109,7 +110,8 @@ typedef struct {
 	int		pwm_MP;
 
 	int		fail_reason;
-	int		fail_bb[8];
+	int		self_BM[8];
+	float		self_STD[8];
 
 	int		config_ABC;
 	int		config_LDQ;
@@ -125,9 +127,11 @@ typedef struct {
 	int		tm_value;
 	int		tm_end;
 
-	float		tm_skip;
-	float		tm_probe;
-	float		tm_hold;
+	float		tm_transient_skip;
+	float		tm_voltage_hold;
+	float		tm_current_hold;
+	float		tm_instant_probe;
+	float		tm_average_probe;
 
 	float		adjust_IA[2];
 	float		adjust_IB[2];
@@ -158,7 +162,6 @@ typedef struct {
 
 	float		temporal[8];
 
-	float		fault_zero_drift_maximal;
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
 	float		fault_adjust_tolerance;

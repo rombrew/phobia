@@ -72,6 +72,7 @@ extern teli_t			ti;
 
 extern int flash_block_load();
 extern int pm_wait_for_IDLE();
+extern void pm_print_fail_reason();
 
 void lowTRACE(const char *fmt, ...);
 

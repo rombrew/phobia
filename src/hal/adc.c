@@ -50,7 +50,7 @@ void irqADC()
 		xADC = (int) ADC3->JDR1;
 		hal.ADC_current_B = (float) (xADC - 2047) * hal.ADC_const.GA;
 
-		xADC = (int) ADC2->JDR2;
+		xADC = (int) ADC3->JDR2;
 		fADC = (float) (xADC) * hal.ADC_const.GU;
 
 		switch (hal_ADC.channel_sel) {
@@ -164,7 +164,7 @@ void ADC_startup()
 
 	/* Enable IRQ.
 	 * */
-	NVIC_SetPriority(ADC_IRQn, 3);
+	NVIC_SetPriority(ADC_IRQn, 0);
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 

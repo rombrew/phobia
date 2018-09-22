@@ -28,17 +28,33 @@
 
 void apPUSH(void *pData)
 {
-	TickType_t			xWake;
+	TickType_t		xWake;
 
-	unsigned long			pushed_A = 1;
-	unsigned long			pushed_B = 1;
+	const int		in_A = GPIO_HALL_A;
+	const int		in_B = GPIO_HALL_B;
 
-	unsigned long			value_A, value_B;
+	int			pushed_A, pushed_B;
+	int			value_A, value_B;
 
-	float				rpm = 0.f;
+	const float		rpm_table[] = {
 
-	GPIO_set_mode_INPUT(GPIO_HALL_A);
-	GPIO_set_mode_INPUT(GPIO_HALL_B);
+		3000.f,
+		4000.f,
+		5000.f,
+		6000.f,
+		7000.f
+	};
+
+#define rpm_table_MAX		(sizeof(rpm_table) / sizeof(rpm_table[0]))
+
+	int			N, rev;
+	float			rpm;
+
+	GPIO_set_mode_INPUT(in_A);
+	GPIO_set_mode_INPUT(in_B);
+
+	pushed_A = GPIO_get_VALUE(in_A);
+	pushed_B = GPIO_get_VALUE(in_B);
 
 	xWake = xTaskGetTickCount();
 
@@ -47,45 +63,28 @@ void apPUSH(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 10);
 
-		value_A = GPIO_get_VALUE(GPIO_HALL_A);
-		value_B = GPIO_get_VALUE(GPIO_HALL_B);
+		value_A = GPIO_get_VALUE(in_A);
+		value_B = GPIO_get_VALUE(in_B);
 
 		/* Detect if buttons are pressed.
 		 * */
-
 		if (pushed_A != 0 && value_A == 0) {
 
 			pushed_A = 0;
 
 			if (pm.lu_mode == PM_LU_DISABLED) {
 
-				if (pushed_B == 0) {
-
-					rpm = -3000.f;
-				}
-				else {
-					rpm = 3000.f;
-				}
+				N = 0;
+				rev = (pushed_B == 0) ? 1 : 0;
 
 				pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 				pm_wait_for_IDLE();
 			}
 			else {
-				if (rpm < 0.f) {
-
-					rpm =	(rpm == -3000.f) ? -4000.f :
-						(rpm == -4000.f) ? -5000.f :
-						(rpm == -5000.f) ? -6000.f :
-						(rpm == -6000.f) ? -7000.f : -3000.f ;
-				}
-				else {
-					rpm =	(rpm == 3000.f) ? 4000.f :
-						(rpm == 4000.f) ? 5000.f :
-						(rpm == 5000.f) ? 6000.f :
-						(rpm == 6000.f) ? 7000.f : 3000.f ;
-				}
+				N = (N < rpm_table_MAX - 1) ? N + 1 : 0;
 			}
 
+			rpm = (rev != 0) ? - rpm_table[N] : rpm_table[N];
 			reg_SET(ID_PM_S_SETPOINT_RPM, &rpm);
 		}
 		else if (pushed_A == 0 && value_A != 0) {

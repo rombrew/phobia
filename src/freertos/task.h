@@ -2263,5 +2263,3 @@ void *pvTaskIncrementMutexHeldCount( void ) PRIVILEGED_FUNCTION;
 #endif
 #endif /* INC_TASK_H */
 
-
-

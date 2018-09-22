@@ -3,32 +3,39 @@
 PMC is an open project that aims to build the quality three-phase BLDC motor
 controller for RC and robotics.
 
-![PMC](doc/pmc_rev3.jpg)
+![PMC](doc/phobia_rev4b.jpg)
 
-We develop PMC with hope that it could be applicable to the various cases. We
-implement only the vector control as we think this is only right way. You may
-want to consider PMC as a platform for experimentation with motor control
-techniques. Or you could just use PMC in your application. In any case, we
-are pleased to offer our solution in the field of motor control.
+## Hardware specification (rev4b)
 
-## Hardware specification (rev3)
-
-* Separate power and control PCB.
-* Dimension: 90mm x 40mm x 15mm.
-* Weight: 50g (wires not included).
-* Single supply from 5v to 42v.
-* Phase current up to 50A.
-* Computation core is STM32F405RG, typical load is about 59% at 60kHz PWM.
-* Power MOSFETs are CSD18532Q5B, 60v, 2.5 mOhm, actual switching time is about 50ns.
-* Two current sensing shunts 0.5 mOhm, amplifiers are AD8417.
-* Measurement of supply voltage, external voltage input.
-* Temperature measurement with NTC resistor.
-* Interface to a quadrature encoder or hall sensors.
-* Managed through USART or CAN.
-* Also SWD, DAC/ADC, BOOT/RESET pins are available.
+* Dimension: 70mm x 50mm x 15mm.
+* Weight: 40g.
+* Single supply from 6v to 50v.
+* Phase current up to 75A (IPT007N06N, 60v, 0.75 mOhm).
+* Lightweight capacitor bank (3 x 2.2uF + 3 x 220uF).
+* PWM frequency from 20 to 80 kHz.
+* Sensors:
+  * Two current shunts (0.33 mOhm) with amplifiers (AD8417) give a measuring range of 75A.
+  * Supply voltage from 0 to 60v.
+  * Three terminal voltages from 0 to 60v.
+  * Temperature of PCB with NTC resistor.
+* Interfaces:
+  * Hall sensors or incremental encoder (5v pull-up).
+  * External NTC resistor (e.g. motor temperature control).
+  * CAN with optional termination resistor on PCB (3.3v).
+  * USART to bootload and configure (3.3v).
+  * Combined port: SPI, ADC, DAC, GPIO (3.3v).
+  * Combined port: I2C, PPM, USART, GPIO (3.3v pull-up).
+  * BOOT and RESET pins to use embedded bootloader.
+  * SWD to hardware debug.
+* Power:
+  * Supply to 5v buck (up to 1A).
+  * 5v to 12v boost (up to 100 mA but mosfet drivers can consume all of this current).
+  * 5v to 3.3v ldo (up to 400 mA).
+  * 5v to 3.3vREF optional reference voltage (accuracy 0.2%, 25 mA).
+* STM32F4xx microcontroller (60% typical computational load).
 * Anti-spark circuit: No.
 * Reverse polarity protection: No.
-* Overcurrent protection: No (implemented in software).
+* Overcurrent protection: Implemented in software.
 
 Look into [phobia-pcb](https://bitbucket.org/amaora/phobia-pcb) repository for
 PCB design source files.
@@ -36,26 +43,35 @@ PCB design source files.
 ## Software features
 
 * Sensorless vector control. All the code of motor control was written from
-  scratch, no external libs are used, portable as it is C code.
+  scratch, no external libs are used, portable as it is plain C code.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC bus.
-* Fast and robust rotor position estimation algorithm based on Luenberger
-  observer with a bit of gain scheduling.
-* Operation at low or zero speed using HFI. But it requires a motor with
-  magnetic saliency.
-* Torque control, most simple.
-* Speed and absolute position control, servo operation (EXPERIMENTAL).
-* Power control and limiting.
-* All of functions are available from command line interface.
-* Automated motor parameters identification, no additional tools are needed.
-* Some simple motor failures as open circuit or winding short can be detected.
-* BEMF waveform online estimation (EXPERIMENTAL).
-* Operation at current values outside the sensor range (EXPERIMENTAL).
+* Fast and robust flux linkage estimation algorithm based on Luenberger
+  observer with gain scheduling.
+* Operation at low or zero speed:
+  * Forced control that applies a current vector without feedback to force rotor turn.
+  * High frequency injection (HFI) based on magnetic saliency.
+  * Hall sensors or incremental encoder (**TODO**).
+* Control loops:
+  * Torque control through current control loop is always enabled.
+  * Simple speed PI control loop.
+  * Servo operation (**TODO**).
+* Adjustable limits:
+  * Phase current (with adjustable derate from overheat).
+  * Power consumption and regeneration.
+  * Maximal speed and acceleration.
+* Automated motor parameters identification with no additional tools.
+* Self test of hardware to diagnose troubles (**TODO**).
+* Smooth start when the motor is already running (**TODO**).
+* Advanced command line interface with autocompletion and history.
+* Operation at current values outside the sensor range (**EXPERIMENTAL**).
+* Two phase machine support (e.g. bipolar stepper) (**EXPERIMENTAL**).
 * Non critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
 * Flash storage for all of configurable parameters.
 
 ## TODO
 
-* Analyse of rapid transient modes. Introduce an iron saturation model.
+* Try to estimate stator windings resistance with KF.
+* Analyse of rapid transient modes. Introduce an iron saturation model if needed.
 * Implement an application protocol via CAN.
 * Make a detailed documentation.
 

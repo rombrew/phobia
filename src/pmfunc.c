@@ -27,21 +27,17 @@
 #include "shell.h"
 #include "teli.h"
 
-#define PM_WAIT_FOR_IDLE()	if (pm_wait_for_IDLE() != 0) break
-
-static void
-pm_print_fail_reason()
+void pm_print_fail_reason()
 {
 	if (pm.fail_reason != PM_OK) {
 
-		printf("ERR %i: %s" EOL, pm.fail_reason,
-				pm_strerror(pm.fail_reason));
+		printf("ERROR: %s" EOL, pm_strerror(pm.fail_reason));
 	}
 }
 
 int pm_wait_for_IDLE()
 {
-	int			rc = 0;
+	int			rc = PM_OK;
 
 	do {
 		if (pm.fsm_state == PM_STATE_IDLE)
@@ -53,7 +49,7 @@ int pm_wait_for_IDLE()
 			break;
 		}
 
-		vTaskDelay(1);
+		vTaskDelay((TickType_t) 1);
 	}
 	while (1);
 
@@ -88,27 +84,39 @@ SH_DEF(pm_probe_base)
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
-		PM_WAIT_FOR_IDLE();
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		reg_print_fmt(&regfile[ID_PM_ADJUST_IA_0], 1);
 		reg_print_fmt(&regfile[ID_PM_ADJUST_IB_0], 1);
 
-		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_TEST);
-		PM_WAIT_FOR_IDLE();*/
+		pm_fsm_req(&pm, PM_STATE_POWER_STAGE_SELF_TEST);
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
-		PM_WAIT_FOR_IDLE();
+	
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		reg_print_fmt(&regfile[ID_PM_CONST_R], 1);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		reg_print_fmt(&regfile[ID_PM_CONST_LD], 1);
 		reg_print_fmt(&regfile[ID_PM_CONST_LQ], 1);
@@ -122,24 +130,28 @@ SH_DEF(pm_probe_base)
 
 SH_DEF(pm_probe_spinup)
 {
-	int			xWait;
+	TickType_t		xWait;
 
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		pm.s_setpoint = pm.probe_speed_low;
 
-		xWait = (int) (pm.s_setpoint / pm.forced_accel * 1000.f);
-		xWait += 100;
+		xWait = (TickType_t) (pm.s_setpoint / pm.forced_accel * 1000.f);
+		xWait += (TickType_t) 100;
 
 		vTaskDelay(xWait);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 
 		reg_print_fmt(&regfile[ID_PM_CONST_E_KV], 1);
 	}
@@ -150,12 +162,11 @@ SH_DEF(pm_probe_spinup)
 
 SH_DEF(pm_fsm_req_lu_initiate)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
 	do {
 		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 	}
 	while (0);
 
@@ -164,90 +175,14 @@ SH_DEF(pm_fsm_req_lu_initiate)
 
 SH_DEF(pm_fsm_req_lu_shutdown)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
 	do {
 		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
-		PM_WAIT_FOR_IDLE();
+		
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 	}
 	while (0);
 
 	pm_print_fail_reason();
-}
-
-SH_DEF(pm_test_PWM_set_DC)
-{
-	int			xDC;
-
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
-	if (stoi(&xDC, s) != NULL) {
-
-		xDC = (xDC < 0) ? 0 : (xDC > hal.PWM_resolution)
-			? hal.PWM_resolution : xDC;
-
-		PWM_set_DC(xDC, xDC, xDC);
-	}
-}
-
-SH_DEF(pm_test_PWM_set_Z)
-{
-	int			xZ;
-
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
-	if (stoi(&xZ, s) != NULL) {
-
-		PWM_set_Z(xZ);
-	}
-}
-
-SH_DEF(pm_test_current_ramp)
-{
-	float			iSP;
-	int			xHold = 3;
-
-	if (pm.lu_mode == PM_LU_DISABLED)
-		return;
-
-	teli_enable(&ti, 0);
-
-	do {
-		iSP = pm.i_setpoint_Q;
-		vTaskDelay(xHold);
-
-		pm.i_setpoint_Q = pm.i_maximal;
-		vTaskDelay(xHold);
-
-		pm.i_setpoint_Q = iSP;
-		vTaskDelay(xHold);
-	}
-	while (0);
-}
-
-SH_DEF(pm_test_speed_ramp)
-{
-	float			wSP;
-	int			xHold = 300;
-
-	if (pm.lu_mode == PM_LU_DISABLED)
-		return;
-
-	teli_enable(&ti, 1000);
-
-	do {
-		wSP = pm.s_setpoint;
-		vTaskDelay(xHold);
-
-		pm.s_setpoint = pm.probe_speed_ramp;
-		vTaskDelay(xHold);
-
-		pm.s_setpoint = wSP;
-		vTaskDelay(xHold);
-	}
-	while (0);
 }
 

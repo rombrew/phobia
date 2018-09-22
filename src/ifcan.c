@@ -28,3 +28,7 @@ void CAN_IRQ()
 {
 }
 
+void ifcan_startup()
+{
+}
+

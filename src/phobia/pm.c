@@ -30,9 +30,11 @@ void pm_config_default(pmc_t *pm)
 	pm->config_HFI = PM_HFI_DISABLED;
 	pm->config_LOOP = PM_LOOP_SPEED_CONTROL;
 
-	pm->tm_skip = .02f;
-	pm->tm_probe = .2f;
-	pm->tm_hold = .5f;
+	pm->tm_transient_skip = .05f;
+	pm->tm_voltage_hold = .05f;
+	pm->tm_current_hold = .5f;
+	pm->tm_instant_probe = .01f;
+	pm->tm_average_probe = .2f;
 
 	pm->adjust_IA[0] = 0.f;
 	pm->adjust_IA[1] = 1.f;
@@ -47,7 +49,7 @@ void pm_config_default(pmc_t *pm)
 	pm->adjust_UC[0] = 0.f;
 	pm->adjust_UC[1] = 1.f;
 
-	pm->fb_current_clamp = 50.f;
+	pm->fb_current_clamp = 75.f;
 
 	pm->probe_current_hold = 10.f;
 	pm->probe_current_hold_Q = 0.f;
@@ -58,10 +60,9 @@ void pm_config_default(pmc_t *pm)
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
-	pm->fault_zero_drift_maximal = 1.f;
 	pm->fault_voltage_tolerance = 1.f;
-	pm->fault_current_tolerance = 1.f;
-	pm->fault_adjust_tolerance = 3E-2f;
+	pm->fault_current_tolerance = 4.f;
+	pm->fault_adjust_tolerance = 2E-2f;
 	pm->fault_flux_residual_maximal = 90.f;
 
 	pm->vsi_gain_LP = 1E-1f;
@@ -94,7 +95,7 @@ void pm_config_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_maximal = 30.f;
+	pm->i_maximal = 50.f;
 	pm->i_watt_consumption_maximal = 2050.f;
 	pm->i_watt_regeneration_maximal = -1.f;
 	pm->i_slew_rate_D = 5E+4f;

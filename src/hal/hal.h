@@ -31,7 +31,7 @@
 #define GPIO_HALL_C			XGPIO_DEF2('C', 8)
 
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
-#define GPIO_LED			XGPIO_DEF2('B', 5)
+#define GPIO_LED			XGPIO_DEF2('C', 12)
 
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
@@ -65,10 +65,6 @@ typedef struct {
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
 
-	unsigned long	CAN_msg_ID;
-	int		CAN_msg_len;
-	unsigned char	CAN_msg_payload[8];
-
 	struct {
 
 		float		GA;
@@ -77,6 +73,10 @@ typedef struct {
 		float		TEMP[2];
 	}
 	ADC_const;
+
+	unsigned long		CAN_msg_ID;
+	int			CAN_msg_len;
+	unsigned char		CAN_msg_payload[8];
 }
 HAL_t;
 
@@ -85,6 +85,7 @@ extern HAL_t			hal;
 
 void hal_startup();
 
+int hal_clock_crystal();
 void hal_system_reset();
 void hal_sleep();
 void hal_fence();

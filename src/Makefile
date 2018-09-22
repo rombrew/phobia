@@ -10,7 +10,7 @@ GDB     = $(CROSS)gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-CFLAGS	= -std=gnu99 -pipe
+CFLAGS	= -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
@@ -51,6 +51,7 @@ OBJS    = freertos/heap_4.o \
 	  main.o \
 	  ntc.o \
 	  pmfunc.o \
+	  pmtest.o \
 	  regfile.o \
 	  shell.o \
 	  teli.o

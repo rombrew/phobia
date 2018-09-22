@@ -29,7 +29,7 @@ irqCAN1_RX(int fifo)
 {
 	unsigned long		temp;
 
-	hal.CAN_msg_ID = (CAN1->sFIFOMailBox[fifo].RIR >> 21);
+	hal.CAN_msg_ID = (unsigned long) (CAN1->sFIFOMailBox[fifo].RIR >> 21);
 	hal.CAN_msg_len = (int) (CAN1->sFIFOMailBox[fifo].RDTR & 0xFUL);
 
 	temp = CAN1->sFIFOMailBox[fifo].RDLR;
@@ -119,7 +119,7 @@ void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID)
 	CAN1->MCR &= ~CAN_MCR_INRQ;
 }
 
-void CAN_send(int ID, int len, const unsigned char payload[8])
+void CAN_send(unsigned long ID, int len, const unsigned char payload[8])
 {
 	int		mailbox;
 

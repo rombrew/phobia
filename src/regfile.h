@@ -19,7 +19,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		13
+#define REG_CONFIG_VERSION		14
 
 enum {
 	REG_VIRTUAL		= 0,
@@ -54,6 +54,7 @@ extern const reg_t	regfile[];
 void reg_getval(const reg_t *reg, void *lval);
 void reg_setval(const reg_t *reg, const void *rval);
 void reg_print_fmt(const reg_t *reg, int full);
+const reg_t *reg_search(const char *sym);
 
 void reg_GET(int n, void *lval);
 void reg_SET(int n, const void *rval);

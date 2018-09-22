@@ -67,10 +67,6 @@
     1 tab == 4 spaces!
 */
 
-/* Standard includes. */
-#include <stdlib.h>
-#include <string.h>
-
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
 task.h is included from an application file. */
@@ -3984,7 +3980,7 @@ extern void printf(const char *fmt, ...);
 			/* Generate the (binary) data. */
 			uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, NULL );
 
-			printf("Name      \tState \tPri \tStack \tNum \r\n");
+			printf("Name            \tState \tPri \tStack \tNum \r\n");
 
 			/* Create a human readable table from the binary data. */
 			for( x = 0; x < uxArraySize; x++ )

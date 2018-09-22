@@ -25,7 +25,7 @@
 #include "main.h"
 #include "shell.h"
 
-#define LOAD_COUNT_DELAY		100
+#define LOAD_COUNT_DELAY		((TickType_t) 100)
 
 application_t			ap;
 pmc_t 				pm __section_ccmram;
@@ -146,9 +146,9 @@ void taskINIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_freq_hz = 60000;
-		hal.PWM_dead_time_ns = 70;
+		hal.PWM_dead_time_ns = 170;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_current_shunt_resistance = 500E-6f;
+		hal.ADC_current_shunt_resistance = 333.3E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
 
@@ -159,9 +159,9 @@ void taskINIT(void *pData)
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 
-		ap.temp_PCB_overheat = 120.f;
+		ap.temp_PCB_overheat = 110.f;
 		ap.temp_superheat = 10.f;
-		ap.temp_current_PCB_derated = 25.f;
+		ap.temp_current_PCB_derated = 50.f;
 
 		ap.batt_voltage_low = 6.0f;
 		ap.batt_voltage_high = 54.0f;
@@ -191,9 +191,9 @@ void taskINIT(void *pData)
 	GPIO_set_LOW(GPIO_LED);
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
-	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
-	teli_default(&ti);
+	teli_reg_default(&ti);
 
 	vTaskDelete(NULL);
 }
@@ -215,7 +215,7 @@ void ADC_IRQ()
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
 	pm_feedback(&pm, &fb);
-	teli_capture(&ti);
+	teli_reg_grab(&ti);
 }
 
 void hal_main()
@@ -288,6 +288,11 @@ SH_DEF(rtos_freeheap)
 
 	printf("Free %i (Minimum Ever %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
+}
+
+SH_DEF(rtos_clock_crystal)
+{
+	printf("HSE = %i (Hz)" EOL, hal_clock_crystal());
 }
 
 SH_DEF(rtos_reboot)
