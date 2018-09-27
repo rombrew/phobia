@@ -1,5 +1,5 @@
 SH_DEF(flash_write)
-SH_DEF(flash_info)
+SH_DEF(flash_info_map)
 SH_DEF(rtos_uptime)
 SH_DEF(rtos_cpu_usage)
 SH_DEF(rtos_tasklist)

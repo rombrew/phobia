@@ -40,7 +40,7 @@ flash_block_scan()
 {
 	flash_block_t			*block, *last;
 
-	block = (void *) FLASH_RAM_BASE;
+	block = (void *) flash_ram_map[0];
 	last = NULL;
 
 	do {
@@ -60,7 +60,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((void *) block >= (void *) FLASH_RAM_END)
+		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
 			break;
 	}
 	while (1);
@@ -83,7 +83,7 @@ int flash_block_load()
 
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
-			if (reg->mode == REG_CONFIG) {
+			if (reg->mode & REG_CONFIG) {
 
 				* (unsigned long *) reg->link = *content++;
 			}
@@ -106,21 +106,14 @@ flash_is_block_dirty(const flash_block_t *block)
 
 	while (lsrc < lend) {
 
-		if (*lsrc++ != 0xFFFFFFFF)
+		if (*lsrc++ != 0xFFFFFFFFUL) {
+
 			dirty = 1;
+			break;
+		}
 	}
 
 	return dirty;
-}
-
-static int
-flash_get_sector(const flash_block_t *block)
-{
-	int			n;
-
-	n = ((unsigned long) block - FLASH_RAM_BASE) / FLASH_RAM_SECTOR;
-
-	return n;
 }
 
 static int
@@ -138,17 +131,17 @@ flash_block_write()
 		number = block->number + 1;
 		block += 1;
 
-		if ((void *) block >= (void *) FLASH_RAM_END)
-			block = (void *) FLASH_RAM_BASE;
+		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+			block = (void *) flash_ram_map[0];
 	}
 	else {
 		number = 1;
-		block = (void *) FLASH_RAM_BASE;
+		block = (void *) flash_ram_map[0];
 	}
 
 	if (flash_is_block_dirty(block)) {
 
-		FLASH_erase(flash_get_sector(block));
+		FLASH_sector_erase(block);
 	}
 
 	temp = pvPortMalloc(sizeof(flash_block_t));
@@ -160,14 +153,14 @@ flash_block_write()
 
 		for (reg = regfile, n = 0; reg->sym != NULL; ++reg) {
 
-			if (reg->mode == REG_CONFIG) {
+			if (reg->mode & REG_CONFIG) {
 
 				temp->content[n++] = * (unsigned long *) reg->link;
 			}
 		}
 
 		for (; n < sizeof(temp->content) / sizeof(unsigned long); ++n)
-			temp->content[n] = 0xFFFFFFFF;
+			temp->content[n] = 0xFFFFFFFFUL;
 
 		temp->crc32 = crc32b(temp, sizeof(flash_block_t) - 4);
 
@@ -195,12 +188,45 @@ SH_DEF(flash_write)
 	printf("%s" EOL, (rc == 0) ? "Done" : "Failed");
 }
 
-SH_DEF(flash_info)
+SH_DEF(flash_info_map)
 {
-	flash_block_t		*block;
+	flash_block_t			*block;
+	int				sector_N, info_sym;
 
-	block = flash_block_scan();
+	block = (void *) flash_ram_map[0];
+	sector_N = 0;
 
-	printf("%s" EOL, (block != NULL) ? "Valid" : "Null");
+	do {
+		if (flash_is_block_dirty(block)) {
+
+			info_sym = 'x';
+
+			if (block->version == REG_CONFIG_VERSION) {
+
+				if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
+
+					info_sym = 'a';
+				}
+			}
+		}
+		else {
+			info_sym = '.';
+		}
+
+		iodef->putc(info_sym);
+
+		block += 1;
+
+		if ((unsigned long) block >= flash_ram_map[sector_N + 1]) {
+
+			puts(EOL);
+
+			sector_N += 1;
+
+			if (sector_N >= FLASH_SECTOR_MAX)
+				break;
+		}
+	}
+	while (1);
 }
 
