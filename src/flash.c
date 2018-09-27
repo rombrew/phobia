@@ -85,7 +85,7 @@ int flash_block_load()
 
 			if (reg->mode == REG_CONFIG) {
 
-				* (unsigned long *) reg->link.i = *content++;
+				* (unsigned long *) reg->link = *content++;
 			}
 		}
 
@@ -162,7 +162,7 @@ flash_block_write()
 
 			if (reg->mode == REG_CONFIG) {
 
-				temp->content[n++] = * (unsigned long *) reg->link.i;
+				temp->content[n++] = * (unsigned long *) reg->link;
 			}
 		}
 

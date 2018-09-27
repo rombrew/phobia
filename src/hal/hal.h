@@ -23,6 +23,7 @@
 #include "can.h"
 #include "flash.h"
 #include "gpio.h"
+#include "ppm.h"
 #include "pwm.h"
 #include "usart.h"
 
@@ -45,13 +46,21 @@ enum {
 	LEG_C				= 4
 };
 
+enum {
+	PPM_DISABLED			= 0,
+	PPM_PULSE_WIDTH,
+	PPM_STEP_DIR,
+	PPM_ENCODER
+};
+
 typedef struct {
 
+	int		HSE_crystal_clock;
 	int		USART_baud_rate;
 
-	int		PWM_freq_hz;
+	int		PWM_frequency;
 	int		PWM_resolution;
-	int		PWM_dead_time_ns;
+	int		PWM_deadtime;
 
 	float		ADC_reference_voltage;
 	float		ADC_current_shunt_resistance;
@@ -74,9 +83,11 @@ typedef struct {
 	}
 	ADC_const;
 
-	unsigned long		CAN_msg_ID;
-	int			CAN_msg_len;
-	unsigned char		CAN_msg_payload[8];
+	unsigned long	CAN_msg_ID;
+	int		CAN_msg_len;
+	unsigned char	CAN_msg_payload[8];
+
+	int		PPM_mode;
 }
 HAL_t;
 
@@ -85,7 +96,6 @@ extern HAL_t			hal;
 
 void hal_startup();
 
-int hal_clock_crystal();
 void hal_system_reset();
 void hal_sleep();
 void hal_fence();

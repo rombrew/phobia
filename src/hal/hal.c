@@ -121,6 +121,10 @@ clock_startup()
 		 * */
 		CLOCK = CLOCK_CRYSTAL_HZ;
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
+
+		/* Define HSE frequency.
+		 * */
+		hal.HSE_crystal_clock = CLOCK_CRYSTAL_HZ;
 	}
 	else {
 		/* From HSI.
@@ -128,7 +132,9 @@ clock_startup()
 		CLOCK = 16000000UL;
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
 
-		/* TODO: Raise warning here */
+		/* Define that HSE is disabled.
+		 * */
+		hal.HSE_crystal_clock = 0;
 	}
 
 	PLLP = 2;
@@ -188,11 +194,6 @@ void hal_startup()
 	base_startup();
 	clock_startup();
 	periph_startup();
-}
-
-int hal_clock_crystal()
-{
-	return (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC_HSE) ? CLOCK_CRYSTAL_HZ : 0;
 }
 
 void hal_system_reset()

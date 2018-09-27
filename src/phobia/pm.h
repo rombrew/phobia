@@ -57,7 +57,7 @@ enum {
 	PM_STATE_IDLE				= 0,
 	PM_STATE_ZERO_DRIFT,
 	PM_STATE_POWER_STAGE_SELF_TEST,
-	PM_STATE_DEVIATION_SELF_TEST,
+	PM_STATE_SAMPLING_SELF_TEST,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
@@ -76,6 +76,7 @@ enum {
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERORR_POWER_STAGE_FAULT,
+	PM_ERROR_SAMPLING_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_OVER_CURRENT,
 	PM_ERROR_ADJUST_TOLERANCE_FAULT,
@@ -106,12 +107,14 @@ typedef struct {
 	float		freq_hz;
 	float		dT;
 
-	int		pwm_R;
-	int		pwm_MP;
+	int		pwm_resolution;
+	int		pwm_minimal_pulse;
+	int		pwm_sampling_gap;
+	int		pwm_deadtime;
 
 	int		fail_reason;
 	int		self_BM[8];
-	float		self_STD[8];
+	float		self_SA[8];
 
 	int		config_ABC;
 	int		config_LDQ;
@@ -164,6 +167,7 @@ typedef struct {
 
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
+	float		fault_current_halt_level;
 	float		fault_adjust_tolerance;
 	float		fault_flux_residual_maximal;
 

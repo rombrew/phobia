@@ -16,13 +16,11 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PWM_
-#define _H_PWM_
+#ifndef _H_PPM_
+#define _H_PPM_
 
-void PWM_startup();
-void PWM_set_configuration();
-void PWM_set_DC(int A, int B, int C);
-void PWM_set_Z(int Z);
+void PPM_startup();
+float PPM_get_PERIOD();
+float PPM_get_PULSE();
 
-#endif /* _H_PWM_ */
-
+#endif /* _H_PPM_ */

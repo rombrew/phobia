@@ -34,19 +34,14 @@ typedef struct {
 
 	int		mode;
 
-	const reg_t	*in[TEL_INPUT_MAX];
+	int		reg_ID[TEL_INPUT_MAX];
 
 	int		d;
 	int		i;
 
-	union {
-		float		f;
-		int		i;
-	}
-	data[TEL_DATA_MAX][TEL_INPUT_MAX], live[TEL_INPUT_MAX];
+	reg_val_t	data[TEL_DATA_MAX][TEL_INPUT_MAX];
 
 	int		n;
-	int		l;
 }
 teli_t;
 

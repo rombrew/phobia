@@ -19,17 +19,24 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		14
+#define REG_CONFIG_VERSION		15
 
 enum {
-	REG_VIRTUAL		= 0,
-	REG_CONFIG,
-	REG_READ_ONLY
+	REG_CONFIG		= 1,
+	REG_READ_ONLY		= 2,
+	REG_LINKED		= 4
 };
 
 enum {
 #include "regdefs.h"
 };
+
+typedef union {
+
+	float		f;
+	int		i;
+}
+reg_val_t;
 
 typedef struct {
 
@@ -38,12 +45,7 @@ typedef struct {
 	const char		*fmt;
 	int			mode;
 
-	union {
-
-		float		*f;
-		int		*i;
-	}
-	link;
+	reg_val_t		*link;
 
 	void			(* proc) (const void *reg, void *lval, const void *rval);
 }
@@ -53,7 +55,8 @@ extern const reg_t	regfile[];
 
 void reg_getval(const reg_t *reg, void *lval);
 void reg_setval(const reg_t *reg, const void *rval);
-void reg_print_fmt(const reg_t *reg, int full);
+void reg_format_rval(const reg_t *reg, const void *rval);
+void reg_format(const reg_t *reg);
 const reg_t *reg_search(const char *sym);
 
 void reg_GET(int n, void *lval);

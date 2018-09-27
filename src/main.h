@@ -36,6 +36,14 @@ typedef struct {
 	 * */
 	int			can_node_ID;
 
+	/* PPM interface.
+	 * */
+	int			ppm_reg_ID;
+	float			ppm_pulse_cached;
+	float			ppm_pulse_range[2];
+	float			ppm_value_range[2];
+	float			ppm_curve_;
+
 	/* CPU load.
 	 * */
 	int			lc_flag;

@@ -21,7 +21,11 @@
 
 void pm_config_default(pmc_t *pm)
 {
-	pm->pwm_MP = 8;
+	float		ns = pm->freq_hz * (float) pm->pwm_resolution * 1E-9f;
+
+	pm->pwm_minimal_pulse = (int) (500.f * ns);
+	pm->pwm_sampling_gap = (int) (2000.f * ns);
+	pm->pwm_deadtime = (int) (400.f * ns);
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
@@ -61,7 +65,8 @@ void pm_config_default(pmc_t *pm)
 	pm->probe_gain_I = 1E-3f;
 
 	pm->fault_voltage_tolerance = 1.f;
-	pm->fault_current_tolerance = 4.f;
+	pm->fault_current_tolerance = 2.f;
+	pm->fault_current_halt_level = 7.f;
 	pm->fault_adjust_tolerance = 2E-2f;
 	pm->fault_flux_residual_maximal = 90.f;
 
@@ -95,8 +100,8 @@ void pm_config_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->i_maximal = 50.f;
-	pm->i_watt_consumption_maximal = 2050.f;
+	pm->i_maximal = pm->fb_current_clamp;
+	pm->i_watt_consumption_maximal = 3750.f;
 	pm->i_watt_regeneration_maximal = -1.f;
 	pm->i_slew_rate_D = 5E+4f;
 	pm->i_slew_rate_Q = 5E+4f;
@@ -511,32 +516,41 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	uB += Q;
 	uC += Q;
 
-	xA = (int) (pm->pwm_R * uA);
-	xB = (int) (pm->pwm_R * uB);
-	xC = (int) (pm->pwm_R * uC);
+	xA = (int) (pm->pwm_resolution * uA);
+	xB = (int) (pm->pwm_resolution * uB);
+	xC = (int) (pm->pwm_resolution * uC);
 
-	xMIN = pm->pwm_MP;
-	xMAX = pm->pwm_R - xMIN;
+	xMIN = pm->pwm_minimal_pulse;
+	xMAX = pm->pwm_resolution - pm->pwm_sampling_gap;
 
-	xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->pwm_R : xA;
-	xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->pwm_R : xB;
-	xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->pwm_R : xC;
+	xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->pwm_resolution : xA;
+	xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->pwm_resolution : xB;
+	xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->pwm_resolution : xC;
 
 	pm->pDC(xA, xB, xC);
+
+	/*if (xA > 0 && xA < pm->pwm_resolution) {
+
+		if (pm->fb_current_A > 0.f)
+			xA -= pm->pwm_DT;
+
+		if (pm->fb_current_A > xxx)
+			xA -= pm->pwm_DT;
+	}*/
 
 	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
 
 		Q = (1.f / 3.f) * (xA + xB + xC);
-		uA = (xA - Q) * pm->const_lpf_U / pm->pwm_R;
-		uB = (xB - Q) * pm->const_lpf_U / pm->pwm_R;
+		uA = (xA - Q) * pm->const_lpf_U / pm->pwm_resolution;
+		uB = (xB - Q) * pm->const_lpf_U / pm->pwm_resolution;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
 	}
 	else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
 
-		uA = (xA - xC) * pm->const_lpf_U / pm->pwm_R;
-		uB = (xB - xC) * pm->const_lpf_U / pm->pwm_R;
+		uA = (xA - xC) * pm->const_lpf_U / pm->pwm_resolution;
+		uB = (xB - xC) * pm->const_lpf_U / pm->pwm_resolution;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = uB;

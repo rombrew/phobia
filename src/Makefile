@@ -40,6 +40,7 @@ OBJS    = freertos/heap_4.o \
 	  hal/flash.o \
 	  hal/gpio.o \
 	  hal/hal.o \
+	  hal/ppm.o \
 	  hal/pwm.o \
 	  hal/usart.o \
 	  phobia/pm.o \

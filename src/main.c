@@ -145,12 +145,20 @@ void taskINIT(void *pData)
 		 * */
 
 		hal.USART_baud_rate = 57600;
-		hal.PWM_freq_hz = 60000;
-		hal.PWM_dead_time_ns = 170;
+		hal.PWM_frequency = 60000;
+		hal.PWM_deadtime = 200;
 		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_current_shunt_resistance = 333.3E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
+
+		hal.PPM_mode = PPM_DISABLED;
+
+		ap.ppm_reg_ID = ID_PM_S_SETPOINT_RPM;
+		ap.ppm_pulse_range[0] = 1.f;
+		ap.ppm_pulse_range[1] = 2.f;
+		ap.ppm_value_range[0] = 0.f;
+		ap.ppm_value_range[1] = 7000.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -167,13 +175,18 @@ void taskINIT(void *pData)
 		ap.batt_voltage_high = 54.0f;
 	}
 
+	USART_startup();
 	ADC_startup();
 	PWM_startup();
-	USART_startup();
 
-	pm.freq_hz = (float) hal.PWM_freq_hz;
+	if (hal.PPM_mode != PPM_DISABLED) {
+
+		PPM_startup();
+	}
+
+	pm.freq_hz = (float) hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_R = hal.PWM_resolution;
+	pm.pwm_resolution = hal.PWM_resolution;
 	pm.pDC = &PWM_set_DC;
 	pm.pZ = &PWM_set_Z;
 
@@ -183,6 +196,7 @@ void taskINIT(void *pData)
 		 * */
 
 		pm_config_default(&pm);
+		teli_reg_default(&ti);
 	}
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
@@ -193,9 +207,37 @@ void taskINIT(void *pData)
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
-	teli_reg_default(&ti);
-
 	vTaskDelete(NULL);
+}
+
+static void
+ppm_get_pulse()
+{
+	float		pulse, value, q;
+
+	if (PPM_get_PERIOD() != 0) {
+
+		pulse = PPM_get_PULSE();
+
+		if (pulse != ap.ppm_pulse_cached) {
+
+			ap.ppm_pulse_cached = pulse;
+
+			q = (pulse - ap.ppm_pulse_range[0])
+				/ (ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0]);
+			q = (q < 0.f) ? 0.f : (q > 1.f) ? 1.f : q;
+
+			value = ap.ppm_value_range[0] + (ap.ppm_value_range[1]
+					- ap.ppm_value_range[0]) * q;
+
+			reg_SET(ap.ppm_reg_ID, &value);
+		}
+
+		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+	}
+	else {
+		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+	}
 }
 
 void ADC_IRQ()
@@ -215,6 +257,12 @@ void ADC_IRQ()
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
 	pm_feedback(&pm, &fb);
+
+	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
+
+		ppm_get_pulse();
+	}
+
 	teli_reg_grab(&ti);
 }
 
@@ -286,13 +334,8 @@ SH_DEF(rtos_freeheap)
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return ;
 
-	printf("Free %i (Minimum Ever %i)" EOL, xPortGetFreeHeapSize(),
+	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
-}
-
-SH_DEF(rtos_clock_crystal)
-{
-	printf("HSE = %i (Hz)" EOL, hal_clock_crystal());
 }
 
 SH_DEF(rtos_reboot)

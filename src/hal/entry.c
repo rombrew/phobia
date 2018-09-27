@@ -45,6 +45,7 @@ void irqCAN1_RX0();
 void irqCAN1_RX1();
 void irqCAN1_SCE();
 void irqTIM1_UP_TIM10();
+void irqTIM4();
 void irqUSART3();
 
 __attribute__ (( section(".vectors"), used )) void * vectors[] = {
@@ -97,7 +98,7 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 	irqDefault,
 	irqDefault,
 	irqDefault,
-	irqDefault,
+	irqTIM4,
 	irqDefault,
 	irqDefault,
 	irqDefault,

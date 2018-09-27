@@ -30,20 +30,36 @@
 
 void irqTIM1_UP_TIM10() { }
 
+static int
+PWM_calculate_R()
+{
+	int		R;
+
+	R = CLOCK_TIM1_HZ / 2UL / hal.PWM_frequency;
+	hal.PWM_frequency = CLOCK_TIM1_HZ / 2UL / R;
+	hal.PWM_resolution = R;
+
+	return R;
+}
+
+static int
+PWM_calculate_D()
+{
+	int		D;
+
+	D = ((CLOCK_TIM1_HZ / 1000UL) * hal.PWM_deadtime + 500000UL) / 1000000UL;
+	D = (D < 128) ? D : 128;
+	hal.PWM_deadtime = D * 1000000UL / (CLOCK_TIM1_HZ / 1000UL);
+
+	return D;
+}
+
 void PWM_startup()
 {
 	int		R, D;
 
-	/* Update configuration.
-	 * */
-	R = CLOCK_TIM1_HZ / 2UL / hal.PWM_freq_hz;
-	R = (R & 1) ? R + 1 : R;
-	hal.PWM_freq_hz = CLOCK_TIM1_HZ / 2UL / R;
-	hal.PWM_resolution = R;
-
-	D = ((CLOCK_TIM1_HZ / 1000UL) * hal.PWM_dead_time_ns + 500000UL) / 1000000UL;
-	D = (D < 128) ? D : 128;
-	hal.PWM_dead_time_ns = D * 1000000UL / (CLOCK_TIM1_HZ / 1000UL);
+	R = PWM_calculate_R();
+	D = PWM_calculate_D();
 
 	/* Enable TIM1 clock.
 	 * */
@@ -90,6 +106,15 @@ void PWM_startup()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH1);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
+}
+
+void PWM_set_configuration()
+{
+	int		D;
+
+	D = PWM_calculate_D();
+
+	MODIFY_REG(TIM1->BDTR, 0xFF, D);
 }
 
 void PWM_set_DC(int A, int B, int C)

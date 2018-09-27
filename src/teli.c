@@ -29,49 +29,43 @@
 
 void teli_reg_default(teli_t *ti)
 {
-	ti->in[0] = &regfile[ID_PM_FB_CURRENT_A];
-	ti->in[1] = &regfile[ID_PM_FB_CURRENT_B];
-	ti->in[2] = &regfile[ID_PM_LU_X_0];
-	ti->in[3] = &regfile[ID_PM_LU_X_1];
-	ti->in[4] = &regfile[ID_PM_LU_X_2];
-	ti->in[5] = &regfile[ID_PM_LU_X_3];
-	ti->in[6] = &regfile[ID_PM_LU_X_4_RPM];
-	ti->in[7] = &regfile[ID_PM_FLUX_DRIFT_Q];
-	ti->in[8] = &regfile[ID_PM_FLUX_RESIDUAL_LPF];
-	ti->in[9] = &regfile[ID_PM_VSI_LPF_WATT];
+	ti->reg_ID[0] = ID_PM_FB_CURRENT_A;
+	ti->reg_ID[1] = ID_PM_FB_CURRENT_B;
+	ti->reg_ID[2] = ID_PM_LU_X_0;
+	ti->reg_ID[3] = ID_PM_LU_X_1;
+	ti->reg_ID[4] = ID_PM_LU_X_4_RPM;
+	ti->reg_ID[5] = ID_PM_FLUX_DRIFT_Q;
+	ti->reg_ID[6] = ID_PM_FLUX_RESIDUAL_LPF;
+	ti->reg_ID[7] = ID_PM_VSI_LPF_WATT;
+	ti->reg_ID[8] = ID_PM_CONST_LPF_U;
+	ti->reg_ID[9] = ID_AP_TEMP_PCB;
 }
 
 void teli_reg_grab(teli_t *ti)
 {
-	union {
-		float		f;
-		int		i;
-	} u;
-
+	reg_val_t		rval;
 	const reg_t		*reg;
-	int			j;
+	int			N;
 
 	if (ti->mode != 0) {
 
 		ti->i++;
 
-		for (j = 0; j < TEL_INPUT_MAX; ++j) {
+		for (N = 0; N < TEL_INPUT_MAX; ++N) {
 
-			reg = ti->in[j];
+			if (ti->reg_ID[N] != ID_NULL) {
 
-			if (reg != NULL) {
+				reg = &regfile[ti->reg_ID[N]];
 
 				if (ti->i == 1) {
 
-					reg_getval(reg, (void *) &ti->data[ti->n][j]);
+					reg_getval(reg, &ti->data[ti->n][N]);
 				}
 				else {
 					if (reg->fmt[1] != 'i') {
 
-						/* Get average value if register is float.
-						 * */
-						reg_getval(reg, &u);
-						ti->data[ti->n][j].f += u.f;
+						reg_getval(reg, &rval);
+						ti->data[ti->n][N].f += rval.f;
 					}
 				}
 			}
@@ -81,20 +75,15 @@ void teli_reg_grab(teli_t *ti)
 
 			ti->i = 0;
 
-			for (j = 0; j < TEL_INPUT_MAX; ++j) {
+			for (N = 0; N < TEL_INPUT_MAX; ++N) {
 
-				reg = ti->in[j];
+				if (ti->reg_ID[N] != ID_NULL) {
 
-				if (reg != NULL) {
+					reg = &regfile[ti->reg_ID[N]];
 
 					if (reg->fmt[1] != 'i') {
 
-						ti->data[ti->n][j].f /= (float) ti->d;
-					}
-
-					if (ti->mode == TEL_MODE_LIVE) {
-
-						ti->live[j] = ti->data[ti->n][j];
+						ti->data[ti->n][N].f /= (float) ti->d;
 					}
 				}
 			}
@@ -110,7 +99,7 @@ void teli_reg_grab(teli_t *ti)
 			}
 			else if (ti->mode == TEL_MODE_LIVE) {
 
-				ti->l = 1;
+				ti->n = (ti->n == 0) ? 1 : 0;
 			}
 		}
 	}
@@ -118,9 +107,9 @@ void teli_reg_grab(teli_t *ti)
 
 void teli_startup(teli_t *ti, int freq, int mode)
 {
-	if (freq > 0 && freq <= hal.PWM_freq_hz) {
+	if (freq > 0 && freq <= hal.PWM_frequency) {
 
-		ti->d = (hal.PWM_freq_hz + freq / 2) / freq;
+		ti->d = (hal.PWM_frequency + freq / 2) / freq;
 	}
 	else {
 		ti->d = 1;
@@ -128,7 +117,6 @@ void teli_startup(teli_t *ti, int freq, int mode)
 
 	ti->i = 0;
 	ti->n = 0;
-	ti->l = 0;
 
 	hal_fence();
 	ti->mode = mode;
@@ -142,35 +130,6 @@ void teli_halt(teli_t *ti)
 SH_DEF(tel_reg_default)
 {
 	teli_reg_default(&ti);
-}
-
-static void
-teli_reg_print(int n, const reg_t *reg)
-{
-	printf("[%i] = %s" EOL, n, (reg != NULL) ? reg->sym : "(null)");
-}
-
-SH_DEF(tel_reg_assign)
-{
-	const reg_t	*reg;
-	int		n;
-
-	if (stoi(&n, s) != NULL) {
-
-		if (n >= 0 && n < TEL_INPUT_MAX) {
-
-			reg = reg_search(sh_next_arg(s));
-			ti.in[n] = reg;
-
-			teli_reg_print(n, reg);
-		}
-	}
-	else {
-		for (n = 0; n < TEL_INPUT_MAX; ++n) {
-
-			teli_reg_print(n, ti.in[n]);
-		}
-	}
 }
 
 SH_DEF(tel_grab)
@@ -190,13 +149,13 @@ void teli_reg_labels(teli_t *ti)
 {
 	const reg_t		*reg;
 	const char		*su;
-	int			j;
+	int			N;
 
-	for (j = 0; j < TEL_INPUT_MAX; ++j) {
+	for (N = 0; N < TEL_INPUT_MAX; ++N) {
 
-		reg = ti->in[j];
+		if (ti->reg_ID[N] != ID_NULL) {
 
-		if (reg != NULL) {
+			reg = &regfile[ti->reg_ID[N]];
 
 			puts(reg->sym);
 
@@ -217,37 +176,17 @@ void teli_reg_labels(teli_t *ti)
 void teli_reg_flush(teli_t *ti)
 {
 	const reg_t		*reg;
-	int			n, D_MAX, j;
+	int			K, N;
 
-	D_MAX = (ti->mode == TEL_MODE_LIVE) ? 1 : TEL_DATA_MAX;
+	for (K = 0; K < TEL_DATA_MAX; ++K) {
 
-	for (n = 0; n < D_MAX; ++n) {
+		for (N = 0; N < TEL_INPUT_MAX; ++N) {
 
-		for (j = 0; j < TEL_INPUT_MAX; ++j) {
+			if (ti->reg_ID[N] != ID_NULL) {
 
-			reg = ti->in[j];
+				reg = &regfile[ti->reg_ID[N]];
 
-			if (reg != NULL) {
-
-				if (reg->fmt[1] == 'i') {
-
-					if (ti->mode == TEL_MODE_LIVE) {
-
-						printf(reg->fmt, ti->live[j].i);
-					}
-					else {
-						printf(reg->fmt, ti->data[n][j].i);
-					}
-				}
-				else {
-					if (ti->mode == TEL_MODE_LIVE) {
-
-						printf(reg->fmt, &ti->live[j].f);
-					}
-					else {
-						printf(reg->fmt, &ti->data[n][j].f);
-					}
-				}
+				reg_format_rval(reg, &ti->data[K][N]);
 
 				puts(";");
 			}
@@ -255,6 +194,26 @@ void teli_reg_flush(teli_t *ti)
 
 		puts(EOL);
 	}
+}
+
+void teli_reg_flush_1(teli_t *ti, int n_1)
+{
+	const reg_t		*reg;
+	int			N;
+
+	for (N = 0; N < TEL_INPUT_MAX; ++N) {
+
+		if (ti->reg_ID[N] != ID_NULL) {
+
+			reg = &regfile[ti->reg_ID[N]];
+
+			reg_format_rval(reg, &ti->data[n_1][N]);
+
+			puts(";");
+		}
+	}
+
+	puts(EOL);
 }
 
 SH_DEF(tel_flush)
@@ -268,15 +227,18 @@ SH_DEF(tel_flush)
 
 void taskTELIVE(void *pData)
 {
-	teli_reg_labels(&ti);
+	teli_t		*ti = (teli_t *) pData;
+	int		n = ti->n;
+
+	teli_reg_labels(ti);
 
 	do {
 		vTaskDelay((TickType_t) 5);
 
-		if (ti.l != 0) {
+		if (ti->n != n) {
 
-			ti.l = 0;
-			teli_reg_flush(&ti);
+			teli_reg_flush_1(ti, n);
+			n = ti->n;
 		}
 	}
 	while (1);
@@ -287,7 +249,7 @@ SH_DEF(tel_live)
 	TaskHandle_t		xHandle;
 	int			freq = 20;
 
-	xTaskCreate(taskTELIVE, "tTELIVE", configMINIMAL_STACK_SIZE, NULL, 1, &xHandle);
+	xTaskCreate(taskTELIVE, "tTELIVE", configMINIMAL_STACK_SIZE, (void *) &ti, 1, &xHandle);
 
 	if (stoi(&freq, s) != NULL) {
 
@@ -296,8 +258,6 @@ SH_DEF(tel_live)
 
 	teli_startup(&ti, freq, TEL_MODE_LIVE);
 
-	/* Block until we get any character.
-	 * */
 	iodef->getc();
 
 	teli_halt(&ti);

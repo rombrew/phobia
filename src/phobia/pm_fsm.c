@@ -20,6 +20,24 @@
 #include "pm_m.h"
 
 static void
+pm_fsm_current_halt(pmc_t *pm, float i_halt)
+{
+	if (pm_fabsf(pm->fb_current_A) > i_halt) {
+
+		pm->fail_reason = PM_ERROR_OVER_CURRENT;
+		pm->fsm_state = PM_STATE_HALT;
+		pm->fsm_phase = 0;
+	}
+
+	if (pm_fabsf(pm->fb_current_B) > i_halt) {
+
+		pm->fail_reason = PM_ERROR_OVER_CURRENT;
+		pm->fsm_state = PM_STATE_HALT;
+		pm->fsm_phase = 0;
+	}
+}
+
+static void
 pm_fsm_state_zero_drift(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -56,13 +74,18 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 
 			pm->tm_value++;
 
-			if (pm->tm_value >= pm->tm_end)
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->temporal[0] /= pm->tm_end;
+				pm->temporal[1] /= pm->tm_end;
+
 				pm->fsm_phase = 3;
+			}
 			break;
 
 		case 3:
-			pm->adjust_IA[0] -= pm->temporal[0] / pm->tm_end;
-			pm->adjust_IB[0] -= pm->temporal[1] / pm->tm_end;
+			pm->adjust_IA[0] += - pm->temporal[0];
+			pm->adjust_IB[0] += - pm->temporal[1];
 
 			if (pm_fabsf(pm->adjust_IA[0]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_ZERO_DRIFT_FAULT;
@@ -73,6 +96,8 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->fsm_phase = 0;
 			break;
 	}
+
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
@@ -83,8 +108,10 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->fsm_phase_2 = 0;
+			pm->fail_reason = PM_OK;
+
 			pm->fsm_phase = 1;
+			pm->fsm_phase_2 = 0;
 			break;
 
 		case 1:
@@ -96,7 +123,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 1:
-					pm->pDC(pm->pwm_R, 0, 0);
+					pm->pDC(pm->pwm_resolution, 0, 0);
 					pm->pZ(6);
 					break;
 
@@ -106,7 +133,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 3:
-					pm->pDC(0, pm->pwm_R, 0);
+					pm->pDC(0, pm->pwm_resolution, 0);
 					pm->pZ(5);
 					break;
 
@@ -116,7 +143,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 5:
-					pm->pDC(0, 0, pm->pwm_R);
+					pm->pDC(0, 0, pm->pwm_resolution);
 					pm->pZ(3);
 					break;
 
@@ -215,45 +242,105 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 			break;
 	}
 
-	if (pm_fabsf(pm->fb_current_A) > pm->fault_current_tolerance) {
-
-		pm->fail_reason = PM_ERROR_OVER_CURRENT;
-		pm->fsm_state = PM_STATE_HALT;
-		pm->fsm_phase = 0;
-	}
-
-	if (pm_fabsf(pm->fb_current_B) > pm->fault_current_tolerance) {
-
-		pm->fail_reason = PM_ERROR_OVER_CURRENT;
-		pm->fsm_state = PM_STATE_HALT;
-		pm->fsm_phase = 0;
-	}
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
-pm_fsm_state_deviation_self_test(pmc_t *pm)
+pm_fsm_state_sampling_self_test(pmc_t *pm)
 {
-	int			b;
+	int				xDC;
 
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->pDC(0, 0, 0);
-			pm->pZ(7);
+			pm->fail_reason = PM_OK;
+
+			pm->fsm_phase = 1;
+			pm->fsm_phase_2 = 0;
+			break;
+
+		case 1:
+			switch (pm->fsm_phase_2) {
+
+				case 0:
+					pm->pDC(0, 0, 0);
+					pm->pZ(7);
+					break;
+
+				case 1:
+					xDC = pm->pwm_resolution - pm->pwm_sampling_gap;
+
+					pm->pDC(xDC, xDC, xDC);
+					pm->pZ(0);
+					break;
+			}
 
 			pm->temporal[0] = 0.f;
 			pm->temporal[1] = 0.f;
+			pm->temporal[2] = 0.f;
+			pm->temporal[3] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
 
-			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
+			pm->fsm_phase = 2;
 			break;
 
-		case 1:
+		case 2:
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->tm_value = 0;
+				pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+
+				pm->fsm_phase = 3;
+			}
+			break;
+
+		case 3:
+			pm->temporal[0] += pm->fb_current_A;
+			pm->temporal[1] += pm->fb_current_B;
+			pm->temporal[2] += pm->fb_current_A * pm->fb_current_A;
+			pm->temporal[3] += pm->fb_current_B * pm->fb_current_B;
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->temporal[0] = pm->temporal[0] / pm->tm_end;
+				pm->temporal[1] = pm->temporal[1] / pm->tm_end;
+				pm->temporal[2] = pm_sqrtf(pm->temporal[2] / pm->tm_end);
+				pm->temporal[3] = pm_sqrtf(pm->temporal[3] / pm->tm_end);
+
+				pm->fsm_phase = 4;
+			}
+			break;
+
+		case 4:
+			if (pm_fabsf(pm->temporal[2]) > pm->fault_current_tolerance)
+				pm->fail_reason = PM_ERROR_SAMPLING_FAULT;
+			else if (pm_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
+				pm->fail_reason = PM_ERROR_SAMPLING_FAULT;
+
+			pm->self_SA[pm->fsm_phase_2 + 0] = pm->temporal[0];
+			pm->self_SA[pm->fsm_phase_2 + 2] = pm->temporal[1];
+			pm->self_SA[pm->fsm_phase_2 + 4] = pm->temporal[2];
+			pm->self_SA[pm->fsm_phase_2 + 6] = pm->temporal[3];
+
+			if (pm->fsm_phase_2 < 1) {
+
+				pm->fsm_phase = 1;
+				pm->fsm_phase_2++;
+			}
+			else {
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
 			break;
 	}
+
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
@@ -330,6 +417,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->fsm_phase = 0;
 			break;
 	}
+
+	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_hold)
+			+ pm->fault_current_halt_level);
 }
 
 static void
@@ -419,6 +509,9 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->fsm_phase = 0;
 			break;
 	}
+
+	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_hold)
+			+ pm->fault_current_halt_level);
 }
 
 static void
@@ -533,6 +626,9 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->fsm_phase = 0;
 			break;
 	}
+
+	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_sine)
+			+ pm->fault_current_halt_level);
 }
 
 static void
@@ -746,6 +842,10 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_power_stage_self_test(pm);
 			break;
 
+		case PM_STATE_SAMPLING_SELF_TEST:
+			pm_fsm_state_sampling_self_test(pm);
+			break;
+
 		case PM_STATE_ADJUST_VOLTAGE:
 			break;
 
@@ -789,6 +889,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 
 		case PM_STATE_ZERO_DRIFT:
 		case PM_STATE_POWER_STAGE_SELF_TEST:
+		case PM_STATE_SAMPLING_SELF_TEST:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
@@ -846,6 +947,7 @@ const char *pm_strerror(int n)
 		"Zero Drift Fault",
 		"No Motor Connected",
 		"Power Stage Fault",
+		"Standard Deviation Fault",
 		"Current Loop Fault",
 		"Over Current",
 		"Adjust Tolerance Fault",

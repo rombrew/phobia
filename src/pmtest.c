@@ -30,9 +30,20 @@
 static void
 pm_print_self_BM()
 {
-	printf("BM = %2x %2x %2x %2x %2x %2x" EOL, pm.self_BM[0],
+	printf("BM  = %2x %2x %2x %2x %2x %2x %2x" EOL, pm.self_BM[0],
 			pm.self_BM[1], pm.self_BM[2], pm.self_BM[3],
 			pm.self_BM[4], pm.self_BM[5], pm.self_BM[6]);
+}
+
+static void
+pm_print_self_SA()
+{
+	printf("SA[ME]  = %3f %3f %3f %3f (A)" EOL, &pm.self_SA[0],
+			&pm.self_SA[2], &pm.self_SA[1], &pm.self_SA[3]);
+
+	printf("SA[STD] = %3f %3f %3f %3f (A)" EOL, &pm.self_SA[4],
+			&pm.self_SA[6], &pm.self_SA[5], &pm.self_SA[7]);
+
 }
 
 SH_DEF(pm_self_test)
@@ -44,8 +55,8 @@ SH_DEF(pm_self_test)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
-		reg_print_fmt(&regfile[ID_PM_ADJUST_IA_0], 1);
-		reg_print_fmt(&regfile[ID_PM_ADJUST_IB_0], 1);
+		reg_format(&regfile[ID_PM_ADJUST_IA_0]);
+		reg_format(&regfile[ID_PM_ADJUST_IB_0]);
 
 		if (pm.fail_reason != PM_OK)
 			break;
@@ -55,15 +66,35 @@ SH_DEF(pm_self_test)
 
 		pm_print_self_BM();
 
-		if (pm.fail_reason != PM_OK && pm.fail_reason != PM_ERROR_NO_MOTOR_CONNECTED)
+		if (pm.fail_reason == PM_OK) {
+		}
+		else if (pm.fail_reason == PM_ERROR_NO_MOTOR_CONNECTED) {
+		}
+		else {
 			break;
+		}
+
+		pm_fsm_req(&pm, PM_STATE_SAMPLING_SELF_TEST);
+		pm_wait_for_IDLE();
+
+		pm_print_self_SA();
 	}
 	while (0);
 
 	pm_print_fail_reason();
 }
 
-SH_DEF(pm_test_PWM_set_DC)
+SH_DEF(hal_PPM_get_PULSE)
+{
+	float		period, pulse;
+
+	period = PPM_get_PERIOD();
+	pulse = PPM_get_PULSE();
+
+	printf("%4f %4f (ms)" EOL, &period, &pulse);
+}
+
+SH_DEF(hal_PWM_set_DC)
 {
 	int			xDC;
 
@@ -79,7 +110,7 @@ SH_DEF(pm_test_PWM_set_DC)
 	}
 }
 
-SH_DEF(pm_test_PWM_set_Z)
+SH_DEF(hal_PWM_set_Z)
 {
 	int			xZ;
 
