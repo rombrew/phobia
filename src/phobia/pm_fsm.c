@@ -268,7 +268,8 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 					break;
 
 				case 1:
-					xDC = pm->pwm_resolution - pm->pwm_sampling_gap;
+					xDC = (int) (pm->pwm_sampling_gap * pm->pwm_tik_per_ns);
+					xDC = pm->pwm_resolution - xDC;
 
 					pm->pDC(xDC, xDC, xDC);
 					pm->pZ(0);

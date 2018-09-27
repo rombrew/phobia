@@ -21,11 +21,8 @@
 
 void pm_config_default(pmc_t *pm)
 {
-	float		ns = pm->freq_hz * (float) pm->pwm_resolution * 1E-9f;
-
-	pm->pwm_minimal_pulse = (int) (500.f * ns);
-	pm->pwm_sampling_gap = (int) (2000.f * ns);
-	pm->pwm_deadtime = (int) (400.f * ns);
+	pm->pwm_minimal_pulse = 500;
+	pm->pwm_sampling_gap = 2300;
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
@@ -458,12 +455,50 @@ pm_validate(pmc_t *pm)
 	}
 }
 
+static int
+pm_solved_current_SG(pmc_t *pm)
+{
+	float		*X = pm->lu_X;
+	float		iX, iY, iA, iB, iC;
+	int		xSG = 0;
+
+	if (pm->lu_mode == PM_LU_DISABLED) {
+
+		iA = pm->fb_current_A;
+		iB = pm->fb_current_B;
+		iC = - (pm->fb_current_A + pm->fb_current_B);
+	}
+	else {
+		iX = X[2] * X[0] - X[3] * X[1];
+		iY = X[3] * X[0] + X[2] * X[1];
+
+		if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+
+			iA = iX;
+			iB = - .5f * iX + .8660254f * iY;
+			iC = - .5f * iX - .8660254f * iY;
+		}
+		else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
+
+			iA = iX;
+			iB = iY;
+			iC = - (iX + iY);
+		}
+	}
+
+	if (iA < 0.f) xSG |= 1;
+	if (iB < 0.f) xSG |= 2;
+	if (iC < 0.f) xSG |= 4;
+
+	return xSG;
+}
+
 void pm_voltage_control(pmc_t *pm, float uX, float uY)
 {
 	float		uA, uB, uC;
-	float		uMIN, uMAX, Q;
+	float		uMIN, uMAX, uQ;
 	int		xA, xB, xC;
-	int		xMIN, xMAX;
+	int		xMIN, xMAX, xSG;
 
 	uX /= pm->const_lpf_U;
 	uY /= pm->const_lpf_U;
@@ -499,29 +534,35 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 		uMAX = uC;
 
-	Q = uMAX - uMIN;
+	uQ = uMAX - uMIN;
 
-	if (Q > 1.f) {
+	if (uQ > 1.f) {
 
-		Q = 1.f / Q;
-		uA *= Q;
-		uB *= Q;
-		uC *= Q;
-		uMIN *= Q;
+		uQ = 1.f / uQ;
+		uA *= uQ;
+		uB *= uQ;
+		uC *= uQ;
+		uMIN *= uQ;
 	}
 
-	Q = (pm->vsi_clamp_to_null != 0) ? 0.f - uMIN : 0.f;
+	if (pm->vsi_clamp_to_null != 0) {
 
-	uA += Q;
-	uB += Q;
-	uC += Q;
+		uQ = 0.f - uMIN;
+	}
+	else {
+		uQ = .5f;
+	}
+
+	uA += uQ;
+	uB += uQ;
+	uC += uQ;
 
 	xA = (int) (pm->pwm_resolution * uA);
 	xB = (int) (pm->pwm_resolution * uB);
 	xC = (int) (pm->pwm_resolution * uC);
 
-	xMIN = pm->pwm_minimal_pulse;
-	xMAX = pm->pwm_resolution - pm->pwm_sampling_gap;
+	xMIN = (int) (pm->pwm_minimal_pulse * pm->pwm_tik_per_ns);
+	xMAX = pm->pwm_resolution - (int) (pm->pwm_sampling_gap * pm->pwm_tik_per_ns);
 
 	xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->pwm_resolution : xA;
 	xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->pwm_resolution : xB;
@@ -529,20 +570,46 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 	pm->pDC(xA, xB, xC);
 
-	/*if (xA > 0 && xA < pm->pwm_resolution) {
+	if (1) {
 
-		if (pm->fb_current_A > 0.f)
-			xA -= pm->pwm_DT;
+		xMAX = (int) (2.f * pm->pwm_correction * pm->pwm_tik_per_ns);
+		xMIN = (int) (xMAX * .9f / pm->const_lpf_U);
 
-		if (pm->fb_current_A > xxx)
-			xA -= pm->pwm_DT;
-	}*/
+		xSG = pm_solved_current_SG(pm);
+
+		if (xA > 0 && xA < pm->pwm_resolution) {
+
+			if (xSG & 1)
+
+				xA += - xMIN;
+			else
+				xA += xMIN - xMAX;
+		}
+
+		if (xB > 0 && xB < pm->pwm_resolution) {
+
+			if (xSG & 2)
+
+				xB += - xMIN;
+			else
+				xB += xMIN - xMAX;
+		}
+
+		if (xC > 0 && xC < pm->pwm_resolution) {
+
+			if (xSG & 4)
+
+				xC += - xMIN;
+			else
+				xC += xMIN - xMAX;
+		}
+	}
 
 	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
 
-		Q = (1.f / 3.f) * (xA + xB + xC);
-		uA = (xA - Q) * pm->const_lpf_U / pm->pwm_resolution;
-		uB = (xB - Q) * pm->const_lpf_U / pm->pwm_resolution;
+		uQ = (1.f / 3.f) * (xA + xB + xC);
+		uA = (xA - uQ) * pm->const_lpf_U / pm->pwm_resolution;
+		uB = (xB - uQ) * pm->const_lpf_U / pm->pwm_resolution;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;

@@ -108,9 +108,10 @@ typedef struct {
 	float		dT;
 
 	int		pwm_resolution;
+	int		pwm_correction;
+	float		pwm_tik_per_ns;
 	int		pwm_minimal_pulse;
 	int		pwm_sampling_gap;
-	int		pwm_deadtime;
 
 	int		fail_reason;
 	int		self_BM[8];

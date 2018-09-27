@@ -47,22 +47,8 @@ reg_proc_pwm(const reg_t *reg, int *lval, const int *rval)
 		reg->link->i = *rval;
 
 		PWM_set_configuration();
-	}
-}
 
-static void
-reg_proc_tim(const reg_t *reg, int *lval, const int *rval)
-{
-	float		ns = pm.freq_hz * (float) pm.pwm_resolution * 1E-9f;
-
-	if (lval != NULL) {
-
-		*lval = (int) ((float) reg->link->i / ns);
-	}
-
-	if (rval != NULL) {
-
-		reg->link->i = (int) ((float) (*rval) * ns);
+		pm.pwm_correction = hal.PWM_deadtime;
 	}
 }
 
@@ -149,12 +135,9 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.batt_voltage_high,			"V",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.pwm_resolution,			"",	"%i",	REG_READ_ONLY, NULL),
-	REG_DEF(pm.pwm_minimal_pulse,			"",	"%i",	REG_CONFIG, NULL),
-	REG_DEF_E(pm.pwm_minimal_pulse, "_ns",		"ns",	"%i",	0, &reg_proc_tim),
-	REG_DEF(pm.pwm_sampling_gap,			"",	"%i",	REG_CONFIG, NULL),
-	REG_DEF_E(pm.pwm_sampling_gap, "_ns",		"ns",	"%i",	0, &reg_proc_tim),
-	REG_DEF(pm.pwm_deadtime,			"",	"%i",	REG_CONFIG, NULL),
-	REG_DEF_E(pm.pwm_deadtime, "_ns",		"ns",	"%i",	0, &reg_proc_tim),
+	REG_DEF(pm.pwm_correction,			"ns",	"%i",	0, NULL),
+	REG_DEF(pm.pwm_minimal_pulse,			"ns",	"%i",	REG_CONFIG, NULL),
+	REG_DEF(pm.pwm_sampling_gap,			"ns",	"%i",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.fail_reason,				"",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(pm.config_ABC,				"",	"%i",	REG_CONFIG, NULL),

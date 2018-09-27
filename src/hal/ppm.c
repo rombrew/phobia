@@ -91,7 +91,7 @@ float PPM_get_PERIOD()
 
 float PPM_get_PULSE()
 {
-	int		ms;
+	float		ms;
 
 	ms = (float) TIM4->CCR2 * HAL_PPM_ms_gain;
 

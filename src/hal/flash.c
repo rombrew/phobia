@@ -16,6 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stddef.h>
+
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
@@ -50,7 +52,7 @@ FLASH_wait_BSY()
 	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
 }
 
-void FLASH_sector_erase(void *flash)
+void *FLASH_sector_erase(void *flash)
 {
 	int		N, sector_N = 0;
 
@@ -59,7 +61,9 @@ void FLASH_sector_erase(void *flash)
 		if ((unsigned long) flash >= flash_ram_map[N]
 				&& (unsigned long) flash < flash_ram_map[N + 1]) {
 
+			flash = (void *) flash_ram_map[N];
 			sector_N = N + 8;
+
 			break;
 		}
 	}
@@ -77,9 +81,11 @@ void FLASH_sector_erase(void *flash)
 
 		FLASH_lock();
 	}
+
+	return flash;
 }
 
-void FLASH_write(void *flash, const void *s, unsigned long sz)
+void *FLASH_write(void *flash, const void *s, unsigned long sz)
 {
 	long			*ld = flash;
 	const long		*ls = s;
@@ -103,5 +109,7 @@ void FLASH_write(void *flash, const void *s, unsigned long sz)
 
 		FLASH_lock();
 	}
+
+	return flash;
 }
 

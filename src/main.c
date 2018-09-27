@@ -187,6 +187,8 @@ void taskINIT(void *pData)
 	pm.freq_hz = (float) hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = hal.PWM_resolution;
+	pm.pwm_correction = hal.PWM_deadtime;
+	pm.pwm_tik_per_ns = 1E-9f * pm.freq_hz * pm.pwm_resolution;
 	pm.pDC = &PWM_set_DC;
 	pm.pZ = &PWM_set_Z;
 

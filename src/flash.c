@@ -139,10 +139,26 @@ flash_block_write()
 		block = (void *) flash_ram_map[0];
 	}
 
-	if (flash_is_block_dirty(block)) {
+	temp = block;
 
-		FLASH_sector_erase(block);
+	do {
+		if (flash_is_block_dirty(block) == 0) {
+
+			break;
+		}
+
+		block += 1;
+
+		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+			block = (void *) flash_ram_map[0];
+
+		if (block == temp) {
+
+			block = FLASH_sector_erase(block);
+			break;
+		}
 	}
+	while (1);
 
 	temp = pvPortMalloc(sizeof(flash_block_t));
 
@@ -197,7 +213,7 @@ SH_DEF(flash_info_map)
 	sector_N = 0;
 
 	do {
-		if (flash_is_block_dirty(block)) {
+		if (flash_is_block_dirty(block) != 0) {
 
 			info_sym = 'x';
 
@@ -226,6 +242,30 @@ SH_DEF(flash_info_map)
 			if (sector_N >= FLASH_SECTOR_MAX)
 				break;
 		}
+	}
+	while (1);
+}
+
+SH_DEF(flash_cleanup)
+{
+	flash_block_t			*block;
+	unsigned long			lz = 0;
+
+	block = (void *) flash_ram_map[0];
+
+	do {
+		if (block->version == REG_CONFIG_VERSION) {
+
+			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
+
+				FLASH_write(&block->crc32, &lz, sizeof(unsigned long));
+			}
+		}
+
+		block += 1;
+
+		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+			break;
 	}
 	while (1);
 }
