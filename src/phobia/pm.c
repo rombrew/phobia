@@ -21,9 +21,6 @@
 
 void pm_config_default(pmc_t *pm)
 {
-	pm->pwm_minimal_pulse = 500;
-	pm->pwm_sampling_gap = 2300;
-
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
 
@@ -36,6 +33,7 @@ void pm_config_default(pmc_t *pm)
 	pm->tm_current_hold = .5f;
 	pm->tm_instant_probe = .01f;
 	pm->tm_average_probe = .2f;
+	pm->tm_startup_probe = .5f;
 
 	pm->adjust_IA[0] = 0.f;
 	pm->adjust_IA[1] = 1.f;
@@ -49,12 +47,10 @@ void pm_config_default(pmc_t *pm)
 	pm->adjust_UB[1] = 1.f;
 	pm->adjust_UC[0] = 0.f;
 	pm->adjust_UC[1] = 1.f;
-
-	pm->fb_current_clamp = 75.f;
-
+	
 	pm->probe_current_hold = 10.f;
 	pm->probe_current_hold_Q = 0.f;
-	pm->probe_current_sine = 10.f;
+	pm->probe_current_sine = 5.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 16.f;
 	pm->probe_speed_low = 700.f;
 	pm->probe_speed_ramp = 1700.f;
@@ -63,7 +59,7 @@ void pm_config_default(pmc_t *pm)
 
 	pm->fault_voltage_tolerance = 1.f;
 	pm->fault_current_tolerance = 2.f;
-	pm->fault_current_halt_level = 7.f;
+	pm->fault_current_halt_level = 10.f;
 	pm->fault_adjust_tolerance = 2E-2f;
 	pm->fault_flux_residual_maximal = 90.f;
 
@@ -309,8 +305,7 @@ pm_hfi_update(pmc_t *pm)
 static void
 pm_hall_update(pmc_t *pm)
 {
-	/* TODO
-	 * */
+	/* TODO */
 }
 
 static void
@@ -561,48 +556,45 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	xB = (int) (pm->pwm_resolution * uB);
 	xC = (int) (pm->pwm_resolution * uC);
 
-	xMIN = (int) (pm->pwm_minimal_pulse * pm->pwm_tik_per_ns);
-	xMAX = pm->pwm_resolution - (int) (pm->pwm_sampling_gap * pm->pwm_tik_per_ns);
+	xMIN = pm->pwm_minimal_pulse;
+	xMAX = pm->pwm_resolution - pm->pwm_silence_gap;
 
 	xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->pwm_resolution : xA;
 	xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->pwm_resolution : xB;
 	xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->pwm_resolution : xC;
 
-	pm->pDC(xA, xB, xC);
+	pm->proc_set_DC(xA, xB, xC);
 
-	if (1) {
+	xMAX = pm->pwm_compensation;
+	xMIN = 1;
 
-		xMAX = (int) (2.f * pm->pwm_correction * pm->pwm_tik_per_ns);
-		xMIN = (int) (xMAX * .9f / pm->const_lpf_U);
+	xSG = pm_solved_current_SG(pm);
 
-		xSG = pm_solved_current_SG(pm);
+	if (xA > 0 && xA < pm->pwm_resolution) {
 
-		if (xA > 0 && xA < pm->pwm_resolution) {
+		if (xSG & 1)
 
-			if (xSG & 1)
+			xA += - xMIN;
+		else
+			xA += xMIN - xMAX;
+	}
 
-				xA += - xMIN;
-			else
-				xA += xMIN - xMAX;
-		}
+	if (xB > 0 && xB < pm->pwm_resolution) {
 
-		if (xB > 0 && xB < pm->pwm_resolution) {
+		if (xSG & 2)
 
-			if (xSG & 2)
+			xB += - xMIN;
+		else
+			xB += xMIN - xMAX;
+	}
 
-				xB += - xMIN;
-			else
-				xB += xMIN - xMAX;
-		}
+	if (xC > 0 && xC < pm->pwm_resolution) {
 
-		if (xC > 0 && xC < pm->pwm_resolution) {
+		if (xSG & 4)
 
-			if (xSG & 4)
-
-				xC += - xMIN;
-			else
-				xC += xMIN - xMAX;
-		}
+			xC += - xMIN;
+		else
+			xC += xMIN - xMAX;
 	}
 
 	if (pm->config_ABC == PM_ABC_THREE_PHASE) {

@@ -48,6 +48,21 @@ int pm_wait_for_IDLE()
 	return pm.fail_reason;
 }
 
+void pm_ppm_control_tune()
+{
+	float			radps, rpm;
+
+	if (ap.ppm_reg_ID == ID_PM_S_SETPOINT_RPM) {
+
+		if (pm.const_E != 0.f) {
+
+			radps = (2.f / 3.f) * pm.const_lpf_U / pm.const_E;
+			rpm = 5.513289f / (radps * pm.const_Zp);
+			ap.ppm_control_range[1] = rpm;
+		}
+	}
+}
+
 SH_DEF(pm_config_default_1)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)

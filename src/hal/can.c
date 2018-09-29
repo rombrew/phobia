@@ -74,7 +74,7 @@ void CAN_startup()
 
 	/* Mode Initialization.
 	 * */
-	CAN1->MCR = CAN_MCR_INRQ;
+	CAN1->MCR = CAN_MCR_ABOM | CAN_MCR_NART | CAN_MCR_INRQ;
 
 	do {
 		INAK = CAN1->MSR & CAN_MSR_INAK;
@@ -96,10 +96,10 @@ void CAN_startup()
 
 	/* Go to Normal mode.
 	 * */
-	CAN1->FMR &= ~CAN_FMR_FINIT;
+	CAN1->MCR &= ~CAN_MCR_INRQ;
 }
 
-void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID)
+void CAN_set_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID)
 {
 	unsigned long	bfilt = (1UL << nfilt);
 
@@ -119,7 +119,7 @@ void CAN_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID)
 	CAN1->MCR &= ~CAN_MCR_INRQ;
 }
 
-void CAN_send(unsigned long ID, int len, const unsigned char payload[8])
+void CAN_send_msg(unsigned long ID, int len, const unsigned char payload[8])
 {
 	int		mailbox;
 

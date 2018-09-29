@@ -35,8 +35,8 @@ PWM_calculate_R()
 {
 	int		R;
 
-	R = CLOCK_TIM1_HZ / 2UL / hal.PWM_frequency;
-	hal.PWM_frequency = CLOCK_TIM1_HZ / 2UL / R;
+	R = (int) ((float) CLOCK_TIM1_HZ / 2.f / hal.PWM_frequency + .5f);
+	hal.PWM_frequency = (float) CLOCK_TIM1_HZ / 2.f / (float) R;
 	hal.PWM_resolution = R;
 
 	return R;
@@ -47,9 +47,10 @@ PWM_calculate_D()
 {
 	int		D;
 
-	D = ((CLOCK_TIM1_HZ / 1000UL) * hal.PWM_deadtime + 500000UL) / 1000000UL;
+	D = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f);
 	D = (D < 128) ? D : 128;
-	hal.PWM_deadtime = D * 1000000UL / (CLOCK_TIM1_HZ / 1000UL);
+	hal.PWM_deadtime = (float) D * 1000000000.f / (float) CLOCK_TIM1_HZ;
+	hal.PWM_deadtime_tik = D;
 
 	return D;
 }
@@ -110,10 +111,12 @@ void PWM_startup()
 
 void PWM_set_configuration()
 {
-	int		D;
+	int		R, D;
 
+	R = PWM_calculate_R();
 	D = PWM_calculate_D();
 
+	TIM1->ARR = R;
 	MODIFY_REG(TIM1->BDTR, 0xFF, D);
 }
 

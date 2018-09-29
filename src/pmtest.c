@@ -84,45 +84,6 @@ SH_DEF(pm_self_test)
 	pm_print_fail_reason();
 }
 
-SH_DEF(hal_PPM_get_PULSE)
-{
-	float		period, pulse;
-
-	period = PPM_get_PERIOD();
-	pulse = PPM_get_PULSE();
-
-	printf("%4f %4f (ms)" EOL, &period, &pulse);
-}
-
-SH_DEF(hal_PWM_set_DC)
-{
-	int			xDC;
-
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
-	if (stoi(&xDC, s) != NULL) {
-
-		xDC = (xDC < 0) ? 0 : (xDC > hal.PWM_resolution)
-			? hal.PWM_resolution : xDC;
-
-		PWM_set_DC(xDC, xDC, xDC);
-	}
-}
-
-SH_DEF(hal_PWM_set_Z)
-{
-	int			xZ;
-
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return;
-
-	if (stoi(&xZ, s) != NULL) {
-
-		PWM_set_Z(xZ);
-	}
-}
-
 SH_DEF(pm_test_current_ramp)
 {
 	float			iSP;
@@ -167,5 +128,53 @@ SH_DEF(pm_test_speed_ramp)
 		vTaskDelay(xHold);
 	}
 	while (0);
+}
+
+SH_DEF(hal_PPM_get_PERIOD)
+{
+	float		period, freq;
+
+	period = PPM_get_PERIOD();
+	freq = 1000000.f / period;
+
+	printf("%3f (us) %1f (Hz)" EOL, &period, &freq);
+}
+
+SH_DEF(hal_PPM_get_PULSE)
+{
+	float		pulse;
+
+	pulse = PPM_get_PULSE();
+
+	printf("%3f (us)" EOL, &pulse);
+}
+
+SH_DEF(hal_PWM_set_DC)
+{
+	int			xDC;
+
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return;
+
+	if (stoi(&xDC, s) != NULL) {
+
+		xDC = (xDC < 0) ? 0 : (xDC > hal.PWM_resolution)
+			? hal.PWM_resolution : xDC;
+
+		PWM_set_DC(xDC, xDC, xDC);
+	}
+}
+
+SH_DEF(hal_PWM_set_Z)
+{
+	int			xZ;
+
+	if (pm.lu_mode != PM_LU_DISABLED)
+		return;
+
+	if (stoi(&xZ, s) != NULL) {
+
+		PWM_set_Z(xZ);
+	}
 }
 

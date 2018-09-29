@@ -35,7 +35,32 @@
 static int		null;
 
 static void
-reg_proc_pwm(const reg_t *reg, int *lval, const int *rval)
+reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->f;
+	}
+
+	if (rval != NULL) {
+
+		reg->link->f = *rval;
+		hal_fence();
+
+		ADC_irq_lock();
+		PWM_set_configuration();
+
+		pm.freq_hz = hal.PWM_frequency;
+		pm.dT = 1.f / pm.freq_hz;
+		pm.pwm_resolution = hal.PWM_resolution;
+		pm.pwm_compensation = hal.PWM_deadtime_tik;
+
+		ADC_irq_unlock();
+	}
+}
+
+static void
+reg_proc_ppm(const reg_t *reg, int *lval, const int *rval)
 {
 	if (lval != NULL) {
 
@@ -45,10 +70,25 @@ reg_proc_pwm(const reg_t *reg, int *lval, const int *rval)
 	if (rval != NULL) {
 
 		reg->link->i = *rval;
+		hal_fence();
 
-		PWM_set_configuration();
+		PPM_set_configuration();
+	}
+}
 
-		pm.pwm_correction = hal.PWM_deadtime;
+static void
+reg_proc_tik(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = (float) (reg->link->i) * 1000000000.f
+			/ (hal.PWM_frequency * (float) hal.PWM_resolution);
+	}
+
+	if (rval != NULL) {
+
+		reg->link->i = (int) ((float) (*rval) * hal.PWM_frequency
+				* (float) hal.PWM_resolution / 1000000000.f + .5f);
 	}
 }
 
@@ -81,6 +121,20 @@ reg_proc_rpm(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
+reg_proc_scaled(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->f * pm.const_E / (.57735027f * pm.const_lpf_U);
+	}
+
+	if (rval != NULL) {
+
+		reg->link->f = (*rval) * .57735027f * pm.const_lpf_U / pm.const_E;
+	}
+}
+
+static void
 reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
@@ -100,19 +154,21 @@ const reg_t		regfile[] = {
 
 	REG_DEF(hal.HSE_crystal_clock,			"Hz",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(hal.USART_baud_rate,			"",	"%i",	REG_CONFIG, NULL),
-	REG_DEF(hal.PWM_frequency,			"Hz",	"%i",	REG_CONFIG, NULL),
-	REG_DEF(hal.PWM_deadtime,			"ns",	"%i",	REG_CONFIG, &reg_proc_pwm),
+	REG_DEF(hal.PWM_frequency,			"Hz",	"%1f",	REG_CONFIG, &reg_proc_pwm),
+	REG_DEF(hal.PWM_deadtime,			"ns",	"%1f",	REG_CONFIG, &reg_proc_pwm),
 	REG_DEF(hal.ADC_reference_voltage,		"V",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(hal.ADC_current_shunt_resistance,	"Ohm",	"%4e",	REG_CONFIG, NULL),
 	REG_DEF(hal.ADC_amplifier_gain,			"",	"%4e",	REG_CONFIG, NULL),
 	REG_DEF(hal.ADC_voltage_divider_gain,		"",	"%4e",	REG_CONFIG, NULL),
-	REG_DEF(hal.PPM_mode,				"",	"%i",	REG_CONFIG, NULL),
+	REG_DEF(hal.PPM_mode,				"",	"%i",	REG_CONFIG, &reg_proc_ppm),
+	REG_DEF(hal.PPM_timebase,			"Hz",	"%i",	REG_CONFIG, NULL),
+	REG_DEF(hal.PPM_signal_caught,			"",	"%i",	REG_READ_ONLY, NULL),
 
 	REG_DEF(ap.ppm_reg_ID,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL),
-	REG_DEF(ap.ppm_pulse_range[0],			"ms",	"%4f",	REG_CONFIG, NULL),
-	REG_DEF(ap.ppm_pulse_range[1],			"ms",	"%4f",	REG_CONFIG, NULL),
-	REG_DEF(ap.ppm_value_range[0],			"",	"%4e",	REG_CONFIG, NULL),
-	REG_DEF(ap.ppm_value_range[1],			"",	"%4e",	REG_CONFIG, NULL),
+	REG_DEF(ap.ppm_pulse_range[0],			"us",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(ap.ppm_pulse_range[1],			"us",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(ap.ppm_control_range[0],		"",	"%4e",	REG_CONFIG, NULL),
+	REG_DEF(ap.ppm_control_range[1],		"",	"%4e",	REG_CONFIG, NULL),
 
 	REG_DEF(ap.ntc_PCB.r_balance,			"Ohm",	"%1f",	REG_CONFIG, NULL),
 	REG_DEF(ap.ntc_PCB.r_ntc_0,			"Ohm",	"%1f",	REG_CONFIG, NULL),
@@ -135,9 +191,9 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.batt_voltage_high,			"V",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.pwm_resolution,			"",	"%i",	REG_READ_ONLY, NULL),
-	REG_DEF(pm.pwm_correction,			"ns",	"%i",	0, NULL),
-	REG_DEF(pm.pwm_minimal_pulse,			"ns",	"%i",	REG_CONFIG, NULL),
-	REG_DEF(pm.pwm_sampling_gap,			"ns",	"%i",	REG_CONFIG, NULL),
+	REG_DEF(pm.pwm_compensation,			"ns",	"%1f",	0, &reg_proc_tik),
+	REG_DEF(pm.pwm_minimal_pulse,			"ns",	"%1f",	REG_CONFIG, &reg_proc_tik),
+	REG_DEF(pm.pwm_silence_gap,			"ns",	"%1f",	REG_CONFIG, &reg_proc_tik),
 
 	REG_DEF(pm.fail_reason,				"",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(pm.config_ABC,				"",	"%i",	REG_CONFIG, NULL),
@@ -261,6 +317,7 @@ const reg_t		regfile[] = {
 	REG_DEF_E(pm.s_maximal, "_rpm",			"rpm",	"%2f",	0, &reg_proc_rpm),
 	REG_DEF(pm.s_setpoint,			"rad/s",	"%2f",	0, NULL),
 	REG_DEF_E(pm.s_setpoint, "_rpm",		"rpm",	"%2f",	0, &reg_proc_rpm),
+	REG_DEF_E(pm.s_setpoint, "_scaled",		"",	"%4f",	0, &reg_proc_scaled),
 	REG_DEF(pm.s_accel,			"rad/s/s",	"%3e",	REG_CONFIG, NULL),
 	REG_DEF_E(pm.s_accel, "_rpm" ,		"rpm/s",	"%3e",	0, &reg_proc_rpm),
 	REG_DEF(pm.s_gain_P,				"",	"%2e",	REG_CONFIG, NULL),
@@ -397,6 +454,11 @@ void reg_SET(int n, const void *rval)
 
 		reg_setval(regfile + n, rval);
 	}
+}
+
+void reg_SET_F(int n, float rval)
+{
+	reg_SET(n, &rval);
 }
 
 SH_DEF(reg)

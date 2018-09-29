@@ -41,8 +41,7 @@ typedef struct {
 	int			ppm_reg_ID;
 	float			ppm_pulse_cached;
 	float			ppm_pulse_range[2];
-	float			ppm_value_range[2];
-	float			ppm_curve_;
+	float			ppm_control_range[2];
 
 	/* CPU load.
 	 * */

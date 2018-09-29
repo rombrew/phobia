@@ -43,8 +43,8 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->pDC(0, 0, 0);
-			pm->pZ(7);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(7);
 
 			pm->temporal[0] = 0.f;
 			pm->temporal[1] = 0.f;
@@ -118,38 +118,38 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 			switch (pm->fsm_phase_2) {
 
 				case 0:
-					pm->pDC(0, 0, 0);
-					pm->pZ(7);
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(7);
 					break;
 
 				case 1:
-					pm->pDC(pm->pwm_resolution, 0, 0);
-					pm->pZ(6);
+					pm->proc_set_DC(pm->pwm_resolution, 0, 0);
+					pm->proc_set_Z(6);
 					break;
 
 				case 2:
-					pm->pDC(0, 0, 0);
-					pm->pZ(6);
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(6);
 					break;
 
 				case 3:
-					pm->pDC(0, pm->pwm_resolution, 0);
-					pm->pZ(5);
+					pm->proc_set_DC(0, pm->pwm_resolution, 0);
+					pm->proc_set_Z(5);
 					break;
 
 				case 4:
-					pm->pDC(0, 0, 0);
-					pm->pZ(5);
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(5);
 					break;
 
 				case 5:
-					pm->pDC(0, 0, pm->pwm_resolution);
-					pm->pZ(3);
+					pm->proc_set_DC(0, 0, pm->pwm_resolution);
+					pm->proc_set_Z(3);
 					break;
 
 				case 6:
-					pm->pDC(0, 0, 0);
-					pm->pZ(3);
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(3);
 					break;
 			}
 
@@ -263,16 +263,15 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 			switch (pm->fsm_phase_2) {
 
 				case 0:
-					pm->pDC(0, 0, 0);
-					pm->pZ(7);
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(7);
 					break;
 
 				case 1:
-					xDC = (int) (pm->pwm_sampling_gap * pm->pwm_tik_per_ns);
-					xDC = pm->pwm_resolution - xDC;
+					xDC = pm->pwm_resolution - pm->pwm_silence_gap;
 
-					pm->pDC(xDC, xDC, xDC);
-					pm->pZ(0);
+					pm->proc_set_DC(xDC, xDC, xDC);
+					pm->proc_set_Z(0);
 					break;
 			}
 
@@ -353,8 +352,8 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->pDC(0, 0, 0);
-			pm->pZ(4);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(4);
 
 			pm->vsi_clamp_to_null = 0;
 
@@ -432,8 +431,8 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->pDC(0, 0, 0);
-			pm->pZ(0);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(0);
 
 			pm->vsi_clamp_to_null = 0;
 
@@ -524,8 +523,8 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->pDC(0, 0, 0);
-			pm->pZ(0);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(0);
 
 			pm->vsi_clamp_to_null = 0;
 
@@ -638,6 +637,31 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
+			if (pm->const_R != 0.f && pm->const_Ld != 0.f && pm->const_Lq != 0.f) {
+
+				pm->tm_value = 0;
+				pm->tm_end = pm->freq_hz * pm->tm_startup_probe;
+
+				pm->fail_reason = PM_OK;
+				pm->fsm_phase = 1;
+			}
+			else {
+				pm->fail_reason = PM_ERROR_LU_INVALID_OPERATION;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
+			break;
+
+		case 1:
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
 			pm->temporal[0] = 0.f;
 			pm->temporal[1] = 0.f;
 
@@ -708,10 +732,9 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->p_setpoint_s = 0.f;
 			pm->p_setpoint_revol = 0;*/
 
-			pm->pDC(0, 0, 0);
-			pm->pZ(0);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(0);
 
-			pm->fail_reason = PM_OK;
 			pm->fsm_state = PM_STATE_IDLE;
 			pm->fsm_phase = 0;
 			break;
@@ -739,8 +762,8 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_DISABLED;
 
-				pm->pDC(0, 0, 0);
-				pm->pZ(7);
+				pm->proc_set_DC(0, 0, 0);
+				pm->proc_set_Z(7);
 
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;
@@ -808,8 +831,8 @@ pm_fsm_state_halt(pmc_t *pm)
 		case 0:
 			pm->lu_mode = PM_LU_DISABLED;
 
-			pm->pDC(0, 0, 0);
-			pm->pZ(7);
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(7);
 
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
@@ -908,14 +931,6 @@ void pm_fsm_req(pmc_t *pm, int req)
 			break;
 
 		case PM_STATE_LU_SHUTDOWN:
-
-			if (pm->lu_mode == PM_LU_DISABLED)
-				break;
-
-			pm->fsm_state = req;
-			pm->fsm_phase = 0;
-			break;
-
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
 

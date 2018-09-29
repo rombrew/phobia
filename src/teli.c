@@ -99,7 +99,7 @@ void teli_reg_grab(teli_t *ti)
 			}
 			else if (ti->mode == TEL_MODE_LIVE) {
 
-				ti->n = (ti->n == 0) ? 1 : 0;
+				ti->n = (ti->n < 10) ? ti->n + 1 : 0;
 			}
 		}
 	}
@@ -125,6 +125,7 @@ void teli_startup(teli_t *ti, int freq, int mode)
 void teli_halt(teli_t *ti)
 {
 	ti->mode = 0;
+	hal_fence();
 }
 
 SH_DEF(tel_reg_default)
@@ -196,7 +197,7 @@ void teli_reg_flush(teli_t *ti)
 	}
 }
 
-void teli_reg_flush_1(teli_t *ti, int n_1)
+void teli_reg_flush_1(teli_t *ti, int nr)
 {
 	const reg_t		*reg;
 	int			N;
@@ -207,7 +208,7 @@ void teli_reg_flush_1(teli_t *ti, int n_1)
 
 			reg = &regfile[ti->reg_ID[N]];
 
-			reg_format_rval(reg, &ti->data[n_1][N]);
+			reg_format_rval(reg, &ti->data[nr][N]);
 
 			puts(";");
 		}
@@ -228,17 +229,19 @@ SH_DEF(tel_flush)
 void taskTELIVE(void *pData)
 {
 	teli_t		*ti = (teli_t *) pData;
-	int		n = ti->n;
+	int		nr = ti->n;
 
 	teli_reg_labels(ti);
 
 	do {
 		vTaskDelay((TickType_t) 5);
 
-		if (ti->n != n) {
+		while (ti->n != nr) {
 
-			teli_reg_flush_1(ti, n);
-			n = ti->n;
+			teli_reg_flush_1(ti, nr);
+			nr = (nr < 10) ? nr + 1 : 0;
+
+			hal_fence();
 		}
 	}
 	while (1);

@@ -145,7 +145,7 @@ void taskINIT(void *pData)
 		 * */
 
 		hal.USART_baud_rate = 57600;
-		hal.PWM_frequency = 60000;
+		hal.PWM_frequency = 60000.f;
 		hal.PWM_deadtime = 200;
 		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_current_shunt_resistance = 333.3E-6f;
@@ -153,12 +153,13 @@ void taskINIT(void *pData)
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
 
 		hal.PPM_mode = PPM_DISABLED;
+		hal.PPM_timebase = 2000000UL;
 
-		ap.ppm_reg_ID = ID_PM_S_SETPOINT_RPM;
-		ap.ppm_pulse_range[0] = 1.f;
-		ap.ppm_pulse_range[1] = 2.f;
-		ap.ppm_value_range[0] = 0.f;
-		ap.ppm_value_range[1] = 7000.f;
+		ap.ppm_reg_ID = ID_PM_S_SETPOINT_SCALED;
+		ap.ppm_pulse_range[0] = 1000.f;
+		ap.ppm_pulse_range[1] = 2000.f;
+		ap.ppm_control_range[0] = 0.f;
+		ap.ppm_control_range[1] = 1.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -179,27 +180,32 @@ void taskINIT(void *pData)
 	ADC_startup();
 	PWM_startup();
 
-	if (hal.PPM_mode != PPM_DISABLED) {
-
-		PPM_startup();
-	}
-
-	pm.freq_hz = (float) hal.PWM_frequency;
+	pm.freq_hz = hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = hal.PWM_resolution;
-	pm.pwm_correction = hal.PWM_deadtime;
-	pm.pwm_tik_per_ns = 1E-9f * pm.freq_hz * pm.pwm_resolution;
-	pm.pDC = &PWM_set_DC;
-	pm.pZ = &PWM_set_Z;
+	pm.pwm_compensation = hal.PWM_deadtime_tik;
+	pm.proc_set_DC = &PWM_set_DC;
+	pm.proc_set_Z = &PWM_set_Z;
 
 	if (rc_flash < 0) {
 
 		/* Default.
 		 * */
 
+		reg_SET_F(ID_PM_PWM_MINIMAL_PULSE, 500.f);
+		reg_SET_F(ID_PM_PWM_SILENCE_GAP, 2500.f);
+		pm.fb_current_clamp = 75.f;
+
 		pm_config_default(&pm);
 		teli_reg_default(&ti);
 	}
+
+	if (hal.PPM_mode != PPM_DISABLED) {
+
+		PPM_startup();
+	}
+
+	ADC_irq_unlock();
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
@@ -215,9 +221,9 @@ void taskINIT(void *pData)
 static void
 ppm_get_pulse()
 {
-	float		pulse, value, q;
+	float		pulse, control, range, q;
 
-	if (PPM_get_PERIOD() != 0) {
+	if (hal.PPM_signal_caught != 0) {
 
 		pulse = PPM_get_PULSE();
 
@@ -225,17 +231,17 @@ ppm_get_pulse()
 
 			ap.ppm_pulse_cached = pulse;
 
-			q = (pulse - ap.ppm_pulse_range[0])
-				/ (ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0]);
+			range = ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0];
+			q = (pulse - ap.ppm_pulse_range[0]) / range;
 			q = (q < 0.f) ? 0.f : (q > 1.f) ? 1.f : q;
 
-			value = ap.ppm_value_range[0] + (ap.ppm_value_range[1]
-					- ap.ppm_value_range[0]) * q;
+			range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
+			control = ap.ppm_control_range[0] + range * q;
 
-			reg_SET(ap.ppm_reg_ID, &value);
+			reg_SET(ap.ppm_reg_ID, &control);
+
+			pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 		}
-
-		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	}
 	else {
 		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
@@ -259,10 +265,15 @@ void ADC_IRQ()
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
 	pm_feedback(&pm, &fb);
+	hal_fence();
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 
 		ppm_get_pulse();
+	}
+	else if (hal.PPM_mode == PPM_STEP_DIR) {
+
+		/* TODO */
 	}
 
 	teli_reg_grab(&ti);

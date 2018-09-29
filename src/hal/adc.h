@@ -32,6 +32,9 @@
 
 #define GPIO_ADC_INTERNAL_TEMP		XGPIO_DEF3('J', 0, 0)
 
+void ADC_irq_lock();
+void ADC_irq_unlock();
+
 void ADC_startup();
 float ADC_get_VALUE(int xGPIO);
 

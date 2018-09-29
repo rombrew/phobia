@@ -108,10 +108,9 @@ typedef struct {
 	float		dT;
 
 	int		pwm_resolution;
-	int		pwm_correction;
-	float		pwm_tik_per_ns;
+	int		pwm_compensation;
 	int		pwm_minimal_pulse;
-	int		pwm_sampling_gap;
+	int		pwm_silence_gap;
 
 	int		fail_reason;
 	int		self_BM[8];
@@ -136,6 +135,7 @@ typedef struct {
 	float		tm_current_hold;
 	float		tm_instant_probe;
 	float		tm_average_probe;
+	float		tm_startup_probe;
 
 	float		adjust_IA[2];
 	float		adjust_IB[2];
@@ -259,8 +259,8 @@ typedef struct {
 	float		p_gain_P;
 	float		p_gain_I;
 
-	void 		(* pDC) (int, int, int);
-	void 		(* pZ) (int);
+	void 		(* proc_set_DC) (int, int, int);
+	void 		(* proc_set_Z) (int);
 }
 pmc_t;
 

@@ -58,9 +58,10 @@ typedef struct {
 	int		HSE_crystal_clock;
 	int		USART_baud_rate;
 
-	int		PWM_frequency;
+	float		PWM_frequency;
 	int		PWM_resolution;
-	int		PWM_deadtime;
+	float		PWM_deadtime;
+	int		PWM_deadtime_tik;
 
 	float		ADC_reference_voltage;
 	float		ADC_current_shunt_resistance;
@@ -88,6 +89,8 @@ typedef struct {
 	unsigned char	CAN_msg_payload[8];
 
 	int		PPM_mode;
+	int		PPM_timebase;
+	int		PPM_signal_caught;
 }
 HAL_t;
 

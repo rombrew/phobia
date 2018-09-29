@@ -38,8 +38,8 @@ void irqADC()
 
 	if (ADC2->SR & ADC_SR_JEOC) {
 
-		ADC2->SR &= ~ADC_SR_JEOC;
-		ADC3->SR &= ~ADC_SR_JEOC;
+		ADC2->SR = ~ADC_SR_JEOC;
+		ADC3->SR = ~ADC_SR_JEOC;
 
 		xADC = (int) ADC2->JDR1;
 		hal.ADC_current_A = (float) (xADC - 2047) * hal.ADC_const.GA;
@@ -102,6 +102,16 @@ ADC_const_setup()
 	hal.ADC_const.TEMP[0] = 110.f - hal.ADC_const.TEMP[1] * (float) (*CAL_TEMP_110);
 }
 
+void ADC_irq_lock()
+{
+	ADC2->CR1 &= ~ADC_CR1_JEOCIE;
+}
+
+void ADC_irq_unlock()
+{
+	ADC2->CR1 |= ADC_CR1_JEOCIE;
+}
+
 void ADC_startup()
 {
 	/* Enable ADC clock.
@@ -130,7 +140,7 @@ void ADC_startup()
 
 	/* Configure ADC2.
 	 * */
-	ADC2->CR1 = ADC_CR1_SCAN | ADC_CR1_JEOCIE;
+	ADC2->CR1 = ADC_CR1_SCAN;
 	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
 	ADC2->SMPR1 = 0;
 	ADC2->SMPR2 = 0;

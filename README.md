@@ -83,7 +83,7 @@ a specific motor.
 
 There are a few videos that show the operation of the prototypes (may be outdated).
 
-[![PMC](https://i.ytimg.com/vi/NfofEPY1jME/default.jpg)](https://www.youtube.com/watch?v=NfofEPY1jME)
+[![PMC](https://i.ytimg.com/vi/IM0k0_boXc4/default.jpg)](https://www.youtube.com/watch?v=IM0k0_boXc4)
 [![PMC](https://i.ytimg.com/vi/n_E2ThFQvD4/default.jpg)](https://www.youtube.com/watch?v=n_E2ThFQvD4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
 
