@@ -121,16 +121,18 @@ reg_proc_rpm(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_scaled(const reg_t *reg, float *lval, const float *rval)
+reg_proc_rpm_pc(const reg_t *reg, float *lval, const float *rval)
 {
+	const float		kpc = .57735027f / 100.f;
+
 	if (lval != NULL) {
 
-		*lval = reg->link->f * pm.const_E / (.57735027f * pm.const_lpf_U);
+		*lval = reg->link->f * pm.const_E / (kpc * pm.const_lpf_U);
 	}
 
 	if (rval != NULL) {
 
-		reg->link->f = (*rval) * .57735027f * pm.const_lpf_U / pm.const_E;
+		reg->link->f = (*rval) * kpc * pm.const_lpf_U / pm.const_E;
 	}
 }
 
@@ -164,7 +166,7 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.PPM_timebase,			"Hz",	"%i",	REG_CONFIG, NULL),
 	REG_DEF(hal.PPM_signal_caught,			"",	"%i",	REG_READ_ONLY, NULL),
 
-	REG_DEF(ap.ppm_reg_ID,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL),
+	REG_DEF(ap.ppm_reg_ID,				"",	"%i",	REG_CONFIG | REG_LINKED, NULL),
 	REG_DEF(ap.ppm_pulse_range[0],			"us",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(ap.ppm_pulse_range[1],			"us",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(ap.ppm_control_range[0],		"",	"%4e",	REG_CONFIG, NULL),
@@ -203,6 +205,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_LOOP,				"",	"%i",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.fsm_state,				"",	"%i",	0, &reg_proc_fsm_state),
+	REG_DEF(pm.fsm_phase,				"",	"%i",	0, NULL),
 
 	REG_DEF(pm.tm_transient_skip, 			"s",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.tm_voltage_hold, 			"s",	"%3f",	REG_CONFIG, NULL),
@@ -317,7 +320,7 @@ const reg_t		regfile[] = {
 	REG_DEF_E(pm.s_maximal, "_rpm",			"rpm",	"%2f",	0, &reg_proc_rpm),
 	REG_DEF(pm.s_setpoint,			"rad/s",	"%2f",	0, NULL),
 	REG_DEF_E(pm.s_setpoint, "_rpm",		"rpm",	"%2f",	0, &reg_proc_rpm),
-	REG_DEF_E(pm.s_setpoint, "_scaled",		"",	"%4f",	0, &reg_proc_scaled),
+	REG_DEF_E(pm.s_setpoint, "_pc",			"%",	"%2f",	0, &reg_proc_rpm_pc),
 	REG_DEF(pm.s_accel,			"rad/s/s",	"%3e",	REG_CONFIG, NULL),
 	REG_DEF_E(pm.s_accel, "_rpm" ,		"rpm/s",	"%3e",	0, &reg_proc_rpm),
 	REG_DEF(pm.s_gain_P,				"",	"%2e",	REG_CONFIG, NULL),

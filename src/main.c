@@ -155,11 +155,11 @@ void taskINIT(void *pData)
 		hal.PPM_mode = PPM_DISABLED;
 		hal.PPM_timebase = 2000000UL;
 
-		ap.ppm_reg_ID = ID_PM_S_SETPOINT_SCALED;
+		ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
 		ap.ppm_pulse_range[0] = 1000.f;
 		ap.ppm_pulse_range[1] = 2000.f;
 		ap.ppm_control_range[0] = 0.f;
-		ap.ppm_control_range[1] = 1.f;
+		ap.ppm_control_range[1] = 100.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -194,6 +194,7 @@ void taskINIT(void *pData)
 
 		reg_SET_F(ID_PM_PWM_MINIMAL_PULSE, 500.f);
 		reg_SET_F(ID_PM_PWM_SILENCE_GAP, 2500.f);
+
 		pm.fb_current_clamp = 75.f;
 
 		pm_config_default(&pm);
@@ -221,7 +222,7 @@ void taskINIT(void *pData)
 static void
 ppm_get_pulse()
 {
-	float		pulse, control, range, q;
+	float		pulse, control, range, scaled;
 
 	if (hal.PPM_signal_caught != 0) {
 
@@ -232,15 +233,21 @@ ppm_get_pulse()
 			ap.ppm_pulse_cached = pulse;
 
 			range = ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0];
-			q = (pulse - ap.ppm_pulse_range[0]) / range;
-			q = (q < 0.f) ? 0.f : (q > 1.f) ? 1.f : q;
+			scaled = (pulse - ap.ppm_pulse_range[0]) / range;
+			scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
 			range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
-			control = ap.ppm_control_range[0] + range * q;
+			control = ap.ppm_control_range[0] + range * scaled;
 
 			reg_SET(ap.ppm_reg_ID, &control);
 
-			pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+			if (scaled == 0.f) {
+
+				/* FIXME: Add more flexible arming.
+				 * */
+
+				pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+			}
 		}
 	}
 	else {

@@ -44,7 +44,7 @@ PCB design source files.
 
 * Sensorless vector control. All the code of motor control was written from
   scratch, no external libs are used, portable as it is plain C code.
-* Advanced PWM scheme to reduce switching losses and fully utilise DC bus.
+* Advanced PWM scheme to reduce switching losses and fully utilise DC bus voltage.
 * Fast and robust flux linkage estimation algorithm based on Luenberger
   observer with gain scheduling.
 * Operation at low or zero speed:
@@ -59,10 +59,16 @@ PCB design source files.
 	* Phase current (with adjustable derate from overheat).
 	* Power consumption and regeneration.
  	* Maximal speed and acceleration.
+* Control inputs:
+	* Manual control through CLI.
+	* Custom embedded application can implement any control strategy.
+	* CAN bus (**TODO**).
+	* PPM signal from 50 Hz to 8 kHz.
+	* Analog (**TODO**).
 * Automated motor parameters identification with no additional tools.
-* Self test of hardware to diagnose troubles (**TODO**).
-* Smooth start when the motor is already running (**TODO**).
-* Advanced command line interface with autocompletion and history.
+* Self test of hardware integrity to diagnose troubles.
+* Terminal voltage tracking to get smooth start when motor is already running (**TODO**).
+* Advanced command line interface (CLI) with autocompletion and history.
 * Operation at current values outside the sensor range (**EXPERIMENTAL**).
 * Two phase machine support (e.g. bipolar stepper) (**EXPERIMENTAL**).
 * Non critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
@@ -70,9 +76,8 @@ PCB design source files.
 
 ## TODO
 
-* Try to estimate stator windings resistance with KF.
+* Try online estimation of stator windings resistance with KF.
 * Analyse of rapid transient modes. Introduce an iron saturation model if needed.
-* Implement an application protocol via CAN.
 * Make a detailed documentation.
 
 ## Current Status
