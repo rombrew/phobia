@@ -31,7 +31,7 @@ void pm_print_fail_reason()
 {
 	if (pm.fail_reason != PM_OK) {
 
-		printf("ERROR: %s" EOL, pm_strerror(pm.fail_reason));
+		printf("%s" EOL, pm_strerror(pm.fail_reason));
 	}
 }
 

@@ -959,16 +959,16 @@ const char *pm_strerror(int n)
 {
 	const char	*list[] = {
 
-		"OK",
-		"Zero Drift Fault",
-		"No Motor Connected",
-		"Power Stage Fault",
-		"Standard Deviation Fault",
-		"Current Loop Fault",
-		"Over Current",
-		"Adjust Tolerance Fault",
-		"LU Residual Unstable",
-		"LU Invalid Operation"
+		PM_SFI(PM_OK),
+		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
+		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
+		PM_SFI(PM_ERORR_POWER_STAGE_FAULT),
+		PM_SFI(PM_ERROR_SAMPLING_FAULT),
+		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
+		PM_SFI(PM_ERROR_OVER_CURRENT),
+		PM_SFI(PM_ERROR_ADJUST_TOLERANCE_FAULT),
+		PM_SFI(PM_ERROR_LU_RESIDUAL_UNSTABLE),
+		PM_SFI(PM_ERROR_LU_INVALID_OPERATION)
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);

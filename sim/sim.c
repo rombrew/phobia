@@ -138,7 +138,7 @@ sim_F(FILE *fdTel, double dT, int Verb)
 
 		if (pm.fail_reason != PM_OK) {
 
-			printf("ERROR: %s\n", pm_strerror(pm.fail_reason));
+			printf("%s\n", pm_strerror(pm.fail_reason));
 			exit(1);
 		}
 

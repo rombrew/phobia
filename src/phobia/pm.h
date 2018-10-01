@@ -19,6 +19,8 @@
 #ifndef _H_PM_
 #define _H_PM_
 
+#define PM_SFI(s)				#s
+
 enum {
 	PM_ABC_THREE_PHASE			= 0,
 	PM_ABC_TWO_PHASE,
