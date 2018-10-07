@@ -309,8 +309,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_watt_regeneration_maximal,		"W",	"%1f",	REG_CONFIG, NULL),
 	REG_DEF(pm.i_setpoint_D,			"A",	"%3f",	0, NULL),
 	REG_DEF(pm.i_setpoint_Q,			"A",	"%3f",	0, NULL),
-	REG_DEF(pm.i_slew_rate_D,			"A/s",	"%3e",	REG_CONFIG, NULL),
-	REG_DEF(pm.i_slew_rate_Q,			"A/s",	"%3e",	REG_CONFIG, NULL),
 	REG_DEF(pm.i_gain_PD,				"",	"%2e",	REG_CONFIG, NULL),
 	REG_DEF(pm.i_gain_ID,				"",	"%2e",	REG_CONFIG, NULL),
 	REG_DEF(pm.i_gain_PQ,				"",	"%2e",	REG_CONFIG, NULL),

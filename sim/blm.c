@@ -71,7 +71,7 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 2E-3;
+	m->R = 12E-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -79,12 +79,12 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 7E-6;
+	m->Ld = 10E-6;
 	m->Lq = 11E-6;
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 28.;
+	m->U = 23.;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 1E-5;
+	m->M[2] = 1E-6;
 	m->M[3] = 0E-3;
 }
 
@@ -115,12 +115,12 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* Thermal drift.
 	 * */
-	R1 = m->R  * (1. + 4.28E-3 * (X[4] - 20.));
-	E1 = m->E  * (1. - 1.21E-3 * (X[4] - 20.));
+	R1 = m->R  * (1. + 4E-3 * (X[4] - 20.));
+	E1 = m->E  * (1. - 1E-3 * (X[4] - 20.));
 
 	/* BEMF waveform.
 	 * */
-	E1 *= 1. + sin(X[3] * 3.) * 1E-2;
+	E1 *= 1. + sin(X[3] * 3.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */

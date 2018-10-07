@@ -20,7 +20,6 @@
 #define _H_PPM_
 
 void PPM_startup();
-void PPM_halt();
 void PPM_set_configuration();
 
 float PPM_get_PERIOD();

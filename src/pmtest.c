@@ -38,12 +38,11 @@ pm_print_self_BM()
 static void
 pm_print_self_SA()
 {
-	printf("SA[ME]  = %3f %3f %3f %3f (A)" EOL, &pm.self_SA[0],
-			&pm.self_SA[2], &pm.self_SA[1], &pm.self_SA[3]);
+	printf("SA[ME]  = %3f %3f / %3f %3f (A)" EOL, &pm.self_SA[0],
+			&pm.self_SA[1], &pm.self_SA[4], &pm.self_SA[5]);
 
-	printf("SA[STD] = %3f %3f %3f %3f (A)" EOL, &pm.self_SA[4],
-			&pm.self_SA[6], &pm.self_SA[5], &pm.self_SA[7]);
-
+	printf("SA[STD] = %3f %3f / %3f %3f (A)" EOL, &pm.self_SA[2],
+			&pm.self_SA[3], &pm.self_SA[6], &pm.self_SA[7]);
 }
 
 SH_DEF(pm_self_test)
@@ -52,6 +51,8 @@ SH_DEF(pm_self_test)
 		return;
 
 	do {
+		reg_format(&regfile[ID_PM_CONST_LPF_U]);
+
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 

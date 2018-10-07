@@ -34,6 +34,8 @@
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
 #define GPIO_LED			XGPIO_DEF2('C', 12)
 
+#define GPIO_SPI_NSS			XGPIO_DEF2('A', 4)
+
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 

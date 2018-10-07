@@ -90,6 +90,8 @@ SH_DEF(pm_probe_base)
 		return;
 
 	do {
+		reg_format(&regfile[ID_PM_CONST_LPF_U]);
+
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
@@ -99,10 +101,10 @@ SH_DEF(pm_probe_base)
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		pm_fsm_req(&pm, PM_STATE_POWER_STAGE_SELF_TEST);
+		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_SELF_TEST);
 
 		if (pm_wait_for_IDLE() != PM_OK)
-			break;
+			break;*/
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 

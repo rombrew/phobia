@@ -19,6 +19,8 @@
 #ifndef _H_PM_
 #define _H_PM_
 
+#define PM_CONFIG_ABC(pm)			(pm)->config_ABC
+
 #define PM_SFI(s)				#s
 
 enum {
@@ -174,7 +176,6 @@ typedef struct {
 	float		fault_adjust_tolerance;
 	float		fault_flux_residual_maximal;
 
-	int		vsi_clamp_to_null;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_lpf_D;
@@ -182,6 +183,7 @@ typedef struct {
 	float		vsi_lpf_watt;
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
+	int		vsi_clamp_to_null;
 
 	float		lu_fb_X;
 	float		lu_fb_Y;
@@ -236,10 +238,6 @@ typedef struct {
 	float		i_watt_regeneration_maximal;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
-	float		i_slew_rate_D;
-	float		i_slew_rate_Q;
-	float		i_track_D;
-	float		i_track_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_gain_PD;
@@ -269,6 +267,7 @@ pmc_t;
 void pm_config_default(pmc_t *pm);
 void pm_config_tune_current_loop(pmc_t *pm);
 
+void pm_lu_get_current(pmc_t *pm);
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 

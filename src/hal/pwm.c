@@ -27,6 +27,7 @@
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
+#define TIM_ADVANCE			24
 
 void irqTIM1_UP_TIM10() { }
 
@@ -48,7 +49,7 @@ PWM_calculate_D()
 	int		D;
 
 	D = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f);
-	D = (D < 128) ? D : 128;
+	D = (D < 127) ? D : 127;
 	hal.PWM_deadtime = (float) D * 1000000000.f / (float) CLOCK_TIM1_HZ;
 	hal.PWM_deadtime_tik = D;
 
@@ -74,8 +75,9 @@ void PWM_startup()
 	TIM1->DIER = 0;
 	TIM1->CCMR1 = TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1 | TIM_CCMR1_OC2PE
 		| TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1PE;
-	TIM1->CCMR2 = TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3PE;
-	TIM1->CCER = TIM_CCER_CC3NE | TIM_CCER_CC3E | TIM_CCER_CC2NE
+	TIM1->CCMR2 = TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_0 | TIM_CCMR2_OC4PE
+		| TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3PE;
+	TIM1->CCER = TIM_CCER_CC4E | TIM_CCER_CC3NE | TIM_CCER_CC3E | TIM_CCER_CC2NE
 		| TIM_CCER_CC2E | TIM_CCER_CC1NE | TIM_CCER_CC1E;
 	TIM1->CNT = 0;
 	TIM1->PSC = 0;
@@ -84,7 +86,7 @@ void PWM_startup()
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-	TIM1->CCR4 = 0;
+	TIM1->CCR4 = R - TIM_ADVANCE;
 	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | D;
 
 	/* Start TIM1.
@@ -117,6 +119,8 @@ void PWM_set_configuration()
 	D = PWM_calculate_D();
 
 	TIM1->ARR = R;
+	TIM1->CCR4 = R - TIM_ADVANCE;
+
 	MODIFY_REG(TIM1->BDTR, 0xFF, D);
 }
 

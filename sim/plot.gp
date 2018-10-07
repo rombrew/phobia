@@ -18,6 +18,7 @@ page "Mechanical Speed"
 label 1 "(rpm)"
 figure 0 3 "m.X[2]"
 figure 0 13 "pm.lu_X[4]"
+figure 0 28 "pm.flux_X[4]"
 
 page "Electrical Position"
 label 1 "(°)"

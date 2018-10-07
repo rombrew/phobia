@@ -107,7 +107,8 @@ void PPM_startup()
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
 }
 
-void PPM_halt()
+static void
+PPM_halt()
 {
 	TIM4->CR1 = 0;
 

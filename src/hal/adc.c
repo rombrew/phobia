@@ -44,11 +44,11 @@ void irqADC()
 		xADC = (int) ADC2->JDR1;
 		hal.ADC_current_A = (float) (xADC - 2047) * hal.ADC_const.GA;
 
-		xADC = (int) ADC2->JDR2;
-		hal.ADC_voltage_U = (float) (xADC) * hal.ADC_const.GU;
-
 		xADC = (int) ADC3->JDR1;
 		hal.ADC_current_B = (float) (xADC - 2047) * hal.ADC_const.GA;
+
+		xADC = (int) ADC2->JDR2;
+		hal.ADC_voltage_U = (float) (xADC) * hal.ADC_const.GU;
 
 		xADC = (int) ADC3->JDR2;
 		fADC = (float) (xADC) * hal.ADC_const.GU;
@@ -141,7 +141,7 @@ void ADC_startup()
 	/* Configure ADC2.
 	 * */
 	ADC2->CR1 = ADC_CR1_SCAN;
-	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
+	ADC2->CR2 = ADC_CR2_JEXTEN_0;
 	ADC2->SMPR1 = 0;
 	ADC2->SMPR2 = 0;
 	ADC2->JSQR = ADC_JSQR_JL_0
@@ -151,7 +151,7 @@ void ADC_startup()
 	/* Configure ADC3.
 	 * */
 	ADC3->CR1 = ADC_CR1_SCAN;
-	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_JEXTSEL_0;
+	ADC3->CR2 = ADC_CR2_JEXTEN_0;
 	ADC3->SMPR1 = 0;
 	ADC3->SMPR2 = 0;
 	ADC3->JSQR = ADC_JSQR_JL_0

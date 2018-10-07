@@ -148,7 +148,7 @@ void taskINIT(void *pData)
 		hal.PWM_frequency = 60000.f;
 		hal.PWM_deadtime = 200;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_current_shunt_resistance = 333.3E-6f;
+		hal.ADC_current_shunt_resistance = 394E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
 
@@ -168,7 +168,7 @@ void taskINIT(void *pData)
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 
-		ap.temp_PCB_overheat = 110.f;
+		ap.temp_PCB_overheat = 90.f;
 		ap.temp_superheat = 10.f;
 		ap.temp_current_PCB_derated = 50.f;
 
@@ -193,9 +193,9 @@ void taskINIT(void *pData)
 		 * */
 
 		reg_SET_F(ID_PM_PWM_MINIMAL_PULSE, 500.f);
-		reg_SET_F(ID_PM_PWM_SILENCE_GAP, 2500.f);
+		reg_SET_F(ID_PM_PWM_SILENCE_GAP, 3000.f);
 
-		pm.fb_current_clamp = 75.f;
+		pm.fb_current_clamp = (float) (int) (1970.f * hal.ADC_const.GA);
 
 		pm_config_default(&pm);
 		teli_reg_default(&ti);
@@ -212,6 +212,8 @@ void taskINIT(void *pData)
 	GPIO_set_HIGH(GPIO_BOOST_12V);
 
 	GPIO_set_LOW(GPIO_LED);
+
+	GPIO_set_mode_OUTPUT(GPIO_SPI_NSS);
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
@@ -271,8 +273,12 @@ void ADC_IRQ()
 	fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
+	GPIO_set_HIGH(GPIO_SPI_NSS);
+
 	pm_feedback(&pm, &fb);
 	hal_fence();
+
+	GPIO_set_LOW(GPIO_SPI_NSS);
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 

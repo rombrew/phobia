@@ -47,7 +47,7 @@ void pm_config_default(pmc_t *pm)
 	pm->adjust_UB[1] = 1.f;
 	pm->adjust_UC[0] = 0.f;
 	pm->adjust_UC[1] = 1.f;
-	
+
 	pm->probe_current_hold = 10.f;
 	pm->probe_current_hold_Q = 0.f;
 	pm->probe_current_sine = 5.f;
@@ -73,17 +73,17 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DA = 5E-1f;
 	pm->flux_gain_QA = 5E-1f;
 	pm->flux_gain_DP = 5E-3f;
-	pm->flux_gain_DS = 5E+0f;
-	pm->flux_gain_QS = 1E+0f;
+	pm->flux_gain_DS = 7E+0f;
+	pm->flux_gain_QS = 5E+0f;
 	pm->flux_gain_QZ = 5E-3f;
-	pm->flux_BEMF_low = .2f;
-	pm->flux_BEMF_high = .4f;
+	pm->flux_BEMF_low = .1f;
+	pm->flux_BEMF_high = .2f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
-	pm->hfi_swing_D = 1.f;
-	pm->hfi_gain_P = 5E-2f;
+	pm->hfi_swing_D = 2.f;
+	pm->hfi_gain_P = 3E-1f;
 	pm->hfi_gain_S = 7E+1f;
-	pm->hfi_gain_F = 2E-3f;
+	pm->hfi_gain_F = 1E-3f;
 
 	pm->const_gain_LP = 1E-1f;
 	pm->const_E = 0.f;
@@ -95,13 +95,11 @@ void pm_config_default(pmc_t *pm)
 
 	pm->i_maximal = pm->fb_current_clamp;
 	pm->i_watt_consumption_maximal = 3750.f;
-	pm->i_watt_regeneration_maximal = -1.f;
-	pm->i_slew_rate_D = 5E+4f;
-	pm->i_slew_rate_Q = 5E+4f;
-	pm->i_gain_PD = 2E-1f;
-	pm->i_gain_ID = 3E-2f;
-	pm->i_gain_PQ = 2E-1f;
-	pm->i_gain_IQ = 3E-2f;
+	pm->i_watt_regeneration_maximal = -1000.f;
+	pm->i_gain_PD = 5E-2f;
+	pm->i_gain_ID = 5E-3f;
+	pm->i_gain_PQ = 5E-2f;
+	pm->i_gain_IQ = 5E-3f;
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 16.f);
 	pm->s_accel = 5E+6f;
@@ -114,12 +112,14 @@ void pm_config_default(pmc_t *pm)
 
 void pm_config_tune_current_loop(pmc_t *pm)
 {
-	pm->i_slew_rate_D = .2f * pm->const_lpf_U / pm->const_Ld;
-	pm->i_slew_rate_Q = .2f * pm->const_lpf_U / pm->const_Lq;
-	pm->i_gain_PD = (.5f * pm->const_Ld * pm->freq_hz - pm->const_R);
-	pm->i_gain_ID = 5E-2f * pm->const_Ld * pm->freq_hz;
-	pm->i_gain_PQ = (.5f * pm->const_Lq * pm->freq_hz - pm->const_R);
-	pm->i_gain_IQ = 5E-2f * pm->const_Lq * pm->freq_hz;
+	pm->i_gain_PD = .5f * pm->const_Ld * pm->freq_hz - pm->const_R;
+	pm->i_gain_ID = 2E-2f * pm->const_Ld * pm->freq_hz;
+	pm->i_gain_PQ = .5f * pm->const_Lq * pm->freq_hz - pm->const_R;
+	pm->i_gain_IQ = 2E-2f * pm->const_Lq * pm->freq_hz;
+}
+
+void pm_config_tune_flux_observer(pmc_t *pm)
+{
 }
 
 static void
@@ -168,14 +168,14 @@ pm_solve_2(pmc_t *pm, float X[5])
 }
 
 static void
-pm_clamped_measure(pmc_t *pm, float X[5], float Z[2])
+pm_get_clamped_measure(pmc_t *pm, float X[5], float Z[2])
 {
 	float		iA, iB, iX, iY;
 
 	iX = X[2] * X[0] - X[3] * X[1];
 	iY = X[3] * X[0] + X[2] * X[1];
 
-	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
 		iA = iX;
 		iB = - .5f * iX + .8660254f * iY;
@@ -188,7 +188,7 @@ pm_clamped_measure(pmc_t *pm, float X[5], float Z[2])
 		iX = iA;
 		iY = .57735027f * iA + 1.1547005f * iB;
 	}
-	else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
 		iX = (iX < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
 			(iX > pm->fb_current_clamp) ? pm->fb_current_clamp : iX;
@@ -201,15 +201,41 @@ pm_clamped_measure(pmc_t *pm, float X[5], float Z[2])
 }
 
 static void
+pm_forced_update(pmc_t *pm)
+{
+	float		*X = pm->forced_X;
+	float		iX, iY, wSP, dS, wMAX;
+
+	iX = pm->flux_X[2] * pm->flux_X[0] - pm->flux_X[3] * pm->flux_X[1];
+	iY = pm->flux_X[3] * pm->flux_X[0] + pm->flux_X[2] * pm->flux_X[1];
+
+	X[0] = X[2] * iX + X[3] * iY;
+	X[1] = X[2] * iY - X[3] * iX;
+
+	dS = pm->forced_accel * pm->dT;
+	wSP = pm->forced_setpoint;
+
+	if (pm->const_E != 0.f) {
+
+		wMAX = (pm->flux_BEMF_high * 2.f - pm->flux_BEMF_low) / pm->const_E;
+		wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
+	}
+
+	X[4] = (X[4] < wSP - dS) ? X[4] + dS : (X[4] > wSP + dS) ? X[4] - dS : wSP;
+
+	pm_rotf(X + 2, X[4] * pm->dT, X + 2);
+}
+
+static void
 pm_flux_update(pmc_t *pm)
 {
 	float		*X = pm->flux_X, Z[2];
-	float		iD, iQ, eD, eQ, eR, dR;
+	float		iD, iQ, eD, eQ, eR, dR, qS;
 
 	iD = X[2] * pm->lu_fb_X + X[3] * pm->lu_fb_Y;
 	iQ = X[2] * pm->lu_fb_Y - X[3] * pm->lu_fb_X;
 
-	pm_clamped_measure(pm, X, Z);
+	pm_get_clamped_measure(pm, X, Z);
 
 	eD = iD - Z[0];
 	eQ = iQ - Z[1];
@@ -224,24 +250,28 @@ pm_flux_update(pmc_t *pm)
 
 	if (pm->const_E != 0.f) {
 
-		if (pm->lu_mode == PM_LU_OPEN_LOOP) {
+		/*if (pm->lu_mode == PM_LU_OPEN_LOOP) {
 
 			eR = (pm->forced_X[4] < 0.f) ? - eD : eD;
 		}
 		else {
 			eR = (X[4] < 0.f) ? - eD : eD;
-		}
+		}*/
 
+		eR = (X[4] < 0.f) ? - eD : eD;
 		dR = pm->flux_gain_DP * eR;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 		pm_rotf(X + 2, dR, X + 2);
 
-		dR = pm->flux_gain_DS * eR - pm->flux_gain_QS * eQ;
+		qS = pm_fabsf(X[4] * pm->const_E) / (.57735027f * pm->const_lpf_U);
+		qS = (qS > 1.f) ? 1.f : qS;
+
+		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
 		X[4] += dR;
 
 		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_BEMF_high) {
 
-			pm->flux_drift_Q += pm->flux_gain_QZ * eQ;
+			pm->flux_drift_Q += pm->flux_gain_QZ * eR - pm->flux_gain_QZ * eQ;
 		}
 		else {
 			pm->flux_drift_Q = 0.f;
@@ -308,30 +338,19 @@ pm_hall_update(pmc_t *pm)
 	/* TODO */
 }
 
-static void
-pm_forced_update(pmc_t *pm)
+void pm_lu_get_current(pmc_t *pm)
 {
-	float		*X = pm->forced_X;
-	float		iX, iY, wSP, dS, wMAX;
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
-	iX = pm->flux_X[2] * pm->flux_X[0] - pm->flux_X[3] * pm->flux_X[1];
-	iY = pm->flux_X[3] * pm->flux_X[0] + pm->flux_X[2] * pm->flux_X[1];
-
-	X[0] = X[2] * iX + X[3] * iY;
-	X[1] = X[2] * iY - X[3] * iX;
-
-	dS = pm->forced_accel * pm->dT;
-	wSP = pm->forced_setpoint;
-
-	if (pm->const_E != 0.f) {
-
-		wMAX = (pm->flux_BEMF_high * 2.f - pm->flux_BEMF_low) / pm->const_E;
-		wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
+		pm->lu_fb_X = pm->fb_current_A;
+		pm->lu_fb_Y = .57735027f * pm->fb_current_A
+			+ 1.1547005f * pm->fb_current_B;
 	}
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
-	X[4] = (X[4] < wSP - dS) ? X[4] + dS : (X[4] > wSP + dS) ? X[4] - dS : wSP;
-
-	pm_rotf(X + 2, X[4] * pm->dT, X + 2);
+		pm->lu_fb_X = pm->fb_current_A;
+		pm->lu_fb_Y = pm->fb_current_B;
+	}
 }
 
 static void
@@ -339,17 +358,8 @@ pm_lu_FSM(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
-	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
-
-		pm->lu_fb_X = pm->fb_current_A;
-		pm->lu_fb_Y = .57735027f * pm->fb_current_A
-			+ 1.1547005f * pm->fb_current_B;
-	}
-	else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
-
-		pm->lu_fb_X = pm->fb_current_A;
-		pm->lu_fb_Y = pm->fb_current_B;
-	}
+	pm_lu_get_current(pm);
+	pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
 
 	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_FLUX) {
 
@@ -361,7 +371,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->flux_X[3];
 		X[4] = pm->flux_X[4];
 
-		if (pm_fabsf(X[4] * pm->const_E) < pm->flux_BEMF_low) {
+		/*if (pm_fabsf(X[4] * pm->const_E) < pm->flux_BEMF_low) {
 
 			if (pm->config_HALL != PM_HALL_DISABLED) {
 
@@ -386,7 +396,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->forced_X[3] = X[3];
 				pm->forced_X[4] = X[4];
 			}
-		}
+		}*/
 	}
 	else if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
 
@@ -433,7 +443,7 @@ pm_lu_FSM(pmc_t *pm)
 }
 
 static void
-pm_validate(pmc_t *pm)
+pm_lu_validate(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
@@ -451,34 +461,34 @@ pm_validate(pmc_t *pm)
 }
 
 static int
-pm_solved_current_SG(pmc_t *pm)
+pm_get_SG(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 	float		iX, iY, iA, iB, iC;
 	int		xSG = 0;
 
-	if (pm->lu_mode == PM_LU_DISABLED) {
+	if (pm->lu_mode != PM_LU_DISABLED) {
 
-		iA = pm->fb_current_A;
-		iB = pm->fb_current_B;
-		iC = - (pm->fb_current_A + pm->fb_current_B);
-	}
-	else {
 		iX = X[2] * X[0] - X[3] * X[1];
 		iY = X[3] * X[0] + X[2] * X[1];
 
-		if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
 			iA = iX;
 			iB = - .5f * iX + .8660254f * iY;
 			iC = - .5f * iX - .8660254f * iY;
 		}
-		else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
+		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
 			iA = iX;
 			iB = iY;
 			iC = - (iX + iY);
 		}
+	}
+	else {
+		iA = pm->fb_current_A;
+		iB = pm->fb_current_B;
+		iC = - (pm->fb_current_A + pm->fb_current_B);
 	}
 
 	if (iA < 0.f) xSG |= 1;
@@ -498,13 +508,13 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	uX /= pm->const_lpf_U;
 	uY /= pm->const_lpf_U;
 
-	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
 		uA = uX;
 		uB = - .5f * uX + .8660254f * uY;
 		uC = - .5f * uX - .8660254f * uY;
 	}
-	else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
 		uA = uX;
 		uB = uY;
@@ -561,14 +571,16 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 	xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->pwm_resolution : xA;
 	xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->pwm_resolution : xB;
+
+	xMAX = pm->pwm_resolution - pm->pwm_minimal_pulse;
 	xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->pwm_resolution : xC;
 
 	pm->proc_set_DC(xA, xB, xC);
-
+/*
 	xMAX = pm->pwm_compensation;
 	xMIN = 1;
 
-	xSG = pm_solved_current_SG(pm);
+	xSG = pm_get_SG(pm);
 
 	if (xA > 0 && xA < pm->pwm_resolution) {
 
@@ -596,8 +608,8 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 		else
 			xC += xMIN - xMAX;
 	}
-
-	if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+*/
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
 		uQ = (1.f / 3.f) * (xA + xB + xC);
 		uA = (xA - uQ) * pm->const_lpf_U / pm->pwm_resolution;
@@ -606,7 +618,7 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
 	}
-	else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
 		uA = (xA - xC) * pm->const_lpf_U / pm->pwm_resolution;
 		uB = (xB - xC) * pm->const_lpf_U / pm->pwm_resolution;
@@ -641,7 +653,7 @@ pm_current_control(pmc_t *pm)
 
 	wP = 1.5f * (sD * pm->vsi_lpf_D + sQ * pm->vsi_lpf_Q);
 
-	if (wP > pm->i_watt_consumption_maximal) {
+	/*if (wP > pm->i_watt_consumption_maximal) {
 
 		temp = pm->i_watt_consumption_maximal / wP;
 		sD *= temp;
@@ -652,22 +664,12 @@ pm_current_control(pmc_t *pm)
 		temp = pm->i_watt_regeneration_maximal / wP;
 		sD *= temp;
 		sQ *= temp;
-	}
-
-	temp = pm->i_slew_rate_D * pm->dT;
-	pm->i_track_D = (pm->i_track_D < sD - temp)
-		? pm->i_track_D + temp : (pm->i_track_D > sD + temp)
-		? pm->i_track_D - temp : sD;
-
-	temp = pm->i_slew_rate_Q * pm->dT;
-	pm->i_track_Q = (pm->i_track_Q < sQ - temp)
-		? pm->i_track_Q + temp : (pm->i_track_Q > sQ + temp)
-		? pm->i_track_Q - temp : sQ;
+	}*/
 
 	/* Obtain discrepancy.
 	 * */
-	eD = pm->i_track_D - X[0];
-	eQ = pm->i_track_Q - X[1];
+	eD = sD - X[0];
+	eQ = sQ - X[1];
 
 	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
 
@@ -842,7 +844,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm_speed_control(pm);
 		}
 
-		pm_validate(pm);
+		pm_lu_validate(pm);
 	}
 }
 

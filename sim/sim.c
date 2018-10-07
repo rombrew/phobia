@@ -100,7 +100,7 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[19] = pm.flux_residual_D;
 	pTel[20] = pm.flux_residual_Q;
-	pTel[21] = sqrt(pm.flux_residual_lpf);
+	pTel[21] = pm.flux_residual_lpf;
 
 	/* Informational.
 	 * */
@@ -108,6 +108,10 @@ sim_Tel(float *pTel)
 
 	pTel[26] = pm.lu_mode;
 	pTel[27] = pm.hfi_CS[1];
+
+	/* Flux speed.
+	 * */
+	pTel[28] = pm.flux_X[4] * 30. / M_PI / m.Zp;
 }
 
 static void
@@ -167,9 +171,14 @@ sim_Script(FILE *fdTel)
 {
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_R = m.PWM_R;
-	pm.pDC = &blmDC;
-	pm.pZ = &blmZ;
+	pm.pwm_resolution = m.PWM_R;
+	pm.pwm_compensation = 5;
+	pm.proc_set_DC = &blmDC;
+	pm.proc_set_Z = &blmZ;
+
+	pm.pwm_minimal_pulse = 0;
+	pm.pwm_silence_gap = 0;
+	pm.fb_current_clamp = 50.f;
 
 	pm_config_default(&pm);
 
@@ -177,7 +186,7 @@ sim_Script(FILE *fdTel)
 	pm.const_R = m.R * (1. - .0);
 	pm.const_Ld = m.Ld * (1. + .0);
 	pm.const_Lq = m.Lq * (1. + .0);
-	pm.const_E = m.E * (1. - .0);
+	pm.const_E = m.E * (1. + .0);
 	pm.const_Zp = m.Zp;
 
 	pm.config_HFI = 0;
@@ -203,13 +212,19 @@ sim_Script(FILE *fdTel)
 	}
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+	sim_F(fdTel, .7, 0);
+
+	pm.s_setpoint = 200.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_setpoint = 5000.f;
+	//m.X[4] = 90.;
+
 	sim_F(fdTel, .5, 0);
 
-	m.X[2] /= 2.;
+	pm.s_setpoint = 2000.f;
+	sim_F(fdTel, .5, 0);
 
+	pm.s_setpoint = -20000.f;
 	sim_F(fdTel, .5, 0);
 }
 

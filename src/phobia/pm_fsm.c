@@ -269,7 +269,6 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 
 				case 1:
 					xDC = pm->pwm_resolution - pm->pwm_silence_gap;
-
 					pm->proc_set_DC(xDC, xDC, xDC);
 					pm->proc_set_Z(0);
 					break;
@@ -306,6 +305,16 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 
 			pm->tm_value++;
 
+			if (pm->tm_value & 1) {
+
+				xDC = pm->pwm_resolution - pm->pwm_silence_gap;
+				pm->proc_set_DC(xDC, xDC, xDC);
+			}
+			else {
+				xDC = pm->pwm_resolution;
+				pm->proc_set_DC(xDC, xDC, xDC);
+			}
+
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->temporal[0] = pm->temporal[0] / pm->tm_end;
@@ -323,19 +332,27 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 			else if (pm_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_SAMPLING_FAULT;
 
-			pm->self_SA[pm->fsm_phase_2 + 0] = pm->temporal[0];
-			pm->self_SA[pm->fsm_phase_2 + 2] = pm->temporal[1];
-			pm->self_SA[pm->fsm_phase_2 + 4] = pm->temporal[2];
-			pm->self_SA[pm->fsm_phase_2 + 6] = pm->temporal[3];
+			switch (pm->fsm_phase_2) {
 
-			if (pm->fsm_phase_2 < 1) {
+				case 0:
+					pm->self_SA[0] = pm->temporal[0];
+					pm->self_SA[1] = pm->temporal[1];
+					pm->self_SA[2] = pm->temporal[2];
+					pm->self_SA[3] = pm->temporal[3];
 
-				pm->fsm_phase = 1;
-				pm->fsm_phase_2++;
-			}
-			else {
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
+					pm->fsm_phase = 1;
+					pm->fsm_phase_2++;
+					break;
+
+				case 1:
+					pm->self_SA[4] = pm->temporal[0];
+					pm->self_SA[5] = pm->temporal[1];
+					pm->self_SA[6] = pm->temporal[2];
+					pm->self_SA[7] = pm->temporal[3];
+
+					pm->fsm_state = PM_STATE_HALT;
+					pm->fsm_phase = 0;
+					break;
 			}
 			break;
 	}
@@ -425,7 +442,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_r(pmc_t *pm)
 {
-	float			iX, iY, eX, eY, uX, uY;
+	float			eX, eY, uX, uY;
 	float			uMAX;
 
 	switch (pm->fsm_phase) {
@@ -456,20 +473,10 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[1] += pm->vsi_Y - pm->probe_current_hold_Q * pm->const_R;
 
 		case 1:
-			if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+			pm_lu_get_current(pm);
 
-				iX = pm->fb_current_A;
-				iY = .57735027f * pm->fb_current_A
-					+ 1.1547005f * pm->fb_current_B;
-			}
-			else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
-
-				iX = pm->fb_current_A;
-				iY = pm->fb_current_B;
-			}
-
-			eX = pm->probe_current_hold - iX;
-			eY = pm->probe_current_hold_Q - iY;
+			eX = pm->probe_current_hold - pm->lu_fb_X;
+			eY = pm->probe_current_hold_Q - pm->lu_fb_Y;
 
 			pm->temporal[0] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->temporal[0];
@@ -517,7 +524,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_l(pmc_t *pm)
 {
-	float			iX, iY, uX, uY;
+	float			uX, uY;
 	float			imp_Z, LDQ[4];
 
 	switch (pm->fsm_phase) {
@@ -564,24 +571,14 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 
 		case 2:
-			if (pm->config_ABC == PM_ABC_THREE_PHASE) {
+			pm_lu_get_current(pm);
 
-				iX = pm->fb_current_A;
-				iY = .57735027f * pm->fb_current_A
-					+ 1.1547005f * pm->fb_current_B;
-			}
-			else if (pm->config_ABC == PM_ABC_TWO_PHASE) {
-
-				iX = pm->fb_current_A;
-				iY = pm->fb_current_B;
-			}
-
-			pm->probe_DFT[0] += iX * pm->temporal[0];
-			pm->probe_DFT[1] += iX * pm->temporal[1];
+			pm->probe_DFT[0] += pm->lu_fb_X * pm->temporal[0];
+			pm->probe_DFT[1] += pm->lu_fb_X * pm->temporal[1];
 			pm->probe_DFT[2] += pm->vsi_X * pm->temporal[0];
 			pm->probe_DFT[3] += pm->vsi_X * pm->temporal[1];
-			pm->probe_DFT[4] += iY * pm->temporal[0];
-			pm->probe_DFT[5] += iY * pm->temporal[1];
+			pm->probe_DFT[4] += pm->lu_fb_Y * pm->temporal[0];
+			pm->probe_DFT[5] += pm->lu_fb_Y * pm->temporal[1];
 			pm->probe_DFT[6] += pm->vsi_Y * pm->temporal[0];
 			pm->probe_DFT[7] += pm->vsi_Y * pm->temporal[1];
 
@@ -665,12 +662,12 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->temporal[0] = 0.f;
 			pm->temporal[1] = 0.f;
 
-			pm->vsi_clamp_to_null = 1;
 			pm->vsi_X = 0.f;
 			pm->vsi_Y = 0.f;
 			pm->vsi_lpf_D = 0.f;
 			pm->vsi_lpf_Q = 0.f;
 			pm->vsi_lpf_watt = 0.f;
+			pm->vsi_clamp_to_null = 1;
 
 			if (pm->config_HALL != PM_HALL_DISABLED) {
 
@@ -718,8 +715,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->i_derated = pm->i_maximal;
 			pm->i_setpoint_D = 0.f;
 			pm->i_setpoint_Q = 0.f;
-			pm->i_track_D = 0.f;
-			pm->i_track_Q = 0.f;
 			pm->i_integral_D = 0.f;
 			pm->i_integral_Q = 0.f;
 
