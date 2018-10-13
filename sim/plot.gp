@@ -32,6 +32,8 @@ figure 0 12 "m.X[3] - pm.lu_X[3:4]"
 page "pm.lu_drift_Q"
 label 1 "(V)"
 figure 0 14 "pm.lu_drift_Q"
+figure 0 27 "pm.const_R"
+map 0 2
 
 page "PWM: m.PWM_A, m.PWM_B, m.PWM_C"
 label 1 "(%)"
@@ -55,10 +57,10 @@ figure 0 19 "pm.lu_residual_D"
 figure 0 20 "pm.lu_residual_Q"
 
 page "Residual Variance"
-label 1 "(A)"
+label 1 "(A²)"
 figure 0 21 "pm.lu_residual_lpf"
 
-page "pm.lu_power_lpf"
+page "Power Consumption"
 label 1 "(W)"
 figure 0 25 "pm.lu_power_lpf"
 

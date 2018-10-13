@@ -208,8 +208,9 @@ typedef struct {
 	float		flux_gain_DS;
 	float		flux_gain_QS;
 	float		flux_gain_QZ;
-	float		flux_BEMF_low;
-	float		flux_BEMF_high;
+	float		flux_bemf_low_unlock;
+	float		flux_bemf_low_lock;
+	float		flux_bemf_high;
 
 	float		hfi_X[5];
 	float		hfi_freq_hz;

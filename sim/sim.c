@@ -107,7 +107,7 @@ sim_Tel(float *pTel)
 	pTel[25] = pm.vsi_lpf_watt;
 
 	pTel[26] = pm.lu_mode;
-	pTel[27] = pm.hfi_CS[1];
+	pTel[27] = pm.const_R;
 
 	/* Flux speed.
 	 * */
@@ -172,7 +172,7 @@ sim_Script(FILE *fdTel)
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = m.PWM_R;
-	pm.pwm_compensation = 5;
+	pm.pwm_compensation = 0;
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
@@ -217,15 +217,21 @@ sim_Script(FILE *fdTel)
 	pm.s_setpoint = 200.f;
 	sim_F(fdTel, .5, 0);
 
-	//m.X[4] = 90.;
-
 	sim_F(fdTel, .5, 0);
 
 	pm.s_setpoint = 2000.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_setpoint = -20000.f;
+	pm.s_setpoint = -30000.f;
 	sim_F(fdTel, .5, 0);
+
+	m.R *= (1. + 40E-2);
+
+	sim_F(fdTel, .2, 0);
+
+	m.R *= (1. - 40E-2);
+
+	sim_F(fdTel, .2, 0);
 }
 
 int main(int argc, char *argv[])

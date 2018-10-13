@@ -84,7 +84,7 @@ void blm_Enable(blm_t *m)
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 23.;
+	m->U = 50.;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -103,7 +103,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 1E-6;
+	m->M[2] = 5E-7;
 	m->M[3] = 0E-3;
 }
 
