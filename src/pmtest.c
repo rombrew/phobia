@@ -75,7 +75,7 @@ SH_DEF(pm_self_test)
 			break;
 		}
 
-		pm_fsm_req(&pm, PM_STATE_SAMPLING_SELF_TEST);
+		pm_fsm_req(&pm, PM_STATE_SAMPLING_ACCURACY_SELF_TEST);
 		pm_wait_for_IDLE();
 
 		pm_print_self_SA();

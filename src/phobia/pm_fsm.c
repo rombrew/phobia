@@ -246,7 +246,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_sampling_self_test(pmc_t *pm)
+pm_fsm_state_sampling_accuracy_self_test(pmc_t *pm)
 {
 	int				xDC;
 
@@ -328,9 +328,9 @@ pm_fsm_state_sampling_self_test(pmc_t *pm)
 
 		case 4:
 			if (pm_fabsf(pm->temporal[2]) > pm->fault_current_tolerance)
-				pm->fail_reason = PM_ERROR_SAMPLING_FAULT;
+				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
 			else if (pm_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
-				pm->fail_reason = PM_ERROR_SAMPLING_FAULT;
+				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
 
 			switch (pm->fsm_phase_2) {
 
@@ -636,8 +636,30 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 		case 0:
 			if (pm->const_R != 0.f && pm->const_Ld != 0.f && pm->const_Lq != 0.f) {
 
+				pm->lu_mode = PM_LU_DETACHED;
+				pm->lu_revol = 0;
+
+				pm->proc_set_DC(0, 0, 0);
+				pm->proc_set_Z(7);
+
+				pm->temporal[0] = 0.f;
+				pm->temporal[1] = 0.f;
+
+				pm->vsi_lpf_D = 0.f;
+				pm->vsi_lpf_Q = 0.f;
+				pm->vsi_lpf_watt = 0.f;
+				pm->vsi_clamp_to_null = 1;
+
+				pm->flux_X[0] = 0.f;
+				pm->flux_X[1] = 0.f;
+				pm->flux_X[2] = 1.f;
+				pm->flux_X[3] = 0.f;
+				pm->flux_X[4] = 0.f;
+				pm->flux_drift_Q = 0.f;
+				pm->flux_residual_lpf = 0.f;
+
 				pm->tm_value = 0;
-				pm->tm_end = pm->freq_hz * pm->tm_startup_probe;
+				pm->tm_end = pm->freq_hz * pm->tm_startup;
 
 				pm->fail_reason = PM_OK;
 				pm->fsm_phase = 1;
@@ -659,55 +681,12 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			break;
 
 		case 2:
-			pm->temporal[0] = 0.f;
-			pm->temporal[1] = 0.f;
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
+			
+			pm->proc_set_Z(0);
 
-			pm->vsi_X = 0.f;
-			pm->vsi_Y = 0.f;
-			pm->vsi_lpf_D = 0.f;
-			pm->vsi_lpf_Q = 0.f;
-			pm->vsi_lpf_watt = 0.f;
-			pm->vsi_clamp_to_null = 1;
-
-			if (pm->config_HALL != PM_HALL_DISABLED) {
-
-				pm->lu_mode = PM_LU_CLOSED_SENSOR_HALL;
-			}
-			else if (pm->config_HFI != PM_HFI_DISABLED) {
-
-				pm->lu_mode = PM_LU_CLOSED_ESTIMATE_HFI;
-			}
-			else {
-				pm->lu_mode = PM_LU_OPEN_LOOP;
-			}
-
-			pm->lu_X[0] = 0.f;
-			pm->lu_X[1] = 0.f;
-			pm->lu_X[2] = 0.f;
-			pm->lu_X[3] = 0.f;
-			pm->lu_X[4] = 0.f;
-			pm->lu_revol = 0;
-
-			pm->forced_X[0] = 0.f;
-			pm->forced_X[1] = 0.f;
-			pm->forced_X[2] = 1.f;
-			pm->forced_X[3] = 0.f;
-			pm->forced_X[4] = 0.f;
 			pm->forced_setpoint = 0.f;
 
-			pm->flux_X[0] = 0.f;
-			pm->flux_X[1] = 0.f;
-			pm->flux_X[2] = 1.f;
-			pm->flux_X[3] = 0.f;
-			pm->flux_X[4] = 0.f;
-			pm->flux_drift_Q = 0.f;
-			pm->flux_residual_lpf = 0.f;
-
-			pm->hfi_X[0] = 0.f;
-			pm->hfi_X[1] = 0.f;
-			pm->hfi_X[2] = 1.f;
-			pm->hfi_X[3] = 0.f;
-			pm->hfi_X[4] = 0.f;
 			pm->hfi_CS[0] = 1.f;
 			pm->hfi_CS[1] = 0.f;
 			pm->hfi_flux_polarity = 0.f;
@@ -726,9 +705,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->p_setpoint[1] = 0.f;
 			pm->p_setpoint_s = 0.f;
 			pm->p_setpoint_revol = 0;*/
-
-			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(0);
 
 			pm->fsm_state = PM_STATE_IDLE;
 			pm->fsm_phase = 0;
@@ -861,8 +837,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_power_stage_self_test(pm);
 			break;
 
-		case PM_STATE_SAMPLING_SELF_TEST:
-			pm_fsm_state_sampling_self_test(pm);
+		case PM_STATE_SAMPLING_ACCURACY_SELF_TEST:
+			pm_fsm_state_sampling_accuracy_self_test(pm);
 			break;
 
 		case PM_STATE_ADJUST_VOLTAGE:
@@ -908,7 +884,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 
 		case PM_STATE_ZERO_DRIFT:
 		case PM_STATE_POWER_STAGE_SELF_TEST:
-		case PM_STATE_SAMPLING_SELF_TEST:
+		case PM_STATE_SAMPLING_ACCURACY_SELF_TEST:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
@@ -958,7 +934,7 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
 		PM_SFI(PM_ERORR_POWER_STAGE_FAULT),
-		PM_SFI(PM_ERROR_SAMPLING_FAULT),
+		PM_SFI(PM_ERROR_SAMPLING_ACCURACY_FAULT),
 		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
 		PM_SFI(PM_ERROR_OVER_CURRENT),
 		PM_SFI(PM_ERROR_ADJUST_TOLERANCE_FAULT),

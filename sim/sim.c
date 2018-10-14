@@ -183,10 +183,10 @@ sim_Script(FILE *fdTel)
 	pm_config_default(&pm);
 
 	pm.const_lpf_U = m.U;
-	pm.const_R = m.R * (1. - .0);
-	pm.const_Ld = m.Ld * (1. + .0);
-	pm.const_Lq = m.Lq * (1. + .0);
-	pm.const_E = m.E * (1. + .0);
+	pm.const_R = m.R;
+	pm.const_Ld = m.Ld;
+	pm.const_Lq = m.Lq;
+	pm.const_E = m.E;
 	pm.const_Zp = m.Zp;
 
 	pm.config_HFI = 0;
@@ -195,7 +195,7 @@ sim_Script(FILE *fdTel)
 	pm_config_tune_current_loop(&pm);
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
-	sim_F(fdTel, .5, 0);
+	sim_F(fdTel, .4, 0);
 
 	if (0) {
 
@@ -212,7 +212,9 @@ sim_Script(FILE *fdTel)
 	}
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-	sim_F(fdTel, .7, 0);
+	sim_F(fdTel, .2, 0);
+
+	//m.R *= (1. + 40E-2);
 
 	pm.s_setpoint = 200.f;
 	sim_F(fdTel, .5, 0);
@@ -225,11 +227,9 @@ sim_Script(FILE *fdTel)
 	pm.s_setpoint = -30000.f;
 	sim_F(fdTel, .5, 0);
 
-	m.R *= (1. + 40E-2);
-
 	sim_F(fdTel, .2, 0);
 
-	m.R *= (1. - 40E-2);
+	//m.R *= (1. + 40E-2);
 
 	sim_F(fdTel, .2, 0);
 }

@@ -33,7 +33,7 @@ void pm_config_default(pmc_t *pm)
 	pm->tm_current_hold = .5f;
 	pm->tm_instant_probe = .01f;
 	pm->tm_average_probe = .2f;
-	pm->tm_startup_probe = .5f;
+	pm->tm_startup = .1f;
 
 	pm->adjust_IA[0] = 0.f;
 	pm->adjust_IA[1] = 1.f;
@@ -105,7 +105,7 @@ void pm_config_default(pmc_t *pm)
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
 	pm->s_accel = 5E+6f;
 	pm->s_gain_P = 2E-2f;
-	pm->s_gain_I = 2E-4f;
+	pm->s_gain_I = 1E-4f;
 
 	pm->p_gain_P = 50.f;
 	pm->p_gain_I = 0.f;
@@ -251,7 +251,9 @@ pm_flux_update(pmc_t *pm)
 
 	if (pm->const_E != 0.f) {
 
-		eR = (X[4] < 0.f) ? - eD : eD;
+		qS = (pm->lu_mode == PM_LU_FORCED) ? pm->forced_X[4] : X[4];
+		eR = (qS < 0.f) ? - eD : eD;
+
 		dR = pm->flux_gain_DP * eR;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 		pm_rotf(X + 2, dR, X + 2);
@@ -270,7 +272,7 @@ pm_flux_update(pmc_t *pm)
 			pm->flux_drift_Q = 0.f;
 		}
 	}
-	else if (pm->lu_mode == PM_LU_OPEN_LOOP) {
+	else if (pm->lu_mode == PM_LU_FORCED) {
 
 		X[2] = pm->forced_X[2];
 		X[3] = pm->forced_X[3];
@@ -346,77 +348,45 @@ void pm_lu_get_current(pmc_t *pm)
 	}
 }
 
+void pm_lu_get_voltage(pmc_t *pm)
+{
+	float			uA, uB, uQ;
+
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
+
+		uQ = (1.f / 3.f) * (pm->fb_voltage_A + pm->fb_voltage_B + pm->fb_voltage_C);
+		uA = pm->fb_voltage_A - uQ;
+		uB = pm->fb_voltage_B - uQ;
+
+		pm->vsi_X = uA;
+		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
+	}
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
+
+		uA = pm->fb_voltage_A - pm->fb_voltage_C;
+		uB = pm->fb_voltage_B - pm->fb_voltage_C;
+
+		pm->vsi_X = uA;
+		pm->vsi_Y = uB;
+	}
+}
+
 static void
 pm_lu_FSM(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
-	pm_lu_get_current(pm);
+	if (pm->lu_mode == PM_LU_DETACHED) {
 
-	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_FLUX) {
+		pm->lu_fb_X = 0.f;
+		pm->lu_fb_Y = 0.f;
 
+		pm_lu_get_voltage(pm);
 		pm_flux_update(pm);
-
-		X[0] = pm->flux_X[0];
-		X[1] = pm->flux_X[1];
-		X[2] = pm->flux_X[2];
-		X[3] = pm->flux_X[3];
-		X[4] = pm->flux_X[4];
-
-		if (pm_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
-
-			if (pm->config_HALL != PM_HALL_DISABLED) {
-
-				pm->lu_mode = PM_LU_CLOSED_SENSOR_HALL;
-			}
-			else if (pm->config_HFI != PM_HFI_DISABLED) {
-
-				pm->lu_mode = PM_LU_CLOSED_ESTIMATE_HFI;
-
-				pm->hfi_X[0] = X[0];
-				pm->hfi_X[1] = X[1];
-				pm->hfi_X[2] = X[2];
-				pm->hfi_X[3] = X[3];
-				pm->hfi_X[4] = X[4];
-			}
-			else {
-				pm->lu_mode = PM_LU_OPEN_LOOP;
-
-				pm->forced_X[0] = X[0];
-				pm->forced_X[1] = X[1];
-				pm->forced_X[2] = X[2];
-				pm->forced_X[3] = X[3];
-				pm->forced_X[4] = X[4];
-			}
-		}
 	}
-	else if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
+	else if (pm->lu_mode == PM_LU_FORCED) {
 
-		pm_hfi_update(pm);
-
-		X[0] = pm->hfi_X[0];
-		X[1] = pm->hfi_X[1];
-		X[2] = pm->hfi_X[2];
-		X[3] = pm->hfi_X[3];
-		X[4] = pm->hfi_X[4];
-
-		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
-
-			pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
-
-			pm->flux_X[0] = X[0];
-			pm->flux_X[1] = X[1];
-			pm->flux_X[2] = X[2];
-			pm->flux_X[3] = X[3];
-			pm->flux_X[4] = X[4];
-		}
-	}
-	else if (pm->lu_mode == PM_LU_CLOSED_SENSOR_HALL) {
-
-		pm_hall_update(pm);
-	}
-	else if (pm->lu_mode == PM_LU_OPEN_LOOP) {
-
+		pm_lu_get_current(pm);
 		pm_flux_update(pm);
 		pm_forced_update(pm);
 
@@ -429,8 +399,72 @@ pm_lu_FSM(pmc_t *pm)
 		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
 				&& pm_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
 
-			pm->lu_mode = PM_LU_CLOSED_ESTIMATE_FLUX;
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
+	}
+	else if (pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
+
+		pm_lu_get_current(pm);
+		pm_flux_update(pm);
+
+		X[0] = pm->flux_X[0];
+		X[1] = pm->flux_X[1];
+		X[2] = pm->flux_X[2];
+		X[3] = pm->flux_X[3];
+		X[4] = pm->flux_X[4];
+
+		if (pm_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
+
+			if (pm->config_HALL != PM_HALL_DISABLED) {
+
+				pm->lu_mode = PM_LU_SENSORED_HALL;
+			}
+			else if (pm->config_HFI != PM_HFI_DISABLED) {
+
+				pm->lu_mode = PM_LU_ESTIMATE_HFI;
+
+				pm->hfi_X[0] = X[0];
+				pm->hfi_X[1] = X[1];
+				pm->hfi_X[2] = X[2];
+				pm->hfi_X[3] = X[3];
+				pm->hfi_X[4] = X[4];
+			}
+			else {
+				pm->lu_mode = PM_LU_FORCED;
+
+				pm->forced_X[0] = X[0];
+				pm->forced_X[1] = X[1];
+				pm->forced_X[2] = X[2];
+				pm->forced_X[3] = X[3];
+				pm->forced_X[4] = X[4];
+			}
+		}
+	}
+	else if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
+
+		pm_lu_get_current(pm);
+		pm_hfi_update(pm);
+
+		X[0] = pm->hfi_X[0];
+		X[1] = pm->hfi_X[1];
+		X[2] = pm->hfi_X[2];
+		X[3] = pm->hfi_X[3];
+		X[4] = pm->hfi_X[4];
+
+		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
+
+			pm->flux_X[0] = X[0];
+			pm->flux_X[1] = X[1];
+			pm->flux_X[2] = X[2];
+			pm->flux_X[3] = X[3];
+			pm->flux_X[4] = X[4];
+		}
+	}
+	else if (pm->lu_mode == PM_LU_SENSORED_HALL) {
+
+		pm_hall_update(pm);
 	}
 }
 
@@ -445,7 +479,7 @@ pm_lu_validate(pmc_t *pm)
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
-	if (X[0] == X[0]) ;
+	if (X[1] == X[1]) ;
 	else {
 		pm->fail_reason = PM_ERROR_LU_INVALID_OPERATION;
 		pm_fsm_req(pm, PM_STATE_HALT);
@@ -628,7 +662,7 @@ pm_current_control(pmc_t *pm)
 	float		uD, uQ, uX, uY, wP;
 	float		iMAX, uMAX, temp;
 
-	if (pm->lu_mode == PM_LU_OPEN_LOOP) {
+	if (pm->lu_mode == PM_LU_FORCED) {
 
 		sD = pm->forced_hold_D;
 		sQ = 0.f;
@@ -663,7 +697,7 @@ pm_current_control(pmc_t *pm)
 	eD = sD - X[0];
 	eQ = sQ - X[1];
 
-	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
+	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
 		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
 		pm_rotf(pm->hfi_CS, temp * pm->dT, pm->hfi_CS);
@@ -686,7 +720,7 @@ pm_current_control(pmc_t *pm)
 		(pm->i_integral_Q < - uMAX) ? - uMAX : pm->i_integral_Q;
 	uQ += pm->i_integral_Q;
 
-	if (pm->lu_mode == PM_LU_CLOSED_ESTIMATE_HFI) {
+	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
 		uD += pm->hfi_CS[0] * pm->hfi_swing_D * temp * pm->const_Ld;
 	}
@@ -722,7 +756,7 @@ pm_speed_control(pmc_t *pm)
 		pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
 			: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
-		if (pm->lu_mode == PM_LU_OPEN_LOOP) {
+		if (pm->lu_mode == PM_LU_FORCED) {
 
 			pm->forced_setpoint = pm->s_track;
 		}
@@ -829,11 +863,15 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
 		pm_lu_FSM(pm);
-		pm_current_control(pm);
 
-		if (pm->config_LOOP == PM_LOOP_SPEED_CONTROL) {
+		if (pm->lu_mode != PM_LU_DETACHED) {
 
-			pm_speed_control(pm);
+			pm_current_control(pm);
+
+			if (pm->config_LOOP == PM_LOOP_SPEED_CONTROL) {
+
+				pm_speed_control(pm);
+			}
 		}
 
 		pm_lu_validate(pm);

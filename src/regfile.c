@@ -212,6 +212,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tm_current_hold, 			"s",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.tm_instant_probe, 			"s",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.tm_average_probe, 			"s",	"%3f",	REG_CONFIG, NULL),
+	REG_DEF(pm.tm_startup, 				"s",	"%3f",	REG_CONFIG, NULL),
 
 	REG_DEF(pm.adjust_IA[0],			"A",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(pm.adjust_IA[1],			"",	"%4e",	REG_CONFIG, NULL),
