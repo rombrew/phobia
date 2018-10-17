@@ -54,7 +54,7 @@ typedef struct {
 	ntc_t			ntc_PCB;
 	ntc_t			ntc_EXT;
 
-	/* Thermal.
+	/* Thermal info.
 	 * */
 	float			temp_PCB;
 	float			temp_EXT;
@@ -70,6 +70,11 @@ typedef struct {
 	 * */
 	float			batt_voltage_low;
 	float			batt_voltage_high;
+
+	/* Load cell.
+	 * */
+	float			load_thrust_gram;
+	float			load_transform[2];
 }
 application_t;
 

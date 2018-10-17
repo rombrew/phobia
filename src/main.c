@@ -174,6 +174,9 @@ void taskINIT(void *pData)
 
 		ap.batt_voltage_low = 6.0f;
 		ap.batt_voltage_high = 54.0f;
+
+		ap.load_transform[0] = 0.f;
+		ap.load_transform[1] = 4.545E-3f;
 	}
 
 	USART_startup();
@@ -212,8 +215,6 @@ void taskINIT(void *pData)
 	GPIO_set_HIGH(GPIO_BOOST_12V);
 
 	GPIO_set_LOW(GPIO_LED);
-
-	GPIO_set_mode_OUTPUT(GPIO_SPI_NSS);
 
 	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
 	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
@@ -273,12 +274,8 @@ void ADC_IRQ()
 	fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
 	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 
-	GPIO_set_HIGH(GPIO_SPI_NSS);
-
 	pm_feedback(&pm, &fb);
 	hal_fence();
-
-	GPIO_set_LOW(GPIO_SPI_NSS);
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 

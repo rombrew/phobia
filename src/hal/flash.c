@@ -49,7 +49,8 @@ FLASH_lock()
 static void
 FLASH_wait_BSY()
 {
-	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) ;
+	while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY)
+		__NOP();
 }
 
 void *FLASH_sector_erase(void *flash)

@@ -77,7 +77,7 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
 	pm->flux_bemf_low_unlock = .1f;
-	pm->flux_bemf_low_lock = .2f;
+	pm->flux_bemf_low_lock = .3f;
 	pm->flux_bemf_high = 1.f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;

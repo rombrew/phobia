@@ -192,6 +192,10 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.batt_voltage_low,			"V",	"%3f",	REG_CONFIG, NULL),
 	REG_DEF(ap.batt_voltage_high,			"V",	"%3f",	REG_CONFIG, NULL),
 
+	REG_DEF(ap.load_thrust_gram,			"g",	"%1f",	REG_READ_ONLY, NULL),
+	REG_DEF(ap.load_transform[0],			"g",	"%1f",	REG_CONFIG, NULL),
+	REG_DEF(ap.load_transform[1],			"",	"%4e",	REG_CONFIG, NULL),
+
 	REG_DEF(pm.pwm_resolution,			"",	"%i",	REG_READ_ONLY, NULL),
 	REG_DEF(pm.pwm_compensation,			"ns",	"%1f",	0, &reg_proc_tik),
 	REG_DEF(pm.pwm_minimal_pulse,			"ns",	"%1f",	REG_CONFIG, &reg_proc_tik),

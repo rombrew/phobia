@@ -30,8 +30,8 @@ void apPUSH(void *pData)
 {
 	TickType_t		xWake;
 
-	const int		in_A = GPIO_HALL_A;
-	const int		in_B = GPIO_HALL_B;
+	const int		gpio_A = GPIO_HALL_A;
+	const int		gpio_B = GPIO_HALL_B;
 
 	int			pushed_A, pushed_B;
 	int			value_A, value_B;
@@ -50,11 +50,11 @@ void apPUSH(void *pData)
 	int			N, rev;
 	float			rpm;
 
-	GPIO_set_mode_INPUT(in_A);
-	GPIO_set_mode_INPUT(in_B);
+	GPIO_set_mode_INPUT(gpio_A);
+	GPIO_set_mode_INPUT(gpio_B);
 
-	pushed_A = GPIO_get_VALUE(in_A);
-	pushed_B = GPIO_get_VALUE(in_B);
+	pushed_A = GPIO_get_VALUE(gpio_A);
+	pushed_B = GPIO_get_VALUE(gpio_B);
 
 	xWake = xTaskGetTickCount();
 
@@ -63,8 +63,8 @@ void apPUSH(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 10);
 
-		value_A = GPIO_get_VALUE(in_A);
-		value_B = GPIO_get_VALUE(in_B);
+		value_A = GPIO_get_VALUE(gpio_A);
+		value_B = GPIO_get_VALUE(gpio_B);
 
 		/* Detect if buttons are pressed.
 		 * */
@@ -110,11 +110,22 @@ void apPUSH(void *pData)
 	while (1);
 }
 
-SH_DEF(ap_pushbutton_startup)
-{
-	if (xTaskGetHandle("apPUSH") == NULL) {
+static TaskHandle_t		xHandle;
 
-		xTaskCreate(apPUSH, "apPUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+SH_DEF(ap_push_startup)
+{
+	if (xHandle == NULL) {
+
+		xTaskCreate(apPUSH, "apPUSH", configMINIMAL_STACK_SIZE, NULL, 1, &xHandle);
+	}
+}
+
+SH_DEF(ap_push_halt)
+{
+	if (xHandle != NULL) {
+
+		vTaskDelete(xHandle);
+		xHandle = NULL;
 	}
 }
 

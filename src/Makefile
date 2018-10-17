@@ -57,7 +57,8 @@ OBJS    = freertos/heap_4.o \
 	  shell.o \
 	  teli.o
 
-OBJS	+= apps/pushbutton.o
+OBJS	+= apps/hx711.o \
+	   apps/push.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

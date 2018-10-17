@@ -161,7 +161,8 @@ clock_startup()
 
 	/* Wait till the main PLL is ready.
 	 * */
-	while (!(RCC->CR & RCC_CR_PLLRDY)) ;
+	while (!(RCC->CR & RCC_CR_PLLRDY))
+		__NOP();
 
 	/* Configure Flash.
 	 * */
@@ -173,7 +174,8 @@ clock_startup()
 
 	/* Wait till PLL is used.
 	 * */
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) ;
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL)
+		__NOP();
 }
 
 static void
@@ -194,6 +196,28 @@ void hal_startup()
 	base_startup();
 	clock_startup();
 	periph_startup();
+}
+
+void hal_delay_us(int us)
+{
+	unsigned long		begVAL, xLOAD;
+	int			elapsed, delay;
+
+	begVAL = SysTick->VAL;
+	xLOAD = SysTick->LOAD + 1UL;
+
+	delay = us * (clock_cpu_hz / 1000000UL);
+
+	do {
+		elapsed = (int) (begVAL - SysTick->VAL);
+		elapsed += (elapsed < 0) ? xLOAD : 0;
+
+		if (elapsed >= delay)
+			break;
+
+		__NOP();
+	}
+	while (1);
 }
 
 void hal_system_reset()
