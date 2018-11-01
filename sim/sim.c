@@ -40,7 +40,7 @@ blmDC(int A, int B, int C)
 }
 
 static void
-blmZ(int Z) { }
+blmZ(int Z) { /* Not implemented */ }
 
 static void
 sim_Tel(float *pTel)
@@ -132,9 +132,9 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		blm_Update(&m);
 
-		fb.current_A = m.ADC_A;
-		fb.current_B = m.ADC_B;
-		fb.voltage_U = m.ADC_U;
+		fb.current_A = m.ADC_IA;
+		fb.current_B = m.ADC_IB;
+		fb.voltage_U = m.ADC_US;
 
 		/* PM update.
 		 * */
@@ -172,12 +172,12 @@ sim_Script(FILE *fdTel)
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.pwm_resolution = m.PWM_R;
-	pm.pwm_compensation = 0;
+	pm.pwm_compensation = 10;
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm.pwm_minimal_pulse = 0;
-	pm.pwm_silence_gap = 0;
+	pm.pwm_minimal_pulse = 50;
+	pm.pwm_silence_gap = 250;
 	pm.fb_current_clamp = 50.f;
 
 	pm_config_default(&pm);
@@ -212,26 +212,26 @@ sim_Script(FILE *fdTel)
 	}
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-	sim_F(fdTel, .2, 0);
+	sim_F(fdTel, .5, 0);
 
-	//m.R *= (1. + 40E-2);
+	//m.Ld *= (1. - 20E-2);
 
 	pm.s_setpoint = 200.f;
 	sim_F(fdTel, .5, 0);
 
 	sim_F(fdTel, .5, 0);
 
-	pm.s_setpoint = 2000.f;
+	pm.s_setpoint = 6000.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.s_setpoint = -30000.f;
+	/*pm.s_setpoint = -30000.f;
 	sim_F(fdTel, .5, 0);
 
 	sim_F(fdTel, .2, 0);
 
 	//m.R *= (1. + 40E-2);
 
-	sim_F(fdTel, .2, 0);
+	sim_F(fdTel, .2, 0);*/
 }
 
 int main(int argc, char *argv[])

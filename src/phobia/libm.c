@@ -16,7 +16,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "pm_m.h"
+#include "libm.h"
 
 static const float	lt_atanf[] = {
 
@@ -40,13 +40,34 @@ static const float	lt_sincosf[] = {
 	-3.5525078E-8f,
 };
 
-void pm_rotf(float y[2], float r, const float x[2])
+static const float	lt_log2f[] = {
+
+	-1.1632429E-2f,
+	 1.4237092E-1f,
+	-8.2841748E-1f,
+	 4.0229212E-2f,
+	 3.9032760E+0f,
+	-3.2458262E+0f,
+	 3.5400000E+0f,
+};
+
+static const float	lt_exp2f[] = {
+
+	1.8948823e-3f,
+	8.9472998e-3f,
+	5.5861779e-2f,
+	2.4014193e-1f,
+	6.9315410e-1f,
+	1.0000000e+0f,
+};
+
+void m_rotf(float y[2], float r, const float x[2])
 {
 	float           q, s, c, a, b;
 
 	q = r * r;
-	s = r - q * r * (.16666667f - 8.3333333E-3f * q);
-	c = 1.f - q * (.5f - 4.1666667E-2f * q);
+	s = r - q * r * (1.f / 6.f - (1.f / 120.f) * q);
+	c = 1.f - q * (.5f - (1.f / 24.f) * q);
 
 	a = c * x[0] - s * x[1];
 	b = s * x[0] + c * x[1];
@@ -57,7 +78,7 @@ void pm_rotf(float y[2], float r, const float x[2])
 }
 
 static float
-pm_atanf(float x)
+m_atanf(float x)
 {
 	float		u, x2;
 
@@ -73,17 +94,17 @@ pm_atanf(float x)
 	return u * x;
 }
 
-float pm_atan2f(float y, float x)
+float m_atan2f(float y, float x)
 {
 	float		u;
 
-	if (pm_fabsf(x) > pm_fabsf(y)) {
+	if (m_fabsf(x) > m_fabsf(y)) {
 
-		u = pm_atanf(y / x);
+		u = m_atanf(y / x);
 		u += (x < 0.f) ? (y < 0.f) ? - M_PI_F : M_PI_F : 0.f;
 	}
 	else {
-		u = - pm_atanf(x / y);
+		u = - m_atanf(x / y);
 		u += (y < 0.f) ? - M_PI_F / 2.f : M_PI_F / 2.f;
 	}
 
@@ -91,7 +112,7 @@ float pm_atan2f(float y, float x)
 }
 
 static float
-pm_sincosf(float x)
+m_sincosf(float x)
 {
 	float		u;
 
@@ -107,89 +128,88 @@ pm_sincosf(float x)
 	return u;
 }
 
-float pm_sinf(float x)
+float m_sinf(float x)
 {
         float           x_abs, u;
 
-	x_abs = pm_fabsf(x);
+	x_abs = m_fabsf(x);
 
 	if (x_abs > (M_PI_F / 2.f))
 		x_abs = M_PI_F - x_abs;
 
-	u = pm_sincosf(x_abs);
+	u = m_sincosf(x_abs);
 	u = (x < 0.f) ? - u : u;
 
 	return u;
 }
 
-float pm_cosf(float x)
+float m_cosf(float x)
 {
         float           u;
 
-	x = (M_PI_F / 2.f) - pm_fabsf(x);
-	u = (x < 0.f) ? - pm_sincosf(- x) : pm_sincosf(x);
+	x = (M_PI_F / 2.f) - m_fabsf(x);
+	u = (x < 0.f) ? - m_sincosf(- x) : m_sincosf(x);
 
 	return u;
 }
 
-float pm_DFT_const_R(const float DFT[8])
+float m_log2f(float x)
 {
-	float			D, X, Y, E, R = 0.;
-
-	D = pm_sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
-
-	if (D > 0.f) {
-
-		X = DFT[2] / D;
-		Y = DFT[3] / D;
-
-		E = DFT[0] * X + DFT[1] * Y;
-		R = E / D;
+	union {
+		float		f;
+		unsigned long	i;
 	}
+	u = { x }, m;
 
-	return R;
+	float		q;
+
+	m.i = (u.i & 0x7FFFFF) | (0x7F << 23);
+
+	q = lt_log2f[0];
+	q = lt_log2f[1] + q * m.f;
+	q = lt_log2f[2] + q * m.f;
+	q = lt_log2f[3] + q * m.f;
+	q = lt_log2f[4] + q * m.f;
+	q = lt_log2f[5] + q * m.f;
+	q /= (1.f + lt_log2f[6] * m.f);
+
+	q += (float) u.i * (1.f / (float) (1UL << 23)) - 127.f;
+
+	return q;
 }
 
-static void
-pm_DFT_eigenvalues(float X, float Y, float M, float DQ[4])
+float m_logf(float x)
 {
-	float		B, D, la1, la2;
-
-	B = X + Y;
-	D = B * B - 4.f * (X * Y - M * M);
-
-	if (D > 0.f) {
-
-		D = pm_sqrtf(D);
-		la1 = (B - D) / 2.f;
-		la2 = (B + D) / 2.f;
-
-		B = Y - la1;
-		D = pm_sqrtf(B * B + M * M);
-
-		DQ[0] = la1;
-		DQ[1] = la2;
-		DQ[2] = B / D;
-		DQ[3] = - M / D;
-	}
+	return m_log2f(x) * M_LOG2_F;
 }
 
-void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[4])
+float m_exp2f(float x)
 {
-	float			DX, DY, WR;
-	float			LX, LY, LM;
+	union {
+		float		f;
+		unsigned long	i;
+	}
+	u = { x }, m;
 
-	WR = 2.f * M_PI_F * freq_hz;
+	float		r, q;
 
-	DX = (DFT[0] * DFT[0] + DFT[1] * DFT[1]) * WR;
-	DY = (DFT[4] * DFT[4] + DFT[5] * DFT[5]) * WR;
+	m.i = (int) ((float) (1UL << 23) * (x + 127.f));
+	r = x - (int) x + (int) (u.i >> 31);
 
-	LX = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / DX;
-	LY = (DFT[6] * DFT[5] - DFT[7] * DFT[4]) / DY;
-	LM = (DFT[6] * DFT[1] - DFT[7] * DFT[0]) / DX;
-	LM += (DFT[2] * DFT[5] - DFT[3] * DFT[4]) / DY;
-	LM /= 2.f;
+	q = lt_exp2f[0];
+        q = lt_exp2f[1] + q * r;
+        q = lt_exp2f[2] + q * r;
+        q = lt_exp2f[3] + q * r;
+	q = lt_exp2f[4] + q * r;
+	q = lt_exp2f[5] + q * r;
 
-	pm_DFT_eigenvalues(LX, LY, LM, LDQ);
+	q *= m.f / (1.f + r);
+
+	return q;
+}
+
+float m_expf(float x)
+{
+	return m_exp2f(x * (1.f / M_LOG2_F));
 }
 

@@ -88,7 +88,6 @@ SH_DEF(pm_self_test)
 SH_DEF(pm_test_current_ramp)
 {
 	float			iSP;
-	TickType_t		xHold = (TickType_t) 3;
 
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
@@ -97,13 +96,13 @@ SH_DEF(pm_test_current_ramp)
 
 	do {
 		iSP = pm.i_setpoint_Q;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 1);
 
 		pm.i_setpoint_Q = pm.i_maximal;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 5);
 
 		pm.i_setpoint_Q = iSP;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 4);
 	}
 	while (0);
 }
@@ -111,7 +110,6 @@ SH_DEF(pm_test_current_ramp)
 SH_DEF(pm_test_speed_ramp)
 {
 	float			wSP;
-	TickType_t		xHold = (TickType_t) 300;
 
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
@@ -120,15 +118,19 @@ SH_DEF(pm_test_speed_ramp)
 
 	do {
 		wSP = pm.s_setpoint;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 100);
 
 		pm.s_setpoint = pm.probe_speed_ramp;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 500);
 
 		pm.s_setpoint = wSP;
-		vTaskDelay(xHold);
+		vTaskDelay((TickType_t) 400);
 	}
 	while (0);
+}
+
+SH_DEF(pm_test_thrust_curve)
+{
 }
 
 SH_DEF(hal_PPM_get_PERIOD)

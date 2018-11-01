@@ -55,9 +55,9 @@ void blm_Enable(blm_t *m)
 	double		Kv;
 
 	m->Tsim = 0.; /* Simulation time (Second) */
-        m->dT = 1. / 60E+3; /* PWM period */
+        m->dT = 1. / 30000.; /* PWM period */
 	m->sT = 5E-6; /* Solver step */
-	m->PWM_R = 1400; /* PWM resolution */
+	m->PWM_R = 2800; /* PWM resolution */
 
 	m->VSI[0] = 0;
 	m->VSI[1] = 0;
@@ -69,9 +69,15 @@ void blm_Enable(blm_t *m)
         m->X[3] = 0.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 
+	m->X[5] = 0.; /* Current Sensor A */
+	m->X[6] = 0.; /* Current Sensor B */
+	m->X[7] = 0.; /* Voltage Sensor A */
+	m->X[8] = 0.; /* Voltage Sensor B */
+	m->X[9] = 0.; /* Voltage Sensor C */
+
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 12E-3;
+	m->R = 48E-3;
 
 	/* Iron loss resistance. (Ohm)
 	 * */
@@ -79,16 +85,16 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 10E-6;
-	m->Lq = 11E-6;
+	m->Ld = 25E-6;
+	m->Lq = 35E-6;
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 50.;
+	m->U = 42.;
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 14;
+	m->Zp = 7;
 
 	/* BEMF constant. (Weber)
          * */
@@ -105,6 +111,15 @@ void blm_Enable(blm_t *m)
 	m->M[1] = 0E-5;
 	m->M[2] = 1E-7;
 	m->M[3] = 0E-3;
+
+	/* ADC conversion time.
+	 * */
+	m->T_ADC = 0.714e-6;
+
+	/* Sensor time constant.
+	 * */
+	m->tau_I = 0.6E-6;
+	m->tau_U = 55E-6;
 }
 
 static void
@@ -118,7 +133,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 	R1 = m->R  * (1. + 4E-3 * (X[4] - 20.));
 	E1 = m->E  * (1. - 1E-3 * (X[4] - 20.));
 
-	/* BEMF waveform.
+	/* BEMF waveform distortion.
 	 * */
 	E1 *= 1. + sin(X[3] * 3.) * 0E-2;
 
@@ -162,21 +177,32 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 static void
 blm_Solve(blm_t *m, double dT)
 {
-	double		s1[5], s2[5], x2[5];
+	double		S1[5], S2[5], X2[5], A, B;
 	int		j;
 
 	/* Second-order ODE solver.
 	 * */
 
-	blm_DQ_Equation(m, m->X, s1);
+	blm_DQ_Equation(m, m->X, S1);
 
 	for (j = 0; j < 5; ++j)
-		x2[j] = m->X[j] + s1[j] * dT;
+		X2[j] = m->X[j] + S1[j] * dT;
 
-	blm_DQ_Equation(m, x2, s2);
+	blm_DQ_Equation(m, X2, S2);
 
 	for (j = 0; j < 5; ++j)
-		m->X[j] += (s1[j] + s2[j]) * dT / 2.;
+		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
+
+	/* Sensor transient (exact solution).
+	 * */
+	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &A, &B);
+
+	m->X[5] += (A - m->X[5]) * (1. - exp(- dT / m->tau_I));
+	m->X[6] += (B - m->X[6]) * (1. - exp(- dT / m->tau_I));
+
+	m->X[7] += (m->VSI[0] - m->X[7]) * (1. - exp(- dT / m->tau_U));
+	m->X[8] += (m->VSI[1] - m->X[8]) * (1. - exp(- dT / m->tau_U));
+	m->X[9] += (m->VSI[2] - m->X[9]) * (1. - exp(- dT / m->tau_U));
 }
 
 static void
@@ -200,143 +226,156 @@ blm_Solve_Split(blm_t *m, double dT)
 		(m->X[3] > M_PI) ? m->X[3] - 2. * M_PI : m->X[3];
 }
 
-static void
-blm_Bridge_Sample(blm_t *m)
+static int
+blm_ADC(double u)
 {
-	double		S1, S2, U, Uref, dU;
 	int		ADC;
 
-	/* ADC reference voltage.
-	 * */
-	Uref = 3.3;
+	u += lib_gauss() * 7E-4;
 
-	/* Current sampling.
-	 * */
-	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &S1, &S2);
-
-	/* Output voltage of the current sensor A.
-	 * */
-	U = S1 * 30E-3 + Uref / 2.;
-	dU = lib_gauss() * 3E-3 + 17E-3;
-	U += dU;
-
-	/* ADC conversion.
-	 * */
-	ADC = (int) (U / Uref * 4096);
+	ADC = (int) (u * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_A = (ADC - 2048) * 2.6855E-2;
 
-	/* Output voltage of the current sensor B.
-	 * */
-	U = S2 * 30E-3 + Uref / 2.;
-	dU = lib_gauss() * 3E-3 - 11E-3;
-	U += dU;
-
-	/* ADC conversion.
-	 * */
-	ADC = (int) (U / Uref * 4096);
-	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_B = (ADC - 2048) * 2.6855E-2;
-
-	/* Voltage sampling.
-	 * */
-	S1 = m->U;
-
-	U = S1 * 27. / (470. + 27.);
-	dU = lib_gauss() * 3E-3 + 0E-3;
-	U += dU;
-
-	/* ADC conversion.
-	 * */
-	ADC = (int) (U / Uref * 4096);
-	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
-	m->ADC_U = ADC * 1.4830E-2;
+	return ADC;
 }
 
 static void
-blm_Bridge_Solve(blm_t *m)
+blm_VSI_Sample(blm_t *m, int N)
 {
-	int		temp, Ton[3], pm[3];
-	double		dTIM, dT;
+	const double	range_I = 55.;
+	const double	range_U = 60.;
 
-	dTIM = m->dT / m->PWM_R / 2.;
+	int		ADC;
 
-	Ton[0] = (m->PWM_A < 0) ? 0 : (m->PWM_A > m->PWM_R) ? m->PWM_R : m->PWM_A;
-	Ton[1] = (m->PWM_B < 0) ? 0 : (m->PWM_B > m->PWM_R) ? m->PWM_R : m->PWM_B;
-	Ton[2] = (m->PWM_C < 0) ? 0 : (m->PWM_C > m->PWM_R) ? m->PWM_R : m->PWM_C;
+	if (N == 0) {
 
-	/* Sort Ton values.
+		ADC = blm_ADC(m->X[5] / 2. / range_I + .5);
+		m->ADC_IA = (ADC - 2047) * range_I / 2048.;
+
+		ADC = blm_ADC(m->X[6] / 2. / range_I + .5);
+		m->ADC_IB = (ADC - 2047) * range_I / 2048.;
+	}
+	else if (N == 1) {
+
+		ADC = blm_ADC(m->U / range_U);
+		m->ADC_US = ADC * range_U / 4096.;
+
+		ADC = blm_ADC(m->X[7] / range_U);
+		m->ADC_UA = ADC * range_U / 4096.;
+	}
+	else if (N == 2) {
+
+		ADC = blm_ADC(m->X[8] / range_U);
+		m->ADC_UB = ADC * range_U / 4096.;
+
+		ADC = blm_ADC(m->X[9] / range_U);
+		m->ADC_UC = ADC * range_U / 4096.;
+	}
+}
+
+static void
+blm_VSI_Solve(blm_t *m)
+{
+	int		Tev[5], pm[5], n, k, tmp;
+	double		tTIM, dT;
+
+	tTIM = m->dT / m->PWM_R / 2.;
+
+	/* ADC sampling.
 	 * */
-	pm[0] = 0;
-	pm[1] = 1;
-	pm[2] = 2;
+	Tev[0] = m->PWM_R - (int) (m->T_ADC / tTIM);
+	Tev[1] = m->PWM_R - (int) (2. * m->T_ADC / tTIM);
 
-	if (Ton[pm[0]] < Ton[pm[2]]) {
+	/* FETs switching.
+	 * */
+	Tev[2] = (m->PWM_A < 0) ? 0 : (m->PWM_A > m->PWM_R) ? m->PWM_R : m->PWM_A;
+	Tev[3] = (m->PWM_B < 0) ? 0 : (m->PWM_B > m->PWM_R) ? m->PWM_R : m->PWM_B;
+	Tev[4] = (m->PWM_C < 0) ? 0 : (m->PWM_C > m->PWM_R) ? m->PWM_R : m->PWM_C;
 
-		temp = pm[2];
-		pm[2] = pm[0];
-		pm[0] = temp;
-	}
+	for (n = 0; n < 5; ++n)
+		pm[n] = n;
 
-	if (Ton[pm[0]] < Ton[pm[1]]) {
+	/* Get sorted events.
+	 * */
+	for (n = 0; n < 5; ++n) {
 
-		temp = pm[1];
-		pm[1] = pm[0];
-		pm[0] = temp;
-	}
+		for (k = n + 1; k < 5; ++k) {
 
-	if (Ton[pm[1]] < Ton[pm[2]]) {
+			if (Tev[pm[n]] < Tev[pm[k]]) {
 
-		temp = pm[2];
-		pm[2] = pm[1];
-		pm[1] = temp;
+				tmp = pm[n];
+				pm[n] = pm[k];
+				pm[k] = tmp;
+			}
+		}
 	}
 
 	/* Count Up.
 	 * */
-	dT = dTIM * (m->PWM_R - Ton[pm[0]]);
+	blm_VSI_Sample(m, 0);
+
+	tmp = m->PWM_R;
+
+	for (n = 0; n < 5; ++n) {
+
+		dT = tTIM * (tmp - Tev[pm[n]]);
+		blm_Solve_Split(m, dT);
+
+		if (pm[n] < 2) {
+
+			blm_VSI_Sample(m, pm[n]);
+		}
+		else {
+			m->VSI[pm[n] - 2] = 1;
+
+			/* Distortion.
+			 * */
+			m->X[5] = 0.;
+			m->X[6] = 0.;
+		}
+
+		tmp = Tev[pm[n]];
+	}
+
+	dT = tTIM * (Tev[pm[4]]);
 	blm_Solve_Split(m, dT);
 
-	m->VSI[pm[0]] = 1;
+	/* Keep only three of them.
+	 * */
+	for (n = 0, k = 0; n < 5; ++n) {
 
-	dT = dTIM * (Ton[pm[0]] - Ton[pm[1]]);
-	blm_Solve_Split(m, dT);
+		tmp = pm[n];
 
-	m->VSI[pm[1]] = 1;
+		if (tmp != 0 && tmp != 1) {
 
-	dT = dTIM * (Ton[pm[1]] - Ton[pm[2]]);
-	blm_Solve_Split(m, dT);
-
-	m->VSI[pm[2]] = 1;
-
-	dT = dTIM * (Ton[pm[2]]);
-	blm_Solve_Split(m, dT);
+			pm[k++] = tmp;
+		}
+	}
 
 	/* Count Down.
 	 * */
-	blm_Solve_Split(m, dT);
+	for (n = 2, tmp = 0; n >= 0; --n) {
 
-	m->VSI[pm[2]] = 0;
+		dT = tTIM * (Tev[pm[n]] - tmp);
+		blm_Solve_Split(m, dT);
 
-	dT = dTIM * (Ton[pm[1]] - Ton[pm[2]]);
-	blm_Solve_Split(m, dT);
+		m->VSI[pm[n] - 2] = 0;
 
-	m->VSI[pm[1]] = 0;
+		/* Distortion.
+		 * */
+		m->X[5] = 0.;
+		m->X[6] = 0.;
 
-	dT = dTIM * (Ton[pm[0]] - Ton[pm[1]]);
-	blm_Solve_Split(m, dT);
+		tmp = Tev[pm[n]];
+	}
 
-	m->VSI[pm[0]] = 0;
-
-	dT = dTIM * (m->PWM_R - Ton[pm[0]]);
+	dT = tTIM * (m->PWM_R - Tev[pm[0]]);
 	blm_Solve_Split(m, dT);
 }
 
 void blm_Update(blm_t *m)
 {
-	blm_Bridge_Sample(m);
-	blm_Bridge_Solve(m);
-
+	blm_VSI_Solve(m);
 	m->Tsim += m->dT;
 }
 

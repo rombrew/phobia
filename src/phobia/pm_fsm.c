@@ -16,20 +16,83 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libm.h"
 #include "pm.h"
-#include "pm_m.h"
+
+static float
+pm_DFT_const_R(const float DFT[8])
+{
+	float			D, X, Y, E, R = 0.;
+
+	D = m_sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
+
+	if (D > 0.f) {
+
+		X = DFT[2] / D;
+		Y = DFT[3] / D;
+
+		E = DFT[0] * X + DFT[1] * Y;
+		R = E / D;
+	}
+
+	return R;
+}
+
+static void
+pm_DFT_eigenvalues(float X, float Y, float M, float DQ[4])
+{
+	float		B, D, la1, la2;
+
+	B = X + Y;
+	D = B * B - 4.f * (X * Y - M * M);
+
+	if (D > 0.f) {
+
+		D = m_sqrtf(D);
+		la1 = (B - D) / 2.f;
+		la2 = (B + D) / 2.f;
+
+		B = Y - la1;
+		D = m_sqrtf(B * B + M * M);
+
+		DQ[0] = la1;
+		DQ[1] = la2;
+		DQ[2] = B / D;
+		DQ[3] = - M / D;
+	}
+}
+
+static void
+pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[4])
+{
+	float			DX, DY, WR;
+	float			LX, LY, LM;
+
+	WR = 2.f * M_PI_F * freq_hz;
+
+	DX = (DFT[0] * DFT[0] + DFT[1] * DFT[1]) * WR;
+	DY = (DFT[4] * DFT[4] + DFT[5] * DFT[5]) * WR;
+
+	LX = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / DX;
+	LY = (DFT[6] * DFT[5] - DFT[7] * DFT[4]) / DY;
+	LM = (DFT[6] * DFT[1] - DFT[7] * DFT[0]) / DX;
+	LM += (DFT[2] * DFT[5] - DFT[3] * DFT[4]) / DY;
+	LM /= 2.f;
+
+	pm_DFT_eigenvalues(LX, LY, LM, LDQ);
+}
 
 static void
 pm_fsm_current_halt(pmc_t *pm, float i_halt)
 {
-	if (pm_fabsf(pm->fb_current_A) > i_halt) {
+	if (m_fabsf(pm->fb_current_A) > i_halt) {
 
 		pm->fail_reason = PM_ERROR_OVER_CURRENT;
 		pm->fsm_state = PM_STATE_HALT;
 		pm->fsm_phase = 0;
 	}
 
-	if (pm_fabsf(pm->fb_current_B) > i_halt) {
+	if (m_fabsf(pm->fb_current_B) > i_halt) {
 
 		pm->fail_reason = PM_ERROR_OVER_CURRENT;
 		pm->fsm_state = PM_STATE_HALT;
@@ -87,9 +150,9 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->adjust_IA[0] += - pm->temporal[0];
 			pm->adjust_IB[0] += - pm->temporal[1];
 
-			if (pm_fabsf(pm->adjust_IA[0]) > pm->fault_current_tolerance)
+			if (m_fabsf(pm->adjust_IA[0]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_ZERO_DRIFT_FAULT;
-			else if (pm_fabsf(pm->adjust_IB[0]) > pm->fault_current_tolerance)
+			else if (m_fabsf(pm->adjust_IB[0]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_ZERO_DRIFT_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -195,12 +258,12 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 		case 4:
 			bm = 0;
 
-			bm |= (pm_fabsf(pm->temporal[0] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 1 : (pm_fabsf(pm->temporal[0]) < pm->fault_voltage_tolerance) ? 0 : 0x10;
-			bm |= (pm_fabsf(pm->temporal[1] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 2 : (pm_fabsf(pm->temporal[1]) < pm->fault_voltage_tolerance) ? 0 : 0x20;
-			bm |= (pm_fabsf(pm->temporal[2] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 4 : (pm_fabsf(pm->temporal[2]) < pm->fault_voltage_tolerance) ? 0 : 0x40;
+			bm |= (m_fabsf(pm->temporal[0] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
+				? 1 : (m_fabsf(pm->temporal[0]) < pm->fault_voltage_tolerance) ? 0 : 0x10;
+			bm |= (m_fabsf(pm->temporal[1] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
+				? 2 : (m_fabsf(pm->temporal[1]) < pm->fault_voltage_tolerance) ? 0 : 0x20;
+			bm |= (m_fabsf(pm->temporal[2] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
+				? 4 : (m_fabsf(pm->temporal[2]) < pm->fault_voltage_tolerance) ? 0 : 0x40;
 
 			pm->self_BM[pm->fsm_phase_2] = bm;
 
@@ -319,17 +382,17 @@ pm_fsm_state_sampling_accuracy_self_test(pmc_t *pm)
 
 				pm->temporal[0] = pm->temporal[0] / pm->tm_end;
 				pm->temporal[1] = pm->temporal[1] / pm->tm_end;
-				pm->temporal[2] = pm_sqrtf(pm->temporal[2] / pm->tm_end);
-				pm->temporal[3] = pm_sqrtf(pm->temporal[3] / pm->tm_end);
+				pm->temporal[2] = m_sqrtf(pm->temporal[2] / pm->tm_end);
+				pm->temporal[3] = m_sqrtf(pm->temporal[3] / pm->tm_end);
 
 				pm->fsm_phase = 4;
 			}
 			break;
 
 		case 4:
-			if (pm_fabsf(pm->temporal[2]) > pm->fault_current_tolerance)
+			if (m_fabsf(pm->temporal[2]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
-			else if (pm_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
+			else if (m_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
 				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
 
 			switch (pm->fsm_phase_2) {
@@ -397,7 +460,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			uMAX = (2.f / 3.f) * pm->const_lpf_U;
 
-			if (pm_fabsf(uX) > uMAX) {
+			if (m_fabsf(uX) > uMAX) {
 
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -425,9 +488,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->adjust_IA[1] *= mean / pm->probe_DFT[0];
 			pm->adjust_IB[1] *= mean / pm->probe_DFT[1];
 
-			if (pm_fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance)
+			if (m_fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance)
 				pm->fail_reason = PM_ERROR_ADJUST_TOLERANCE_FAULT;
-			else if (pm_fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance)
+			else if (m_fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance)
 				pm->fail_reason = PM_ERROR_ADJUST_TOLERANCE_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -435,7 +498,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_hold)
+	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_hold)
 			+ pm->fault_current_halt_level);
 }
 
@@ -486,7 +549,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			uMAX = (2.f / 3.f) * pm->const_lpf_U;
 
-			if (pm_fabsf(uX) > uMAX || pm_fabsf(uY) > uMAX) {
+			if (m_fabsf(uX) > uMAX || m_fabsf(uY) > uMAX) {
 
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -517,7 +580,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_hold)
+	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_hold)
 			+ pm->fault_current_halt_level);
 }
 
@@ -551,7 +614,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			imp_Z = (pm->const_Ld < pm->const_Lq) ? pm->const_Ld : pm->const_Lq;
 			imp_Z = 2.f * M_PI_F * imp_Z * pm->probe_freq_sine_hz;
 			imp_Z = pm->const_R * pm->const_R + imp_Z * imp_Z;
-			pm->temporal[3] = pm->probe_current_sine * pm_sqrtf(imp_Z);
+			pm->temporal[3] = pm->probe_current_sine * m_sqrtf(imp_Z);
 
 			if (pm->probe_current_hold_Q != 0.f) {
 
@@ -588,7 +651,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 			pm_voltage_control(pm, uX, uY);
 
-			pm_rotf(pm->temporal, pm->temporal[2], pm->temporal);
+			m_rotf(pm->temporal, pm->temporal[2], pm->temporal);
 
 			pm->tm_value++;
 
@@ -624,7 +687,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, pm_fabsf(pm->probe_current_sine)
+	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_sine)
 			+ pm->fault_current_halt_level);
 }
 
@@ -682,7 +745,7 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 
 		case 2:
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-			
+
 			pm->proc_set_Z(0);
 
 			pm->forced_setpoint = 0.f;

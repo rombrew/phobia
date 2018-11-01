@@ -16,22 +16,24 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _H_PM_M_
-#define _H_PM_M_
+#ifndef _H_LIB_M_
+#define _H_LIB_M_
 
-#define M_PI_F			3.14159265f
 #define M_EPS_F			1.2E-7f
+#define M_PI_F			3.14159265f
+#define M_LOG2_F		0.69314718f
 
-inline float pm_fabsf(float x) { return __builtin_fabsf(x); }
-inline float pm_sqrtf(float x) { return __builtin_sqrtf(x); }
+inline float m_fabsf(float x) { return __builtin_fabsf(x); }
+inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 
-void pm_rotf(float y[2], float r, const float x[2]);
-float pm_atan2f(float y, float x);
-float pm_sinf(float x);
-float pm_cosf(float x);
+void m_rotf(float y[2], float r, const float x[2]);
+float m_atan2f(float y, float x);
+float m_sinf(float x);
+float m_cosf(float x);
+float m_log2f(float x);
+float m_logf(float x);
+float m_exp2f(float x);
+float m_expf(float x);
 
-float pm_DFT_const_R(const float DFT[8]);
-void pm_DFT_const_L(const float DFT[8], float freq_hz, float LDQ[3]);
-
-#endif /* _H_PM_MATH_ */
+#endif /* _H_LIB_M_ */
 

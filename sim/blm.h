@@ -35,11 +35,11 @@ typedef struct {
 	 * */
 	int		VSI[3];
 
-	/* Motor variabes.
+	/* Satate variabes.
 	 * */
-	double		X[5];
+	double		X[10];
 
-	/* Constants.
+	/* Motor constants.
 	 * */
 	double		R;
 	double		Q;
@@ -51,11 +51,17 @@ typedef struct {
 	double		J;
 	double		M[4];
 
+	/* Sensor constants.
+	 * */
+	double		T_ADC;
+	double		tau_I;
+	double		tau_U;
+
 	/* ADC result (Output).
 	 * */
-	float		ADC_A;
-	float		ADC_B;
-	float		ADC_U;
+	float		ADC_IA;
+	float		ADC_IB;
+	float		ADC_US;
 
 	float		ADC_UA;
 	float		ADC_UB;

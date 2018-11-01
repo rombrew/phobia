@@ -16,8 +16,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libm.h"
 #include "pm.h"
-#include "pm_m.h"
 
 void pm_config_default(pmc_t *pm)
 {
@@ -66,8 +66,8 @@ void pm_config_default(pmc_t *pm)
 	pm->vsi_gain_LP = 1E-1f;
 	pm->vsi_gain_LW = 5E-1f;
 
-	pm->forced_hold_D = 20.f;
-	pm->forced_accel = 5E+3f;
+	pm->forced_hold_D = 10.f;
+	pm->forced_accel = 3E+3f;
 
 	pm->flux_gain_LP = 1E-1f;
 	pm->flux_gain_DA = 5E-1f;
@@ -76,8 +76,8 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_low_unlock = .1f;
-	pm->flux_bemf_low_lock = .3f;
+	pm->flux_bemf_low_unlock = .2f;
+	pm->flux_bemf_low_lock = .5f;
 	pm->flux_bemf_high = 1.f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
@@ -157,7 +157,7 @@ pm_solve_2(pmc_t *pm, float X[5])
 
 	X2[0] = X[0] + D1[0] * dT;
 	X2[1] = X[1] + D1[1] * dT;
-	pm_rotf(X2 + 2, D1[2] * dT, X + 2);
+	m_rotf(X2 + 2, D1[2] * dT, X + 2);
 	X2[4] = X[4];
 
 	pm_equation_3(pm, D2, X2);
@@ -165,7 +165,7 @@ pm_solve_2(pmc_t *pm, float X[5])
 	dT *= .5f;
 	X[0] += (D1[0] + D2[0]) * dT;
 	X[1] += (D1[1] + D2[1]) * dT;
-	pm_rotf(X + 2, (D1[2] + D2[2]) * dT, X + 2);
+	m_rotf(X + 2, (D1[2] + D2[2]) * dT, X + 2);
 }
 
 static void
@@ -224,7 +224,7 @@ pm_forced_update(pmc_t *pm)
 
 	X[4] = (X[4] < wSP - dS) ? X[4] + dS : (X[4] > wSP + dS) ? X[4] - dS : wSP;
 
-	pm_rotf(X + 2, X[4] * pm->dT, X + 2);
+	m_rotf(X + 2, X[4] * pm->dT, X + 2);
 }
 
 static void
@@ -256,15 +256,15 @@ pm_flux_update(pmc_t *pm)
 
 		dR = pm->flux_gain_DP * eR;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-		pm_rotf(X + 2, dR, X + 2);
+		m_rotf(X + 2, dR, X + 2);
 
-		qS = pm_fabsf(X[4] * pm->const_E) / (.57735027f * pm->const_lpf_U);
+		qS = m_fabsf(X[4] * pm->const_E) / (.57735027f * pm->const_lpf_U);
 		qS = (qS > 1.f) ? 1.f : qS;
 
 		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
 		X[4] += dR;
 
-		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_high) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_high) {
 
 			pm->flux_drift_Q += pm->flux_gain_QZ * (eR + eQ);
 		}
@@ -302,7 +302,7 @@ pm_hfi_update(pmc_t *pm)
 	eR = pm->hfi_CS[1] * eQ;
 	dR = pm->hfi_gain_P * eR;
 	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-	pm_rotf(X + 2, dR, X + 2);
+	m_rotf(X + 2, dR, X + 2);
 
 	X[4] += pm->hfi_gain_S * eR;
 
@@ -396,8 +396,8 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
-				&& pm_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
+				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
@@ -413,7 +413,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->flux_X[3];
 		X[4] = pm->flux_X[4];
 
-		if (pm_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
+		/*if (m_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
 
 			if (pm->config_HALL != PM_HALL_DISABLED) {
 
@@ -438,7 +438,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->forced_X[3] = X[3];
 				pm->forced_X[4] = X[4];
 			}
-		}
+		}*/
 	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
@@ -451,7 +451,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (pm_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 
@@ -700,7 +700,7 @@ pm_current_control(pmc_t *pm)
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
 		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
-		pm_rotf(pm->hfi_CS, temp * pm->dT, pm->hfi_CS);
+		m_rotf(pm->hfi_CS, temp * pm->dT, pm->hfi_CS);
 
 		eD += pm->hfi_CS[1] * pm->hfi_swing_D;
 	}
@@ -781,7 +781,7 @@ pm_position_control(pmc_t *pm)
 {
 /*	float		dX, dY, eP;
 
-	pm_rotf(pm->p_set_point, pm->p_set_point_s * pm->dT, pm->p_set_point);
+	m_rotf(pm->p_set_point, pm->p_set_point_s * pm->dT, pm->p_set_point);
 
 	if (pm->lu_X[2] < 0.f) {
 

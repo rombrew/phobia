@@ -145,7 +145,7 @@ void taskINIT(void *pData)
 		 * */
 
 		hal.USART_baud_rate = 57600;
-		hal.PWM_frequency = 60000.f;
+		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 200;
 		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_current_shunt_resistance = 394E-6f;
