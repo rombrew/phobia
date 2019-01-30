@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
@@ -27,7 +9,7 @@
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
-#define TIM_ADVANCE			24
+#define TIM_ADC_ADVANCE			24
 
 void irqTIM1_UP_TIM10() { }
 
@@ -48,10 +30,9 @@ PWM_calculate_D()
 {
 	int		D;
 
-	D = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f);
+	D = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f + .5f);
 	D = (D < 127) ? D : 127;
 	hal.PWM_deadtime = (float) D * 1000000000.f / (float) CLOCK_TIM1_HZ;
-	hal.PWM_deadtime_tik = D;
 
 	return D;
 }
@@ -86,7 +67,7 @@ void PWM_startup()
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-	TIM1->CCR4 = R - TIM_ADVANCE;
+	TIM1->CCR4 = R - TIM_ADC_ADVANCE;
 	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | D;
 
 	/* Start TIM1.
@@ -119,7 +100,7 @@ void PWM_set_configuration()
 	D = PWM_calculate_D();
 
 	TIM1->ARR = R;
-	TIM1->CCR4 = R - TIM_ADVANCE;
+	TIM1->CCR4 = R - TIM_ADC_ADVANCE;
 
 	MODIFY_REG(TIM1->BDTR, 0xFF, D);
 }

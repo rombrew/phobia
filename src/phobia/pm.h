@@ -1,25 +1,8 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef _H_PM_
 #define _H_PM_
 
 #define PM_CONFIG_ABC(pm)			(pm)->config_ABC
+#define PM_CONFIG_TVSE(pm)			(pm)->config_TVSE
 
 #define PM_SFI(s)				#s
 
@@ -35,18 +18,14 @@ enum {
 };
 
 enum {
-	PM_HALL_DISABLED			= 0,
-	PM_HALL_ENABLED
+	PM_DISABLED				= 0,
+	PM_ENABLED
 };
 
 enum {
-	PM_HFI_DISABLED				= 0,
-	PM_HFI_ENABLED
-};
-
-enum {
-	PM_LOOP_CURRENT_CONTROL			= 0,
-	PM_LOOP_SPEED_CONTROL,
+	PM_LOOP_DRIVE_CURRENT			= 0,
+	PM_LOOP_DRIVE_SPEED,
+	PM_LOOP_RECTIFIER_VOLTAGE,
 };
 
 enum {
@@ -61,8 +40,8 @@ enum {
 enum {
 	PM_STATE_IDLE				= 0,
 	PM_STATE_ZERO_DRIFT,
-	PM_STATE_POWER_STAGE_SELF_TEST,
-	PM_STATE_SAMPLING_ACCURACY_SELF_TEST,
+	PM_STATE_SELF_TEST_POWER_STAGE,
+	PM_STATE_SELF_TEST_SAMPLING_ACCURACY,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
@@ -80,10 +59,9 @@ enum {
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERORR_POWER_STAGE_FAULT,
-	PM_ERROR_SAMPLING_ACCURACY_FAULT,
+	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_OVER_CURRENT,
-	PM_ERROR_ADJUST_TOLERANCE_FAULT,
 	PM_ERROR_LU_RESIDUAL_UNSTABLE,
 	PM_ERROR_LU_INVALID_OPERATION,
 };
@@ -111,17 +89,17 @@ typedef struct {
 	float		freq_hz;
 	float		dT;
 
-	int		pwm_resolution;
-	int		pwm_compensation;
-	int		pwm_minimal_pulse;
-	int		pwm_silence_gap;
+	int		dc_resolution;
+	int		dc_minimal;
+	int		dc_clearance;
 
 	int		fail_reason;
 	int		self_BM[8];
-	float		self_SA[8];
+	float		self_RMS[2];
 
 	int		config_ABC;
 	int		config_LDQ;
+	int		config_TVSE;
 
 	int		config_HALL;
 	int		config_HFI;
@@ -158,6 +136,8 @@ typedef struct {
 	int		fb_hall_B;
 	int		fb_hall_C;
 
+	float		probe_fb_X;
+	float		probe_fb_Y;
 	float		probe_current_hold;
 	float		probe_current_hold_Q;
 	float		probe_current_sine;
@@ -176,6 +156,10 @@ typedef struct {
 	float		fault_adjust_tolerance;
 	float		fault_flux_residual_maximal;
 
+	int		vsi_clamp_to_GND;
+	int		vsi_clean_A;
+	int		vsi_clean_B;
+	int		vsi_clean_C;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_lpf_D;
@@ -183,10 +167,13 @@ typedef struct {
 	float		vsi_lpf_watt;
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
-	int		vsi_clamp_to_null;
 
-	float		lu_fb_X;
-	float		lu_fb_Y;
+	float		vsi_tau[6];
+	float		vsi_inner[9];
+	float		vsi_A;
+	float		vsi_B;
+	float		vsi_C;
+
 	float		lu_X[5];
 	int		lu_mode;
 	int		lu_revol;

@@ -43,9 +43,9 @@ OBJS    = freertos/heap_4.o \
 	  hal/ppm.o \
 	  hal/pwm.o \
 	  hal/usart.o \
+	  phobia/libm.o \
 	  phobia/pm.o \
 	  phobia/pm_fsm.o \
-	  phobia/pm_m.o \
 	  flash.o \
 	  ifcan.o \
 	  libc.o \

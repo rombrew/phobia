@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef _H_HAL_
 #define _H_HAL_
 
@@ -52,10 +34,18 @@ enum {
 };
 
 enum {
+	HALL_DISABLED			= 0,
+	HALL_SENSOR,
+	HALL_DRIVE_QEP,
+};
+
+enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
-	PPM_ENCODER
+	PPM_CONTROL_QEP,
+	PPM_I2C_BUS,
+	PPM_DATA_USART,
 };
 
 typedef struct {
@@ -66,7 +56,6 @@ typedef struct {
 	float		PWM_frequency;
 	int		PWM_resolution;
 	float		PWM_deadtime;
-	int		PWM_deadtime_tik;
 
 	float		ADC_reference_voltage;
 	float		ADC_current_shunt_resistance;
@@ -88,6 +77,9 @@ typedef struct {
 		float		TEMP[2];
 	}
 	ADC_const;
+
+	int		HALL_mode;
+	int		HALL_sensor_state;
 
 	unsigned long	CAN_msg_ID;
 	int		CAN_msg_len;

@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <stddef.h>
 
 #include "freertos/FreeRTOS.h"
@@ -26,14 +8,6 @@
 #include "regfile.h"
 #include "shell.h"
 #include "teli.h"
-
-void pm_print_fail_reason()
-{
-	if (pm.fail_reason != PM_OK) {
-
-		printf("%s" EOL, pm_strerror(pm.fail_reason));
-	}
-}
 
 int pm_wait_for_IDLE()
 {
@@ -46,21 +20,6 @@ int pm_wait_for_IDLE()
 	while (1);
 
 	return pm.fail_reason;
-}
-
-void pm_ppm_control_tune()
-{
-	float			radps, rpm;
-
-	if (ap.ppm_reg_ID == ID_PM_S_SETPOINT_RPM) {
-
-		if (pm.const_E != 0.f) {
-
-			radps = (2.f / 3.f) * pm.const_lpf_U / pm.const_E;
-			rpm = 5.513289f / (radps * pm.const_Zp);
-			ap.ppm_control_range[1] = rpm;
-		}
-	}
 }
 
 SH_DEF(pm_config_default_1)
@@ -77,11 +36,6 @@ SH_DEF(pm_config_tune_current_loop_1)
 		return;
 
 	pm_config_tune_current_loop(&pm);
-}
-
-SH_DEF(pm_fail_reason)
-{
-	pm_print_fail_reason();
 }
 
 SH_DEF(pm_probe_base)
@@ -101,10 +55,10 @@ SH_DEF(pm_probe_base)
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		/*pm_fsm_req(&pm, PM_STATE_POWER_STAGE_SELF_TEST);
+		pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
 
 		if (pm_wait_for_IDLE() != PM_OK)
-			break;*/
+			break;
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 
@@ -135,7 +89,7 @@ SH_DEF(pm_probe_base)
 	}
 	while (0);
 
-	pm_print_fail_reason();
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
 SH_DEF(pm_probe_spinup)
@@ -167,32 +121,6 @@ SH_DEF(pm_probe_spinup)
 	}
 	while (0);
 
-	pm_print_fail_reason();
-}
-
-SH_DEF(pm_fsm_req_lu_initiate)
-{
-	do {
-		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
-	}
-	while (0);
-
-	pm_print_fail_reason();
-}
-
-SH_DEF(pm_fsm_req_lu_shutdown)
-{
-	do {
-		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
-
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
-	}
-	while (0);
-
-	pm_print_fail_reason();
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 

@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "freertos/FreeRTOS.h"
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
@@ -25,7 +7,6 @@
 typedef struct {
 
 	SemaphoreHandle_t	xSem;
-	int			channel_sel;
 }
 HAL_ADC_t;
 
@@ -33,8 +14,7 @@ static HAL_ADC_t		hal_ADC;
 
 void irqADC()
 {
-	float			fADC;
-	int			xADC, xCH;
+	int			xADC;
 
 	if (ADC2->SR & ADC_SR_JEOC) {
 
@@ -51,34 +31,13 @@ void irqADC()
 		hal.ADC_voltage_U = (float) (xADC) * hal.ADC_const.GU;
 
 		xADC = (int) ADC3->JDR2;
-		fADC = (float) (xADC) * hal.ADC_const.GU;
+		hal.ADC_voltage_A = (float) (xADC) * hal.ADC_const.GU;
 
-		switch (hal_ADC.channel_sel) {
+		xADC = (int) ADC2->JDR3;
+		hal.ADC_voltage_B = (float) (xADC) * hal.ADC_const.GU;
 
-			case 0:
-				xCH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B);
-				hal.ADC_voltage_A = fADC;
-				hal_ADC.channel_sel = 1;
-				break;
-
-			case 1:
-				xCH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C);
-				hal.ADC_voltage_B = fADC;
-				hal_ADC.channel_sel = 2;
-				break;
-
-			case 2:
-				xCH = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A);
-				hal.ADC_voltage_C = fADC;
-				hal_ADC.channel_sel = 0;
-				break;
-
-			default:
-				hal_ADC.channel_sel = 0;
-				break;
-		}
-
-		MODIFY_REG(ADC3->JSQR, 0x1F << 15, xCH << 15);
+		xADC = (int) ADC3->JDR3;
+		hal.ADC_voltage_C = (float) (xADC) * hal.ADC_const.GU;
 
 		ADC_IRQ();
 	}
@@ -144,9 +103,10 @@ void ADC_startup()
 	ADC2->CR2 = ADC_CR2_JEXTEN_0;
 	ADC2->SMPR1 = 0;
 	ADC2->SMPR2 = 0;
-	ADC2->JSQR = ADC_JSQR_JL_0
-		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 10)
-		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 15);
+	ADC2->JSQR = ADC_JSQR_JL_1
+		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 5)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 10)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B) << 15);
 
 	/* Configure ADC3.
 	 * */
@@ -154,9 +114,10 @@ void ADC_startup()
 	ADC3->CR2 = ADC_CR2_JEXTEN_0;
 	ADC3->SMPR1 = 0;
 	ADC3->SMPR2 = 0;
-	ADC3->JSQR = ADC_JSQR_JL_0
-		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 10)
-		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 15);
+	ADC3->JSQR = ADC_JSQR_JL_1
+		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 5)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 10)
+		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C) << 15);
 
 	/* Update CONST.
 	 * */

@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <stdlib.h>
 #include <math.h>
 
@@ -62,26 +44,24 @@ void blm_Enable(blm_t *m)
 	m->VSI[0] = 0;
 	m->VSI[1] = 0;
 	m->VSI[2] = 0;
+	m->surge_F = 0;
 
         m->X[0] = 0.; /* Axis D current (Ampere) */
 	m->X[1] = 0.; /* Axis Q current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
         m->X[3] = 0.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
+	m->X[5] = 0.; /* Energy consumption (Joule) */
 
-	m->X[5] = 0.; /* Current Sensor A */
-	m->X[6] = 0.; /* Current Sensor B */
-	m->X[7] = 0.; /* Voltage Sensor A */
-	m->X[8] = 0.; /* Voltage Sensor B */
-	m->X[9] = 0.; /* Voltage Sensor C */
+	m->X[6] = 0.; /* Current Sensor A */
+	m->X[7] = 0.; /* Current Sensor B */
+	m->X[8] = 0.; /* Voltage Sensor A */
+	m->X[9] = 0.; /* Voltage Sensor B */
+	m->X[10] = 0.; /* Voltage Sensor C */
 
 	/* Winding resistance. (Ohm)
          * */
 	m->R = 48E-3;
-
-	/* Iron loss resistance. (Ohm)
-	 * */
-	m->Q = 11.;
 
 	/* Winding inductance. (Henry)
          * */
@@ -109,17 +89,17 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 2E-3;
 	m->M[1] = 0E-5;
-	m->M[2] = 1E-7;
+	m->M[2] = 5E-7;
 	m->M[3] = 0E-3;
 
 	/* ADC conversion time.
 	 * */
-	m->T_ADC = 0.714e-6;
+	m->T_ADC = 71E-8;
 
 	/* Sensor time constant.
 	 * */
-	m->tau_I = 0.6E-6;
-	m->tau_U = 55E-6;
+	m->tau_I = 63E-8;
+	m->tau_U = 22E-6;
 }
 
 static void
@@ -144,6 +124,10 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 	UB = (m->VSI[1] - Q) * m->U;
 
 	blm_AB_DQ(X[3], UA, UB, &UD, &UQ);
+
+	/* Energy consumption equation.
+	 * */
+	dX[5] = 1.5 * (X[0] * UD + X[1] * UQ);
 
 	/* Electrical equations.
 	 * */
@@ -177,7 +161,7 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 static void
 blm_Solve(blm_t *m, double dT)
 {
-	double		S1[5], S2[5], X2[5], A, B;
+	double		S1[6], S2[6], X2[6], A, B;
 	int		j;
 
 	/* Second-order ODE solver.
@@ -185,24 +169,24 @@ blm_Solve(blm_t *m, double dT)
 
 	blm_DQ_Equation(m, m->X, S1);
 
-	for (j = 0; j < 5; ++j)
+	for (j = 0; j < 6; ++j)
 		X2[j] = m->X[j] + S1[j] * dT;
 
 	blm_DQ_Equation(m, X2, S2);
 
-	for (j = 0; j < 5; ++j)
+	for (j = 0; j < 6; ++j)
 		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
 
 	/* Sensor transient (exact solution).
 	 * */
 	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &A, &B);
 
-	m->X[5] += (A - m->X[5]) * (1. - exp(- dT / m->tau_I));
-	m->X[6] += (B - m->X[6]) * (1. - exp(- dT / m->tau_I));
+	m->X[6] += (A - m->X[6]) * (1. - exp(- dT / m->tau_I));
+	m->X[7] += (B - m->X[7]) * (1. - exp(- dT / m->tau_I));
 
-	m->X[7] += (m->VSI[0] - m->X[7]) * (1. - exp(- dT / m->tau_U));
-	m->X[8] += (m->VSI[1] - m->X[8]) * (1. - exp(- dT / m->tau_U));
-	m->X[9] += (m->VSI[2] - m->X[9]) * (1. - exp(- dT / m->tau_U));
+	m->X[8] += (m->VSI[0] - m->X[8]) * (1. - exp(- dT / m->tau_U));
+	m->X[9] += (m->VSI[1] - m->X[9]) * (1. - exp(- dT / m->tau_U));
+	m->X[10] += (m->VSI[2] - m->X[10]) * (1. - exp(- dT / m->tau_U));
 }
 
 static void
@@ -210,20 +194,46 @@ blm_Solve_Split(blm_t *m, double dT)
 {
 	double		sT = m->sT;
 
-	/* Split the long interval.
-	 * */
-	while (dT > sT) {
+	if (dT > 0.) {
 
-		blm_Solve(m, sT);
-		dT -= sT;
+		if (m->surge_F == 2) {
+
+			/* Distortion of A.
+			 * */
+			m->X[6] = 0.;
+			m->surge_F = 0;
+		}
+
+		if (m->surge_F == 3) {
+
+			/* Distortion of B.
+			 * */
+			m->X[7] = 0.;
+			m->surge_F = 0;
+		}
+
+		if (m->surge_F == 4) {
+
+			/* Distortion of C.
+			 * */
+			m->surge_F = 0;
+		}
+
+		/* Split the long interval.
+		 * */
+		while (dT > sT) {
+
+			blm_Solve(m, sT);
+			dT -= sT;
+		}
+
+		blm_Solve(m, dT);
+
+		/* Wrap the angular position.
+		 * */
+		m->X[3] = (m->X[3] < - M_PI) ? m->X[3] + 2. * M_PI :
+			(m->X[3] > M_PI) ? m->X[3] - 2. * M_PI : m->X[3];
 	}
-
-	blm_Solve(m, dT);
-
-	/* Wrap the angular position.
-	 * */
-	m->X[3] = (m->X[3] < - M_PI) ? m->X[3] + 2. * M_PI :
-		(m->X[3] > M_PI) ? m->X[3] - 2. * M_PI : m->X[3];
 }
 
 static int
@@ -249,10 +259,10 @@ blm_VSI_Sample(blm_t *m, int N)
 
 	if (N == 0) {
 
-		ADC = blm_ADC(m->X[5] / 2. / range_I + .5);
+		ADC = blm_ADC(m->X[6] / 2. / range_I + .5);
 		m->ADC_IA = (ADC - 2047) * range_I / 2048.;
 
-		ADC = blm_ADC(m->X[6] / 2. / range_I + .5);
+		ADC = blm_ADC(m->X[7] / 2. / range_I + .5);
 		m->ADC_IB = (ADC - 2047) * range_I / 2048.;
 	}
 	else if (N == 1) {
@@ -260,15 +270,15 @@ blm_VSI_Sample(blm_t *m, int N)
 		ADC = blm_ADC(m->U / range_U);
 		m->ADC_US = ADC * range_U / 4096.;
 
-		ADC = blm_ADC(m->X[7] / range_U);
+		ADC = blm_ADC(m->X[8] / range_U);
 		m->ADC_UA = ADC * range_U / 4096.;
 	}
 	else if (N == 2) {
 
-		ADC = blm_ADC(m->X[8] / range_U);
+		ADC = blm_ADC(m->X[9] / range_U);
 		m->ADC_UB = ADC * range_U / 4096.;
 
-		ADC = blm_ADC(m->X[9] / range_U);
+		ADC = blm_ADC(m->X[10] / range_U);
 		m->ADC_UC = ADC * range_U / 4096.;
 	}
 }
@@ -323,15 +333,11 @@ blm_VSI_Solve(blm_t *m)
 
 		if (pm[n] < 2) {
 
-			blm_VSI_Sample(m, pm[n]);
+			blm_VSI_Sample(m, pm[n] + 1);
 		}
 		else {
 			m->VSI[pm[n] - 2] = 1;
-
-			/* Distortion.
-			 * */
-			m->X[5] = 0.;
-			m->X[6] = 0.;
+			m->surge_F = pm[n];
 		}
 
 		tmp = Tev[pm[n]];
@@ -360,17 +366,18 @@ blm_VSI_Solve(blm_t *m)
 		blm_Solve_Split(m, dT);
 
 		m->VSI[pm[n] - 2] = 0;
-
-		/* Distortion.
-		 * */
-		m->X[5] = 0.;
-		m->X[6] = 0.;
+		m->surge_F = pm[n];
 
 		tmp = Tev[pm[n]];
 	}
 
 	dT = tTIM * (m->PWM_R - Tev[pm[0]]);
 	blm_Solve_Split(m, dT);
+
+	/* Power.
+	 * */
+	m->iP = m->X[5] / m->dT;
+	m->X[5] = 0.;
 }
 
 void blm_Update(blm_t *m)

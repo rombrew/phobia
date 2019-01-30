@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <stddef.h>
 
 #include "freertos/FreeRTOS.h"
@@ -96,17 +78,17 @@ SH_DEF(ap_hx711_halt)
 
 SH_DEF(ap_hx711_drift)
 {
-	float			drift = 0.f;
+	float			S = 0.f;
 	int			J, N = 100;
 
 	for (J = 0; J < N; ++J) {
 
 		vTaskDelay((TickType_t) 10);
 
-		drift += ap.load_thrust_gram;
+		S += ap.load_thrust_gram;
 	}
 
-	ap.load_transform[0] += - drift / (float) N;
+	ap.load_transform[0] += - S / (float) N;
 	reg_format(&regfile[ID_AP_LOAD_TRANSFORM_0]);
 }
 

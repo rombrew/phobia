@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -102,16 +84,18 @@ sim_Tel(float *pTel)
 	pTel[20] = pm.flux_residual_Q;
 	pTel[21] = pm.flux_residual_lpf;
 
-	/* Informational.
+	/* Power (Watt).
 	 * */
-	pTel[25] = pm.vsi_lpf_watt;
+	pTel[22] = m.iP;
+	pTel[23] = pm.vsi_lpf_watt;
 
-	pTel[26] = pm.lu_mode;
-	pTel[27] = pm.const_R;
-
-	/* Flux speed.
+	/*
 	 * */
-	pTel[28] = pm.flux_X[4] * 30. / M_PI / m.Zp;
+	pTel[24] = pm.vsi_clamp_to_GND;
+	pTel[25] = pm.vsi_clean_A;
+	pTel[26] = pm.vsi_clean_B;
+	pTel[27] = pm.vsi_clean_C;
+	pTel[28] = pm.lu_mode;
 }
 
 static void
@@ -171,13 +155,12 @@ sim_Script(FILE *fdTel)
 {
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_resolution = m.PWM_R;
-	pm.pwm_compensation = 10;
+	pm.dc_resolution = m.PWM_R;
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm.pwm_minimal_pulse = 50;
-	pm.pwm_silence_gap = 250;
+	pm.dc_minimal = 50;
+	pm.dc_clearance = 350;
 	pm.fb_current_clamp = 50.f;
 
 	pm_config_default(&pm);
@@ -214,14 +197,14 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .5, 0);
 
-	//m.Ld *= (1. - 20E-2);
-
-	pm.s_setpoint = 200.f;
+	pm.s_setpoint = 9000.f;
 	sim_F(fdTel, .5, 0);
 
+	pm.vsi_clamp_to_GND = 1;
+
 	sim_F(fdTel, .5, 0);
 
-	pm.s_setpoint = 6000.f;
+	pm.s_setpoint = -2000.f;
 	sim_F(fdTel, .5, 0);
 
 	/*pm.s_setpoint = -30000.f;

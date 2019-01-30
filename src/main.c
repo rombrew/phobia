@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <stddef.h>
 #include <stdarg.h>
 
@@ -118,6 +100,24 @@ void taskTERM(void *pData)
 	while (1);
 }
 
+void taskANALOG(void *pData)
+{
+	TickType_t			xWake;
+
+	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
+
+	xWake = xTaskGetTickCount();
+
+	do {
+		/* 100 Hz.
+		 * */
+		vTaskDelayUntil(&xWake, (TickType_t) 10);
+
+		ADC_get_VALUE(GPIO_ADC_ANALOG);
+	}
+	while (1);
+}
+
 void taskINIT(void *pData)
 {
 	int			rc_flash;
@@ -146,9 +146,9 @@ void taskINIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 200;
+		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_current_shunt_resistance = 394E-6f;
+		hal.ADC_current_shunt_resistance = 200E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
 
@@ -185,8 +185,7 @@ void taskINIT(void *pData)
 
 	pm.freq_hz = hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
-	pm.pwm_resolution = hal.PWM_resolution;
-	pm.pwm_compensation = hal.PWM_deadtime_tik;
+	pm.dc_resolution = hal.PWM_resolution;
 	pm.proc_set_DC = &PWM_set_DC;
 	pm.proc_set_Z = &PWM_set_Z;
 
@@ -195,10 +194,7 @@ void taskINIT(void *pData)
 		/* Default.
 		 * */
 
-		reg_SET_F(ID_PM_PWM_MINIMAL_PULSE, 500.f);
-		reg_SET_F(ID_PM_PWM_SILENCE_GAP, 3000.f);
-
-		pm.fb_current_clamp = (float) (int) (1970.f * hal.ADC_const.GA);
+		pm.fb_current_clamp = (float) (int) (1940.f * hal.ADC_const.GA);
 
 		pm_config_default(&pm);
 		teli_reg_default(&ti);
@@ -216,14 +212,14 @@ void taskINIT(void *pData)
 
 	GPIO_set_LOW(GPIO_LED);
 
-	xTaskCreate(taskSH, "tSH", 1024, NULL, 1, NULL);
+	xTaskCreate(taskSH, "tSH", 512, NULL, 1, NULL);
 	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 	vTaskDelete(NULL);
 }
 
 static void
-ppm_get_pulse()
+input_PULSE_WIDTH()
 {
 	float		pulse, control, range, scaled;
 
@@ -258,6 +254,24 @@ ppm_get_pulse()
 	}
 }
 
+static void
+input_STEP_DIR()
+{
+	/* TODO */
+}
+
+static void
+input_CONTROL_QEP()
+{
+	/* TODO */
+}
+
+static void
+input_ANALOG()
+{
+	/* TODO */
+}
+
 void ADC_IRQ()
 {
 	pmfb_t		fb;
@@ -270,20 +284,26 @@ void ADC_IRQ()
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
 
-	fb.hall_A = GPIO_get_VALUE(GPIO_HALL_A);
-	fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
-	fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
+	if (hal.HALL_mode == HALL_SENSOR) {
+
+		fb.hall_A = GPIO_get_VALUE(GPIO_HALL_A);
+		fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
+		fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
+	}
 
 	pm_feedback(&pm, &fb);
-	hal_fence();
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 
-		ppm_get_pulse();
+		input_PULSE_WIDTH();
 	}
 	else if (hal.PPM_mode == PPM_STEP_DIR) {
 
-		/* TODO */
+		input_STEP_DIR();
+	}
+	else if (hal.PPM_mode == PPM_CONTROL_QEP) {
+
+		input_CONTROL_QEP();
 	}
 
 	teli_reg_grab(&ti);

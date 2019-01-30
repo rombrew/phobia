@@ -1,21 +1,3 @@
-/*
-   Phobia Motor Controller for RC and robotics.
-   Copyright (C) 2018 Roman Belov <romblv@gmail.com>
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "libm.h"
 #include "pm.h"
 
@@ -101,6 +83,22 @@ pm_fsm_current_halt(pmc_t *pm, float i_halt)
 }
 
 static void
+pm_fsm_current_probe(pmc_t *pm)
+{
+	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
+
+		pm->probe_fb_X = pm->fb_current_A;
+		pm->probe_fb_Y = .57735027f * pm->fb_current_A + 1.1547005f * pm->fb_current_B;
+	}
+	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
+
+		pm->probe_fb_X = pm->fb_current_A;
+		pm->probe_fb_Y = pm->fb_current_B;
+	}
+
+}
+
+static void
 pm_fsm_state_zero_drift(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -164,7 +162,7 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_power_stage_self_test(pmc_t *pm)
+pm_fsm_state_self_test_power_stage(pmc_t *pm)
 {
 	int			bm;
 
@@ -173,8 +171,16 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 		case 0:
 			pm->fail_reason = PM_OK;
 
-			pm->fsm_phase = 1;
-			pm->fsm_phase_2 = 0;
+			if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+				pm->fsm_phase = 1;
+				pm->fsm_phase_2 = 0;
+			}
+			else {
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+
+			}
 			break;
 
 		case 1:
@@ -186,7 +192,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 1:
-					pm->proc_set_DC(pm->pwm_resolution, 0, 0);
+					pm->proc_set_DC(pm->dc_resolution, 0, 0);
 					pm->proc_set_Z(6);
 					break;
 
@@ -196,7 +202,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 3:
-					pm->proc_set_DC(0, pm->pwm_resolution, 0);
+					pm->proc_set_DC(0, pm->dc_resolution, 0);
 					pm->proc_set_Z(5);
 					break;
 
@@ -206,7 +212,7 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 					break;
 
 				case 5:
-					pm->proc_set_DC(0, 0, pm->pwm_resolution);
+					pm->proc_set_DC(0, 0, pm->dc_resolution);
 					pm->proc_set_Z(3);
 					break;
 
@@ -259,11 +265,11 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 			bm = 0;
 
 			bm |= (m_fabsf(pm->temporal[0] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 1 : (m_fabsf(pm->temporal[0]) < pm->fault_voltage_tolerance) ? 0 : 0x10;
+				? 1 : (m_fabsf(pm->temporal[0]) < pm->fault_voltage_tolerance) ? 0 : 16;
 			bm |= (m_fabsf(pm->temporal[1] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 2 : (m_fabsf(pm->temporal[1]) < pm->fault_voltage_tolerance) ? 0 : 0x20;
+				? 2 : (m_fabsf(pm->temporal[1]) < pm->fault_voltage_tolerance) ? 0 : 32;
 			bm |= (m_fabsf(pm->temporal[2] - pm->const_lpf_U) < pm->fault_voltage_tolerance)
-				? 4 : (m_fabsf(pm->temporal[2]) < pm->fault_voltage_tolerance) ? 0 : 0x40;
+				? 4 : (m_fabsf(pm->temporal[2]) < pm->fault_voltage_tolerance) ? 0 : 64;
 
 			pm->self_BM[pm->fsm_phase_2] = bm;
 
@@ -287,12 +293,12 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 
 				pm->fail_reason = PM_OK;
 			}
-			else if (1	&& (pm->self_BM[1] & 1) != 0
-					&& (pm->self_BM[2] & 1) == 0
-					&& (pm->self_BM[3] & 2) != 0
-					&& (pm->self_BM[4] & 2) == 0
-					&& (pm->self_BM[5] & 4) != 0
-					&& (pm->self_BM[6] & 4) == 0) {
+			else if (1	&& (pm->self_BM[1] & 17) == 1
+					&& (pm->self_BM[2] & 17) == 0
+					&& (pm->self_BM[3] & 34) == 2
+					&& (pm->self_BM[4] & 34) == 0
+					&& (pm->self_BM[5] & 68) == 4
+					&& (pm->self_BM[6] & 68) == 0) {
 
 				pm->fail_reason = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
@@ -309,46 +315,22 @@ pm_fsm_state_power_stage_self_test(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_sampling_accuracy_self_test(pmc_t *pm)
+pm_fsm_state_self_test_sampling_accuracy(pmc_t *pm)
 {
-	int				xDC;
-
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->fail_reason = PM_OK;
-
-			pm->fsm_phase = 1;
-			pm->fsm_phase_2 = 0;
-			break;
-
-		case 1:
-			switch (pm->fsm_phase_2) {
-
-				case 0:
-					pm->proc_set_DC(0, 0, 0);
-					pm->proc_set_Z(7);
-					break;
-
-				case 1:
-					xDC = pm->pwm_resolution - pm->pwm_silence_gap;
-					pm->proc_set_DC(xDC, xDC, xDC);
-					pm->proc_set_Z(0);
-					break;
-			}
-
-			pm->temporal[0] = 0.f;
-			pm->temporal[1] = 0.f;
-			pm->temporal[2] = 0.f;
-			pm->temporal[3] = 0.f;
+			pm->self_RMS[0] = 0.f;
+			pm->self_RMS[1] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
 
-			pm->fsm_phase = 2;
+			pm->fail_reason = PM_OK;
+			pm->fsm_phase = 1;
 			break;
 
-		case 2:
+		case 1:
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
@@ -356,67 +338,33 @@ pm_fsm_state_sampling_accuracy_self_test(pmc_t *pm)
 				pm->tm_value = 0;
 				pm->tm_end = pm->freq_hz * pm->tm_average_probe;
 
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
+			pm->self_RMS[0] += pm->fb_current_A * pm->fb_current_A;
+			pm->self_RMS[1] += pm->fb_current_B * pm->fb_current_B;
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->self_RMS[0] = m_sqrtf(pm->self_RMS[0] / pm->tm_end);
+				pm->self_RMS[1] = m_sqrtf(pm->self_RMS[1] / pm->tm_end);
+
 				pm->fsm_phase = 3;
 			}
 			break;
 
 		case 3:
-			pm->temporal[0] += pm->fb_current_A;
-			pm->temporal[1] += pm->fb_current_B;
-			pm->temporal[2] += pm->fb_current_A * pm->fb_current_A;
-			pm->temporal[3] += pm->fb_current_B * pm->fb_current_B;
+			if (pm->self_RMS[0] > pm->fault_current_tolerance)
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+			else if (pm->self_RMS[1] > pm->fault_current_tolerance)
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 
-			pm->tm_value++;
-
-			if (pm->tm_value & 1) {
-
-				xDC = pm->pwm_resolution - pm->pwm_silence_gap;
-				pm->proc_set_DC(xDC, xDC, xDC);
-			}
-			else {
-				xDC = pm->pwm_resolution;
-				pm->proc_set_DC(xDC, xDC, xDC);
-			}
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->temporal[0] = pm->temporal[0] / pm->tm_end;
-				pm->temporal[1] = pm->temporal[1] / pm->tm_end;
-				pm->temporal[2] = m_sqrtf(pm->temporal[2] / pm->tm_end);
-				pm->temporal[3] = m_sqrtf(pm->temporal[3] / pm->tm_end);
-
-				pm->fsm_phase = 4;
-			}
-			break;
-
-		case 4:
-			if (m_fabsf(pm->temporal[2]) > pm->fault_current_tolerance)
-				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
-			else if (m_fabsf(pm->temporal[3]) > pm->fault_current_tolerance)
-				pm->fail_reason = PM_ERROR_SAMPLING_ACCURACY_FAULT;
-
-			switch (pm->fsm_phase_2) {
-
-				case 0:
-					pm->self_SA[0] = pm->temporal[0];
-					pm->self_SA[1] = pm->temporal[1];
-					pm->self_SA[2] = pm->temporal[2];
-					pm->self_SA[3] = pm->temporal[3];
-
-					pm->fsm_phase = 1;
-					pm->fsm_phase_2++;
-					break;
-
-				case 1:
-					pm->self_SA[4] = pm->temporal[0];
-					pm->self_SA[5] = pm->temporal[1];
-					pm->self_SA[6] = pm->temporal[2];
-					pm->self_SA[7] = pm->temporal[3];
-
-					pm->fsm_state = PM_STATE_HALT;
-					pm->fsm_phase = 0;
-					break;
-			}
+			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
 			break;
 	}
 
@@ -435,7 +383,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(4);
 
-			pm->vsi_clamp_to_null = 0;
+			pm->vsi_clamp_to_GND = 0;
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
@@ -489,9 +437,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->adjust_IB[1] *= mean / pm->probe_DFT[1];
 
 			if (m_fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance)
-				pm->fail_reason = PM_ERROR_ADJUST_TOLERANCE_FAULT;
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			else if (m_fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance)
-				pm->fail_reason = PM_ERROR_ADJUST_TOLERANCE_FAULT;
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -514,7 +462,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(0);
 
-			pm->vsi_clamp_to_null = 0;
+			pm->vsi_clamp_to_GND = 0;
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
@@ -536,10 +484,10 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[1] += pm->vsi_Y - pm->probe_current_hold_Q * pm->const_R;
 
 		case 1:
-			pm_lu_get_current(pm);
+			pm_fsm_current_probe(pm);
 
-			eX = pm->probe_current_hold - pm->lu_fb_X;
-			eY = pm->probe_current_hold_Q - pm->lu_fb_Y;
+			eX = pm->probe_current_hold - pm->probe_fb_X;
+			eY = pm->probe_current_hold_Q - pm->probe_fb_Y;
 
 			pm->temporal[0] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->temporal[0];
@@ -596,7 +544,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(0);
 
-			pm->vsi_clamp_to_null = 0;
+			pm->vsi_clamp_to_GND = 0;
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
@@ -634,14 +582,14 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_lu_get_current(pm);
+			pm_fsm_current_probe(pm);
 
-			pm->probe_DFT[0] += pm->lu_fb_X * pm->temporal[0];
-			pm->probe_DFT[1] += pm->lu_fb_X * pm->temporal[1];
+			pm->probe_DFT[0] += pm->probe_fb_X * pm->temporal[0];
+			pm->probe_DFT[1] += pm->probe_fb_X * pm->temporal[1];
 			pm->probe_DFT[2] += pm->vsi_X * pm->temporal[0];
 			pm->probe_DFT[3] += pm->vsi_X * pm->temporal[1];
-			pm->probe_DFT[4] += pm->lu_fb_Y * pm->temporal[0];
-			pm->probe_DFT[5] += pm->lu_fb_Y * pm->temporal[1];
+			pm->probe_DFT[4] += pm->probe_fb_Y * pm->temporal[0];
+			pm->probe_DFT[5] += pm->probe_fb_Y * pm->temporal[1];
 			pm->probe_DFT[6] += pm->vsi_Y * pm->temporal[0];
 			pm->probe_DFT[7] += pm->vsi_Y * pm->temporal[1];
 
@@ -708,10 +656,13 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->temporal[0] = 0.f;
 				pm->temporal[1] = 0.f;
 
+				pm->vsi_clamp_to_GND = 0;
+				pm->vsi_clean_A = 0;
+				pm->vsi_clean_B = 0;
+				pm->vsi_clean_C = 0;
 				pm->vsi_lpf_D = 0.f;
 				pm->vsi_lpf_Q = 0.f;
 				pm->vsi_lpf_watt = 0.f;
-				pm->vsi_clamp_to_null = 1;
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
@@ -896,12 +847,12 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_zero_drift(pm);
 			break;
 
-		case PM_STATE_POWER_STAGE_SELF_TEST:
-			pm_fsm_state_power_stage_self_test(pm);
+		case PM_STATE_SELF_TEST_POWER_STAGE:
+			pm_fsm_state_self_test_power_stage(pm);
 			break;
 
-		case PM_STATE_SAMPLING_ACCURACY_SELF_TEST:
-			pm_fsm_state_sampling_accuracy_self_test(pm);
+		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
+			pm_fsm_state_self_test_sampling_accuracy(pm);
 			break;
 
 		case PM_STATE_ADJUST_VOLTAGE:
@@ -946,8 +897,8 @@ void pm_fsm_req(pmc_t *pm, int req)
 	switch (req) {
 
 		case PM_STATE_ZERO_DRIFT:
-		case PM_STATE_POWER_STAGE_SELF_TEST:
-		case PM_STATE_SAMPLING_ACCURACY_SELF_TEST:
+		case PM_STATE_SELF_TEST_POWER_STAGE:
+		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
@@ -997,10 +948,9 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
 		PM_SFI(PM_ERORR_POWER_STAGE_FAULT),
-		PM_SFI(PM_ERROR_SAMPLING_ACCURACY_FAULT),
+		PM_SFI(PM_ERROR_ACCURACY_FAULT),
 		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
 		PM_SFI(PM_ERROR_OVER_CURRENT),
-		PM_SFI(PM_ERROR_ADJUST_TOLERANCE_FAULT),
 		PM_SFI(PM_ERROR_LU_RESIDUAL_UNSTABLE),
 		PM_SFI(PM_ERROR_LU_INVALID_OPERATION)
 	};

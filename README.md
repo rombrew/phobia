@@ -5,34 +5,38 @@ controller for RC and robotics.
 
 ![PMC](doc/phobia_rev4b.jpg)
 
-## Hardware specification (rev4b)
+## Hardware specification (rev4c)
 
 * Dimension: 70mm x 50mm x 15mm.
 * Weight: 40g.
 * Single supply from 6v to 50v.
-* Phase current up to 75A (IPT007N06N, 60v, 0.75 mOhm).
+* Phase current up to 80A (IPT007N06N, 60v, 0.75 mOhm).
 * Lightweight capacitor bank (3 x 2.2uF + 3 x 220uF).
 * PWM frequency from 20 to 80 kHz.
-* Sensors:
-	* Two current shunts (0.33 mOhm) with amplifiers (AD8417) give a measuring range of 75A.
+* Onboard sensors:
+	* Two current shunts (0.25 mOhm) with amplifiers (AD8417) give a measuring range of 100A.
 	* Supply voltage from 0 to 60v.
 	* Three terminal voltages from 0 to 60v.
 	* Temperature of PCB with NTC resistor.
-* Interfaces:
-	* Hall sensors or incremental encoder (5v pull-up).
-	* External NTC resistor (e.g. motor temperature control).
-	* CAN with optional termination resistor on PCB (3.3v).
+* Motor interfaces:
+	* Hall Sensors or Quadrature Encoder (5v pull-up).
+	* External NTC resistor (e.g. motor temperature sensing).
+* Control interfaces:
+	* CAN transceiver with optional termination resistor on PCB (3.3v).
 	* USART to bootload and configure (3.3v).
-	* Combined port: SPI, ADC, DAC, GPIO (3.3v).
-	* Combined port: I2C, PPM, USART, GPIO (3.3v pull-up).
+	* Pulse input control: RC servo PPM, STEP/DIR, QEP (5v tolerant).
+	* Analog input control (from 0 to 5v).
+* Auxiliary interfaces:
+	* Two combined ports with: SPI, I2C, USART, ADC, DAC, GPIO (3.3v).
 	* BOOT and RESET pins to use embedded bootloader.
 	* SWD to hardware debug.
-* Power:
+	* External FAN control (5v).
+* Power conversion:
 	* Supply to 5v buck (up to 1A).
-	* 5v to 12v boost (up to 100 mA but mosfet drivers can consume all of this current).
-	* 5v to 3.3v ldo (up to 400 mA).
+	* 5v to 12v boost (up to 100 mA).
+	* 5v to 3.3v linear (up to 400 mA).
 	* 5v to 3.3vREF optional reference voltage (accuracy 0.2%, 25 mA).
-* STM32F4xx microcontroller (60% typical computational load).
+* STM32F405RG microcontroller (50% typical computational load).
 * Anti-spark circuit: No.
 * Reverse polarity protection: No.
 * Overcurrent protection: Implemented in software.
@@ -50,24 +54,25 @@ PCB design source files.
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to force rotor turn.
 	* High frequency injection (HFI) based on magnetic saliency.
-	* Hall sensors or incremental encoder (**TODO**).
+	* Hall Sensors or Quadrature Encoder (**TODO**).
 * Control loops:
-	* Torque control through current control loop is always enabled.
-	* Simple speed PI control loop.
+	* Current (torque) control is always enabled.
+	* Speed control loop.
 	* Servo operation (**TODO**).
+	* Alternator voltage rectifier (**TODO**).
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).
 	* Power consumption and regeneration.
  	* Maximal speed and acceleration.
 * Control inputs:
+	* CAN bus (**TODO**).
+	* RC servo PPM.
+	* Analog (**TODO**).
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
-	* CAN bus (**TODO**).
-	* PPM signal from 50 Hz to 8 kHz.
-	* Analog (**TODO**).
 * Automated motor parameters identification with no additional tools.
 * Self test of hardware integrity to diagnose troubles.
-* Terminal voltage tracking to get smooth start when motor is already running (**TODO**).
+* Terminal voltage tracking to get smooth start when motor is already running (**EXPERIMENTAL**).
 * Advanced command line interface (CLI) with autocompletion and history.
 * Operation at current values outside the sensor range (**EXPERIMENTAL**).
 * Two phase machine support (e.g. bipolar stepper) (**EXPERIMENTAL**).

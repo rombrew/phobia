@@ -18,7 +18,6 @@ page "Mechanical Speed"
 label 1 "(rpm)"
 figure 0 3 "m.X[2]"
 figure 0 13 "pm.lu_X[4]"
-figure 0 28 "pm.flux_X[4]"
 
 page "Electrical Position"
 label 1 "(°)"
@@ -29,10 +28,9 @@ page "E. Position Error"
 label 1 "(°)"
 figure 0 12 "m.X[3] - pm.lu_X[3:4]"
 
-page "pm.lu_drift_Q"
+page "pm.flux_drift_Q"
 label 1 "(V)"
-figure 0 14 "pm.lu_drift_Q"
-figure 0 27 "pm.const_R"
+figure 0 14 "pm.flux_drift_Q"
 map 0 2
 
 page "PWM: m.PWM_A, m.PWM_B, m.PWM_C"
@@ -53,20 +51,30 @@ figure 0 18 "pm.vsi_lpf_Q"
 
 page "DQ Residual"
 label 1 "(A)"
-figure 0 19 "pm.lu_residual_D"
-figure 0 20 "pm.lu_residual_Q"
+figure 0 19 "pm.flux_residual_D"
+figure 0 20 "pm.flux_residual_Q"
 
 page "Residual Variance"
-label 1 "(A²)"
-figure 0 21 "pm.lu_residual_lpf"
+label 1 "(A)"
+figure 0 21 "pm.flux_residual_lpf"
 
 page "Power Consumption"
 label 1 "(W)"
-figure 0 25 "pm.lu_power_lpf"
+figure 0 22 "m.iP"
+figure 0 23 "pm.vsi_lpf_watt"
+
+page "pm.vsi_clamp_to_GND"
+figure 0 24 "pm.vsi_clamp_to_GND"
+
+page "pm.vsi_clean_A"
+figure 0 25 "pm.vsi_clean_A"
+
+page "pm.vsi_clean_B"
+figure 0 26 "pm.vsi_clean_B"
+
+page "pm.vsi_clean_C"
+figure 0 27 "pm.vsi_clean_C"
 
 page "pm.lu_mode"
-figure 0 26 "pm.lu_mode"
-
-page "pm.flux_drift_R"
-figure 0 28 "pm.flux_drift_R"
+figure 0 28 "pm.lu_mode"
 
