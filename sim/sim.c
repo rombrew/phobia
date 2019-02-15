@@ -78,24 +78,24 @@ sim_Tel(float *pTel)
 	pTel[17] = pm.vsi_lpf_D;
 	pTel[18] = pm.vsi_lpf_Q;
 
-	/* Measurement residual.
+	/* Measurement residue.
 	 * */
-	pTel[19] = pm.flux_residual_D;
-	pTel[20] = pm.flux_residual_Q;
-	pTel[21] = pm.flux_residual_lpf;
+	pTel[19] = pm.flux_residue_D;
+	pTel[20] = pm.flux_residue_Q;
+	pTel[21] = pm.flux_residue_lpf;
 
 	/* Power (Watt).
 	 * */
 	pTel[22] = m.iP;
 	pTel[23] = pm.vsi_lpf_watt;
 
-	/*
-	 * */
 	pTel[24] = pm.vsi_clamp_to_GND;
-	pTel[25] = pm.vsi_clean_A;
-	pTel[26] = pm.vsi_clean_B;
-	pTel[27] = pm.vsi_clean_C;
-	pTel[28] = pm.lu_mode;
+	pTel[25] = pm.vsi_zone_A;
+	pTel[26] = pm.vsi_zone_B;
+	pTel[27] = pm.vsi_zone_C;
+	pTel[28] = pm.tvse_residue_X;
+	pTel[29] = pm.tvse_residue_Y;
+	pTel[30] = pm.lu_mode;
 }
 
 static void
@@ -119,6 +119,9 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		fb.current_A = m.ADC_IA;
 		fb.current_B = m.ADC_IB;
 		fb.voltage_U = m.ADC_US;
+		fb.voltage_A = m.ADC_UA;
+		fb.voltage_B = m.ADC_UB;
+		fb.voltage_C = m.ADC_UC;
 
 		/* PM update.
 		 * */
@@ -180,7 +183,14 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .4, 0);
 
-	if (0) {
+	if (1) {
+
+		pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
+		sim_F(fdTel, 1., 0);
+
+		printf("%4f %4f (V)\n", pm.adjust_UA[1], pm.adjust_UA[0]);
+		printf("%4f %4f (V)\n", pm.adjust_UB[1], pm.adjust_UB[0]);
+		printf("%4f %4f (V)\n", pm.adjust_UC[1], pm.adjust_UC[0]);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 		sim_F(fdTel, 1., 0);

@@ -47,10 +47,17 @@ void pm_config_default(pmc_t *pm)
 	pm->fault_current_tolerance = 2.f;
 	pm->fault_current_halt_level = 20.f;
 	pm->fault_adjust_tolerance = 5E-2f;
-	pm->fault_flux_residual_maximal = 90.f;
+	pm->fault_flux_residue_maximal = 90.f;
 
 	pm->vsi_gain_LP = 1E-1f;
 	pm->vsi_gain_LW = 5E-1f;
+
+	pm->tvse_A.const_tau = 22E-6f;
+	pm->tvse_A.const_tof = 710E-9f;
+	pm->tvse_B.const_tau = 22E-6f;
+	pm->tvse_B.const_tof = 2.f * 710E-9f;
+	pm->tvse_C.const_tau = 22E-6f;
+	pm->tvse_C.const_tof = 2.f * 710E-9f;
 
 	pm->forced_hold_D = 10.f;
 	pm->forced_accel = 3E+3f;
@@ -133,21 +140,20 @@ static void
 pm_solve_2(pmc_t *pm, float X[5])
 {
 	float		Y1[2], Y2[2];
-	float		dT = pm->dT;
 
 	/* Second-order ODE solver.
 	 * */
 
 	pm_equation_2(pm, Y1, X);
 
-	X[0] += (Y1[0]) * dT;
-	X[1] += (Y1[1]) * dT;
-	m_rotf(X + 2, X[4] * dT, X + 2);
+	X[0] += (Y1[0]) * pm->dT;
+	X[1] += (Y1[1]) * pm->dT;
+	m_rotf(X + 2, X[4] * pm->dT, X + 2);
 
 	pm_equation_2(pm, Y2, X);
 
-	X[0] += (Y2[0] - Y1[0]) * dT * .5f;
-	X[1] += (Y2[1] - Y1[1]) * dT * .5f;
+	X[0] += (Y2[0] - Y1[0]) * pm->dT * .5f;
+	X[1] += (Y2[1] - Y1[1]) * pm->dT * .5f;
 }
 
 static void
@@ -177,7 +183,7 @@ pm_forced_update(pmc_t *pm)
 }
 
 static void
-pm_flux_residual(pmc_t *pm)
+pm_flux_residue(pmc_t *pm)
 {
 	float		*X = pm->flux_X;
 	float		iA, iB, iX, iY;
@@ -195,8 +201,8 @@ pm_flux_residual(pmc_t *pm)
 		iB = (iB < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
 			(iB > pm->fb_current_clamp) ? pm->fb_current_clamp : iB;
 
-		iA = (pm->vsi_clean_A == 0) ? pm->fb_current_A - iA : 0.f;
-		iB = (pm->vsi_clean_B == 0) ? pm->fb_current_B - iB : 0.f;
+		iA = ((pm->vsi_zone_A & 5) == 0) ? pm->fb_current_A - iA : 0.f;
+		iB = ((pm->vsi_zone_B & 5) == 0) ? pm->fb_current_B - iB : 0.f;
 
 		iX = iA;
 		iY = .57735027f * iA + 1.1547005f * iB;
@@ -208,12 +214,12 @@ pm_flux_residual(pmc_t *pm)
 		iY = (iY < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
 			(iY > pm->fb_current_clamp) ? pm->fb_current_clamp : iY;
 
-		iX = (pm->vsi_clean_A == 0) ? pm->fb_current_A - iX : 0.f;
-		iY = (pm->vsi_clean_B == 0) ? pm->fb_current_B - iY : 0.f;
+		iX = ((pm->vsi_zone_A & 5) == 0) ? pm->fb_current_A - iX : 0.f;
+		iY = ((pm->vsi_zone_B & 5) == 0) ? pm->fb_current_B - iY : 0.f;
 	}
 
-	pm->flux_residual_D = X[2] * iX + X[3] * iY;
-	pm->flux_residual_Q = X[2] * iY - X[3] * iX;
+	pm->flux_residue_D = X[2] * iX + X[3] * iY;
+	pm->flux_residue_Q = X[2] * iY - X[3] * iX;
 }
 
 static void
@@ -222,12 +228,19 @@ pm_flux_update(pmc_t *pm)
 	float		*X = pm->flux_X;
 	float		eD, eQ, eR, dR, qS;
 
-	pm_flux_residual(pm);
+	if (pm->lu_mode != PM_LU_DETACHED) {
 
-	eD = pm->flux_residual_D;
-	eQ = pm->flux_residual_Q;
+		pm_flux_residue(pm);
+	}
+	else {
+		pm->flux_residue_D = - X[0];
+		pm->flux_residue_Q = - X[1];
+	}
 
-	pm->flux_residual_lpf += (eD * eD + eQ * eQ - pm->flux_residual_lpf)
+	eD = pm->flux_residue_D;
+	eQ = pm->flux_residue_Q;
+
+	pm->flux_residue_lpf += (eD * eD + eQ * eQ - pm->flux_residue_lpf)
 		* pm->flux_gain_LP;
 
 	X[0] += pm->flux_gain_DA * eD;
@@ -274,10 +287,10 @@ pm_hfi_update(pmc_t *pm)
 	float		*X = pm->hfi_X;
 	float		eD, eQ, eR, dR, C2;
 
-	pm_flux_residual(pm);
+	pm_flux_residue(pm);
 
-	eD = pm->flux_residual_D;
-	eQ = pm->flux_residual_Q;
+	eD = pm->flux_residue_D;
+	eQ = pm->flux_residue_Q;
 
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
@@ -316,28 +329,8 @@ pm_hall_update(pmc_t *pm)
 	/* TODO */
 }
 
-void pm_voltage_estimate(pmc_t *pm)
-{
-	float			sinh, ton;
-
-	sinh = pm->vsi_inner[0] * pm->vsi_inner[3] - pm->fb_voltage_A * pm->vsi_inner[4];
-	sinh /= 2.f * pm->const_lpf_U;
-	pm->vsi_inner[0] = pm->fb_voltage_A;
-
-	ton = 2.f * pm->vsi_tau[0] * m_logf(sinh + m_sqrtf(sinh * sinh + 1.f));
-	pm->vsi_A = ton * pm->freq_hz * pm->const_lpf_U;
-
-	pm->vsi_inner[1] = pm->fb_voltage_B;
-	pm->vsi_inner[2] = pm->fb_voltage_C;
-
-
-	// One time
-
-	pm->vsi_inner[3] = m_expf((pm->dT / 2.f + pm->vsi_tau[3]) / pm->vsi_tau[0]);
-	pm->vsi_inner[4] = m_expf((pm->vsi_tau[3] - pm->dT / 2.f) / pm->vsi_tau[0]);
-}
-
-void pm_voltage_take(pmc_t *pm)
+static void
+pm_tvse_instant_take(pmc_t *pm)
 {
 	float			uA, uB, uQ;
 
@@ -360,6 +353,81 @@ void pm_voltage_take(pmc_t *pm)
 	}
 }
 
+void pm_tvse_initial_prep(pmc_t *pm)
+{
+	pm->tvse_A.prep_EXP[0] = m_expf((pm->dT / 2.f + pm->tvse_A.const_tof) / pm->tvse_A.const_tau);
+	pm->tvse_A.prep_EXP[1] = m_expf((pm->tvse_A.const_tof - pm->dT / 2.f) / pm->tvse_A.const_tau);
+
+	pm->tvse_B.prep_EXP[0] = m_expf((pm->dT / 2.f + pm->tvse_B.const_tof) / pm->tvse_B.const_tau);
+	pm->tvse_B.prep_EXP[1] = m_expf((pm->tvse_B.const_tof - pm->dT / 2.f) / pm->tvse_B.const_tau);
+
+	pm->tvse_C.prep_EXP[0] = m_expf((pm->dT / 2.f + pm->tvse_C.const_tof) / pm->tvse_C.const_tau);
+	pm->tvse_C.prep_EXP[1] = m_expf((pm->tvse_C.const_tof - pm->dT / 2.f) / pm->tvse_C.const_tau);
+}
+
+static void
+pm_tvse_solve_1(pmc_t *pm, float X[5])
+{
+	float		uD, uQ;
+
+	uD = X[2] * pm->tvse_residue_X + X[3] * pm->tvse_residue_Y;
+	uQ = X[2] * pm->tvse_residue_Y - X[3] * pm->tvse_residue_X;
+
+	X[0] += uD * pm->dT / pm->const_Ld;
+	X[1] += uQ * pm->dT / pm->const_Lq;
+}
+
+static void
+pm_tvse_update(pmc_t *pm, float X[5])
+{
+	float			uA, uB, uC, uX, uY, uQ;
+	float			sinh, tON;
+
+	if (pm->vsi_zone_A == 0 && pm->vsi_zone_B == 0 && pm->vsi_zone_C == 0) {
+
+		sinh = (pm->fb_voltage_A * pm->tvse_A.prep_EXP[0] - pm->tvse_A.temp_u0
+				* pm->tvse_A.prep_EXP[1]) / (2.f * pm->const_lpf_U);
+
+		tON = 2.f * pm->tvse_A.const_tau * m_logf(sinh + m_sqrtf(sinh * sinh + 1.f));
+		uA = tON * pm->freq_hz * pm->const_lpf_U;
+
+		sinh = (pm->fb_voltage_B * pm->tvse_B.prep_EXP[0] - pm->tvse_B.temp_u0
+				* pm->tvse_B.prep_EXP[1]) / (2.f * pm->const_lpf_U);
+
+		tON = 2.f * pm->tvse_B.const_tau * m_logf(sinh + m_sqrtf(sinh * sinh + 1.f));
+		uB = tON * pm->freq_hz * pm->const_lpf_U;
+
+		sinh = (pm->fb_voltage_C * pm->tvse_C.prep_EXP[0] - pm->tvse_C.temp_u0
+				* pm->tvse_C.prep_EXP[1]) / (2.f * pm->const_lpf_U);
+
+		tON = 2.f * pm->tvse_C.const_tau * m_logf(sinh + m_sqrtf(sinh * sinh + 1.f));
+		uC = tON * pm->freq_hz * pm->const_lpf_U;
+
+		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
+
+			uQ = (1.f / 3.f) * (uA + uB + uC);
+			uA = uA - uQ;
+			uB = uB - uQ;
+
+			uX = uA;
+			uY = .57735027f * uA + 1.1547005f * uB;
+		}
+		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
+
+			uA = uA - uC;
+			uB = uB - uC;
+
+			uX = uA;
+			uY = uB;
+		}
+
+		pm->tvse_residue_X = uX - pm->tvse_queue_X;
+		pm->tvse_residue_Y = uY - pm->tvse_queue_Y;
+
+		pm_tvse_solve_1(pm, pm->flux_X);
+	}
+}
+
 static void
 pm_lu_FSM(pmc_t *pm)
 {
@@ -367,10 +435,15 @@ pm_lu_FSM(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_DETACHED) {
 
-		pm_voltage_take(pm);
+		pm_tvse_instant_take(pm);
 		pm_flux_update(pm);
 	}
 	else if (pm->lu_mode == PM_LU_FORCED) {
+
+		if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+			pm_tvse_update(pm, pm->flux_X);
+		}
 
 		pm_flux_update(pm);
 		pm_forced_update(pm);
@@ -388,6 +461,11 @@ pm_lu_FSM(pmc_t *pm)
 		}
 	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
+
+		if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+			pm_tvse_update(pm, pm->flux_X);
+		}
 
 		pm_flux_update(pm);
 
@@ -449,6 +527,16 @@ pm_lu_FSM(pmc_t *pm)
 
 		pm_hall_update(pm);
 	}
+
+	if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+		pm->tvse_A.temp_u0 = pm->fb_voltage_A;
+		pm->tvse_B.temp_u0 = pm->fb_voltage_B;
+		pm->tvse_C.temp_u0 = pm->fb_voltage_C;
+
+		pm->tvse_queue_X = pm->vsi_X;
+		pm->tvse_queue_Y = pm->vsi_Y;
+	}
 }
 
 static void
@@ -456,15 +544,15 @@ pm_lu_validate(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
-	if (pm->flux_residual_lpf > pm->fault_flux_residual_maximal) {
+	if (pm->flux_residue_lpf > pm->fault_flux_residue_maximal) {
 
-		pm->fail_reason = PM_ERROR_LU_RESIDUAL_UNSTABLE;
+		pm->fail_reason = PM_ERROR_RESIDUE_UNSTABLE;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 
-	if (X[1] == X[1]) ;
-	else {
-		pm->fail_reason = PM_ERROR_LU_INVALID_OPERATION;
+	if (m_isfinitef(X[1]) == 0) {
+
+		pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 		pm_fsm_req(pm, PM_STATE_HALT);
 	}
 }
@@ -553,14 +641,14 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	xMAX = pm->dc_resolution;
 	xMIN = pm->dc_resolution - pm->dc_clearance;
 
-	pm->vsi_clean_A = (pm->vsi_clean_A & 1) ? 2 : 0;
-	pm->vsi_clean_A |= (xA > xMIN && xA < xMAX) ? 1 : 0;
+	pm->vsi_zone_A = (pm->vsi_zone_A & 3) << 2;
+	pm->vsi_zone_A |= (xA > xMIN) ? (xA < xMAX) ? 1 : 2 : 0;
 
-	pm->vsi_clean_B = (pm->vsi_clean_B & 1) ? 2 : 0;
-	pm->vsi_clean_B |= (xB > xMIN && xB < xMAX) ? 1 : 0;
+	pm->vsi_zone_B = (pm->vsi_zone_B & 3) << 2;
+	pm->vsi_zone_B |= (xB > xMIN) ? (xB < xMAX) ? 1 : 2 : 0;
 
-	pm->vsi_clean_C = (pm->vsi_clean_C & 1) ? 2 : 0;
-	pm->vsi_clean_C |= (xC > xMIN && xC < xMAX) ? 1 : 0;
+	pm->vsi_zone_C = (pm->vsi_zone_C & 3) << 2;
+	pm->vsi_zone_C |= (xC > xMIN) ? (xC < xMAX) ? 1 : 2 : 0;
 
 	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 

@@ -1,7 +1,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		19
+#define REG_CONFIG_VERSION		20
 
 enum {
 	REG_CONFIG		= 1,
@@ -23,14 +23,13 @@ reg_val_t;
 typedef struct {
 
 	const char		*sym;
+	const char		fmt[4];
 
-	const char		*fmt;
 	int			mode;
-
 	reg_val_t		*link;
 
 	void			(* proc) (const void *reg, void *lval, const void *rval);
-	void			(* text) (const void *reg);
+	void			(* format) (const void *reg);
 }
 reg_t;
 
@@ -45,6 +44,7 @@ const reg_t *reg_search(const char *sym);
 void reg_GET(int n, void *lval);
 void reg_SET(int n, const void *rval);
 
+void reg_SET_I(int n, int rval);
 void reg_SET_F(int n, float rval);
 
 #endif /* _H_REGFILE_ */

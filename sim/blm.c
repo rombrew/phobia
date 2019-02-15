@@ -184,9 +184,9 @@ blm_Solve(blm_t *m, double dT)
 	m->X[6] += (A - m->X[6]) * (1. - exp(- dT / m->tau_I));
 	m->X[7] += (B - m->X[7]) * (1. - exp(- dT / m->tau_I));
 
-	m->X[8] += (m->VSI[0] - m->X[8]) * (1. - exp(- dT / m->tau_U));
-	m->X[9] += (m->VSI[1] - m->X[9]) * (1. - exp(- dT / m->tau_U));
-	m->X[10] += (m->VSI[2] - m->X[10]) * (1. - exp(- dT / m->tau_U));
+	m->X[8] += (m->VSI[0] * m->U - m->X[8]) * (1. - exp(- dT / m->tau_U));
+	m->X[9] += (m->VSI[1] * m->U - m->X[9]) * (1. - exp(- dT / m->tau_U));
+	m->X[10] += (m->VSI[2] * m->U - m->X[10]) * (1. - exp(- dT / m->tau_U));
 }
 
 static void

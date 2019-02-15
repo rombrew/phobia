@@ -43,6 +43,7 @@ enum {
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_SAMPLING_ACCURACY,
 	PM_STATE_ADJUST_VOLTAGE,
+	PM_STATE_ADJUST_TAU_TOF,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
@@ -62,8 +63,8 @@ enum {
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_OVER_CURRENT,
-	PM_ERROR_LU_RESIDUAL_UNSTABLE,
-	PM_ERROR_LU_INVALID_OPERATION,
+	PM_ERROR_RESIDUE_UNSTABLE,
+	PM_ERROR_INVALID_OPERATION,
 };
 
 typedef struct {
@@ -154,12 +155,12 @@ typedef struct {
 	float		fault_current_tolerance;
 	float		fault_current_halt_level;
 	float		fault_adjust_tolerance;
-	float		fault_flux_residual_maximal;
+	float		fault_flux_residue_maximal;
 
 	int		vsi_clamp_to_GND;
-	int		vsi_clean_A;
-	int		vsi_clean_B;
-	int		vsi_clean_C;
+	int		vsi_zone_A;
+	int		vsi_zone_B;
+	int		vsi_zone_C;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_lpf_D;
@@ -168,11 +169,20 @@ typedef struct {
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
 
-	float		vsi_tau[6];
-	float		vsi_inner[9];
-	float		vsi_A;
-	float		vsi_B;
-	float		vsi_C;
+	struct {
+
+		float	const_tau;
+		float	const_tof;
+
+		float	prep_EXP[2];
+		float	temp_u0;
+	}
+	tvse_A, tvse_B, tvse_C;
+
+	float		tvse_residue_X;
+	float		tvse_residue_Y;
+	float		tvse_queue_X;
+	float		tvse_queue_Y;
 
 	float		lu_X[5];
 	int		lu_mode;
@@ -185,9 +195,9 @@ typedef struct {
 
 	float		flux_X[5];
 	float		flux_drift_Q;
-	float		flux_residual_D;
-	float		flux_residual_Q;
-	float		flux_residual_lpf;
+	float		flux_residue_D;
+	float		flux_residue_Q;
+	float		flux_residue_lpf;
 	float		flux_gain_LP;
 	float		flux_gain_DA;
 	float		flux_gain_QA;
@@ -255,7 +265,7 @@ pmc_t;
 void pm_config_default(pmc_t *pm);
 void pm_config_tune_current_loop(pmc_t *pm);
 
-void pm_lu_get_current(pmc_t *pm);
+void pm_tvse_initial_prep(pmc_t *pm);
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 

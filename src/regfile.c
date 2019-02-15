@@ -107,7 +107,7 @@ reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_text_ns(const reg_t *reg)
+reg_format_ns(const reg_t *reg)
 {
 	float			fns;
 
@@ -118,7 +118,7 @@ reg_text_ns(const reg_t *reg)
 }
 
 static void
-reg_text_self_BM(const reg_t *reg)
+reg_format_self_BM(const reg_t *reg)
 {
 	int		*BM = (void *) reg->link;
 
@@ -126,7 +126,7 @@ reg_text_self_BM(const reg_t *reg)
 }
 
 static void
-reg_text_self_RMS(const reg_t *reg)
+reg_format_self_RMS(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
@@ -136,7 +136,7 @@ reg_text_self_RMS(const reg_t *reg)
 #define TEXT_ITEM(t)	case t: printf("(%s)", PM_SFI(t)); break
 
 static void
-reg_text_enum(const reg_t *reg)
+reg_format_enum(const reg_t *reg)
 {
 	int			n, val;
 
@@ -265,9 +265,9 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.ADC_current_shunt_resistance,,"Ohm","%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_amplifier_gain,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_voltage_divider_gain,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.HALL_mode,,			"",	"%i",	REG_CONFIG, &reg_proc_ppm, &reg_text_enum),
+	REG_DEF(hal.HALL_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.HALL_sensor_state,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(hal.PPM_mode,,			"",	"%i",	REG_CONFIG, &reg_proc_ppm, &reg_text_enum),
+	REG_DEF(hal.PPM_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_timebase,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
@@ -302,21 +302,21 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.load_transform[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.dc_resolution,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dc_minimal,,		"",	"%i",	REG_CONFIG, NULL, &reg_text_ns),
-	REG_DEF(pm.dc_clearance,,	"",	"%i",	REG_CONFIG, NULL, &reg_text_ns),
+	REG_DEF(pm.dc_minimal,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_ns),
+	REG_DEF(pm.dc_clearance,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_ns),
 
-	REG_DEF(pm.fail_reason,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_text_enum),
-	REG_DEF(pm.self_BM,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_text_self_BM),
-	REG_DEF(pm.self_RMS,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_text_self_RMS),
+	REG_DEF(pm.fail_reason,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
+	REG_DEF(pm.self_BM,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BM),
+	REG_DEF(pm.self_RMS,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS),
 
-	REG_DEF(pm.config_ABC,,			"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
-	REG_DEF(pm.config_LDQ,,			"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
-	REG_DEF(pm.config_TVSE,,		"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
-	REG_DEF(pm.config_HALL,,		"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
-	REG_DEF(pm.config_HFI,,			"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
-	REG_DEF(pm.config_LOOP,,		"",	"%i",	REG_CONFIG, NULL, &reg_text_enum),
+	REG_DEF(pm.config_ABC,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_LDQ,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_TVSE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_HALL,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_HFI,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_LOOP,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
-	REG_DEF(pm.fsm_state,,			"",	"%i",	0, &reg_proc_fsm_state, &reg_text_enum),
+	REG_DEF(pm.fsm_state,,		"",	"%i",	0, &reg_proc_fsm_state, &reg_format_enum),
 	REG_DEF(pm.fsm_phase,,			"",	"%i",	0, NULL, NULL),
 
 	REG_DEF(pm.tm_transient_skip,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -447,7 +447,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ti.reg_ID[8],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ti.reg_ID[9],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
-	{ NULL, NULL, 0, NULL, NULL, NULL }
+	{ NULL, "", 0, NULL, NULL, NULL }
 };
 
 void reg_getval(const reg_t *reg, void *lval)
@@ -501,9 +501,9 @@ void reg_format(const reg_t *reg)
 			(int) (reg->mode & REG_LINKED)		? 'L' : ' ',
 			(int) (reg - regfile), reg->sym);
 
-		if (reg->text != NULL) {
+		if (reg->format != NULL) {
 
-			reg->text(reg);
+			reg->format(reg);
 		}
 		else {
 			reg_getval(reg, &rval);
@@ -573,6 +573,11 @@ void reg_SET(int n, const void *rval)
 
 		reg_setval(regfile + n, rval);
 	}
+}
+
+void reg_SET_I(int n, int rval)
+{
+	reg_SET(n, &rval);
 }
 
 void reg_SET_F(int n, float rval)

@@ -33,7 +33,7 @@ label 1 "(V)"
 figure 0 14 "pm.flux_drift_Q"
 map 0 2
 
-page "PWM: m.PWM_A, m.PWM_B, m.PWM_C"
+page "PWM: m.PWM_[ABC]"
 label 1 "(%)"
 figure 0 6 "m.PWM_A"
 figure 0 7 "m.PWM_B"
@@ -49,14 +49,14 @@ label 1 "(V)"
 figure 0 17 "pm.vsi_lpf_D"
 figure 0 18 "pm.vsi_lpf_Q"
 
-page "DQ Residual"
+page "DQ Residue"
 label 1 "(A)"
-figure 0 19 "pm.flux_residual_D"
-figure 0 20 "pm.flux_residual_Q"
+figure 0 19 "pm.flux_residue_D"
+figure 0 20 "pm.flux_residue_Q"
 
-page "Residual Variance"
+page "Residue Variance"
 label 1 "(A)"
-figure 0 21 "pm.flux_residual_lpf"
+figure 0 21 "pm.flux_residue_lpf"
 
 page "Power Consumption"
 label 1 "(W)"
@@ -66,15 +66,15 @@ figure 0 23 "pm.vsi_lpf_watt"
 page "pm.vsi_clamp_to_GND"
 figure 0 24 "pm.vsi_clamp_to_GND"
 
-page "pm.vsi_clean_A"
-figure 0 25 "pm.vsi_clean_A"
+page "pm.vsi_zone_[ABC]"
+figure 0 25 "pm.vsi_zone_A"
+figure 0 26 "pm.vsi_zone_B"
+figure 0 27 "pm.vsi_zone_C"
 
-page "pm.vsi_clean_B"
-figure 0 26 "pm.vsi_clean_B"
-
-page "pm.vsi_clean_C"
-figure 0 27 "pm.vsi_clean_C"
+page "pm.tvse_residue_[XY]"
+label 1 "(V)"
+figure 0 28 "pm.tvse_residue_X"
+figure 0 29 "pm.tvse_residue_Y"
 
 page "pm.lu_mode"
-figure 0 28 "pm.lu_mode"
-
+figure 0 30 "pm.lu_mode"

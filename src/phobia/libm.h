@@ -8,6 +8,7 @@
 inline float m_fabsf(float x) { return __builtin_fabsf(x); }
 inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 
+int m_isfinitef(float x);
 void m_rotf(float y[2], float r, const float x[2]);
 float m_atan2f(float y, float x);
 float m_sinf(float x);
