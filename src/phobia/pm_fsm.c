@@ -514,6 +514,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 		case 1:
 			eX = pm->probe_current_hold - pm->fb_current_A;
+
 			pm->temporal[0] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->temporal[0];
 
@@ -771,12 +772,12 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->temporal[1] = 0.f;
 
 				pm->vsi_clamp_to_GND = 0;
-				pm->vsi_zone_A = 0;
-				pm->vsi_zone_B = 0;
-				pm->vsi_zone_C = 0;
+				pm->vsi_ZONE = 0x8UL;
 				pm->vsi_lpf_D = 0.f;
 				pm->vsi_lpf_Q = 0.f;
 				pm->vsi_lpf_watt = 0.f;
+
+				pm_voltage_initial_prep(pm);
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
@@ -820,9 +821,7 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 
 			pm->proc_set_Z(0);
 
-			pm_tvse_initial_prep(pm);
-
-			pm->forced_setpoint = 0.f;
+			pm->forced_setpoint = pm->flux_X[4];
 
 			pm->hfi_CS[0] = 1.f;
 			pm->hfi_CS[1] = 0.f;
@@ -834,8 +833,8 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->i_integral_D = 0.f;
 			pm->i_integral_Q = 0.f;
 
-			pm->s_setpoint = 0.f;
-			pm->s_track = 0.f;
+			pm->s_setpoint = pm->flux_X[4];
+			pm->s_track = pm->flux_X[4];
 			pm->s_integral = 0.f;
 
 			/*pm->p_setpoint[0] = 1.f;

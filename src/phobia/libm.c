@@ -66,6 +66,7 @@ void m_rotf(float y[2], float r, const float x[2])
 	b = s * x[0] + c * x[1];
 
 	q = (3.f - a * a - b * b) * .5f;
+
 	y[0] = a * q;
 	y[1] = b * q;
 }

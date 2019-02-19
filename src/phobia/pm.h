@@ -158,9 +158,7 @@ typedef struct {
 	float		fault_flux_residue_maximal;
 
 	int		vsi_clamp_to_GND;
-	int		vsi_zone_A;
-	int		vsi_zone_B;
-	int		vsi_zone_C;
+	int		vsi_ZONE;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_lpf_D;
@@ -171,18 +169,18 @@ typedef struct {
 
 	struct {
 
-		float	const_tau;
-		float	const_tof;
+		float	const_TAU;
+		float	const_TOF;
 
 		float	prep_EXP[2];
 		float	temp_u0;
 	}
-	tvse_A, tvse_B, tvse_C;
+	vsi_A, vsi_B, vsi_C;
 
-	float		tvse_residue_X;
-	float		tvse_residue_Y;
-	float		tvse_queue_X;
-	float		tvse_queue_Y;
+	float		vsi_residue_X;
+	float		vsi_residue_Y;
+	float		vsi_queue_X;
+	float		vsi_queue_Y;
 
 	float		lu_X[5];
 	int		lu_mode;
@@ -265,7 +263,8 @@ pmc_t;
 void pm_config_default(pmc_t *pm);
 void pm_config_tune_current_loop(pmc_t *pm);
 
-void pm_tvse_initial_prep(pmc_t *pm);
+void pm_voltage_initial_prep(pmc_t *pm);
+void pm_voltage_recovery(pmc_t *pm);
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 

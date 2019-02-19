@@ -90,12 +90,10 @@ sim_Tel(float *pTel)
 	pTel[23] = pm.vsi_lpf_watt;
 
 	pTel[24] = pm.vsi_clamp_to_GND;
-	pTel[25] = pm.vsi_zone_A;
-	pTel[26] = pm.vsi_zone_B;
-	pTel[27] = pm.vsi_zone_C;
-	pTel[28] = pm.tvse_residue_X;
-	pTel[29] = pm.tvse_residue_Y;
-	pTel[30] = pm.lu_mode;
+	pTel[25] = pm.vsi_ZONE;
+	pTel[26] = pm.vsi_residue_X;
+	pTel[27] = pm.vsi_residue_Y;
+	pTel[28] = pm.lu_mode;
 }
 
 static void
@@ -206,6 +204,8 @@ sim_Script(FILE *fdTel)
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, .5, 0);
+
+	pm.vsi_clamp_to_GND = 1;
 
 	pm.s_setpoint = 9000.f;
 	sim_F(fdTel, .5, 0);

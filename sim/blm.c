@@ -94,12 +94,12 @@ void blm_Enable(blm_t *m)
 
 	/* ADC conversion time.
 	 * */
-	m->T_ADC = 71E-8;
+	m->T_ADC = 0.714E-6;
 
 	/* Sensor time constant.
 	 * */
-	m->tau_I = 63E-8;
-	m->tau_U = 22E-6;
+	m->tau_I = 0.636E-6;
+	m->tau_U = 22.09E-6;
 }
 
 static void
