@@ -5,7 +5,7 @@
 
 #include "libc.h"
 #include "ntc.h"
-#include "teli.h"
+#include "tel.h"
 
 typedef struct {
 
@@ -66,7 +66,7 @@ application_t;
 
 extern application_t		ap;
 extern pmc_t			pm;
-extern teli_t			ti;
+extern tel_t			ti;
 
 extern int flash_block_load();
 extern int pm_wait_for_IDLE();

@@ -38,7 +38,7 @@ void blm_Enable(blm_t *m)
 
 	m->Tsim = 0.; /* Simulation time (Second) */
         m->dT = 1. / 30000.; /* PWM period */
-	m->sT = 5E-6; /* Solver step */
+	m->sT = 1E-6; /* Solver step */
 	m->PWM_R = 2800; /* PWM resolution */
 
 	m->VSI[0] = 0;
@@ -52,12 +52,13 @@ void blm_Enable(blm_t *m)
         m->X[3] = 0.; /* Electrical Position (Radian) */
         m->X[4] = 20.; /* Temperature (Celsius) */
 	m->X[5] = 0.; /* Energy consumption (Joule) */
+	m->X[6] = 5.; /* DC bus voltage (Volt) */
 
-	m->X[6] = 0.; /* Current Sensor A */
-	m->X[7] = 0.; /* Current Sensor B */
-	m->X[8] = 0.; /* Voltage Sensor A */
-	m->X[9] = 0.; /* Voltage Sensor B */
-	m->X[10] = 0.; /* Voltage Sensor C */
+	m->X[7] = 0.; /* Current Sensor A */
+	m->X[8] = 0.; /* Current Sensor B */
+	m->X[9] = 0.; /* Voltage Sensor A */
+	m->X[10] = 0.; /* Voltage Sensor B */
+	m->X[11] = 0.; /* Voltage Sensor C */
 
 	/* Winding resistance. (Ohm)
          * */
@@ -65,12 +66,20 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 25E-6;
-	m->Lq = 35E-6;
+	m->Ld = 12E-6;
+	m->Lq = 15E-6;
 
 	/* Source voltage. (Volt)
 	 * */
 	m->U = 42.;
+
+	/* Source internal resistance. (Ohm)
+	 * */
+	m->Rs = 0.1;
+
+	/* Decoupling capacitance. (Farad)
+	 * */
+	m->Cb = 720E-6;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -103,7 +112,7 @@ void blm_Enable(blm_t *m)
 }
 
 static void
-blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
+blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 {
 	double		UA, UB, UD, UQ, Q;
 	double		R1, E1, MT, ML, W;
@@ -120,22 +129,26 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 	/* Voltage from VSI.
 	 * */
 	Q = (m->VSI[0] + m->VSI[1] + m->VSI[2]) / 3.;
-	UA = (m->VSI[0] - Q) * m->U;
-	UB = (m->VSI[1] - Q) * m->U;
+	UA = (m->VSI[0] - Q) * X[6];
+	UB = (m->VSI[1] - Q) * X[6];
 
 	blm_AB_DQ(X[3], UA, UB, &UD, &UQ);
 
 	/* Energy consumption equation.
 	 * */
-	dX[5] = 1.5 * (X[0] * UD + X[1] * UQ);
+	D[5] = 1.5 * (X[0] * UD + X[1] * UQ);
+
+	/* DC bus voltage equation.
+	 * */
+	D[6] = ((m->U - X[6]) / m->Rs - D[5] / X[6]) / m->Cb;
 
 	/* Electrical equations.
 	 * */
 	UD += - R1 * X[0] + m->Lq * X[2] * X[1];
 	UQ += - R1 * X[1] - m->Ld * X[2] * X[0] - E1 * X[2];
 
-	dX[0] = UD / m->Ld;
-	dX[1] = UQ / m->Lq;
+	D[0] = UD / m->Ld;
+	D[1] = UQ / m->Lq;
 
 	/* Torque production.
 	 * */
@@ -150,18 +163,19 @@ blm_DQ_Equation(const blm_t *m, const double X[], double dX[])
 
 	/* Mechanical equations.
 	 * */
-	dX[2] = m->Zp * (MT + ML) / m->J;
-	dX[3] = X[2];
+	D[2] = m->Zp * (MT + ML) / m->J;
+	D[3] = X[2];
 
 	/* Thermal equation.
 	 * */
-	dX[4] = 0.;
+	D[4] = 0.;
 }
 
 static void
 blm_Solve(blm_t *m, double dT)
 {
-	double		S1[6], S2[6], X2[6], A, B;
+	double		S1[7], S2[7], X2[7];
+	double		iA, iB, kI, kU;
 	int		j;
 
 	/* Second-order ODE solver.
@@ -169,24 +183,27 @@ blm_Solve(blm_t *m, double dT)
 
 	blm_DQ_Equation(m, m->X, S1);
 
-	for (j = 0; j < 6; ++j)
+	for (j = 0; j < 7; ++j)
 		X2[j] = m->X[j] + S1[j] * dT;
 
 	blm_DQ_Equation(m, X2, S2);
 
-	for (j = 0; j < 6; ++j)
+	for (j = 0; j < 7; ++j)
 		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
 
-	/* Sensor transient (exact solution).
+	/* Sensor transient.
 	 * */
-	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &A, &B);
+	kI = 1. - exp(- dT / m->tau_I);
+	kU = 1. - exp(- dT / m->tau_U);
 
-	m->X[6] += (A - m->X[6]) * (1. - exp(- dT / m->tau_I));
-	m->X[7] += (B - m->X[7]) * (1. - exp(- dT / m->tau_I));
+	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &iA, &iB);
 
-	m->X[8] += (m->VSI[0] * m->U - m->X[8]) * (1. - exp(- dT / m->tau_U));
-	m->X[9] += (m->VSI[1] * m->U - m->X[9]) * (1. - exp(- dT / m->tau_U));
-	m->X[10] += (m->VSI[2] * m->U - m->X[10]) * (1. - exp(- dT / m->tau_U));
+	m->X[7] += (iA - m->X[7]) * kI;
+	m->X[8] += (iB - m->X[8]) * kI;
+
+	m->X[9]  += (m->VSI[0] * m->X[6] - m->X[9]) * kU;
+	m->X[10] += (m->VSI[1] * m->X[6] - m->X[10]) * kU;
+	m->X[11] += (m->VSI[2] * m->X[6] - m->X[11]) * kU;
 }
 
 static void
@@ -200,7 +217,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of A.
 			 * */
-			m->X[6] = 0.;
+			m->X[7] = 0.;
 			m->surge_F = 0;
 		}
 
@@ -208,7 +225,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of B.
 			 * */
-			m->X[7] = 0.;
+			m->X[8] = 0.;
 			m->surge_F = 0;
 		}
 
@@ -259,26 +276,26 @@ blm_VSI_Sample(blm_t *m, int N)
 
 	if (N == 0) {
 
-		ADC = blm_ADC(m->X[6] / 2. / range_I + .5);
+		ADC = blm_ADC(m->X[7] / 2. / range_I + .5);
 		m->ADC_IA = (ADC - 2047) * range_I / 2048.;
 
-		ADC = blm_ADC(m->X[7] / 2. / range_I + .5);
+		ADC = blm_ADC(m->X[8] / 2. / range_I + .5);
 		m->ADC_IB = (ADC - 2047) * range_I / 2048.;
 	}
 	else if (N == 1) {
 
-		ADC = blm_ADC(m->U / range_U);
+		ADC = blm_ADC(m->X[6] / range_U);
 		m->ADC_US = ADC * range_U / 4096.;
 
-		ADC = blm_ADC(m->X[8] / range_U);
+		ADC = blm_ADC(m->X[9] / range_U);
 		m->ADC_UA = ADC * range_U / 4096.;
 	}
 	else if (N == 2) {
 
-		ADC = blm_ADC(m->X[9] / range_U);
+		ADC = blm_ADC(m->X[10] / range_U);
 		m->ADC_UB = ADC * range_U / 4096.;
 
-		ADC = blm_ADC(m->X[10] / range_U);
+		ADC = blm_ADC(m->X[11] / range_U);
 		m->ADC_UC = ADC * range_U / 4096.;
 	}
 }

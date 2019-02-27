@@ -55,7 +55,7 @@ OBJS    = freertos/heap_4.o \
 	  pmtest.o \
 	  regfile.o \
 	  shell.o \
-	  teli.o
+	  tel.o
 
 OBJS	+= apps/hx711.o \
 	   apps/push.o

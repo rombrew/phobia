@@ -69,17 +69,15 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_low_unlock = .2f;
+	pm->flux_bemf_low_unlock = .3f;
 	pm->flux_bemf_low_lock = .5f;
 	pm->flux_bemf_high = 1.f;
 
-	pm->hfi_freq_hz = pm->freq_hz / 12.f;
-	pm->hfi_swing_D = 2.f;
-	pm->hfi_gain_P = 3E-1f;
-	pm->hfi_gain_S = 7E+1f;
-	pm->hfi_gain_F = 1E-3f;
+	pm->hfi_swing_D = 1.f;
+	pm->hfi_gain_P = 5E-2f;
+	pm->hfi_gain_S = 5E+1f;
 
-	pm->const_gain_LP = 1E-1f;
+	pm->const_gain_LP = 2E-1f;
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;
@@ -196,9 +194,8 @@ pm_forced_update(pmc_t *pm)
 }
 
 static void
-pm_flux_residue(pmc_t *pm)
+pm_flux_residue(pmc_t *pm, float X[5])
 {
-	float		*X = pm->flux_X;
 	float		iA, iB, iX, iY;
 
 	iX = X[2] * X[0] - X[3] * X[1];
@@ -263,7 +260,7 @@ pm_flux_update(pmc_t *pm)
 
 	if (pm->lu_mode != PM_LU_DETACHED) {
 
-		pm_flux_residue(pm);
+		pm_flux_residue(pm, X);
 	}
 	else {
 		pm->flux_residue_D = - X[0];
@@ -318,9 +315,9 @@ static void
 pm_hfi_update(pmc_t *pm)
 {
 	float		*X = pm->hfi_X;
-	float		eD, eQ, eR, dR, C2;
+	float		eD, eQ, eR, dR;
 
-	pm_flux_residue(pm);
+	pm_flux_residue(pm, X);
 
 	eD = pm->flux_residue_D;
 	eQ = pm->flux_residue_Q;
@@ -328,30 +325,12 @@ pm_hfi_update(pmc_t *pm)
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
 
-	eR = pm->hfi_CS[1] * eQ;
+	eR = (pm->hfi_injection == 0) ? - eQ : eQ;
 	dR = pm->hfi_gain_P * eR;
 	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 	m_rotf(X + 2, dR, X + 2);
 
 	X[4] += pm->hfi_gain_S * eR;
-
-	if (1) {
-
-		C2 = pm->hfi_CS[0] * pm->hfi_CS[0] - pm->hfi_CS[1] * pm->hfi_CS[1];
-		pm->hfi_flux_polarity += eD * C2 * pm->hfi_gain_F;
-
-		if (pm->hfi_flux_polarity > 1.f) {
-
-			X[2] = - X[2];
-			X[3] = - X[3];
-
-			pm->hfi_flux_polarity = 0.f;
-		}
-		else if (pm->hfi_flux_polarity < 0.f) {
-
-			pm->hfi_flux_polarity = 0.f;
-		}
-	}
 
 	pm_solve_2(pm, X);
 }
@@ -531,6 +510,12 @@ pm_lu_FSM(pmc_t *pm)
 	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
+		if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+			pm_voltage_recovery(pm);
+			pm_solve_1(pm, pm->hfi_X);
+		}
+
 		pm_hfi_update(pm);
 
 		X[0] = pm->hfi_X[0];
@@ -553,16 +538,6 @@ pm_lu_FSM(pmc_t *pm)
 	else if (pm->lu_mode == PM_LU_SENSORED_HALL) {
 
 		pm_hall_update(pm);
-	}
-
-	if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
-
-		pm->vsi_A.temp_u0 = pm->fb_voltage_A;
-		pm->vsi_B.temp_u0 = pm->fb_voltage_B;
-		pm->vsi_C.temp_u0 = pm->fb_voltage_C;
-
-		pm->vsi_queue_X = pm->vsi_X;
-		pm->vsi_queue_Y = pm->vsi_Y;
 	}
 }
 
@@ -749,14 +724,6 @@ pm_current_control(pmc_t *pm)
 	eD = sD - X[0];
 	eQ = sQ - X[1];
 
-	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
-
-		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
-		m_rotf(pm->hfi_CS, temp * pm->dT, pm->hfi_CS);
-
-		eD += pm->hfi_CS[1] * pm->hfi_swing_D;
-	}
-
 	uD = pm->i_gain_PD * eD;
 	uQ = pm->i_gain_PQ * eQ;
 
@@ -774,7 +741,17 @@ pm_current_control(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-		uD += pm->hfi_CS[0] * pm->hfi_swing_D * temp * pm->const_Ld;
+		temp = pm->hfi_swing_D * pm->const_Ld * pm->freq_hz * M_PI_F / 2.f;
+
+		if (pm->hfi_injection == 0) {
+
+			uD += - temp;
+			pm->hfi_injection = 1;
+		}
+		else {
+			uD += temp;
+			pm->hfi_injection = 0;
+		}
 	}
 
 	uX = X[2] * uD - X[3] * uQ;

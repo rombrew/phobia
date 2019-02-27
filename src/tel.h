@@ -1,5 +1,5 @@
-#ifndef _H_TELINFO_
-#define _H_TELINFO_
+#ifndef _H_TEL_
+#define _H_TEL_
 
 #include "regfile.h"
 
@@ -25,12 +25,12 @@ typedef struct {
 
 	int		n;
 }
-teli_t;
+tel_t;
 
-void teli_reg_default(teli_t *ti);
-void teli_reg_grab(teli_t *ti);
-void teli_startup(teli_t *ti, int freq, int mode);
-void teli_halt(teli_t *ti);
+void tel_reg_default(tel_t *ti);
+void tel_reg_grab(tel_t *ti);
+void tel_startup(tel_t *ti, int freq, int mode);
+void tel_halt(tel_t *ti);
 
-#endif /* _H_TELINFO_ */
+#endif /* _H_TEL_ */
 

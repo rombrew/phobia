@@ -37,17 +37,18 @@ sim_Tel(float *pTel)
 	pTel[3] = m.X[2] * 30. / M_PI / m.Zp;
 	pTel[4] = m.X[3] * 180. / M_PI;
 	pTel[5] = m.X[4];
+	pTel[6] = m.X[6];
 
 	/* Duty cycle.
 	 * */
-	pTel[6] = (double) m.PWM_A * 100. / (double) m.PWM_R;
-	pTel[7] = (double) m.PWM_B * 100. / (double) m.PWM_R;
-	pTel[8] = (double) m.PWM_C * 100. / (double) m.PWM_R;
+	pTel[7] = (double) m.PWM_A * 100. / (double) m.PWM_R;
+	pTel[8] = (double) m.PWM_B * 100. / (double) m.PWM_R;
+	pTel[9] = (double) m.PWM_C * 100. / (double) m.PWM_R;
 
 	/* Estimated current.
 	 * */
-	pTel[9] = pm.lu_X[0];
-	pTel[10] = pm.lu_X[1];
+	pTel[10] = pm.lu_X[0];
+	pTel[11] = pm.lu_X[1];
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
@@ -57,43 +58,54 @@ sim_Tel(float *pTel)
 
 	/* Estimated position.
 	 * */
-	pTel[11] = atan2(pm.lu_X[3], pm.lu_X[2]) * 180. / M_PI;
-	pTel[12] = C * 180. / M_PI;
+	pTel[12] = atan2(pm.lu_X[3], pm.lu_X[2]) * 180. / M_PI;
+	pTel[13] = C * 180. / M_PI;
 
 	/* Estimated speed.
 	 * */
-	pTel[13] = pm.lu_X[4] * 30. / M_PI / m.Zp;
+	pTel[14] = pm.lu_X[4] * 30. / M_PI / m.Zp;
 
 	/* Zero Drift Q.
 	 * */
-	pTel[14] = pm.flux_drift_Q;
+	pTel[15] = pm.flux_drift_Q;
 
 	/* VSI voltage (XY).
 	 * */
-	pTel[15] = pm.vsi_X;
-	pTel[16] = pm.vsi_Y;
+	pTel[16] = pm.vsi_X;
+	pTel[17] = pm.vsi_Y;
 
 	/* VSI voltage (DQ).
 	 * */
-	pTel[17] = pm.vsi_lpf_D;
-	pTel[18] = pm.vsi_lpf_Q;
+	pTel[18] = pm.vsi_lpf_D;
+	pTel[19] = pm.vsi_lpf_Q;
 
-	/* Measurement residue.
+	/* VSI zone flags.
 	 * */
-	pTel[19] = pm.flux_residue_D;
-	pTel[20] = pm.flux_residue_Q;
-	pTel[21] = pm.flux_residue_lpf;
+	pTel[20] = pm.vsi_ZONE;
+
+	/* VSI voltage residue (XY).
+	 * */
+	pTel[21] = pm.vsi_residue_X;
+	pTel[22] = pm.vsi_residue_Y;
+
+	/* FLUX observer residue.
+	 * */
+	pTel[23] = pm.flux_residue_D;
+	pTel[24] = pm.flux_residue_Q;
+	pTel[25] = pm.flux_residue_lpf;
 
 	/* Power (Watt).
 	 * */
-	pTel[22] = m.iP;
-	pTel[23] = pm.vsi_lpf_watt;
+	pTel[26] = m.iP;
+	pTel[27] = pm.vsi_lpf_watt;
 
-	pTel[24] = pm.vsi_clamp_to_GND;
-	pTel[25] = pm.vsi_ZONE;
-	pTel[26] = pm.vsi_residue_X;
-	pTel[27] = pm.vsi_residue_Y;
-	pTel[28] = pm.lu_mode;
+	/* DC voltage measured.
+	 * */
+	pTel[28] = pm.const_lpf_U;
+
+	/* LU mode.
+	 * */
+	pTel[29] = pm.lu_mode;
 }
 
 static void
@@ -166,14 +178,13 @@ sim_Script(FILE *fdTel)
 
 	pm_config_default(&pm);
 
-	pm.const_lpf_U = m.U;
 	pm.const_R = m.R;
 	pm.const_Ld = m.Ld;
 	pm.const_Lq = m.Lq;
 	pm.const_E = m.E;
 	pm.const_Zp = m.Zp;
 
-	pm.config_HFI = 0;
+	pm.config_HFI = 1;
 	pm.config_LOOP = 1;
 
 	pm_config_tune_current_loop(&pm);
@@ -181,7 +192,7 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, .4, 0);
 
-	if (1) {
+	if (0) {
 
 		pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
 		sim_F(fdTel, 1., 0);
@@ -207,24 +218,16 @@ sim_Script(FILE *fdTel)
 
 	pm.vsi_clamp_to_GND = 1;
 
-	pm.s_setpoint = 9000.f;
+	pm.s_setpoint = 70.f;
 	sim_F(fdTel, .5, 0);
 
-	pm.vsi_clamp_to_GND = 1;
+	pm.s_setpoint = 7000.f;
+	sim_F(fdTel, .5, 0);
 
 	sim_F(fdTel, .5, 0);
 
 	pm.s_setpoint = -2000.f;
 	sim_F(fdTel, .5, 0);
-
-	/*pm.s_setpoint = -30000.f;
-	sim_F(fdTel, .5, 0);
-
-	sim_F(fdTel, .2, 0);
-
-	//m.R *= (1. + 40E-2);
-
-	sim_F(fdTel, .2, 0);*/
 }
 
 int main(int argc, char *argv[])

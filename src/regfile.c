@@ -6,7 +6,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "teli.h"
+#include "tel.h"
 
 #define REG_DEF(l, e, u, f, m, p, t)	{ #l #e "\0" u, f, m, (void *) &l, (void *) p, (void *) t}
 #define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
@@ -249,6 +249,21 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
+		case ID_PM_LU_MODE:
+
+			switch (val) {
+
+				TEXT_ITEM(PM_LU_DISABLED);
+				TEXT_ITEM(PM_LU_DETACHED);
+				TEXT_ITEM(PM_LU_FORCED);
+				TEXT_ITEM(PM_LU_ESTIMATE_FLUX);
+				TEXT_ITEM(PM_LU_ESTIMATE_HFI);
+				TEXT_ITEM(PM_LU_SENSORED_HALL);
+
+				default: break;
+			}
+			break;
+
 		default: break;
 	}
 }
@@ -361,7 +376,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_current_tolerance,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_halt_level,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_adjust_tolerance,,	"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.fault_flux_residual_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.fault_flux_residue_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -369,6 +384,14 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.vsi_lpf_watt,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vsi_gain_LW,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_A.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_A.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_B.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_B.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_C.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_C.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_residue_X,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_residue_Y,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.lu_X[0],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_X[1],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -376,7 +399,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_X[3],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_X[4],,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_X[4], _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
-	REG_DEF(pm.lu_mode,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.lu_mode,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(pm.forced_hold_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_accel,,	"rad/s/s",	"%3e",	REG_CONFIG, NULL, NULL),
@@ -385,9 +408,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_setpoint, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 
 	REG_DEF(pm.flux_drift_Q,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residual_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residual_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residual_lpf,,		"",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_residue_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_residue_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_residue_lpf,,		"",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_DA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -399,12 +422,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_bemf_low_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_bemf_high,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_swing_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_flux_polarity,,		"",	"%4e",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_S,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_gain_F,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_lpf_U,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),

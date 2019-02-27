@@ -822,10 +822,7 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->proc_set_Z(0);
 
 			pm->forced_setpoint = pm->flux_X[4];
-
-			pm->hfi_CS[0] = 1.f;
-			pm->hfi_CS[1] = 0.f;
-			pm->hfi_flux_polarity = 0.f;
+			pm->hfi_injection = 0;
 
 			pm->i_derated = pm->i_maximal;
 			pm->i_setpoint_D = 0.f;

@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "teli.h"
+#include "tel.h"
 
 int pm_wait_for_IDLE()
 {
@@ -22,7 +22,7 @@ int pm_wait_for_IDLE()
 	return pm.fail_reason;
 }
 
-SH_DEF(pm_config_default_1)
+SH_DEF(pm_default)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;
@@ -30,7 +30,7 @@ SH_DEF(pm_config_default_1)
 	pm_config_default(&pm);
 }
 
-SH_DEF(pm_config_tune_current_loop_1)
+SH_DEF(pm_tune_current_loop)
 {
 	if (pm.lu_mode != PM_LU_DISABLED)
 		return;

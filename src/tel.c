@@ -3,13 +3,13 @@
 #include "freertos/FreeRTOS.h"
 #include "hal/hal.h"
 
-#include "teli.h"
+#include "tel.h"
 #include "libc.h"
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
 
-void teli_reg_default(teli_t *ti)
+void tel_reg_default(tel_t *ti)
 {
 	ti->reg_ID[0] = ID_PM_FB_CURRENT_A;
 	ti->reg_ID[1] = ID_PM_FB_CURRENT_B;
@@ -17,13 +17,13 @@ void teli_reg_default(teli_t *ti)
 	ti->reg_ID[3] = ID_PM_LU_X_1;
 	ti->reg_ID[4] = ID_PM_LU_X_4_RPM;
 	ti->reg_ID[5] = ID_PM_FLUX_DRIFT_Q;
-	ti->reg_ID[6] = ID_PM_FLUX_RESIDUAL_LPF;
+	ti->reg_ID[6] = ID_PM_FLUX_RESIDUE_LPF;
 	ti->reg_ID[7] = ID_PM_VSI_LPF_WATT;
 	ti->reg_ID[8] = ID_PM_CONST_LPF_U;
 	ti->reg_ID[9] = ID_AP_TEMP_PCB;
 }
 
-void teli_reg_grab(teli_t *ti)
+void tel_reg_grab(tel_t *ti)
 {
 	reg_val_t		rval;
 	const reg_t		*reg;
@@ -87,7 +87,7 @@ void teli_reg_grab(teli_t *ti)
 	}
 }
 
-void teli_startup(teli_t *ti, int freq, int mode)
+void tel_startup(tel_t *ti, int freq, int mode)
 {
 	if (freq > 0 && freq <= hal.PWM_frequency) {
 
@@ -104,15 +104,15 @@ void teli_startup(teli_t *ti, int freq, int mode)
 	ti->mode = mode;
 }
 
-void teli_halt(teli_t *ti)
+void tel_halt(tel_t *ti)
 {
 	ti->mode = 0;
 	hal_fence();
 }
 
-SH_DEF(tel_reg_default)
+SH_DEF(tel_default)
 {
-	teli_reg_default(&ti);
+	tel_reg_default(&ti);
 }
 
 SH_DEF(tel_grab)
@@ -120,15 +120,15 @@ SH_DEF(tel_grab)
 	int		freq = 0;
 
 	stoi(&freq, s);
-	teli_startup(&ti, freq, TEL_MODE_SINGLE_GRAB);
+	tel_startup(&ti, freq, TEL_MODE_SINGLE_GRAB);
 }
 
-SH_DEF(tel_halt)
+SH_DEF(tel_stop)
 {
-	teli_halt(&ti);
+	tel_halt(&ti);
 }
 
-void teli_reg_labels(teli_t *ti)
+void tel_reg_labels(tel_t *ti)
 {
 	const reg_t		*reg;
 	const char		*su;
@@ -156,7 +156,7 @@ void teli_reg_labels(teli_t *ti)
 	puts(EOL);
 }
 
-void teli_reg_flush(teli_t *ti)
+void tel_reg_flush(tel_t *ti)
 {
 	const reg_t		*reg;
 	int			K, N;
@@ -179,7 +179,7 @@ void teli_reg_flush(teli_t *ti)
 	}
 }
 
-void teli_reg_flush_1(teli_t *ti, int nr)
+void tel_reg_flush_1(tel_t *ti, int nR)
 {
 	const reg_t		*reg;
 	int			N;
@@ -190,7 +190,7 @@ void teli_reg_flush_1(teli_t *ti, int nr)
 
 			reg = &regfile[ti->reg_ID[N]];
 
-			reg_format_rval(reg, &ti->data[nr][N]);
+			reg_format_rval(reg, &ti->data[nR][N]);
 
 			puts(";");
 		}
@@ -203,25 +203,25 @@ SH_DEF(tel_flush)
 {
 	if (ti.mode == TEL_MODE_DISABLED) {
 
-		teli_reg_labels(&ti);
-		teli_reg_flush(&ti);
+		tel_reg_labels(&ti);
+		tel_reg_flush(&ti);
 	}
 }
 
 void taskTELIVE(void *pData)
 {
-	teli_t		*ti = (teli_t *) pData;
-	int		nr = ti->n;
+	tel_t		*ti = (tel_t *) pData;
+	int		nR = ti->n;
 
-	teli_reg_labels(ti);
+	tel_reg_labels(ti);
 
 	do {
 		vTaskDelay((TickType_t) 5);
 
-		while (ti->n != nr) {
+		while (ti->n != nR) {
 
-			teli_reg_flush_1(ti, nr);
-			nr = (nr < 10) ? nr + 1 : 0;
+			tel_reg_flush_1(ti, nR);
+			nR = (nR < 10) ? nR + 1 : 0;
 
 			hal_fence();
 		}
@@ -241,11 +241,11 @@ SH_DEF(tel_live)
 		freq = (freq < 1) ? 1 : (freq > 50) ? 50 : freq;
 	}
 
-	teli_startup(&ti, freq, TEL_MODE_LIVE);
+	tel_startup(&ti, freq, TEL_MODE_LIVE);
 
 	iodef->getc();
 
-	teli_halt(&ti);
+	tel_halt(&ti);
 	vTaskDelete(xHandle);
 }
 

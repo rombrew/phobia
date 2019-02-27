@@ -11,7 +11,7 @@
 
 application_t			ap;
 pmc_t 				pm __section_ccmram;
-teli_t				ti;
+tel_t				ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
@@ -197,7 +197,7 @@ void taskINIT(void *pData)
 		pm.fb_current_clamp = (float) (int) (1940.f * hal.ADC_const.GA);
 
 		pm_config_default(&pm);
-		teli_reg_default(&ti);
+		tel_reg_default(&ti);
 	}
 
 	if (hal.PPM_mode != PPM_DISABLED) {
@@ -306,7 +306,7 @@ void ADC_IRQ()
 		input_CONTROL_QEP();
 	}
 
-	teli_reg_grab(&ti);
+	tel_reg_grab(&ti);
 }
 
 void hal_main()

@@ -208,13 +208,10 @@ typedef struct {
 	float		flux_bemf_high;
 
 	float		hfi_X[5];
-	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	float		hfi_flux_polarity;
-	float		hfi_CS[2];
+	int		hfi_injection;
 	float		hfi_gain_P;
 	float		hfi_gain_S;
-	float		hfi_gain_F;
 
 	float		hall_X[5];
 	float		hall_;

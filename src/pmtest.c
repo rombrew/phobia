@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "teli.h"
+#include "tel.h"
 
 SH_DEF(pm_self_test)
 {
@@ -84,7 +84,7 @@ SH_DEF(pm_test_current_ramp)
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
-	teli_startup(&ti, 0, TEL_MODE_SINGLE_GRAB);
+	tel_startup(&ti, 0, TEL_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = pm.i_setpoint_Q;
@@ -106,7 +106,7 @@ SH_DEF(pm_test_speed_ramp)
 	if (pm.lu_mode == PM_LU_DISABLED)
 		return;
 
-	teli_startup(&ti, 1000, TEL_MODE_SINGLE_GRAB);
+	tel_startup(&ti, 1000, TEL_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = pm.s_setpoint;

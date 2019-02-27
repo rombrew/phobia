@@ -20,9 +20,9 @@ typedef struct {
 
 	/* Satate variabes.
 	 * */
-	double		X[11];
+	double		X[12];
 
-	/* Instantaneous Power.
+	/* Cycle Power.
 	 * */
 	double		iP;
 
@@ -33,6 +33,8 @@ typedef struct {
 	double		Lq;
 	double		E;
 	double		U;
+	double		Rs;
+	double		Cb;
 	int		Zp;
 	double		J;
 	double		M[4];
