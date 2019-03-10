@@ -51,6 +51,7 @@ PCB design source files.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC bus voltage.
 * Fast and robust flux linkage estimation algorithm based on Luenberger
   observer with gain scheduling.
+* Terminal voltage sensing (TVSE) for additional accuracy (**EXPERIMENTAL**).
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to force rotor turn.
 	* High frequency injection (HFI) based on magnetic saliency.
@@ -81,8 +82,9 @@ PCB design source files.
 
 ## TODO
 
-* Try online estimation of stator windings resistance with KF.
 * Analyse of rapid transient modes. Introduce an iron saturation model if needed.
+* Analyse HFI operation on large current values.
+* Introduce an adjustment procedure of TVSE.
 * Make a detailed documentation.
 
 ## Current Status

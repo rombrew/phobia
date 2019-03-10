@@ -8,8 +8,7 @@ void pm_config_default(pmc_t *pm)
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
-	pm->config_TVSE = PM_ENABLED;
-
+	pm->config_TVSE = PM_DISABLED;
 	pm->config_HALL = PM_DISABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
@@ -34,7 +33,7 @@ void pm_config_default(pmc_t *pm)
 	pm->adjust_UC[0] = 0.f;
 	pm->adjust_UC[1] = 1.f;
 
-	pm->probe_current_hold = 20.f;
+	pm->probe_current_hold_D = 20.f;
 	pm->probe_current_hold_Q = 0.f;
 	pm->probe_current_sine = 5.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 16.f;
@@ -45,7 +44,7 @@ void pm_config_default(pmc_t *pm)
 
 	pm->fault_voltage_tolerance = 1.f;
 	pm->fault_current_tolerance = 2.f;
-	pm->fault_current_halt_level = 20.f;
+	pm->fault_current_halt_level = 50.f;
 	pm->fault_adjust_tolerance = 5E-2f;
 	pm->fault_flux_residue_maximal = 90.f;
 
@@ -73,9 +72,11 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_bemf_low_lock = .5f;
 	pm->flux_bemf_high = 1.f;
 
-	pm->hfi_swing_D = 1.f;
+	pm->hfi_freq_hz = pm->freq_hz / 12.f;
+	pm->hfi_swing_D = 2.f;
 	pm->hfi_gain_P = 5E-2f;
 	pm->hfi_gain_S = 5E+1f;
+	pm->hfi_gain_F = 5E-3f;
 
 	pm->const_gain_LP = 2E-1f;
 	pm->const_E = 0.f;
@@ -112,6 +113,7 @@ void pm_config_tune_current_loop(pmc_t *pm)
 
 void pm_config_tune_flux_observer(pmc_t *pm)
 {
+	/* TODO */
 }
 
 static void
@@ -325,12 +327,30 @@ pm_hfi_update(pmc_t *pm)
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
 
-	eR = (pm->hfi_injection == 0) ? - eQ : eQ;
+	eR = eQ * pm->hfi_wave[1];
 	dR = pm->hfi_gain_P * eR;
 	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 	m_rotf(X + 2, dR, X + 2);
 
 	X[4] += pm->hfi_gain_S * eR;
+
+	if (pm->config_LDQ == PM_LDQ_SATURATION_SALIENCY) {
+
+		dR = pm->hfi_wave[0] * pm->hfi_wave[0] - pm->hfi_wave[1] * pm->hfi_wave[1];
+		pm->hfi_flux += pm->hfi_gain_F * eD * dR;
+
+		if (pm->hfi_flux > 1.f) {
+
+			X[2] = - X[2];
+			X[3] = - X[3];
+
+			pm->hfi_flux = 0.f;
+		}
+		else if (pm->hfi_flux < 0.f) {
+
+			pm->hfi_flux = 0.f;
+		}
+	}
 
 	pm_solve_2(pm, X);
 }
@@ -483,11 +503,11 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (m_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
 
-			if (pm->config_HALL != PM_DISABLED) {
+			if (pm->config_HALL == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_SENSORED_HALL;
 			}
-			else if (pm->config_HFI != PM_DISABLED) {
+			else if (pm->config_HFI == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_HFI;
 
@@ -513,9 +533,11 @@ pm_lu_FSM(pmc_t *pm)
 		if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
 
 			pm_voltage_recovery(pm);
+			pm_solve_1(pm, pm->flux_X);
 			pm_solve_1(pm, pm->hfi_X);
 		}
 
+		pm_flux_update(pm);
 		pm_hfi_update(pm);
 
 		X[0] = pm->hfi_X[0];
@@ -524,15 +546,16 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
+				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 
-			pm->flux_X[0] = X[0];
-			pm->flux_X[1] = X[1];
-			pm->flux_X[2] = X[2];
-			pm->flux_X[3] = X[3];
-			pm->flux_X[4] = X[4];
+			/*pm->flux_X[0] = X[0];
+			  pm->flux_X[1] = X[1];
+			  pm->flux_X[2] = X[2];
+			  pm->flux_X[3] = X[3];
+			  pm->flux_X[4] = X[4];*/
 		}
 	}
 	else if (pm->lu_mode == PM_LU_SENSORED_HALL) {
@@ -724,6 +747,14 @@ pm_current_control(pmc_t *pm)
 	eD = sD - X[0];
 	eQ = sQ - X[1];
 
+	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
+
+		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
+		m_rotf(pm->hfi_wave, temp * pm->dT, pm->hfi_wave);
+
+		eD += pm->hfi_wave[1] * pm->hfi_swing_D;
+	}
+
 	uD = pm->i_gain_PD * eD;
 	uQ = pm->i_gain_PQ * eQ;
 
@@ -741,17 +772,7 @@ pm_current_control(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-		temp = pm->hfi_swing_D * pm->const_Ld * pm->freq_hz * M_PI_F / 2.f;
-
-		if (pm->hfi_injection == 0) {
-
-			uD += - temp;
-			pm->hfi_injection = 1;
-		}
-		else {
-			uD += temp;
-			pm->hfi_injection = 0;
-		}
+		uD += pm->hfi_wave[0] * pm->hfi_swing_D * temp * pm->const_Ld;
 	}
 
 	uX = X[2] * uD - X[3] * uQ;
@@ -889,12 +910,12 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (pm->lu_mode != PM_LU_DETACHED) {
 
-			pm_current_control(pm);
-
 			if (pm->config_LOOP == PM_LOOP_DRIVE_SPEED) {
 
 				pm_speed_control(pm);
 			}
+
+			pm_current_control(pm);
 		}
 
 		pm_lu_validate(pm);

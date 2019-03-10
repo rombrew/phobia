@@ -32,10 +32,16 @@ typedef struct {
 	double		Ld;
 	double		Lq;
 	double		E;
+	int		Zp;
+
+	/* Source contants.
+	 * */
 	double		U;
 	double		Rs;
 	double		Cb;
-	int		Zp;
+
+	/* Mechanical constants.
+	 * */
 	double		J;
 	double		M[4];
 

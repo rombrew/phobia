@@ -36,7 +36,7 @@ SH_DEF(pm_self_test)
 
 		xDC = pm.dc_resolution - pm.dc_clearance;
 
-		for (N = 0; N < 5; ++N) {
+		for (N = 0; N < 2; ++N) {
 
 			switch (N) {
 
@@ -46,21 +46,6 @@ SH_DEF(pm_self_test)
 					break;
 
 				case 1:
-					pm.proc_set_DC(xDC, 0, 0);
-					pm.proc_set_Z(6);
-					break;
-
-				case 2:
-					pm.proc_set_DC(0, xDC, 0);
-					pm.proc_set_Z(5);
-					break;
-
-				case 3:
-					pm.proc_set_DC(0, 0, xDC);
-					pm.proc_set_Z(3);
-					break;
-
-				case 4:
 					pm.proc_set_DC(xDC, xDC, xDC);
 					pm.proc_set_Z(0);
 					break;

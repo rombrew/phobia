@@ -361,7 +361,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fb_voltage_B,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_voltage_C,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(pm.probe_current_hold,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_current_hold_D,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_hold_Q,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_sine,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_freq_sine_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -379,6 +379,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_flux_residue_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	0, NULL, NULL),
+	REG_DEF(pm.vsi_ZONE,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_watt,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
@@ -422,9 +423,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_bemf_low_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_bemf_high,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_swing_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_flux,,			"",	"%4e",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_S,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_gain_F,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_lpf_U,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),

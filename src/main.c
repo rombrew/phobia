@@ -148,7 +148,7 @@ void taskINIT(void *pData)
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_current_shunt_resistance = 200E-6f;
+		hal.ADC_current_shunt_resistance = 240E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
 

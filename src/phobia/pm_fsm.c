@@ -95,7 +95,6 @@ pm_fsm_current_probe(pmc_t *pm)
 		pm->probe_fb_X = pm->fb_current_A;
 		pm->probe_fb_Y = pm->fb_current_B;
 	}
-
 }
 
 static void
@@ -513,7 +512,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->probe_DFT[1] += - pm->fb_current_B;
 
 		case 1:
-			eX = pm->probe_current_hold - pm->fb_current_A;
+			eX = pm->probe_current_hold_D - pm->fb_current_A;
 
 			pm->temporal[0] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->temporal[0];
@@ -559,8 +558,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_hold)
-			+ pm->fault_current_halt_level);
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
@@ -579,12 +577,12 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
-			pm->probe_DFT[2] = pm->probe_current_hold;
+			pm->probe_DFT[2] = pm->probe_current_hold_D;
 			pm->probe_DFT[3] = pm->probe_current_hold_Q;
 
 			pm->temporal[0] = 0.f;
 			pm->temporal[1] = 0.f;
-			pm->temporal[2] = pm->probe_current_hold * pm->const_R;
+			pm->temporal[2] = pm->probe_current_hold_D * pm->const_R;
 			pm->temporal[3] = pm->probe_current_hold_Q * pm->const_R;
 
 			pm->tm_value = 0;
@@ -601,7 +599,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 		case 1:
 			pm_fsm_current_probe(pm);
 
-			eX = pm->probe_current_hold - pm->probe_fb_X;
+			eX = pm->probe_current_hold_D - pm->probe_fb_X;
 			eY = pm->probe_current_hold_Q - pm->probe_fb_Y;
 
 			pm->temporal[0] += pm->probe_gain_I * eX;
@@ -643,8 +641,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_hold)
-			+ pm->fault_current_halt_level);
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
@@ -681,13 +678,16 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 			if (pm->probe_current_hold_Q != 0.f) {
 
-				pm->temporal[4] = pm->probe_current_hold * pm->const_R;
+				pm->temporal[4] = pm->probe_current_hold_D * pm->const_R;
 				pm->temporal[5] = pm->probe_current_hold_Q * pm->const_R;
 			}
 			else {
 				pm->temporal[4] = 0.f;
 				pm->temporal[5] = 0.f;
 			}
+
+			pm->temporal[6] = m_cosf(pm->temporal[2] / 2.f);
+			pm->temporal[7] = m_sinf(pm->temporal[2] / 2.f);
 
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
@@ -699,22 +699,25 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 		case 2:
 			pm_fsm_current_probe(pm);
 
+			uX = pm->vsi_X * pm->temporal[6] + pm->vsi_Y * pm->temporal[7];
+			uY = pm->vsi_Y * pm->temporal[6] - pm->vsi_X * pm->temporal[7];
+
 			pm->probe_DFT[0] += pm->probe_fb_X * pm->temporal[0];
 			pm->probe_DFT[1] += pm->probe_fb_X * pm->temporal[1];
-			pm->probe_DFT[2] += pm->vsi_X * pm->temporal[0];
-			pm->probe_DFT[3] += pm->vsi_X * pm->temporal[1];
+			pm->probe_DFT[2] += uX * pm->temporal[0];
+			pm->probe_DFT[3] += uX * pm->temporal[1];
 			pm->probe_DFT[4] += pm->probe_fb_Y * pm->temporal[0];
 			pm->probe_DFT[5] += pm->probe_fb_Y * pm->temporal[1];
-			pm->probe_DFT[6] += pm->vsi_Y * pm->temporal[0];
-			pm->probe_DFT[7] += pm->vsi_Y * pm->temporal[1];
+			pm->probe_DFT[6] += uY * pm->temporal[0];
+			pm->probe_DFT[7] += uY * pm->temporal[1];
 
 		case 1:
+			m_rotf(pm->temporal, pm->temporal[2], pm->temporal);
+
 			uX = pm->temporal[4] + pm->temporal[3] * pm->temporal[0];
 			uY = pm->temporal[5] + pm->temporal[3] * pm->temporal[1];
 
 			pm_voltage_control(pm, uX, uY);
-
-			m_rotf(pm->temporal, pm->temporal[2], pm->temporal);
 
 			pm->tm_value++;
 
@@ -750,8 +753,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 	}
 
-	pm_fsm_current_halt(pm, m_fabsf(pm->probe_current_sine)
-			+ pm->fault_current_halt_level);
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
 }
 
 static void
@@ -777,8 +779,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->vsi_lpf_Q = 0.f;
 				pm->vsi_lpf_watt = 0.f;
 
-				pm_voltage_initial_prep(pm);
-
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
 				pm->flux_X[2] = 1.f;
@@ -790,6 +790,8 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->fail_reason = PM_OK;
 
 				if (PM_CONFIG_TVSE(pm) == PM_ENABLED) {
+
+					pm_voltage_initial_prep(pm);
 
 					pm->tm_value = 0;
 					pm->tm_end = pm->freq_hz * pm->tm_startup;
@@ -822,7 +824,10 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->proc_set_Z(0);
 
 			pm->forced_setpoint = pm->flux_X[4];
-			pm->hfi_injection = 0;
+
+			pm->hfi_wave[0] = 1.f;
+			pm->hfi_wave[1] = 0.f;
+			pm->hfi_flux = 0.f;
 
 			pm->i_derated = pm->i_maximal;
 			pm->i_setpoint_D = 0.f;

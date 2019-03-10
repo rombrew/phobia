@@ -101,7 +101,6 @@ typedef struct {
 	int		config_ABC;
 	int		config_LDQ;
 	int		config_TVSE;
-
 	int		config_HALL;
 	int		config_HFI;
 	int		config_LOOP;
@@ -139,7 +138,7 @@ typedef struct {
 
 	float		probe_fb_X;
 	float		probe_fb_Y;
-	float		probe_current_hold;
+	float		probe_current_hold_D;
 	float		probe_current_hold_Q;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
@@ -208,10 +207,13 @@ typedef struct {
 	float		flux_bemf_high;
 
 	float		hfi_X[5];
+	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	int		hfi_injection;
+	float		hfi_wave[2];
+	float		hfi_flux;
 	float		hfi_gain_P;
 	float		hfi_gain_S;
+	float		hfi_gain_F;
 
 	float		hall_X[5];
 	float		hall_;
