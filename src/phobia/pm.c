@@ -243,11 +243,11 @@ pm_flux_residue(pmc_t *pm, float X[5])
 		iY = (iY < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
 			(iY > pm->fb_current_clamp) ? pm->fb_current_clamp : iY;
 
-		iA = pm->fb_current_A - iA;
-		iB = pm->fb_current_B - iB;
+		iX = pm->fb_current_A - iX;
+		iY = pm->fb_current_B - iY;
 
-		iX = ((pm->vsi_ZONE & 0x11UL) == 0) ? iA : 0.f;
-		iY = ((pm->vsi_ZONE & 0x22UL) == 0) ? iB : 0.f;
+		iX = ((pm->vsi_ZONE & 0x11UL) == 0) ? iX : 0.f;
+		iY = ((pm->vsi_ZONE & 0x22UL) == 0) ? iY : 0.f;
 	}
 
 	pm->flux_residue_D = X[2] * iX + X[3] * iY;
