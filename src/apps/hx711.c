@@ -7,7 +7,7 @@
 #include "main.h"
 #include "shell.h"
 
-void apHX711(void *pData)
+void ap_HX711(void *pData)
 {
 	const int		gpio_DOUT = GPIO_SPI_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI_SCK;
@@ -57,22 +57,27 @@ void apHX711(void *pData)
 	while (1);
 }
 
-static TaskHandle_t		xHandle;
-
 SH_DEF(ap_hx711_startup)
 {
+	TaskHandle_t		xHandle;
+
+	xHandle = xTaskGetHandle("ap_HX711");
+
 	if (xHandle == NULL) {
 
-		xTaskCreate(apHX711, "apHX711", configMINIMAL_STACK_SIZE, NULL, 1, &xHandle);
+		xTaskCreate(ap_HX711, "ap_HX711", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
 SH_DEF(ap_hx711_halt)
 {
+	TaskHandle_t		xHandle;
+
+	xHandle = xTaskGetHandle("ap_HX711");
+
 	if (xHandle != NULL) {
 
 		vTaskDelete(xHandle);
-		xHandle = NULL;
 	}
 }
 

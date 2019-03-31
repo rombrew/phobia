@@ -77,7 +77,7 @@
 #define configTICK_RATE_HZ			1000
 #define configMAX_PRIORITIES			5
 #define configMINIMAL_STACK_SIZE		128
-#define configMAX_TASK_NAME_LEN			16
+#define configMAX_TASK_NAME_LEN			32
 #define configUSE_16_BIT_TICKS			0
 #define configIDLE_SHOULD_YIELD			1
 #define configUSE_TASK_NOTIFICATIONS            0

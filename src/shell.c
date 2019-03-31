@@ -514,7 +514,7 @@ const char *sh_next_arg(const char *s)
 
 static sh_t			shlocal;
 
-void taskSH(void *pData)
+void task_SH(void *pData)
 {
 	const char	*allowed = "+-_.[] ";
 	sh_t		*sh = &shlocal;

@@ -2,7 +2,7 @@
 #define _H_PM_
 
 #define PM_CONFIG_ABC(pm)			(pm)->config_ABC
-#define PM_CONFIG_TVSE(pm)			(pm)->config_TVSE
+#define PM_CONFIG_VOLT(pm)			(pm)->config_VOLT
 
 #define PM_SFI(s)				#s
 
@@ -43,7 +43,6 @@ enum {
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_SAMPLING_ACCURACY,
 	PM_STATE_ADJUST_VOLTAGE,
-	PM_STATE_ADJUST_TAU_TOF,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
@@ -100,7 +99,7 @@ typedef struct {
 
 	int		config_ABC;
 	int		config_LDQ;
-	int		config_TVSE;
+	int		config_VOLT;
 	int		config_HALL;
 	int		config_HFI;
 	int		config_LOOP;
@@ -116,6 +115,7 @@ typedef struct {
 	float		tm_voltage_hold;
 	float		tm_current_hold;
 	float		tm_instant_probe;
+	float		tm_average_drift;
 	float		tm_average_probe;
 	float		tm_startup;
 
@@ -138,8 +138,8 @@ typedef struct {
 
 	float		probe_fb_X;
 	float		probe_fb_Y;
-	float		probe_current_hold_D;
-	float		probe_current_hold_Q;
+	float		probe_current_hold_X;
+	float		probe_current_hold_Y;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
 	float		probe_speed_low;
@@ -147,8 +147,13 @@ typedef struct {
 	float		probe_gain_P;
 	float		probe_gain_I;
 	float		probe_DFT[8];
+	float		probe_impedance_R;
+	float		probe_rotation_DQ;
+	float		probe_LSQ_A[9];
+	float		probe_LSQ_B[9];
+	float		probe_LSQ_C[9];
 
-	float		temporal[8];
+	float		FIX[27];
 
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
@@ -156,30 +161,28 @@ typedef struct {
 	float		fault_adjust_tolerance;
 	float		fault_flux_residue_maximal;
 
+	int		vsi_precise_MODE;
 	int		vsi_clamp_to_GND;
-	int		vsi_ZONE;
+	int		vsi_bit_ZONE;
 	float		vsi_X;
 	float		vsi_Y;
+	float		vsi_DX;
+	float		vsi_DY;
 	float		vsi_lpf_D;
 	float		vsi_lpf_Q;
 	float		vsi_lpf_watt;
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
 
-	struct {
-
-		float	const_TAU;
-		float	const_TOF;
-
-		float	prep_EXP[2];
-		float	temp_u0;
-	}
-	vsi_A, vsi_B, vsi_C;
-
-	float		vsi_residue_X;
-	float		vsi_residue_Y;
-	float		vsi_queue_X;
-	float		vsi_queue_Y;
+	float		volt_maximal;
+	float		volt_A;
+	float		volt_B;
+	float		volt_C;
+	float		volt_FIR_A[3];
+	float		volt_FIR_B[3];
+	float		volt_FIR_C[3];
+	float		volt_residue_X;
+	float		volt_residue_Y;
 
 	float		lu_X[5];
 	int		lu_mode;
@@ -262,9 +265,8 @@ pmc_t;
 void pm_config_default(pmc_t *pm);
 void pm_config_tune_current_loop(pmc_t *pm);
 
-void pm_voltage_initial_prep(pmc_t *pm);
-void pm_voltage_recovery(pmc_t *pm);
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
+int pm_volt_residue(pmc_t *pm);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);

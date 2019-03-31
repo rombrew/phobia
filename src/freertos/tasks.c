@@ -3980,7 +3980,7 @@ extern void printf(const char *fmt, ...);
 			/* Generate the (binary) data. */
 			uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, NULL );
 
-			printf("Name            \tState \tPri \tStack \tNum \r\n");
+			printf("Name                            \tState \tPri \tStack \tNum \r\n");
 
 			/* Create a human readable table from the binary data. */
 			for( x = 0; x < uxArraySize; x++ )

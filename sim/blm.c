@@ -66,12 +66,12 @@ void blm_Enable(blm_t *m)
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 14E-6;
+	m->Ld = 10E-6;
 	m->Lq = 20E-6;
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 13.;
+	m->U = 32.;
 
 	/* Source internal resistance. (Ohm)
 	 * */
@@ -108,7 +108,7 @@ void blm_Enable(blm_t *m)
 	/* Sensor time constant.
 	 * */
 	m->tau_I = 0.636E-6;
-	m->tau_U = 22.09E-6;
+	m->tau_U = 25.53E-6;
 }
 
 static void

@@ -14,7 +14,7 @@ CFLAGS	= -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -O3 -flto -g3
+CFLAGS	+= -Os -flto -g3
 CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
@@ -58,7 +58,8 @@ OBJS    = freertos/heap_4.o \
 	  tel.o
 
 OBJS	+= apps/hx711.o \
-	   apps/push.o
+	   apps/push2.o \
+	   apps/volt.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

@@ -18,7 +18,7 @@ sh_cmd_t;
 
 const char *sh_next_arg(const char *s);
 
-void taskSH(void *); 
+void task_SH(void *); 
 
 #endif /* _H_SHELL_ */
 

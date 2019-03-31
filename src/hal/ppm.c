@@ -24,12 +24,14 @@ void irqTIM4()
 
 		TIM4->SR = ~TIM_SR_CC2IF;
 		TIM4->DIER = TIM_DIER_CC4IE;
+
 		hal.PPM_signal_caught = 1;
 	}
 	else if (SR & TIM_SR_CC4IF) {
 
 		TIM4->SR = ~TIM_SR_CC4IF;
 		TIM4->DIER = TIM_DIER_CC2IE;
+
 		hal.PPM_signal_caught = 0;
 	}
 }

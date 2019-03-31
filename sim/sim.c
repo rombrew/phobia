@@ -81,12 +81,12 @@ sim_Tel(float *pTel)
 
 	/* VSI zone flags.
 	 * */
-	pTel[20] = pm.vsi_ZONE;
+	pTel[20] = pm.vsi_bit_ZONE;
 
-	/* VSI voltage residue (XY).
+	/* VOLT sensing residue (XY).
 	 * */
-	pTel[21] = pm.vsi_residue_X;
-	pTel[22] = pm.vsi_residue_Y;
+	pTel[21] = pm.volt_residue_X;
+	pTel[22] = pm.volt_residue_Y;
 
 	/* FLUX observer residue.
 	 * */
@@ -106,21 +106,26 @@ sim_Tel(float *pTel)
 	/* LU mode.
 	 * */
 	pTel[29] = pm.lu_mode;
+
+	/* VOLT voltages (ABC).
+	 * */
+	pTel[30] = pm.volt_A;
+	pTel[31] = pm.volt_B;
+	pTel[32] = pm.volt_C;
 }
 
 static void
-sim_F(FILE *fdTel, double dT, int Verb)
+sim_F(FILE *fdTel, double dT, int Wait)
 {
 	const int	szTel = 40;
 	float		Tel[szTel];
-	double		Tin, Tend;
+	double		Tend;
 
 	pmfb_t		fb;
 
-	Tin = m.Tsim;
-	Tend = Tin + dT;
+	Tend = m.Tsim + dT;
 
-	while (m.Tsim < Tend) {
+	while (m.Tsim < Tend || (Wait && pm.fsm_state != PM_STATE_IDLE)) {
 
 		/* Plant model update.
 		 * */
@@ -137,12 +142,6 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		if (pm.fail_reason != PM_OK) {
-
-			printf("%s\n", pm_strerror(pm.fail_reason));
-			exit(1);
-		}
-
 		/* Collect telemetry.
 		 * */
 		sim_Tel(Tel);
@@ -151,14 +150,10 @@ sim_F(FILE *fdTel, double dT, int Verb)
 		 * */
 		fwrite(Tel, sizeof(float), szTel, fdTel);
 
-		/* Progress indication.
-		 * */
-		if (Verb && Tin < m.Tsim) {
+		if (pm.fail_reason != PM_OK) {
 
-			Tin += .1;
-
-			printf("\rTsim = %2.1lf", m.Tsim);
-			fflush(stdout);
+			printf("%s\n", pm_strerror(pm.fail_reason));
+			exit(1);
 		}
 	}
 }
@@ -172,8 +167,6 @@ sim_Script(FILE *fdTel)
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm.dc_minimal = 50;
-	pm.dc_clearance = 350;
 	pm.fb_current_clamp = 50.f;
 
 	pm_config_default(&pm);
@@ -186,37 +179,48 @@ sim_Script(FILE *fdTel)
 
 	pm.config_HFI = 1;
 	pm.config_LOOP = 1;
+	pm.config_VOLT = 1;
 
 	pm_config_tune_current_loop(&pm);
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
-	sim_F(fdTel, .4, 0);
+	sim_F(fdTel, 0., 1);
 
-	if (0) {
+	if (1) {
+
+		printf("IAB %.4f %.4f (A)\n", pm.adjust_IA[0], pm.adjust_IB[0]);
 
 		pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
-		sim_F(fdTel, 1., 0);
+		sim_F(fdTel, 0., 1);
 
-		printf("%4f %4f (V)\n", pm.adjust_UA[1], pm.adjust_UA[0]);
-		printf("%4f %4f (V)\n", pm.adjust_UB[1], pm.adjust_UB[0]);
-		printf("%4f %4f (V)\n", pm.adjust_UC[1], pm.adjust_UC[0]);
+		printf("UA %.4f %.4f (V)\n", pm.adjust_UA[1], pm.adjust_UA[0]);
+		printf("UB %.4f %.4f (V)\n", pm.adjust_UB[1], pm.adjust_UB[0]);
+		printf("UC %.4f %.4f (V)\n", pm.adjust_UC[1], pm.adjust_UC[0]);
+
+		printf("FIR_A: %.4e %.4e %.4e\n", pm.volt_FIR_A[0], pm.volt_FIR_A[1], pm.volt_FIR_A[2]);
+		printf("FIR_B: %.4e %.4e %.4e\n", pm.volt_FIR_B[0], pm.volt_FIR_B[1], pm.volt_FIR_B[2]);
+		printf("FIR_C: %.4e %.4e %.4e\n", pm.volt_FIR_C[0], pm.volt_FIR_C[1], pm.volt_FIR_C[2]);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
-		sim_F(fdTel, 1., 0);
+		sim_F(fdTel, 0., 1);
 
-		printf("%4e (Ohm)\n", pm.const_R);
+		printf("R %.4e (Ohm)\n", pm.const_R);
+
+		m.X[3] = 20. * (M_PI / 180.);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
-		sim_F(fdTel, 1., 0);
+		sim_F(fdTel, 0., 1);
 
-		printf("%4e (H)\n", pm.const_Ld);
-		printf("%4e (H)\n", pm.const_Lq);
+		printf("LD %.4e (H)\n", pm.const_Ld);
+		printf("LQ %.4e (H)\n", pm.const_Lq);
+		printf("imp_R %.4e (Ohm)\n", pm.probe_impedance_R);
+		printf("DQ %.2f (g)\n", pm.probe_rotation_DQ);
 	}
 
-	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
-	sim_F(fdTel, .5, 0);
+	exit(0);
 
-	pm.vsi_clamp_to_GND = 1;
+	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+	sim_F(fdTel, 0., 1);
 
 	pm.s_setpoint = 70.f;
 	sim_F(fdTel, .5, 0);

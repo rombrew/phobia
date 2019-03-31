@@ -22,9 +22,9 @@ controller for RC and robotics.
 	* Hall Sensors or Quadrature Encoder (5v pull-up).
 	* External NTC resistor (e.g. motor temperature sensing).
 * Control interfaces:
-	* CAN transceiver with optional termination resistor on PCB (3.3v).
+	* CAN transceiver with optional termination resistor on PCB (5v).
 	* USART to bootload and configure (3.3v).
-	* Pulse input control: RC servo PPM, STEP/DIR, QEP (5v tolerant).
+	* Pulse input control: RC servo pulse width, STEP/DIR, QEP (5v tolerant).
 	* Analog input control (from 0 to 5v).
 * Auxiliary interfaces:
 	* Two combined ports with: SPI, I2C, USART, ADC, DAC, GPIO (3.3v).
@@ -51,7 +51,7 @@ PCB design source files.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC bus voltage.
 * Fast and robust flux linkage estimation algorithm based on Luenberger
   observer with gain scheduling.
-* Terminal voltage sensing (TVSE) for additional accuracy (**EXPERIMENTAL**).
+* Terminal voltage sensing to reduce the effect of Dead-Time (**EXPERIMENTAL**).
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to force rotor turn.
 	* High frequency injection (HFI) based on magnetic saliency.
@@ -67,7 +67,7 @@ PCB design source files.
  	* Maximal speed and acceleration.
 * Control inputs:
 	* CAN bus (**TODO**).
-	* RC servo PPM.
+	* RC servo pulse width.
 	* Analog (**TODO**).
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
@@ -84,7 +84,6 @@ PCB design source files.
 
 * Analyse of rapid transient modes. Introduce an iron saturation model if needed.
 * Analyse HFI operation on large current values.
-* Introduce an adjustment procedure of TVSE.
 * Make a detailed documentation.
 
 ## Current Status

@@ -85,10 +85,14 @@ void USART_putc(int c)
 {
 	char		xC = (char) c;
 
+	GPIO_set_HIGH(GPIO_LED);
+
 	if (xQueueSendToBack(hal_USART.xTX, &xC, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
+
+	GPIO_set_LOW(GPIO_LED);
 }
 
 void USART_debug_putc(int c)

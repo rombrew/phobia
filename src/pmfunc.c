@@ -24,8 +24,11 @@ int pm_wait_for_IDLE()
 
 SH_DEF(pm_default)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
 		return;
+	}
 
 	pm_config_default(&pm);
 }
@@ -40,8 +43,11 @@ SH_DEF(pm_tune_current_loop)
 
 SH_DEF(pm_probe_base)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
 		return;
+	}
 
 	do {
 		reg_format(&regfile[ID_PM_CONST_LPF_U]);
@@ -55,15 +61,13 @@ SH_DEF(pm_probe_base)
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
+		if (PM_CONFIG_VOLT(&pm) == PM_ENABLED) {
 
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
+			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
-
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
+			if (pm_wait_for_IDLE() != PM_OK)
+				break;
+		}
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 
@@ -77,13 +81,10 @@ SH_DEF(pm_probe_base)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
-
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
-
 		reg_format(&regfile[ID_PM_CONST_LD]);
 		reg_format(&regfile[ID_PM_CONST_LQ]);
+		reg_format(&regfile[ID_PM_PROBE_IMPEDANCE_R]);
+		reg_format(&regfile[ID_PM_PROBE_ROTATION_DQ]);
 
 		pm_config_tune_current_loop(&pm);
 	}
@@ -96,8 +97,11 @@ SH_DEF(pm_probe_spinup)
 {
 	TickType_t		xWait;
 
-	if (pm.lu_mode != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
 		return;
+	}
 
 	do {
 		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);

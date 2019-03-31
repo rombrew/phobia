@@ -8,7 +8,7 @@
 #include "regfile.h"
 #include "shell.h"
 
-void apPUSH(void *pData)
+void ap_PUSH(void *pData)
 {
 	TickType_t		xWake;
 
@@ -92,22 +92,27 @@ void apPUSH(void *pData)
 	while (1);
 }
 
-static TaskHandle_t		xHandle;
-
 SH_DEF(ap_push_startup)
 {
+	TaskHandle_t		xHandle;
+
+	xHandle = xTaskGetHandle("ap_PUSH");
+
 	if (xHandle == NULL) {
 
-		xTaskCreate(apPUSH, "apPUSH", configMINIMAL_STACK_SIZE, NULL, 1, &xHandle);
+		xTaskCreate(ap_PUSH, "ap_PUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
 SH_DEF(ap_push_halt)
 {
+	TaskHandle_t		xHandle;
+
+	xHandle = xTaskGetHandle("ap_PUSH");
+
 	if (xHandle != NULL) {
 
 		vTaskDelete(xHandle);
-		xHandle = NULL;
 	}
 }
 

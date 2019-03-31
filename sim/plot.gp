@@ -59,10 +59,15 @@ figure 0 19 "pm.vsi_lpf_Q"
 page "PWM: pm.vsi_ZONE"
 figure 0 20 "pm.vsi_ZONE"
 
-page "PWM: pm.vsi_residue_[XY]"
+page "VOLT: pm.volt_residue_[XY]"
 label 1 "(V)"
-figure 0 21 "pm.vsi_residue_X"
-figure 0 22 "pm.vsi_residue_Y"
+figure 0 21 "pm.volt_residue_X"
+figure 0 22 "pm.volt_residue_Y"
+
+page "VOLT: pm.volt_[ABC]"
+figure 0 30 "pm.volt_A"
+figure 0 31 "pm.volt_B"
+figure 0 32 "pm.volt_C"
 
 page "FLUX: DQ Residue"
 label 1 "(A)"
@@ -77,5 +82,4 @@ page "Power Consumption"
 label 1 "(W)"
 figure 0 26 "m.iP"
 figure 0 27 "pm.vsi_lpf_watt"
-
 

@@ -176,8 +176,11 @@ SH_DEF(flash_write)
 {
 	int			rc;
 
-	if (pm.lu_mode != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
 		return ;
+	}
 
 	printf("Flash ... ");
 

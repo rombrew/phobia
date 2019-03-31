@@ -44,7 +44,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 	lowTRACE("FreeRTOS Hook: Stack Overflow in \"%s\" Task" EOL, pcTaskName);
 }
 
-void taskTERM(void *pData)
+void task_TERM(void *pData)
 {
 	TickType_t			xWake;
 	float				i_temp, i_derated;
@@ -85,7 +85,7 @@ void taskTERM(void *pData)
 			i_derated = (i_temp < i_derated) ? i_temp : i_derated;
 			pm.i_derated = i_derated;
 
-			/* Monitor for battery voltage.
+			/* Battery voltage monitor.
 			 * */
 			if (pm.const_lpf_U < ap.batt_voltage_low) {
 
@@ -100,7 +100,7 @@ void taskTERM(void *pData)
 	while (1);
 }
 
-void taskANALOG(void *pData)
+void task_ANALOG(void *pData)
 {
 	TickType_t			xWake;
 
@@ -118,7 +118,7 @@ void taskANALOG(void *pData)
 	while (1);
 }
 
-void taskINIT(void *pData)
+void task_INIT(void *pData)
 {
 	int			rc_flash;
 
@@ -212,8 +212,8 @@ void taskINIT(void *pData)
 
 	GPIO_set_LOW(GPIO_LED);
 
-	xTaskCreate(taskSH, "tSH", 512, NULL, 1, NULL);
-	xTaskCreate(taskTERM, "tTERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_SH, "task_SH", 512, NULL, 1, NULL);
+	xTaskCreate(task_TERM, "task_TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 	vTaskDelete(NULL);
 }
@@ -291,8 +291,6 @@ void ADC_IRQ()
 		fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
 	}
 
-	pm_feedback(&pm, &fb);
-
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 
 		input_PULSE_WIDTH();
@@ -306,12 +304,13 @@ void ADC_IRQ()
 		input_CONTROL_QEP();
 	}
 
+	pm_feedback(&pm, &fb);
 	tel_reg_grab(&ti);
 }
 
 void hal_main()
 {
-	xTaskCreate(taskINIT, "tINIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
+	xTaskCreate(task_INIT, "task_INIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
 	vTaskStartScheduler();
 }
 
@@ -366,25 +365,34 @@ SH_DEF(rtos_cpu_usage)
 
 SH_DEF(rtos_tasklist)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return ;
-
 	vTaskList();
+}
+
+SH_DEF(rtos_kill)
+{
+	TaskHandle_t		xHandle;
+
+	xHandle = xTaskGetHandle(s);
+
+	if (xHandle != NULL) {
+
+		vTaskDelete(xHandle);
+	}
 }
 
 SH_DEF(rtos_freeheap)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
-		return ;
-
 	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
 }
 
 SH_DEF(rtos_reboot)
 {
-	if (pm.lu_mode != PM_LU_DISABLED)
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
 		return ;
+	}
 
 	hal_system_reset();
 }

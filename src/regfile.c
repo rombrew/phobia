@@ -202,7 +202,7 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_PM_CONFIG_TVSE:
+		case ID_PM_CONFIG_VOLT:
 		case ID_PM_CONFIG_HALL:
 		case ID_PM_CONFIG_HFI:
 
@@ -326,7 +326,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.config_ABC,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LDQ,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_TVSE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_VOLT,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HALL,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LOOP,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -338,6 +338,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tm_voltage_hold,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_current_hold,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_instant_probe,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_average_drift,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_average_probe,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_startup,,			"s",	"%3f",	REG_CONFIG, NULL, NULL),
 
@@ -361,8 +362,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fb_voltage_B,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_voltage_C,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(pm.probe_current_hold_D,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.probe_current_hold_Q,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_current_hold_X,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_current_hold_Y,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_sine,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_freq_sine_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_low,,		"rad/s","%2f",	REG_CONFIG, NULL, NULL),
@@ -371,6 +372,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_speed_ramp, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.probe_gain_P,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_gain_I,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_impedance_R,,		"Ohm",	"%4e",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.probe_rotation_DQ,,		"g",	"%2f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.fault_voltage_tolerance,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_tolerance,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -378,21 +381,31 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_adjust_tolerance,,	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_flux_residue_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	0, NULL, NULL),
-	REG_DEF(pm.vsi_ZONE,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_bit_ZONE,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_X,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_Y,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_watt,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vsi_gain_LW,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_A.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_A.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_B.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_B.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_C.const_TAU,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_C.const_TOF,,		"s",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_residue_X,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_residue_Y,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+
+	REG_DEF(pm.volt_maximal,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_A,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.volt_B,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.volt_C,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.volt_FIR_A[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_A[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_A[2],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_B[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_B[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_B[2],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_C[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_C[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_FIR_C[2],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.volt_residue_X,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.volt_residue_Y,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.lu_X[0],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_X[1],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
