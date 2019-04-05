@@ -8,7 +8,7 @@ void pm_config_default(pmc_t *pm)
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
-	pm->config_VOLT = PM_DISABLED;
+	pm->config_VOLT = PM_ENABLED;
 	pm->config_HALL = PM_DISABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
@@ -74,8 +74,8 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_low_unlock = .3f;
-	pm->flux_bemf_low_lock = .5f;
+	pm->flux_bemf_low_unlock = .1f;
+	pm->flux_bemf_low_lock = .2f;
 	pm->flux_bemf_high = 1.f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
@@ -93,8 +93,8 @@ void pm_config_default(pmc_t *pm)
 	pm->const_J = 0.f;
 
 	pm->i_maximal = pm->fb_current_clamp;
-	pm->i_watt_consumption_maximal = 3500.f;
-	pm->i_watt_regeneration_maximal = -50.f;
+	pm->i_watt_maximal = 3500.f;
+	pm->i_watt_reverse = -50.f;
 	pm->i_gain_PD = 5E-2f;
 	pm->i_gain_ID = 5E-3f;
 	pm->i_gain_PQ = 5E-2f;
@@ -208,34 +208,41 @@ static void
 pm_flux_residue(pmc_t *pm, float X[5])
 {
 	float		iA, iB, iX, iY;
+	int		vA, vB;
 
 	iX = X[2] * X[0] - X[3] * X[1];
 	iY = X[3] * X[0] + X[2] * X[1];
+
+	vA = (pm->vsi_current_ZONE & 0x11UL) ? 0 : 1;
+	vB = (pm->vsi_current_ZONE & 0x22UL) ? 0 : 1;
+
+	vA = (pm->fb_current_A < - pm->fb_current_clamp) ? 0 :
+		(pm->fb_current_A > pm->fb_current_clamp) ? 0 : vA;
+	vB = (pm->fb_current_B < - pm->fb_current_clamp) ? 0 :
+		(pm->fb_current_B > pm->fb_current_clamp) ? 0 : vB;
 
 	if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
 		iA = iX;
 		iB = - .5f * iX + .8660254f * iY;
 
-		iA = (iA < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-			(iA > pm->fb_current_clamp) ? pm->fb_current_clamp : iA;
-		iB = (iB < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-			(iB > pm->fb_current_clamp) ? pm->fb_current_clamp : iB;
+		vA = (iA < - pm->fb_current_clamp) ? 0 : (iA > pm->fb_current_clamp) ? 0 : vA;
+		vB = (iB < - pm->fb_current_clamp) ? 0 : (iB > pm->fb_current_clamp) ? 0 : vB;
 
 		iA = pm->fb_current_A - iA;
 		iB = pm->fb_current_B - iB;
 
-		if ((pm->vsi_bit_ZONE & 0x33UL) == 0) {
+		if (vA && vB) {
 
 			iX = iA;
 			iY = .57735027f * iA + 1.1547005f * iB;
 		}
-		else if ((pm->vsi_bit_ZONE & 0x11UL) == 0) {
+		else if (vA) {
 
 			iX = iA;
 			iY = 0.f;
 		}
-		else if ((pm->vsi_bit_ZONE & 0x22UL) == 0) {
+		else if (vB) {
 
 			iX = - .5f * iB;
 			iY = .8660254f * iB;
@@ -247,16 +254,14 @@ pm_flux_residue(pmc_t *pm, float X[5])
 	}
 	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
-		iX = (iX < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-			(iX > pm->fb_current_clamp) ? pm->fb_current_clamp : iX;
-		iY = (iY < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-			(iY > pm->fb_current_clamp) ? pm->fb_current_clamp : iY;
+		vA = (iX < - pm->fb_current_clamp) ? 0 : (iX > pm->fb_current_clamp) ? 0 : vA;
+		vB = (iY < - pm->fb_current_clamp) ? 0 : (iY > pm->fb_current_clamp) ? 0 : vB;
 
 		iX = pm->fb_current_A - iX;
 		iY = pm->fb_current_B - iY;
 
-		iX = ((pm->vsi_bit_ZONE & 0x11UL) == 0) ? iX : 0.f;
-		iY = ((pm->vsi_bit_ZONE & 0x22UL) == 0) ? iY : 0.f;
+		iX = (vA) ? iX : 0.f;
+		iY = (vB) ? iY : 0.f;
 	}
 
 	pm->flux_residue_D = X[2] * iX + X[3] * iY;
@@ -273,7 +278,7 @@ pm_flux_update(pmc_t *pm)
 
 		if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
 
-			pm->vsi_precise_MODE = pm_volt_residue(pm);
+			pm_voltage_residue(pm);
 			pm_solve_1(pm, pm->flux_X);
 		}
 
@@ -302,7 +307,7 @@ pm_flux_update(pmc_t *pm)
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 		m_rotf(X + 2, dR, X + 2);
 
-		qS = m_fabsf(X[4] * pm->const_E) / (.57735027f * pm->const_lpf_U);
+		qS = m_fabsf(X[4] * pm->const_E) / (PM_EMAX(pm) * pm->const_lpf_U);
 		qS = (qS > 1.f) ? 1.f : qS;
 
 		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
@@ -565,7 +570,7 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 		uQ = 0.f - uMIN;
 	}
-	if (pm->vsi_clamp_to_GND == PM_ENABLED) {
+	else if (pm->vsi_clamp_to_GND == PM_ENABLED) {
 
 		uQ = 0.f - uMIN;
 	}
@@ -600,13 +605,25 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	xMAX = pm->dc_resolution;
 	xMIN = pm->dc_resolution - pm->dc_clearance;
 
-	ZONE = (pm->vsi_bit_ZONE & 0xFUL) << 4;
+	ZONE = (pm->vsi_current_ZONE & 0xFUL) << 4;
 
 	ZONE |= (xA > xMIN) ? (xA < xMAX) ? (1UL << 0) : (1UL << 3) : 0UL;
 	ZONE |= (xB > xMIN) ? (xB < xMAX) ? (1UL << 1) : (1UL << 3) : 0UL;
 	ZONE |= (xC > xMIN) ? (xC < xMAX) ? (1UL << 2) : (1UL << 3) : 0UL;
 
-	pm->vsi_bit_ZONE = ZONE;
+	pm->vsi_current_ZONE = ZONE;
+
+	if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
+
+		xMAX = (int) (pm->dc_resolution * pm->volt_maximal / pm->const_lpf_U);
+		ZONE = (pm->vsi_voltage_ZONE & 0xFUL) << 4;
+
+		ZONE |= (xA != 0) ? (xA < xMAX) ? (1UL << 0) : (1UL << 3) : 0UL;
+		ZONE |= (xB != 0) ? (xB < xMAX) ? (1UL << 1) : (1UL << 3) : 0UL;
+		ZONE |= (xC != 0) ? (xC < xMAX) ? (1UL << 2) : (1UL << 3) : 0UL;
+
+		pm->vsi_voltage_ZONE = ZONE;
+	}
 
 	pm->vsi_DX = pm->vsi_X;
 	pm->vsi_DY = pm->vsi_Y;
@@ -630,13 +647,46 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	}
 }
 
+void pm_voltage_residue(pmc_t *pm)
+{
+	float		A, B, Q, up_X, up_Y;
+
+	if (pm->volt_FIR_A[0] != 0.f && (pm->vsi_voltage_ZONE & 0x88UL) == 0) {
+
+		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
+
+			Q = (1.f / 3.f) * (pm->volt_A + pm->volt_B + pm->volt_C);
+			A = pm->volt_A - Q;
+			B = pm->volt_B - Q;
+
+			up_X = A;
+			up_Y = .57735027f * A + 1.1547005f * B;
+		}
+		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
+
+			A = pm->volt_A - pm->volt_C;
+			B = pm->volt_B - pm->volt_C;
+
+			up_X = A;
+			up_Y = B;
+		}
+
+		pm->volt_residue_X = up_X - pm->vsi_DX;
+		pm->volt_residue_Y = up_Y - pm->vsi_DY;
+	}
+	else {
+		pm->volt_residue_X = 0.f;
+		pm->volt_residue_Y = 0.f;
+	}
+}
+
 static void
 pm_current_control(pmc_t *pm)
 {
 	float		*X = pm->lu_X, F[2];
 	float		sD, sQ, eD, eQ;
 	float		uD, uQ, uX, uY, wP;
-	float		iMAX, uMAX, temp;
+	float		iMAX, uMAX, wMAX, temp;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
@@ -653,28 +703,29 @@ pm_current_control(pmc_t *pm)
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
 	sQ = (sQ > iMAX) ? iMAX : (sQ < - iMAX) ? - iMAX : sQ;
 
-	m_rotf(F, - X[4] * pm->dT * .5f, X + 2);
+	m_rotf(F, X[4] * pm->dT * .5f, X + 2);
 
-	uD = F[0] * pm->vsi_X + F[1] * pm->vsi_Y;
-	uQ = F[0] * pm->vsi_Y - F[1] * pm->vsi_X;
+	uD = F[0] * pm->vsi_X - F[1] * pm->vsi_Y;
+	uQ = F[0] * pm->vsi_Y + F[1] * pm->vsi_X;
 
-	wP = 1.5f * (X[0] * uD + X[1] * uQ);
+	wP = PM_KWAT(pm) * (X[0] * uD + X[1] * uQ);
 	pm->vsi_lpf_watt += (wP - pm->vsi_lpf_watt) * pm->vsi_gain_LW;
 
 	pm->vsi_lpf_D += (uD - pm->vsi_lpf_D) * pm->vsi_gain_LP;
 	pm->vsi_lpf_Q += (uQ - pm->vsi_lpf_Q) * pm->vsi_gain_LP;
 
-	wP = 1.5f * (sD * pm->vsi_lpf_D + sQ * pm->vsi_lpf_Q);
+	wP = PM_KWAT(pm) * (sD * pm->vsi_lpf_D + sQ * pm->vsi_lpf_Q);
+	wMAX = (pm->i_watt_maximal < pm->i_watt_derated) ? pm->i_watt_maximal : pm->i_watt_derated;
 
-	if (wP > pm->i_watt_consumption_maximal) {
+	if (wP > wMAX) {
 
-		temp = pm->i_watt_consumption_maximal / wP;
+		temp = wMAX / wP;
 		sD *= temp;
 		sQ *= temp;
 	}
-	else if (wP < pm->i_watt_regeneration_maximal) {
+	else if (wP < pm->i_watt_reverse) {
 
-		temp = pm->i_watt_regeneration_maximal / wP;
+		temp = pm->i_watt_reverse / wP;
 		sD *= temp;
 		sQ *= temp;
 	}
@@ -695,7 +746,7 @@ pm_current_control(pmc_t *pm)
 	uD = pm->i_gain_PD * eD;
 	uQ = pm->i_gain_PQ * eQ;
 
-	uMAX = (2.f / 3.f) * pm->const_lpf_U;
+	uMAX = PM_UMAX(pm) * pm->const_lpf_U;
 
 	pm->i_integral_D += pm->i_gain_ID * eD;
 	pm->i_integral_D = (pm->i_integral_D > uMAX) ? uMAX :
@@ -814,60 +865,12 @@ pm_position_control(pmc_t *pm)
 	pm->s_set_point = pm->p_gain_P * eP;*/
 }
 
-int pm_volt_residue(pmc_t *pm)
-{
-	float		A, B, Q, up_X, up_Y;
-
-	if (		pm->volt_FIR_A[0] != 0.f
-			&& pm->volt_A < pm->volt_maximal
-			&& pm->volt_B < pm->volt_maximal
-			&& pm->volt_C < pm->volt_maximal) {
-
-		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
-
-			Q = (1.f / 3.f) * (pm->volt_A + pm->volt_B + pm->volt_C);
-			A = pm->volt_A - Q;
-			B = pm->volt_B - Q;
-
-			up_X = A;
-			up_Y = .57735027f * A + 1.1547005f * B;
-		}
-		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
-
-			A = pm->volt_A - pm->volt_C;
-			B = pm->volt_B - pm->volt_C;
-
-			up_X = A;
-			up_Y = B;
-		}
-
-		pm->volt_residue_X = up_X - pm->vsi_DX;
-		pm->volt_residue_Y = up_Y - pm->vsi_DY;
-
-		return PM_ENABLED;
-	}
-	else {
-		pm->volt_residue_X = 0.f;
-		pm->volt_residue_Y = 0.f;
-
-		return PM_DISABLED;
-	}
-}
-
 void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
-	float		A, B, U;
+	float		U;
 
-	A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
-	B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
-
-	A = (A < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-		(A > pm->fb_current_clamp) ? pm->fb_current_clamp : A;
-	B = (B < - pm->fb_current_clamp) ? - pm->fb_current_clamp :
-		(B > pm->fb_current_clamp) ? pm->fb_current_clamp : B;
-
-	pm->fb_current_A = A;
-	pm->fb_current_B = B;
+	pm->fb_current_A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
+	pm->fb_current_B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
 
 	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
 	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP;
@@ -885,6 +888,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		pm->volt_A += pm->volt_FIR_A[0] * pm->fb_voltage_A + pm->volt_FIR_A[2];
 		pm->volt_B += pm->volt_FIR_B[0] * pm->fb_voltage_B + pm->volt_FIR_B[2];
 		pm->volt_C += pm->volt_FIR_C[0] * pm->fb_voltage_C + pm->volt_FIR_C[2];
+
+		pm->volt_A = (pm->vsi_voltage_ZONE & 0x10UL) ? pm->volt_A : 0.f;
+		pm->volt_B = (pm->vsi_voltage_ZONE & 0x20UL) ? pm->volt_B : 0.f;
+		pm->volt_C = (pm->vsi_voltage_ZONE & 0x40UL) ? pm->volt_C : 0.f;
 	}
 
 	pm_FSM(pm);

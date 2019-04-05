@@ -300,7 +300,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 		x -= i;
 	}
 	else {
-		xputs(_io, "OWF");
+		xputs(_io, "MAX");
 
 		return ;
 	}

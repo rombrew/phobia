@@ -16,11 +16,12 @@ sometimes cross the border of quality in favor of PCB size.
 
 ## Software
 
-There is two parts of software. Numerical model of BLDC with the motor control
-code is in "sim" directory. Full firmware code is in "src" directory.
+There is two parts of software:
 
-The model enables us to develop control code in fast cycle without hardware
-tests. It is complete enough to take into account all of motor parameters.
+1. Numerical BLDC model of BLDC. The model enables us to develop control code
+   in fast cycle without hardware tests. It is complete enough to take into
+   account all of motor parameters.
+2. Firmware for MCU.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 toolchain for Cortex-M4F target.

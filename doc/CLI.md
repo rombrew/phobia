@@ -1,40 +1,68 @@
 ## Overview
 
-This page introduces you to the Command Line Interface (CLI).
+This page introduces you to the Command Line Interface (CLI). We have a regular
+CLI with autocompletion and command history.
 
-## Basics
+## Register file concept
 
-The CLI is similar to the others. You could type command name manually or use
-autocomplete. To call one of previous command there is a history. Most often
-the command prints out the value of parameter if it is called without any
-argument. If argument is specified then value of parameter will be modified.
-More complex commands can block the shell until the job is done.
+Register is a scalar variable known by its name and having associated
+attributes. All registers together are called a register file. This is a
+convenient way to access all parameters using a single mechanism. There is a
+**reg** command to work with registers from the CLI. There are several ways
+to call this command.
 
-## HAL
+1. Without arguments it will list all registers and their values.
+2. You can specify a pattern by which registers will be filtered. A pattern can
+   be any part of the register name.
+3. If only one register matches the specified pattern, the second parameter
+   specifies its new value.
+4. You can specify a reqister number instead of its name to refer to exactly
+   one register.
+
+	# reg <pattern> <value>
+	# reg <ID> <value>
+
+Almost all of the configuration is to change the value of the registers.
+
+You can also export configuration registers values in plain form using a
+**reg_export** command. The output of this command can be fed back into the CLI
+to restore the configuration.
+
+To save the values of the configuration registers in the flash there is a
+**flash_write** command. Register values from the flash are loaded
+automatically at startup.
+
+Note the different types of registers. There are registers intended for saving
+as configuration. Other registers provide information to read only. Virtual
+registers provide a different way to access other registers (usually this is
+taking a value in other units). There are also registers-pointers that are
+required to configure data transfer between different subsystems.
+
+Each register can have its own write and read handlers, thus performing complex
+non-obvious actions during access to it.
+
+## Basic commands
 
 Basic informational commands.
 
-	# hal_uptime
-	# hal_cpu_usage
+	# rtos_uptime
+	# rtos_cpu_usage
 
-Configuration of the Pulse Width Modulation (PWM).
+Manual PWM control for testing.
 
-	# hal_pwm_freq_hz <hz>
-	# hal_pwm_dead_time_ns <ns>
+	# hal_PWM_set_DC <DC>
+	# hal_PWM_set_Z <Z>
 
-Set the duty cycle of PWM. Values from 0 to the PWM resolution. For diagnostic
-purposes.
+Telemetry grab (to fill the memory buffer) and flush.
 
-	# hal_pwm_DC <a> <b> <c>
+	# tel_grab <freq>
+	# tel_flush
 
-Enable Z state of the bridge. Bit field value from 0 to 7. For diagnostic
-purposes.
+Live telemetry printout.
 
-	# hal_pwm_Z <x>
+	# tel_live
 
-Show thermal information from NTC and internal MCU sensor.
+Start an application HX711.
 
-	# hal_thermal
-
-
+	# ap_hx711_startup
 

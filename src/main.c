@@ -46,13 +46,16 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 
 void task_TERM(void *pData)
 {
-	TickType_t			xWake;
-	float				i_temp, i_derated;
+	TickType_t		xWake;
+	float			i_temp_PCB, i_temp_EXT;
 
 	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
 	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
 
 	xWake = xTaskGetTickCount();
+
+	i_temp_PCB = PM_UNRESTRICTED;
+	i_temp_EXT = PM_UNRESTRICTED;
 
 	do {
 		/* 10 Hz.
@@ -65,35 +68,39 @@ void task_TERM(void *pData)
 
 		if (pm.lu_mode != PM_LU_DISABLED) {
 
-			i_derated = pm.i_maximal;
-
 			/* Derate current if PCB is overheat.
 			 * */
-			if (ap.temp_PCB < ap.temp_PCB_overheat) {
+			if (ap.temp_PCB > ap.temp_PCB_overheat) {
 
-				i_temp = pm.i_maximal;
+				i_temp_PCB = ap.temp_PCB_derated;
 			}
-			else if (ap.temp_PCB < (ap.temp_PCB_overheat + ap.temp_superheat)) {
+			else if (ap.temp_PCB < (ap.temp_PCB_overheat - ap.temp_hysteresis)) {
 
-				i_temp = pm.i_maximal + (ap.temp_current_PCB_derated - pm.i_maximal)
-					* (ap.temp_PCB - ap.temp_PCB_overheat) / ap.temp_superheat;
-			}
-			else {
-				i_temp = ap.temp_current_PCB_derated;
+				i_temp_PCB = PM_UNRESTRICTED;
 			}
 
-			i_derated = (i_temp < i_derated) ? i_temp : i_derated;
-			pm.i_derated = i_derated;
+			/* Derate current if EXT is overheat.
+			 * */
+			if (ap.temp_EXT > ap.temp_EXT_overheat) {
 
-			/* Battery voltage monitor.
+				i_temp_EXT = ap.temp_EXT_derated;
+			}
+			else if (ap.temp_EXT < (ap.temp_EXT_overheat - ap.temp_hysteresis)) {
+
+				i_temp_EXT = PM_UNRESTRICTED;
+			}
+
+			pm.i_derated = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
+
+			/* Derate power consumption if battery voltage is low.
 			 * */
 			if (pm.const_lpf_U < ap.batt_voltage_low) {
 
-				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+				pm.i_watt_derated = ap.batt_derated;
 			}
-			else if (pm.const_lpf_U > ap.batt_voltage_high) {
+			else if (pm.const_lpf_U > (ap.batt_voltage_low + ap.batt_hysteresis)) {
 
-				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+				pm.i_watt_derated = PM_UNRESTRICTED;
 			}
 		}
 	}
@@ -102,18 +109,52 @@ void task_TERM(void *pData)
 
 void task_ANALOG(void *pData)
 {
-	TickType_t			xWake;
+	TickType_t		xWake, xTime;
+	float			voltage, control, range, scaled;
 
 	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
 
 	xWake = xTaskGetTickCount();
+	xTime = 0;
 
 	do {
 		/* 100 Hz.
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 10);
 
-		ADC_get_VALUE(GPIO_ADC_ANALOG);
+		if (ap.analog_reg_ID != ID_NULL) {
+
+			voltage = ADC_get_VALUE(GPIO_ADC_ANALOG) * hal.ADC_reference_voltage;
+
+			range = ap.analog_voltage_range[1] - ap.analog_voltage_range[0];
+			scaled = (voltage - ap.analog_voltage_range[0]) / range;
+			scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
+
+			range = ap.analog_control_range[1] - ap.analog_control_range[0];
+			control = ap.analog_control_range[0] + range * scaled;
+
+			reg_SET(ap.analog_reg_ID, &control);
+
+			if (		control > ap.analog_safe_range[0]
+					&& control < ap.analog_safe_range[1]) {
+
+				if (xTime < (TickType_t) (ap.analog_timeout * 1000.f)) {
+
+					pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+				}
+				else {
+					pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+				}
+
+				xTime += (TickType_t) 10;
+			}
+			else {
+				xTime = (TickType_t) 0;
+			}
+		}
+		else {
+			vTaskDelayUntil(&xWake, (TickType_t) 100);
+		}
 	}
 	while (1);
 }
@@ -160,6 +201,17 @@ void task_INIT(void *pData)
 		ap.ppm_pulse_range[1] = 2000.f;
 		ap.ppm_control_range[0] = 0.f;
 		ap.ppm_control_range[1] = 100.f;
+		ap.ppm_safe_range[0] = -1.f;
+		ap.ppm_safe_range[1] = 1.f;
+
+		ap.analog_reg_ID = ID_NULL;
+		ap.analog_voltage_range[0] = 0.f;
+		ap.analog_voltage_range[1] = 5.f;
+		ap.analog_control_range[0] = 0.f;
+		ap.analog_control_range[1] = 100.f;
+		ap.analog_safe_range[0] = -1.f;
+		ap.analog_safe_range[1] = 1.f;
+		ap.analog_timeout = 5.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -168,12 +220,15 @@ void task_INIT(void *pData)
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 
-		ap.temp_PCB_overheat = 90.f;
-		ap.temp_superheat = 10.f;
-		ap.temp_current_PCB_derated = 50.f;
+		ap.temp_PCB_overheat = 120.f;
+		ap.temp_PCB_derated = 30.f;
+		ap.temp_EXT_overheat = 90.f;
+		ap.temp_EXT_derated = 30.f;
+		ap.temp_hysteresis = 5.f;
 
 		ap.batt_voltage_low = 6.0f;
-		ap.batt_voltage_high = 54.0f;
+		ap.batt_hysteresis = 1.f;
+		ap.batt_derated = 50.f;
 
 		ap.load_transform[0] = 0.f;
 		ap.load_transform[1] = 4.545E-3f;
@@ -212,8 +267,9 @@ void task_INIT(void *pData)
 
 	GPIO_set_LOW(GPIO_LED);
 
-	xTaskCreate(task_SH, "task_SH", 512, NULL, 1, NULL);
 	xTaskCreate(task_TERM, "task_TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_ANALOG, "task_ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+	xTaskCreate(task_SH, "task_SH", 512, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }
@@ -240,12 +296,13 @@ input_PULSE_WIDTH()
 
 			reg_SET(ap.ppm_reg_ID, &control);
 
-			if (scaled == 0.f) {
+			if (pm.lu_mode == PM_LU_DISABLED) {
 
-				/* FIXME: Add more flexible arming.
-				 * */
+				if (		control > ap.ppm_safe_range[0]
+						&& control < ap.ppm_safe_range[1]) {
 
-				pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+					pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+				}
 			}
 		}
 	}
@@ -262,12 +319,6 @@ input_STEP_DIR()
 
 static void
 input_CONTROL_QEP()
-{
-	/* TODO */
-}
-
-static void
-input_ANALOG()
 {
 	/* TODO */
 }

@@ -81,7 +81,7 @@ void tel_reg_grab(tel_t *ti)
 			}
 			else if (ti->mode == TEL_MODE_LIVE) {
 
-				ti->n = (ti->n < 10) ? ti->n + 1 : 0;
+				ti->n = (ti->n < TEL_DATA_MAX) ? ti->n + 1 : 0;
 			}
 		}
 	}
@@ -221,7 +221,7 @@ void taskTELIVE(void *pData)
 		while (ti->n != nR) {
 
 			tel_reg_flush_1(ti, nR);
-			nR = (nR < 10) ? nR + 1 : 0;
+			nR = (nR < TEL_DATA_MAX) ? nR + 1 : 0;
 
 			hal_fence();
 		}

@@ -4,6 +4,11 @@
 #define PM_CONFIG_ABC(pm)			(pm)->config_ABC
 #define PM_CONFIG_VOLT(pm)			(pm)->config_VOLT
 
+#define PM_UMAX(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? 2.f / 3.f : 1.f)
+#define PM_EMAX(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? .57735027f : .70710678f)
+#define PM_KWAT(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? 1.5f : 1.f)
+
+#define PM_UNRESTRICTED				1E+35f
 #define PM_SFI(s)				#s
 
 enum {
@@ -25,6 +30,7 @@ enum {
 enum {
 	PM_LOOP_DRIVE_CURRENT			= 0,
 	PM_LOOP_DRIVE_SPEED,
+	PM_LOOP_DRIVE_SERVO,
 	PM_LOOP_RECTIFIER_VOLTAGE,
 };
 
@@ -163,7 +169,8 @@ typedef struct {
 
 	int		vsi_precise_MODE;
 	int		vsi_clamp_to_GND;
-	int		vsi_bit_ZONE;
+	int		vsi_current_ZONE;
+	int		vsi_voltage_ZONE;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_DX;
@@ -232,8 +239,9 @@ typedef struct {
 
 	float		i_maximal;
 	float		i_derated;
-	float		i_watt_consumption_maximal;
-	float		i_watt_regeneration_maximal;
+	float		i_watt_maximal;
+	float		i_watt_reverse;
+	float		i_watt_derated;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
@@ -266,7 +274,7 @@ void pm_config_default(pmc_t *pm);
 void pm_config_tune_current_loop(pmc_t *pm);
 
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
-int pm_volt_residue(pmc_t *pm);
+void pm_voltage_residue(pmc_t *pm);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);

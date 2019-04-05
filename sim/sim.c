@@ -81,37 +81,38 @@ sim_Tel(float *pTel)
 
 	/* VSI zone flags.
 	 * */
-	pTel[20] = pm.vsi_bit_ZONE;
-
-	/* VOLT sensing residue (XY).
-	 * */
-	pTel[21] = pm.volt_residue_X;
-	pTel[22] = pm.volt_residue_Y;
-
-	/* FLUX observer residue.
-	 * */
-	pTel[23] = pm.flux_residue_D;
-	pTel[24] = pm.flux_residue_Q;
-	pTel[25] = pm.flux_residue_lpf;
-
-	/* Power (Watt).
-	 * */
-	pTel[26] = m.iP;
-	pTel[27] = pm.vsi_lpf_watt;
-
-	/* DC voltage measured.
-	 * */
-	pTel[28] = pm.const_lpf_U;
-
-	/* LU mode.
-	 * */
-	pTel[29] = pm.lu_mode;
+	pTel[20] = pm.vsi_current_ZONE;
+	pTel[21] = pm.vsi_voltage_ZONE;
 
 	/* VOLT voltages (ABC).
 	 * */
-	pTel[30] = pm.volt_A;
-	pTel[31] = pm.volt_B;
-	pTel[32] = pm.volt_C;
+	pTel[22] = pm.volt_A;
+	pTel[23] = pm.volt_B;
+	pTel[24] = pm.volt_C;
+
+	/* VOLT residue (XY).
+	 * */
+	pTel[25] = pm.volt_residue_X;
+	pTel[26] = pm.volt_residue_Y;
+
+	/* FLUX residue (DQ).
+	 * */
+	pTel[27] = pm.flux_residue_D;
+	pTel[28] = pm.flux_residue_Q;
+	pTel[29] = pm.flux_residue_lpf;
+
+	/* Power (Watt).
+	 * */
+	pTel[30] = m.iP;
+	pTel[31] = pm.vsi_lpf_watt;
+
+	/* DC voltage measured.
+	 * */
+	pTel[32] = pm.const_lpf_U;
+
+	/* LU mode.
+	 * */
+	pTel[33] = pm.lu_mode;
 }
 
 static void
@@ -216,8 +217,6 @@ sim_Script(FILE *fdTel)
 		printf("imp_R %.4e (Ohm)\n", pm.probe_impedance_R);
 		printf("DQ %.2f (g)\n", pm.probe_rotation_DQ);
 	}
-
-	exit(0);
 
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, 0., 1);

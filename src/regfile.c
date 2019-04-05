@@ -81,15 +81,15 @@ reg_proc_rpm(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_rpm_pc(const reg_t *reg, float *lval, const float *rval)
 {
-	const float		kpc = .57735027f / 100.f;
+	float			KPC = PM_EMAX(&pm) / 100.f;
 
 	if (lval != NULL) {
 
-		*lval = reg->link->f * pm.const_E / (kpc * pm.const_lpf_U);
+		*lval = reg->link->f * pm.const_E / (KPC * pm.const_lpf_U);
 	}
 	else if (rval != NULL) {
 
-		reg->link->f = (*rval) * kpc * pm.const_lpf_U / pm.const_E;
+		reg->link->f = (*rval) * KPC * pm.const_lpf_U / pm.const_E;
 	}
 }
 
@@ -291,6 +291,17 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.ppm_pulse_range[1],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_safe_range[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_safe_range[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(ap.analog_reg_ID,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.analog_timeout,,		"s",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_voltage_range[0],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_voltage_range[1],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_control_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_control_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_safe_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_safe_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.ntc_PCB.r_balance,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ntc_PCB.r_ntc_0,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -306,11 +317,14 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.temp_INT,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(ap.temp_PCB_overheat,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_superheat,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_current_PCB_derated,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.temp_PCB_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.temp_EXT_overheat,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.temp_EXT_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.temp_hysteresis,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.batt_voltage_low,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.batt_voltage_high,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.batt_hysteresis,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.batt_derated,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.load_thrust_gram,,		"g",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.load_transform[0],,		"g",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -381,8 +395,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_adjust_tolerance,,	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_flux_residue_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.vsi_precise_MODE,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_bit_ZONE,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_current_ZONE,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_voltage_ZONE,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_X,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_Y,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -454,8 +470,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.const_J,,		"kg*m*m",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.i_maximal,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_watt_consumption_maximal,,	"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_watt_regeneration_maximal,,"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.i_derated,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.i_watt_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.i_watt_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.i_watt_derated,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_setpoint_D,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_Q,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_gain_PD,,			"",	"%2e",	REG_CONFIG, NULL, NULL),

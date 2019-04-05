@@ -705,7 +705,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->FIX[2] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->FIX[2];
 
-			uMAX = (2.f / 3.f) * pm->const_lpf_U;
+			uMAX = PM_UMAX(pm) * pm->const_lpf_U;
 
 			if (m_fabsf(uX) > uMAX) {
 
@@ -788,7 +788,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
 
-				pm_volt_residue(pm);
+				pm_voltage_residue(pm);
 
 				uX += pm->volt_residue_X;
 				uY += pm->volt_residue_Y;
@@ -809,7 +809,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->FIX[3] += pm->probe_gain_I * eY;
 			uY = pm->probe_gain_P * eY + pm->FIX[3];
 
-			uMAX = (2.f / 3.f) * pm->const_lpf_U;
+			uMAX = PM_UMAX(pm) * pm->const_lpf_U;
 
 			if (m_fabsf(uX) > uMAX || m_fabsf(uY) > uMAX) {
 
@@ -916,7 +916,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 			if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
 
-				pm_volt_residue(pm);
+				pm_voltage_residue(pm);
 
 				tX += pm->volt_residue_X;
 				tY += pm->volt_residue_Y;
@@ -955,7 +955,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->FIX[15] += pm->probe_gain_I * eY;
 			uY = pm->probe_gain_P * eY + pm->FIX[15];
 
-			uMAX = (2.f / 3.f) * pm->const_lpf_U;
+			uMAX = PM_UMAX(pm) * pm->const_lpf_U;
 
 			if (m_fabsf(uX) > uMAX || m_fabsf(uY) > uMAX) {
 
@@ -1015,7 +1015,7 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->const_R != 0.f && pm->const_Ld != 0.f && pm->const_Lq != 0.f) {
+			if (pm->const_Ld != 0.f && pm->const_Lq != 0.f) {
 
 				pm->lu_mode = PM_LU_DETACHED;
 				pm->lu_revol = 0;
@@ -1024,7 +1024,8 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->proc_set_Z(7);
 
 				pm->vsi_precise_MODE = PM_DISABLED;
-				pm->vsi_bit_ZONE = 0x8UL;
+				pm->vsi_current_ZONE = 0x8UL;
+				pm->vsi_voltage_ZONE = 0x8UL;
 				pm->vsi_lpf_D = 0.f;
 				pm->vsi_lpf_Q = 0.f;
 				pm->vsi_lpf_watt = 0.f;
@@ -1036,6 +1037,17 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->flux_X[4] = 0.f;
 				pm->flux_drift_Q = 0.f;
 				pm->flux_residue_lpf = 0.f;
+
+				pm->hfi_wave[0] = 1.f;
+				pm->hfi_wave[1] = 0.f;
+				pm->hfi_flux = 0.f;
+
+				pm->i_derated = PM_UNRESTRICTED;
+				pm->i_watt_derated = PM_UNRESTRICTED;
+				pm->i_setpoint_D = 0.f;
+				pm->i_setpoint_Q = 0.f;
+				pm->i_integral_D = 0.f;
+				pm->i_integral_Q = 0.f;
 
 				pm->fail_reason = PM_OK;
 
@@ -1072,16 +1084,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 			pm->proc_set_Z(0);
 
 			pm->forced_setpoint = pm->flux_X[4];
-
-			pm->hfi_wave[0] = 1.f;
-			pm->hfi_wave[1] = 0.f;
-			pm->hfi_flux = 0.f;
-
-			pm->i_derated = pm->i_maximal;
-			pm->i_setpoint_D = 0.f;
-			pm->i_setpoint_Q = 0.f;
-			pm->i_integral_D = 0.f;
-			pm->i_integral_Q = 0.f;
 
 			pm->s_setpoint = pm->flux_X[4];
 			pm->s_track = pm->flux_X[4];
