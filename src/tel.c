@@ -25,7 +25,6 @@ void tel_reg_default(tel_t *ti)
 
 void tel_reg_grab(tel_t *ti)
 {
-	reg_val_t		rval;
 	const reg_t		*reg;
 	int			N;
 
@@ -33,42 +32,20 @@ void tel_reg_grab(tel_t *ti)
 
 		ti->i++;
 
-		for (N = 0; N < TEL_INPUT_MAX; ++N) {
-
-			if (ti->reg_ID[N] != ID_NULL) {
-
-				reg = &regfile[ti->reg_ID[N]];
-
-				if (ti->i == 1) {
-
-					reg_getval(reg, &ti->data[ti->n][N]);
-				}
-				else {
-					if (reg->fmt[1] != 'i') {
-
-						reg_getval(reg, &rval);
-						ti->data[ti->n][N].f += rval.f;
-					}
-				}
-			}
-		}
-
-		if (ti->i >= ti->d) {
-
-			ti->i = 0;
+		if (ti->i == 1) {
 
 			for (N = 0; N < TEL_INPUT_MAX; ++N) {
 
 				if (ti->reg_ID[N] != ID_NULL) {
 
 					reg = &regfile[ti->reg_ID[N]];
-
-					if (reg->fmt[1] != 'i') {
-
-						ti->data[ti->n][N].f /= (float) ti->d;
-					}
+					reg_getval(reg, &ti->data[ti->n][N]);
 				}
 			}
+		}
+		else if (ti->i >= ti->d) {
+
+			ti->i = 0;
 
 			if (ti->mode == TEL_MODE_SINGLE_GRAB) {
 
@@ -168,7 +145,6 @@ void tel_reg_flush(tel_t *ti)
 			if (ti->reg_ID[N] != ID_NULL) {
 
 				reg = &regfile[ti->reg_ID[N]];
-
 				reg_format_rval(reg, &ti->data[K][N]);
 
 				puts(";");
@@ -189,7 +165,6 @@ void tel_reg_flush_1(tel_t *ti, int nR)
 		if (ti->reg_ID[N] != ID_NULL) {
 
 			reg = &regfile[ti->reg_ID[N]];
-
 			reg_format_rval(reg, &ti->data[nR][N]);
 
 			puts(";");
@@ -208,7 +183,7 @@ SH_DEF(tel_flush)
 	}
 }
 
-void taskTELIVE(void *pData)
+void task_LIVE(void *pData)
 {
 	tel_t		*ti = (tel_t *) pData;
 	int		nR = ti->n;
@@ -234,7 +209,7 @@ SH_DEF(tel_live)
 	TaskHandle_t		xHandle;
 	int			freq = 20;
 
-	xTaskCreate(taskTELIVE, "tTELIVE", configMINIMAL_STACK_SIZE, (void *) &ti, 1, &xHandle);
+	xTaskCreate(task_LIVE, "task_LIVE", configMINIMAL_STACK_SIZE, (void *) &ti, 1, &xHandle);
 
 	if (stoi(&freq, s) != NULL) {
 

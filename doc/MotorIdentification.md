@@ -17,12 +17,12 @@ believe that they will need a change only in a very complicated case.
 
 ## Sensors adjustment
 
-For a good result, adjust the voltage and current sensors. To adjust the
+For a good result adjust the voltage and current sensors. To adjust the
 current sensors you need to connect at least some motor.
 
 	# pm_self_adjust
 
-This is enough to do once on a new board and save the values in the flash.
+This is enough to do it once and save the values in the flash.
 
 ## Number of the rotor pole pairs
 
@@ -33,9 +33,9 @@ then divide it by 2. This is the most famous method.
 	# reg pm.const_Zp <n>
 
 If access to the motor is restricted and to count the magnets is impossible
-then just leave a value 1. Instead of mechanical speed you will see
-electrical speed. By measuring the mechanical speed directly you can estimate
-the Zp and set it later.
+then just leave a value 1. Instead of mechanical speed you will see electrical
+speed. By measuring the mechanical speed directly you can estimate Zp and set
+it later.
 
 ## Impedance of stator windings
 
@@ -69,7 +69,7 @@ significant speed. We do a forced spinup to reach this condition.
 To get more accuracy increase the speed and request E probe again. Do not load
 the motor.
 
-	# reg pm.s_setpoint_pc <%>
+	# reg pm.s_setpoint_pc <\%>
 	# reg pm.fsm_state 10
 
 ## Moment of inertia

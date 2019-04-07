@@ -448,8 +448,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_DS,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QS,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QZ,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_low_unlock,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_low_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_unlock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_bemf_high,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),

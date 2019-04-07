@@ -82,10 +82,7 @@ typedef struct {
 	float		voltage_B;
 	float		voltage_C;
 
-	int		hall_A;
-	int		hall_B;
-	int		hall_C;
-
+	int		hall;
 	float		sensor;
 }
 pmfb_t;
@@ -212,8 +209,8 @@ typedef struct {
 	float		flux_gain_DS;
 	float		flux_gain_QS;
 	float		flux_gain_QZ;
-	float		flux_bemf_low_unlock;
-	float		flux_bemf_low_lock;
+	float		flux_bemf_unlock;
+	float		flux_bemf_lock;
 	float		flux_bemf_high;
 
 	float		hfi_X[5];
@@ -226,7 +223,7 @@ typedef struct {
 	float		hfi_gain_F;
 
 	float		hall_X[5];
-	float		hall_;
+	float		hall_speed_maximal;
 
 	float		const_lpf_U;
 	float		const_gain_LP;

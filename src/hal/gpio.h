@@ -52,5 +52,7 @@ void GPIO_set_HIGH(int xGPIO);
 void GPIO_set_LOW(int xGPIO);
 int GPIO_get_VALUE(int xGPIO);
 
+int GPIO_get_HALL();
+
 #endif /* _H_GPIO_ */
 

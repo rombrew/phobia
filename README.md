@@ -24,7 +24,7 @@ controller for RC and robotics.
 * Control interfaces:
 	* CAN transceiver with optional termination resistor on PCB (5v).
 	* USART to bootload and configure (3.3v).
-	* Pulse input control: RC servo pulse width, STEP/DIR, QEP (5v tolerant).
+	* Pulse input control: RC servo pulse width, STEP/DIR, QEP (5v-tolerant).
 	* Analog input control (from 0 to 5v).
 * Auxiliary interfaces:
 	* Two combined ports with: SPI, I2C, USART, ADC, DAC, GPIO (3.3v).
@@ -68,7 +68,7 @@ PCB design source files.
 * Control inputs:
 	* CAN bus (**TODO**).
 	* RC servo pulse width.
-	* Analog (**TODO**).
+	* Analog (**EXPERIMENTAL**).
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
 * Automated motor parameters identification with no additional tools.

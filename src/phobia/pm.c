@@ -74,8 +74,8 @@ void pm_config_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_low_unlock = .1f;
-	pm->flux_bemf_low_lock = .2f;
+	pm->flux_bemf_unlock = .2f;
+	pm->flux_bemf_lock = .3f;
 	pm->flux_bemf_high = 1.f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 12.f;
@@ -426,8 +426,8 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
-				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
+				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
@@ -442,7 +442,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->flux_X[3];
 		X[4] = pm->flux_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) < pm->flux_bemf_low_unlock) {
+		if (m_fabsf(X[4] * pm->const_E) < pm->flux_bemf_unlock) {
 
 			if (pm->config_HALL == PM_ENABLED) {
 
@@ -480,8 +480,8 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_low_lock
-				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_low_lock) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
+				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}

@@ -19,6 +19,8 @@ to call this command.
 4. You can specify a reqister number instead of its name to refer to exactly
    one register.
 
+Something like that.
+
 	# reg <pattern> <value>
 	# reg <ID> <value>
 

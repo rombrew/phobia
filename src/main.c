@@ -337,9 +337,7 @@ void ADC_IRQ()
 
 	if (hal.HALL_mode == HALL_SENSOR) {
 
-		fb.hall_A = GPIO_get_VALUE(GPIO_HALL_A);
-		fb.hall_B = GPIO_get_VALUE(GPIO_HALL_B);
-		fb.hall_C = GPIO_get_VALUE(GPIO_HALL_C);
+		fb.hall = GPIO_get_HALL();
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
