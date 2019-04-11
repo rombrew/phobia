@@ -67,25 +67,9 @@
     1 tab == 4 spaces!
 */
 
-/* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
-all the API functions to use the MPU wrappers.  That should only be done when
-task.h is included from an application file. */
-#define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-
-#if ( configUSE_CO_ROUTINES == 1 )
-	#include "croutine.h"
-#endif
-
-/* Lint e961 and e750 are suppressed as a MISRA exception justified because the
-MPU ports require MPU_WRAPPERS_INCLUDED_FROM_API_FILE to be defined for the
-header files above, but not in this file, in order to generate the correct
-privileged Vs unprivileged linkage and placement. */
-#undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE /*lint !e961 !e750. */
-
 
 /* Constants used with the cRxLock and cTxLock structure members. */
 #define queueUNLOCKED					( ( int8_t ) -1 )
@@ -146,10 +130,6 @@ typedef struct QueueDefinition
 	volatile int8_t cRxLock;		/*< Stores the number of items received from the queue (removed from the queue) while the queue was locked.  Set to queueUNLOCKED when the queue is not locked. */
 	volatile int8_t cTxLock;		/*< Stores the number of items transmitted to the queue (added to the queue) while the queue was locked.  Set to queueUNLOCKED when the queue is not locked. */
 
-	#if( ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) )
-		uint8_t ucStaticallyAllocated;	/*< Set to pdTRUE if the memory used by the queue was statically allocated to ensure no attempt is made to free the memory. */
-	#endif
-
 	#if ( configUSE_QUEUE_SETS == 1 )
 		struct QueueDefinition *pxQueueSetContainer;
 	#endif
@@ -159,11 +139,7 @@ typedef struct QueueDefinition
 		uint8_t ucQueueType;
 	#endif
 
-} xQUEUE;
-
-/* The old xQUEUE name is maintained above then typedefed to the new Queue_t
-name below to enable the use of older kernel aware debuggers. */
-typedef xQUEUE Queue_t;
+} Queue_t;
 
 /*-----------------------------------------------------------*/
 
@@ -326,58 +302,6 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 }
 /*-----------------------------------------------------------*/
 
-#if( configSUPPORT_STATIC_ALLOCATION == 1 )
-
-	QueueHandle_t xQueueGenericCreateStatic( const UBaseType_t uxQueueLength, const UBaseType_t uxItemSize, uint8_t *pucQueueStorage, StaticQueue_t *pxStaticQueue, const uint8_t ucQueueType )
-	{
-	Queue_t *pxNewQueue;
-
-		configASSERT( uxQueueLength > ( UBaseType_t ) 0 );
-
-		/* The StaticQueue_t structure and the queue storage area must be
-		supplied. */
-		configASSERT( pxStaticQueue != NULL );
-
-		/* A queue storage area should be provided if the item size is not 0, and
-		should not be provided if the item size is 0. */
-		configASSERT( !( ( pucQueueStorage != NULL ) && ( uxItemSize == 0 ) ) );
-		configASSERT( !( ( pucQueueStorage == NULL ) && ( uxItemSize != 0 ) ) );
-
-		#if( configASSERT_DEFINED == 1 )
-		{
-			/* Sanity check that the size of the structure used to declare a
-			variable of type StaticQueue_t or StaticSemaphore_t equals the size of
-			the real queue and semaphore structures. */
-			volatile size_t xSize = sizeof( StaticQueue_t );
-			configASSERT( xSize == sizeof( Queue_t ) );
-		}
-		#endif /* configASSERT_DEFINED */
-
-		/* The address of a statically allocated queue was passed in, use it.
-		The address of a statically allocated storage area was also passed in
-		but is already set. */
-		pxNewQueue = ( Queue_t * ) pxStaticQueue; /*lint !e740 Unusual cast is ok as the structures are designed to have the same alignment, and the size is checked by an assert. */
-
-		if( pxNewQueue != NULL )
-		{
-			#if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
-			{
-				/* Queues can be allocated wither statically or dynamically, so
-				note this queue was allocated statically in case the queue is
-				later deleted. */
-				pxNewQueue->ucStaticallyAllocated = pdTRUE;
-			}
-			#endif /* configSUPPORT_DYNAMIC_ALLOCATION */
-
-			prvInitialiseNewQueue( uxQueueLength, uxItemSize, pucQueueStorage, ucQueueType, pxNewQueue );
-		}
-
-		return pxNewQueue;
-	}
-
-#endif /* configSUPPORT_STATIC_ALLOCATION */
-/*-----------------------------------------------------------*/
-
 #if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
 	QueueHandle_t xQueueGenericCreate( const UBaseType_t uxQueueLength, const UBaseType_t uxItemSize, const uint8_t ucQueueType )
@@ -408,22 +332,13 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 			storage area. */
 			pucQueueStorage = ( ( uint8_t * ) pxNewQueue ) + sizeof( Queue_t );
 
-			#if( configSUPPORT_STATIC_ALLOCATION == 1 )
-			{
-				/* Queues can be created either statically or dynamically, so
-				note this task was created dynamically in case it is later
-				deleted. */
-				pxNewQueue->ucStaticallyAllocated = pdFALSE;
-			}
-			#endif /* configSUPPORT_STATIC_ALLOCATION */
-
 			prvInitialiseNewQueue( uxQueueLength, uxItemSize, pucQueueStorage, ucQueueType, pxNewQueue );
 		}
 
 		return pxNewQueue;
 	}
 
-#endif /* configSUPPORT_STATIC_ALLOCATION */
+#endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
 static void prvInitialiseNewQueue( const UBaseType_t uxQueueLength, const UBaseType_t uxItemSize, uint8_t *pucQueueStorage, const uint8_t ucQueueType, Queue_t *pxNewQueue )
@@ -506,26 +421,6 @@ static void prvInitialiseNewQueue( const UBaseType_t uxQueueLength, const UBaseT
 	const UBaseType_t uxMutexLength = ( UBaseType_t ) 1, uxMutexSize = ( UBaseType_t ) 0;
 
 		pxNewQueue = ( Queue_t * ) xQueueGenericCreate( uxMutexLength, uxMutexSize, ucQueueType );
-		prvInitialiseMutex( pxNewQueue );
-
-		return pxNewQueue;
-	}
-
-#endif /* configUSE_MUTEXES */
-/*-----------------------------------------------------------*/
-
-#if( ( configUSE_MUTEXES == 1 ) && ( configSUPPORT_STATIC_ALLOCATION == 1 ) )
-
-	QueueHandle_t xQueueCreateMutexStatic( const uint8_t ucQueueType, StaticQueue_t *pxStaticQueue )
-	{
-	Queue_t *pxNewQueue;
-	const UBaseType_t uxMutexLength = ( UBaseType_t ) 1, uxMutexSize = ( UBaseType_t ) 0;
-
-		/* Prevent compiler warnings about unused parameters if
-		configUSE_TRACE_FACILITY does not equal 1. */
-		( void ) ucQueueType;
-
-		pxNewQueue = ( Queue_t * ) xQueueGenericCreateStatic( uxMutexLength, uxMutexSize, NULL, pxStaticQueue, ucQueueType );
 		prvInitialiseMutex( pxNewQueue );
 
 		return pxNewQueue;
@@ -659,34 +554,6 @@ static void prvInitialiseNewQueue( const UBaseType_t uxQueueLength, const UBaseT
 	}
 
 #endif /* configUSE_RECURSIVE_MUTEXES */
-/*-----------------------------------------------------------*/
-
-#if( ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( configSUPPORT_STATIC_ALLOCATION == 1 ) )
-
-	QueueHandle_t xQueueCreateCountingSemaphoreStatic( const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount, StaticQueue_t *pxStaticQueue )
-	{
-	QueueHandle_t xHandle;
-
-		configASSERT( uxMaxCount != 0 );
-		configASSERT( uxInitialCount <= uxMaxCount );
-
-		xHandle = xQueueGenericCreateStatic( uxMaxCount, queueSEMAPHORE_QUEUE_ITEM_LENGTH, NULL, pxStaticQueue, queueQUEUE_TYPE_COUNTING_SEMAPHORE );
-
-		if( xHandle != NULL )
-		{
-			( ( Queue_t * ) xHandle )->uxMessagesWaiting = uxInitialCount;
-
-			traceCREATE_COUNTING_SEMAPHORE();
-		}
-		else
-		{
-			traceCREATE_COUNTING_SEMAPHORE_FAILED();
-		}
-
-		return xHandle;
-	}
-
-#endif /* ( ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) ) */
 /*-----------------------------------------------------------*/
 
 #if( ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) )
@@ -1632,24 +1499,11 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 	}
 	#endif
 
-	#if( ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) && ( configSUPPORT_STATIC_ALLOCATION == 0 ) )
+	#if( ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) )
 	{
 		/* The queue can only have been allocated dynamically - free it
 		again. */
 		vPortFree( pxQueue );
-	}
-	#elif( ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) && ( configSUPPORT_STATIC_ALLOCATION == 1 ) )
-	{
-		/* The queue could have been allocated statically or dynamically, so
-		check before attempting to free the memory. */
-		if( pxQueue->ucStaticallyAllocated == ( uint8_t ) pdFALSE )
-		{
-			vPortFree( pxQueue );
-		}
-		else
-		{
-			mtCOVERAGE_TEST_MARKER();
-		}
 	}
 	#else
 	{
@@ -1984,281 +1838,6 @@ BaseType_t xReturn;
 
 	return xReturn;
 } /*lint !e818 xQueue could not be pointer to const because it is a typedef. */
-/*-----------------------------------------------------------*/
-
-#if ( configUSE_CO_ROUTINES == 1 )
-
-	BaseType_t xQueueCRSend( QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait )
-	{
-	BaseType_t xReturn;
-	Queue_t * const pxQueue = ( Queue_t * ) xQueue;
-
-		/* If the queue is already full we may have to block.  A critical section
-		is required to prevent an interrupt removing something from the queue
-		between the check to see if the queue is full and blocking on the queue. */
-		portDISABLE_INTERRUPTS();
-		{
-			if( prvIsQueueFull( pxQueue ) != pdFALSE )
-			{
-				/* The queue is full - do we want to block or just leave without
-				posting? */
-				if( xTicksToWait > ( TickType_t ) 0 )
-				{
-					/* As this is called from a coroutine we cannot block directly, but
-					return indicating that we need to block. */
-					vCoRoutineAddToDelayedList( xTicksToWait, &( pxQueue->xTasksWaitingToSend ) );
-					portENABLE_INTERRUPTS();
-					return errQUEUE_BLOCKED;
-				}
-				else
-				{
-					portENABLE_INTERRUPTS();
-					return errQUEUE_FULL;
-				}
-			}
-		}
-		portENABLE_INTERRUPTS();
-
-		portDISABLE_INTERRUPTS();
-		{
-			if( pxQueue->uxMessagesWaiting < pxQueue->uxLength )
-			{
-				/* There is room in the queue, copy the data into the queue. */
-				prvCopyDataToQueue( pxQueue, pvItemToQueue, queueSEND_TO_BACK );
-				xReturn = pdPASS;
-
-				/* Were any co-routines waiting for data to become available? */
-				if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
-				{
-					/* In this instance the co-routine could be placed directly
-					into the ready list as we are within a critical section.
-					Instead the same pending ready list mechanism is used as if
-					the event were caused from within an interrupt. */
-					if( xCoRoutineRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
-					{
-						/* The co-routine waiting has a higher priority so record
-						that a yield might be appropriate. */
-						xReturn = errQUEUE_YIELD;
-					}
-					else
-					{
-						mtCOVERAGE_TEST_MARKER();
-					}
-				}
-				else
-				{
-					mtCOVERAGE_TEST_MARKER();
-				}
-			}
-			else
-			{
-				xReturn = errQUEUE_FULL;
-			}
-		}
-		portENABLE_INTERRUPTS();
-
-		return xReturn;
-	}
-
-#endif /* configUSE_CO_ROUTINES */
-/*-----------------------------------------------------------*/
-
-#if ( configUSE_CO_ROUTINES == 1 )
-
-	BaseType_t xQueueCRReceive( QueueHandle_t xQueue, void *pvBuffer, TickType_t xTicksToWait )
-	{
-	BaseType_t xReturn;
-	Queue_t * const pxQueue = ( Queue_t * ) xQueue;
-
-		/* If the queue is already empty we may have to block.  A critical section
-		is required to prevent an interrupt adding something to the queue
-		between the check to see if the queue is empty and blocking on the queue. */
-		portDISABLE_INTERRUPTS();
-		{
-			if( pxQueue->uxMessagesWaiting == ( UBaseType_t ) 0 )
-			{
-				/* There are no messages in the queue, do we want to block or just
-				leave with nothing? */
-				if( xTicksToWait > ( TickType_t ) 0 )
-				{
-					/* As this is a co-routine we cannot block directly, but return
-					indicating that we need to block. */
-					vCoRoutineAddToDelayedList( xTicksToWait, &( pxQueue->xTasksWaitingToReceive ) );
-					portENABLE_INTERRUPTS();
-					return errQUEUE_BLOCKED;
-				}
-				else
-				{
-					portENABLE_INTERRUPTS();
-					return errQUEUE_FULL;
-				}
-			}
-			else
-			{
-				mtCOVERAGE_TEST_MARKER();
-			}
-		}
-		portENABLE_INTERRUPTS();
-
-		portDISABLE_INTERRUPTS();
-		{
-			if( pxQueue->uxMessagesWaiting > ( UBaseType_t ) 0 )
-			{
-				/* Data is available from the queue. */
-				pxQueue->u.pcReadFrom += pxQueue->uxItemSize;
-				if( pxQueue->u.pcReadFrom >= pxQueue->pcTail )
-				{
-					pxQueue->u.pcReadFrom = pxQueue->pcHead;
-				}
-				else
-				{
-					mtCOVERAGE_TEST_MARKER();
-				}
-				--( pxQueue->uxMessagesWaiting );
-				( void ) memcpy( ( void * ) pvBuffer, ( void * ) pxQueue->u.pcReadFrom, ( unsigned ) pxQueue->uxItemSize );
-
-				xReturn = pdPASS;
-
-				/* Were any co-routines waiting for space to become available? */
-				if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToSend ) ) == pdFALSE )
-				{
-					/* In this instance the co-routine could be placed directly
-					into the ready list as we are within a critical section.
-					Instead the same pending ready list mechanism is used as if
-					the event were caused from within an interrupt. */
-					if( xCoRoutineRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
-					{
-						xReturn = errQUEUE_YIELD;
-					}
-					else
-					{
-						mtCOVERAGE_TEST_MARKER();
-					}
-				}
-				else
-				{
-					mtCOVERAGE_TEST_MARKER();
-				}
-			}
-			else
-			{
-				xReturn = pdFAIL;
-			}
-		}
-		portENABLE_INTERRUPTS();
-
-		return xReturn;
-	}
-
-#endif /* configUSE_CO_ROUTINES */
-/*-----------------------------------------------------------*/
-
-#if ( configUSE_CO_ROUTINES == 1 )
-
-	BaseType_t xQueueCRSendFromISR( QueueHandle_t xQueue, const void *pvItemToQueue, BaseType_t xCoRoutinePreviouslyWoken )
-	{
-	Queue_t * const pxQueue = ( Queue_t * ) xQueue;
-
-		/* Cannot block within an ISR so if there is no space on the queue then
-		exit without doing anything. */
-		if( pxQueue->uxMessagesWaiting < pxQueue->uxLength )
-		{
-			prvCopyDataToQueue( pxQueue, pvItemToQueue, queueSEND_TO_BACK );
-
-			/* We only want to wake one co-routine per ISR, so check that a
-			co-routine has not already been woken. */
-			if( xCoRoutinePreviouslyWoken == pdFALSE )
-			{
-				if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
-				{
-					if( xCoRoutineRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
-					{
-						return pdTRUE;
-					}
-					else
-					{
-						mtCOVERAGE_TEST_MARKER();
-					}
-				}
-				else
-				{
-					mtCOVERAGE_TEST_MARKER();
-				}
-			}
-			else
-			{
-				mtCOVERAGE_TEST_MARKER();
-			}
-		}
-		else
-		{
-			mtCOVERAGE_TEST_MARKER();
-		}
-
-		return xCoRoutinePreviouslyWoken;
-	}
-
-#endif /* configUSE_CO_ROUTINES */
-/*-----------------------------------------------------------*/
-
-#if ( configUSE_CO_ROUTINES == 1 )
-
-	BaseType_t xQueueCRReceiveFromISR( QueueHandle_t xQueue, void *pvBuffer, BaseType_t *pxCoRoutineWoken )
-	{
-	BaseType_t xReturn;
-	Queue_t * const pxQueue = ( Queue_t * ) xQueue;
-
-		/* We cannot block from an ISR, so check there is data available. If
-		not then just leave without doing anything. */
-		if( pxQueue->uxMessagesWaiting > ( UBaseType_t ) 0 )
-		{
-			/* Copy the data from the queue. */
-			pxQueue->u.pcReadFrom += pxQueue->uxItemSize;
-			if( pxQueue->u.pcReadFrom >= pxQueue->pcTail )
-			{
-				pxQueue->u.pcReadFrom = pxQueue->pcHead;
-			}
-			else
-			{
-				mtCOVERAGE_TEST_MARKER();
-			}
-			--( pxQueue->uxMessagesWaiting );
-			( void ) memcpy( ( void * ) pvBuffer, ( void * ) pxQueue->u.pcReadFrom, ( unsigned ) pxQueue->uxItemSize );
-
-			if( ( *pxCoRoutineWoken ) == pdFALSE )
-			{
-				if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToSend ) ) == pdFALSE )
-				{
-					if( xCoRoutineRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
-					{
-						*pxCoRoutineWoken = pdTRUE;
-					}
-					else
-					{
-						mtCOVERAGE_TEST_MARKER();
-					}
-				}
-				else
-				{
-					mtCOVERAGE_TEST_MARKER();
-				}
-			}
-			else
-			{
-				mtCOVERAGE_TEST_MARKER();
-			}
-
-			xReturn = pdPASS;
-		}
-		else
-		{
-			xReturn = pdFAIL;
-		}
-
-		return xReturn;
-	}
-
-#endif /* configUSE_CO_ROUTINES */
 /*-----------------------------------------------------------*/
 
 #if ( configQUEUE_REGISTRY_SIZE > 0 )

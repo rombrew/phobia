@@ -130,10 +130,8 @@ must be set in the compiler's include path. */
 extern "C" {
 #endif
 
-//#include "mpu_wrappers.h"
 #define PRIVILEGED_FUNCTION
 #define PRIVILEGED_DATA
-#define portUSING_MPU_WRAPPERS 0
 
 /*
  * Setup the stack of a new task so it is ready to be placed under the
@@ -141,11 +139,7 @@ extern "C" {
  * the order that the port expects to find them.
  *
  */
-#if( portUSING_MPU_WRAPPERS == 1 )
-	StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters, BaseType_t xRunPrivileged ) PRIVILEGED_FUNCTION;
-#else
-	StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters ) PRIVILEGED_FUNCTION;
-#endif
+StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters ) PRIVILEGED_FUNCTION;
 
 /* Used by heap_5.c. */
 typedef struct HeapRegion
@@ -189,18 +183,6 @@ BaseType_t xPortStartScheduler( void ) PRIVILEGED_FUNCTION;
  * executing.
  */
 void vPortEndScheduler( void ) PRIVILEGED_FUNCTION;
-
-/*
- * The structures and methods of manipulating the MPU are contained within the
- * port layer.
- *
- * Fills the xMPUSettings structure with the memory region information
- * contained in xRegions.
- */
-#if( portUSING_MPU_WRAPPERS == 1 )
-	struct xMEMORY_REGION;
-	void vPortStoreTaskMPUSettings( xMPU_SETTINGS *xMPUSettings, const struct xMEMORY_REGION * const xRegions, StackType_t *pxBottomOfStack, uint32_t ulStackDepth ) PRIVILEGED_FUNCTION;
-#endif
 
 #ifdef __cplusplus
 }
