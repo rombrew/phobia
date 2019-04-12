@@ -102,8 +102,6 @@
 #define configUSE_TRACE_FACILITY		1
 #define configUSE_STATS_FORMATTING_FUNCTIONS	1
 
-#define configUSE_TIMERS			0
-
 #define INCLUDE_vTaskDelete			1
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1

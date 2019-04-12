@@ -1637,19 +1637,6 @@ void vTaskStartScheduler( void )
 		 * redundant explicit cast to all supported compilers. */
 	}
 
-	#if ( configUSE_TIMERS == 1 )
-	{
-		if( xReturn == pdPASS )
-		{
-			xReturn = xTimerCreateTimerTask();
-		}
-		else
-		{
-			mtCOVERAGE_TEST_MARKER();
-		}
-	}
-	#endif /* configUSE_TIMERS */
-
 	if( xReturn == pdPASS )
 	{
 		/* Interrupts are turned off here, to ensure a tick does not occur
@@ -2120,7 +2107,7 @@ TCB_t *pxTCB;
 				{
 					if( pulTotalRunTime != NULL )
 					{
-						*pulTotalRunTime = ulTotalRunTime;
+						*pulTotalRunTime = xTickCount;
 					}
 				}
 				#else
@@ -2528,7 +2515,7 @@ void vTaskSwitchContext( void )
 
 		#if ( configGENERATE_RUN_TIME_STATS == 1 )
 		{
-			ulTotalRunTime = ulTotalRunTime + 1;
+			ulTotalRunTime = xTickCount;
 
 			/* Add the amount of time the task has been running to the
 			   accumulated time so far.  The time the task started running was
@@ -2601,39 +2588,6 @@ void vTaskPlaceOnUnorderedEventList( List_t * pxEventList, const TickType_t xIte
 
 	prvAddCurrentTaskToDelayedList( xTicksToWait, pdTRUE );
 }
-/*-----------------------------------------------------------*/
-
-#if( configUSE_TIMERS == 1 )
-
-	void vTaskPlaceOnEventListRestricted( List_t * const pxEventList, TickType_t xTicksToWait, const BaseType_t xWaitIndefinitely )
-	{
-		configASSERT( pxEventList );
-
-		/* This function should not be called by application code hence the
-		'Restricted' in its name.  It is not part of the public API.  It is
-		designed for use by kernel code, and has special calling requirements -
-		it should be called with the scheduler suspended. */
-
-
-		/* Place the event list item of the TCB in the appropriate event list.
-		In this case it is assume that this is the only task that is going to
-		be waiting on this event list, so the faster vListInsertEnd() function
-		can be used in place of vListInsert. */
-		vListInsertEnd( pxEventList, &( pxCurrentTCB->xEventListItem ) );
-
-		/* If the task should block indefinitely then set the block time to a
-		value that will be recognised as an indefinite delay inside the
-		prvAddCurrentTaskToDelayedList() function. */
-		if( xWaitIndefinitely != pdFALSE )
-		{
-			xTicksToWait = portMAX_DELAY;
-		}
-
-		traceTASK_DELAY_UNTIL( ( xTickCount + xTicksToWait ) );
-		prvAddCurrentTaskToDelayedList( xTicksToWait, xWaitIndefinitely );
-	}
-
-#endif /* configUSE_TIMERS */
 /*-----------------------------------------------------------*/
 
 BaseType_t xTaskRemoveFromEventList( const List_t * const pxEventList )
@@ -3327,7 +3281,7 @@ TCB_t *pxTCB;
 #endif /* ( ( INCLUDE_xTaskGetCurrentTaskHandle == 1 ) || ( configUSE_MUTEXES == 1 ) ) */
 /*-----------------------------------------------------------*/
 
-#if ( ( INCLUDE_xTaskGetSchedulerState == 1 ) || ( configUSE_TIMERS == 1 ) )
+#if ( INCLUDE_xTaskGetSchedulerState == 1 )
 
 	BaseType_t xTaskGetSchedulerState( void )
 	{
@@ -3352,7 +3306,7 @@ TCB_t *pxTCB;
 		return xReturn;
 	}
 
-#endif /* ( ( INCLUDE_xTaskGetSchedulerState == 1 ) || ( configUSE_TIMERS == 1 ) ) */
+#endif /* ( INCLUDE_xTaskGetSchedulerState == 1 ) */
 /*-----------------------------------------------------------*/
 
 #if ( configUSE_MUTEXES == 1 )

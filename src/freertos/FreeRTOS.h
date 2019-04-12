@@ -221,16 +221,8 @@ extern "C" {
 	#define configUSE_MUTEXES 0
 #endif
 
-#ifndef configUSE_TIMERS
-	#define configUSE_TIMERS 0
-#endif
-
 #ifndef configUSE_COUNTING_SEMAPHORES
 	#define configUSE_COUNTING_SEMAPHORES 0
-#endif
-
-#ifndef configUSE_ALTERNATIVE_API
-	#define configUSE_ALTERNATIVE_API 0
 #endif
 
 #ifndef configMAX_TASK_NAME_LEN
@@ -251,23 +243,6 @@ extern "C" {
 #else
 	#define configASSERT_DEFINED 1
 #endif
-
-/* The timers module relies on xTaskGetSchedulerState(). */
-#if configUSE_TIMERS == 1
-
-	#ifndef configTIMER_TASK_PRIORITY
-		#error If configUSE_TIMERS is set to 1 then configTIMER_TASK_PRIORITY must also be defined.
-	#endif /* configTIMER_TASK_PRIORITY */
-
-	#ifndef configTIMER_QUEUE_LENGTH
-		#error If configUSE_TIMERS is set to 1 then configTIMER_QUEUE_LENGTH must also be defined.
-	#endif /* configTIMER_QUEUE_LENGTH */
-
-	#ifndef configTIMER_TASK_STACK_DEPTH
-		#error If configUSE_TIMERS is set to 1 then configTIMER_TASK_STACK_DEPTH must also be defined.
-	#endif /* configTIMER_TASK_STACK_DEPTH */
-
-#endif /* configUSE_TIMERS */
 
 #ifndef portSET_INTERRUPT_MASK_FROM_ISR
 	#define portSET_INTERRUPT_MASK_FROM_ISR() 0
@@ -762,10 +737,6 @@ extern "C" {
 	#define portTICK_TYPE_EXIT_CRITICAL()
 	#define portTICK_TYPE_SET_INTERRUPT_MASK_FROM_ISR() 0
 	#define portTICK_TYPE_CLEAR_INTERRUPT_MASK_FROM_ISR( x ) ( void ) x
-#endif
-
-#if( configUSE_ALTERNATIVE_API != 0 )
-	#error The alternative API was deprecated some time ago, and was removed in FreeRTOS V9.0 0
 #endif
 
 /* Set configUSE_TASK_FPU_SUPPORT to 0 to omit floating point support even
