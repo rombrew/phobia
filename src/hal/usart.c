@@ -14,7 +14,7 @@ HAL_USART_t;
 
 static HAL_USART_t		hal_USART;
 
-void irqUSART3()
+void irq_USART3()
 {
 	BaseType_t		xWoken = pdFALSE;
 	unsigned int 		SR;
@@ -55,8 +55,8 @@ void USART_startup()
 
 	/* Alloc queues.
 	 * */
-	hal_USART.xRX = xQueueCreate(20, sizeof(char));
-	hal_USART.xTX = xQueueCreate(40, sizeof(char));
+	hal_USART.xRX = xQueueCreate(40, sizeof(char));
+	hal_USART.xTX = xQueueCreate(80, sizeof(char));
 
 	/* Configure USART.
 	 * */

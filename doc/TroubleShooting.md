@@ -20,7 +20,7 @@ It may return the following values.
 * **PM_ERROR_ACCURACY_FAULT** if the adjustment has occurred with a error above
   the fault threshold.
 * **PM_ERROR_CURRENT_LOOP_FAULT** means that we apply the full voltage but
-  current is still zero. If current sensors is ok this may be caused by open
+  current is still zero. If current sensors is OK this may be caused by open
   circuit in motor phases or its connection.
 * **PM_ERROR_OVER_CURRENT** this cannot be, we think that current is always
   under control.
@@ -28,5 +28,5 @@ It may return the following values.
   understand what is happening. It may be caused by inconsistency of model with
   real motor. Usually appears in intense transient conditions.
 * **PM_ERROR_INVALID_OPERATION** if invalid conditions is detected like zero
-  divizion or appearance of NaN.
+  division or appearance of NaN.
 

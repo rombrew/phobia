@@ -1,10 +1,10 @@
 #include "libm.h"
 #include "pm.h"
 
-void pm_config_default(pmc_t *pm)
+void pm_default(pmc_t *pm)
 {
 	pm->dc_minimal = 42;
-	pm->dc_clearance = 420;
+	pm->dc_clearance = 400;
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
@@ -13,7 +13,8 @@ void pm_config_default(pmc_t *pm)
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
 
-	pm->tm_transient_skip = .05f;
+	pm->tm_transient_slow = .05f;
+	pm->tm_transient_fast = .002f;
 	pm->tm_voltage_hold = .05f;
 	pm->tm_current_hold = .5f;
 	pm->tm_instant_probe = .01f;
@@ -44,14 +45,14 @@ void pm_config_default(pmc_t *pm)
 	pm->probe_gain_I = 1E-3f;
 
 	pm->fault_voltage_tolerance = 1.f;
-	pm->fault_current_tolerance = 2.f;
+	pm->fault_current_tolerance = 5.f;
 	pm->fault_current_halt_level = 50.f;
-	pm->fault_adjust_tolerance = 5E-2f;
+	pm->fault_adjust_tolerance = 1E-1f;
 	pm->fault_flux_residue_maximal = 90.f;
 
 	pm->vsi_clamp_to_GND = PM_ENABLED;
 	pm->vsi_gain_LP = 1E-1f;
-	pm->vsi_gain_LW = 5E-1f;
+	pm->vsi_gain_LW = 5E-2f;
 
 	pm->volt_FIR_A[0] = 0.f;
 	pm->volt_FIR_A[1] = 0.f;
@@ -65,7 +66,8 @@ void pm_config_default(pmc_t *pm)
 	pm->volt_maximal = 2.f;
 
 	pm->forced_hold_D = 10.f;
-	pm->forced_accel = 3E+3f;
+	pm->forced_maximal = 700.f;
+	pm->forced_accel = 2E+3f;
 
 	pm->flux_gain_LP = 1E-1f;
 	pm->flux_gain_DA = 5E-1f;
@@ -93,33 +95,20 @@ void pm_config_default(pmc_t *pm)
 	pm->const_J = 0.f;
 
 	pm->i_maximal = pm->fb_current_clamp;
-	pm->i_watt_maximal = 3500.f;
-	pm->i_watt_reverse = -50.f;
-	pm->i_gain_PD = 5E-2f;
+	pm->i_watt_maximal = 2000.f;
+	pm->i_watt_reverse = -5.f;
+	pm->i_gain_PD = 1E-1f;
 	pm->i_gain_ID = 5E-3f;
-	pm->i_gain_PQ = 5E-2f;
+	pm->i_gain_PQ = 1E-1f;
 	pm->i_gain_IQ = 5E-3f;
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
 	pm->s_accel = 5E+6f;
-	pm->s_gain_P = 2E-2f;
-	pm->s_gain_I = 1E-4f;
+	pm->s_gain_P = 5E-2f;
+	pm->s_gain_I = 0E-3f;
 
 	pm->p_gain_P = 50.f;
 	pm->p_gain_I = 0.f;
-}
-
-void pm_config_tune_current_loop(pmc_t *pm)
-{
-	pm->i_gain_PD = .5f * pm->const_Ld * pm->freq_hz - pm->const_R;
-	pm->i_gain_ID = 2E-2f * pm->const_Ld * pm->freq_hz;
-	pm->i_gain_PQ = .5f * pm->const_Lq * pm->freq_hz - pm->const_R;
-	pm->i_gain_IQ = 2E-2f * pm->const_Lq * pm->freq_hz;
-}
-
-void pm_config_tune_flux_observer(pmc_t *pm)
-{
-	/* TODO */
 }
 
 static void
@@ -184,23 +173,53 @@ pm_forced_update(pmc_t *pm)
 	float		*X = pm->forced_X;
 	float		iX, iY, wSP, dS, wMAX;
 
+	/* In the forced control we apply a current vector without feedback
+	 * to force rotor turn.
+	 * */
+
 	iX = pm->flux_X[2] * pm->flux_X[0] - pm->flux_X[3] * pm->flux_X[1];
 	iY = pm->flux_X[3] * pm->flux_X[0] + pm->flux_X[2] * pm->flux_X[1];
 
+	/* Get current from FLUX observer.
+	 * */
 	X[0] = X[2] * iX + X[3] * iY;
 	X[1] = X[2] * iY - X[3] * iX;
 
-	dS = pm->forced_accel * pm->dT;
-	wSP = pm->forced_setpoint;
+	/* Get the setpoint of speed.
+	 * */
+	if (pm->config_LOOP == PM_LOOP_DRIVE_CURRENT) {
 
+		wSP = (pm->i_setpoint_Q < 0.f) ? - pm->forced_maximal : pm->forced_maximal;
+	}
+	else if (pm->config_LOOP == PM_LOOP_DRIVE_SPEED) {
+
+		wSP = pm->s_track;
+	}
+	else if (pm->config_LOOP == PM_LOOP_DRIVE_SERVO) {
+
+		wSP = pm->s_track;
+	}
+	else {
+		/* The function should not be called in this case.
+		 * */
+		wSP = 0.f;
+	}
+
+	/* Do not run faster then BEMF high level.
+	 * */
 	if (pm->const_E != 0.f) {
 
 		wMAX = pm->flux_bemf_high / pm->const_E;
 		wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
 	}
 
+	/* Update the actual speed with specified acceleration.
+	 * */
+	dS = pm->forced_accel * pm->dT;
 	X[4] = (X[4] < wSP - dS) ? X[4] + dS : (X[4] > wSP + dS) ? X[4] - dS : wSP;
 
+	/* Update DQ frame.
+	 * */
 	m_rotf(X + 2, X[4] * pm->dT, X + 2);
 }
 
@@ -210,12 +229,18 @@ pm_flux_residue(pmc_t *pm, float X[5])
 	float		iA, iB, iX, iY;
 	int		vA, vB;
 
+	/* Get our current estimate on XY.
+	 * */
 	iX = X[2] * X[0] - X[3] * X[1];
 	iY = X[3] * X[0] + X[2] * X[1];
 
+	/* Check for measurement is undistorted.
+	 * */
 	vA = (pm->vsi_current_ZONE & 0x11UL) ? 0 : 1;
 	vB = (pm->vsi_current_ZONE & 0x22UL) ? 0 : 1;
 
+	/* Check for measurement is in range.
+	 * */
 	vA = (pm->fb_current_A < - pm->fb_current_clamp) ? 0 :
 		(pm->fb_current_A > pm->fb_current_clamp) ? 0 : vA;
 	vB = (pm->fb_current_B < - pm->fb_current_clamp) ? 0 :
@@ -229,25 +254,39 @@ pm_flux_residue(pmc_t *pm, float X[5])
 		vA = (iA < - pm->fb_current_clamp) ? 0 : (iA > pm->fb_current_clamp) ? 0 : vA;
 		vB = (iB < - pm->fb_current_clamp) ? 0 : (iB > pm->fb_current_clamp) ? 0 : vB;
 
+		/* Get residue.
+		 * */
 		iA = pm->fb_current_A - iA;
 		iB = pm->fb_current_B - iB;
 
 		if (vA && vB) {
+
+			/* Current sensors A and B are valid.
+			 * */
 
 			iX = iA;
 			iY = .57735027f * iA + 1.1547005f * iB;
 		}
 		else if (vA) {
 
+			/* Only current sensor A is valid.
+			 * */
+
 			iX = iA;
 			iY = 0.f;
 		}
 		else if (vB) {
 
+			/* Only current sensor B is valid.
+			 * */
+
 			iX = - .5f * iB;
 			iY = .8660254f * iB;
 		}
 		else {
+			/* No valid current sensor.
+			 * */
+
 			iX = 0.f;
 			iY = 0.f;
 		}
@@ -264,6 +303,8 @@ pm_flux_residue(pmc_t *pm, float X[5])
 		iY = (vB) ? iY : 0.f;
 	}
 
+	/* Get residue on DQ.
+	 * */
 	pm->flux_residue_D = X[2] * iX + X[3] * iY;
 	pm->flux_residue_Q = X[2] * iY - X[3] * iX;
 }
@@ -276,15 +317,21 @@ pm_flux_update(pmc_t *pm)
 
 	if (pm->lu_mode != PM_LU_DETACHED) {
 
+		/* Update voltage from previous cycle.
+		 * */
 		if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
 
 			pm_voltage_residue(pm);
 			pm_solve_1(pm, pm->flux_X);
 		}
 
+		/* Get residue.
+		 * */
 		pm_flux_residue(pm, X);
 	}
 	else {
+		/* We have exactly zero current in detached mode.
+		 * */
 		pm->flux_residue_D = 0.f - X[0];
 		pm->flux_residue_Q = 0.f - X[1];
 	}
@@ -295,14 +342,21 @@ pm_flux_update(pmc_t *pm)
 	pm->flux_residue_lpf += (eD * eD + eQ * eQ - pm->flux_residue_lpf)
 		* pm->flux_gain_LP;
 
+	/* Update current estimate.
+	 * */
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
 
 	if (pm->const_E != 0.f) {
 
+		/* Here is FLUX observer with gain scheduling.
+		 * */
+
 		qS = (pm->lu_mode == PM_LU_FORCED) ? pm->forced_X[4] : X[4];
 		eR = (qS < 0.f) ? - eD : eD;
 
+		/* Update DQ frame estimate with D residue.
+		 * */
 		dR = pm->flux_gain_DP * eR;
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 		m_rotf(X + 2, dR, X + 2);
@@ -310,26 +364,41 @@ pm_flux_update(pmc_t *pm)
 		qS = m_fabsf(X[4] * pm->const_E) / (PM_EMAX(pm) * pm->const_lpf_U);
 		qS = (qS > 1.f) ? 1.f : qS;
 
+		/* We prefer the Q residue at low speed as it gives a fast
+		 * response. At high speed it may inject a ripple if BEMF is
+		 * not pure sinusoidal so we suppress it and more and more go
+		 * to D residue.
+		 * */
 		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
 		X[4] += dR;
 
 		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_high) {
 
+			/* Estimate Q drift at high speed to get relaxed solution.
+			 * */
 			pm->flux_drift_Q += pm->flux_gain_QZ * (eR + eQ);
 		}
 		else {
+			/* At low speed Q drift cannot be estimated.
+			 * */
 			pm->flux_drift_Q = 0.f;
 		}
 	}
 	else if (pm->lu_mode == PM_LU_FORCED) {
 
+		/* Get the forced state vector as we do not have own estimate.
+		 * */
 		X[2] = pm->forced_X[2];
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
+		/* Estimate Q drift to be able to get E constant.
+		 * */
 		pm->flux_drift_Q += pm->flux_gain_QZ * eQ;
 	}
 
+	/* Time update to next cycle.
+	 * */
 	pm_solve_2(pm, X);
 }
 
@@ -426,7 +495,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
+		if (		m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
 				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
@@ -444,7 +513,12 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (m_fabsf(X[4] * pm->const_E) < pm->flux_bemf_unlock) {
 
-			if (pm->config_HALL == PM_ENABLED) {
+			if (pm->config_LOOP == PM_LOOP_RECTIFIER_VOLTAGE) {
+
+				/* Stay on FLUX observer.
+				 * */
+			}
+			else if (pm->config_HALL == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_SENSORED_HALL;
 			}
@@ -480,7 +554,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
+		if (		m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
 				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
@@ -530,6 +604,13 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 		uA = uX;
 		uB = uY;
+		uC = 0.f;
+	}
+	else {
+		/* This case should never be executed.
+		 * */
+		uA = 0.f;
+		uB = 0.f;
 		uC = 0.f;
 	}
 
@@ -607,6 +688,9 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 	ZONE = (pm->vsi_current_ZONE & 0xFUL) << 4;
 
+	/* We check if there are PWM edges within clearance zone. The CURRENT
+	 * measurement will be used or rejected based on these flags.
+	 * */
 	ZONE |= (xA > xMIN) ? (xA < xMAX) ? (1UL << 0) : (1UL << 3) : 0UL;
 	ZONE |= (xB > xMIN) ? (xB < xMAX) ? (1UL << 1) : (1UL << 3) : 0UL;
 	ZONE |= (xC > xMIN) ? (xC < xMAX) ? (1UL << 2) : (1UL << 3) : 0UL;
@@ -618,6 +702,9 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 		xMAX = (int) (pm->dc_resolution * pm->volt_maximal / pm->const_lpf_U);
 		ZONE = (pm->vsi_voltage_ZONE & 0xFUL) << 4;
 
+		/* We check if voltages are within acceptable zone. The VOLTAGE
+		 * measurement will be used or rejected based on these flags.
+		 * */
 		ZONE |= (xA != 0) ? (xA < xMAX) ? (1UL << 0) : (1UL << 3) : 0UL;
 		ZONE |= (xB != 0) ? (xB < xMAX) ? (1UL << 1) : (1UL << 3) : 0UL;
 		ZONE |= (xC != 0) ? (xC < xMAX) ? (1UL << 2) : (1UL << 3) : 0UL;
@@ -670,6 +757,12 @@ void pm_voltage_residue(pmc_t *pm)
 			up_X = A;
 			up_Y = B;
 		}
+		else {
+			/* This case should never be executed.
+			 * */
+			up_X = 0.;
+			up_Y = 0.;
+		}
 
 		pm->volt_residue_X = up_X - pm->vsi_DX;
 		pm->volt_residue_Y = up_Y - pm->vsi_DY;
@@ -683,10 +776,10 @@ void pm_voltage_residue(pmc_t *pm)
 static void
 pm_current_control(pmc_t *pm)
 {
-	float		*X = pm->lu_X, F[2];
+	float		*X = pm->lu_X, mF[2];
 	float		sD, sQ, eD, eQ;
-	float		uD, uQ, uX, uY, wP;
-	float		iMAX, uMAX, wMAX, temp;
+	float		uD, uQ, uX, uY, wP, wS;
+	float		iMAX, uMAX, wMAX;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
@@ -703,10 +796,10 @@ pm_current_control(pmc_t *pm)
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
 	sQ = (sQ > iMAX) ? iMAX : (sQ < - iMAX) ? - iMAX : sQ;
 
-	m_rotf(F, X[4] * pm->dT * .5f, X + 2);
+	m_rotf(mF, X[4] * pm->dT * (- .5f), X + 2);
 
-	uD = F[0] * pm->vsi_X - F[1] * pm->vsi_Y;
-	uQ = F[0] * pm->vsi_Y + F[1] * pm->vsi_X;
+	uD = mF[0] * pm->vsi_X + mF[1] * pm->vsi_Y;
+	uQ = mF[0] * pm->vsi_Y - mF[1] * pm->vsi_X;
 
 	wP = PM_KWAT(pm) * (X[0] * uD + X[1] * uQ);
 	pm->vsi_lpf_watt += (wP - pm->vsi_lpf_watt) * pm->vsi_gain_LW;
@@ -719,15 +812,15 @@ pm_current_control(pmc_t *pm)
 
 	if (wP > wMAX) {
 
-		temp = wMAX / wP;
-		sD *= temp;
-		sQ *= temp;
+		wP = wMAX / wP;
+		sD *= wP;
+		sQ *= wP;
 	}
 	else if (wP < pm->i_watt_reverse) {
 
-		temp = pm->i_watt_reverse / wP;
-		sD *= temp;
-		sQ *= temp;
+		wP = pm->i_watt_reverse / wP;
+		sD *= wP;
+		sQ *= wP;
 	}
 
 	/* Obtain discrepancy.
@@ -737,8 +830,8 @@ pm_current_control(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-		temp = 2.f * M_PI_F * pm->hfi_freq_hz;
-		m_rotf(pm->hfi_wave, temp * pm->dT, pm->hfi_wave);
+		wS = 2.f * M_PI_F * pm->hfi_freq_hz;
+		m_rotf(pm->hfi_wave, wS * pm->dT, pm->hfi_wave);
 
 		eD += pm->hfi_wave[1] * pm->hfi_swing_D;
 	}
@@ -760,7 +853,7 @@ pm_current_control(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-		uD += pm->hfi_wave[0] * pm->hfi_swing_D * temp * pm->const_Ld;
+		uD += pm->hfi_wave[0] * pm->hfi_swing_D * wS * pm->const_Ld;
 	}
 
 	uX = X[2] * uD - X[3] * uQ;
@@ -775,31 +868,45 @@ pm_speed_control(pmc_t *pm)
 	float		*X = pm->lu_X;
 	float		iSP, wSP, D, dS;
 
+	/* Maximal speed constraint.
+	 * */
 	wSP = pm->s_setpoint;
 	wSP = (wSP < - pm->s_maximal) ? - pm->s_maximal :
 		(wSP > pm->s_maximal) ? pm->s_maximal : wSP;
 
 	if (1) {
 
+		/* Maximal acceleration constraint.
+		 * */
 		dS = pm->s_accel * pm->dT;
 		pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
 			: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
 		if (pm->lu_mode == PM_LU_FORCED) {
 
-			pm->forced_setpoint = pm->s_track;
+			/* Do nothins in this case */
 		}
 		else {
 			/* Obtain discrepancy.
 			 * */
 			D = pm->s_track - X[4];
 
+			/* Here is PI regulator.
+			 * */
 			iSP = pm->s_gain_P * D;
 
-			pm->s_integral += (X[1] - pm->s_integral) * pm->s_gain_I;
-			iSP += pm->s_integral;
+			if (m_fabsf(iSP) < pm->i_maximal) {
 
-			pm->i_setpoint_D = 0.f;
+				pm->s_integral += (X[1] - pm->s_integral) * pm->s_gain_I;
+				iSP += pm->s_integral;
+			}
+			else {
+				pm->s_integral = 0.f;
+			}
+
+			/* Update cuurent loop setpoint. It would be possible
+			 * here to use MTPA or something else.
+			 * */
 			pm->i_setpoint_Q = iSP;
 		}
 	}

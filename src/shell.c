@@ -375,7 +375,7 @@ sh_complete(sh_t *sh, int xDIR)
 				sh->cLINE[sh->cEOL++] = space;
 				sh->cLINE[sh->cEOL] = 0;
 
-				iodef->putc(space);
+				putc(space);
 			}
 		}
 		else if (sh->cEOL <= sh->cEON) {
@@ -466,7 +466,7 @@ sh_line_putc(sh_t *sh, char c)
 
 		/* Echo.
 		 * */
-		iodef->putc(c);
+		putc(c);
 
 		sh->mCOMP = 0;
 		sh->mHIST = 0;
@@ -521,7 +521,7 @@ void task_SH(void *pData)
 	int		c;
 
 	do {
-		c = iodef->getc();
+		c = getc();
 
 		if (sh->xESC == 0) {
 

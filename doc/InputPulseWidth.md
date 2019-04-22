@@ -1,11 +1,11 @@
 ## Overview
 
-This page describes the configuration of RC servo pulse width input
-interface.
+This page describes the configuration of RC servo pulse width input interface.
 
 ## Hardware
 
-The signal is fed to PPM pin. It is 5v-tolerant. You can use +5v output and GND.
+The signal is fed to PPM pin. It is 5v-tolerant. You can also use +5v output
+and GND.
 
 ## Configuration
 

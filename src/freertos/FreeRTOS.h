@@ -1278,5 +1278,3 @@ typedef StaticStreamBuffer_t StaticMessageBuffer_t;
 #include "semphr.h"
 #include "task.h"
 
-#include "libc.h"
-

@@ -7,12 +7,29 @@ io_ops_t		*iodef;
 
 void *memset(void *d, int c, unsigned long sz)
 {
-	char		*xd = (char *) d;
+	unsigned long		fill, *ld = (unsigned long *) d;
 
-	while (sz >= 1) {
+	if (((size_t) ld & (sizeof(long) - 1UL)) == 0) {
 
-		*xd++ = c;
-		sz--;
+		fill = c;
+		fill |= (fill << 8);
+		fill |= (fill << 16);
+
+		while (sz >= sizeof(long)) {
+
+			*ld++ = fill;
+			sz -= sizeof(long);
+		}
+	}
+
+	{
+		char		*xd = (char *) ld;
+
+		while (sz >= 1) {
+
+			*xd++ = c;
+			sz--;
+		}
 	}
 
 	return d;
@@ -23,8 +40,8 @@ void *memcpy(void *d, const void *s, unsigned long sz)
 	long			*ld = (long *) d;
 	const long		*ls = (const long *) s;
 
-	if (((size_t) d & (sizeof(long) - 1UL)) == 0
-		&& ((size_t) s & (sizeof(long) - 1UL)) == 0) {
+	if (((size_t) ld & (sizeof(long) - 1UL)) == 0
+		&& ((size_t) ls & (sizeof(long) - 1UL)) == 0) {
 
 		while (sz >= sizeof(long)) {
 
@@ -215,11 +232,11 @@ fmt_hexb(io_ops_t *_io, int x)
 {
 	int		n, c;
 
-	n = (x & 0xF0) >> 8;
+	n = (x & 0xF0UL) >> 4;
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
 	_io->putc(c);
 
-	n = (x & 0x0F);
+	n = (x & 0x0FUL);
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
 	_io->putc(c);
 }
@@ -227,10 +244,10 @@ fmt_hexb(io_ops_t *_io, int x)
 static void
 fmt_hexl(io_ops_t *_io, unsigned long x)
 {
-	fmt_hexb(_io, (x & 0xFF000000) >> 24);
-	fmt_hexb(_io, (x & 0x00FF0000) >> 16);
-	fmt_hexb(_io, (x & 0x0000FF00) >> 8);
-	fmt_hexb(_io, (x & 0x000000FF));
+	fmt_hexb(_io, (x & 0xFF000000UL) >> 24);
+	fmt_hexb(_io, (x & 0x00FF0000UL) >> 16);
+	fmt_hexb(_io, (x & 0x0000FF00UL) >> 8);
+	fmt_hexb(_io, (x & 0x000000FFUL));
 }
 
 static void
@@ -473,6 +490,9 @@ void xprintf(io_ops_t *_io, const char *fmt, ...)
         va_end(ap);
 }
 
+int getc() { return iodef->getc(); }
+void putc(int c) { iodef->putc(c); }
+
 void puts(const char *s)
 {
 	xputs(iodef, s);
@@ -599,24 +619,24 @@ const char *stof(float *x, const char *s)
 
 unsigned long crc32b(const void *s, int sz)
 {
-	const char		*bs = (const char *) s;
-	unsigned long		byte, crc, mask;
-	int			j;
+        const char              *xs = (const char *) s;
+        unsigned long           crc, b, m;
+        int                     j;
 
 	crc = 0xFFFFFFFF;
 
 	while (sz >= 1) {
 
-		byte = *bs++;
-		crc = crc ^ byte;
+		b = *xs++;
+		sz--;
+
+		crc = crc ^ b;
 
 		for (j = 7; j >= 0; j--) {
 
-			mask = -(crc & 1);
-			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+			m = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320UL & m);
 		}
-
-		sz--;
 	}
 
 	return ~crc;

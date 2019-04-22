@@ -25,7 +25,7 @@
  * 1 tab == 4 spaces!
  */
 
-
+/* Standard includes. */
 #include "libc.h"
 
 #include "FreeRTOS.h"

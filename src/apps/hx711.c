@@ -7,6 +7,9 @@
 #include "main.h"
 #include "shell.h"
 
+/* This is a helper that reads HX711 ADC.
+ * */
+
 void ap_HX711(void *pData)
 {
 	const int		gpio_DOUT = GPIO_SPI_MISO;
@@ -27,6 +30,17 @@ void ap_HX711(void *pData)
 		if (DOUT == 0) {
 
 			/* Get ADC result.
+			 *
+			 * +-----------+---------+------+
+			 * | Number of | Input   | Gain |
+			 * | pulses    | channel |      |
+			 * +-----------+---------+------+
+			 * |    25     |    A    | 128  |
+			 * +-----------+---------+------+
+			 * |    26     |    B    |  32  |
+			 * +-----------+---------+------+
+			 * |    27     |    A    |  64  |
+			 * +-----------+---------+------+
 			 * */
 
 			for (N = 0; N < 25; ++N) {
@@ -50,8 +64,9 @@ void ap_HX711(void *pData)
 				hal_delay_us(1);
 			}
 
-			ap.load_thrust_gram = (float) ADC * ap.load_transform[1]
-				+ ap.load_transform[0];
+			/* Convert the ADC code into grams.
+			 * */
+			ap.pull_g = (float) ADC * ap.pull_adjust[1] + ap.pull_adjust[0];
 		}
 	}
 	while (1);
@@ -61,11 +76,11 @@ SH_DEF(ap_hx711_startup)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_HX711");
+	xHandle = xTaskGetHandle("HX711");
 
 	if (xHandle == NULL) {
 
-		xTaskCreate(ap_HX711, "ap_HX711", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+		xTaskCreate(ap_HX711, "HX711", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
@@ -73,7 +88,7 @@ SH_DEF(ap_hx711_halt)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_HX711");
+	xHandle = xTaskGetHandle("HX711");
 
 	if (xHandle != NULL) {
 
@@ -81,19 +96,22 @@ SH_DEF(ap_hx711_halt)
 	}
 }
 
-SH_DEF(ap_hx711_drift)
+SH_DEF(ap_hx711_adjust)
 {
 	float			S = 0.f;
 	int			J, N = 100;
+
+	/* Reset measure to 0.
+	 * */
 
 	for (J = 0; J < N; ++J) {
 
 		vTaskDelay((TickType_t) 10);
 
-		S += ap.load_thrust_gram;
+		S += ap.pull_g;
 	}
 
-	ap.load_transform[0] += - S / (float) N;
-	reg_format(&regfile[ID_AP_LOAD_TRANSFORM_0]);
+	ap.pull_adjust[0] += - S / (float) N;
+	reg_format(&regfile[ID_AP_PULL_G]);
 }
 

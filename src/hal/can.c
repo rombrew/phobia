@@ -4,10 +4,10 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-void irqCAN1_TX() { }
+void irq_CAN1_TX() { }
 
 static void
-irqCAN1_RX(int fifo)
+irq_CAN1_RX(int fifo)
 {
 	unsigned long		temp;
 
@@ -37,9 +37,9 @@ irqCAN1_RX(int fifo)
 	CAN_IRQ();
 }
 
-void irqCAN1_RX0() { irqCAN1_RX(0); }
-void irqCAN1_RX1() { irqCAN1_RX(1); }
-void irqCAN1_SCE() { }
+void irq_CAN1_RX0() { irq_CAN1_RX(0); }
+void irq_CAN1_RX1() { irq_CAN1_RX(1); }
+void irq_CAN1_SCE() { }
 
 void CAN_startup()
 {

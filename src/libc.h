@@ -27,6 +27,8 @@ const char *strchr(const char *s, int c);
 void xputs(io_ops_t *_io, const char *s);
 void xprintf(io_ops_t *_io, const char *fmt, ...);
 
+int getc();
+void putc(int c);
 void puts(const char *s);
 void printf(const char *fmt, ...);
 

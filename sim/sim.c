@@ -113,6 +113,8 @@ sim_Tel(float *pTel)
 	/* LU mode.
 	 * */
 	pTel[33] = pm.lu_mode;
+
+	pTel[34] = pm.s_setpoint * 30. / M_PI / m.Zp;
 }
 
 static void
@@ -170,7 +172,7 @@ sim_Script(FILE *fdTel)
 
 	pm.fb_current_clamp = 50.f;
 
-	pm_config_default(&pm);
+	pm_default(&pm);
 
 	pm.const_R = m.R;
 	pm.const_Ld = m.Ld;
@@ -178,16 +180,14 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E;
 	pm.const_Zp = m.Zp;
 
-	pm.config_HFI = 1;
-	pm.config_LOOP = 1;
-	pm.config_VOLT = 1;
-
-	pm_config_tune_current_loop(&pm);
+	pm.config_VOLT = PM_ENABLED;
+	pm.config_HFI = PM_DISABLED;
+	pm.config_LOOP = PM_LOOP_DRIVE_SPEED;
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, 0., 1);
 
-	if (1) {
+	if (0) {
 
 		printf("IAB %.4f %.4f (A)\n", pm.adjust_IA[0], pm.adjust_IB[0]);
 
@@ -221,16 +221,14 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, 0., 1);
 
-	pm.s_setpoint = 70.f;
-	sim_F(fdTel, .5, 0);
+	pm.s_setpoint = 5700.f;
+	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 7000.f;
-	sim_F(fdTel, .5, 0);
+	m.M[2] = 2E-5;
+	sim_F(fdTel, 1., 0);
 
-	sim_F(fdTel, .5, 0);
-
-	pm.s_setpoint = -2000.f;
-	sim_F(fdTel, .5, 0);
+	pm.s_setpoint = 700.f;
+	sim_F(fdTel, 1., 0);
 }
 
 int main(int argc, char *argv[])

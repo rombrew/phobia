@@ -66,7 +66,6 @@
 #define configUSE_TICK_HOOK			0
 #define configCHECK_FOR_STACK_OVERFLOW		1
 #define configUSE_MALLOC_FAILED_HOOK		1
-#define configUSE_ASSERT			1
 
 #define configGENERATE_RUN_TIME_STATS		0
 #define configUSE_TRACE_FACILITY		1
@@ -82,9 +81,7 @@
 #define configKERNEL_INTERRUPT_PRIORITY 		(15 << (8 - configPRIO_BITS))
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 		(5  << (8 - configPRIO_BITS))
 
-#if configUSE_ASSERT != 0
-	#define configASSERT(x)		if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)
-#endif
+//#define configASSERT(x)		if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)
 
 #define vPortSVCHandler		irq_SVCall
 #define xPortPendSVHandler	irq_PendSV

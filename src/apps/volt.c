@@ -21,6 +21,8 @@ void ap_VOLT(void *pData)
 	PWM_set_DC(xDC, xDC, xDC);
 	PWM_set_Z(0);
 
+	pm.vsi_voltage_ZONE = 0x70UL;
+
 	do {
 		vTaskDelay(xTk);
 
@@ -36,11 +38,11 @@ SH_DEF(ap_volt_startup)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_VOLT");
+	xHandle = xTaskGetHandle("VOLT");
 
 	if (xHandle == NULL) {
 
-		xTaskCreate(ap_VOLT, "ap_VOLT", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+		xTaskCreate(ap_VOLT, "VOLT", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
@@ -48,7 +50,7 @@ SH_DEF(ap_volt_halt)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_VOLT");
+	xHandle = xTaskGetHandle("VOLT");
 
 	if (xHandle != NULL) {
 

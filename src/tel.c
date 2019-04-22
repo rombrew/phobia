@@ -38,12 +38,15 @@ void tel_reg_grab(tel_t *ti)
 
 				if (ti->reg_ID[N] != ID_NULL) {
 
+					/* Grab the value is register is not null.
+					 * */
 					reg = &regfile[ti->reg_ID[N]];
 					reg_getval(reg, &ti->data[ti->n][N]);
 				}
 			}
 		}
-		else if (ti->i >= ti->d) {
+
+		if (ti->i >= ti->d) {
 
 			ti->i = 0;
 
@@ -58,7 +61,7 @@ void tel_reg_grab(tel_t *ti)
 			}
 			else if (ti->mode == TEL_MODE_LIVE) {
 
-				ti->n = (ti->n < TEL_DATA_MAX) ? ti->n + 1 : 0;
+				ti->n = (ti->n < (TEL_DATA_MAX - 1)) ? ti->n + 1 : 0;
 			}
 		}
 	}
@@ -85,11 +88,6 @@ void tel_halt(tel_t *ti)
 {
 	ti->mode = 0;
 	hal_fence();
-}
-
-SH_DEF(tel_default)
-{
-	tel_reg_default(&ti);
 }
 
 SH_DEF(tel_grab)
@@ -174,7 +172,7 @@ void tel_reg_flush_1(tel_t *ti, int nR)
 	puts(EOL);
 }
 
-SH_DEF(tel_flush)
+SH_DEF(tel_flush_sync)
 {
 	if (ti.mode == TEL_MODE_DISABLED) {
 
@@ -196,7 +194,7 @@ void task_LIVE(void *pData)
 		while (ti->n != nR) {
 
 			tel_reg_flush_1(ti, nR);
-			nR = (nR < TEL_DATA_MAX) ? nR + 1 : 0;
+			nR = (nR < (TEL_DATA_MAX - 1)) ? nR + 1 : 0;
 
 			hal_fence();
 		}
@@ -204,12 +202,12 @@ void task_LIVE(void *pData)
 	while (1);
 }
 
-SH_DEF(tel_live)
+SH_DEF(tel_live_sync)
 {
 	TaskHandle_t		xHandle;
 	int			freq = 20;
 
-	xTaskCreate(task_LIVE, "task_LIVE", configMINIMAL_STACK_SIZE, (void *) &ti, 1, &xHandle);
+	xTaskCreate(task_LIVE, "LIVE", configMINIMAL_STACK_SIZE, (void *) &ti, 1, &xHandle);
 
 	if (stoi(&freq, s) != NULL) {
 
@@ -218,7 +216,7 @@ SH_DEF(tel_live)
 
 	tel_startup(&ti, freq, TEL_MODE_LIVE);
 
-	iodef->getc();
+	getc();
 
 	tel_halt(&ti);
 	vTaskDelete(xHandle);

@@ -9,9 +9,9 @@
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
-#define TIM_ADC_ADVANCE			24
+#define TIM_ADC_ADVANCE			80
 
-void irqTIM1_UP_TIM10() { }
+void irq_TIM1_UP_TIM10() { }
 
 static int
 PWM_calculate_R()

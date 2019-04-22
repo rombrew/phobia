@@ -96,13 +96,41 @@ reg_proc_rpm_pc(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 {
+        if (lval != NULL) {
+
+                *lval = 5.513289f / (reg->link->f * pm.const_Zp);
+        }
+        else if (rval != NULL) {
+
+                reg->link->f = 5.513289f / ((*rval) * pm.const_Zp);
+        }
+}
+
+static void
+reg_proc_clamp(const reg_t *reg, float *lval, const float *rval)
+{
+	float			maximal, adjust;
+
 	if (lval != NULL) {
 
-		*lval = 5.513289f / (reg->link->f * pm.const_Zp);
+		*lval = reg->link->f;
 	}
 	else if (rval != NULL) {
 
-		reg->link->f = 5.513289f / ((*rval) * pm.const_Zp);
+		if (*rval < 0.f) {
+
+			maximal = ADC_RESOLUTION * (1.f - 5E-2f) / 2.f;
+
+			adjust = (pm.adjust_IA[1] < pm.adjust_IB[1])
+				? pm.adjust_IA[1] : pm.adjust_IB[1];
+			adjust = (adjust > .5f && adjust < 1.5f) ? adjust : 1.f;
+
+			reg->link->f = (float) (int) (maximal * hal.ADC_const.GA * adjust);
+		}
+		else {
+
+			reg->link->f = *rval;
+		}
 	}
 }
 
@@ -277,9 +305,9 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.PWM_frequency,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
 	REG_DEF(hal.PWM_deadtime,,		"ns",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
 	REG_DEF(hal.ADC_reference_voltage,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_current_shunt_resistance,,"Ohm","%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(hal.ADC_shunt_resistance,,	"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_amplifier_gain,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_voltage_divider_gain,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(hal.ADC_voltage_ratio,,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.HALL_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.HALL_sensor_state,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(hal.PPM_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
@@ -316,19 +344,20 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.temp_EXT,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.temp_INT,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(ap.temp_PCB_overheat,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_PCB_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_EXT_overheat,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_EXT_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.temp_hysteresis,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_PCB,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_PCB_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_EXT,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_EXT_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_PCB_FAN,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_hysteresis,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.batt_voltage_low,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.batt_hysteresis,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.batt_derated,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.load_thrust_gram,,		"g",	"%1f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(ap.load_transform[0],,		"g",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.load_transform[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.pull_g,,			"g",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(ap.pull_adjust[0],,		"g",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.pull_adjust[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.dc_resolution,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.dc_minimal,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_ns),
@@ -348,7 +377,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fsm_state,,		"",	"%i",	0, &reg_proc_fsm_state, &reg_format_enum),
 	REG_DEF(pm.fsm_phase,,			"",	"%i",	0, NULL, NULL),
 
-	REG_DEF(pm.tm_transient_skip,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_transient_slow,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_transient_fast,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_voltage_hold,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_current_hold,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_instant_probe,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -369,7 +399,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.adjust_UC[0],,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.adjust_UC[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.fb_current_clamp,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.fb_current_clamp,,		"A",	"%3f",	REG_CONFIG, &reg_proc_clamp, NULL),
 	REG_DEF(pm.fb_current_A,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_current_B,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_voltage_A,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -432,11 +462,17 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_mode,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(pm.forced_hold_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.forced_maximal,,		"rad",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.forced_maximal, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.forced_accel,,	"rad/s/s",	"%3e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_accel, _rpm,	"rpm/s",	"%3e",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.forced_setpoint,,	"rad/s",	"%2f",	0, NULL, NULL),
-	REG_DEF(pm.forced_setpoint, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 
+	REG_DEF(pm.flux_X[0],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_X[1],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_X[2],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_X[3],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_X[4],,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_X[4], _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.flux_drift_Q,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_residue_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_residue_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),

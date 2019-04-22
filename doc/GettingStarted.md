@@ -42,12 +42,12 @@ terminal program.
 
 ## Further reading
 
-[Command Line Interface](CLI.md)
-[Motor Identification](MotorIdentification.md)
-[Motor Tuning](MotorTuning.md)
-[Input Pulse Width](InputPulseWidth.md)
-[Trouble Shooting](TroubleShooting.md)
+[Command Line Interface](CLI.md)\
+[Motor Identification](MotorIdentification.md)\
+[Motor Tuning](MotorTuning.md)\
+[Input Pulse Width](InputPulseWidth.md)\
+[Trouble Shooting](TroubleShooting.md)\
 
-[State Observer](StateObserver.md)
-[High Frequency Injection](HFI.md)
+[State Observer](StateObserver.md)\
+[High Frequency Injection](HFI.md)\
 

@@ -14,7 +14,7 @@ HAL_PPM_t;
 
 static HAL_PPM_t		hal_PPM;
 
-void irqTIM4()
+void irq_TIM4()
 {
 	int		SR;
 
@@ -94,10 +94,21 @@ void PPM_startup()
 static void
 PPM_halt()
 {
+	/* Disable TIM4 pins.
+	 * */
+	GPIO_set_mode_INPUT(GPIO_TIM4_CH1);
+	GPIO_set_mode_INPUT(GPIO_TIM4_CH2);
+
+	/* Disable TIM4.
+	 * */
 	TIM4->CR1 = 0;
 
+	/* Disable IRQ.
+	 * */
 	NVIC_DisableIRQ(TIM4_IRQn);
 
+	/* Disable TIM4 clock.
+	 * */
 	RCC->APB1ENR &= ~RCC_APB1ENR_TIM4EN;
 }
 

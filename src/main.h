@@ -51,13 +51,14 @@ typedef struct {
 	float			temp_EXT;
 	float			temp_INT;
 
-	/* Overheat.
+	/* Heating control.
 	 * */
-	float			temp_PCB_overheat;
-	float			temp_PCB_derated;
-	float			temp_EXT_overheat;
-	float			temp_EXT_derated;
-	float			temp_hysteresis;
+	float			heat_PCB;
+	float			heat_PCB_derated;
+	float			heat_EXT;
+	float			heat_EXT_derated;
+	float			heat_PCB_FAN;
+	float			heat_hysteresis;
 
 	/* Battery voltage.
 	 * */
@@ -67,8 +68,8 @@ typedef struct {
 
 	/* Load cell.
 	 * */
-	float			load_thrust_gram;
-	float			load_transform[2];
+	float			pull_g;
+	float			pull_adjust[2];
 }
 application_t;
 

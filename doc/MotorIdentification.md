@@ -17,12 +17,32 @@ believe that they will need a change only in a very complicated case.
 
 ## Sensors adjustment
 
-For a good result adjust the voltage and current sensors. To adjust the
-current sensors you need to connect at least some motor.
+To achieve a good result adjust the voltage and current sensors. If you have a
+accurate voltmeter do an adjustment with standard. To do this measure the
+supply voltage and call the command.
+
+	# pm_standard_voltage <volt>
+
+Note that our PCB has 1% divider tolerance and 0.2% reference voltage. So you
+need more accurate measurement.
+
+To adjust the current sensors you will need a standard resistor. Choose a
+resistance value based on supply voltage to get large enough current. Values
+from 1 to 5 Ohm will fit. It would be nice to have 1% resistor tolerance.
+Connect the resistor to the terminal A and B then call the command.
+
+	# pm_standard_current <ohm>
+
+If you do not have a voltage or resistance standard skip the above steps.
+
+Next is automatic self-adjustment that is necessary for matching the voltage
+measurement channels. Also current sensors will be self-adjusted if motor is
+connected.
 
 	# pm_self_adjust
 
-This is enough to do it once and save the values in the flash.
+This is enough to do it once and save the values in the flash. But we recommend
+to do it again when you change supply voltage.
 
 ## Number of the rotor pole pairs
 

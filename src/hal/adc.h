@@ -3,6 +3,8 @@
 
 #include "gpio.h"
 
+#define ADC_RESOLUTION			4096
+
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
 #define GPIO_ADC_VOLTAGE_U		XGPIO_DEF3('A', 1, 1)

@@ -15,13 +15,13 @@ tel_t				ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
-void lowTRACE(const char *fmt, ...)
+void log_TRACE(const char *fmt, ...)
 {
 	va_list		ap;
 	io_ops_t	ops = {
 
 		.getc = NULL,
-		.putc = &USART_debug_putc
+		.putc = &log_putc
 	};
 
         va_start(ap, fmt);
@@ -31,17 +31,26 @@ void lowTRACE(const char *fmt, ...)
 
 void vAssertCalled(const char *file, int line)
 {
-	lowTRACE("FreeRTOS: Wrong condition in %s:%i" EOL, file, line);
+	taskDISABLE_INTERRUPTS();
+	log_TRACE("FreeRTOS: Assert %s:%i" EOL, file, line);
+
+	hal_system_reset();
 }
 
 void vApplicationMallocFailedHook()
 {
-	lowTRACE("FreeRTOS Hook: Heap Allocation Failed" EOL);
+	taskDISABLE_INTERRUPTS();
+	log_TRACE("FreeRTOS: Heap Allocation Failed" EOL);
+
+	hal_system_reset();
 }
 
-void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-	lowTRACE("FreeRTOS Hook: Stack Overflow in \"%s\" Task" EOL, pcTaskName);
+	taskDISABLE_INTERRUPTS();
+	log_TRACE("FreeRTOS: Stack Overflow in \"%s\" task" EOL, pcTaskName);
+
+	hal_system_reset();
 }
 
 void task_TERM(void *pData)
@@ -70,27 +79,36 @@ void task_TERM(void *pData)
 
 			/* Derate current if PCB is overheat.
 			 * */
-			if (ap.temp_PCB > ap.temp_PCB_overheat) {
+			if (ap.temp_PCB > ap.heat_PCB) {
 
-				i_temp_PCB = ap.temp_PCB_derated;
+				i_temp_PCB = ap.heat_PCB_derated;
 			}
-			else if (ap.temp_PCB < (ap.temp_PCB_overheat - ap.temp_hysteresis)) {
+			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_hysteresis)) {
 
 				i_temp_PCB = PM_UNRESTRICTED;
 			}
 
 			/* Derate current if EXT is overheat.
 			 * */
-			if (ap.temp_EXT > ap.temp_EXT_overheat) {
+			if (ap.temp_EXT > ap.heat_EXT) {
 
-				i_temp_EXT = ap.temp_EXT_derated;
+				i_temp_EXT = ap.heat_EXT_derated;
 			}
-			else if (ap.temp_EXT < (ap.temp_EXT_overheat - ap.temp_hysteresis)) {
+			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_hysteresis)) {
 
 				i_temp_EXT = PM_UNRESTRICTED;
 			}
 
 			pm.i_derated = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
+
+			/* Enable FAN if PCB is overheat.
+			 * */
+			if (ap.temp_PCB > ap.heat_PCB_FAN) {
+
+			}
+			else if (ap.temp_PCB < (ap.heat_PCB_FAN - ap.heat_hysteresis)) {
+
+			}
 
 			/* Derate power consumption if battery voltage is low.
 			 * */
@@ -166,6 +184,9 @@ void task_INIT(void *pData)
 	GPIO_set_mode_OUTPUT(GPIO_LED);
 	GPIO_set_HIGH(GPIO_LED);
 
+	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
+	GPIO_set_HIGH(GPIO_BOOST_12V);
+
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
 
@@ -178,6 +199,13 @@ void task_INIT(void *pData)
 	ap.io_USART.putc = &USART_putc;
 	iodef = &ap.io_USART;
 
+	if (log_validate() != 0) {
+
+		/* Slow down the startup to indicate a problem.
+		 * */
+		vTaskDelay((TickType_t) 1000);
+	}
+
 	rc_flash = flash_block_load();
 
 	if (rc_flash < 0) {
@@ -189,9 +217,9 @@ void task_INIT(void *pData)
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_current_shunt_resistance = 240E-6f;
+		hal.ADC_shunt_resistance = 340E-6f;
 		hal.ADC_amplifier_gain = 60.f;
-		hal.ADC_voltage_divider_gain = 27.f / (470.f + 27.f);
+		hal.ADC_voltage_ratio = 27.f / (470.f + 27.f);
 
 		hal.PPM_mode = PPM_DISABLED;
 		hal.PPM_timebase = 2000000UL;
@@ -220,18 +248,19 @@ void task_INIT(void *pData)
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 
-		ap.temp_PCB_overheat = 120.f;
-		ap.temp_PCB_derated = 30.f;
-		ap.temp_EXT_overheat = 90.f;
-		ap.temp_EXT_derated = 30.f;
-		ap.temp_hysteresis = 5.f;
+		ap.heat_PCB = 120.f;
+		ap.heat_PCB_derated = 30.f;
+		ap.heat_EXT = 90.f;
+		ap.heat_EXT_derated = 30.f;
+		ap.heat_PCB_FAN = 60.f;
+		ap.heat_hysteresis = 5.f;
 
 		ap.batt_voltage_low = 6.0f;
 		ap.batt_hysteresis = 1.f;
 		ap.batt_derated = 50.f;
 
-		ap.load_transform[0] = 0.f;
-		ap.load_transform[1] = 4.545E-3f;
+		ap.pull_adjust[0] = 0.f;
+		ap.pull_adjust[1] = 4.545E-3f;
 	}
 
 	USART_startup();
@@ -249,9 +278,9 @@ void task_INIT(void *pData)
 		/* Default.
 		 * */
 
-		pm.fb_current_clamp = (float) (int) (1940.f * hal.ADC_const.GA);
+		reg_SET_F(ID_PM_FB_CURRENT_CLAMP, -1.f);
 
-		pm_config_default(&pm);
+		pm_default(&pm);
 		tel_reg_default(&ti);
 	}
 
@@ -260,16 +289,16 @@ void task_INIT(void *pData)
 		PPM_startup();
 	}
 
+	WD_startup();
+
 	ADC_irq_unlock();
-
-	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
-	GPIO_set_HIGH(GPIO_BOOST_12V);
-
 	GPIO_set_LOW(GPIO_LED);
 
-	xTaskCreate(task_TERM, "task_TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_ANALOG, "task_ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-	xTaskCreate(task_SH, "task_SH", 512, NULL, 1, NULL);
+	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+
+	xTaskCreate(task_TERM, "TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
 	vTaskDelete(NULL);
 }
@@ -337,7 +366,7 @@ void ADC_IRQ()
 
 	if (hal.HALL_mode == HALL_SENSOR) {
 
-		fb.hall = GPIO_get_HALL();
+		fb.hall_code = GPIO_get_HALL();
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
@@ -355,11 +384,13 @@ void ADC_IRQ()
 
 	pm_feedback(&pm, &fb);
 	tel_reg_grab(&ti);
+
+	WD_kick();
 }
 
-void hal_main()
+void app_MAIN()
 {
-	xTaskCreate(task_INIT, "task_INIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
+	xTaskCreate(task_INIT, "INIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
 	vTaskStartScheduler();
 }
 
@@ -378,8 +409,7 @@ SH_DEF(rtos_uptime)
 	Min = Sec / 60;
 	Sec -= Min * 60;
 
-	printf("%id %ih %im %is" EOL,
-			Day, Hour, Min, Sec);
+	printf("%id %ih %im %is" EOL, Day, Hour, Min, Sec);
 }
 
 void vApplicationIdleHook()
@@ -412,9 +442,62 @@ SH_DEF(rtos_cpu_usage)
 	printf("%1f (%%)" EOL, &pc);
 }
 
-SH_DEF(rtos_tasklist)
+SH_DEF(rtos_list)
 {
-	vTaskList();
+	TaskStatus_t		*pLIST;
+	int			xSIZE, xState, N;
+
+	xSIZE = uxTaskGetNumberOfTasks();
+	pLIST = pvPortMalloc(xSIZE * sizeof(TaskStatus_t));
+
+	if (pLIST != NULL) {
+
+		xSIZE = uxTaskGetSystemState(pLIST, xSIZE, NULL);
+
+		printf("TCB ID Name Stat Prio Stack Free" EOL);
+
+		for (N = 0; N < xSIZE; ++N) {
+
+			switch (pLIST[N].eCurrentState) {
+
+				case eRunning:
+					xState = 'R';
+					break;
+
+				case eReady:
+					xState = 'E';
+					break;
+
+				case eBlocked:
+					xState = 'B';
+					break;
+
+				case eSuspended:
+					xState = 'S';
+					break;
+
+				case eDeleted:
+					xState = 'D';
+					break;
+
+				case eInvalid:
+				default:
+					xState = 'N';
+					break;
+			}
+
+			printf("%8x %i %s %c %i %8x %i" EOL,
+					(unsigned long) pLIST[N].xHandle,
+					(int) pLIST[N].xTaskNumber,
+					(const char *) pLIST[N].pcTaskName,
+					(int) xState,
+					(int) pLIST[N].uxCurrentPriority,
+					(unsigned long) pLIST[N].pxStackBase,
+					(int) pLIST[N].usStackHighWaterMark);
+		}
+
+		vPortFree(pLIST);
+	}
 }
 
 SH_DEF(rtos_kill)
@@ -429,10 +512,46 @@ SH_DEF(rtos_kill)
 	}
 }
 
-SH_DEF(rtos_freeheap)
+SH_DEF(rtos_heap)
 {
 	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
+}
+
+SH_DEF(rtos_test_hardfault)
+{
+	printf("%i" EOL, *((int *) 0x55555555UL));
+}
+
+SH_DEF(rtos_test_watchdog)
+{
+	ADC_irq_lock();
+}
+
+SH_DEF(rtos_test_printf)
+{
+	printf("%8x" EOL, 0x00001111UL);
+	printf("%8x" EOL, 0x12341234UL);
+	printf("%8x" EOL, 0x77777777UL);
+	printf("%8x" EOL, 0x88888888UL);
+	printf("%8x" EOL, 0xFFFFFFFFUL);
+}
+
+SH_DEF(rtos_log)
+{
+	if (log_validate() != 0) {
+
+		puts(log.text);
+		puts(EOL);
+	}
+}
+
+SH_DEF(rtos_log_reset)
+{
+	if (log_validate() != 0) {
+
+		log.signature = 0;
+	}
 }
 
 SH_DEF(rtos_reboot)

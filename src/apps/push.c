@@ -8,6 +8,10 @@
 #include "regfile.h"
 #include "shell.h"
 
+/* This application allows you to control the speed using two push-buttons.
+ * [A] to START and switch the speed. [B] to STOP.
+ * */
+
 void ap_PUSH(void *pData)
 {
 	TickType_t		xWake;
@@ -48,7 +52,7 @@ void ap_PUSH(void *pData)
 		value_A = GPIO_get_VALUE(gpio_A);
 		value_B = GPIO_get_VALUE(gpio_B);
 
-		/* Detect if buttons are pressed.
+		/* Detect if button [A] is pressed.
 		 * */
 		if (pushed_A != 0 && value_A == 0) {
 
@@ -74,6 +78,8 @@ void ap_PUSH(void *pData)
 			pushed_A = 1;
 		}
 
+		/* Detect if button [B] is pressed.
+		 * */
 		if (pushed_B != 0 && value_B == 0) {
 
 			pushed_B = 0;
@@ -96,11 +102,11 @@ SH_DEF(ap_push_startup)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_PUSH");
+	xHandle = xTaskGetHandle("PUSH");
 
 	if (xHandle == NULL) {
 
-		xTaskCreate(ap_PUSH, "ap_PUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+		xTaskCreate(ap_PUSH, "PUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
@@ -108,7 +114,7 @@ SH_DEF(ap_push_halt)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("ap_PUSH");
+	xHandle = xTaskGetHandle("PUSH");
 
 	if (xHandle != NULL) {
 

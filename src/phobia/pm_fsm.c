@@ -6,6 +6,10 @@ pm_DFT_R(const float DFT[8])
 {
 	float			D, X, Y, E, R = 0.;
 
+	/* Here we make a simple resistance calculation on constant current
+	 * condition. R = U / I.
+	 * */
+
 	D = m_sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
 
 	if (D > 0.f) {
@@ -25,6 +29,16 @@ pm_DFT_EIG(float XY[3], float DQ[4])
 {
 	float		B, D, la1, la2;
 
+	/* Here we calculate the eigenvalues of the inductance matrix in order
+	 * to find the inductance in DQ-axes.
+	 *
+	 * R * [XY[0] XY[1]] * R' = [DQ[0] 0    ]
+	 *     [XY[1] XY[2]]        [0     DQ[1]]
+	 *
+	 * R = [DQ[2] -DQ[3]]
+	 *     [DQ[3]  DQ[2]].
+	 * */
+
 	B = XY[0] + XY[2];
 	D = B * B - 4.f * (XY[0] * XY[2] - XY[1] * XY[1]);
 
@@ -42,12 +56,27 @@ pm_DFT_EIG(float XY[3], float DQ[4])
 		DQ[2] = B / D;
 		DQ[3] = XY[1] / D;
 	}
+	else {
+		/* Looks like we have a problem.
+		 * */
+		DQ[0] = 0.f;
+		DQ[1] = 0.f;
+		DQ[2] = 1.f;
+		DQ[3] = 0.f;
+	}
 }
 
 static void
 pm_LSQ_3(const float LSQ[9], float X[3])
 {
 	float		LD[6], B[3];
+
+	/* This function solves the eqaution A*X = B by LDL' decomposition.
+	 *
+	 *     [LSQ[0] LSQ[1] LSQ[3]]      [LSQ[6]]
+	 * A = [LSQ[1] LSQ[2] LSQ[4]]  B = [LSQ[7]].
+	 *     [LSQ[3] LSQ[4] LSQ[5]]      [LSQ[8]]
+	 * */
 
 	LD[0] = LSQ[0];
 	LD[1] = LSQ[1] / LD[0];
@@ -69,6 +98,24 @@ static void
 pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 {
 	float		LSQ[9], B[4], LXY[3], R, WF;
+
+	/* The initial expression Z * I = U.
+	 *
+	 * [R-j*WF*LXY[0]   j*WF*LXY[1]] * [IX] = [UX]
+	 * [  j*WF*LXY[1] R-j*WF*LXY[2]] * [IY]   [UY]
+	 *
+	 * IX = [DFT[0]+j*DFT[1]], UX = [DFT[2]+j*DFT[3]]
+	 * IY = [DFT[4]+j*DFT[5]], UY = [DFT[6]+j*DFT[7]]
+	 *
+	 * Now we rewrite previous equation with respect to the impedance
+	 * components.
+	 *
+	 * [DFT[0]  DFT[1] -DFT[5]  0     ] * [R        ]   [DFT[2]]
+	 * [DFT[1] -DFT[0]  DFT[4]  0     ]   [WF*LXY[0]] = [DFT[3]]
+	 * [DFT[4]  0      -DFT[1]  DFT[5]]   [WF*LXY[1]]   [DFT[6]].
+	 * [DFT[5]  0       DFT[0] -DFT[4]]   [WF*LYY[2]]   [DFT[7]]
+	 *
+	 * */
 
 	LSQ[0] = DFT[1] * DFT[1] + DFT[0] * DFT[0];
 	LSQ[1] = - DFT[1] * DFT[5] - DFT[0] * DFT[4];
@@ -164,25 +211,13 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			pm->FIX[1] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_average_drift;
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 1;
 			break;
 
 		case 1:
-			pm->tm_value++;
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->tm_value = 0;
-				pm->tm_end = pm->freq_hz * pm->tm_average_drift;
-
-				pm->fsm_phase = 2;
-			}
-			break;
-
-		case 2:
 			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_current_A);
 			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->fb_current_B);
 
@@ -193,11 +228,11 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 				pm->probe_DFT[0] /= pm->tm_end;
 				pm->probe_DFT[1] /= pm->tm_end;
 
-				pm->fsm_phase = 3;
+				pm->fsm_phase = 2;
 			}
 			break;
 
-		case 3:
+		case 2:
 			pm->adjust_IA[0] += - pm->probe_DFT[0];
 			pm->adjust_IB[0] += - pm->probe_DFT[1];
 
@@ -383,7 +418,7 @@ pm_fsm_state_self_test_sampling_accuracy(pmc_t *pm)
 			pm->FIX[1] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 1;
@@ -419,6 +454,145 @@ pm_fsm_state_self_test_sampling_accuracy(pmc_t *pm)
 		case 3:
 			if (		pm->self_RMS[0] > pm->fault_current_tolerance
 					|| pm->self_RMS[1] > pm->fault_current_tolerance) {
+
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+			}
+
+			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
+			break;
+	}
+
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
+}
+
+static void
+pm_fsm_state_standard_voltage(pmc_t *pm)
+{
+	float			STD;
+
+	switch (pm->fsm_phase) {
+
+		case 0:
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(7);
+
+			pm->probe_DFT[0] = 0.f;
+			pm->FIX[0] = 0.f;
+
+			pm->tm_value = 0;
+			pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+
+			pm->fail_reason = PM_OK;
+			pm->fsm_phase = 1;
+			break;
+
+		case 1:
+			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->const_lpf_U);
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->probe_DFT[0] /= pm->tm_end;
+
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
+			STD = pm->probe_DFT[4];
+
+			pm->adjust_US[1] *= STD / pm->probe_DFT[0];
+
+			if (m_fabsf(pm->adjust_US[1] - 1.f) > pm->fault_adjust_tolerance) {
+
+				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+			}
+
+			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
+			break;
+	}
+
+	pm_fsm_current_halt(pm, pm->fault_current_halt_level);
+}
+
+static void
+pm_fsm_state_standard_current(pmc_t *pm)
+{
+	float			STD;
+
+	switch (pm->fsm_phase) {
+
+		case 0:
+			pm->proc_set_DC(pm->dc_resolution, 0, 0);
+			pm->proc_set_Z(4);
+
+			pm->probe_DFT[0] = 0.f;
+			pm->probe_DFT[1] = 0.f;
+			pm->probe_DFT[2] = 0.f;
+			pm->FIX[0] = 0.f;
+			pm->FIX[1] = 0.f;
+			pm->FIX[2] = 0.f;
+
+			pm->tm_value = 0;
+			pm->tm_end = pm->freq_hz * (pm->tm_voltage_hold + pm->tm_instant_probe);
+
+			pm->fail_reason = PM_OK;
+			pm->fsm_phase = 1;
+			break;
+
+		case 1:
+			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_current_A);
+			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], - pm->fb_current_B);
+			pm_ADD(&pm->probe_DFT[2], &pm->FIX[2], pm->const_lpf_U);
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->probe_DFT[0] /= pm->tm_end;
+				pm->probe_DFT[1] /= pm->tm_end;
+				pm->probe_DFT[2] /= pm->tm_end;
+
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
+			if (pm->probe_DFT[4] > 0.f) {
+
+				STD = pm->probe_DFT[2] / pm->probe_DFT[4];
+			}
+			else {
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			if (pm->probe_DFT[0] < pm->fault_current_tolerance) {
+
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			if (pm->probe_DFT[1] < pm->fault_current_tolerance) {
+
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			pm->adjust_IA[1] *= STD / pm->probe_DFT[0];
+			pm->adjust_IB[1] *= STD / pm->probe_DFT[1];
+
+			if (		m_fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance
+					|| m_fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
@@ -469,9 +643,8 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm->FIX[3] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_fast;
 
-			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 2;
 			break;
 
@@ -481,7 +654,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->tm_value = 0;
-				pm->tm_end = pm->freq_hz * pm->tm_instant_probe;
+				pm->tm_end = pm->freq_hz * (pm->tm_voltage_hold + pm->tm_instant_probe);
 
 				pm->fsm_phase = 3;
 			}
@@ -600,6 +773,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 				case 22:
 					xDC = xMIN + 3 * (xMAX - xMIN) / 4;
 					break;
+
+				default:
+					xDC = 0;
+					break;
 			}
 
 			pm->fsm_phase_2 = (pm->fsm_phase_2 < 23) ? pm->fsm_phase_2 + 1 : 0;
@@ -671,7 +848,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 static void
 pm_fsm_state_adjust_current(pmc_t *pm)
 {
-	float			eX, uX, mean;
+	float			eX, uX, REF;
 	float			uMAX;
 
 	switch (pm->fsm_phase) {
@@ -689,7 +866,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->FIX[2] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 1;
@@ -731,9 +908,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->probe_DFT[0] /= pm->tm_end;
 			pm->probe_DFT[1] /= pm->tm_end;
 
-			mean = (pm->probe_DFT[1] + pm->probe_DFT[0]) / 2.f;
-			pm->adjust_IA[1] *= mean / pm->probe_DFT[0];
-			pm->adjust_IB[1] *= mean / pm->probe_DFT[1];
+			REF = (pm->probe_DFT[1] + pm->probe_DFT[0]) / 2.f;
+			pm->adjust_IA[1] *= REF / pm->probe_DFT[0];
+			pm->adjust_IB[1] *= REF / pm->probe_DFT[1];
 
 			if (		m_fabsf(pm->adjust_IA[1] - 1.f) > pm->fault_adjust_tolerance
 					|| m_fabsf(pm->adjust_IB[1] - 1.f) > pm->fault_adjust_tolerance) {
@@ -902,7 +1079,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->FIX[15] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 1;
@@ -1083,8 +1260,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 
 			pm->proc_set_Z(0);
 
-			pm->forced_setpoint = pm->flux_X[4];
-
 			pm->s_setpoint = pm->flux_X[4];
 			pm->s_track = pm->flux_X[4];
 			pm->s_integral = 0.f;
@@ -1106,15 +1281,14 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->i_setpoint_D = 0.f;
-			pm->i_setpoint_Q = 0.f;
-
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
 			pm->fsm_phase = 1;
 
 		case 1:
+			pm->i_derated = 0.f;
+
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
@@ -1196,7 +1370,7 @@ pm_fsm_state_halt(pmc_t *pm)
 			pm->proc_set_Z(7);
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_transient_skip;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
 			pm->fsm_phase = 1;
 
@@ -1229,6 +1403,14 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
 			pm_fsm_state_self_test_sampling_accuracy(pm);
+			break;
+
+		case PM_STATE_STANDARD_VOLTAGE:
+			pm_fsm_state_standard_voltage(pm);
+			break;
+
+		case PM_STATE_STANDARD_CURRENT:
+			pm_fsm_state_standard_current(pm);
 			break;
 
 		case PM_STATE_ADJUST_VOLTAGE:
@@ -1276,6 +1458,8 @@ void pm_fsm_req(pmc_t *pm, int req)
 		case PM_STATE_ZERO_DRIFT:
 		case PM_STATE_SELF_TEST_POWER_STAGE:
 		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
+		case PM_STATE_STANDARD_VOLTAGE:
+		case PM_STATE_STANDARD_CURRENT:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:

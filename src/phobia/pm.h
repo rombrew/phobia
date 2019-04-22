@@ -48,6 +48,8 @@ enum {
 	PM_STATE_ZERO_DRIFT,
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_SAMPLING_ACCURACY,
+	PM_STATE_STANDARD_VOLTAGE,
+	PM_STATE_STANDARD_CURRENT,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
@@ -56,7 +58,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
-	PM_STATE_ADJUST_SENSOR_HALL,
+	PM_STATE_ADJUST_HALL,
 	PM_STATE_HALT,
 };
 
@@ -82,7 +84,7 @@ typedef struct {
 	float		voltage_B;
 	float		voltage_C;
 
-	int		hall;
+	int		hall_code;
 	float		sensor;
 }
 pmfb_t;
@@ -114,7 +116,8 @@ typedef struct {
 	int		tm_value;
 	int		tm_end;
 
-	float		tm_transient_skip;
+	float		tm_transient_slow;
+	float		tm_transient_fast;
 	float		tm_voltage_hold;
 	float		tm_current_hold;
 	float		tm_instant_probe;
@@ -135,9 +138,7 @@ typedef struct {
 	float		fb_voltage_A;
 	float		fb_voltage_B;
 	float		fb_voltage_C;
-	int		fb_hall_A;
-	int		fb_hall_B;
-	int		fb_hall_C;
+	int		fb_hall_code;
 
 	float		probe_fb_X;
 	float		probe_fb_Y;
@@ -194,8 +195,8 @@ typedef struct {
 
 	float		forced_X[5];
 	float		forced_hold_D;
+	float		forced_maximal;
 	float		forced_accel;
-	float		forced_setpoint;
 
 	float		flux_X[5];
 	float		flux_drift_Q;
@@ -223,7 +224,7 @@ typedef struct {
 	float		hfi_gain_F;
 
 	float		hall_X[5];
-	float		hall_speed_maximal;
+	float		hall_maximal;
 
 	float		const_lpf_U;
 	float		const_gain_LP;
@@ -267,8 +268,7 @@ typedef struct {
 }
 pmc_t;
 
-void pm_config_default(pmc_t *pm);
-void pm_config_tune_current_loop(pmc_t *pm);
+void pm_default(pmc_t *pm);
 
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_voltage_residue(pmc_t *pm);

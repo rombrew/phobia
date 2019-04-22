@@ -2,8 +2,6 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define ADC_RESOLUTION			4096
-
 typedef struct {
 
 	SemaphoreHandle_t	xSem;
@@ -12,7 +10,7 @@ HAL_ADC_t;
 
 static HAL_ADC_t		hal_ADC;
 
-void irqADC()
+void irq_ADC()
 {
 	int			xADC;
 
@@ -50,10 +48,10 @@ ADC_const_setup()
 	unsigned short		*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
 
 	hal.ADC_const.GA = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
-		/ hal.ADC_current_shunt_resistance / hal.ADC_amplifier_gain;
+		/ hal.ADC_shunt_resistance / hal.ADC_amplifier_gain;
 
 	hal.ADC_const.GU = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
-		/ hal.ADC_voltage_divider_gain;
+		/ hal.ADC_voltage_ratio;
 
 	hal.ADC_const.GS = 1.f / (float) ADC_RESOLUTION;
 
@@ -94,15 +92,19 @@ void ADC_startup()
 	 * */
 	ADC1->CR1 = ADC_CR1_SCAN;
 	ADC1->CR2 = 0;
-	ADC1->SMPR1 = 0x07FFFFFF;
-	ADC1->SMPR2 = 0x3FFFFFFF;
+	ADC1->SMPR1 = 0x07FFFFFFUL;
+	ADC1->SMPR2 = 0x3FFFFFFFUL;
 
 	/* Configure ADC2.
 	 * */
 	ADC2->CR1 = ADC_CR1_SCAN;
 	ADC2->CR2 = ADC_CR2_JEXTEN_0;
-	ADC2->SMPR1 = 0;
-	ADC2->SMPR2 = 0;
+	ADC2->SMPR1 = ADC_SMPR1_SMP18_0 | ADC_SMPR1_SMP17_0 | ADC_SMPR1_SMP16_0
+		| ADC_SMPR1_SMP15_0 | ADC_SMPR1_SMP14_0 | ADC_SMPR1_SMP13_0
+		| ADC_SMPR1_SMP12_0 | ADC_SMPR1_SMP11_0 | ADC_SMPR1_SMP10_0;
+	ADC2->SMPR2 = ADC_SMPR2_SMP9_0 | ADC_SMPR2_SMP8_0 | ADC_SMPR2_SMP7_0
+		| ADC_SMPR2_SMP6_0 | ADC_SMPR2_SMP5_0 | ADC_SMPR2_SMP4_0
+		| ADC_SMPR2_SMP3_0 | ADC_SMPR2_SMP2_0 | ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP0_0;
 	ADC2->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 10)
@@ -112,8 +114,12 @@ void ADC_startup()
 	 * */
 	ADC3->CR1 = ADC_CR1_SCAN;
 	ADC3->CR2 = ADC_CR2_JEXTEN_0;
-	ADC3->SMPR1 = 0;
-	ADC3->SMPR2 = 0;
+	ADC3->SMPR1 = ADC_SMPR1_SMP18_0 | ADC_SMPR1_SMP17_0 | ADC_SMPR1_SMP16_0
+		| ADC_SMPR1_SMP15_0 | ADC_SMPR1_SMP14_0 | ADC_SMPR1_SMP13_0
+		| ADC_SMPR1_SMP12_0 | ADC_SMPR1_SMP11_0 | ADC_SMPR1_SMP10_0;
+	ADC3->SMPR2 = ADC_SMPR2_SMP9_0 | ADC_SMPR2_SMP8_0 | ADC_SMPR2_SMP7_0
+		| ADC_SMPR2_SMP6_0 | ADC_SMPR2_SMP5_0 | ADC_SMPR2_SMP4_0
+		| ADC_SMPR2_SMP3_0 | ADC_SMPR2_SMP2_0 | ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP0_0;
 	ADC3->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 10)

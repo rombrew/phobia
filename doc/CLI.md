@@ -8,8 +8,8 @@ CLI with autocompletion and command history.
 Register is a scalar variable known by its name and having associated
 attributes. All registers together are called a register file. This is a
 convenient way to access all parameters using a single mechanism. There is a
-**reg** command to work with registers from the CLI. There are several ways
-to call this command.
+**reg** command to work with registers from the CLI. There are several ways to
+call this command.
 
 1. Without arguments it will list all registers and their values.
 2. You can specify a pattern by which registers will be filtered. A pattern can
@@ -58,13 +58,13 @@ Manual PWM control for testing.
 Telemetry grab (to fill the memory buffer) and flush.
 
 	# tel_grab <freq>
-	# tel_flush
+	# tel_flush_sync
 
 Live telemetry printout.
 
-	# tel_live
+	# tel_live_sync
 
-Start an application HX711.
+Start the HX711 helper application.
 
 	# ap_hx711_startup
 

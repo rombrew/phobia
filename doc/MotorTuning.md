@@ -61,7 +61,7 @@ power supply capability.
 	# reg pm.i_watt_reverse <watt>
 
 Also you can tune PI regulator gains. But usually this is not required as
-automated tune is well done.
+default tune is good enough.
 
 	# reg pm.pm_gain
 
@@ -91,11 +91,12 @@ You can control the temperature of the PCB or the value from external sensor
 
 You can specify the maximal temperature above which derate occurs.
 
-	# reg ap.temp_PCB_overheat <C>
+	# reg ap.heat_PCB <C>
 
-When derate occurs the maximal DQ current is limited to lower value.
+When derate occurs the maximal DQ current is limited to lower value than
+**pm.i_maximal**.
 
-	# reh ap.temp_PCB_derated <amp>
+	# reg ap.heat_PCB_derated <amp>
 
 Similarly for battery overdischarge we set the low voltage threshold and power
 consumption limit.

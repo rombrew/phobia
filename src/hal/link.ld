@@ -55,6 +55,18 @@ SECTIONS
 
 	} > RAM
 
+	.noinit (NOLOAD) : ALIGN(4)
+	{
+		ld_begin_noinit = . ;
+
+		*(.noinit)
+		*(.noinit.*)
+
+		. = ALIGN(4);
+		ld_end_noinit = . ;
+
+	} > RAM
+
 	.ccmram (NOLOAD) : ALIGN(4)
 	{
 		ld_begin_ccm = . ;

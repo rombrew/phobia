@@ -1,6 +1,8 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
+#include "libc.h"
+
 #define CLOCK_CRYSTAL_HZ		12000000UL
 #define CLOCK_CPU_TARGET_HZ		168000000UL
 
@@ -8,37 +10,50 @@ extern long			ld_begin_vectors;
 unsigned long			clock_cpu_hz;
 
 HAL_t				hal;
+LOG_t				log __section_noinit;
 
-extern void lowTRACE(const char *fmt, ...);
+extern void log_TRACE(const char *fmt, ...);
 
-void irqNMI()
+void irq_NMI()
 {
-	lowTRACE("IRQ: NMI \r\n");
+	log_TRACE("IRQ: NMI\r\n");
+
+	hal_system_reset();
 }
 
-void irqHardFault()
+void irq_HardFault()
 {
-	lowTRACE("IRQ: HardFault \r\n");
+	log_TRACE("IRQ: HardFault\r\n");
+
+	hal_system_reset();
 }
 
-void irqMemoryFault()
+void irq_MemoryFault()
 {
-	lowTRACE("IRQ: MemoryFault \r\n");
+	log_TRACE("IRQ: MemoryFault\r\n");
+
+	hal_system_reset();
 }
 
-void irqBusFault()
+void irq_BusFault()
 {
-	lowTRACE("IRQ: BusFault \r\n");
+	log_TRACE("IRQ: BusFault\r\n");
+
+	hal_system_reset();
 }
 
-void irqUsageFault()
+void irq_UsageFault()
 {
-	lowTRACE("IRQ: UsageFault \r\n");
+	log_TRACE("IRQ: UsageFault\r\n");
+
+	hal_system_reset();
 }
 
-void irqDefault()
+void irq_Default()
 {
-	lowTRACE("IRQ: Default \r\n");
+	log_TRACE("IRQ: Default\r\n");
+
+	hal_system_reset();
 }
 
 static void
@@ -54,7 +69,7 @@ base_startup()
 
 	/* Configure priority grouping.
 	 * */
-	NVIC_SetPriorityGrouping(3UL);
+	NVIC_SetPriorityGrouping(0UL);
 }
 
 static void
@@ -167,10 +182,23 @@ periph_startup()
 	 * */
 	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
 
+	/* Enable LSI.
+	 * */
+	RCC->CSR |= RCC_CSR_LSION;
+
 	/* Enable GPIO clock.
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
 		| RCC_AHB1ENR_GPIOCEN;
+
+	/* Check for reset reason.
+	 * */
+	if (RCC->CSR & RCC_CSR_WDGRSTF) {
+
+		log_TRACE("RESET: IWDG\r\n");
+	}
+
+	RCC->CSR |= RCC_CSR_RMVF;
 }
 
 void hal_startup()
@@ -215,5 +243,43 @@ void hal_sleep()
 void hal_fence()
 {
 	__DMB();
+}
+
+void log_putc(int c)
+{
+	if (log.signature != LOG_SIGNATURE) {
+
+		/* Initialize log at first usage.
+		 * */
+
+		memset(log.text, 0, sizeof(log.text));
+
+		log.signature = LOG_SIGNATURE;
+		log.n = 0;
+	}
+
+	if (log.n < 0 || log.n > (sizeof(log.text) - 2UL)) {
+
+		log.n = 0;
+	}
+
+	log.text[log.n] = (char) c;
+	++log.n;
+}
+
+int log_validate()
+{
+	int		rc = 0;
+
+	if (log.signature == LOG_SIGNATURE) {
+
+		/* Make sure that log is null-terminated.
+		 * */
+		log.text[sizeof(log.text) - 1UL] = 0;
+
+		rc = 1;
+	}
+
+	return rc;
 }
 
