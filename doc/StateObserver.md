@@ -1,6 +1,7 @@
 ## Overview
 
-This page describes some details of sensorless method used in PMC.
+This page describes some details of sensorless method used in PMC. Also look
+into [porting guide](PortingGuide.md).
 
 ## Control loop
 
@@ -24,7 +25,7 @@ shown in the diagram.
 	              pm_feedback()            /
 	                    p_set_DC(xA, xB, xC)
 
-We need about 5 us before ADC samples to be clean. If MOSFET switching occurs
+We need about 3 us before ADC samples to be clean. If MOSFET switching occurs
 at this time then the result is not used.
 
 Now consider the internals of the **pm_feedback** procedure. At simplest view
@@ -33,7 +34,7 @@ it is state observer. We use the following state vector X[5]:
 	X[0] (iD) current on D axis [A]
 	X[1] (iQ) current on Q axis [A]
 	X[2] DQ frame cosine
-	X[3] DQ frame sine (atan(X[3] / X[2]) gives a rotor angle)
+	X[3] DQ frame sine (so atan(X[3] / X[2]) gives a rotor angle)
 	X[4] (wS) electrical speed [radian/s]
 
 Also there is **drift_Q** variable that in fact is a part of state vector. The
@@ -105,4 +106,7 @@ Where uD uQ is voltages applied from VSI, fluxD fluxQ is a flux linkage.
 
 To implement an observer we need to know Ld Lq R E parameters. At the
 propagation step we solve this equations in **pm_solve_2** procedure.
+
+## HFI observer
+## Forced control
 

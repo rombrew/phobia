@@ -1,8 +1,10 @@
 ## Overview
 
-Here will be discussed how to port the PMC to the new hardware.
+If you are going to port PMC to your own hardware you should be aware of
+requirements and restrictions. Also this page will be useful for understanding
+PMC internals.
 
-# Basics
+## Hardware
 
 We have a three-phase voltage source inverter (VSI) which consists of six
 transistors. The voltage at each of the output terminals is measured. Phase
@@ -44,9 +46,9 @@ PWM scheme as shown in the diagram.
 	                // Output voltage waveform //
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
-specified Dead-Time (TDT). Depending on the direction of the current during the
-Dead-Time the actual voltage may be different. The amount of uncertainty in
-output voltage:
+specified Dead-Time (TDT). Depending on the direction of the current flow
+during the Dead-Time the actual voltage may be different. The amount of
+uncertainty in output voltage expressed as follows:
 
 	         2 * TDT * uS
 	 dUDT = --------------
@@ -82,7 +84,8 @@ output voltage:
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC). This scheme forms an exponential integrator that
 allows us to restore the pulse width by measured voltage. Optional resistor R3
-is used to bias the operating point.
+is used to bias the operating point. You can skip voltage sensing if you do not
+need related features.
 
 	          
 	                         +------< REF
@@ -108,6 +111,8 @@ is used to bias the operating point.
 
 The current (iA, iB) is measured in phases A and B using a shunt and amplifier.
 The measurement is distorted for some time after switching the half-bridge.
+Note that we use in-line current measurement. To use low-side measurement you
+need to adapt the software.
 
 	                   // Current measurement //
 	  >-----+
@@ -124,3 +129,6 @@ The measurement is distorted for some time after switching the half-bridge.
 	        +---< Terminal
 
 Also supply voltage (uS) is measured using a voltage divider.
+
+## Current zones
+

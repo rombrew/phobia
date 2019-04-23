@@ -18,7 +18,7 @@ For more reliable start increase hold current and decrease acceleration. Keep
 in mind that hold current is applied constantly (as in stepper motor control)
 so it causes significant heating.
 
-# FLUX observer
+## FLUX observer
 
 We try to make the observer does not need to be configured. However, sometimes
 it is necessary to configure some parameters. You will probably need to extend
@@ -32,7 +32,7 @@ You can change the observer coefficients but it is a complicated procedure.
 
 	# reg pm.flux_gain
 
-# HF injection
+## HF injection
 
 The main parameters of the HFI is a frequency and swing. It is usually
 sufficient that swing is greater than the noise of the current sensors. Large
@@ -43,14 +43,11 @@ injection swing will probably need to estimate flux polarity.
 
 In complicated cases you will need to tune observer gains.
 
-	# reg pm.hfi_gain_P <x>
-	# reg pm.hfi_gain_S <x>
-	# reg pm.hfi_gain_F <x>
+	# reg pm.hfi_gain
 
-# Current loop
+## Current loop
 
-You can limit DQ current value. It is the main tool not to burn the
-motor.
+You can limit DQ current value. It is the main tool not to burn the motor.
 
 	# reg pm.i_maximal <amp>
 
@@ -65,7 +62,7 @@ default tune is good enough.
 
 	# reg pm.pm_gain
 
-# Speed loop
+## Speed loop
 
 You can limit absolute value of speed.
 
@@ -77,10 +74,9 @@ You can limit acceleration.
 
 Also you can tune PI regulator gains.
 
-	# reg pm.s_gain_P <x>
-	# reg pm.s_gain_I <x>
+	# reg pm.s_gain
 
-# Derating
+## Derating
 
 There is a derate mechanism in case of overheating or battery overdischarge.
 You can control the temperature of the PCB or the value from external sensor
