@@ -29,13 +29,13 @@ void irq_ADC()
 		hal.ADC_voltage_U = (float) (xADC) * hal.ADC_const.GU;
 
 		xADC = (int) ADC3->JDR2;
-		hal.ADC_voltage_A = (float) (xADC) * hal.ADC_const.GU;
+		hal.ADC_voltage_A = (float) (xADC) * hal.ADC_const.GT[1] + hal.ADC_const.GT[0];
 
 		xADC = (int) ADC2->JDR3;
-		hal.ADC_voltage_B = (float) (xADC) * hal.ADC_const.GU;
+		hal.ADC_voltage_B = (float) (xADC) * hal.ADC_const.GT[1] + hal.ADC_const.GT[0];
 
 		xADC = (int) ADC3->JDR3;
-		hal.ADC_voltage_C = (float) (xADC) * hal.ADC_const.GU;
+		hal.ADC_voltage_C = (float) (xADC) * hal.ADC_const.GT[1] + hal.ADC_const.GT[0];
 
 		ADC_IRQ();
 	}
@@ -52,6 +52,11 @@ ADC_const_setup()
 
 	hal.ADC_const.GU = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
 		/ hal.ADC_voltage_ratio;
+
+	hal.ADC_const.GT[1] = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
+		/ hal.ADC_terminal_ratio;
+
+	hal.ADC_const.GT[0] = (- hal.ADC_terminal_bias) / hal.ADC_terminal_ratio;
 
 	hal.ADC_const.GS = 1.f / (float) ADC_RESOLUTION;
 

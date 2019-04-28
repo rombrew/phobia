@@ -66,6 +66,8 @@ typedef struct {
 	float		ADC_shunt_resistance;
 	float		ADC_amplifier_gain;
 	float		ADC_voltage_ratio;
+	float		ADC_terminal_ratio;
+	float		ADC_terminal_bias;
 
 	float		ADC_current_A;
 	float		ADC_current_B;
@@ -78,6 +80,7 @@ typedef struct {
 
 		float		GA;
 		float		GU;
+		float		GT[2];
 		float		GS;
 		float		TEMP[2];
 	}

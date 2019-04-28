@@ -31,7 +31,7 @@ SH_DEF(pm_self_test)
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (PM_CONFIG_VOLT(&pm) == PM_ENABLED) {
+		if (PM_CONFIG_VM(&pm) == PM_ENABLED) {
 
 			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
 			pm_wait_for_IDLE();

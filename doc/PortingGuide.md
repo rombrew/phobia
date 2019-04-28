@@ -83,16 +83,16 @@ uncertainty in output voltage expressed as follows:
 
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC). This scheme forms an exponential integrator that
-allows us to restore the pulse width by measured voltage. Optional resistor R3
-is used to bias the operating point. You can skip voltage sensing if you do not
-need related features.
+allows us to restore the pulse width by measured voltage. Additional resistor
+R3 is used to bias the operating point into the linear region. You can skip
+voltage sensing if you do not need related features.
 
 	          
 	                         +------< REF
 	                         |                 // Voltage measurement //
 	                         |
 	                        | |
-	                        | | R3 (optional)
+	                        | | R3 470K
 	                        |_|
 	               R1 470K   |               +---+
 	                 ____    |              /    |

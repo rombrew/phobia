@@ -13,7 +13,7 @@ void ap_VOLT(void *pData)
 	TickType_t		xTk;
 
 	xMIN = pm.dc_minimal;
-	xMAX = (int) (pm.dc_resolution * pm.volt_maximal / pm.const_lpf_U);
+	xMAX = (int) (pm.dc_resolution * pm.vm_maximal / pm.const_lpf_U);
 
 	xDC = xMIN;
 	xTk = 5000 / (xMAX - xMIN);

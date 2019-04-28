@@ -71,7 +71,7 @@ void blm_Enable(blm_t *m)
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 12.;
+	m->U = 32.;
 
 	/* Source internal resistance. (Ohm)
 	 * */
@@ -92,12 +92,12 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 5E-4;
+	m->J = 1E-4;
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 2E-3;
-	m->M[1] = 0E-5;
+	m->M[0] = 5E-3;
+	m->M[1] = 0E-3;
 	m->M[2] = 2E-7;
 	m->M[3] = 0E-3;
 

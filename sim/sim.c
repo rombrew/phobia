@@ -84,16 +84,16 @@ sim_Tel(float *pTel)
 	pTel[20] = pm.vsi_current_ZONE;
 	pTel[21] = pm.vsi_voltage_ZONE;
 
-	/* VOLT voltages (ABC).
+	/* VM voltages (ABC).
 	 * */
-	pTel[22] = pm.volt_A;
-	pTel[23] = pm.volt_B;
-	pTel[24] = pm.volt_C;
+	pTel[22] = pm.vm_A;
+	pTel[23] = pm.vm_B;
+	pTel[24] = pm.vm_C;
 
-	/* VOLT residue (XY).
+	/* VM residue (XY).
 	 * */
-	pTel[25] = pm.volt_residue_X;
-	pTel[26] = pm.volt_residue_Y;
+	pTel[25] = pm.vm_residue_X;
+	pTel[26] = pm.vm_residue_Y;
 
 	/* FLUX residue (DQ).
 	 * */
@@ -114,7 +114,7 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[33] = pm.lu_mode;
 
-	pTel[34] = pm.s_setpoint * 30. / M_PI / m.Zp;
+	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
 }
 
 static void
@@ -180,14 +180,14 @@ sim_Script(FILE *fdTel)
 	pm.const_E = m.E;
 	pm.const_Zp = m.Zp;
 
-	pm.config_VOLT = PM_ENABLED;
+	pm.config_VM = PM_ENABLED;
 	pm.config_HFI = PM_DISABLED;
-	pm.config_LOOP = PM_LOOP_DRIVE_SPEED;
+	pm.config_LOOP = PM_LOOP_DRIVE_SERVO;
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, 0., 1);
 
-	if (0) {
+	if (1) {
 
 		printf("IAB %.4f %.4f (A)\n", pm.adjust_IA[0], pm.adjust_IB[0]);
 
@@ -198,16 +198,14 @@ sim_Script(FILE *fdTel)
 		printf("UB %.4f %.4f (V)\n", pm.adjust_UB[1], pm.adjust_UB[0]);
 		printf("UC %.4f %.4f (V)\n", pm.adjust_UC[1], pm.adjust_UC[0]);
 
-		printf("FIR_A: %.4e %.4e %.4e\n", pm.volt_FIR_A[0], pm.volt_FIR_A[1], pm.volt_FIR_A[2]);
-		printf("FIR_B: %.4e %.4e %.4e\n", pm.volt_FIR_B[0], pm.volt_FIR_B[1], pm.volt_FIR_B[2]);
-		printf("FIR_C: %.4e %.4e %.4e\n", pm.volt_FIR_C[0], pm.volt_FIR_C[1], pm.volt_FIR_C[2]);
+		printf("FIR_A: %.4e %.4e %.4e\n", pm.vm_FIR_A[0], pm.vm_FIR_A[1], pm.vm_FIR_A[2]);
+		printf("FIR_B: %.4e %.4e %.4e\n", pm.vm_FIR_B[0], pm.vm_FIR_B[1], pm.vm_FIR_B[2]);
+		printf("FIR_C: %.4e %.4e %.4e\n", pm.vm_FIR_C[0], pm.vm_FIR_C[1], pm.vm_FIR_C[2]);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 		sim_F(fdTel, 0., 1);
 
 		printf("R %.4e (Ohm)\n", pm.const_R);
-
-		m.X[3] = 20. * (M_PI / 180.);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
 		sim_F(fdTel, 0., 1);
@@ -221,13 +219,12 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, 0., 1);
 
-	pm.s_setpoint = 5700.f;
 	sim_F(fdTel, 1., 0);
 
-	m.M[2] = 2E-5;
+	pm.x_setpoint_revol = 10;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 700.f;
+	pm.x_setpoint_revol = 0;
 	sim_F(fdTel, 1., 0);
 }
 

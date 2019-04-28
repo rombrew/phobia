@@ -2,6 +2,7 @@
 #define _H_MAIN_
 
 #include "phobia/pm.h"
+#include "phobia/libm.h"
 
 #include "libc.h"
 #include "ntc.h"

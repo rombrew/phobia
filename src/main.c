@@ -210,6 +210,16 @@ void task_INIT(void *pData)
 
 	if (rc_flash < 0) {
 
+		/* Resistor values in the voltage measurement circuit.
+		 * */
+
+		const float	vm_R1 = 470000.f;
+		const float	vm_R2 = 27000.f;
+		/*
+		const float	vm_R3 = 470000.f;
+		const float	vm_D = (vm_R1 * vm_R2 + vm_R2 * vm_R3 + vm_R1 * vm_R3);
+		*/
+
 		/* Default.
 		 * */
 
@@ -219,7 +229,16 @@ void task_INIT(void *pData)
 		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_shunt_resistance = 340E-6f;
 		hal.ADC_amplifier_gain = 60.f;
-		hal.ADC_voltage_ratio = 27.f / (470.f + 27.f);
+		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+		/*
+		hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
+		hal.ADC_terminal_bias = vm_R1 * vm_R2 * hal.ADC_reference_voltage / vm_D;
+		*/
+
+		/* As we have no voltage bias in rev4b.
+		 * */
+		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_bias = 0.f;
 
 		hal.PPM_mode = PPM_DISABLED;
 		hal.PPM_timebase = 2000000UL;

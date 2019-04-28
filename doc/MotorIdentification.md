@@ -28,7 +28,7 @@ need more accurate measurement.
 
 To adjust the current sensors you will need a standard resistor. Choose a
 resistance value based on supply voltage to get large enough current. Values
-from 1 to 5 Ohm will fit. It would be nice to have 1% resistor tolerance.
+from 1 to 5 Ohm is fit. It would be nice to have 1% resistor tolerance.
 Connect the resistor to the terminal A and B then call the command.
 
 	# pm_standard_current <ohm>
@@ -90,7 +90,7 @@ To get more accuracy increase the speed and request E probe again. Do not load
 the motor.
 
 	# reg pm.s_setpoint_pc <\%>
-	# reg pm.fsm_state 10
+	# reg pm.fsm_state 12
 
 ## Moment of inertia
 

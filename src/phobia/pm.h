@@ -2,7 +2,7 @@
 #define _H_PM_
 
 #define PM_CONFIG_ABC(pm)			(pm)->config_ABC
-#define PM_CONFIG_VOLT(pm)			(pm)->config_VOLT
+#define PM_CONFIG_VM(pm)			(pm)->config_VM
 
 #define PM_UMAX(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? 2.f / 3.f : 1.f)
 #define PM_EMAX(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? .57735027f : .70710678f)
@@ -69,7 +69,8 @@ enum {
 	PM_ERORR_POWER_STAGE_FAULT,
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
-	PM_ERROR_OVER_CURRENT,
+	PM_ERROR_INLINE_OVER_CURRENT,
+	PM_ERROR_DC_LINK_OVER_VOLTAGE,
 	PM_ERROR_RESIDUE_UNSTABLE,
 	PM_ERROR_INVALID_OPERATION,
 };
@@ -104,7 +105,7 @@ typedef struct {
 
 	int		config_ABC;
 	int		config_LDQ;
-	int		config_VOLT;
+	int		config_VM;
 	int		config_HALL;
 	int		config_HFI;
 	int		config_LOOP;
@@ -161,6 +162,7 @@ typedef struct {
 
 	float		fault_voltage_tolerance;
 	float		fault_current_tolerance;
+	float		fault_voltage_halt_level;
 	float		fault_current_halt_level;
 	float		fault_adjust_tolerance;
 	float		fault_flux_residue_maximal;
@@ -179,19 +181,18 @@ typedef struct {
 	float		vsi_gain_LP;
 	float		vsi_gain_LW;
 
-	float		volt_maximal;
-	float		volt_A;
-	float		volt_B;
-	float		volt_C;
-	float		volt_FIR_A[3];
-	float		volt_FIR_B[3];
-	float		volt_FIR_C[3];
-	float		volt_residue_X;
-	float		volt_residue_Y;
+	float		vm_maximal;
+	float		vm_A;
+	float		vm_B;
+	float		vm_C;
+	float		vm_FIR_A[3];
+	float		vm_FIR_B[3];
+	float		vm_FIR_C[3];
+	float		vm_residue_X;
+	float		vm_residue_Y;
 
 	float		lu_X[5];
 	int		lu_mode;
-	int		lu_revol;
 
 	float		forced_X[5];
 	float		forced_hold_D;
@@ -257,11 +258,13 @@ typedef struct {
 	float		s_gain_P;
 	float		s_gain_I;
 
-	float		p_setpoint_DQ[2];
-	float		p_setpoint_s;
-	int		p_setpoint_revol;
-	float		p_gain_P;
-	float		p_gain_I;
+	float		x_setpoint_DQ[2];
+	int		x_setpoint_revol;
+	float		x_lu_sine;
+	int		x_lu_revol;
+	float		x_near_distance;
+	float		x_gain_P;
+	float		x_gain_near_P;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

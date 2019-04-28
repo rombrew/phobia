@@ -8,7 +8,7 @@ void pm_default(pmc_t *pm)
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
 	pm->config_LDQ = PM_LDQ_SATURATION_SALIENCY;
-	pm->config_VOLT = PM_ENABLED;
+	pm->config_VM = PM_ENABLED;
 	pm->config_HALL = PM_DISABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
@@ -44,8 +44,9 @@ void pm_default(pmc_t *pm)
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
-	pm->fault_voltage_tolerance = 1.f;
-	pm->fault_current_tolerance = 5.f;
+	pm->fault_voltage_tolerance = 2.f;
+	pm->fault_current_tolerance = 2.f;
+	pm->fault_voltage_halt_level = 57.f;
 	pm->fault_current_halt_level = 50.f;
 	pm->fault_adjust_tolerance = 1E-1f;
 	pm->fault_flux_residue_maximal = 90.f;
@@ -54,20 +55,20 @@ void pm_default(pmc_t *pm)
 	pm->vsi_gain_LP = 1E-1f;
 	pm->vsi_gain_LW = 5E-2f;
 
-	pm->volt_FIR_A[0] = 0.f;
-	pm->volt_FIR_A[1] = 0.f;
-	pm->volt_FIR_A[2] = 0.f;
-	pm->volt_FIR_B[0] = 0.f;
-	pm->volt_FIR_B[1] = 0.f;
-	pm->volt_FIR_B[2] = 0.f;
-	pm->volt_FIR_C[0] = 0.f;
-	pm->volt_FIR_C[1] = 0.f;
-	pm->volt_FIR_C[2] = 0.f;
-	pm->volt_maximal = 2.f;
+	pm->vm_maximal = .16f;
+	pm->vm_FIR_A[0] = 0.f;
+	pm->vm_FIR_A[1] = 0.f;
+	pm->vm_FIR_A[2] = 0.f;
+	pm->vm_FIR_B[0] = 0.f;
+	pm->vm_FIR_B[1] = 0.f;
+	pm->vm_FIR_B[2] = 0.f;
+	pm->vm_FIR_C[0] = 0.f;
+	pm->vm_FIR_C[1] = 0.f;
+	pm->vm_FIR_C[2] = 0.f;
 
 	pm->forced_hold_D = 10.f;
 	pm->forced_maximal = 700.f;
-	pm->forced_accel = 2E+3f;
+	pm->forced_accel = 2000.f;
 
 	pm->flux_gain_LP = 1E-1f;
 	pm->flux_gain_DA = 5E-1f;
@@ -97,18 +98,19 @@ void pm_default(pmc_t *pm)
 	pm->i_maximal = pm->fb_current_clamp;
 	pm->i_watt_maximal = 2000.f;
 	pm->i_watt_reverse = -5.f;
-	pm->i_gain_PD = 1E-1f;
+	pm->i_gain_PD = 2E-1f;
 	pm->i_gain_ID = 5E-3f;
-	pm->i_gain_PQ = 1E-1f;
+	pm->i_gain_PQ = 2E-1f;
 	pm->i_gain_IQ = 5E-3f;
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
-	pm->s_accel = 5E+6f;
+	pm->s_accel = 50000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_I = 0E-3f;
+	pm->s_gain_I = 2E-5f;
 
-	pm->p_gain_P = 50.f;
-	pm->p_gain_I = 0.f;
+	pm->x_near_distance = 3.f;
+	pm->x_gain_P = 70.f;
+	pm->x_gain_near_P = 30.f;
 }
 
 static void
@@ -160,8 +162,8 @@ pm_solve_1(pmc_t *pm, float X[5])
 	/* First-order ODE solver.
 	 * */
 
-	uD = X[2] * pm->volt_residue_X + X[3] * pm->volt_residue_Y;
-	uQ = X[2] * pm->volt_residue_Y - X[3] * pm->volt_residue_X;
+	uD = X[2] * pm->vm_residue_X + X[3] * pm->vm_residue_Y;
+	uQ = X[2] * pm->vm_residue_Y - X[3] * pm->vm_residue_X;
 
 	X[0] += uD * pm->dT / pm->const_Ld;
 	X[1] += uQ * pm->dT / pm->const_Lq;
@@ -171,7 +173,7 @@ static void
 pm_forced_update(pmc_t *pm)
 {
 	float		*X = pm->forced_X;
-	float		iX, iY, wSP, dS, wMAX;
+	float		iX, iY, wSP, dS, wEMF, wMAX;
 
 	/* In the forced control we apply a current vector without feedback
 	 * to force rotor turn.
@@ -205,13 +207,17 @@ pm_forced_update(pmc_t *pm)
 		wSP = 0.f;
 	}
 
+	wMAX = pm->forced_maximal;
+
 	/* Do not run faster then BEMF high level.
 	 * */
 	if (pm->const_E != 0.f) {
 
-		wMAX = pm->flux_bemf_high / pm->const_E;
-		wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
+		wEMF = pm->flux_bemf_high / pm->const_E;
+		wMAX = (wEMF < wMAX) ? wEMF : wMAX;
 	}
+
+	wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
 
 	/* Update the actual speed with specified acceleration.
 	 * */
@@ -319,7 +325,7 @@ pm_flux_update(pmc_t *pm)
 
 		/* Update voltage from previous cycle.
 		 * */
-		if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
+		if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
 			pm_voltage_residue(pm);
 			pm_solve_1(pm, pm->flux_X);
@@ -571,6 +577,12 @@ pm_lu_validate(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
 
+	if (pm->const_lpf_U > pm->fault_voltage_halt_level) {
+
+		pm->fail_reason = PM_ERROR_DC_LINK_OVER_VOLTAGE;
+		pm_fsm_req(pm, PM_STATE_HALT);
+	}
+
 	if (pm->flux_residue_lpf > pm->fault_flux_residue_maximal) {
 
 		pm->fail_reason = PM_ERROR_RESIDUE_UNSTABLE;
@@ -697,9 +709,9 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 
 	pm->vsi_current_ZONE = ZONE;
 
-	if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
+	if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
-		xMAX = (int) (pm->dc_resolution * pm->volt_maximal / pm->const_lpf_U);
+		xMAX = (int) (pm->dc_resolution * pm->vm_maximal);
 		ZONE = (pm->vsi_voltage_ZONE & 0xFUL) << 4;
 
 		/* We check if voltages are within acceptable zone. The VOLTAGE
@@ -738,21 +750,21 @@ void pm_voltage_residue(pmc_t *pm)
 {
 	float		A, B, Q, up_X, up_Y;
 
-	if (pm->volt_FIR_A[0] != 0.f && (pm->vsi_voltage_ZONE & 0x88UL) == 0) {
+	if (pm->vm_FIR_A[0] != 0.f && (pm->vsi_voltage_ZONE & 0x88UL) == 0) {
 
 		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
 
-			Q = (1.f / 3.f) * (pm->volt_A + pm->volt_B + pm->volt_C);
-			A = pm->volt_A - Q;
-			B = pm->volt_B - Q;
+			Q = (1.f / 3.f) * (pm->vm_A + pm->vm_B + pm->vm_C);
+			A = pm->vm_A - Q;
+			B = pm->vm_B - Q;
 
 			up_X = A;
 			up_Y = .57735027f * A + 1.1547005f * B;
 		}
 		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
 
-			A = pm->volt_A - pm->volt_C;
-			B = pm->volt_B - pm->volt_C;
+			A = pm->vm_A - pm->vm_C;
+			B = pm->vm_B - pm->vm_C;
 
 			up_X = A;
 			up_Y = B;
@@ -764,12 +776,12 @@ void pm_voltage_residue(pmc_t *pm)
 			up_Y = 0.;
 		}
 
-		pm->volt_residue_X = up_X - pm->vsi_DX;
-		pm->volt_residue_Y = up_Y - pm->vsi_DY;
+		pm->vm_residue_X = up_X - pm->vsi_DX;
+		pm->vm_residue_Y = up_Y - pm->vsi_DY;
 	}
 	else {
-		pm->volt_residue_X = 0.f;
-		pm->volt_residue_Y = 0.f;
+		pm->vm_residue_X = 0.f;
+		pm->vm_residue_Y = 0.f;
 	}
 }
 
@@ -866,7 +878,7 @@ static void
 pm_speed_control(pmc_t *pm)
 {
 	float		*X = pm->lu_X;
-	float		iSP, wSP, D, dS;
+	float		iSP, wSP, eS, dS;
 
 	/* Maximal speed constraint.
 	 * */
@@ -874,102 +886,90 @@ pm_speed_control(pmc_t *pm)
 	wSP = (wSP < - pm->s_maximal) ? - pm->s_maximal :
 		(wSP > pm->s_maximal) ? pm->s_maximal : wSP;
 
-	if (1) {
+	/* Maximal acceleration constraint.
+	 * */
+	dS = pm->s_accel * pm->dT;
+	pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
+		: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
-		/* Maximal acceleration constraint.
+	if (pm->lu_mode == PM_LU_FORCED) {
+
+		/* Do nothins in this case */
+	}
+	else {
+		/* Obtain discrepancy.
 		 * */
-		dS = pm->s_accel * pm->dT;
-		pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
-			: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
+		eS = pm->s_track - X[4];
 
-		if (pm->lu_mode == PM_LU_FORCED) {
+		/* Here is PI regulator.
+		 * */
+		iSP = pm->s_gain_P * eS;
 
-			/* Do nothins in this case */
+		if (m_fabsf(iSP) < pm->i_maximal) {
+
+			pm->s_integral += pm->s_gain_I * eS;
+			iSP += pm->s_integral;
 		}
 		else {
-			/* Obtain discrepancy.
-			 * */
-			D = pm->s_track - X[4];
-
-			/* Here is PI regulator.
-			 * */
-			iSP = pm->s_gain_P * D;
-
-			if (m_fabsf(iSP) < pm->i_maximal) {
-
-				pm->s_integral += (X[1] - pm->s_integral) * pm->s_gain_I;
-				iSP += pm->s_integral;
-			}
-			else {
-				pm->s_integral = 0.f;
-			}
-
-			/* Update cuurent loop setpoint. It would be possible
-			 * here to use MTPA or something else.
-			 * */
-			pm->i_setpoint_Q = iSP;
+			pm->s_integral = 0.f;
 		}
+
+		/* Update cuurent loop setpoint. It would be possible
+		 * here to use MTPA or something else.
+		 * */
+		pm->i_setpoint_Q = iSP;
 	}
 }
 
 static void
-pm_position_control(pmc_t *pm)
+pm_servo_control(pmc_t *pm)
 {
-/*	float		dX, dY, eP;
+	float		*X = pm->lu_X;
+	float		eX, eY, eP, eP_abs, eS, gP;
 
-	m_rotf(pm->p_set_point, pm->p_set_point_s * pm->dT, pm->p_set_point);
+	/* Full revolution counter.
+	 * */
+	if (X[2] < 0.f) {
 
-	if (pm->lu_X[2] < 0.f) {
+		if (X[3] < 0.f) {
 
-		if (pm->lu_X[3] < 0.f) {
-
-			if (pm->lu_temp[0] >= 0.f)
-				pm->lu_revol += 1;
+			pm->x_lu_revol += (pm->x_lu_sine >= 0.f) ? 1 : 0;
 		}
 		else {
-			if (pm->lu_temp[0] < 0.f)
-				pm->lu_revol -= 1;
+			pm->x_lu_revol += (pm->x_lu_sine < 0.f) ? - 1 : 0;
 		}
 	}
 
-	if (pm->p_set_point[0] < 0.f) {
+	pm->x_lu_sine = X[3];
 
-		if (pm->p_set_point[1] < 0.f) {
-
-			if (pm->lu_temp[1] >= 0.f)
-				pm->p_set_point_revol += 1;
-		}
-		else {
-			if (pm->lu_temp[1] < 0.f)
-				pm->p_set_point_revol -= 1;
-		}
-	}
-
-	pm->lu_temp[0] = pm->lu_X[3];
-	pm->lu_temp[1] = pm->p_set_point[1];
-*/
 	/* Obtain discrepancy.
 	 * */
-/*	dX = pm->p_set_point[0] * pm->lu_X[2] +
-		pm->p_set_point[1] * pm->lu_X[3];
-	dY = pm->p_set_point[1] * pm->lu_X[2] -
-		pm->p_set_point[0] * pm->lu_X[3];
+	eX = pm->x_setpoint_DQ[0] * X[2] + pm->x_setpoint_DQ[1] * X[3];
+	eY = pm->x_setpoint_DQ[1] * X[2] - pm->x_setpoint_DQ[0] * X[3];
 
-	eP = atan2f(dY, dX);
+	eP = m_atan2f(eY, eX);
 
-	if (dY < 0.f) {
+	if (eY < 0.f) {
 
-		if (pm->lu_X[3] < 0.f && pm->p_set_point[1] >= 0.f)
+		if (X[3] < 0.f && pm->x_setpoint_DQ[1] >= 0.f)
 			eP += 2.f * M_PI_F;
 	}
 	else {
-		if (pm->lu_X[3] >= 0.f && pm->p_set_point[1] < 0.f)
+		if (X[3] >= 0.f && pm->x_setpoint_DQ[1] < 0.f)
 			eP -= 2.f * M_PI_F;
 	}
 
-	eP += (pm->p_set_point_revol - pm->lu_revol) * 2.f * M_PI_F;
+	eP += (pm->x_setpoint_revol - pm->x_lu_revol) * 2.f * M_PI_F;
+	eP_abs = m_fabsf(eP);
 
-	pm->s_set_point = pm->p_gain_P * eP;*/
+	/*                      2
+	 * Servo is based on:  S = 2*ACCEL*X.
+	 * */
+	eS = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
+	gP = (eP_abs < pm->x_near_distance) ? eP_abs / pm->x_near_distance : 1.f;
+	gP = pm->x_gain_near_P + (pm->x_gain_P - pm->x_gain_near_P) * gP;
+
+	pm->s_setpoint = gP * eS;
 }
 
 void pm_feedback(pmc_t *pm, pmfb_t *fb)
@@ -982,23 +982,23 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
 	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP;
 
-	if (PM_CONFIG_VOLT(pm) == PM_ENABLED) {
+	if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
-		pm->volt_A = pm->volt_FIR_A[1] * pm->fb_voltage_A;
-		pm->volt_B = pm->volt_FIR_B[1] * pm->fb_voltage_B;
-		pm->volt_C = pm->volt_FIR_C[1] * pm->fb_voltage_C;
+		pm->vm_A = pm->vm_FIR_A[1] * pm->fb_voltage_A;
+		pm->vm_B = pm->vm_FIR_B[1] * pm->fb_voltage_B;
+		pm->vm_C = pm->vm_FIR_C[1] * pm->fb_voltage_C;
 
 		pm->fb_voltage_A = pm->adjust_UA[1] * fb->voltage_A + pm->adjust_UA[0];
 		pm->fb_voltage_B = pm->adjust_UB[1] * fb->voltage_B + pm->adjust_UB[0];
 		pm->fb_voltage_C = pm->adjust_UC[1] * fb->voltage_C + pm->adjust_UC[0];
 
-		pm->volt_A += pm->volt_FIR_A[0] * pm->fb_voltage_A + pm->volt_FIR_A[2];
-		pm->volt_B += pm->volt_FIR_B[0] * pm->fb_voltage_B + pm->volt_FIR_B[2];
-		pm->volt_C += pm->volt_FIR_C[0] * pm->fb_voltage_C + pm->volt_FIR_C[2];
+		pm->vm_A += pm->vm_FIR_A[0] * pm->fb_voltage_A + pm->vm_FIR_A[2];
+		pm->vm_B += pm->vm_FIR_B[0] * pm->fb_voltage_B + pm->vm_FIR_B[2];
+		pm->vm_C += pm->vm_FIR_C[0] * pm->fb_voltage_C + pm->vm_FIR_C[2];
 
-		pm->volt_A = (pm->vsi_voltage_ZONE & 0x10UL) ? pm->volt_A : 0.f;
-		pm->volt_B = (pm->vsi_voltage_ZONE & 0x20UL) ? pm->volt_B : 0.f;
-		pm->volt_C = (pm->vsi_voltage_ZONE & 0x40UL) ? pm->volt_C : 0.f;
+		pm->vm_A = (pm->vsi_voltage_ZONE & 0x10UL) ? pm->vm_A : 0.f;
+		pm->vm_B = (pm->vsi_voltage_ZONE & 0x20UL) ? pm->vm_B : 0.f;
+		pm->vm_C = (pm->vsi_voltage_ZONE & 0x40UL) ? pm->vm_C : 0.f;
 	}
 
 	pm_FSM(pm);
@@ -1011,6 +1011,11 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 			if (pm->config_LOOP == PM_LOOP_DRIVE_SPEED) {
 
+				pm_speed_control(pm);
+			}
+			else if (pm->config_LOOP == PM_LOOP_DRIVE_SERVO) {
+
+				pm_servo_control(pm);
 				pm_speed_control(pm);
 			}
 
