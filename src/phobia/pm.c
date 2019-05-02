@@ -77,8 +77,8 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_unlock = .1f;
-	pm->flux_bemf_lock = .2f;
+	pm->flux_bemf_unlock = .2f;
+	pm->flux_bemf_lock = .3f;
 	pm->flux_bemf_drift = 1.f;
 	pm->flux_bemf_reject = 10.f;
 
@@ -107,7 +107,7 @@ void pm_default(pmc_t *pm)
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
 	pm->s_accel = 50000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_I = 2E-5f;
+	pm->s_gain_I = 0E-5f;
 
 	pm->x_near_distance = 5.f;
 	pm->x_gain_P = 70.f;

@@ -131,8 +131,7 @@ float ADC_get_ANALOG()
 	float			analog;
 
 	analog = ADC_get_VALUE(GPIO_ADC_ANALOG)
-		* hal.ADC_reference_voltage
-		* ap.analog_voltage_ratio;
+		* hal.ADC_reference_voltage / ap.analog_voltage_ratio;
 
 	return analog;
 }
