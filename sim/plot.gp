@@ -18,7 +18,7 @@ page "Mechanical Speed"
 label 1 "(rpm)"
 figure 0 3 "m.X[2]"
 figure 0 14 "pm.lu_X[4]"
-figure 0 34 "pm.s_setpoint"
+figure 0 34 "pm.s_track"
 
 page "Electrical Position"
 label 1 "(°)"

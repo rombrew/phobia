@@ -181,8 +181,8 @@ sim_Script(FILE *fdTel)
 	pm.const_Zp = m.Zp;
 
 	pm.config_VM = PM_ENABLED;
-	pm.config_HFI = PM_DISABLED;
-	pm.config_LOOP = PM_LOOP_DRIVE_SERVO;
+	pm.config_HFI = PM_ENABLED;
+	pm.config_LOOP = PM_LOOP_DRIVE_SPEED;
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, 0., 1);
@@ -219,12 +219,13 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, 0., 1);
 
+	pm.s_setpoint = 50.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.x_setpoint_revol = 10;
+	pm.s_setpoint = 700.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.x_setpoint_revol = 0;
+	pm.s_setpoint = 7000.f;
 	sim_F(fdTel, 1., 0);
 }
 

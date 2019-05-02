@@ -59,7 +59,7 @@ PCB design source files.
 * Control loops:
 	* Current (torque) control is always enabled.
 	* Speed control loop.
-	* Servo operation (**TODO**).
+	* Servo operation (**EXPERIMENTAL**).
 	* Alternator voltage rectifier (**TODO**).
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).

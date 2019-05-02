@@ -213,7 +213,8 @@ typedef struct {
 	float		flux_gain_QZ;
 	float		flux_bemf_unlock;
 	float		flux_bemf_lock;
-	float		flux_bemf_high;
+	float		flux_bemf_drift;
+	float		flux_bemf_reject;
 
 	float		hfi_X[5];
 	float		hfi_freq_hz;

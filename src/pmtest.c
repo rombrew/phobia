@@ -120,6 +120,7 @@ SH_DEF(pm_test_speed_ramp)
 
 SH_DEF(pm_test_thrust_curve)
 {
+	/* TODO */
 }
 
 SH_DEF(hal_PPM_get_PERIOD)
@@ -141,15 +142,18 @@ SH_DEF(hal_PPM_get_PULSE)
 	printf("%3f (us)" EOL, &pulse);
 }
 
+SH_DEF(hal_ADC_get_ANALOG)
+{
+	float		analog;
+
+	analog = ADC_get_ANALOG();
+
+	printf("%3f (V)" EOL, &analog);
+}
+
 SH_DEF(hal_PWM_set_DC)
 {
 	int			xDC;
-
-	if (pm.lu_mode != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
 
 	if (stoi(&xDC, s) != NULL) {
 
@@ -164,15 +168,29 @@ SH_DEF(hal_PWM_set_Z)
 {
 	int			xZ;
 
-	if (pm.lu_mode != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
 	if (stoi(&xZ, s) != NULL) {
 
 		PWM_set_Z(xZ);
 	}
+}
+
+SH_DEF(hal_raise_memory_fault)
+{
+	*((unsigned long *) 0x77777777UL) = *((unsigned long *) 0x55555555UL);
+}
+
+SH_DEF(hal_ADC_irq_lock)
+{
+	ADC_irq_lock();
+}
+
+SH_DEF(hal_GPIO_set_high_BOOST_12V)
+{
+	GPIO_set_HIGH(GPIO_BOOST_12V);
+}
+
+SH_DEF(hal_GPIO_set_low_BOOST_12V)
+{
+	GPIO_set_LOW(GPIO_BOOST_12V);
 }
 

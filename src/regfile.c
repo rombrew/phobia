@@ -179,7 +179,7 @@ reg_proc_DQ(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_DQ_mg(const reg_t *reg, float *lval, const float *rval)
+reg_proc_DQ_g(const reg_t *reg, float *lval, const float *rval)
 {
 	float			angle;
 
@@ -391,6 +391,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.ppm_safe_range[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.analog_reg_ID,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.analog_voltage_ratio,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_timeout,,		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_voltage_range[0],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_voltage_range[1],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -492,7 +493,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_voltage_halt_level,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_halt_level,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_adjust_tolerance,,	"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.fault_flux_residue_maximal,,"A",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.fault_flux_residue_maximal,,	"A",	"%2f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.vsi_precise_MODE,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(pm.vsi_clamp_to_GND,,		"",	"%i",	REG_CONFIG, NULL, NULL),
@@ -555,7 +556,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_QZ,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_bemf_unlock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_bemf_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_high,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_drift,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_reject,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_swing_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -597,7 +599,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_gain_I,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_setpoint_DQ,,		"rad",	"%2f",	0, &reg_proc_DQ, NULL),
-	REG_DEF(pm.x_setpoint_DQ, _mg,		"mg",	"%2f",	0, &reg_proc_DQ_mg, NULL),
+	REG_DEF(pm.x_setpoint_DQ, _g,		"g",	"%2f",	0, &reg_proc_DQ_g, NULL),
 	REG_DEF(pm.x_near_distance,,		"rad",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_near_P,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -708,15 +710,27 @@ const reg_t *reg_search(const char *sym)
 	else {
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
-			if (strstr(reg->sym, sym) != NULL) {
+			if (strcmp(reg->sym, sym) == 0) {
 
-				if (found == NULL) {
+				found = reg;
+				break;
+			}
+		}
 
-					found = reg;
-				}
-				else {
-					found = NULL;
-					break;
+		if (found == NULL) {
+
+			for (reg = regfile; reg->sym != NULL; ++reg) {
+
+				if (strstr(reg->sym, sym) != NULL) {
+
+					if (found == NULL) {
+
+						found = reg;
+					}
+					else {
+						found = NULL;
+						break;
+					}
 				}
 			}
 		}

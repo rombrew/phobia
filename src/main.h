@@ -22,6 +22,7 @@ typedef struct {
 	/* PPM interface.
 	 * */
 	int			ppm_reg_ID;
+	int			ppm_locked;
 	float			ppm_pulse_cached;
 	float			ppm_pulse_range[2];
 	float			ppm_control_range[2];
@@ -30,6 +31,7 @@ typedef struct {
 	/* Analog interface.
 	 * */
 	int			analog_reg_ID;
+	float			analog_voltage_ratio;
 	float			analog_timeout;
 	float			analog_voltage_range[2];
 	float			analog_control_range[2];
@@ -80,6 +82,8 @@ extern tel_t			ti;
 
 extern int flash_block_load();
 extern int pm_wait_for_IDLE();
+
+float ADC_get_ANALOG();
 
 void lowTRACE(const char *fmt, ...);
 

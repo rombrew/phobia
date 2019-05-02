@@ -3,7 +3,7 @@
 
 void pm_default(pmc_t *pm)
 {
-	pm->dc_minimal = 42;
+	pm->dc_minimal = 34;
 	pm->dc_clearance = 400;
 
 	pm->config_ABC = PM_ABC_THREE_PHASE;
@@ -68,7 +68,7 @@ void pm_default(pmc_t *pm)
 
 	pm->forced_hold_D = 10.f;
 	pm->forced_maximal = 700.f;
-	pm->forced_accel = 2000.f;
+	pm->forced_accel = 500.f;
 
 	pm->flux_gain_LP = 1E-1f;
 	pm->flux_gain_DA = 5E-1f;
@@ -77,15 +77,16 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
 	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_unlock = .2f;
-	pm->flux_bemf_lock = .3f;
-	pm->flux_bemf_high = 1.f;
+	pm->flux_bemf_unlock = .1f;
+	pm->flux_bemf_lock = .2f;
+	pm->flux_bemf_drift = 1.f;
+	pm->flux_bemf_reject = 10.f;
 
-	pm->hfi_freq_hz = pm->freq_hz / 12.f;
+	pm->hfi_freq_hz = pm->freq_hz / 6.f;
 	pm->hfi_swing_D = 2.f;
 	pm->hfi_gain_P = 5E-2f;
-	pm->hfi_gain_S = 5E+1f;
-	pm->hfi_gain_F = 5E-3f;
+	pm->hfi_gain_S = 7E+1f;
+	pm->hfi_gain_F = 2E-3f;
 
 	pm->const_gain_LP = 2E-1f;
 	pm->const_E = 0.f;
@@ -108,9 +109,9 @@ void pm_default(pmc_t *pm)
 	pm->s_gain_P = 5E-2f;
 	pm->s_gain_I = 2E-5f;
 
-	pm->x_near_distance = 3.f;
+	pm->x_near_distance = 5.f;
 	pm->x_gain_P = 70.f;
-	pm->x_gain_near_P = 30.f;
+	pm->x_gain_near_P = 50.f;
 }
 
 static void
@@ -209,11 +210,11 @@ pm_forced_update(pmc_t *pm)
 
 	wMAX = pm->forced_maximal;
 
-	/* Do not run faster then BEMF high level.
+	/* Do not run faster then BEMF drift level.
 	 * */
 	if (pm->const_E != 0.f) {
 
-		wEMF = pm->flux_bemf_high / pm->const_E;
+		wEMF = pm->flux_bemf_drift / pm->const_E;
 		wMAX = (wEMF < wMAX) ? wEMF : wMAX;
 	}
 
@@ -367,7 +368,7 @@ pm_flux_update(pmc_t *pm)
 		dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 		m_rotf(X + 2, dR, X + 2);
 
-		qS = m_fabsf(X[4] * pm->const_E) / (PM_EMAX(pm) * pm->const_lpf_U);
+		qS = m_fabsf(X[4] * pm->const_E) / pm->flux_bemf_reject;
 		qS = (qS > 1.f) ? 1.f : qS;
 
 		/* We prefer the Q residue at low speed as it gives a fast
@@ -378,7 +379,7 @@ pm_flux_update(pmc_t *pm)
 		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
 		X[4] += dR;
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_high) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_drift) {
 
 			/* Estimate Q drift at high speed to get relaxed solution.
 			 * */
@@ -422,20 +423,27 @@ pm_hfi_update(pmc_t *pm)
 	X[0] += pm->flux_gain_DA * eD;
 	X[1] += pm->flux_gain_QA * eQ;
 
+	/* We demodulate the Q residue with carrier sine wave.
+	 * */
 	eR = eQ * pm->hfi_wave[1];
 	dR = pm->hfi_gain_P * eR;
 	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
 	m_rotf(X + 2, dR, X + 2);
 
-	X[4] += pm->hfi_gain_S * eR;
+	X[4] += pm->hfi_gain_S * eR * m_fabsf(eR);
 
 	if (pm->config_LDQ == PM_LDQ_SATURATION_SALIENCY) {
 
+		/* D axis responce has an asymmetry that we exctact with
+		 * doubled frequency cosine.
+		 * */
 		dR = pm->hfi_wave[0] * pm->hfi_wave[0] - pm->hfi_wave[1] * pm->hfi_wave[1];
 		pm->hfi_flux += pm->hfi_gain_F * eD * dR;
 
 		if (pm->hfi_flux > 1.f) {
 
+			/* Flip into the true position.
+			 * */
 			X[2] = - X[2];
 			X[3] = - X[3];
 
@@ -914,8 +922,8 @@ pm_speed_control(pmc_t *pm)
 			pm->s_integral = 0.f;
 		}
 
-		/* Update cuurent loop setpoint. It would be possible
-		 * here to use MTPA or something else.
+		/* Update current loop setpoint. It would be possible here to
+		 * use MTPA or something else.
 		 * */
 		pm->i_setpoint_Q = iSP;
 	}
@@ -962,8 +970,7 @@ pm_servo_control(pmc_t *pm)
 	eP += (pm->x_setpoint_revol - pm->x_lu_revol) * 2.f * M_PI_F;
 	eP_abs = m_fabsf(eP);
 
-	/*                      2
-	 * Servo is based on:  S = 2*ACCEL*X.
+	/* Servo is based on constant acceleration formula.
 	 * */
 	eS = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
 	gP = (eP_abs < pm->x_near_distance) ? eP_abs / pm->x_near_distance : 1.f;
@@ -976,14 +983,20 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
 	float		U;
 
+	/* Get inline current measuments.
+	 * */
 	pm->fb_current_A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
 	pm->fb_current_B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
 
+	/* Get DC link voltage.
+	 * */
 	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
 	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP;
 
 	if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
+		/* Extract the actual terminal voltages from measurements.
+		 * */
 		pm->vm_A = pm->vm_FIR_A[1] * pm->fb_voltage_A;
 		pm->vm_B = pm->vm_FIR_B[1] * pm->fb_voltage_B;
 		pm->vm_C = pm->vm_FIR_C[1] * pm->fb_voltage_C;
@@ -1001,10 +1014,14 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		pm->vm_C = (pm->vsi_voltage_ZONE & 0x40UL) ? pm->vm_C : 0.f;
 	}
 
+	/* Main FSM.
+	 * */
 	pm_FSM(pm);
 
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
+		/* Observer FSM.
+		 * */
 		pm_lu_FSM(pm);
 
 		if (pm->lu_mode != PM_LU_DETACHED) {

@@ -72,7 +72,8 @@ void task_TERM(void *pData)
 		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
 		ap.temp_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-		ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
+		/*ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));*/
+		ap.temp_EXT = 0.f;
 		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
 
 		if (pm.lu_mode != PM_LU_DISABLED) {
@@ -125,6 +126,17 @@ void task_TERM(void *pData)
 	while (1);
 }
 
+float ADC_get_ANALOG()
+{
+	float			analog;
+
+	analog = ADC_get_VALUE(GPIO_ADC_ANALOG)
+		* hal.ADC_reference_voltage
+		* ap.analog_voltage_ratio;
+
+	return analog;
+}
+
 void task_ANALOG(void *pData)
 {
 	TickType_t		xWake, xTime;
@@ -142,7 +154,7 @@ void task_ANALOG(void *pData)
 
 		if (ap.analog_reg_ID != ID_NULL) {
 
-			voltage = ADC_get_VALUE(GPIO_ADC_ANALOG) * hal.ADC_reference_voltage;
+			voltage = ADC_get_ANALOG();
 
 			range = ap.analog_voltage_range[1] - ap.analog_voltage_range[0];
 			scaled = (voltage - ap.analog_voltage_range[0]) / range;
@@ -160,7 +172,8 @@ void task_ANALOG(void *pData)
 
 					pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 				}
-				else {
+				else if (ap.analog_timeout != 0.f) {
+
 					pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
 				}
 
@@ -210,7 +223,7 @@ void task_INIT(void *pData)
 
 	if (rc_flash < 0) {
 
-		/* Resistor values in the voltage measurement circuit.
+		/* Resistor values in the voltage measurement circuits.
 		 * */
 
 		const float	vm_R1 = 470000.f;
@@ -219,6 +232,9 @@ void task_INIT(void *pData)
 		const float	vm_R3 = 470000.f;
 		const float	vm_D = (vm_R1 * vm_R2 + vm_R2 * vm_R3 + vm_R1 * vm_R3);
 		*/
+
+		const float	ag_R1 = 11000.f;
+		const float	ag_R2 = 11000.f;
 
 		/* Default.
 		 * */
@@ -252,13 +268,14 @@ void task_INIT(void *pData)
 		ap.ppm_safe_range[1] = 1.f;
 
 		ap.analog_reg_ID = ID_NULL;
+		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
+		ap.analog_timeout = 5.f;
 		ap.analog_voltage_range[0] = 0.f;
 		ap.analog_voltage_range[1] = 5.f;
 		ap.analog_control_range[0] = 0.f;
 		ap.analog_control_range[1] = 100.f;
 		ap.analog_safe_range[0] = -1.f;
 		ap.analog_safe_range[1] = 1.f;
-		ap.analog_timeout = 5.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -267,7 +284,7 @@ void task_INIT(void *pData)
 
 		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
 
-		ap.heat_PCB = 120.f;
+		ap.heat_PCB = 110.f;
 		ap.heat_PCB_derated = 30.f;
 		ap.heat_EXT = 90.f;
 		ap.heat_EXT_derated = 30.f;
@@ -327,35 +344,43 @@ input_PULSE_WIDTH()
 {
 	float		pulse, control, range, scaled;
 
-	if (hal.PPM_signal_caught != 0) {
+	if (ap.ppm_reg_ID != ID_NULL) {
 
-		pulse = PPM_get_PULSE();
+		if (hal.PPM_signal_caught != 0) {
 
-		if (pulse != ap.ppm_pulse_cached) {
+			pulse = PPM_get_PULSE();
 
-			ap.ppm_pulse_cached = pulse;
+			if (pulse != ap.ppm_pulse_cached) {
 
-			range = ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0];
-			scaled = (pulse - ap.ppm_pulse_range[0]) / range;
-			scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
+				ap.ppm_pulse_cached = pulse;
 
-			range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
-			control = ap.ppm_control_range[0] + range * scaled;
+				range = ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0];
+				scaled = (pulse - ap.ppm_pulse_range[0]) / range;
+				scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-			reg_SET(ap.ppm_reg_ID, &control);
+				range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
+				control = ap.ppm_control_range[0] + range * scaled;
 
-			if (pm.lu_mode == PM_LU_DISABLED) {
+				reg_SET(ap.ppm_reg_ID, &control);
 
-				if (		control > ap.ppm_safe_range[0]
-						&& control < ap.ppm_safe_range[1]) {
+				if (pm.lu_mode == PM_LU_DISABLED) {
 
-					pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+					if (		control > ap.ppm_safe_range[0]
+							&& control < ap.ppm_safe_range[1]) {
+
+						pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+						ap.ppm_locked = 1;
+					}
 				}
 			}
 		}
-	}
-	else {
-		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+		else {
+			if (ap.ppm_locked == 1) {
+
+				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+				ap.ppm_locked = 0;
+			}
+		}
 	}
 }
 
@@ -535,25 +560,6 @@ SH_DEF(rtos_heap)
 {
 	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
-}
-
-SH_DEF(rtos_test_hardfault)
-{
-	printf("%i" EOL, *((int *) 0x55555555UL));
-}
-
-SH_DEF(rtos_test_watchdog)
-{
-	ADC_irq_lock();
-}
-
-SH_DEF(rtos_test_printf)
-{
-	printf("%8x" EOL, 0x00001111UL);
-	printf("%8x" EOL, 0x12341234UL);
-	printf("%8x" EOL, 0x77777777UL);
-	printf("%8x" EOL, 0x88888888UL);
-	printf("%8x" EOL, 0xFFFFFFFFUL);
 }
 
 SH_DEF(rtos_log)
