@@ -411,7 +411,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_self_test_sampling_accuracy(pmc_t *pm)
+pm_fsm_state_self_test_clearance(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
 
@@ -964,16 +964,8 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			break;
 
 		case 2:
-			uX = pm->vsi_X - pm->probe_DFT[4];
-			uY = pm->vsi_Y - pm->probe_DFT[5];
-
-			if (PM_CONFIG_VM(pm) == PM_ENABLED) {
-
-				pm_voltage_residue(pm);
-
-				uX += pm->vm_residue_X;
-				uY += pm->vm_residue_Y;
-			}
+			uX = pm->vm_DX - pm->probe_DFT[4];
+			uY = pm->vm_DY - pm->probe_DFT[5];
 
 			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], uX);
 			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], uY);
@@ -1017,6 +1009,8 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[1] /= pm->tm_end;
 
 			pm->const_R += pm_DFT_R(pm->probe_DFT);
+			pm->adapt_R_lower = - pm->const_R * .2f;
+			pm->adapt_R_upper = pm->const_R   * .4f;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -1029,7 +1023,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_l(pmc_t *pm)
 {
-	float			tX, tY, uX, uY, eX, eY, uMAX;
+	float			uX, uY, eX, eY, uMAX;
 	float			imp_Z, LDQ[5];
 
 	switch (pm->fsm_phase) {
@@ -1092,19 +1086,8 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 		case 2:
 			pm_fsm_current_probe(pm);
 
-			tX = pm->vsi_DX;
-			tY = pm->vsi_DY;
-
-			if (PM_CONFIG_VM(pm) == PM_ENABLED) {
-
-				pm_voltage_residue(pm);
-
-				tX += pm->vm_residue_X;
-				tY += pm->vm_residue_Y;
-			}
-
-			uX = tX * pm->FIX[12] - tY * pm->FIX[13];
-			uY = tX * pm->FIX[13] + tY * pm->FIX[12];
+			uX = pm->vm_DX * pm->FIX[12] - pm->vm_DY * pm->FIX[13];
+			uY = pm->vm_DX * pm->FIX[13] + pm->vm_DY * pm->FIX[12];
 
 			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->probe_fb_X * pm->FIX[8]);
 			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->probe_fb_X * pm->FIX[9]);
@@ -1206,9 +1189,6 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->vsi_precise_MODE = PM_DISABLED;
 				pm->vsi_current_ZONE = 0x8UL;
 				pm->vsi_voltage_ZONE = 0x8UL;
-				pm->vsi_lpf_D = 0.f;
-				pm->vsi_lpf_Q = 0.f;
-				pm->vsi_lpf_watt = 0.f;
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
@@ -1223,11 +1203,16 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->hfi_flux = 0.f;
 
 				pm->i_derated = PM_UNRESTRICTED;
-				pm->i_watt_derated = PM_UNRESTRICTED;
 				pm->i_setpoint_D = 0.f;
 				pm->i_setpoint_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
+
+				pm->watt_derated = PM_UNRESTRICTED;
+				pm->watt_lpf_D = 0.f;
+				pm->watt_lpf_Q = 0.f;
+				pm->watt_lpf_VA = 0.f;
+				pm->lpfu_integral = 0.f;
 
 				pm->fail_reason = PM_OK;
 
@@ -1405,8 +1390,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_self_test_power_stage(pm);
 			break;
 
-		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
-			pm_fsm_state_self_test_sampling_accuracy(pm);
+		case PM_STATE_SELF_TEST_CLEARANCE:
+			pm_fsm_state_self_test_clearance(pm);
 			break;
 
 		case PM_STATE_STANDARD_VOLTAGE:
@@ -1461,7 +1446,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 
 		case PM_STATE_ZERO_DRIFT:
 		case PM_STATE_SELF_TEST_POWER_STAGE:
-		case PM_STATE_SELF_TEST_SAMPLING_ACCURACY:
+		case PM_STATE_SELF_TEST_CLEARANCE:
 		case PM_STATE_STANDARD_VOLTAGE:
 		case PM_STATE_STANDARD_CURRENT:
 		case PM_STATE_ADJUST_VOLTAGE:

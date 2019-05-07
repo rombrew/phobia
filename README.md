@@ -48,7 +48,7 @@ PCB design source files.
 
 * Sensorless vector control. All the code of motor control was written from
   scratch, no external libs are used, portable as it is plain C code.
-* Advanced PWM scheme to reduce switching losses and fully utilise DC bus voltage.
+* Advanced PWM scheme to reduce switching losses and fully utilise DC link voltage.
 * Fast and robust flux linkage estimation algorithm based on Luenberger
   observer with gain scheduling.
 * Terminal voltage sensing to reduce the effect of Dead-Time (**EXPERIMENTAL**).
@@ -64,7 +64,8 @@ PCB design source files.
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).
 	* Power consumption and regeneration.
- 	* Maximal speed and acceleration.
+	* DC link voltage (**EXPERIMENTAL**).
+	* Maximal speed and acceleration.
 * Control inputs:
 	* CAN bus (**TODO**).
 	* RC servo pulse width.

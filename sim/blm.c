@@ -50,7 +50,7 @@ void blm_Enable(blm_t *m)
 	m->X[1] = 0.; /* Axis Q current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
         m->X[3] = 0.; /* Electrical Position (Radian) */
-        m->X[4] = 20.; /* Temperature (Celsius) */
+        m->X[4] = 25.; /* Temperature (Celsius) */
 	m->X[5] = 0.; /* Energy consumption (Joule) */
 	m->X[6] = 5.; /* DC bus voltage (Volt) */
 
@@ -62,12 +62,12 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 14E-3;
+	m->R = 22E-3;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 7E-6;
-	m->Lq = 12E-6;
+	m->Ld = 16E-6;
+	m->Lq = 20E-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -75,7 +75,7 @@ void blm_Enable(blm_t *m)
 
 	/* Source internal resistance. (Ohm)
 	 * */
-	m->Rs = 0.1;
+	m->Rs = 0.2;
 
 	/* Decoupling capacitance. (Farad)
 	 * */
@@ -83,11 +83,11 @@ void blm_Enable(blm_t *m)
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 14;
+	m->Zp = 7;
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 280.; /* Total RPM per Volt */
+	Kv = 300.; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
@@ -98,7 +98,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 5E-3;
 	m->M[1] = 0E-3;
-	m->M[2] = 2E-7;
+	m->M[2] = 5E-7;
 	m->M[3] = 0E-3;
 
 	/* ADC conversion time.
@@ -119,8 +119,8 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* Thermal drift.
 	 * */
-	R1 = m->R  * (1. + 4E-3 * (X[4] - 20.));
-	E1 = m->E  * (1. - 1E-3 * (X[4] - 20.));
+	R1 = m->R  * (1. + 4E-3 * (X[4] - 25.));
+	E1 = m->E  * (1. - 1E-3 * (X[4] - 25.));
 
 	/* BEMF waveform distortion.
 	 * */

@@ -52,20 +52,20 @@ sim_Tel(float *pTel)
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.lu_X[2] + Q * pm.lu_X[3];
-	B = D * pm.lu_X[3] - Q * pm.lu_X[2];
+	A = D * pm.flux_X[2] + Q * pm.flux_X[3];
+	B = D * pm.flux_X[3] - Q * pm.flux_X[2];
 	C = atan2(B, A);
 
 	/* Estimated position.
 	 * */
-	pTel[12] = atan2(pm.lu_X[3], pm.lu_X[2]) * 180. / M_PI;
+	pTel[12] = atan2(pm.flux_X[3], pm.flux_X[2]) * 180. / M_PI;
 	pTel[13] = C * 180. / M_PI;
 
 	/* Estimated speed.
 	 * */
-	pTel[14] = pm.lu_X[4] * 30. / M_PI / m.Zp;
+	pTel[14] = pm.flux_X[4] * 30. / M_PI / m.Zp;
 
-	/* Zero Drift Q.
+	/* FLUX drift Q.
 	 * */
 	pTel[15] = pm.flux_drift_Q;
 
@@ -74,10 +74,10 @@ sim_Tel(float *pTel)
 	pTel[16] = pm.vsi_X;
 	pTel[17] = pm.vsi_Y;
 
-	/* VSI voltage (DQ).
+	/* WATT voltage (DQ).
 	 * */
-	pTel[18] = pm.vsi_lpf_D;
-	pTel[19] = pm.vsi_lpf_Q;
+	pTel[18] = pm.watt_lpf_D;
+	pTel[19] = pm.watt_lpf_Q;
 
 	/* VSI zone flags.
 	 * */
@@ -90,10 +90,10 @@ sim_Tel(float *pTel)
 	pTel[23] = pm.vm_B;
 	pTel[24] = pm.vm_C;
 
-	/* VM residue (XY).
+	/* VM voltages (XY).
 	 * */
-	pTel[25] = pm.vm_residue_X;
-	pTel[26] = pm.vm_residue_Y;
+	pTel[25] = pm.vm_DX;
+	pTel[26] = pm.vm_DY;
 
 	/* FLUX residue (DQ).
 	 * */
@@ -101,12 +101,12 @@ sim_Tel(float *pTel)
 	pTel[28] = pm.flux_residue_Q;
 	pTel[29] = pm.flux_residue_lpf;
 
-	/* Power (Watt).
+	/* WATT power.
 	 * */
 	pTel[30] = m.iP;
-	pTel[31] = pm.vsi_lpf_watt;
+	pTel[31] = pm.watt_lpf_VA;
 
-	/* DC voltage measured.
+	/* DC link voltage measured.
 	 * */
 	pTel[32] = pm.const_lpf_U;
 
@@ -114,7 +114,10 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[33] = pm.lu_mode;
 
+	/* SPEED tracking point.
+	 * */
 	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
+	pTel[35] = pm.adapt_lpf_R;
 }
 
 static void
@@ -181,7 +184,7 @@ sim_Script(FILE *fdTel)
 	pm.const_Zp = m.Zp;
 
 	pm.config_VM = PM_ENABLED;
-	pm.config_HFI = PM_ENABLED;
+	pm.config_HFI = PM_DISABLED;
 	pm.config_LOOP = PM_LOOP_DRIVE_SPEED;
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
@@ -219,13 +222,38 @@ sim_Script(FILE *fdTel)
 	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
 	sim_F(fdTel, 0., 1);
 
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 475.f;
+	sim_F(fdTel, 1., 0);
+
 	pm.s_setpoint = 50.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 700.f;
+	//m.X[4] = 50.;
+
+	pm.s_setpoint = 40.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 7000.f;
+	pm.s_setpoint = 475.f;
+	sim_F(fdTel, 1., 0);
+
+	m.X[4] = 50.;
+
+	pm.s_setpoint = 2875.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 5.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 475.f;
 	sim_F(fdTel, 1., 0);
 }
 

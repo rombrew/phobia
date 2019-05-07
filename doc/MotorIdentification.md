@@ -61,8 +61,7 @@ it later.
 
 Resistance is measured by holding a constant current vector for some time.
 Assuming that the rotor was fixed we can determine R as U/I. For greater
-accuracy you need to increase the probe current and reduce the supply
-voltage.
+accuracy you need to increase the probe current and reduce the supply voltage.
 
 We use a high frequency sinusoidal signal to measure the full impedance then we
 calculate DQ inductance and rotation angle.

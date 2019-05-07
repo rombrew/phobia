@@ -326,7 +326,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_IDLE);
 				TEXT_ITEM(PM_STATE_ZERO_DRIFT);
 				TEXT_ITEM(PM_STATE_SELF_TEST_POWER_STAGE);
-				TEXT_ITEM(PM_STATE_SELF_TEST_SAMPLING_ACCURACY);
+				TEXT_ITEM(PM_STATE_SELF_TEST_CLEARANCE);
 				TEXT_ITEM(PM_STATE_STANDARD_VOLTAGE);
 				TEXT_ITEM(PM_STATE_STANDARD_CURRENT);
 				TEXT_ITEM(PM_STATE_ADJUST_VOLTAGE);
@@ -501,11 +501,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.vsi_voltage_ZONE,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_X,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_Y,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_lpf_watt,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vsi_gain_LW,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.vsi_DX,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_DY,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.vm_maximal,,			"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vm_A,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -520,8 +517,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.vm_FIR_C[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vm_FIR_C[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vm_FIR_C[2],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.vm_residue_X,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vm_residue_Y,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vm_DX,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vm_DY,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.lu_X[0],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_X[1],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -547,7 +544,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_residue_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_residue_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_residue_lpf,,		"",	"%2f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_gain_LP_E,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_DA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_DP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -567,7 +564,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_gain_F,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_lpf_U,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.const_gain_LP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.const_gain_LP_U,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.const_E,,			"Wb",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.const_E, _kv,	"rpm/v",	"%1f",	0, &reg_proc_kv, NULL),
 	REG_DEF(pm.const_R,,			"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
@@ -578,15 +575,25 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.i_maximal,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_derated,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.i_watt_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_watt_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_watt_derated,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_setpoint_D,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_Q,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_gain_PD,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_ID,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_PQ,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_IQ,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.watt_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_derated,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_lpf_VA,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_gain_LP_V,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_gain_LP_P,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.lpfu_maximal,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.lpfu_gain_PU,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lpfu_gain_LP_Q,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.s_maximal,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_maximal, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
@@ -596,13 +603,13 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_accel,,		"rad/s/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_accel, _rpm,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.s_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_gain_I,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_gain_LP_I,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_setpoint_DQ,,		"rad",	"%2f",	0, &reg_proc_DQ, NULL),
 	REG_DEF(pm.x_setpoint_DQ, _g,		"g",	"%2f",	0, &reg_proc_DQ_g, NULL),
 	REG_DEF(pm.x_near_distance,,		"rad",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.x_gain_near_P,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.x_gain_NP,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ti.reg_ID[0],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ti.reg_ID[1],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),

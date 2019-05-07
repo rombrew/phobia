@@ -35,8 +35,9 @@ firmware into MCU. You should have a serial port connected to the board USART
 pins and BOOT pin shorted to the +3.3v. Alternatively, you can use SWD.
 
 After the firmware is loaded the command line interface (CLI) will be available
-via the serial port. We use [picocom](https://github.com/npat-efault/picocom)
-terminal program.
+through the same USART. We use [picocom](https://github.com/npat-efault/picocom)
+terminal program. Default baudrate is 57600 with 8 bits of data and even
+parity.
 
 	# make connect
 

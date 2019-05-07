@@ -39,8 +39,8 @@ converted to this control range.
 	# reg ap.ppm_control_range[1] <maximal>
 
 Also select the safe range which means an area in which the motor can start.
-This is necessary to avoid an unexpected start. So to start the motor, you will
-need to apply a control that motor is not dangerous (low speed), and only then
+This is necessary to avoid an unexpected start. So to start the motor you will
+need to apply a control that motor is not dangerous (low speed) and only then
 increase control signal.
 
 	# reg ap.ppm_safe_range[0] <minimal>

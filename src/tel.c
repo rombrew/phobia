@@ -18,7 +18,7 @@ void tel_reg_default(tel_t *ti)
 	ti->reg_ID[4] = ID_PM_LU_X_4_RPM;
 	ti->reg_ID[5] = ID_PM_FLUX_DRIFT_Q;
 	ti->reg_ID[6] = ID_PM_FLUX_RESIDUE_LPF;
-	ti->reg_ID[7] = ID_PM_VSI_LPF_WATT;
+	ti->reg_ID[7] = ID_PM_WATT_LPF_VA;
 	ti->reg_ID[8] = ID_PM_CONST_LPF_U;
 	ti->reg_ID[9] = ID_AP_TEMP_PCB;
 }

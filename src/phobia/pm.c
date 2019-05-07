@@ -46,14 +46,12 @@ void pm_default(pmc_t *pm)
 
 	pm->fault_voltage_tolerance = 2.f;
 	pm->fault_current_tolerance = 2.f;
-	pm->fault_voltage_halt_level = 57.f;
+	pm->fault_voltage_halt_level = 58.f;
 	pm->fault_current_halt_level = 50.f;
 	pm->fault_adjust_tolerance = 1E-1f;
 	pm->fault_flux_residue_maximal = 90.f;
 
 	pm->vsi_clamp_to_GND = PM_ENABLED;
-	pm->vsi_gain_LP = 1E-1f;
-	pm->vsi_gain_LW = 5E-2f;
 
 	pm->vm_maximal = .16f;
 	pm->vm_FIR_A[0] = 0.f;
@@ -70,17 +68,22 @@ void pm_default(pmc_t *pm)
 	pm->forced_maximal = 700.f;
 	pm->forced_accel = 500.f;
 
-	pm->flux_gain_LP = 1E-1f;
+	pm->flux_bemf_unlock = .1f;
+	pm->flux_bemf_lock = .15f;
+	pm->flux_bemf_belief = 1.f;
+	pm->flux_bemf_reject = 11.f;
+	pm->flux_gain_LP_E = 1E-1f;
 	pm->flux_gain_DA = 5E-1f;
 	pm->flux_gain_QA = 5E-1f;
 	pm->flux_gain_DP = 5E-3f;
 	pm->flux_gain_DS = 1E+1f;
 	pm->flux_gain_QS = 1E+1f;
-	pm->flux_gain_QZ = 5E-2f;
-	pm->flux_bemf_unlock = .2f;
-	pm->flux_bemf_lock = .3f;
-	pm->flux_bemf_drift = 1.f;
-	pm->flux_bemf_reject = 10.f;
+	pm->flux_gain_QZ = 1E-2f;
+
+	pm->adapt_current_belief = 5.f;
+	pm->adapt_R_lower = 0.f;
+	pm->adapt_R_upper = 0.f;
+	pm->adapt_gain_LP_T = 1E-3f;
 
 	pm->hfi_freq_hz = pm->freq_hz / 6.f;
 	pm->hfi_swing_D = 2.f;
@@ -88,7 +91,7 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_S = 7E+1f;
 	pm->hfi_gain_F = 2E-3f;
 
-	pm->const_gain_LP = 2E-1f;
+	pm->const_gain_LP_U = 2E-1f;
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;
@@ -97,21 +100,28 @@ void pm_default(pmc_t *pm)
 	pm->const_J = 0.f;
 
 	pm->i_maximal = pm->fb_current_clamp;
-	pm->i_watt_maximal = 2000.f;
-	pm->i_watt_reverse = -5.f;
 	pm->i_gain_PD = 2E-1f;
 	pm->i_gain_ID = 5E-3f;
 	pm->i_gain_PQ = 2E-1f;
 	pm->i_gain_IQ = 5E-3f;
 
+	pm->watt_maximal = 2000.f;
+	pm->watt_reverse = - 500.f;
+	pm->watt_gain_LP_V = 1E-1f;
+	pm->watt_gain_LP_P = 5E-2f;
+
+	pm->lpfu_maximal = 54.f;
+	pm->lpfu_gain_PU = 5E-1f;
+	pm->lpfu_gain_LP_Q = 5E-2f;
+
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 12.f);
 	pm->s_accel = 50000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_I = 0E-5f;
+	pm->s_gain_LP_I = 7E-3f;
 
 	pm->x_near_distance = 5.f;
 	pm->x_gain_P = 70.f;
-	pm->x_gain_near_P = 50.f;
+	pm->x_gain_NP = 50.f;
 }
 
 static void
@@ -124,7 +134,7 @@ pm_equation_2(pmc_t *pm, float Y[2], const float X[5])
 
 	X4 = X[4];
 	X5 = pm->flux_drift_Q;
-	R1 = pm->const_R;
+	R1 = pm->const_R + pm->adapt_lpf_R;
 	E1 = pm->const_E;
 
 	fluxD = pm->const_Ld * X[0] + E1;
@@ -158,13 +168,16 @@ pm_solve_2(pmc_t *pm, float X[5])
 static void
 pm_solve_1(pmc_t *pm, float X[5])
 {
-	float		uD, uQ;
+	float		uX, uY, uD, uQ;
 
 	/* First-order ODE solver.
 	 * */
 
-	uD = X[2] * pm->vm_residue_X + X[3] * pm->vm_residue_Y;
-	uQ = X[2] * pm->vm_residue_Y - X[3] * pm->vm_residue_X;
+	uX = pm->vm_DX - pm->vsi_DX;
+	uY = pm->vm_DY - pm->vsi_DY;
+
+	uD = X[2] * uX + X[3] * uY;
+	uQ = X[2] * uY - X[3] * uX;
 
 	X[0] += uD * pm->dT / pm->const_Ld;
 	X[1] += uQ * pm->dT / pm->const_Lq;
@@ -174,7 +187,7 @@ static void
 pm_forced_update(pmc_t *pm)
 {
 	float		*X = pm->forced_X;
-	float		iX, iY, wSP, dS, wEMF, wMAX;
+	float		iX, iY, wSP, dS, tR, wMAX;
 
 	/* In the forced control we apply a current vector without feedback
 	 * to force rotor turn.
@@ -208,16 +221,9 @@ pm_forced_update(pmc_t *pm)
 		wSP = 0.f;
 	}
 
-	wMAX = pm->forced_maximal;
-
-	/* Do not run faster then BEMF drift level.
+	/* Maximal forced speed constraint.
 	 * */
-	if (pm->const_E != 0.f) {
-
-		wEMF = pm->flux_bemf_drift / pm->const_E;
-		wMAX = (wEMF < wMAX) ? wEMF : wMAX;
-	}
-
+	wMAX = pm->forced_maximal;
 	wSP = (wSP < - wMAX) ? - wMAX : (wSP > wMAX) ? wMAX : wSP;
 
 	/* Update the actual speed with specified acceleration.
@@ -228,6 +234,14 @@ pm_forced_update(pmc_t *pm)
 	/* Update DQ frame.
 	 * */
 	m_rotf(X + 2, X[4] * pm->dT, X + 2);
+
+	/* Thermal drift resistance adaptation.
+	 * */
+	if (pm->forced_hold_D > pm->adapt_current_belief) {
+
+		tR = pm->watt_lpf_D / pm->forced_hold_D - pm->const_R;
+		pm->adapt_lpf_R += (tR - pm->adapt_lpf_R) * pm->adapt_gain_LP_T;
+	}
 }
 
 static void
@@ -324,11 +338,10 @@ pm_flux_update(pmc_t *pm)
 
 	if (pm->lu_mode != PM_LU_DETACHED) {
 
-		/* Update voltage from previous cycle.
-		 * */
 		if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
-			pm_voltage_residue(pm);
+			/* Update voltage from previous cycle.
+			 * */
 			pm_solve_1(pm, pm->flux_X);
 		}
 
@@ -337,7 +350,7 @@ pm_flux_update(pmc_t *pm)
 		pm_flux_residue(pm, X);
 	}
 	else {
-		/* We have exactly zero current in detached mode.
+		/* We have exactly zero inline current in detached mode.
 		 * */
 		pm->flux_residue_D = 0.f - X[0];
 		pm->flux_residue_Q = 0.f - X[1];
@@ -347,7 +360,7 @@ pm_flux_update(pmc_t *pm)
 	eQ = pm->flux_residue_Q;
 
 	pm->flux_residue_lpf += (eD * eD + eQ * eQ - pm->flux_residue_lpf)
-		* pm->flux_gain_LP;
+		* pm->flux_gain_LP_E;
 
 	/* Update current estimate.
 	 * */
@@ -379,7 +392,7 @@ pm_flux_update(pmc_t *pm)
 		dR = pm->flux_gain_DS * qS * eR - pm->flux_gain_QS * (1.f - qS) * eQ;
 		X[4] += dR;
 
-		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_drift) {
+		if (m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_belief) {
 
 			/* Estimate Q drift at high speed to get relaxed solution.
 			 * */
@@ -404,9 +417,20 @@ pm_flux_update(pmc_t *pm)
 		pm->flux_drift_Q += pm->flux_gain_QZ * eQ;
 	}
 
+	/* We should be sure that adaptation resistance is in permissible range.
+	 * */
+	pm->adapt_lpf_R = (pm->adapt_lpf_R < pm->adapt_R_lower) ? pm->adapt_R_lower :
+		(pm->adapt_lpf_R > pm->adapt_R_upper) ? pm->adapt_R_upper : pm->adapt_lpf_R;
+
 	/* Time update to next cycle.
 	 * */
 	pm_solve_2(pm, X);
+}
+
+static void
+pm_hall_update(pmc_t *pm)
+{
+	/* TODO */
 }
 
 static void
@@ -459,12 +483,6 @@ pm_hfi_update(pmc_t *pm)
 }
 
 static void
-pm_hall_update(pmc_t *pm)
-{
-	/* TODO */
-}
-
-static void
 pm_instant_take(pmc_t *pm)
 {
 	float			uA, uB, uQ;
@@ -509,7 +527,7 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->forced_X[3];
 		X[4] = pm->forced_X[4];
 
-		if (		m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
+		if ((pm->forced_hold_D == 0.f || m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock)
 				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
@@ -557,6 +575,10 @@ pm_lu_FSM(pmc_t *pm)
 			}
 		}
 	}
+	else if (pm->lu_mode == PM_LU_SENSORED_HALL) {
+
+		pm_hall_update(pm);
+	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
 		pm_flux_update(pm);
@@ -568,15 +590,10 @@ pm_lu_FSM(pmc_t *pm)
 		X[3] = pm->hfi_X[3];
 		X[4] = pm->hfi_X[4];
 
-		if (		m_fabsf(X[4] * pm->const_E) > pm->flux_bemf_lock
-				&& m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
+		if (m_fabsf(pm->flux_X[4] * pm->const_E) > pm->flux_bemf_lock) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
-	}
-	else if (pm->lu_mode == PM_LU_SENSORED_HALL) {
-
-		pm_hall_update(pm);
 	}
 }
 
@@ -754,52 +771,13 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	}
 }
 
-void pm_voltage_residue(pmc_t *pm)
-{
-	float		A, B, Q, up_X, up_Y;
-
-	if (pm->vm_FIR_A[0] != 0.f && (pm->vsi_voltage_ZONE & 0x88UL) == 0) {
-
-		if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
-
-			Q = (1.f / 3.f) * (pm->vm_A + pm->vm_B + pm->vm_C);
-			A = pm->vm_A - Q;
-			B = pm->vm_B - Q;
-
-			up_X = A;
-			up_Y = .57735027f * A + 1.1547005f * B;
-		}
-		else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
-
-			A = pm->vm_A - pm->vm_C;
-			B = pm->vm_B - pm->vm_C;
-
-			up_X = A;
-			up_Y = B;
-		}
-		else {
-			/* This case should never be executed.
-			 * */
-			up_X = 0.;
-			up_Y = 0.;
-		}
-
-		pm->vm_residue_X = up_X - pm->vsi_DX;
-		pm->vm_residue_Y = up_Y - pm->vsi_DY;
-	}
-	else {
-		pm->vm_residue_X = 0.f;
-		pm->vm_residue_Y = 0.f;
-	}
-}
-
 static void
 pm_current_control(pmc_t *pm)
 {
 	float		*X = pm->lu_X, mF[2];
-	float		sD, sQ, eD, eQ;
+	float		sD, sQ, eD, eQ, qE;
 	float		uD, uQ, uX, uY, wP, wS;
-	float		iMAX, uMAX, wMAX;
+	float		iMAX, uMAX, wMAX, wREV;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
@@ -811,24 +789,51 @@ pm_current_control(pmc_t *pm)
 		sQ = pm->i_setpoint_Q;
 	}
 
+	/* Maximal current constraint.
+	 * */
+
 	iMAX = (pm->i_maximal < pm->i_derated) ? pm->i_maximal : pm->i_derated;
 
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
 	sQ = (sQ > iMAX) ? iMAX : (sQ < - iMAX) ? - iMAX : sQ;
 
-	m_rotf(mF, X[4] * pm->dT * (- .5f), X + 2);
+	/* Operating POWER is a scalar product of voltage and current.
+	 * */
 
-	uD = mF[0] * pm->vsi_X + mF[1] * pm->vsi_Y;
-	uQ = mF[0] * pm->vsi_Y - mF[1] * pm->vsi_X;
+	wS = - 1.5f * X[4] * pm->dT;
+	m_rotf(mF, wS, X + 2);
 
-	wP = PM_KWAT(pm) * (X[0] * uD + X[1] * uQ);
-	pm->vsi_lpf_watt += (wP - pm->vsi_lpf_watt) * pm->vsi_gain_LW;
+	uD = mF[0] * pm->vm_DX + mF[1] * pm->vm_DY;
+	uQ = mF[0] * pm->vm_DY - mF[1] * pm->vm_DX;
 
-	pm->vsi_lpf_D += (uD - pm->vsi_lpf_D) * pm->vsi_gain_LP;
-	pm->vsi_lpf_Q += (uQ - pm->vsi_lpf_Q) * pm->vsi_gain_LP;
+	pm->watt_lpf_D += (uD - pm->watt_lpf_D) * pm->watt_gain_LP_V;
+	pm->watt_lpf_Q += (uQ - pm->watt_lpf_Q) * pm->watt_gain_LP_V;
 
-	wP = PM_KWAT(pm) * (sD * pm->vsi_lpf_D + sQ * pm->vsi_lpf_Q);
-	wMAX = (pm->i_watt_maximal < pm->i_watt_derated) ? pm->i_watt_maximal : pm->i_watt_derated;
+	wP = PM_KWAT(pm) * (X[0] * pm->watt_lpf_D + X[1] * pm->watt_lpf_Q);
+	pm->watt_lpf_VA += (wP - pm->watt_lpf_VA) * pm->watt_gain_LP_P;
+
+	wP = PM_KWAT(pm) * (sD * pm->watt_lpf_D + sQ * pm->watt_lpf_Q);
+
+	wMAX = (pm->watt_maximal < pm->watt_derated) ? pm->watt_maximal : pm->watt_derated;
+	wREV = pm->watt_reverse;
+
+	if (pm->const_lpf_U > pm->lpfu_maximal) {
+
+		/* Derate reverse limit to prevent DC link overvoltage.
+		 * */
+
+		qE = 1.f - (pm->const_lpf_U - pm->lpfu_maximal) * pm->lpfu_gain_PU;
+		qE = (qE < 0.f) ? 0.f : qE;
+
+		pm->lpfu_integral += (qE - pm->lpfu_integral) * pm->lpfu_gain_LP_Q;
+		wREV *= pm->lpfu_integral * qE;
+	}
+
+	/* Apply POWER constraints.
+	 * */
+
+	wMAX = (wMAX < 1.f) ? 1.f : wMAX;
+	wREV = (wREV > - 1.f) ? - 1.f : wREV;
 
 	if (wP > wMAX) {
 
@@ -836,9 +841,9 @@ pm_current_control(pmc_t *pm)
 		sD *= wP;
 		sQ *= wP;
 	}
-	else if (wP < pm->i_watt_reverse) {
+	else if (wP < wREV) {
 
-		wP = pm->i_watt_reverse / wP;
+		wP = wREV / wP;
 		sD *= wP;
 		sQ *= wP;
 	}
@@ -909,13 +914,13 @@ pm_speed_control(pmc_t *pm)
 		 * */
 		eS = pm->s_track - X[4];
 
-		/* Here is PI regulator.
+		/* Here is P+LP regulator.
 		 * */
 		iSP = pm->s_gain_P * eS;
 
 		if (m_fabsf(iSP) < pm->i_maximal) {
 
-			pm->s_integral += pm->s_gain_I * eS;
+			pm->s_integral += (X[1] - pm->s_integral) * pm->s_gain_LP_I;
 			iSP += pm->s_integral;
 		}
 		else {
@@ -974,16 +979,16 @@ pm_servo_control(pmc_t *pm)
 	 * */
 	eS = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
 	gP = (eP_abs < pm->x_near_distance) ? eP_abs / pm->x_near_distance : 1.f;
-	gP = pm->x_gain_near_P + (pm->x_gain_P - pm->x_gain_near_P) * gP;
+	gP = pm->x_gain_NP + (pm->x_gain_P - pm->x_gain_NP) * gP;
 
 	pm->s_setpoint = gP * eS;
 }
 
 void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
-	float		U;
+	float		vA, vB, vC, U, Q;
 
-	/* Get inline current measuments.
+	/* Get inline currents.
 	 * */
 	pm->fb_current_A = pm->adjust_IA[1] * fb->current_A + pm->adjust_IA[0];
 	pm->fb_current_B = pm->adjust_IB[1] * fb->current_B + pm->adjust_IB[0];
@@ -991,36 +996,88 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	/* Get DC link voltage.
 	 * */
 	U = pm->adjust_US[1] * fb->voltage_U + pm->adjust_US[0];
-	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP;
+	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP_U;
 
 	if (PM_CONFIG_VM(pm) == PM_ENABLED) {
 
-		/* Extract the actual terminal voltages from measurements.
-		 * */
-		pm->vm_A = pm->vm_FIR_A[1] * pm->fb_voltage_A;
-		pm->vm_B = pm->vm_FIR_B[1] * pm->fb_voltage_B;
-		pm->vm_C = pm->vm_FIR_C[1] * pm->fb_voltage_C;
+		vA = pm->vm_FIR_A[1] * pm->fb_voltage_A;
+		vB = pm->vm_FIR_B[1] * pm->fb_voltage_B;
+		vC = pm->vm_FIR_C[1] * pm->fb_voltage_C;
 
+		/* Get terminal voltages.
+		 * */
 		pm->fb_voltage_A = pm->adjust_UA[1] * fb->voltage_A + pm->adjust_UA[0];
 		pm->fb_voltage_B = pm->adjust_UB[1] * fb->voltage_B + pm->adjust_UB[0];
 		pm->fb_voltage_C = pm->adjust_UC[1] * fb->voltage_C + pm->adjust_UC[0];
 
-		pm->vm_A += pm->vm_FIR_A[0] * pm->fb_voltage_A + pm->vm_FIR_A[2];
-		pm->vm_B += pm->vm_FIR_B[0] * pm->fb_voltage_B + pm->vm_FIR_B[2];
-		pm->vm_C += pm->vm_FIR_C[0] * pm->fb_voltage_C + pm->vm_FIR_C[2];
+		if (pm->vm_FIR_A[0] != 0.f && (pm->vsi_voltage_ZONE & 0x88UL) == 0) {
 
-		pm->vm_A = (pm->vsi_voltage_ZONE & 0x10UL) ? pm->vm_A : 0.f;
-		pm->vm_B = (pm->vsi_voltage_ZONE & 0x20UL) ? pm->vm_B : 0.f;
-		pm->vm_C = (pm->vsi_voltage_ZONE & 0x40UL) ? pm->vm_C : 0.f;
+			/* We extract actual terminal voltages using FIR filter.
+			 * */
+
+			if (pm->vsi_voltage_ZONE & 0x10UL) {
+
+				vA += pm->vm_FIR_A[0] * pm->fb_voltage_A + pm->vm_FIR_A[2];
+			}
+			else {
+				vA = 0.f;
+			}
+
+			if (pm->vsi_voltage_ZONE & 0x20UL) {
+
+				vB += pm->vm_FIR_B[0] * pm->fb_voltage_B + pm->vm_FIR_B[2];
+			}
+			else {
+				vB = 0.f;
+			}
+
+			if (pm->vsi_voltage_ZONE & 0x40UL) {
+
+				vC += pm->vm_FIR_C[0] * pm->fb_voltage_C + pm->vm_FIR_C[2];
+			}
+			else {
+				vC = 0.f;
+			}
+
+			pm->vm_A = vA;
+			pm->vm_B = vB;
+			pm->vm_C = vC;
+
+			if (PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) {
+
+				Q = (1.f / 3.f) * (vA + vB + vC);
+				vA = vA - Q;
+				vB = vB - Q;
+
+				pm->vm_DX = vA;
+				pm->vm_DY = .57735027f * vA + 1.1547005f * vB;
+			}
+			else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
+
+				vA = vA - vC;
+				vB = vB - vC;
+
+				pm->vm_DX = vA;
+				pm->vm_DY = vB;
+			}
+		}
+		else {
+			pm->vm_DX = pm->vsi_DX;
+			pm->vm_DY = pm->vsi_DY;
+		}
+	}
+	else {
+		pm->vm_DX = pm->vsi_DX;
+		pm->vm_DY = pm->vsi_DY;
 	}
 
-	/* Main FSM.
+	/* Main FSM is used to execute external commands.
 	 * */
 	pm_FSM(pm);
 
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
-		/* Observer FSM.
+		/* The observer FSM.
 		 * */
 		pm_lu_FSM(pm);
 
@@ -1036,6 +1093,8 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				pm_speed_control(pm);
 			}
 
+			/* Current loop is always enabled.
+			 * */
 			pm_current_control(pm);
 		}
 

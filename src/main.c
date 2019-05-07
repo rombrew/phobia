@@ -115,11 +115,11 @@ void task_TERM(void *pData)
 			 * */
 			if (pm.const_lpf_U < ap.batt_voltage_low) {
 
-				pm.i_watt_derated = ap.batt_derated;
+				pm.watt_derated = ap.batt_derated;
 			}
 			else if (pm.const_lpf_U > (ap.batt_voltage_low + ap.batt_hysteresis)) {
 
-				pm.i_watt_derated = PM_UNRESTRICTED;
+				pm.watt_derated = PM_UNRESTRICTED;
 			}
 		}
 	}
@@ -409,7 +409,7 @@ void ADC_IRQ()
 
 	if (hal.HALL_mode == HALL_SENSOR) {
 
-		fb.hall_code = GPIO_get_HALL();
+		fb.hall_ABC = GPIO_get_HALL();
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {

@@ -47,7 +47,7 @@ enum {
 	PM_STATE_IDLE				= 0,
 	PM_STATE_ZERO_DRIFT,
 	PM_STATE_SELF_TEST_POWER_STAGE,
-	PM_STATE_SELF_TEST_SAMPLING_ACCURACY,
+	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_STANDARD_VOLTAGE,
 	PM_STATE_STANDARD_CURRENT,
 	PM_STATE_ADJUST_VOLTAGE,
@@ -85,8 +85,7 @@ typedef struct {
 	float		voltage_B;
 	float		voltage_C;
 
-	int		hall_code;
-	float		sensor;
+	int		hall_ABC;
 }
 pmfb_t;
 
@@ -139,7 +138,7 @@ typedef struct {
 	float		fb_voltage_A;
 	float		fb_voltage_B;
 	float		fb_voltage_C;
-	int		fb_hall_code;
+	int		fb_hall_ABC;
 
 	float		probe_fb_X;
 	float		probe_fb_Y;
@@ -175,11 +174,6 @@ typedef struct {
 	float		vsi_Y;
 	float		vsi_DX;
 	float		vsi_DY;
-	float		vsi_lpf_D;
-	float		vsi_lpf_Q;
-	float		vsi_lpf_watt;
-	float		vsi_gain_LP;
-	float		vsi_gain_LW;
 
 	float		vm_maximal;
 	float		vm_A;
@@ -188,8 +182,8 @@ typedef struct {
 	float		vm_FIR_A[3];
 	float		vm_FIR_B[3];
 	float		vm_FIR_C[3];
-	float		vm_residue_X;
-	float		vm_residue_Y;
+	float		vm_DX;
+	float		vm_DY;
 
 	float		lu_X[5];
 	int		lu_mode;
@@ -199,22 +193,28 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_accel;
 
-	float		flux_X[5];
-	float		flux_drift_Q;
 	float		flux_residue_D;
 	float		flux_residue_Q;
 	float		flux_residue_lpf;
-	float		flux_gain_LP;
+	float		flux_X[5];
+	float		flux_drift_Q;
+	float		flux_bemf_unlock;
+	float		flux_bemf_lock;
+	float		flux_bemf_belief;
+	float		flux_bemf_reject;
+	float		flux_gain_LP_E;
 	float		flux_gain_DA;
 	float		flux_gain_QA;
 	float		flux_gain_DP;
 	float		flux_gain_DS;
 	float		flux_gain_QS;
 	float		flux_gain_QZ;
-	float		flux_bemf_unlock;
-	float		flux_bemf_lock;
-	float		flux_bemf_drift;
-	float		flux_bemf_reject;
+
+	float		adapt_lpf_R;
+	float		adapt_current_belief;
+	float		adapt_R_lower;
+	float		adapt_R_upper;
+	float		adapt_gain_LP_T;
 
 	float		hfi_X[5];
 	float		hfi_freq_hz;
@@ -229,7 +229,7 @@ typedef struct {
 	float		hall_maximal;
 
 	float		const_lpf_U;
-	float		const_gain_LP;
+	float		const_gain_LP_U;
 	float		const_E;
 	float		const_R;
 	float		const_Ld;
@@ -239,9 +239,6 @@ typedef struct {
 
 	float		i_maximal;
 	float		i_derated;
-	float		i_watt_maximal;
-	float		i_watt_reverse;
-	float		i_watt_derated;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
@@ -251,13 +248,27 @@ typedef struct {
 	float		i_gain_PQ;
 	float		i_gain_IQ;
 
+	float		watt_maximal;
+	float		watt_derated;
+	float		watt_reverse;
+	float		watt_lpf_D;
+	float		watt_lpf_Q;
+	float		watt_lpf_VA;
+	float		watt_gain_LP_V;
+	float		watt_gain_LP_P;
+
+	float		lpfu_maximal;
+	float		lpfu_integral;
+	float		lpfu_gain_PU;
+	float		lpfu_gain_LP_Q;
+
 	float		s_maximal;
 	float		s_setpoint;
 	float		s_accel;
 	float		s_track;
 	float		s_integral;
 	float		s_gain_P;
-	float		s_gain_I;
+	float		s_gain_LP_I;
 
 	float		x_setpoint_DQ[2];
 	int		x_setpoint_revol;
@@ -265,7 +276,7 @@ typedef struct {
 	int		x_lu_revol;
 	float		x_near_distance;
 	float		x_gain_P;
-	float		x_gain_near_P;
+	float		x_gain_NP;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);
@@ -275,7 +286,6 @@ pmc_t;
 void pm_default(pmc_t *pm);
 
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
-void pm_voltage_residue(pmc_t *pm);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);
