@@ -4,8 +4,14 @@ This page describes the configuration of RC servo pulse width input interface.
 
 ## Hardware
 
-The signal is fed to PPM pin. It is 5v-tolerant. You can also use +5v output
-and GND.
+The pulse signal is fed to PPM pin that is 5v-tolerant.
+
+	        +-----------------< +5v
+	        |   +-------------< pulse
+	        |   |       +-----< GND
+	        |   |       |
+	+-------|---|---|---|--------------------------+
+	|      +5v PPM SDA GND                         |
 
 ## Configuration
 
@@ -23,30 +29,30 @@ pulse parameters.
 Select the pulse width range in which you want to work. Put this range to a PPM
 configuration.
 
-	# reg ap.ppm_pulse_range[0] <minimal>
-	# reg ap.ppm_pulse_range[1] <maximal>
+	# reg ap.ppm_pulse_range[0] <us>
+	# reg ap.ppm_pulse_range[1] <us>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the speed control is selected as a percentage
-of maximal speed. There is a variable **pm.s_setpoint_pc**.
+of maximal no load speed. There is a variable **pm.s_setpoint_pc**.
 
 	# reg ap.ppm_reg_ID <reg>
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.
 
-	# reg ap.ppm_control_range[0] <minimal>
-	# reg ap.ppm_control_range[1] <maximal>
+	# reg ap.ppm_control_range[0] <x>
+	# reg ap.ppm_control_range[1] <x>
 
-Also select the safe range which means an area in which the motor can start.
+Also select the startup range which means an area in which the motor can start.
 This is necessary to avoid an unexpected start. So to start the motor you will
 need to apply a control that motor is not dangerous (low speed) and only then
 increase control signal.
 
-	# reg ap.ppm_safe_range[0] <minimal>
-	# reg ap.ppm_safe_range[1] <maximal>
+	# reg ap.ppm_startup_range[0] <x>
+	# reg ap.ppm_startup_range[1] <x>
 
-When you change the configuration we recommend disconnect pulse signal for
+When you change the configuration we recommend to disconnect pulse signal for
 safety.
 
 ## Precision
@@ -57,9 +63,13 @@ can be captured.
 
 	# reg hal.PPM_timebase <hz>
 
-The minimum frequency is determined from the expression.
+The minimum frequency is determined from the expression. Default timebase
+allows you to capture pulses from 31 Hz.
 
 	        timebase
 	Fmin = ----------
 	         65536
+
+Maximal timebase allowed is 84000000 Hz that gives a resolution about 12 ns
+with 1282 Hz minimal pulse frequency.
 

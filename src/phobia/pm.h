@@ -8,7 +8,7 @@
 #define PM_EMAX(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? .57735027f : .70710678f)
 #define PM_KWAT(pm)	((PM_CONFIG_ABC(pm) == PM_ABC_THREE_PHASE) ? 1.5f : 1.f)
 
-#define PM_UNRESTRICTED				1E+35f
+#define PM_INFINITY				1E+33f
 #define PM_SFI(s)				#s
 
 enum {
@@ -54,7 +54,7 @@ enum {
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
-	PM_STATE_LU_INITIATE,
+	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
@@ -219,6 +219,7 @@ typedef struct {
 	float		hfi_X[5];
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
+	float		hfi_derated;
 	float		hfi_wave[2];
 	float		hfi_flux;
 	float		hfi_gain_P;
@@ -249,8 +250,11 @@ typedef struct {
 	float		i_gain_IQ;
 
 	float		watt_maximal;
-	float		watt_derated;
+	float		watt_derated_1;
+	float		watt_derated_2;
 	float		watt_reverse;
+	float		watt_tolerance;
+	int		watt_locked_1;
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_lpf_VA;

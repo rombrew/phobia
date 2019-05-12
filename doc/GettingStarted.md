@@ -18,9 +18,9 @@ sometimes cross the border of quality in favor of PCB size.
 
 There is two parts of software:
 
-1. Numerical BLDC model of BLDC. The model enables us to develop control code
-   in fast cycle without hardware tests. It is complete enough to take into
-   account all of motor parameters.
+1. Numerical model of VSI with BLDC connected. The model enables us to develop
+   control code in fast cycle without hardware tests. It is complete enough to
+   take into account all of motor parameters.
 2. Firmware for MCU.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
@@ -47,6 +47,7 @@ parity.
 [Motor Identification](MotorIdentification.md)  
 [Motor Tuning](MotorTuning.md)  
 [Input Pulse Width](InputPulseWidth.md)  
+[Input Analog](InputAnalog.md)  
 [Trouble Shooting](TroubleShooting.md)  
 
 [Porting Guide](PortingGuide.md)  

@@ -54,6 +54,7 @@ PCB design source files.
 * Terminal voltage sensing to reduce the effect of Dead-Time (**EXPERIMENTAL**).
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to force rotor turn.
+	* Freewheeling mode as a special case of forced control.
 	* High frequency injection (HFI) based on magnetic saliency.
 	* Hall Sensors or Quadrature Encoder (**TODO**).
 * Control loops:
@@ -64,11 +65,12 @@ PCB design source files.
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).
 	* Power consumption and regeneration.
-	* DC link voltage (**EXPERIMENTAL**).
+	* DC link overvoltage (**EXPERIMENTAL**).
 	* Maximal speed and acceleration.
 * Control inputs:
 	* CAN bus (**TODO**).
 	* RC servo pulse width.
+	* STEP/DIR (**TODO**).
 	* Analog (**EXPERIMENTAL**).
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
@@ -95,8 +97,8 @@ a specific motor.
 
 There are a few videos that show the operation of the prototypes (may be outdated).
 
+[![PMC](https://i.ytimg.com/vi/ANp_5zZkh48/default.jpg)](https://www.youtube.com/watch?v=ANp_5zZkh48)
 [![PMC](https://i.ytimg.com/vi/IM0k0_boXc4/default.jpg)](https://www.youtube.com/watch?v=IM0k0_boXc4)
-[![PMC](https://i.ytimg.com/vi/n_E2ThFQvD4/default.jpg)](https://www.youtube.com/watch?v=n_E2ThFQvD4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
 
 Read more in [Getting Started](doc/GettingStarted.md).

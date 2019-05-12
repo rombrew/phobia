@@ -50,7 +50,7 @@ This number connects the electrical speed with the mechanical. We believe you
 are able to identify Zp simply by counting the number of magnets on the rotor
 then divide it by 2. This is the most famous method.
 
-	# reg pm.const_Zp <n>
+	# reg pm.const_Zp <N>
 
 If access to the motor is restricted and to count the magnets is impossible
 then just leave a value 1. Instead of mechanical speed you will see electrical
@@ -77,18 +77,18 @@ This parameter also known as Kv rating. Internal representation is E that
 linked with Kv by following equation.
 
 	                 60
-	E = -----------------------------
-	     2 * PI * sqrt(3.) * Kv * Zp
+	E = ----------------------------
+	     2 * PI * sqrt(3) * Kv * Zp
 
 To identify E you have to run in closed loop. Also the rotor should rotate at
 significant speed. We do a forced spinup to reach this condition.
 
 	# pm_probe_spinup
 
-To get more accuracy increase the speed and request E probe again. Do not load
-the motor.
+To get more accurate estimate run the motor at high speed (10v BEMF is enough)
+and request E probe manually. Do not load the motor.
 
-	# reg pm.s_setpoint_pc <\%>
+	# reg pm.s_setpoint_rpm <rpm>
 	# reg pm.fsm_state 12
 
 ## Moment of inertia

@@ -221,15 +221,29 @@ SH_DEF(pm_probe_spinup)
 	}
 
 	do {
-		pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+		pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
+		xWait = (TickType_t) (pm.probe_speed_low / pm.forced_accel * 1000.f);
+		xWait += (TickType_t) 100;
+
 		pm.s_setpoint = pm.probe_speed_low;
 
-		xWait = (TickType_t) (pm.s_setpoint / pm.forced_accel * 1000.f);
-		xWait += (TickType_t) 100;
+		vTaskDelay(xWait);
+
+		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_CONST_E_KV]);
+
+		xWait = (TickType_t) (pm.probe_speed_ramp / pm.s_accel * 1000.f);
+		xWait = (TickType_t) 100;
+
+		pm.s_setpoint = pm.probe_speed_ramp;
 
 		vTaskDelay(xWait);
 
@@ -243,5 +257,6 @@ SH_DEF(pm_probe_spinup)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
+	pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
 }
 

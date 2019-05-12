@@ -9,7 +9,9 @@
 #include "shell.h"
 
 /* This application allows you to control the speed using two push-buttons.
- * [A] to START and switch the speed. [B] to STOP.
+ * [A]		- START or switch the speed.
+ * [B]		- STOP.
+ * [B]+[A]	- START in reverse.
  * */
 
 void ap_PUSH(void *pData)
@@ -33,7 +35,7 @@ void ap_PUSH(void *pData)
 
 #define rpm_table_MAX		(sizeof(rpm_table) / sizeof(rpm_table[0]))
 
-	int			N, rev;
+	int			N = 0, reverse = 0;
 	float			rpm;
 
 	GPIO_set_mode_INPUT(gpio_A);
@@ -61,16 +63,16 @@ void ap_PUSH(void *pData)
 			if (pm.lu_mode == PM_LU_DISABLED) {
 
 				N = 0;
-				rev = (pushed_B == 0) ? 1 : 0;
+				reverse = (pushed_B == 0) ? -1 : 1;
 
-				pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+				pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
 				pm_wait_for_IDLE();
 			}
 			else {
 				N = (N < rpm_table_MAX - 1) ? N + 1 : 0;
 			}
 
-			rpm = (rev != 0) ? - rpm_table[N] : rpm_table[N];
+			rpm = rpm_table[N] * (float) reverse;
 			reg_SET(ID_PM_S_SETPOINT_RPM, &rpm);
 		}
 		else if (pushed_A == 0 && value_A != 0) {
@@ -85,6 +87,8 @@ void ap_PUSH(void *pData)
 			pushed_B = 0;
 
 			if (pm.lu_mode != PM_LU_DISABLED) {
+
+				reverse = 0;
 
 				pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
 				pm_wait_for_IDLE();

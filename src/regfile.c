@@ -94,6 +94,19 @@ reg_proc_rpm_pc(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
+reg_proc_IQ_pc(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->f * 100.f / pm.i_maximal;
+	}
+	else if (rval != NULL) {
+
+		reg->link->f = (*rval) * pm.i_maximal / 100.f;
+	}
+}
+
+static void
 reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 {
         if (lval != NULL) {
@@ -123,7 +136,7 @@ reg_proc_clamp(const reg_t *reg, float *lval, const float *rval)
 
 			adjust = (pm.adjust_IA[1] < pm.adjust_IB[1])
 				? pm.adjust_IA[1] : pm.adjust_IB[1];
-			adjust = (adjust > .5f && adjust < 1.5f) ? adjust : 1.f;
+			adjust = (adjust != 0.f) ? adjust : 1.f;
 
 			reg->link->f = (float) (int) (maximal * hal.ADC_const.GA * adjust);
 		}
@@ -132,6 +145,19 @@ reg_proc_clamp(const reg_t *reg, float *lval, const float *rval)
 			reg->link->f = *rval;
 		}
 	}
+}
+
+static void
+reg_proc_celsius(const reg_t *reg, float *lval, const float *rval)
+{
+        if (lval != NULL) {
+
+                *lval = 25.f + (1.f / 3.8E-3f) * (reg->link->f / pm.const_R);
+        }
+        else if (rval != NULL) {
+
+                reg->link->f = 3.8E-3f * ((*rval) - 25.f) * pm.const_R;
+        }
 }
 
 static void
@@ -333,7 +359,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_ADJUST_CURRENT);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_R);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_L);
-				TEXT_ITEM(PM_STATE_LU_INITIATE);
+				TEXT_ITEM(PM_STATE_LU_STARTUP);
 				TEXT_ITEM(PM_STATE_LU_SHUTDOWN);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_E);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
@@ -387,8 +413,8 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.ppm_pulse_range[1],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_safe_range[0],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_safe_range[1],,		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_startup_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_startup_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.analog_reg_ID,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ratio,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
@@ -397,8 +423,10 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.analog_voltage_range[1],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_safe_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_safe_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_reverse_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_reverse_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_startup_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_startup_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.ntc_PCB.r_balance,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ntc_PCB.r_ntc_0,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -418,10 +446,10 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_EXT,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_EXT_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_PCB_FAN,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_hysteresis,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_gap,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.batt_voltage_low,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.batt_hysteresis,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.batt_gap,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.batt_derated,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.pull_g,,			"g",	"%1f",	REG_READ_ONLY, NULL, NULL),
@@ -444,7 +472,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_LOOP,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
 	REG_DEF(pm.fsm_state,,		"",	"%i",	0, &reg_proc_fsm_state, &reg_format_enum),
-	REG_DEF(pm.fsm_phase,,			"",	"%i",	0, NULL, NULL),
+	REG_DEF(pm.fsm_phase,,		"",	"%i",	0, NULL, NULL),
 
 	REG_DEF(pm.tm_transient_slow,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_transient_fast,, 		"s",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -534,6 +562,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_accel,,	"rad/s/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_accel, _rpm,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 
+	REG_DEF(pm.flux_residue_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_residue_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_residue_lpf,,		"",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_X[0],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_X[1],,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_X[2],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -541,9 +572,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_X[4],,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_X[4], _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.flux_drift_Q,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residue_D,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residue_Q,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_residue_lpf,,		"",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_bemf_unlock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_belief,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_bemf_reject,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LP_E,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_DA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QA,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -551,10 +583,15 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_DS,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QS,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_QZ,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_unlock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_lock,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_drift,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_bemf_reject,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.adapt_lpf_R,,		"Ohm",	"%4e",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.adapt_lpf_R, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
+	REG_DEF(pm.adapt_current_belief,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.adapt_R_lower,,		"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.adapt_R_upper,,		"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.adapt_R_lower, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
+	REG_DEF(pm.adapt_R_upper, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
+	REG_DEF(pm.adapt_gain_LP_T,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_swing_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -577,13 +614,15 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_derated,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_setpoint_D,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_Q,,		"A",	"%3f",	0, NULL, NULL),
+	REG_DEF(pm.i_setpoint_Q, _pc,		"%",	"%2f",	0, &reg_proc_IQ_pc, NULL),
 	REG_DEF(pm.i_gain_PD,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_ID,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_PQ,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_IQ,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.watt_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_derated,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_derated_1,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.watt_derated_2,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),

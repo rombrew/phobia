@@ -189,8 +189,7 @@ pm_fsm_current_probe(pmc_t *pm)
 		pm->probe_fb_X = pm->fb_current_A;
 		pm->probe_fb_Y = .57735027f * pm->fb_current_A + 1.1547005f * pm->fb_current_B;
 	}
-	else if (PM_CONFIG_ABC(pm) == PM_ABC_TWO_PHASE) {
-
+	else {
 		pm->probe_fb_X = pm->fb_current_A;
 		pm->probe_fb_Y = pm->fb_current_B;
 	}
@@ -1174,7 +1173,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_lu_initiate(pmc_t *pm)
+pm_fsm_state_lu_startup(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
 
@@ -1202,13 +1201,14 @@ pm_fsm_state_lu_initiate(pmc_t *pm)
 				pm->hfi_wave[1] = 0.f;
 				pm->hfi_flux = 0.f;
 
-				pm->i_derated = PM_UNRESTRICTED;
+				pm->i_derated = PM_INFINITY;
 				pm->i_setpoint_D = 0.f;
 				pm->i_setpoint_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
-				pm->watt_derated = PM_UNRESTRICTED;
+				pm->watt_derated_1 = PM_INFINITY;
+				pm->watt_derated_2 = PM_INFINITY;
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_VA = 0.f;
@@ -1418,8 +1418,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_l(pm);
 			break;
 
-		case PM_STATE_LU_INITIATE:
-			pm_fsm_state_lu_initiate(pm);
+		case PM_STATE_LU_STARTUP:
+			pm_fsm_state_lu_startup(pm);
 			break;
 
 		case PM_STATE_LU_SHUTDOWN:
@@ -1453,7 +1453,7 @@ void pm_fsm_req(pmc_t *pm, int req)
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
 		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_LU_INITIATE:
+		case PM_STATE_LU_STARTUP:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;

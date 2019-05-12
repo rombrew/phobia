@@ -14,14 +14,24 @@
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
 #define GPIO_LED			XGPIO_DEF2('C', 12)
 
-#define GPIO_HALL_A			XGPIO_DEF2('C', 6)
-#define GPIO_HALL_B			XGPIO_DEF2('C', 7)
-#define GPIO_HALL_C			XGPIO_DEF2('C', 8)
+#define GPIO_SWDIO			XGPIO_DEF4('A', 13)
+#define GPIO_SWCLK			XGPIO_DEF4('A', 14)
+
+#define GPIO_TIM3_CH1			XGPIO_DEF4('C', 6, 0, 2)
+#define GPIO_TIM3_CH2			XGPIO_DEF4('C', 7, 0, 2)
+#define GPIO_TIM3_CH3			XGPIO_DEF4('C', 8, 0, 2)
+
+#define GPIO_HALL_A			GPIO_TIM3_CH1
+#define GPIO_HALL_B			GPIO_TIM3_CH2
+#define GPIO_HALL_C			GPIO_TIM3_CH3
 
 #define GPIO_SPI_NSS			XGPIO_DEF4('A', 4, 4, 5)
 #define GPIO_SPI_SCK			XGPIO_DEF4('A', 5, 5, 5)
 #define GPIO_SPI_MISO			XGPIO_DEF4('A', 6, 6, 5)
 #define GPIO_SPI_MOSI			XGPIO_DEF4('A', 7, 7, 5)
+
+#define GPIO_DAC_1			GPIO_SPI_NSS
+#define GPIO_DAC_2			GPIO_SPI_SCK
 
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)

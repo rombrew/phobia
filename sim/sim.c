@@ -219,10 +219,10 @@ sim_Script(FILE *fdTel)
 		printf("DQ %.2f (g)\n", pm.probe_rotation_DQ);
 	}
 
-	pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+	pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
 	sim_F(fdTel, 0., 1);
 
-	pm.s_setpoint = 10.f;
+	pm.s_setpoint = 10.f * m.Zp * M_PI / 30.;
 	sim_F(fdTel, 1., 0);
 
 	pm.s_setpoint = 475.f;
@@ -239,18 +239,19 @@ sim_Script(FILE *fdTel)
 	pm.s_setpoint = 475.f;
 	sim_F(fdTel, 1., 0);
 
-	m.X[4] = 50.;
+	//m.X[4] = 50.;
 
 	pm.s_setpoint = 2875.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 10.f;
+	pm.watt_derated_2 = 0.f;
+	//pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 5.f;
+	pm.s_setpoint = -5.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 10.f;
+	pm.s_setpoint = -10.f;
 	sim_F(fdTel, 1., 0);
 
 	pm.s_setpoint = 475.f;

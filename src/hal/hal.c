@@ -132,6 +132,8 @@ clock_startup()
 		/* Define that HSE is disabled.
 		 * */
 		hal.HSE_crystal_clock = 0;
+
+		log_TRACE("HSE failed\r\n");
 	}
 
 	PLLP = 2;
@@ -195,7 +197,7 @@ periph_startup()
 	 * */
 	if (RCC->CSR & RCC_CSR_WDGRSTF) {
 
-		log_TRACE("RESET: IWDG\r\n");
+		log_TRACE("RESET: WD\r\n");
 	}
 
 	RCC->CSR |= RCC_CSR_RMVF;

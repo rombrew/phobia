@@ -16,7 +16,7 @@ call this command.
    be any part of the register name.
 3. If only one register matches the specified pattern, the second parameter
    specifies its new value.
-4. You can specify a reqister number instead of its name to refer to exactly
+4. You can specify a reqister number instead of its name to refer the exactly
    one register.
 
 Something like that.
@@ -26,7 +26,7 @@ Something like that.
 
 Almost all of the configuration is to change the value of the registers.
 
-You can also export configuration registers values in plain form using a
+You can also export configuration registers values in plain text using a
 **reg_export** command. The output of this command can be fed back into the CLI
 to restore the configuration.
 
@@ -37,11 +37,11 @@ automatically at startup.
 Note the different types of registers. There are registers intended for saving
 as configuration. Other registers provide information to read only. Virtual
 registers provide a different way to access other registers (usually this is
-taking a value in other units). There are also registers-pointers that are
-required to configure data transfer between different subsystems.
+taking a value in other units). There are also link registers that are required
+to configure data transfer between different subsystems.
 
-Each register can have its own write and read handlers, thus performing complex
-non-obvious actions during access to it.
+Each register can have its own write and read handlers thus performing a
+complex non obvious actions during access to it.
 
 ## Basic commands
 

@@ -63,8 +63,8 @@ void task_TERM(void *pData)
 
 	xWake = xTaskGetTickCount();
 
-	i_temp_PCB = PM_UNRESTRICTED;
-	i_temp_EXT = PM_UNRESTRICTED;
+	i_temp_PCB = PM_INFINITY;
+	i_temp_EXT = PM_INFINITY;
 
 	do {
 		/* 10 Hz.
@@ -72,32 +72,31 @@ void task_TERM(void *pData)
 		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
 		ap.temp_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-		/*ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));*/
-		ap.temp_EXT = 0.f;
+		ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
 		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
 
 		if (pm.lu_mode != PM_LU_DISABLED) {
 
-			/* Derate current if PCB is overheat.
+			/* Derate DQ current if PCB is overheat.
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB) {
 
 				i_temp_PCB = ap.heat_PCB_derated;
 			}
-			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_hysteresis)) {
+			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_gap)) {
 
-				i_temp_PCB = PM_UNRESTRICTED;
+				i_temp_PCB = PM_INFINITY;
 			}
 
-			/* Derate current if EXT is overheat.
+			/* Derate DQ current if EXT is overheat.
 			 * */
 			if (ap.temp_EXT > ap.heat_EXT) {
 
 				i_temp_EXT = ap.heat_EXT_derated;
 			}
-			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_hysteresis)) {
+			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_gap)) {
 
-				i_temp_EXT = PM_UNRESTRICTED;
+				i_temp_EXT = PM_INFINITY;
 			}
 
 			pm.i_derated = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
@@ -106,20 +105,22 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB_FAN) {
 
+				/* TODO */
 			}
-			else if (ap.temp_PCB < (ap.heat_PCB_FAN - ap.heat_hysteresis)) {
+			else if (ap.temp_PCB < (ap.heat_PCB_FAN - ap.heat_gap)) {
 
+				/* TODO */
 			}
 
-			/* Derate power consumption if battery voltage is low.
+			/* Derate POWER consumption if battery voltage is low.
 			 * */
 			if (pm.const_lpf_U < ap.batt_voltage_low) {
 
-				pm.watt_derated = ap.batt_derated;
+				pm.watt_derated_1 = ap.batt_derated;
 			}
-			else if (pm.const_lpf_U > (ap.batt_voltage_low + ap.batt_hysteresis)) {
+			else if (pm.const_lpf_U > (ap.batt_voltage_low + ap.batt_gap)) {
 
-				pm.watt_derated = PM_UNRESTRICTED;
+				pm.watt_derated_1 = PM_INFINITY;
 			}
 		}
 	}
@@ -141,7 +142,13 @@ void task_ANALOG(void *pData)
 	TickType_t		xWake, xTime;
 	float			voltage, control, range, scaled;
 
+	int			gpio_REVERSE = GPIO_I2C_PPM;
+	int			gpio_BRAKE = GPIO_I2C_SDA;
+
 	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
+
+	GPIO_set_mode_INPUT(gpio_REVERSE);
+	GPIO_set_mode_INPUT(gpio_BRAKE);
 
 	xWake = xTaskGetTickCount();
 	xTime = 0;
@@ -157,32 +164,82 @@ void task_ANALOG(void *pData)
 
 			range = ap.analog_voltage_range[1] - ap.analog_voltage_range[0];
 			scaled = (voltage - ap.analog_voltage_range[0]) / range;
-			scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-			range = ap.analog_control_range[1] - ap.analog_control_range[0];
-			control = ap.analog_control_range[0] + range * scaled;
+			if (scaled < 0.f || scaled > 1.f) {
 
-			reg_SET(ap.analog_reg_ID, &control);
+				/* Derate POWER to null if voltage is out of range.
+				 * */
+				pm.watt_derated_2 = 0.f;
 
-			if (		control > ap.analog_safe_range[0]
-					&& control < ap.analog_safe_range[1]) {
+				/* Then shutdown by timeout.
+				 * */
+				if (ap.analog_locked == 1 && ap.analog_timeout != 0.f) {
 
-				if (xTime < (TickType_t) (ap.analog_timeout * 1000.f)) {
+					if (xTime > (TickType_t) (ap.analog_timeout * 1000.f)) {
 
-					pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+						pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+						ap.analog_locked = 0;
+					}
+					else {
+						xTime += (TickType_t) 10;
+					}
 				}
-				else if (ap.analog_timeout != 0.f) {
-
-					pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
-				}
-
-				xTime += (TickType_t) 10;
 			}
 			else {
 				xTime = (TickType_t) 0;
+
+				if (GPIO_get_VALUE(gpio_BRAKE) == 0) {
+
+					/* There can only be reverse POWER.
+					 * */
+					pm.watt_derated_2 = 0.f;
+
+					/* Use reverse control range.
+					 * */
+					range = ap.analog_reverse_range[1]
+						- ap.analog_reverse_range[0];
+					control = ap.analog_reverse_range[0]
+						+ range * scaled;
+				}
+				else {
+					/* Remove POWER restriction.
+					 * */
+					pm.watt_derated_2 = PM_INFINITY;
+
+					if (GPIO_get_VALUE(gpio_REVERSE) == 0) {
+
+						range = ap.analog_reverse_range[1]
+							- ap.analog_reverse_range[0];
+						control = ap.analog_reverse_range[0]
+							+ range * scaled;
+					}
+					else {
+						/* Normal operation in forward
+						 * control range.
+						 * */
+						range = ap.analog_control_range[1]
+							- ap.analog_control_range[0];
+						control = ap.analog_control_range[0]
+							+ range * scaled;
+					}
+				}
+
+				reg_SET(ap.analog_reg_ID, &control);
+
+				if (pm.lu_mode == PM_LU_DISABLED) {
+
+					if (		control > ap.analog_startup_range[0]
+							&& control < ap.analog_startup_range[1]) {
+
+						pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+						ap.analog_locked = 1;
+					}
+				}
 			}
 		}
 		else {
+			/* Relax as control register is not set.
+			 * */
 			vTaskDelayUntil(&xWake, (TickType_t) 100);
 		}
 	}
@@ -232,8 +289,8 @@ void task_INIT(void *pData)
 		const float	vm_D = (vm_R1 * vm_R2 + vm_R2 * vm_R3 + vm_R1 * vm_R3);
 		*/
 
-		const float	ag_R1 = 11000.f;
-		const float	ag_R2 = 11000.f;
+		const float	ag_R1 = 10000.f;
+		const float	ag_R2 = 10000.f;
 
 		/* Default.
 		 * */
@@ -242,7 +299,7 @@ void task_INIT(void *pData)
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_shunt_resistance = 340E-6f;
+		hal.ADC_shunt_resistance = 240E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -263,18 +320,20 @@ void task_INIT(void *pData)
 		ap.ppm_pulse_range[1] = 2000.f;
 		ap.ppm_control_range[0] = 0.f;
 		ap.ppm_control_range[1] = 100.f;
-		ap.ppm_safe_range[0] = -1.f;
-		ap.ppm_safe_range[1] = 1.f;
+		ap.ppm_startup_range[0] = 0.f;
+		ap.ppm_startup_range[1] = 2.f;
 
 		ap.analog_reg_ID = ID_NULL;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
-		ap.analog_timeout = 5.f;
-		ap.analog_voltage_range[0] = 0.f;
-		ap.analog_voltage_range[1] = 5.f;
+		ap.analog_timeout = 2.f;
+		ap.analog_voltage_range[0] = 1.f;
+		ap.analog_voltage_range[1] = 4.f;
 		ap.analog_control_range[0] = 0.f;
 		ap.analog_control_range[1] = 100.f;
-		ap.analog_safe_range[0] = -1.f;
-		ap.analog_safe_range[1] = 1.f;
+		ap.analog_reverse_range[0] = 0.f;
+		ap.analog_reverse_range[1] = - 50.f;
+		ap.analog_startup_range[0] = 0.f;
+		ap.analog_startup_range[1] = 2.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -288,10 +347,10 @@ void task_INIT(void *pData)
 		ap.heat_EXT = 90.f;
 		ap.heat_EXT_derated = 30.f;
 		ap.heat_PCB_FAN = 60.f;
-		ap.heat_hysteresis = 5.f;
+		ap.heat_gap = 5.f;
 
 		ap.batt_voltage_low = 6.0f;
-		ap.batt_hysteresis = 1.f;
+		ap.batt_gap = 1.f;
 		ap.batt_derated = 50.f;
 
 		ap.pull_adjust[0] = 0.f;
@@ -364,10 +423,10 @@ input_PULSE_WIDTH()
 
 				if (pm.lu_mode == PM_LU_DISABLED) {
 
-					if (		control > ap.ppm_safe_range[0]
-							&& control < ap.ppm_safe_range[1]) {
+					if (		control > ap.ppm_startup_range[0]
+							&& control < ap.ppm_startup_range[1]) {
 
-						pm_fsm_req(&pm, PM_STATE_LU_INITIATE);
+						pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
 						ap.ppm_locked = 1;
 					}
 				}

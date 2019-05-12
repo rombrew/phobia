@@ -26,16 +26,18 @@ typedef struct {
 	float			ppm_pulse_cached;
 	float			ppm_pulse_range[2];
 	float			ppm_control_range[2];
-	float			ppm_safe_range[2];
+	float			ppm_startup_range[2];
 
 	/* Analog interface.
 	 * */
 	int			analog_reg_ID;
+	int			analog_locked;
 	float			analog_voltage_ratio;
 	float			analog_timeout;
 	float			analog_voltage_range[2];
 	float			analog_control_range[2];
-	float			analog_safe_range[2];
+	float			analog_reverse_range[2];
+	float			analog_startup_range[2];
 
 	/* CPU load.
 	 * */
@@ -61,12 +63,12 @@ typedef struct {
 	float			heat_EXT;
 	float			heat_EXT_derated;
 	float			heat_PCB_FAN;
-	float			heat_hysteresis;
+	float			heat_gap;
 
 	/* Battery voltage.
 	 * */
 	float			batt_voltage_low;
-	float			batt_hysteresis;
+	float			batt_gap;
 	float			batt_derated;
 
 	/* Load cell.

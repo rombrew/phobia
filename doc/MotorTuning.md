@@ -1,7 +1,7 @@
 ## Overview
 
-The PMC has many different settings to adjust the operation of the motor in
-different conditions. We will consider the most important of them.
+The PMC has many different settings to adjust the operation in different
+conditions. We will consider the most important of them.
 
 ## Forced control
 
@@ -28,9 +28,13 @@ control ends.
 	# reg pm.flux_bemf_unlock <volt>
 	# reg pm.flux_bemf_lock <volt>
 
-You can change the observer coefficients but it is a complicated procedure.
+You can change the observer gains but it is a complicated procedure.
 
 	# reg pm.flux_gain
+
+## Resistance adaptation
+
+**TODO**
 
 ## HF injection
 
@@ -52,15 +56,20 @@ You can limit DQ current value. It is the main tool not to burn the motor.
 	# reg pm.i_maximal <amp>
 
 You can limit consumption or regeneration power. Set the limit according to the
-power supply capability.
+power supply capabilities.
 
-	# reg pm.i_watt_maximal <watt>
-	# reg pm.i_watt_reverse <watt>
+	# reg pm.watt_maximal <watt>
+	# reg pm.watt_reverse <watt>
+
+You can limit DC link voltage at regenerative operation. This will derate
+regeneration power in case of overvoltage.
+
+	# reg pm.lpfu_maximal <volt>
 
 Also you can tune PI regulator gains. But usually this is not required as
 default tune is good enough.
 
-	# reg pm.pm_gain
+	# reg pm.i_gain
 
 ## Speed loop
 

@@ -1,9 +1,6 @@
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
 
-#define GPIO_TIM4_CH1			XGPIO_DEF4('B', 6, 0, 2)
-#define GPIO_TIM4_CH2			XGPIO_DEF4('B', 7, 0, 2)
-
 #define CLOCK_TIM4_HZ			(CLOCK_APB1_HZ * 2UL)
 
 typedef struct {

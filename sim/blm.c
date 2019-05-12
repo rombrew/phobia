@@ -98,7 +98,7 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 5E-3;
 	m->M[1] = 0E-3;
-	m->M[2] = 5E-7;
+	m->M[2] = 5E-8;
 	m->M[3] = 0E-3;
 
 	/* ADC conversion time.
