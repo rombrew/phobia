@@ -36,7 +36,6 @@ typedef struct {
 	float			analog_timeout;
 	float			analog_voltage_range[2];
 	float			analog_control_range[2];
-	float			analog_reverse_range[2];
 	float			analog_startup_range[2];
 
 	/* CPU load.

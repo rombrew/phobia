@@ -48,7 +48,7 @@ void vApplicationMallocFailedHook()
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Stack Overflow in \"%s\" task" EOL, pcTaskName);
+	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (unsigned long) xTask);
 
 	hal_system_reset();
 }
@@ -142,13 +142,7 @@ void task_ANALOG(void *pData)
 	TickType_t		xWake, xTime;
 	float			voltage, control, range, scaled;
 
-	int			gpio_REVERSE = GPIO_I2C_PPM;
-	int			gpio_BRAKE = GPIO_I2C_SDA;
-
 	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
-
-	GPIO_set_mode_INPUT(gpio_REVERSE);
-	GPIO_set_mode_INPUT(gpio_BRAKE);
 
 	xWake = xTaskGetTickCount();
 	xTime = 0;
@@ -188,41 +182,13 @@ void task_ANALOG(void *pData)
 			else {
 				xTime = (TickType_t) 0;
 
-				if (GPIO_get_VALUE(gpio_BRAKE) == 0) {
-
-					/* There can only be reverse POWER.
-					 * */
-					pm.watt_derated_2 = 0.f;
-
-					/* Use reverse control range.
-					 * */
-					range = ap.analog_reverse_range[1]
-						- ap.analog_reverse_range[0];
-					control = ap.analog_reverse_range[0]
-						+ range * scaled;
-				}
-				else {
-					/* Remove POWER restriction.
-					 * */
-					pm.watt_derated_2 = PM_INFINITY;
-
-					if (GPIO_get_VALUE(gpio_REVERSE) == 0) {
-
-						range = ap.analog_reverse_range[1]
-							- ap.analog_reverse_range[0];
-						control = ap.analog_reverse_range[0]
-							+ range * scaled;
-					}
-					else {
-						/* Normal operation in forward
-						 * control range.
-						 * */
-						range = ap.analog_control_range[1]
-							- ap.analog_control_range[0];
-						control = ap.analog_control_range[0]
-							+ range * scaled;
-					}
-				}
+				/* Normal operation in forward
+				 * control range.
+				 * */
+				range = ap.analog_control_range[1]
+					- ap.analog_control_range[0];
+				control = ap.analog_control_range[0]
+					+ range * scaled;
 
 				reg_SET(ap.analog_reg_ID, &control);
 
@@ -299,7 +265,7 @@ void task_INIT(void *pData)
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_shunt_resistance = 240E-6f;
+		hal.ADC_shunt_resistance = 170E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -330,8 +296,6 @@ void task_INIT(void *pData)
 		ap.analog_voltage_range[1] = 4.f;
 		ap.analog_control_range[0] = 0.f;
 		ap.analog_control_range[1] = 100.f;
-		ap.analog_reverse_range[0] = 0.f;
-		ap.analog_reverse_range[1] = - 50.f;
 		ap.analog_startup_range[0] = 0.f;
 		ap.analog_startup_range[1] = 2.f;
 

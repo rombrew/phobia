@@ -148,19 +148,6 @@ reg_proc_clamp(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_celsius(const reg_t *reg, float *lval, const float *rval)
-{
-        if (lval != NULL) {
-
-                *lval = 25.f + (1.f / 3.8E-3f) * (reg->link->f / pm.const_R);
-        }
-        else if (rval != NULL) {
-
-                reg->link->f = 3.8E-3f * ((*rval) - 25.f) * pm.const_R;
-        }
-}
-
-static void
 reg_proc_DQ(const reg_t *reg, float *lval, const float *rval)
 {
 	float			*DQ = (void *) reg->link;
@@ -423,8 +410,6 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.analog_voltage_range[1],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_reverse_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_reverse_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_startup_range[0],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_startup_range[1],,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 
@@ -585,12 +570,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_QZ,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.adapt_lpf_R,,		"Ohm",	"%4e",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.adapt_lpf_R, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
 	REG_DEF(pm.adapt_current_belief,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.adapt_R_lower,,		"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.adapt_R_upper,,		"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.adapt_R_lower, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
-	REG_DEF(pm.adapt_R_upper, _C,		"C",	"%1f",	0, &reg_proc_celsius, NULL),
 	REG_DEF(pm.adapt_gain_LP_T,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -630,7 +612,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.watt_gain_LP_V,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_gain_LP_P,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.lpfu_maximal,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.lpfu_maximal,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lpfu_gain_PU,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lpfu_gain_LP_Q,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 

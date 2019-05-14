@@ -46,7 +46,7 @@ void pm_default(pmc_t *pm)
 
 	pm->fault_voltage_tolerance = 2.f;
 	pm->fault_current_tolerance = 2.f;
-	pm->fault_voltage_halt_level = 57.f;
+	pm->fault_voltage_halt_level = 59.f;
 	pm->fault_current_halt_level = 50.f;
 	pm->fault_adjust_tolerance = 1E-1f;
 	pm->fault_flux_residue_maximal = 90.f;
@@ -68,8 +68,8 @@ void pm_default(pmc_t *pm)
 	pm->forced_maximal = 700.f;
 	pm->forced_accel = 500.f;
 
-	pm->flux_bemf_unlock = .1f;
-	pm->flux_bemf_lock = .2f;
+	pm->flux_bemf_unlock = .2f;
+	pm->flux_bemf_lock = .3f;
 	pm->flux_bemf_belief = 1.f;
 	pm->flux_bemf_reject = 11.f;
 	pm->flux_gain_LP_E = 1E-1f;
@@ -92,7 +92,7 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_S = 7E+1f;
 	pm->hfi_gain_F = 2E-3f;
 
-	pm->const_gain_LP_U = 2E-1f;
+	pm->const_gain_LP_U = 5E-1f;
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_Ld = 0.f;

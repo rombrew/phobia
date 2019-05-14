@@ -260,3 +260,29 @@ SH_DEF(pm_probe_spinup)
 	pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
 }
 
+SH_DEF(pm_fsm_startup)
+{
+	do {
+		pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
+}
+
+SH_DEF(pm_fsm_shutdown)
+{
+	do {
+		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
+}
+

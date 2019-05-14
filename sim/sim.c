@@ -241,10 +241,13 @@ sim_Script(FILE *fdTel)
 
 	//m.X[4] = 50.;
 
-	pm.s_setpoint = 2875.f;
-	sim_F(fdTel, 1., 0);
+	pm.s_setpoint = 5875.f;
+	sim_F(fdTel, .4, 0);
 
-	pm.watt_derated_2 = 0.f;
+	m.U = 0.;
+	m.Rs = 2000.;
+
+	//pm.watt_derated_2 = 0.f;
 	//pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1., 0);
 
@@ -255,7 +258,7 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 1., 0);
 
 	pm.s_setpoint = 475.f;
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, 5., 0);
 }
 
 int main(int argc, char *argv[])
