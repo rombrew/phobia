@@ -47,9 +47,9 @@ void ap_PUSH(void *pData)
 	xWake = xTaskGetTickCount();
 
 	do {
-		/* Clock 100 Hz.
+		/* 10 Hz.
 		 * */
-		vTaskDelayUntil(&xWake, (TickType_t) 10);
+		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
 		value_A = GPIO_get_VALUE(gpio_A);
 		value_B = GPIO_get_VALUE(gpio_B);

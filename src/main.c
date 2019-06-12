@@ -72,12 +72,12 @@ void task_TERM(void *pData)
 		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
 		ap.temp_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-		ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
+		ap.temp_EXT = 0;//ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
 		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
 
 		if (pm.lu_mode != PM_LU_DISABLED) {
 
-			/* Derate DQ current if PCB is overheat.
+			/* Derate current if PCB is overheat.
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB) {
 
@@ -88,7 +88,7 @@ void task_TERM(void *pData)
 				i_temp_PCB = PM_INFINITY;
 			}
 
-			/* Derate DQ current if EXT is overheat.
+			/* Derate current if EXT is overheat.
 			 * */
 			if (ap.temp_EXT > ap.heat_EXT) {
 
@@ -99,7 +99,7 @@ void task_TERM(void *pData)
 				i_temp_EXT = PM_INFINITY;
 			}
 
-			pm.i_derated = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
+			pm.i_derated_1 = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
 
 			/* Enable FAN if PCB is overheat.
 			 * */
@@ -156,18 +156,13 @@ void task_ANALOG(void *pData)
 
 			voltage = ADC_get_ANALOG();
 
-			range = ap.analog_voltage_range[1] - ap.analog_voltage_range[0];
-			scaled = (voltage - ap.analog_voltage_range[0]) / range;
+			if (		voltage < ap.analog_no_lost_range[0]
+					|| voltage > ap.analog_no_lost_range[1]) {
 
-			if (scaled < 0.f || scaled > 1.f) {
-
-				/* Derate POWER to null if voltage is out of range.
+				/* Loss of signal.
 				 * */
-				pm.watt_derated_2 = 0.f;
 
-				/* Then shutdown by timeout.
-				 * */
-				if (ap.analog_locked == 1 && ap.analog_timeout != 0.f) {
+				if (ap.analog_locked == 1) {
 
 					if (xTime > (TickType_t) (ap.analog_timeout * 1000.f)) {
 
@@ -178,33 +173,50 @@ void task_ANALOG(void *pData)
 						xTime += (TickType_t) 10;
 					}
 				}
+
+				scaled = 0.f;
 			}
 			else {
 				xTime = (TickType_t) 0;
 
-				/* Normal operation in forward
-				 * control range.
-				 * */
-				range = ap.analog_control_range[1]
-					- ap.analog_control_range[0];
-				control = ap.analog_control_range[0]
-					+ range * scaled;
+				if (voltage < ap.analog_voltage_range[1]) {
 
-				reg_SET(ap.analog_reg_ID, &control);
+					range = ap.analog_voltage_range[0] - ap.analog_voltage_range[1];
+					scaled = (ap.analog_voltage_range[1] - voltage) / range;
+				}
+				else {
+					range = ap.analog_voltage_range[2] - ap.analog_voltage_range[1];
+					scaled = (voltage - ap.analog_voltage_range[1]) / range;
+				}
 
-				if (pm.lu_mode == PM_LU_DISABLED) {
+				scaled = (scaled < - 1.f) ? - 1.f :
+					(scaled > 1.f) ? 1.f : scaled;
+			}
 
-					if (		control > ap.analog_startup_range[0]
-							&& control < ap.analog_startup_range[1]) {
+			if (scaled < 0.f) {
 
-						pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
-						ap.analog_locked = 1;
-					}
+				range = ap.analog_control_range[1] - ap.analog_control_range[0];
+				control = ap.analog_control_range[1] + range * scaled;
+			}
+			else {
+				range = ap.analog_control_range[2] - ap.analog_control_range[1];
+				control = ap.analog_control_range[1] + range * scaled;
+			}
+
+			reg_SET(ap.analog_reg_ID, &control);
+
+			if (pm.lu_mode == PM_LU_DISABLED) {
+
+				if (		control > ap.analog_startup_range[0]
+						&& control < ap.analog_startup_range[1]) {
+
+					pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+					ap.analog_locked = 1;
 				}
 			}
 		}
 		else {
-			/* Relax as control register is not set.
+			/* Relax while control register is not set.
 			 * */
 			vTaskDelayUntil(&xWake, (TickType_t) 100);
 		}
@@ -263,9 +275,12 @@ void task_INIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190;
+		//hal.PWM_deadtime = 190;
+		hal.PWM_deadtime = 90; // rev3
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_shunt_resistance = 170E-6f;
+		//hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
+		//hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
+		hal.ADC_shunt_resistance = 500E-6f; // rev3
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -283,19 +298,25 @@ void task_INIT(void *pData)
 
 		ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
 		ap.ppm_pulse_range[0] = 1000.f;
-		ap.ppm_pulse_range[1] = 2000.f;
+		ap.ppm_pulse_range[1] = 1500.f;
+		ap.ppm_pulse_range[2] = 2000.f;
 		ap.ppm_control_range[0] = 0.f;
-		ap.ppm_control_range[1] = 100.f;
+		ap.ppm_control_range[1] = 50.f;
+		ap.ppm_control_range[2] = 100.f;
 		ap.ppm_startup_range[0] = 0.f;
 		ap.ppm_startup_range[1] = 2.f;
 
 		ap.analog_reg_ID = ID_NULL;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
 		ap.analog_timeout = 2.f;
-		ap.analog_voltage_range[0] = 1.f;
-		ap.analog_voltage_range[1] = 4.f;
-		ap.analog_control_range[0] = 0.f;
-		ap.analog_control_range[1] = 100.f;
+		ap.analog_no_lost_range[0] = .1f;
+		ap.analog_no_lost_range[1] = 4.9f;
+		ap.analog_voltage_range[0] = .5f;
+		ap.analog_voltage_range[1] = 2.f;
+		ap.analog_voltage_range[2] = 4.5f;
+		ap.analog_control_range[0] = - 100.f;
+		ap.analog_control_range[1] = 0.f;
+		ap.analog_control_range[2] = 100.f;
 		ap.analog_startup_range[0] = 0.f;
 		ap.analog_startup_range[1] = 2.f;
 
@@ -317,8 +338,8 @@ void task_INIT(void *pData)
 		ap.batt_gap = 1.f;
 		ap.batt_derated = 50.f;
 
-		ap.pull_adjust[0] = 0.f;
-		ap.pull_adjust[1] = 4.545E-3f;
+		ap.pull_ad[0] = 0.f;
+		ap.pull_ad[1] = 4.545E-3f;
 	}
 
 	USART_startup();
@@ -335,11 +356,11 @@ void task_INIT(void *pData)
 
 		/* Default.
 		 * */
-
-		reg_SET_F(ID_PM_FB_CURRENT_CLAMP, -1.f);
-
 		pm_default(&pm);
 		tel_reg_default(&ti);
+
+		reg_SET_F(ID_PM_FAULT_CURRENT_HALT, -1.f);
+		reg_SET_F(ID_PM_I_MAXIMAL, -1.f);
 	}
 
 	if (hal.PPM_mode != PPM_DISABLED) {
@@ -376,12 +397,28 @@ input_PULSE_WIDTH()
 
 				ap.ppm_pulse_cached = pulse;
 
-				range = ap.ppm_pulse_range[1] - ap.ppm_pulse_range[0];
-				scaled = (pulse - ap.ppm_pulse_range[0]) / range;
-				scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
+				if (pulse < ap.ppm_pulse_range[1]) {
 
-				range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
-				control = ap.ppm_control_range[0] + range * scaled;
+					range = ap.ppm_pulse_range[0] - ap.ppm_pulse_range[1];
+					scaled = (ap.ppm_pulse_range[1] - pulse) / range;
+				}
+				else {
+					range = ap.ppm_pulse_range[2] - ap.ppm_pulse_range[1];
+					scaled = (pulse - ap.ppm_pulse_range[1]) / range;
+				}
+
+				scaled = (scaled < - 1.f) ? - 1.f :
+					(scaled > 1.f) ? 1.f : scaled;
+
+				if (scaled < 0.f) {
+
+					range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
+					control = ap.ppm_control_range[1] + range * scaled;
+				}
+				else {
+					range = ap.ppm_control_range[2] - ap.ppm_control_range[1];
+					control = ap.ppm_control_range[1] + range * scaled;
+				}
 
 				reg_SET(ap.ppm_reg_ID, &control);
 
@@ -430,9 +467,13 @@ void ADC_IRQ()
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
 
-	if (hal.HALL_mode == HALL_SENSOR) {
+	if (hal.HALL_mode == HALL_DRIVE_ABC) {
 
-		fb.hall_ABC = GPIO_get_HALL();
+		fb.pulse_HS = GPIO_get_HALL();
+	}
+	else if (hal.HALL_mode == HALL_DRIVE_QEP) {
+
+		/* TODO */
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {

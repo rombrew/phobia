@@ -62,12 +62,12 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 22E-3;
+	m->R = 5E-1;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 16E-6;
-	m->Lq = 20E-6;
+	m->Ld = 2E-3;
+	m->Lq = 2E-3;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -83,23 +83,22 @@ void blm_Enable(blm_t *m)
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 7;
+	m->Zp = 17;
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 300.; /* Total RPM per Volt */
+	Kv = 20.; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
 	 * */
-	m->J = 1E-4;
+	m->J = 5E-4;
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 5E-3;
-	m->M[1] = 0E-3;
-	m->M[2] = 5E-8;
-	m->M[3] = 0E-3;
+	m->M[0] = 0E-3;
+	m->M[1] = 1E-6;
+	m->M[2] = 1E-7;
 
 	/* ADC conversion time.
 	 * */
@@ -115,7 +114,7 @@ static void
 blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 {
 	double		UA, UB, UD, UQ, Q;
-	double		R1, E1, MT, ML, W;
+	double		R1, E1, MT, ML, wS;
 
 	/* Thermal drift.
 	 * */
@@ -156,10 +155,8 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* Load.
 	 * */
-	W = fabs(X[2] / m->Zp);
-	ML = m->M[0] + W * (m->M[1] + W * m->M[2])
-		+ m->M[3] * sin(X[3] * 6.);
-	ML = (X[2] < 0.) ? ML : - ML;
+	wS = X[2] / m->Zp;
+	ML = m->M[0] - wS * (m->M[1] + fabs(wS) * m->M[2]);
 
 	/* Mechanical equations.
 	 * */

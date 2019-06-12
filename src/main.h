@@ -24,8 +24,8 @@ typedef struct {
 	int			ppm_reg_ID;
 	int			ppm_locked;
 	float			ppm_pulse_cached;
-	float			ppm_pulse_range[2];
-	float			ppm_control_range[2];
+	float			ppm_pulse_range[3];
+	float			ppm_control_range[3];
 	float			ppm_startup_range[2];
 
 	/* Analog interface.
@@ -34,8 +34,9 @@ typedef struct {
 	int			analog_locked;
 	float			analog_voltage_ratio;
 	float			analog_timeout;
-	float			analog_voltage_range[2];
-	float			analog_control_range[2];
+	float			analog_no_lost_range[2];
+	float			analog_voltage_range[3];
+	float			analog_control_range[3];
 	float			analog_startup_range[2];
 
 	/* CPU load.
@@ -73,7 +74,7 @@ typedef struct {
 	/* Load cell.
 	 * */
 	float			pull_g;
-	float			pull_adjust[2];
+	float			pull_ad[2];
 }
 application_t;
 

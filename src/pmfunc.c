@@ -22,7 +22,7 @@ int pm_wait_for_IDLE()
 	return pm.fail_reason;
 }
 
-SH_DEF(pm_standard_voltage)
+SH_DEF(pm_STD_voltage)
 {
 	float		STD;
 
@@ -38,7 +38,7 @@ SH_DEF(pm_standard_voltage)
 		 * */
 	}
 	else {
-		printf("You must specify standard voltage" EOL);
+		printf("You must specify voltage" EOL);
 		return;
 	}
 
@@ -47,18 +47,18 @@ SH_DEF(pm_standard_voltage)
 
 		pm.probe_DFT[4] = STD;
 
-		pm_fsm_req(&pm, PM_STATE_STANDARD_VOLTAGE);
+		pm_fsm_req(&pm, PM_STATE_STD_VOLTAGE);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_US_0]);
-		reg_format(&regfile[ID_PM_ADJUST_US_1]);
+		reg_format(&regfile[ID_PM_AD_US_0]);
+		reg_format(&regfile[ID_PM_AD_US_1]);
 	}
 	while (0);
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
-SH_DEF(pm_standard_current)
+SH_DEF(pm_STD_current)
 {
 	float		STD;
 
@@ -74,7 +74,7 @@ SH_DEF(pm_standard_current)
 		 * */
 	}
 	else {
-		printf("You must specify standard resistance" EOL);
+		printf("You must specify resistance" EOL);
 		return;
 	}
 
@@ -84,19 +84,19 @@ SH_DEF(pm_standard_current)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_0]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IA_0]);
+		reg_format(&regfile[ID_PM_AD_IB_0]);
 
 		if (pm.fail_reason != PM_OK)
 			break;
 
 		pm.probe_DFT[4] = STD;
 
-		pm_fsm_req(&pm, PM_STATE_STANDARD_CURRENT);
+		pm_fsm_req(&pm, PM_STATE_STD_CURRENT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_1]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_1]);
+		reg_format(&regfile[ID_PM_AD_IA_1]);
+		reg_format(&regfile[ID_PM_AD_IB_1]);
 	}
 	while (0);
 
@@ -117,33 +117,33 @@ SH_DEF(pm_self_adjust)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_0]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IA_0]);
+		reg_format(&regfile[ID_PM_AD_IB_0]);
 
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (PM_CONFIG_VM(&pm) == PM_ENABLED) {
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
 			pm_wait_for_IDLE();
 
-			reg_format(&regfile[ID_PM_ADJUST_UA_0]);
-			reg_format(&regfile[ID_PM_ADJUST_UA_1]);
-			reg_format(&regfile[ID_PM_ADJUST_UB_0]);
-			reg_format(&regfile[ID_PM_ADJUST_UB_1]);
-			reg_format(&regfile[ID_PM_ADJUST_UC_0]);
-			reg_format(&regfile[ID_PM_ADJUST_UC_1]);
+			reg_format(&regfile[ID_PM_AD_UA_0]);
+			reg_format(&regfile[ID_PM_AD_UA_1]);
+			reg_format(&regfile[ID_PM_AD_UB_0]);
+			reg_format(&regfile[ID_PM_AD_UB_1]);
+			reg_format(&regfile[ID_PM_AD_UC_0]);
+			reg_format(&regfile[ID_PM_AD_UC_1]);
 
-			reg_format(&regfile[ID_PM_VM_FIR_A_0]);
-			reg_format(&regfile[ID_PM_VM_FIR_A_1]);
-			reg_format(&regfile[ID_PM_VM_FIR_A_2]);
-			reg_format(&regfile[ID_PM_VM_FIR_B_0]);
-			reg_format(&regfile[ID_PM_VM_FIR_B_1]);
-			reg_format(&regfile[ID_PM_VM_FIR_B_2]);
-			reg_format(&regfile[ID_PM_VM_FIR_C_0]);
-			reg_format(&regfile[ID_PM_VM_FIR_C_1]);
-			reg_format(&regfile[ID_PM_VM_FIR_C_2]);
+			reg_format(&regfile[ID_PM_TVM_FIR_A_0]);
+			reg_format(&regfile[ID_PM_TVM_FIR_A_1]);
+			reg_format(&regfile[ID_PM_TVM_FIR_A_2]);
+			reg_format(&regfile[ID_PM_TVM_FIR_B_0]);
+			reg_format(&regfile[ID_PM_TVM_FIR_B_1]);
+			reg_format(&regfile[ID_PM_TVM_FIR_B_2]);
+			reg_format(&regfile[ID_PM_TVM_FIR_C_0]);
+			reg_format(&regfile[ID_PM_TVM_FIR_C_1]);
+			reg_format(&regfile[ID_PM_TVM_FIR_C_2]);
 
 			if (pm.fail_reason != PM_OK)
 				break;
@@ -152,8 +152,8 @@ SH_DEF(pm_self_adjust)
 		pm_fsm_req(&pm, PM_STATE_ADJUST_CURRENT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_1]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_1]);
+		reg_format(&regfile[ID_PM_AD_IA_1]);
+		reg_format(&regfile[ID_PM_AD_IB_1]);
 	}
 	while (0);
 
@@ -174,13 +174,13 @@ SH_DEF(pm_probe_base)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_0]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IA_0]);
+		reg_format(&regfile[ID_PM_AD_IB_0]);
 
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (PM_CONFIG_VM(&pm) == PM_ENABLED) {
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
 
@@ -200,10 +200,11 @@ SH_DEF(pm_probe_base)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_LD]);
-		reg_format(&regfile[ID_PM_CONST_LQ]);
-		reg_format(&regfile[ID_PM_PROBE_IMPEDANCE_R]);
-		reg_format(&regfile[ID_PM_PROBE_ROTATION_DQ]);
+		reg_format(&regfile[ID_PM_CONST_L]);
+		reg_format(&regfile[ID_PM_CONST_IM_LD]);
+		reg_format(&regfile[ID_PM_CONST_IM_LQ]);
+		reg_format(&regfile[ID_PM_CONST_IM_B]);
+		reg_format(&regfile[ID_PM_CONST_IM_R]);
 	}
 	while (0);
 
@@ -227,7 +228,7 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		xWait = (TickType_t) (pm.probe_speed_low / pm.forced_accel * 1000.f);
-		xWait += (TickType_t) 100;
+		xWait += (TickType_t) 500;
 
 		pm.s_setpoint = pm.probe_speed_low;
 
@@ -241,7 +242,7 @@ SH_DEF(pm_probe_spinup)
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
 		xWait = (TickType_t) (pm.probe_speed_ramp / pm.s_accel * 1000.f);
-		xWait = (TickType_t) 100;
+		xWait = (TickType_t) 500;
 
 		pm.s_setpoint = pm.probe_speed_ramp;
 

@@ -25,13 +25,13 @@ SH_DEF(pm_self_test)
 		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_ADJUST_IA_0]);
-		reg_format(&regfile[ID_PM_ADJUST_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IA_0]);
+		reg_format(&regfile[ID_PM_AD_IB_0]);
 
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (PM_CONFIG_VM(&pm) == PM_ENABLED) {
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
 			pm_wait_for_IDLE();

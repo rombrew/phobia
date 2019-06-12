@@ -41,7 +41,7 @@ void *FLASH_sector_erase(void *flash)
 
 	for (N = 0; N < FLASH_SECTOR_MAX; ++N) {
 
-		if ((unsigned long) flash >= flash_ram_map[N]
+		if (		(unsigned long) flash >= flash_ram_map[N]
 				&& (unsigned long) flash < flash_ram_map[N + 1]) {
 
 			flash = (void *) flash_ram_map[N];
@@ -73,7 +73,7 @@ void *FLASH_write(void *flash, const void *s, unsigned long sz)
 	long			*ld = flash;
 	const long		*ls = s;
 
-	if ((unsigned long) flash >= flash_ram_map[0]
+	if (		(unsigned long) flash >= flash_ram_map[0]
 			&& (unsigned long) flash < flash_ram_map[FLASH_SECTOR_MAX]) {
 
 		FLASH_unlock();

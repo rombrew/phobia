@@ -12,7 +12,8 @@
 
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('C', 12)
+//#define GPIO_LED			XGPIO_DEF2('C', 12) // rev4
+#define GPIO_LED			XGPIO_DEF2('B', 5)
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
@@ -50,7 +51,7 @@ enum {
 
 enum {
 	HALL_DISABLED			= 0,
-	HALL_SENSOR,
+	HALL_DRIVE_ABC,
 	HALL_DRIVE_QEP,
 };
 
@@ -59,8 +60,6 @@ enum {
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
 	PPM_CONTROL_QEP,
-	PPM_I2C_BUS,
-	PPM_DATA_USART,
 };
 
 typedef struct {
@@ -97,7 +96,6 @@ typedef struct {
 	ADC_const;
 
 	int		HALL_mode;
-	int		HALL_sensor_state;
 
 	unsigned long	CAN_msg_ID;
 	int		CAN_msg_len;

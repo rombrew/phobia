@@ -13,7 +13,7 @@ void ap_VOLT(void *pData)
 	TickType_t		xTk;
 
 	xMIN = pm.dc_minimal;
-	xMAX = (int) (pm.dc_resolution * pm.vm_maximal / pm.const_lpf_U);
+	xMAX = (int) (pm.dc_resolution * pm.tvm_range / pm.const_lpf_U);
 
 	xDC = xMIN;
 	xTk = 5000 / (xMAX - xMIN);
@@ -21,7 +21,10 @@ void ap_VOLT(void *pData)
 	PWM_set_DC(xDC, xDC, xDC);
 	PWM_set_Z(0);
 
-	pm.vsi_voltage_ZONE = 0x70UL;
+	pm.vsi_UF = 0;
+	pm.vsi_AZ = 0;
+	pm.vsi_BZ = 0;
+	pm.vsi_CZ = 0;
 
 	do {
 		vTaskDelay(xTk);

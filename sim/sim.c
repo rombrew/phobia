@@ -47,27 +47,27 @@ sim_Tel(float *pTel)
 
 	/* Estimated current.
 	 * */
-	pTel[10] = pm.lu_X[0];
-	pTel[11] = pm.lu_X[1];
+	pTel[10] = pm.lu_iD;
+	pTel[11] = pm.lu_iQ;
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
-	A = D * pm.flux_X[2] + Q * pm.flux_X[3];
-	B = D * pm.flux_X[3] - Q * pm.flux_X[2];
+	A = D * pm.flux_F[0] + Q * pm.flux_F[1];
+	B = D * pm.flux_F[1] - Q * pm.flux_F[0];
 	C = atan2(B, A);
 
-	/* Estimated position.
+	/* FLUX position.
 	 * */
-	pTel[12] = atan2(pm.flux_X[3], pm.flux_X[2]) * 180. / M_PI;
+	pTel[12] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
 	pTel[13] = C * 180. / M_PI;
 
-	/* Estimated speed.
+	/* FLUX speed.
 	 * */
-	pTel[14] = pm.flux_X[4] * 30. / M_PI / m.Zp;
+	pTel[14] = pm.flux_wS * 30. / M_PI / m.Zp;
 
-	/* FLUX drift Q.
+	/* FLUX E.
 	 * */
-	pTel[15] = pm.flux_drift_Q;
+	pTel[15] = pm.flux_E;
 
 	/* VSI voltage (XY).
 	 * */
@@ -81,30 +81,30 @@ sim_Tel(float *pTel)
 
 	/* VSI zone flags.
 	 * */
-	pTel[20] = pm.vsi_current_ZONE;
-	pTel[21] = pm.vsi_voltage_ZONE;
+	pTel[20] = pm.vsi_IF;
+	pTel[21] = pm.vsi_UF;
 
 	/* VM voltages (ABC).
 	 * */
-	pTel[22] = pm.vm_A;
-	pTel[23] = pm.vm_B;
-	pTel[24] = pm.vm_C;
+	pTel[22] = pm.tvm_A;
+	pTel[23] = pm.tvm_B;
+	pTel[24] = pm.tvm_C;
 
 	/* VM voltages (XY).
 	 * */
-	pTel[25] = pm.vm_DX;
-	pTel[26] = pm.vm_DY;
+	pTel[25] = pm.tvm_DX;
+	pTel[26] = pm.tvm_DY;
 
 	/* FLUX residue (DQ).
 	 * */
-	pTel[27] = pm.flux_residue_D;
-	pTel[28] = pm.flux_residue_Q;
-	pTel[29] = pm.flux_residue_lpf;
+	pTel[27] = pm.flux[pm.flux_H].lpf_E;
+	pTel[28] = 0.f;
+	pTel[29] = 0.f;
 
 	/* WATT power.
 	 * */
 	pTel[30] = m.iP;
-	pTel[31] = pm.watt_lpf_VA;
+	pTel[31] = pm.watt_lpf_wP;
 
 	/* DC link voltage measured.
 	 * */
@@ -117,7 +117,7 @@ sim_Tel(float *pTel)
 	/* SPEED tracking point.
 	 * */
 	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
-	pTel[35] = pm.adapt_lpf_R;
+	pTel[35] = pm.flux_H;
 }
 
 static void
@@ -173,37 +173,27 @@ sim_Script(FILE *fdTel)
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm.fb_current_clamp = 50.f;
-
 	pm_default(&pm);
 
-	pm.const_R = m.R;
-	pm.const_Ld = m.Ld;
-	pm.const_Lq = m.Lq;
-	pm.const_E = m.E;
 	pm.const_Zp = m.Zp;
-
-	pm.config_VM = PM_ENABLED;
-	pm.config_HFI = PM_DISABLED;
-	pm.config_LOOP = PM_LOOP_DRIVE_SPEED;
 
 	pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
 	sim_F(fdTel, 0., 1);
 
-	if (1) {
+	printf("AB %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
 
-		printf("IAB %.4f %.4f (A)\n", pm.adjust_IA[0], pm.adjust_IB[0]);
+	if (1) {
 
 		pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
 		sim_F(fdTel, 0., 1);
 
-		printf("UA %.4f %.4f (V)\n", pm.adjust_UA[1], pm.adjust_UA[0]);
-		printf("UB %.4f %.4f (V)\n", pm.adjust_UB[1], pm.adjust_UB[0]);
-		printf("UC %.4f %.4f (V)\n", pm.adjust_UC[1], pm.adjust_UC[0]);
+		printf("UA %.4f %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
+		printf("UB %.4f %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
+		printf("UC %.4f %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
 
-		printf("FIR_A: %.4e %.4e %.4e\n", pm.vm_FIR_A[0], pm.vm_FIR_A[1], pm.vm_FIR_A[2]);
-		printf("FIR_B: %.4e %.4e %.4e\n", pm.vm_FIR_B[0], pm.vm_FIR_B[1], pm.vm_FIR_B[2]);
-		printf("FIR_C: %.4e %.4e %.4e\n", pm.vm_FIR_C[0], pm.vm_FIR_C[1], pm.vm_FIR_C[2]);
+		printf("FIR_A: %.4e %.4e %.4e\n", pm.tvm_FIR_A[0], pm.tvm_FIR_A[1], pm.tvm_FIR_A[2]);
+		printf("FIR_B: %.4e %.4e %.4e\n", pm.tvm_FIR_B[0], pm.tvm_FIR_B[1], pm.tvm_FIR_B[2]);
+		printf("FIR_C: %.4e %.4e %.4e\n", pm.tvm_FIR_C[0], pm.tvm_FIR_C[1], pm.tvm_FIR_C[2]);
 
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
 		sim_F(fdTel, 0., 1);
@@ -213,52 +203,49 @@ sim_Script(FILE *fdTel)
 		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
 		sim_F(fdTel, 0., 1);
 
-		printf("LD %.4e (H)\n", pm.const_Ld);
-		printf("LQ %.4e (H)\n", pm.const_Lq);
-		printf("imp_R %.4e (Ohm)\n", pm.probe_impedance_R);
-		printf("DQ %.2f (g)\n", pm.probe_rotation_DQ);
+		printf("L %.4e (H)\n", pm.const_L);
+		printf("im_LD %.4e (H)\n", pm.const_im_LD);
+		printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
+		printf("im_B %.2f (g)\n", pm.const_im_B);
+		printf("im_R %.4e (Ohm)\n", pm.const_im_R);
+
+		pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+		sim_F(fdTel, 0., 1);
+
+		pm.s_setpoint = pm.probe_speed_low;
+		sim_F(fdTel, 1., 0);
+
+		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
+		sim_F(fdTel, 0., 1);
+
+		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+
+		pm.s_setpoint = pm.probe_speed_ramp;
+		sim_F(fdTel, 1., 0);
+
+		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
+		sim_F(fdTel, 0., 1);
+
+		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 	}
 
-	pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
-	sim_F(fdTel, 0., 1);
+	pm.s_setpoint = 2000.f;
+	sim_F(fdTel, 2., 0);
 
-	pm.s_setpoint = 10.f * m.Zp * M_PI / 30.;
+	pm.s_setpoint = 500.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 475.f;
+	pm.s_setpoint = -500.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 50.f;
+	pm.s_setpoint = 500.f;
 	sim_F(fdTel, 1., 0);
 
-	//m.X[4] = 50.;
-
-	pm.s_setpoint = 40.f;
+	pm.s_setpoint = 2000.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 475.f;
+	pm.s_setpoint = 11000.f;
 	sim_F(fdTel, 1., 0);
-
-	//m.X[4] = 50.;
-
-	pm.s_setpoint = 5875.f;
-	sim_F(fdTel, .4, 0);
-
-	m.U = 0.;
-	m.Rs = 2000.;
-
-	//pm.watt_derated_2 = 0.f;
-	//pm.s_setpoint = 0.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.s_setpoint = -5.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.s_setpoint = -10.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.s_setpoint = 475.f;
-	sim_F(fdTel, 5., 0);
 }
 
 int main(int argc, char *argv[])

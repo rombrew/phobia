@@ -66,7 +66,7 @@ void ap_HX711(void *pData)
 
 			/* Convert the ADC code into grams.
 			 * */
-			ap.pull_g = (float) ADC * ap.pull_adjust[1] + ap.pull_adjust[0];
+			ap.pull_g = (float) ADC * ap.pull_ad[1] + ap.pull_ad[0];
 		}
 	}
 	while (1);
@@ -111,7 +111,7 @@ SH_DEF(ap_hx711_adjust)
 		S += ap.pull_g;
 	}
 
-	ap.pull_adjust[0] += - S / (float) N;
-	reg_format(&regfile[ID_AP_PULL_G]);
+	ap.pull_ad[0] += - S / (float) N;
+	reg_format(&regfile[ID_AP_PULL_AD_0]);
 }
 
