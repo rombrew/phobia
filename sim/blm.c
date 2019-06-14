@@ -62,12 +62,12 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 5E-1;
+	m->R = 11E-3;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 2E-3;
-	m->Lq = 2E-3;
+	m->Ld = 11E-6;
+	m->Lq = 12E-6;
 
 	/* Source voltage. (Volt)
 	 * */
@@ -83,11 +83,11 @@ void blm_Enable(blm_t *m)
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 17;
+	m->Zp = 7;
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 20.; /* Total RPM per Volt */
+	Kv = 300.; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.

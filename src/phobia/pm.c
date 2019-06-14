@@ -7,7 +7,7 @@ void pm_default(pmc_t *pm)
 	pm->dc_clearance = 420;
 
 	pm->config_ALT = PM_ALT_THREE_PHASE;
-	pm->config_TVM = PM_DISABLED;
+	pm->config_TVM = PM_ENABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
@@ -70,13 +70,13 @@ void pm_default(pmc_t *pm)
 	pm->forced_accel = 400.f;
 
 	pm->flux_lower_R = - .1f;
-	pm->flux_upper_R = .3f;
+	pm->flux_upper_R = .4f;
 	pm->flux_transient_S = 5.f;
 	pm->flux_gain_IN = 5E-4f;
-	pm->flux_gain_LO = 1E-3f;
-	pm->flux_gain_HI = 1E-2f;
+	pm->flux_gain_LO = 2E-5f;
+	pm->flux_gain_HI = 3E-4f;
 	pm->flux_gain_LP_E = 5E-3f;
-	pm->flux_gain_SF = 2E-2f;
+	pm->flux_gain_SF = 5E-2f;
 
 	/*pm->hfi_freq_hz = pm->freq_hz / 6.f;
 	pm->hfi_swing_D = 2.f;
@@ -203,7 +203,7 @@ pm_flux_update(pmc_t *pm)
 		E = m_fabsf(pm->flux_wS * pm->const_E) / pm->flux_transient_S;
 		E = (E > 1.f) ? 1.f : 0.f;
 
-		F = pm->flux_gain_LO + pm->flux_gain_HI * E;
+		F = (pm->flux_gain_LO + pm->flux_gain_HI * E) / pm->const_E;
 
 		for (N = 0, H = 0; N < PM_FLUX_N; N++) {
 

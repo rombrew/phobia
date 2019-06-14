@@ -275,12 +275,12 @@ void task_INIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		//hal.PWM_deadtime = 190;
-		hal.PWM_deadtime = 90; // rev3
+		hal.PWM_deadtime = 190;
+		//hal.PWM_deadtime = 90; // rev3
 		hal.ADC_reference_voltage = 3.3f;
-		//hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
+		hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
 		//hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
-		hal.ADC_shunt_resistance = 500E-6f; // rev3
+		//hal.ADC_shunt_resistance = 500E-6f; // rev3
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -309,9 +309,9 @@ void task_INIT(void *pData)
 		ap.analog_reg_ID = ID_NULL;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
 		ap.analog_timeout = 2.f;
-		ap.analog_no_lost_range[0] = .1f;
-		ap.analog_no_lost_range[1] = 4.9f;
-		ap.analog_voltage_range[0] = .5f;
+		ap.analog_no_lost_range[0] = .2f;
+		ap.analog_no_lost_range[1] = 4.7f;
+		ap.analog_voltage_range[0] = .4f;
 		ap.analog_voltage_range[1] = 2.f;
 		ap.analog_voltage_range[2] = 4.5f;
 		ap.analog_control_range[0] = - 100.f;

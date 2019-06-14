@@ -229,6 +229,8 @@ sim_Script(FILE *fdTel)
 		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 	}
 
+	printf("X %.4e \n", pm.const_im_LD / pm.const_E);
+
 	pm.s_setpoint = 2000.f;
 	sim_F(fdTel, 2., 0);
 
@@ -245,7 +247,7 @@ sim_Script(FILE *fdTel)
 	sim_F(fdTel, 1., 0);
 
 	pm.s_setpoint = 11000.f;
-	sim_F(fdTel, 1., 0);
+	sim_F(fdTel, 2., 0);
 }
 
 int main(int argc, char *argv[])

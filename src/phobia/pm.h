@@ -8,7 +8,7 @@
 #define PM_EMAX(pm)			((PM_CONFIG_ALT(pm) == 0) ? .57735027f : .70710678f)
 #define PM_KWAT(pm)			((PM_CONFIG_ALT(pm) == 0) ? 1.5f : 1.f)
 
-#define PM_FLUX_N			20
+#define PM_FLUX_N			25
 #define PM_INFINITY			1E+33f
 #define PM_SFI(s)			#s
 
