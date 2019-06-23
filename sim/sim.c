@@ -116,8 +116,10 @@ sim_Tel(float *pTel)
 
 	/* SPEED tracking point.
 	 * */
-	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
+	pTel[34] = pm.s_setpoint * 30. / M_PI / m.Zp;
 	pTel[35] = pm.flux_H;
+	pTel[36] = pm.watt_integral[1];
+	pTel[37] = pm.watt_integral[2];
 }
 
 static void
@@ -229,25 +231,29 @@ sim_Script(FILE *fdTel)
 		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 	}
 
-	printf("X %.4e \n", pm.const_im_LD / pm.const_E);
-
-	pm.s_setpoint = 2000.f;
-	sim_F(fdTel, 2., 0);
-
-	pm.s_setpoint = 500.f;
-	sim_F(fdTel, 1., 0);
-
-	pm.s_setpoint = -500.f;
+	pm.s_setpoint = 300.f;
 	sim_F(fdTel, 1., 0);
 
 	pm.s_setpoint = 500.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 2000.f;
+	pm.s_setpoint = 900.f;
 	sim_F(fdTel, 1., 0);
 
-	pm.s_setpoint = 11000.f;
-	sim_F(fdTel, 2., 0);
+	pm.s_setpoint = 1200.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 1500.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 1700.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 700.f;
+	sim_F(fdTel, 1., 0);
+
+	pm.s_setpoint = 1700.f;
+	sim_F(fdTel, 1., 0);
 }
 
 int main(int argc, char *argv[])

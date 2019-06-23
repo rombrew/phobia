@@ -344,12 +344,26 @@ reg_format_enum(const reg_t *reg)
 			printf("(%s)", pm_strerror(pm.fail_reason));
 			break;
 
-		case ID_PM_CONFIG_ALT:
+		case ID_PM_CONFIG_NOP:
 
 			switch (val) {
 
-				TEXT_ITEM(PM_ALT_THREE_PHASE);
-				TEXT_ITEM(PM_ALT_TWO_PHASE);
+				TEXT_ITEM(PM_NOP_THREE_PHASE);
+				TEXT_ITEM(PM_NOP_TWO_PHASE);
+
+				default: break;
+			}
+			break;
+
+		case ID_PM_CONFIG_TVM:
+		case ID_PM_CONFIG_HFI:
+		case ID_PM_CONFIG_WEAK:
+		case ID_PM_CONFIG_BRAKE:
+
+			switch (val) {
+
+				TEXT_ITEM(PM_DISABLED);
+				TEXT_ITEM(PM_ENABLED);
 
 				default: break;
 			}
@@ -362,19 +376,6 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_SENSOR_DISABLED);
 				TEXT_ITEM(PM_SENSOR_HALL_ABC);
 				TEXT_ITEM(PM_SENSOR_QEP_AB);
-
-				default: break;
-			}
-			break;
-
-		case ID_PM_CONFIG_TVM:
-		case ID_PM_CONFIG_HFI:
-		case ID_PM_CONFIG_BRAKE:
-
-			switch (val) {
-
-				TEXT_ITEM(PM_DISABLED);
-				TEXT_ITEM(PM_ENABLED);
 
 				default: break;
 			}
@@ -499,10 +500,6 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_PCB_FAN,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_gap,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.batt_voltage_low,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.batt_gap,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.batt_derated,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-
 	REG_DEF(ap.pull_g,,			"g",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.pull_ad[0],,			"g",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.pull_ad[1],,			"",	"%4e",	REG_CONFIG, NULL, NULL),
@@ -515,11 +512,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.self_BM,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BM),
 	REG_DEF(pm.self_RMS,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS),
 
-	REG_DEF(pm.config_ALT,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_NOP,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_TVM,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SENSOR,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LOOP,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_WEAK,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_BRAKE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
 	REG_DEF(pm.fsm_state,,		"",	"%i",	0, &reg_proc_fsm_state, &reg_format_enum),
@@ -605,6 +603,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_wS, _rpm,			"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_lock_S,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_unlock_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_lpf_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.lu_lpf_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
+	REG_DEF(pm.lu_gain_LP_S,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_mode,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(pm.forced_hold_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -618,7 +619,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_upper_R,,		"",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_transient_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_E,,			"Wb",	"%4e",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.flux_E, _kv,		"rpm/v",	"%1f",	REG_READ_ONLY, &reg_proc_kv, NULL),
 	REG_DEF(pm.flux_H,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -653,12 +653,15 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.const_im_B,,			"g",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.const_im_R,,			"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.watt_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_wp_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_ib_maximal,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_derated_1,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.watt_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_derate_U,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_derate_S,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_derate_S, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.watt_wp_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_ib_reverse,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_derate_HI_U,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_derate_LO_U,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_derate_HI_S,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_derate_HI_S, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.watt_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_lpf_Q,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_lpf_wP,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
@@ -670,12 +673,15 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.i_maximal,,			"A",	"%3f",	REG_CONFIG, &reg_proc_maximal, NULL),
 	REG_DEF(pm.i_derated_1,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.i_reverse,,			"A",	"%3f",	REG_CONFIG, &reg_proc_maximal, NULL),
+	REG_DEF(pm.i_brake,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_setpoint_D,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_Q,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_Q, _pc,		"%",	"%2f",	0, &reg_proc_Q_pc, NULL),
 	REG_DEF(pm.i_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.weak_maximal_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.weak_bias_U,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.s_maximal,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_maximal, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),

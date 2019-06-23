@@ -254,6 +254,7 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
+		reg_format(&regfile[ID_PM_S_SETPOINT_PC]);
 	}
 	while (0);
 

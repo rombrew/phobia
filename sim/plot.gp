@@ -84,3 +84,7 @@ label 1 "(V)"
 figure 0 25 "pm.tvm_DX"
 figure 0 26 "pm.tvm_DY"
 
+page "WATT: pm.watt_integral"
+figure 0 36 "pm.watt_integral[1]"
+figure 0 37 "pm.watt_integral[2]"
+

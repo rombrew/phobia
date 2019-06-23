@@ -62,20 +62,20 @@ void blm_Enable(blm_t *m)
 
 	/* Winding resistance. (Ohm)
          * */
-	m->R = 11E-3;
+	m->R = 2.4E-1;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 11E-6;
-	m->Lq = 12E-6;
+	m->Ld = 5.7E-4;
+	m->Lq = 5.7E-4;
 
 	/* Source voltage. (Volt)
 	 * */
-	m->U = 32.;
+	m->U = 48.;
 
 	/* Source internal resistance. (Ohm)
 	 * */
-	m->Rs = 0.2;
+	m->Rs = 1.2;
 
 	/* Decoupling capacitance. (Farad)
 	 * */
@@ -83,22 +83,22 @@ void blm_Enable(blm_t *m)
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 7;
+	m->Zp = 15;
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 300.; /* Total RPM per Volt */
+	Kv = 15.7; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
 	 * */
-	m->J = 5E-4;
+	m->J = 7E-3;
 
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 1E-6;
-	m->M[2] = 1E-7;
+	m->M[1] = 1E-7;
+	m->M[2] = 5E-4;
 
 	/* ADC conversion time.
 	 * */

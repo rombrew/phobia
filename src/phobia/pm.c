@@ -6,11 +6,12 @@ void pm_default(pmc_t *pm)
 	pm->dc_minimal = 21;
 	pm->dc_clearance = 420;
 
-	pm->config_ALT = PM_ALT_THREE_PHASE;
-	pm->config_TVM = PM_ENABLED;
+	pm->config_NOP = PM_NOP_THREE_PHASE;
+	pm->config_TVM = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_LOOP = PM_LOOP_DRIVE_SPEED;
+	pm->config_WEAK = PM_ENABLED;
 	pm->config_BRAKE = PM_DISABLED;
 
 	pm->tm_transient_slow = .05f;
@@ -39,8 +40,8 @@ void pm_default(pmc_t *pm)
 	pm->probe_current_bias_Q = 0.f;
 	pm->probe_current_sine = 1.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 24.f;
-	pm->probe_speed_low = 100.f;
-	pm->probe_speed_ramp = 500.f;
+	pm->probe_speed_low = 170.f;
+	pm->probe_speed_ramp = 700.f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
@@ -64,6 +65,7 @@ void pm_default(pmc_t *pm)
 
 	pm->lu_lock_S = .5f;
 	pm->lu_unlock_S = 0.f;
+	pm->lu_gain_LP_S = 1E-1f;
 
 	pm->forced_hold_D = 5.f;
 	pm->forced_maximal = 200.f;
@@ -92,20 +94,26 @@ void pm_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_J = 0.f;
 
-	pm->watt_maximal = 700.f;
-	pm->watt_reverse = 100.f;
-	pm->watt_derate_U = 52.f;
-	pm->watt_derate_S = pm->freq_hz * (2.f * M_PI_F / 18.f);
+	pm->watt_wp_maximal = PM_INFINITY;
+	pm->watt_ib_maximal = 20.f;
+	pm->watt_wp_reverse = PM_INFINITY;
+	pm->watt_ib_reverse = 10.f;
+	pm->watt_derate_HI_U = 54.f;
+	pm->watt_derate_LO_U = 35.f;
+	pm->watt_derate_HI_S = pm->freq_hz * (2.f * M_PI_F / 18.f);
 	pm->watt_gain_LP_F = 5E-2f;
 	pm->watt_gain_LP_P = 5E-2f;
 	pm->watt_gain_DU = 5E-1f;
-	pm->watt_gain_DS = 1E-2f;
+	pm->watt_gain_DS = 5E-2f;
 	pm->watt_gain_LP_I = 5E-2f;
 
 	pm->i_maximal = 40.f;
-	pm->i_reverse = 40.f;
+	pm->i_brake = PM_INFINITY;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
+
+	pm->weak_maximal_D = 5.f;
+	pm->weak_bias_U = 2.f;
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 18.f);
 	pm->s_accel = 5000.f;
@@ -169,6 +177,8 @@ pm_flux_update(pmc_t *pm)
 	float		EX, EY, UX, UY, LX, LY, IE, DX, DY, E, F;
 	int		N, H;
 
+	/* Get the actual voltage.
+	 * */
 	EX = pm->vsi_X - pm->const_R * pm->lu_iX;
 	EY = pm->vsi_Y - pm->const_R * pm->lu_iY;
 
@@ -178,6 +188,8 @@ pm_flux_update(pmc_t *pm)
 		EY += pm->tvm_DY - pm->vsi_DY;
 	}
 
+	/* Stator FLUX linear model.
+	 * */
 	LX = pm->const_L * pm->lu_iX;
 	LY = pm->const_L * pm->lu_iY;
 
@@ -203,10 +215,14 @@ pm_flux_update(pmc_t *pm)
 		E = m_fabsf(pm->flux_wS * pm->const_E) / pm->flux_transient_S;
 		E = (E > 1.f) ? 1.f : 0.f;
 
+		/* Adaptive observer GAIN.
+		 * */
 		F = (pm->flux_gain_LO + pm->flux_gain_HI * E) / pm->const_E;
 
 		for (N = 0, H = 0; N < PM_FLUX_N; N++) {
 
+			/* This is multi-hypothesis FLUX observer.
+			 * */
 			pm->flux[N].X += UX;
 			pm->flux[N].Y += UY;
 
@@ -218,6 +234,9 @@ pm_flux_update(pmc_t *pm)
 			pm->flux[N].X += EX * E * F;
 			pm->flux[N].Y += EY * E * F;
 
+			/* This is residual passed through low-pass filter. We
+			 * use them to get best fit hypothesis H.
+			 * */
 			pm->flux[N].lpf_E += (E * E - pm->flux[N].lpf_E) * pm->flux_gain_LP_E;
 			H = (pm->flux[N].lpf_E < pm->flux[H].lpf_E) ? N : H;
 
@@ -225,6 +244,8 @@ pm_flux_update(pmc_t *pm)
 			UY += DY;
 		}
 
+		/* Speed estimation using phase locked loop.
+		 * */
 		EX = pm->flux[pm->flux_H].X - LX;
 		EY = pm->flux[pm->flux_H].Y - LY;
 
@@ -240,6 +261,8 @@ pm_flux_update(pmc_t *pm)
 		}
 	}
 	else {
+		/* This is startup observer.
+		 * */
 		H = pm->flux_H;
 
 		pm->flux[H].X += EX * pm->dT;
@@ -254,6 +277,8 @@ pm_flux_update(pmc_t *pm)
 		pm->flux_wS = pm->forced_wS;
 	}
 
+	/* Extract rotor position.
+	 * */
 	EX = pm->flux[H].X - LX;
 	EY = pm->flux[H].Y - LY;
 
@@ -267,6 +292,10 @@ pm_flux_update(pmc_t *pm)
 		pm->flux_F[0] = EX / E;
 		pm->flux_F[1] = EY / E;
 	}
+
+	/* Get filtered speed in order to detect low range.
+	 * */
+	pm->lu_lpf_wS += (pm->flux_wS - pm->lu_lpf_wS) * pm->lu_gain_LP_S;
 }
 
 static void
@@ -328,7 +357,7 @@ pm_instant_take(pmc_t *pm)
 {
 	float			uA, uB, uQ;
 
-	if (PM_CONFIG_ALT(pm) == PM_ALT_THREE_PHASE) {
+	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		uQ = (1.f / 3.f) * (pm->fb_uA + pm->fb_uB + pm->fb_uC);
 		uA = pm->fb_uA - uQ;
@@ -366,7 +395,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->forced_F[1];
 		pm->lu_wS = pm->forced_wS;
 
-		if (m_fabsf(pm->flux_wS * pm->const_E) > pm->lu_lock_S) {
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_S) {
 
 			if (pm->forced_hold_D > M_EPS_F) {
 
@@ -388,7 +417,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->flux_F[1];
 		pm->lu_wS = pm->flux_wS;
 
-		if (m_fabsf(pm->flux_wS * pm->const_E) < pm->lu_unlock_S) {
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) < pm->lu_unlock_S) {
 
 			if (pm->config_LOOP == PM_LOOP_RECTIFIER_VOLTAGE) {
 
@@ -452,7 +481,7 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	uX /= pm->const_lpf_U;
 	uY /= pm->const_lpf_U;
 
-	if (PM_CONFIG_ALT(pm) == PM_ALT_THREE_PHASE) {
+	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		uA = uX;
 		uB = - .5f * uX + .8660254f * uY;
@@ -575,7 +604,7 @@ void pm_voltage_control(pmc_t *pm, float uX, float uY)
 	pm->vsi_DX = pm->vsi_X;
 	pm->vsi_DY = pm->vsi_Y;
 
-	if (PM_CONFIG_ALT(pm) == PM_ALT_THREE_PHASE) {
+	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		uQ = (1.f / 3.f) * (xA + xB + xC);
 		uA = (xA - uQ) * pm->const_lpf_U / pm->dc_resolution;
@@ -642,9 +671,24 @@ pm_current_control(pmc_t *pm)
 
 			if (pm->s_brake_DIR * sQ < 0.f) {
 
+				sQ = m_fabsf(sQ);
+				sQ = (sQ > pm->i_brake) ? pm->i_brake : sQ;
+
 				/* Enable brake function.
 				 * */
-				sQ = pm_brake_control(pm, m_fabsf(sQ));
+				sQ = pm_brake_control(pm, sQ);
+			}
+		}
+
+		if (pm->config_WEAK == PM_ENABLED) {
+
+			E = pm->lu_iQ * pm->const_R + pm->lu_wS * pm->const_E;
+			E = PM_EMAX(pm) * pm->const_lpf_U - m_fabsf(E) - pm->weak_bias_U;
+
+			if (E < 0.f) {
+
+				sD = E / m_fabsf(pm->lu_wS * pm->const_L);
+				sD = (sD < - pm->weak_maximal_D) ? - pm->weak_maximal_D : sD;
 			}
 		}
 	}
@@ -666,58 +710,97 @@ pm_current_control(pmc_t *pm)
 	 * */
 	iMAX = (pm->i_maximal < pm->i_derated_1) ? pm->i_maximal : pm->i_derated_1;
 
-	if ((sD * pm->watt_lpf_D + sQ * pm->watt_lpf_Q) < 0.f) {
-
-		iMAX = (pm->i_reverse < iMAX) ? pm->i_reverse : iMAX;
-	}
-
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
 	sQ = (sQ > iMAX) ? iMAX : (sQ < - iMAX) ? - iMAX : sQ;
 
 	/* Maximal POWER constraint.
 	 * */
-	wMAX = (pm->watt_maximal < pm->watt_derated_1) ? pm->watt_maximal : pm->watt_derated_1;
-	wREV = - pm->watt_reverse;
+	wMAX = (pm->watt_wp_maximal < pm->watt_derated_1)
+		? pm->watt_wp_maximal : pm->watt_derated_1;
+	wREV = - pm->watt_wp_reverse;
 
-	if (pm->const_lpf_U > pm->watt_derate_U) {
+	/* Maximal DC link CURRENT constraint.
+	 * */
+	wP = pm->watt_ib_maximal * pm->const_lpf_U;
+	wMAX = (wP < wMAX) ? wP : wMAX;
+	wP = - pm->watt_ib_reverse * pm->const_lpf_U;
+	wREV = (wP > wREV) ? wP : wREV;
+
+	if (pm->const_lpf_U > pm->watt_derate_HI_U) {
 
 		/* Prevent DC link overvoltage.
 		 * */
-		E = 1.f - (pm->const_lpf_U - pm->watt_derate_U) * pm->watt_gain_DU;
+		E = 1.f - (pm->const_lpf_U - pm->watt_derate_HI_U) * pm->watt_gain_DU;
 		E = (E < 0.f) ? 0.f : E;
 
-		pm->watt_integral_U += (E - pm->watt_integral_U) * pm->watt_gain_LP_I;
-		wREV *= pm->watt_integral_U * E;
+		pm->watt_integral[0] += (E - pm->watt_integral[0]) * pm->watt_gain_LP_I;
+		wREV *= pm->watt_integral[0] * E;
+	}
+	else if (pm->const_lpf_U < pm->watt_derate_LO_U) {
+
+		/* Prevent power source overload.
+		 * */
+		E = 1.f - (pm->watt_derate_LO_U - pm->const_lpf_U) * pm->watt_gain_DU;
+		E = (E < 0.f) ? 0.f : E;
+
+		pm->watt_integral[1] += (E - pm->watt_integral[1]) * pm->watt_gain_LP_I;
+		wMAX *= pm->watt_integral[1] * E;
 	}
 
 	wS_abs = m_fabsf(pm->lu_wS);
 
-	if (wS_abs > pm->watt_derate_S) {
+	if (wS_abs > pm->watt_derate_HI_S) {
 
 		/* Prevent excessive SPEED.
 		 * */
-		E = 1.f - (wS_abs - pm->watt_derate_S) * pm->watt_gain_DS;
+		E = 1.f - (wS_abs - pm->watt_derate_HI_S) * pm->watt_gain_DS;
 		E = (E < 0.f) ? 0.f : E;
 
-		pm->watt_integral_S += (E - pm->watt_integral_S) * pm->watt_gain_LP_I;
-		wMAX *= pm->watt_integral_S * E;
+		pm->watt_integral[2] += (E - pm->watt_integral[2]) * pm->watt_gain_LP_I;
+		wMAX *= pm->watt_integral[2] * E;
 	}
 
+	/* Apply POWER constraints with Q axis priority.
+	 * */
 	wP = PM_KWAT(pm) * (sD * pm->watt_lpf_D + sQ * pm->watt_lpf_Q);
 
-	/* Apply POWER constraints.
-	 * */
 	if (wP > wMAX) {
 
-		wP = wMAX / wP;
-		sD *= wP;
-		sQ *= wP;
+		wP = PM_KWAT(pm) * sD * pm->watt_lpf_D;
+
+		if (wP > wMAX) {
+
+			sD *= wMAX / wP;
+			sQ = 0.f;
+		}
+		else {
+			wMAX -= wP;
+			wP = PM_KWAT(pm) * sQ * pm->watt_lpf_Q;
+
+			if (wP > M_EPS_F) {
+
+				sQ *= wMAX / wP;
+			}
+		}
 	}
 	else if (wP < wREV) {
 
-		wP = wREV / wP;
-		sD *= wP;
-		sQ *= wP;
+		wP = PM_KWAT(pm) * sD * pm->watt_lpf_D;
+
+		if (wP < wREV) {
+
+			sD *= wREV / wP;
+			sQ = 0.f;
+		}
+		else {
+			wREV -= wP;
+			wP = PM_KWAT(pm) * sQ * pm->watt_lpf_Q;
+
+			if (wP < - M_EPS_F) {
+
+				sQ *= wREV / wP;
+			}
+		}
 	}
 
 	/* Obtain discrepancy.
@@ -736,8 +819,8 @@ pm_current_control(pmc_t *pm)
 	uD = pm->i_gain_P * eD;
 	uQ = pm->i_gain_P * eQ;
 
-	/*uD += - pm->lu_wS * pm->const_L * sQ;
-	uQ += pm->lu_wS * pm->const_L * sD;*/
+	uD += - pm->lu_wS * pm->const_L * sQ;
+	uQ += pm->lu_wS * pm->const_L * sD;
 
 	uMAX = PM_UMAX(pm) * pm->const_lpf_U;
 
@@ -892,7 +975,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm_fsm_req(pm, PM_STATE_HALT);
 		}
 
-		if (PM_CONFIG_ALT(pm) == PM_ALT_THREE_PHASE) {
+		if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 			pm->lu_iX = pm->fb_iA;
 			pm->lu_iY = .57735027f * pm->fb_iA + 1.1547005f * pm->fb_iB;
@@ -966,7 +1049,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm->tvm_B = vB;
 			pm->tvm_C = vC;
 
-			if (PM_CONFIG_ALT(pm) == PM_ALT_THREE_PHASE) {
+			if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 				Q = (1.f / 3.f) * (vA + vB + vC);
 				vA = vA - Q;

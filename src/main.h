@@ -56,7 +56,7 @@ typedef struct {
 	float			temp_EXT;
 	float			temp_INT;
 
-	/* Heating control.
+	/* Heat control.
 	 * */
 	float			heat_PCB;
 	float			heat_PCB_derated;
@@ -64,12 +64,6 @@ typedef struct {
 	float			heat_EXT_derated;
 	float			heat_PCB_FAN;
 	float			heat_gap;
-
-	/* Battery voltage.
-	 * */
-	float			batt_voltage_low;
-	float			batt_gap;
-	float			batt_derated;
 
 	/* Load cell.
 	 * */

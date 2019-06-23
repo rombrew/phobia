@@ -1130,7 +1130,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				for (N = 0; N < PM_FLUX_N; N++) {
 
-					pm->flux[N].X = 0.f;
+					pm->flux[N].X = pm->const_E;
 					pm->flux[N].Y = 0.f;
 					pm->flux[N].lpf_E = 1.f;
 				}
@@ -1142,8 +1142,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_wS = 0.f;
 
 				pm->watt_derated_1 = PM_INFINITY;
-				pm->watt_integral_U = 1.f;
-				pm->watt_integral_S = 1.f;
+				pm->watt_integral[0] = 1.f;
+				pm->watt_integral[1] = 1000.f;
+				pm->watt_integral[2] = 1.f;
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
@@ -1197,6 +1198,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 		case 2:
 			if (pm->const_E > M_EPS_F) {
 
+				pm->lu_lpf_wS = pm->flux_wS;
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 			}
 			else {

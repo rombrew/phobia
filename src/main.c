@@ -111,17 +111,6 @@ void task_TERM(void *pData)
 
 				/* TODO */
 			}
-
-			/* Derate POWER consumption if battery voltage is low.
-			 * */
-			if (pm.const_lpf_U < ap.batt_voltage_low) {
-
-				pm.watt_derated_1 = ap.batt_derated;
-			}
-			else if (pm.const_lpf_U > (ap.batt_voltage_low + ap.batt_gap)) {
-
-				pm.watt_derated_1 = PM_INFINITY;
-			}
 		}
 	}
 	while (1);
@@ -139,13 +128,14 @@ float ADC_get_ANALOG()
 
 void task_ANALOG(void *pData)
 {
-	TickType_t		xWake, xTime;
+	TickType_t		xWake, xTime1, xTime2;
 	float			voltage, control, range, scaled;
 
 	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
 
 	xWake = xTaskGetTickCount();
-	xTime = 0;
+	xTime1 = (TickType_t) 0;
+	xTime2 = (TickType_t) 0;
 
 	do {
 		/* 100 Hz.
@@ -164,20 +154,20 @@ void task_ANALOG(void *pData)
 
 				if (ap.analog_locked == 1) {
 
-					if (xTime > (TickType_t) (ap.analog_timeout * 1000.f)) {
+					if (xTime1 > (TickType_t) (ap.analog_timeout * 1000.f)) {
 
 						pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
 						ap.analog_locked = 0;
 					}
 					else {
-						xTime += (TickType_t) 10;
+						xTime1 += (TickType_t) 10;
 					}
 				}
 
 				scaled = 0.f;
 			}
 			else {
-				xTime = (TickType_t) 0;
+				xTime1 = (TickType_t) 0;
 
 				if (voltage < ap.analog_voltage_range[1]) {
 
@@ -212,6 +202,25 @@ void task_ANALOG(void *pData)
 
 					pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
 					ap.analog_locked = 1;
+				}
+			}
+			else {
+				/* Idle timeout.
+				 * */
+
+				if (ap.analog_locked == 1 && pm.lu_mode == PM_LU_FORCED) {
+
+					if (xTime2 > (TickType_t) (ap.analog_timeout * 1000.f)) {
+
+						pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+						ap.analog_locked = 0;
+					}
+					else {
+						xTime2 += (TickType_t) 10;
+					}
+				}
+				else {
+					xTime2 = (TickType_t) 0;
 				}
 			}
 		}
@@ -275,12 +284,12 @@ void task_INIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190;
-		//hal.PWM_deadtime = 90; // rev3
+		//hal.PWM_deadtime = 190;
+		hal.PWM_deadtime = 90; // rev3
 		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
+		//hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
 		//hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
-		//hal.ADC_shunt_resistance = 500E-6f; // rev3
+		hal.ADC_shunt_resistance = 620E-6f; // rev3
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -304,21 +313,21 @@ void task_INIT(void *pData)
 		ap.ppm_control_range[1] = 50.f;
 		ap.ppm_control_range[2] = 100.f;
 		ap.ppm_startup_range[0] = 0.f;
-		ap.ppm_startup_range[1] = 2.f;
+		ap.ppm_startup_range[1] = 5.f;
 
 		ap.analog_reg_ID = ID_NULL;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
 		ap.analog_timeout = 2.f;
-		ap.analog_no_lost_range[0] = .2f;
-		ap.analog_no_lost_range[1] = 4.7f;
-		ap.analog_voltage_range[0] = .4f;
-		ap.analog_voltage_range[1] = 2.f;
-		ap.analog_voltage_range[2] = 4.5f;
+		ap.analog_no_lost_range[0] = 0.2f;
+		ap.analog_no_lost_range[1] = 4.6f;
+		ap.analog_voltage_range[0] = 0.8f;
+		ap.analog_voltage_range[1] = 2.0f;
+		ap.analog_voltage_range[2] = 4.0f;
 		ap.analog_control_range[0] = - 100.f;
 		ap.analog_control_range[1] = 0.f;
 		ap.analog_control_range[2] = 100.f;
 		ap.analog_startup_range[0] = 0.f;
-		ap.analog_startup_range[1] = 2.f;
+		ap.analog_startup_range[1] = 5.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -333,10 +342,6 @@ void task_INIT(void *pData)
 		ap.heat_EXT_derated = 30.f;
 		ap.heat_PCB_FAN = 60.f;
 		ap.heat_gap = 5.f;
-
-		ap.batt_voltage_low = 6.0f;
-		ap.batt_gap = 1.f;
-		ap.batt_derated = 50.f;
 
 		ap.pull_ad[0] = 0.f;
 		ap.pull_ad[1] = 4.545E-3f;

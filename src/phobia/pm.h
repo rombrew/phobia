@@ -1,20 +1,20 @@
 #ifndef _H_PM_
 #define _H_PM_
 
-#define PM_CONFIG_ALT(pm)		(pm)->config_ALT
+#define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
 
-#define PM_UMAX(pm)			((PM_CONFIG_ALT(pm) == 0) ? 2.f / 3.f : 1.f)
-#define PM_EMAX(pm)			((PM_CONFIG_ALT(pm) == 0) ? .57735027f : .70710678f)
-#define PM_KWAT(pm)			((PM_CONFIG_ALT(pm) == 0) ? 1.5f : 1.f)
+#define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
+#define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
+#define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
 #define PM_FLUX_N			25
 #define PM_INFINITY			1E+33f
 #define PM_SFI(s)			#s
 
 enum {
-	PM_ALT_THREE_PHASE			= 0,
-	PM_ALT_TWO_PHASE,
+	PM_NOP_THREE_PHASE			= 0,
+	PM_NOP_TWO_PHASE,
 };
 
 enum {
@@ -104,11 +104,12 @@ typedef struct {
 	int		self_BM[8];
 	float		self_RMS[2];
 
-	int		config_ALT;
+	int		config_NOP;
 	int		config_TVM;
 	int		config_SENSOR;
 	int		config_HFI;
 	int		config_LOOP;
+	int		config_WEAK;
 	int		config_BRAKE;
 
 	int		fsm_state;
@@ -191,6 +192,8 @@ typedef struct {
 	float		lu_wS;
 	float		lu_lock_S;
 	float		lu_unlock_S;
+	float		lu_lpf_wS;
+	float		lu_gain_LP_S;
 	int		lu_mode;
 
 	float		forced_F[2];
@@ -234,6 +237,7 @@ typedef struct {
 	/*
 	float		hall_X[5];
 	float		hall_range;
+	float		hall_derated;
 	*/
 
 	float		const_lpf_U;
@@ -248,13 +252,15 @@ typedef struct {
 	float		const_im_B;
 	float		const_im_R;
 
-	float		watt_maximal;
+	float		watt_wp_maximal;
+	float		watt_ib_maximal;
 	float		watt_derated_1;
-	float		watt_reverse;
-	float		watt_derate_U;
-	float		watt_derate_S;
-	float		watt_integral_U;
-	float		watt_integral_S;
+	float		watt_wp_reverse;
+	float		watt_ib_reverse;
+	float		watt_derate_HI_U;
+	float		watt_derate_LO_U;
+	float		watt_derate_HI_S;
+	float		watt_integral[3];
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_lpf_wP;
@@ -266,13 +272,16 @@ typedef struct {
 
 	float		i_maximal;
 	float		i_derated_1;
-	float		i_reverse;
+	float		i_brake;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_gain_P;
 	float		i_gain_I;
+
+	float		weak_maximal_D;
+	float		weak_bias_U;
 
 	float		s_maximal;
 	float		s_setpoint;

@@ -12,8 +12,8 @@
 
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('C', 12) // rev4
-//#define GPIO_LED			XGPIO_DEF2('B', 5) // rev3
+//#define GPIO_LED			XGPIO_DEF2('C', 12) // rev4
+#define GPIO_LED			XGPIO_DEF2('B', 5) // rev3
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
