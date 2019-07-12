@@ -22,7 +22,7 @@ SH_DEF(pm_self_test)
 	do {
 		reg_format(&regfile[ID_PM_CONST_LPF_U]);
 
-		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
@@ -33,7 +33,7 @@ SH_DEF(pm_self_test)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_IDLE();
 
 			reg_format(&regfile[ID_PM_SELF_BM]);
@@ -57,7 +57,7 @@ SH_DEF(pm_self_test)
 					break;
 			}
 
-			pm_fsm_req(&pm, PM_STATE_SELF_TEST_CLEARANCE);
+			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
 			pm_wait_for_IDLE();
 
 			reg_format(&regfile[ID_PM_SELF_RMS]);

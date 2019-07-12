@@ -17,6 +17,7 @@ typedef struct {
 	 * */
 	int		VSI[3];
 	int		surge_F;
+	int		short_F;
 
 	/* Satate variabes.
 	 * */
@@ -33,6 +34,11 @@ typedef struct {
 	double		Lq;
 	double		E;
 	int		Zp;
+
+	/* Thermal constants.
+	 * */
+	double		Ct;
+	double		Rt;
 
 	/* Source contants.
 	 * */

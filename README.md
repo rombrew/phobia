@@ -12,7 +12,7 @@ electrotransport.
 * Weight: 40g.
 * Single supply from 5v to 50v.
 * Phase current up to 80A (IPT007N06N, 60v, 0.75 mOhm).
-* Lightweight capacitor bank (3 x 2.2uF + 3 x 220uF).
+* Light capacitor bank (3 x 2.2uF + 3 x 220uF).
 * PWM frequency from 20 to 80 kHz.
 * Onboard sensors:
 	* Two current shunts (0.5 mOhm) with amplifiers (AD8418) give a measuring range of 150A.
@@ -37,17 +37,17 @@ electrotransport.
 	* 5v to 12v boost (up to 100 mA).
 	* 5v to 3.3v linear (up to 400 mA).
 	* 5v to 3.3vREF optional reference voltage (accuracy 0.2%, 25 mA).
-* STM32F405RG microcontroller (70% typical computational load).
+* STM32F405RG microcontroller (75% typical computational load).
 * Anti-spark circuit: No.
-* Reverse polarity protection: No.
-* Overcurrent protection: Implemented in software.
+* Reverse polarity protection: Body diodes.
+* Overcurrent protection: Interphase (2us worst case).
 
 Look into [phobia-pcb](https://bitbucket.org/amaora/phobia-pcb) repository for
 PCB design source files.
 
 ## Software features
 
-* Sensorless vector control of PMSM based on two inline current measurement.
+* Sensorless vector control of PMSM based on two inline current measurements.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC link voltage.
 * Fast and robust multi-hypothesis flux observer with gain scheduling.
 * Terminal voltage sensing to reduce the effect of Dead-Time.
@@ -77,9 +77,10 @@ PCB design source files.
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
 * Self test of hardware integrity to diagnose troubles.
+* Flux weakening control (**EXPERIMENTAL**).
 * Terminal voltage tracking to get smooth start when motor is already running (**EXPERIMENTAL**).
-* Advanced command line interface (CLI) with autocompletion and history.
 * Two phase machine support (e.g. bipolar stepper) (**EXPERIMENTAL**).
+* Advanced command line interface (CLI) with autocompletion and history.
 * Non critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
 * Flash storage for all of configurable parameters.
 

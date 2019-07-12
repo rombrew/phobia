@@ -21,6 +21,7 @@ void irq_SVCall();
 void irq_PendSV();
 void irq_SysTick();
 
+void irq_EXTI0();
 void irq_ADC();
 void irq_CAN1_TX();
 void irq_CAN1_RX0();
@@ -56,7 +57,7 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 	irq_Default,
 	irq_Default,
 	irq_Default,
-	irq_Default,
+	irq_EXTI0,
 	irq_Default,
 	irq_Default,
 	irq_Default,

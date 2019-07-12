@@ -9,7 +9,7 @@
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
-#define TIM_ADC_ADVANCE			120
+#define TIM_ADC_ADVANCE			60
 
 void irq_TIM1_UP_TIM10() { }
 
@@ -137,6 +137,12 @@ void PWM_set_Z(int Z)
 		TIM1->CCER |= (TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}
 
+	TIM1->EGR |= TIM_EGR_COMG;
+}
+
+void PWM_halt_Z()
+{
+	TIM1->CCER = TIM_CCER_CC4E;
 	TIM1->EGR |= TIM_EGR_COMG;
 }
 

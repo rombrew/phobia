@@ -148,8 +148,7 @@ pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 	LDQ[4] = R;
 }
 
-static void
-pm_ADD(float *S, float *C, float X)
+void pm_ADD(float *S, float *C, float X)
 {
 	float		fixed_X, up_S;
 
@@ -234,7 +233,6 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			else {
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
-
 			}
 			break;
 
@@ -1141,6 +1139,15 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_F[1] = 1.f;
 				pm->flux_wS = 0.f;
 
+				pm->hfi_iD = 0.f;
+				pm->hfi_iQ = 0.f;
+				pm->hfi_F[0] = 0.f;
+				pm->hfi_F[1] = 1.f;
+				pm->hfi_wS = 0.f;
+				pm->hfi_wave[0] = 0.f;
+				pm->hfi_wave[1] = 1.f;
+				pm->hfi_flux = 0.f;
+
 				pm->watt_derated_1 = PM_INFINITY;
 				pm->watt_integral[0] = 1.f;
 				pm->watt_integral[1] = 1000.f;
@@ -1196,14 +1203,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 			break;
 
 		case 2:
-			if (pm->const_E > M_EPS_F) {
-
-				pm->lu_lpf_wS = pm->flux_wS;
-				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-			}
-			else {
-				pm->lu_mode = PM_LU_FORCED;
-			}
+			pm->lu_mode = (pm->const_E > M_EPS_F)
+				? PM_LU_ESTIMATE_FLUX : PM_LU_FORCED;
 
 			pm->proc_set_Z(0);
 
@@ -1235,6 +1236,12 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(7);
+
+				pm->vsi_IF = 0;
+				pm->vsi_UF = 0;
+				pm->vsi_AZ = 0;
+				pm->vsi_BZ = 0;
+				pm->vsi_CZ = 0;
 
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;
@@ -1307,6 +1314,12 @@ pm_fsm_state_halt(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(7);
 
+			pm->vsi_IF = 0;
+			pm->vsi_UF = 0;
+			pm->vsi_AZ = 0;
+			pm->vsi_BZ = 0;
+			pm->vsi_CZ = 0;
+
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
 
@@ -1326,6 +1339,62 @@ pm_fsm_state_halt(pmc_t *pm)
 
 void pm_FSM(pmc_t *pm)
 {
+	switch (pm->fsm_req) {
+
+		case PM_STATE_ZERO_DRIFT:
+		case PM_STATE_SELF_TEST_POWER_STAGE:
+		case PM_STATE_SELF_TEST_CLEARANCE:
+		case PM_STATE_STD_VOLTAGE:
+		case PM_STATE_STD_CURRENT:
+		case PM_STATE_ADJUST_VOLTAGE:
+		case PM_STATE_ADJUST_CURRENT:
+		case PM_STATE_PROBE_CONST_R:
+		case PM_STATE_PROBE_CONST_L:
+		case PM_STATE_LU_STARTUP:
+
+			if (pm->fsm_state != PM_STATE_IDLE)
+				break;
+
+			if (pm->lu_mode != PM_LU_DISABLED)
+				break;
+
+			pm->fsm_state = pm->fsm_req;
+			pm->fsm_phase = 0;
+			break;
+
+		case PM_STATE_LU_SHUTDOWN:
+		case PM_STATE_PROBE_CONST_E:
+		case PM_STATE_PROBE_CONST_J:
+
+			if (pm->fsm_state != PM_STATE_IDLE)
+				break;
+
+			if (pm->lu_mode == PM_LU_DISABLED)
+				break;
+
+			pm->fsm_state = pm->fsm_req;
+			pm->fsm_phase = 0;
+			break;
+
+		case PM_STATE_HALT:
+
+			if (pm->fsm_state == PM_STATE_HALT)
+				break;
+
+			if (pm->fsm_state == PM_STATE_IDLE
+			&& pm->lu_mode == PM_LU_DISABLED)
+				break;
+
+			pm->fsm_state = pm->fsm_req;
+			pm->fsm_phase = 0;
+			break;
+
+		default:
+			break;
+	}
+
+	pm->fsm_req = PM_STATE_IDLE;
+
 	switch (pm->fsm_state) {
 
 		case PM_STATE_IDLE:
@@ -1386,56 +1455,6 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_HALT:
 		default:
 			pm_fsm_state_halt(pm);
-	}
-}
-
-void pm_fsm_req(pmc_t *pm, int req)
-{
-	switch (req) {
-
-		case PM_STATE_ZERO_DRIFT:
-		case PM_STATE_SELF_TEST_POWER_STAGE:
-		case PM_STATE_SELF_TEST_CLEARANCE:
-		case PM_STATE_STD_VOLTAGE:
-		case PM_STATE_STD_CURRENT:
-		case PM_STATE_ADJUST_VOLTAGE:
-		case PM_STATE_ADJUST_CURRENT:
-		case PM_STATE_PROBE_CONST_R:
-		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_LU_STARTUP:
-
-			if (pm->fsm_state != PM_STATE_IDLE)
-				break;
-
-			if (pm->lu_mode != PM_LU_DISABLED)
-				break;
-
-			pm->fsm_state = req;
-			pm->fsm_phase = 0;
-			break;
-
-		case PM_STATE_LU_SHUTDOWN:
-		case PM_STATE_PROBE_CONST_E:
-		case PM_STATE_PROBE_CONST_J:
-
-			if (pm->fsm_state != PM_STATE_IDLE)
-				break;
-
-			if (pm->lu_mode == PM_LU_DISABLED)
-				break;
-
-			pm->fsm_state = req;
-			pm->fsm_phase = 0;
-			break;
-
-		case PM_STATE_HALT:
-
-			pm->fsm_state = req;
-			pm->fsm_phase = 0;
-			break;
-
-		default:
-			break;
 	}
 }
 

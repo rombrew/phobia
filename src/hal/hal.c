@@ -12,8 +12,6 @@ unsigned long			clock_cpu_hz;
 HAL_t				hal;
 LOG_t				log __section_noinit;
 
-extern void log_TRACE(const char *fmt, ...);
-
 void irq_NMI()
 {
 	log_TRACE("IRQ: NMI\r\n");

@@ -12,9 +12,25 @@ static HAL_ADC_t		hal_ADC;
 
 void irq_ADC()
 {
-	int			xADC;
+	int			ADC2_SR, ADC3_SR, xADC;
 
-	if (ADC2->SR & ADC_SR_JEOC) {
+	ADC2_SR = ADC2->SR;
+	ADC3_SR = ADC3->SR;
+
+	if ((ADC2_SR | ADC3_SR) & ADC_SR_AWD) {
+
+		ADC2->SR = ~ADC_SR_AWD;
+		ADC3->SR = ~ADC_SR_AWD;
+
+		/* NOTE: Overcurrent condition was detected so we immediately
+		 * disable PWM and report the incident.
+		 * */
+		PWM_halt_Z();
+
+		hal.ADC_halt_OCP++;
+	}
+
+	if (ADC2_SR & ADC_SR_JEOC) {
 
 		ADC2->SR = ~ADC_SR_JEOC;
 		ADC3->SR = ~ADC_SR_JEOC;
@@ -37,8 +53,19 @@ void irq_ADC()
 		xADC = (int) ADC3->JDR3;
 		hal.ADC_voltage_C = (float) (xADC) * hal.ADC_const.GT[1] + hal.ADC_const.GT[0];
 
-		ADC_IRQ();
+		/* Request EXTI0 interrupt.
+		 * */
+		EXTI->SWIER = EXTI_SWIER_SWIER0;
 	}
+}
+
+void irq_EXTI0()
+{
+	EXTI->PR = EXTI_PR_PR0;
+
+	/* Call the control software.
+	 * */
+	ADC_IRQ();
 }
 
 static void
@@ -66,12 +93,12 @@ ADC_const_setup()
 
 void ADC_irq_lock()
 {
-	ADC2->CR1 &= ~ADC_CR1_JEOCIE;
+	NVIC_DisableIRQ(EXTI0_IRQn);
 }
 
 void ADC_irq_unlock()
 {
-	ADC2->CR1 |= ADC_CR1_JEOCIE;
+	NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
 void ADC_startup()
@@ -89,9 +116,9 @@ void ADC_startup()
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_B);
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_C);
 
-	/* Common configuration (21 MHz).
+	/* Common configuration (overclocked 42 MHz).
 	 * */
-	ADC->CCR = ADC_CCR_TSVREFE | ADC_CCR_ADCPRE_0;
+	ADC->CCR = ADC_CCR_TSVREFE;
 
 	/* Configure ADC1.
 	 * */
@@ -102,14 +129,18 @@ void ADC_startup()
 
 	/* Configure ADC2.
 	 * */
-	ADC2->CR1 = ADC_CR1_SCAN;
-	ADC2->CR2 = ADC_CR2_JEXTEN_0;
+	ADC2->CR1 = ADC_CR1_AWDEN | ADC_CR1_JAWDEN | ADC_CR1_AWDSGL | ADC_CR1_SCAN
+		| ADC_CR1_JEOCIE | ADC_CR1_AWDIE | XGPIO_GET_CH(GPIO_ADC_CURRENT_A);
+	ADC2->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_CONT;
 	ADC2->SMPR1 = ADC_SMPR1_SMP18_0 | ADC_SMPR1_SMP17_0 | ADC_SMPR1_SMP16_0
 		| ADC_SMPR1_SMP15_0 | ADC_SMPR1_SMP14_0 | ADC_SMPR1_SMP13_0
 		| ADC_SMPR1_SMP12_0 | ADC_SMPR1_SMP11_0 | ADC_SMPR1_SMP10_0;
 	ADC2->SMPR2 = ADC_SMPR2_SMP9_0 | ADC_SMPR2_SMP8_0 | ADC_SMPR2_SMP7_0
 		| ADC_SMPR2_SMP6_0 | ADC_SMPR2_SMP5_0 | ADC_SMPR2_SMP4_0
 		| ADC_SMPR2_SMP3_0 | ADC_SMPR2_SMP2_0 | ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP0_0;
+	ADC2->HTR = 4000UL;
+	ADC2->LTR = 96UL;
+	ADC2->SQR3 = XGPIO_GET_CH(GPIO_ADC_CURRENT_A);
 	ADC2->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 10)
@@ -117,14 +148,18 @@ void ADC_startup()
 
 	/* Configure ADC3.
 	 * */
-	ADC3->CR1 = ADC_CR1_SCAN;
-	ADC3->CR2 = ADC_CR2_JEXTEN_0;
+	ADC3->CR1 = ADC_CR1_AWDEN | ADC_CR1_JAWDEN | ADC_CR1_AWDSGL | ADC_CR1_SCAN
+		| ADC_CR1_AWDIE | XGPIO_GET_CH(GPIO_ADC_CURRENT_B);
+	ADC3->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_CONT;
 	ADC3->SMPR1 = ADC_SMPR1_SMP18_0 | ADC_SMPR1_SMP17_0 | ADC_SMPR1_SMP16_0
 		| ADC_SMPR1_SMP15_0 | ADC_SMPR1_SMP14_0 | ADC_SMPR1_SMP13_0
 		| ADC_SMPR1_SMP12_0 | ADC_SMPR1_SMP11_0 | ADC_SMPR1_SMP10_0;
 	ADC3->SMPR2 = ADC_SMPR2_SMP9_0 | ADC_SMPR2_SMP8_0 | ADC_SMPR2_SMP7_0
 		| ADC_SMPR2_SMP6_0 | ADC_SMPR2_SMP5_0 | ADC_SMPR2_SMP4_0
 		| ADC_SMPR2_SMP3_0 | ADC_SMPR2_SMP2_0 | ADC_SMPR2_SMP1_0 | ADC_SMPR2_SMP0_0;
+	ADC3->HTR = 4000UL;
+	ADC3->LTR = 96UL;
+	ADC3->SQR3 = XGPIO_GET_CH(GPIO_ADC_CURRENT_B);
 	ADC3->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 10)
@@ -144,16 +179,26 @@ void ADC_startup()
 	ADC2->CR2 |= ADC_CR2_ADON;
 	ADC3->CR2 |= ADC_CR2_ADON;
 
+	/* Kick regular channels.
+	 * */
+	ADC2->CR2 |= ADC_CR2_SWSTART;
+	ADC3->CR2 |= ADC_CR2_SWSTART;
+
+	/* Enable EXTI0.
+	 * */
+	EXTI->IMR = EXTI_IMR_MR0;
+
 	/* Enable IRQ.
 	 * */
 	NVIC_SetPriority(ADC_IRQn, 0);
+	NVIC_SetPriority(EXTI0_IRQn, 1);
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 
 float ADC_get_VALUE(int xGPIO)
 {
-	float			fADC = 0.f;
-	int			xCH;
+	float			fVAL = 0.f;
+	int			xCH, xADC;
 
 	if (xSemaphoreTake(hal_ADC.xSem, (TickType_t) 10) == pdTRUE) {
 
@@ -169,14 +214,20 @@ float ADC_get_VALUE(int xGPIO)
 		}
 
 		ADC1->SR &= ~ADC_SR_EOC;
-		fADC = (float) ADC1->DR;
+		xADC = ADC1->DR;
 
-		fADC = (xCH != 16) ? fADC * hal.ADC_const.GS
-			: hal.ADC_const.TEMP[1] * fADC + hal.ADC_const.TEMP[0];
+		if (xCH == 16) {
+
+			fVAL = hal.ADC_const.TEMP[1] * (float) xADC
+				+ hal.ADC_const.TEMP[0];
+		}
+		else {
+			fVAL = (float) xADC * hal.ADC_const.GS;
+		}
 
 		xSemaphoreGive(hal_ADC.xSem);
 	}
 
-	return fADC;
+	return fVAL;
 }
 

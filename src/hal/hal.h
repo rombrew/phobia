@@ -12,8 +12,8 @@
 
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
-//#define GPIO_LED			XGPIO_DEF2('C', 12) // rev4
-#define GPIO_LED			XGPIO_DEF2('B', 5) // rev3
+#define GPIO_LED			XGPIO_DEF2('C', 12) // rev4
+//#define GPIO_LED			XGPIO_DEF2('B', 5) // rev3
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
@@ -78,6 +78,7 @@ typedef struct {
 	float		ADC_terminal_ratio;
 	float		ADC_terminal_bias;
 
+	int		ADC_halt_OCP;
 	float		ADC_current_A;
 	float		ADC_current_B;
 	float		ADC_voltage_U;
@@ -129,6 +130,7 @@ void hal_fence();
 void log_putc(int c);
 int log_validate();
 
+extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();
 
 #endif /* _H_HAL_ */

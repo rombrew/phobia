@@ -47,7 +47,7 @@ SH_DEF(pm_STD_voltage)
 
 		pm.probe_DFT[4] = STD;
 
-		pm_fsm_req(&pm, PM_STATE_STD_VOLTAGE);
+		pm.fsm_req = PM_STATE_STD_VOLTAGE;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_US_0]);
@@ -81,7 +81,7 @@ SH_DEF(pm_STD_current)
 	do {
 		reg_format(&regfile[ID_PM_CONST_LPF_U]);
 
-		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
@@ -92,7 +92,7 @@ SH_DEF(pm_STD_current)
 
 		pm.probe_DFT[4] = STD;
 
-		pm_fsm_req(&pm, PM_STATE_STD_CURRENT);
+		pm.fsm_req = PM_STATE_STD_CURRENT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_1]);
@@ -114,7 +114,7 @@ SH_DEF(pm_self_adjust)
 	do {
 		reg_format(&regfile[ID_PM_CONST_LPF_U]);
 
-		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
@@ -125,7 +125,7 @@ SH_DEF(pm_self_adjust)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm_fsm_req(&pm, PM_STATE_ADJUST_VOLTAGE);
+			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			pm_wait_for_IDLE();
 
 			reg_format(&regfile[ID_PM_AD_UA_0]);
@@ -149,7 +149,7 @@ SH_DEF(pm_self_adjust)
 				break;
 		}
 
-		pm_fsm_req(&pm, PM_STATE_ADJUST_CURRENT);
+		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_1]);
@@ -171,7 +171,7 @@ SH_DEF(pm_probe_base)
 	do {
 		reg_format(&regfile[ID_PM_CONST_LPF_U]);
 
-		pm_fsm_req(&pm, PM_STATE_ZERO_DRIFT);
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
@@ -182,20 +182,20 @@ SH_DEF(pm_probe_base)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm_fsm_req(&pm, PM_STATE_SELF_TEST_POWER_STAGE);
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 
 			if (pm_wait_for_IDLE() != PM_OK)
 				break;
 		}
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_R);
+		pm.fsm_req = PM_STATE_PROBE_CONST_R;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_R]);
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_L);
+		pm.fsm_req = PM_STATE_PROBE_CONST_L;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -222,7 +222,7 @@ SH_DEF(pm_probe_spinup)
 	}
 
 	do {
-		pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -234,7 +234,7 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay(xWait);
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
+		pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -248,7 +248,7 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay(xWait);
 
-		pm_fsm_req(&pm, PM_STATE_PROBE_CONST_E);
+		pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -259,13 +259,13 @@ SH_DEF(pm_probe_spinup)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
-	pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 }
 
 SH_DEF(pm_fsm_startup)
 {
 	do {
-		pm_fsm_req(&pm, PM_STATE_LU_STARTUP);
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -278,7 +278,7 @@ SH_DEF(pm_fsm_startup)
 SH_DEF(pm_fsm_shutdown)
 {
 	do {
-		pm_fsm_req(&pm, PM_STATE_LU_SHUTDOWN);
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;

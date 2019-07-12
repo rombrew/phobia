@@ -45,6 +45,7 @@ void blm_Enable(blm_t *m)
 	m->VSI[1] = 0;
 	m->VSI[2] = 0;
 	m->surge_F = 0;
+	m->short_F = 0;
 
         m->X[0] = 0.; /* Axis D current (Ampere) */
 	m->X[1] = 0.; /* Axis Q current (Ampere) */
@@ -63,15 +64,26 @@ void blm_Enable(blm_t *m)
 	/* Winding resistance. (Ohm)
          * */
 	m->R = 2.4E-1;
+	//m->R = 22E-3;
 
 	/* Winding inductance. (Henry)
          * */
-	m->Ld = 5.7E-4;
-	m->Lq = 5.7E-4;
+	m->Ld = 5.2E-4;
+	m->Lq = 6.5E-4;
+	//m->Ld = 11E-6;
+	//m->Lq = 17E-6;
 
 	/* Source voltage. (Volt)
 	 * */
 	m->U = 48.;
+
+	/* Thermal capacity. (Joule/K)
+	 * */
+	m->Ct = 30.;
+
+	/* Thermal resistance. (K/Watt)
+	 * */
+	m->Rt = 0.5;
 
 	/* Source internal resistance. (Ohm)
 	 * */
@@ -84,25 +96,27 @@ void blm_Enable(blm_t *m)
 	/* Number of the rotor pole pairs.
 	 * */
 	m->Zp = 15;
+	//m->Zp = 7;
 
 	/* BEMF constant. (Weber)
          * */
 	Kv = 15.7; /* Total RPM per Volt */
+	//Kv = 300;
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
 	 * */
-	m->J = 7E-3;
+	m->J = 5E-4;
 
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 1E-7;
-	m->M[2] = 5E-4;
+	m->M[1] = 1E-1;
+	m->M[2] = 5E-6;
 
 	/* ADC conversion time.
 	 * */
-	m->T_ADC = 1.285E-6;
+	m->T_ADC = 0.643E-6;
 
 	/* Sensor time constant.
 	 * */
@@ -165,7 +179,8 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* Thermal equation.
 	 * */
-	D[4] = 0.;
+	D[4] = (1.5f * R1 * (X[0] * X[0] + X[1] * X[1])
+			+ (25. - X[4]) / m->Rt) / m->Ct;
 }
 
 static void
@@ -214,7 +229,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of A.
 			 * */
-			m->X[7] = 0.;
+			m->X[7] += 12.;
 			m->surge_F = 0;
 		}
 
@@ -222,7 +237,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of B.
 			 * */
-			m->X[8] = 0.;
+			m->X[8] += 12.;
 			m->surge_F = 0;
 		}
 
@@ -231,6 +246,13 @@ blm_Solve_Split(blm_t *m, double dT)
 			/* Distortion of C.
 			 * */
 			m->surge_F = 0;
+		}
+
+		if (m->short_F == 1) {
+
+			/* Short circuit.
+			 * */
+			m->VSI[0] = 1;
 		}
 
 		/* Split the long interval.

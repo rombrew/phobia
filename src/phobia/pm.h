@@ -40,8 +40,8 @@ enum {
 	PM_LU_DETACHED,
 	PM_LU_FORCED,
 	PM_LU_ESTIMATE_FLUX,
+	PM_LU_SENSORED_HALL_ABC,
 	PM_LU_ESTIMATE_HFI,
-	PM_LU_SENSORED_HALL,
 };
 
 enum {
@@ -78,6 +78,8 @@ enum {
 
 typedef struct {
 
+	int		halt_OCP;
+
 	float		current_A;
 	float		current_B;
 	float		voltage_U;
@@ -111,7 +113,9 @@ typedef struct {
 	int		config_LOOP;
 	int		config_WEAK;
 	int		config_BRAKE;
+	int		config_STAT;
 
+	int		fsm_req;
 	int		fsm_state;
 	int		fsm_phase;
 	int		fsm_phase_2;
@@ -213,6 +217,7 @@ typedef struct {
 	float		flux_lower_R;
 	float		flux_upper_R;
 	float		flux_transient_S;
+	float		flux_latency_H;
 	float		flux_E;
 	int		flux_H;
 	float		flux_F[2];
@@ -223,9 +228,15 @@ typedef struct {
 	float		flux_gain_LP_E;
 	float		flux_gain_SF;
 
+	/*
+	float		hall_X[5];
+	float		hall_range;
+	*/
+
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	float		hfi_derated;
+	float		hfi_iD;
+	float		hfi_iQ;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_wave[2];
@@ -233,12 +244,6 @@ typedef struct {
 	float		hfi_gain_P;
 	float		hfi_gain_S;
 	float		hfi_gain_F;
-
-	/*
-	float		hall_X[5];
-	float		hall_range;
-	float		hall_derated;
-	*/
 
 	float		const_lpf_U;
 	float		const_gain_LP_U;
@@ -251,6 +256,7 @@ typedef struct {
 	float		const_im_LQ;
 	float		const_im_B;
 	float		const_im_R;
+	float		const_dd_T;
 
 	float		watt_wp_maximal;
 	float		watt_ib_maximal;
@@ -287,18 +293,32 @@ typedef struct {
 	float		s_setpoint;
 	int		s_brake_DIR;
 	float		s_accel;
+	float		s_band;
 	float		s_track;
 	float		s_integral;
 	float		s_gain_P;
 	float		s_gain_LP_I;
+	float		s_gain_HF_S;
 
 	float		x_setpoint_F[2];
 	int		x_setpoint_revol;
 	float		x_lu_F1;
 	int		x_lu_revol;
-	float		x_near;
+	float		x_near_EP;
 	float		x_gain_P;
 	float		x_gain_N;
+
+	float		stat_lu_F1;
+	int		stat_revol;
+	float		stat_distance;
+	float		stat_consumed_wh;
+	float		stat_consumed_ah;
+	float		stat_reverted_wh;
+	float		stat_reverted_ah;
+	float		stat_FIX[4];
+
+	/*int		bt_mode;
+	float		bt_*/
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);
@@ -310,8 +330,8 @@ void pm_default(pmc_t *pm);
 void pm_voltage_control(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
+void pm_ADD(float *S, float *C, float X);
 void pm_FSM(pmc_t *pm);
-void pm_fsm_req(pmc_t *pm, int req);
 
 const char *pm_strerror(int n);
 
