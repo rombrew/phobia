@@ -149,7 +149,7 @@ reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
 {
-	float			halt, ad;
+	float			halt, adjust;
 
 	if (lval != NULL) {
 
@@ -161,11 +161,11 @@ reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
 
 			halt = ADC_RESOLUTION * 95E-2f / 2.f;
 
-			ad = (pm.ad_IA[1] < pm.ad_IB[1])
+			adjust = (pm.ad_IA[1] < pm.ad_IB[1])
 				? pm.ad_IA[1] : pm.ad_IB[1];
-			ad = (ad == 0.f) ? 1.f : ad;
+			adjust = (adjust == 0.f) ? 1.f : adjust;
 
-			reg->link->f = (float) (int) (halt * hal.ADC_const.GA * ad);
+			reg->link->f = (float) (int) (halt * hal.ADC_const.GA * adjust);
 		}
 		else {
 			reg->link->f = *rval;
@@ -465,8 +465,8 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_LU_DETACHED);
 				TEXT_ITEM(PM_LU_FORCED);
 				TEXT_ITEM(PM_LU_ESTIMATE_FLUX);
+				TEXT_ITEM(PM_LU_SENSORED_HALL_ABC);
 				TEXT_ITEM(PM_LU_ESTIMATE_HFI);
-				TEXT_ITEM(PM_LU_SENSORED_HALL);
 
 				default: break;
 			}
@@ -490,7 +490,6 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.ADC_voltage_ratio,,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_terminal_ratio,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_terminal_bias,,		"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_halt_OCP,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(hal.HALL_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_timebase,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
@@ -658,11 +657,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_accel,,	"rad/s/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_accel, _rpm,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 
-	REG_DEF(pm.flux, _lpf_E,		"",	"%2e",	REG_READ_ONLY, &reg_proc_lpf_E, NULL),
+	REG_DEF(pm.flux_N,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_lower_R,,		"",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_upper_R,,		"",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_transient_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_latency_H,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_E,,			"Wb",	"%4e",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_H,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -671,24 +669,29 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.flux_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
+	REG_DEF(pm.flux, _lpf_E,		"",	"%2e",	REG_READ_ONLY, &reg_proc_lpf_E, NULL),
 	REG_DEF(pm.flux_gain_IN,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LO,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_HI,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LP_E,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_SF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.inject_bias_U,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.inject_ratio_D,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+
 	REG_DEF(pm.hfi_freq_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_swing_D,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_derated,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_F, g,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
 	REG_DEF(pm.hfi_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.hfi_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.hfi_flux,,			"",	"%4e",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hfi_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_gain_S,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_gain_F,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_polarity,,		"",	"%4e",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hfi_gain_EP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_gain_SF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_gain_FP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_lpf_U,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_gain_LP_U,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -744,10 +747,11 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_accel,,		"rad/s/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_accel, _rpm,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.s_accel, _kmh,	"km/h/s",	"%1f",	0, &reg_proc_kmh, NULL),
-	REG_DEF(pm.s_band,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_band, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.s_advance,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_advance, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.s_gain_P,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_LP_I,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_gain_HF_S,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_setpoint_F,,		"rad",	"%2f",	0, &reg_proc_setpoint_F, NULL),
 	REG_DEF(pm.x_setpoint_F, g,		"g",	"%2f",	0, &reg_proc_setpoint_Fg, NULL),
@@ -755,7 +759,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_N,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.stat_revol,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.stat_revol_total,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.stat_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.stat_distance, _km,		"km",	"%3f",	REG_READ_ONLY, &reg_proc_km, NULL),
 	REG_DEF(pm.stat_consumed_wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),

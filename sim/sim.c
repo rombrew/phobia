@@ -63,7 +63,7 @@ sim_Tel(float *pTel)
 
 	/* FLUX speed.
 	 * */
-	pTel[14] = pm.flux_wS * 30. / M_PI / m.Zp;
+	pTel[14] = pm.lu_wS * 30. / M_PI / m.Zp;
 
 	/* FLUX E.
 	 * */
@@ -119,8 +119,8 @@ sim_Tel(float *pTel)
 	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
 	pTel[35] = pm.flux_H;
 	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
-	pTel[37] = pm.hfi_flux;
-	pTel[38] = pm.stat_reverted_ah;
+	pTel[37] = pm.hfi_polarity;
+	pTel[38] = m.short_F;
 }
 
 static void
@@ -233,21 +233,18 @@ sim_Script(FILE *fdTel)
 		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 	}
 
-	pm.s_setpoint = 30.f;
+	pm.config_HFI = 1;
+
+	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 1.f;
-	sim_F(fdTel, 1.);
+	m.M[2] = 9e-1;
 
-	pm.s_setpoint = 2.f;
-	sim_F(fdTel, 1.);
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 2.);
 
-	m.M[2] = 2E-1;
-	pm.s_setpoint = 500.f;
-	sim_F(fdTel, 5.);
-
-	pm.s_setpoint = 2.f;
-	sim_F(fdTel, 5.);
+	pm.s_setpoint = 200.f;
+	sim_F(fdTel, 2.);
 }
 
 int main(int argc, char *argv[])

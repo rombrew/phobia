@@ -40,7 +40,7 @@ electrotransport.
 * STM32F405RG microcontroller (75% typical computational load).
 * Anti-spark circuit: No.
 * Reverse polarity protection: Body diodes.
-* Overcurrent protection: Interphase (2us worst case).
+* Overcurrent protection: Sowftware.
 
 Look into [phobia-pcb](https://bitbucket.org/amaora/phobia-pcb) repository for
 PCB design source files.
@@ -65,8 +65,7 @@ PCB design source files.
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).
 	* Phase brake current.
-	* Source power consumption and regeneration.
-	* Source current consumption and regeneration.
+	* Source current (or power) consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration (as part of speed control loop).
 * Control inputs:
@@ -76,6 +75,9 @@ PCB design source files.
 	* Analog input.
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
+* Available information:
+	* Total distance traveled.
+	* Source energy (Wh) and charge (Ah) consumed (reverted).
 * Self test of hardware integrity to diagnose troubles.
 * Flux weakening control (**EXPERIMENTAL**).
 * Terminal voltage tracking to get smooth start when motor is already running (**EXPERIMENTAL**).
@@ -86,7 +88,6 @@ PCB design source files.
 
 ## TODO
 
-* Analyse of rapid transient modes. Introduce an iron saturation model if needed.
 * Analyse HFI operation on large current values.
 * Make a detailed documentation.
 
@@ -98,6 +99,7 @@ a specific motor.
 
 There are a few videos that show the operation of the prototypes (may be outdated).
 
+[![PMC](https://i.ytimg.com/vi/phLGdwzEnQY/default.jpg)](https://www.youtube.com/watch?v=phLGdwzEnQY)
 [![PMC](https://i.ytimg.com/vi/ANp_5zZkh48/default.jpg)](https://www.youtube.com/watch?v=ANp_5zZkh48)
 [![PMC](https://i.ytimg.com/vi/IM0k0_boXc4/default.jpg)](https://www.youtube.com/watch?v=IM0k0_boXc4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)

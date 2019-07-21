@@ -8,7 +8,7 @@
 #define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
 #define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
-#define PM_FLUX_N			25
+#define PM_FLUX_MAX			25
 #define PM_INFINITY			1E+33f
 #define PM_SFI(s)			#s
 
@@ -77,8 +77,6 @@ enum {
 };
 
 typedef struct {
-
-	int		halt_OCP;
 
 	float		current_A;
 	float		current_B;
@@ -212,12 +210,12 @@ typedef struct {
 		float	Y;
 		float	lpf_E;
 	}
-	flux[PM_FLUX_N];
+	flux[PM_FLUX_MAX];
 
+	int		flux_N;
 	float		flux_lower_R;
 	float		flux_upper_R;
 	float		flux_transient_S;
-	float		flux_latency_H;
 	float		flux_E;
 	int		flux_H;
 	float		flux_F[2];
@@ -228,6 +226,9 @@ typedef struct {
 	float		flux_gain_LP_E;
 	float		flux_gain_SF;
 
+	float		inject_bias_U;
+	float		inject_ratio_D;
+
 	/*
 	float		hall_X[5];
 	float		hall_range;
@@ -235,15 +236,16 @@ typedef struct {
 
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
+	float		hfi_derated;
 	float		hfi_iD;
 	float		hfi_iQ;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_wave[2];
-	float		hfi_flux;
-	float		hfi_gain_P;
-	float		hfi_gain_S;
-	float		hfi_gain_F;
+	float		hfi_polarity;
+	float		hfi_gain_EP;
+	float		hfi_gain_SF;
+	float		hfi_gain_FP;
 
 	float		const_lpf_U;
 	float		const_gain_LP_U;
@@ -293,7 +295,7 @@ typedef struct {
 	float		s_setpoint;
 	int		s_brake_DIR;
 	float		s_accel;
-	float		s_band;
+	float		s_advance;
 	float		s_track;
 	float		s_integral;
 	float		s_gain_P;
@@ -309,7 +311,8 @@ typedef struct {
 	float		x_gain_N;
 
 	float		stat_lu_F1;
-	int		stat_revol;
+	int		stat_revol_qu;
+	int		stat_revol_total;
 	float		stat_distance;
 	float		stat_consumed_wh;
 	float		stat_consumed_ah;

@@ -34,7 +34,7 @@ SH_DEF(pm_STD_voltage)
 
 	if (stof(&STD, s) != NULL) {
 
-		/* The value could be validated here.
+		/* FIXME: The value could be validated here.
 		 * */
 	}
 	else {
@@ -70,7 +70,7 @@ SH_DEF(pm_STD_current)
 
 	if (stof(&STD, s) != NULL) {
 
-		/* The value could be validated here.
+		/* FIXME: The value could be validated here.
 		 * */
 	}
 	else {
@@ -228,7 +228,7 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		xWait = (TickType_t) (pm.probe_speed_low / pm.forced_accel * 1000.f);
-		xWait += (TickType_t) 500;
+		xWait += (TickType_t) 100;
 
 		pm.s_setpoint = pm.probe_speed_low;
 
@@ -242,7 +242,7 @@ SH_DEF(pm_probe_spinup)
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
 		xWait = (TickType_t) (pm.probe_speed_ramp / pm.s_accel * 1000.f);
-		xWait = (TickType_t) 500;
+		xWait = (TickType_t) 100;
 
 		pm.s_setpoint = pm.probe_speed_ramp;
 

@@ -1056,7 +1056,6 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->FIX[14] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->FIX[14];
 
-
 			pm->FIX[15] += pm->probe_gain_I * eY;
 			uY = pm->probe_gain_P * eY + pm->FIX[15];
 
@@ -1126,27 +1125,27 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->forced_F[1] = 1.f;
 				pm->forced_wS = 0.f;
 
-				for (N = 0; N < PM_FLUX_N; N++) {
+				for (N = 0; N < PM_FLUX_MAX; N++) {
 
 					pm->flux[N].X = pm->const_E;
 					pm->flux[N].Y = 0.f;
-					pm->flux[N].lpf_E = 1.f;
+					pm->flux[N].lpf_E = .1f;
 				}
 
 				pm->flux_E = 0.f;
-				pm->flux_H = 5;
-				pm->flux_F[0] = 0.f;
-				pm->flux_F[1] = 1.f;
+				pm->flux_H = 0;
+				pm->flux_F[0] = 1.f;
+				pm->flux_F[1] = 0.f;
 				pm->flux_wS = 0.f;
 
 				pm->hfi_iD = 0.f;
 				pm->hfi_iQ = 0.f;
-				pm->hfi_F[0] = 0.f;
-				pm->hfi_F[1] = 1.f;
+				pm->hfi_F[0] = 1.f;
+				pm->hfi_F[1] = 0.f;
 				pm->hfi_wS = 0.f;
-				pm->hfi_wave[0] = 0.f;
-				pm->hfi_wave[1] = 1.f;
-				pm->hfi_flux = 0.f;
+				pm->hfi_wave[0] = 1.f;
+				pm->hfi_wave[1] = 0.f;
+				pm->hfi_polarity = 0.f;
 
 				pm->watt_derated_1 = PM_INFINITY;
 				pm->watt_integral[0] = 1.f;
@@ -1167,8 +1166,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->s_track = 0.f;
 				pm->s_integral = 0.f;
 
-				pm->x_setpoint_F[0] = 0.f;
-				pm->x_setpoint_F[1] = 1.f;
+				pm->x_setpoint_F[0] = 1.f;
+				pm->x_setpoint_F[1] = 0.f;
 				pm->x_setpoint_revol = 0;
 				pm->x_lu_F1 = pm->lu_F[1];
 				pm->x_lu_revol = 0;

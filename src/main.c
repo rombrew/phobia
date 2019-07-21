@@ -320,12 +320,12 @@ void task_INIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190;
-		//hal.PWM_deadtime = 90; // rev3
+		//hal.PWM_deadtime = 190;
+		hal.PWM_deadtime = 90; // rev3
 		hal.ADC_reference_voltage = 3.3f;
 		//hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
-		hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
-		//hal.ADC_shunt_resistance = 620E-6f; // rev3
+		//hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
+		hal.ADC_shunt_resistance = 620E-6f; // rev3
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -363,14 +363,17 @@ void task_INIT(void *pData)
 		ap.analog_control_range[1] = 0.f;
 		ap.analog_control_range[2] = 100.f;
 		ap.analog_startup_range[0] = 0.f;
-		ap.analog_startup_range[1] = 50.f;
+		ap.analog_startup_range[1] = 20.f;
 
 		ap.ntc_PCB.r_balance = 10000.f;
 		ap.ntc_PCB.r_ntc_0 = 10000.f;
 		ap.ntc_PCB.ta_0 = 25.f;
 		ap.ntc_PCB.betta = 3435.f;
 
-		memcpy(&ap.ntc_EXT, &ap.ntc_PCB, sizeof(ntc_t));
+		ap.ntc_EXT.r_balance = 10000.f;
+		ap.ntc_EXT.r_ntc_0 = 10000.f;
+		ap.ntc_EXT.ta_0 = 25.f;
+		ap.ntc_EXT.betta = 3380.f;
 
 		ap.heat_PCB = 110.f;
 		ap.heat_PCB_derated = 30.f;
@@ -417,7 +420,7 @@ void task_INIT(void *pData)
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 
 	xTaskCreate(task_TERM, "TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_TERM, "ERROR", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
@@ -500,8 +503,6 @@ input_CONTROL_QEP()
 void ADC_IRQ()
 {
 	pmfb_t		fb;
-
-	fb.halt_OCP = hal.ADC_halt_OCP;
 
 	fb.current_A = hal.ADC_current_A;
 	fb.current_B = hal.ADC_current_B;
