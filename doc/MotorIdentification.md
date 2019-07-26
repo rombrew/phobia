@@ -21,17 +21,18 @@ To achieve a good result adjust the voltage and current sensors. If you have a
 accurate voltmeter do an adjustment with standard. To do this measure the
 supply voltage and call the command.
 
-	# pm_standard_voltage <volt>
+	# pm_STD_voltage <U>
 
 Note that our PCB has 1% divider tolerance and 0.2% reference voltage. So you
 need more accurate measurement.
 
 To adjust the current sensors you will need a standard resistor. Choose a
 resistance value based on supply voltage to get large enough current. Values
-from 1 to 5 Ohm is fit. It would be nice to have 1% resistor tolerance.
-Connect the resistor to the terminal A and B then call the command.
+from 1 to 5 Ohm are fit. It would be nice to have at least 1% resistor
+tolerance.  Connect the resistor to the terminal A and B then call the
+command.
 
-	# pm_standard_current <ohm>
+	# pm_STD_current <R>
 
 If you do not have a voltage or resistance standard skip the above steps.
 
@@ -69,7 +70,8 @@ calculate DQ inductance and rotation angle.
 	# pm_probe_base
 
 Normally it will print the values of the identified parameters. In case of
-failure the error will be printed out.
+failure the error will be printed out. We recommend to do this procedure twice
+to get accurate estimates.
 
 ## Rotor flux linkage
 
@@ -85,8 +87,8 @@ significant speed. We do a forced spinup to reach this condition.
 
 	# pm_probe_spinup
 
-To get more accurate estimate run the motor at high speed (10v BEMF is enough)
-and request E probe manually. Do not load the motor.
+To get more accurate estimate run the motor at high speed (~10v of BEMF is
+enough) and request E probe manually. Do not load the motor.
 
 	# reg pm.s_setpoint_rpm <rpm>
 	# reg pm.fsm_state 12

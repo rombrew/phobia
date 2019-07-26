@@ -116,7 +116,7 @@ need to adapt the software.
 
 	                   // Current measurement //
 	  >-----+
-	        |  (+) |\       R1 = 0.25 mOhm
+	        |  (+) |\       R1 = 0.5 mOhm
 	        +------| \
 	        |      |  \      +---+
 	        \      |   \    /    |

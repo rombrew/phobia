@@ -14,7 +14,7 @@ call this command.
 1. Without arguments it will list all registers and their values.
 2. You can specify a pattern by which registers will be filtered. A pattern can
    be any part of the register name.
-3. If only one register matches the specified pattern, the second parameter
+3. If only one register matches the specified pattern the second parameter
    specifies its new value.
 4. You can specify a reqister number instead of its name to refer the exactly
    one register.

@@ -27,10 +27,12 @@ pulse parameters.
 	# hal_PPM_get_PULSE
 
 Select the pulse width range in which you want to work. Put this range to a PPM
-configuration.
+configuration. We use three point conversion from pulse width to the control
+value.
 
 	# reg ap.ppm_pulse_range[0] <us>
 	# reg ap.ppm_pulse_range[1] <us>
+	# reg ap.ppm_pulse_range[2] <us>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the speed control is selected as a percentage
@@ -43,6 +45,7 @@ converted to this control range.
 
 	# reg ap.ppm_control_range[0] <x>
 	# reg ap.ppm_control_range[1] <x>
+	# reg ap.ppm_control_range[2] <x>
 
 Also select the startup range which means an area in which the motor can start.
 This is necessary to avoid an unexpected start. So to start the motor you will
