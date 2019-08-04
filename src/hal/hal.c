@@ -11,6 +11,7 @@ unsigned long			clock_cpu_hz;
 
 HAL_t				hal;
 LOG_t				log __section_noinit;
+int				bootload_jump __section_noinit;
 
 void irq_NMI()
 {
@@ -203,9 +204,26 @@ periph_startup()
 
 void hal_startup()
 {
-	base_startup();
-	clock_startup();
-	periph_startup();
+	if (bootload_jump != INIT_SIGNATURE) {
+
+		base_startup();
+		clock_startup();
+		periph_startup();
+	}
+	else {
+		bootload_jump = 0;
+
+		SYSCFG->MEMRMP = SYSCFG_MEMRMP_MEM_MODE_0;
+
+		__DSB();
+		__ISB();
+
+		__set_MSP(* (unsigned long *) 0x1FFF0000UL);
+
+		((void (*) (void)) (* (unsigned long *) 0x1FFF0004UL)) ();
+
+		NVIC_SystemReset();
+	}
 }
 
 void hal_delay_us(int us)
@@ -235,6 +253,12 @@ void hal_system_reset()
 	NVIC_SystemReset();
 }
 
+void hal_bootload_jump()
+{
+	bootload_jump = INIT_SIGNATURE;
+	NVIC_SystemReset();
+}
+
 void hal_sleep()
 {
 	__WFI();
@@ -247,14 +271,14 @@ void hal_fence()
 
 void log_putc(int c)
 {
-	if (log.signature != LOG_SIGNATURE) {
+	if (log.finit != INIT_SIGNATURE) {
 
 		/* Initialize log at first usage.
 		 * */
 
 		memset(log.text, 0, sizeof(log.text));
 
-		log.signature = LOG_SIGNATURE;
+		log.finit = INIT_SIGNATURE;
 		log.n = 0;
 	}
 
@@ -271,7 +295,7 @@ int log_validate()
 {
 	int		rc = 0;
 
-	if (log.signature == LOG_SIGNATURE) {
+	if (log.finit == INIT_SIGNATURE) {
 
 		/* Make sure that log is null-terminated.
 		 * */

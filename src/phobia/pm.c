@@ -122,7 +122,7 @@ void pm_default(pmc_t *pm)
 
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 18.f);
 	pm->s_accel = 5000.f;
-	pm->s_advance = PM_INFINITY;
+	pm->s_interval = PM_INFINITY;
 	pm->s_gain_P = 5E-2f;
 	pm->s_gain_LP_I = 2E-3f;
 	pm->s_gain_HF_S = 5E-1f;
@@ -910,7 +910,7 @@ pm_speed_control(pmc_t *pm)
 	pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
 		: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
-	dS = pm->s_advance;
+	dS = pm->s_interval;
 	pm->s_track = (pm->s_track < pm->lu_wS - dS) ? pm->lu_wS - dS
 		: (pm->s_track > pm->lu_wS + dS) ? pm->lu_wS + dS  : pm->s_track;
 

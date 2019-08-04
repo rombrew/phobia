@@ -295,7 +295,7 @@ typedef struct {
 	float		s_setpoint;
 	int		s_brake_DIR;
 	float		s_accel;
-	float		s_advance;
+	float		s_interval;
 	float		s_track;
 	float		s_integral;
 	float		s_gain_P;

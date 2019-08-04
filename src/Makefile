@@ -81,7 +81,7 @@ $(IMAGE): $(TARGET)
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v -g +0
+	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)

@@ -41,7 +41,7 @@
 #define __section_ramfunc		__attribute__ (( section(".ramfunc"), used ))
 #define __section_noinit		__attribute__ (( section(".noinit") ))
 
-#define LOG_SIGNATURE			0x57575757UL
+#define INIT_SIGNATURE			0x5555UL
 
 enum {
 	LEG_A				= 1,
@@ -110,7 +110,7 @@ HAL_t;
 typedef struct {
 
 	char		text[512];
-	int		signature;
+	int		finit;
 	int		n;
 }
 LOG_t;
@@ -123,6 +123,8 @@ void hal_startup();
 void hal_delay_us(int us);
 
 void hal_system_reset();
+void hal_bootload_jump();
+
 void hal_sleep();
 void hal_fence();
 

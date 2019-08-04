@@ -320,12 +320,12 @@ void task_INIT(void *pData)
 
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		//hal.PWM_deadtime = 190;
-		hal.PWM_deadtime = 90; // rev3
+		hal.PWM_deadtime = 190;
+		//hal.PWM_deadtime = 90; // rev3
 		hal.ADC_reference_voltage = 3.3f;
-		//hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
+		hal.ADC_shunt_resistance = 340E-6f; // rev4b_(kozin)
 		//hal.ADC_shunt_resistance = 170E-6f; // rev4b_(me)
-		hal.ADC_shunt_resistance = 620E-6f; // rev3
+		//hal.ADC_shunt_resistance = 620E-6f; // rev3
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		/*
@@ -683,7 +683,7 @@ SH_DEF(rtos_log_reset)
 {
 	if (log_validate() != 0) {
 
-		log.signature = 0;
+		log.finit = 0;
 	}
 }
 
@@ -695,6 +695,23 @@ SH_DEF(rtos_reboot)
 		return ;
 	}
 
+	puts(EOL);
+
+	vTaskDelay((TickType_t) 10);
 	hal_system_reset();
+}
+
+SH_DEF(rtos_bootload)
+{
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return ;
+	}
+
+	puts(EOL);
+
+	vTaskDelay((TickType_t) 10);
+	hal_bootload_jump();
 }
 
