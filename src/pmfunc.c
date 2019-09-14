@@ -38,7 +38,7 @@ SH_DEF(pm_STD_voltage)
 		 * */
 	}
 	else {
-		printf("You must specify voltage" EOL);
+		printf("You must specify the voltage" EOL);
 		return;
 	}
 
@@ -74,7 +74,7 @@ SH_DEF(pm_STD_current)
 		 * */
 	}
 	else {
-		printf("You must specify resistance" EOL);
+		printf("You must specify the resistance" EOL);
 		return;
 	}
 

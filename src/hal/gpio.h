@@ -12,30 +12,6 @@
 #define XGPIO_GET_CH(XGPIO)		(((XGPIO) >> 8) & 0xF)
 #define XGPIO_GET_FUNC(XGPIO)		(((XGPIO) >> 12) & 0xF)
 
-/*
-#define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 0)
-#define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 0)
-
-#define GPIO_I2C_SCL			XGPIO_DEF4('B', 6, 0, 4)
-#define GPIO_I2C_SDA			XGPIO_DEF4('B', 7, 0, 4)
-
-#define GPIO_TIM4_CH1			XGPIO_DEF4('B', 6, 0, 2)
-#define GPIO_TIM4_CH2			XGPIO_DEF4('B', 7, 0, 2)
-
-#define GPIO_SPI_NSS			XGPIO_DEF4('A', 4, 4, 5)
-#define GPIO_SPI_SCK			XGPIO_DEF4('A', 5, 5, 5)
-#define GPIO_SPI_MISO			XGPIO_DEF4('A', 6, 6, 5)
-#define GPIO_SPI_MOSI			XGPIO_DEF4('A', 7, 7, 5)
-
-#define GPIO_DAC1			GPIO_SPI_NSS
-#define GPIO_DAC2			GPIO_SPI_SCK
-
-#define GPIO_TIM3_CH1			XGPIO_DEF4('C', 6, 0, 2)
-#define GPIO_TIM3_CH2			XGPIO_DEF4('C', 7, 0, 2)
-#define GPIO_TIM3_CH3			XGPIO_DEF4('C', 8, 0, 2)
-
-*/
-
 void GPIO_set_mode_INPUT(int xGPIO);
 void GPIO_set_mode_OUTPUT(int xGPIO);
 void GPIO_set_mode_ANALOG(int xGPIO);

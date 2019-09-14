@@ -106,13 +106,13 @@ void blm_Enable(blm_t *m)
 
 	/* Moment of inertia.
 	 * */
-	m->J = 5E-4;
+	m->J = 5E-3;
 
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 1E-1;
-	m->M[2] = 5E-6;
+	m->M[1] = 0E-1;
+	m->M[2] = 5E-9;
 
 	/* ADC conversion time.
 	 * */
@@ -137,7 +137,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* BEMF waveform distortion.
 	 * */
-	E1 *= 1. + sin(X[3] * 3.) * 0E-2;
+	E1 += m->E * sin(X[3] * 3.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */

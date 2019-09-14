@@ -669,6 +669,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
+				break;
 			}
 
 			for (N = 0; N < 9; ++N) {
@@ -844,6 +845,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
+				break;
 			}
 
 			pm_voltage_control(pm, uX, 0.f);
@@ -934,6 +936,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
+				break;
 			}
 
 			pm_voltage_control(pm, uX, uY);
@@ -1012,6 +1015,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
+				break;
 			}
 
 			pm->FIX[12] = m_cosf(pm->FIX[10] * .5f);
@@ -1066,6 +1070,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
+				break;
 			}
 
 			uX += pm->FIX[11] * pm->FIX[8];
@@ -1118,6 +1123,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(7);
 
+				pm->vsi_tm_A = 0;
+				pm->vsi_tm_B = 0;
+				pm->vsi_tm_C = 0;
 				pm->vsi_IF = 3;
 				pm->vsi_UF = 3;
 
@@ -1151,6 +1159,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->watt_integral[0] = 1.f;
 				pm->watt_integral[1] = 1000.f;
 				pm->watt_integral[2] = 1.f;
+				pm->watt_rattle_MAX = PM_INFINITY;
+				pm->watt_rattle_REV = - PM_INFINITY;
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
@@ -1160,6 +1170,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->i_setpoint_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
+				pm->i_rattle_MAX = PM_INFINITY;
 
 				pm->s_setpoint = 0.f;
 				pm->s_brake_DIR = 1;

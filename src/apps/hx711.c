@@ -7,7 +7,7 @@
 #include "main.h"
 #include "shell.h"
 
-/* This is a helper that reads HX711 ADC.
+/* This is the helper that reads HX711 ADC.
  * */
 
 void ap_HX711(void *pData)

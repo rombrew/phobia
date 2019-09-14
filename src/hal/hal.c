@@ -275,7 +275,6 @@ void log_putc(int c)
 
 		/* Initialize log at first usage.
 		 * */
-
 		memset(log.text, 0, sizeof(log.text));
 
 		log.finit = INIT_SIGNATURE;
@@ -297,7 +296,7 @@ int log_validate()
 
 	if (log.finit == INIT_SIGNATURE) {
 
-		/* Make sure that log is null-terminated.
+		/* Make sure log is null-terminated.
 		 * */
 		log.text[sizeof(log.text) - 1UL] = 0;
 

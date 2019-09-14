@@ -8,7 +8,9 @@
 #include "regfile.h"
 #include "shell.h"
 
-/* This application allows you to control the speed using two push-buttons.
+/* The application allows you to control the speed using two push-buttons.
+ * Such control is convenient for a drill machine or grass trimmer.
+ *
  * [A]		- START or switch the speed.
  * [B]		- STOP.
  * [B]+[A]	- START in reverse.

@@ -120,7 +120,7 @@ sim_Tel(float *pTel)
 	pTel[35] = pm.flux_H;
 	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
 	pTel[37] = pm.hfi_polarity;
-	pTel[38] = m.short_F;
+	pTel[38] = pm.watt_rattle_MAX;
 }
 
 static void
@@ -140,7 +140,6 @@ sim_F(FILE *fdTel, double dT)
 		 * */
 		blm_Update(&m);
 
-		fb.halt_OCP = 0;
 		fb.current_A = m.ADC_IA;
 		fb.current_B = m.ADC_IB;
 		fb.voltage_U = m.ADC_US;
@@ -238,13 +237,16 @@ sim_Script(FILE *fdTel)
 	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	m.M[2] = 9e-1;
+	pm.s_setpoint = 700.f;
+	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 10.f;
-	sim_F(fdTel, 2.);
+	m.Rs = 1000.;
 
-	pm.s_setpoint = 200.f;
-	sim_F(fdTel, 2.);
+	pm.s_setpoint = 20.f;
+	sim_F(fdTel, 1.);
+
+	m.Rs = 1.1;
+	sim_F(fdTel, 1.);
 }
 
 int main(int argc, char *argv[])

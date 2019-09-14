@@ -40,8 +40,9 @@ enum {
 	PM_LU_DETACHED,
 	PM_LU_FORCED,
 	PM_LU_ESTIMATE_FLUX,
-	PM_LU_SENSORED_HALL_ABC,
 	PM_LU_ESTIMATE_HFI,
+	PM_LU_SENSORED_HALL,
+	PM_LU_SENSORED_QEP,
 };
 
 enum {
@@ -59,7 +60,8 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
-	PM_STATE_ADJUST_HS,
+	PM_STATE_ADJUST_HALL,
+	PM_STATE_CHARGER_A,
 	PM_STATE_HALT,
 };
 
@@ -99,6 +101,7 @@ typedef struct {
 	int		dc_resolution;
 	int		dc_minimal;
 	int		dc_clearance;
+	int		dc_tm_hold;
 
 	int		fail_reason;
 	int		self_BM[8];
@@ -170,6 +173,9 @@ typedef struct {
 	float		vsi_Y;
 	float		vsi_DX;
 	float		vsi_DY;
+	int		vsi_tm_A;
+	int		vsi_tm_B;
+	int		vsi_tm_C;
 	int		vsi_IF;
 	int		vsi_UF;
 	int		vsi_AZ;
@@ -265,10 +271,13 @@ typedef struct {
 	float		watt_derated_1;
 	float		watt_wp_reverse;
 	float		watt_ib_reverse;
+	float		watt_slewmax;
 	float		watt_derate_HI_U;
 	float		watt_derate_LO_U;
 	float		watt_derate_HI_S;
 	float		watt_integral[3];
+	float		watt_rattle_MAX;
+	float		watt_rattle_REV;
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_lpf_wP;
@@ -279,12 +288,14 @@ typedef struct {
 	float		watt_gain_LP_I;
 
 	float		i_maximal;
+	float		i_slewmax;
 	float		i_derated_1;
 	float		i_brake;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
+	float		i_rattle_MAX;
 	float		i_gain_P;
 	float		i_gain_I;
 
@@ -311,13 +322,18 @@ typedef struct {
 	float		x_gain_N;
 
 	float		stat_lu_F1;
-	int		stat_revol_qu;
+	int		stat_revol_1;
 	int		stat_revol_total;
 	float		stat_distance;
 	float		stat_consumed_wh;
 	float		stat_consumed_ah;
 	float		stat_reverted_wh;
 	float		stat_reverted_ah;
+	float		stat_capacity_ah;
+	float		stat_fuel_pc;
+	float		stat_peak_consumed_watt;
+	float		stat_peak_reverted_watt;
+	float		stat_peak_speed;
 	float		stat_FIX[4];
 
 	/*int		bt_mode;
