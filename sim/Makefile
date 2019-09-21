@@ -30,6 +30,10 @@ run: $(TARGET)
 	@ echo "  RUN	" $(notdir $<)
 	@ $<
 
+test: $(TARGET)
+	@ echo "  TEST	" $(notdir $<)
+	@ $< -t
+
 debug: $(TARGET)
 	@ echo "  GDB	" $(notdir $<)
 	@ $(GDB) $<

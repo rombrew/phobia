@@ -11,7 +11,7 @@ The pulse signal is fed to PPM pin that is 5v-tolerant.
 	        |   |       +-----< GND
 	        |   |       |
 	+-------|---|---|---|--------------------------+
-	|      +5v PPM SDA GND                         |
+	|      +5v PPM DIR GND                         |
 
 ## Configuration
 

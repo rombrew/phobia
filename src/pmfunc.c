@@ -135,15 +135,9 @@ SH_DEF(pm_self_adjust)
 			reg_format(&regfile[ID_PM_AD_UC_0]);
 			reg_format(&regfile[ID_PM_AD_UC_1]);
 
-			reg_format(&regfile[ID_PM_TVM_FIR_A_0]);
-			reg_format(&regfile[ID_PM_TVM_FIR_A_1]);
-			reg_format(&regfile[ID_PM_TVM_FIR_A_2]);
-			reg_format(&regfile[ID_PM_TVM_FIR_B_0]);
-			reg_format(&regfile[ID_PM_TVM_FIR_B_1]);
-			reg_format(&regfile[ID_PM_TVM_FIR_B_2]);
-			reg_format(&regfile[ID_PM_TVM_FIR_C_0]);
-			reg_format(&regfile[ID_PM_TVM_FIR_C_1]);
-			reg_format(&regfile[ID_PM_TVM_FIR_C_2]);
+			reg_format(&regfile[ID_PM_TVM_FIR_A]);
+			reg_format(&regfile[ID_PM_TVM_FIR_B]);
+			reg_format(&regfile[ID_PM_TVM_FIR_C]);
 
 			if (pm.fail_reason != PM_OK)
 				break;

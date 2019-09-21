@@ -22,7 +22,16 @@ blmDC(int A, int B, int C)
 }
 
 static void
-blmZ(int Z) { /* Not implemented */ }
+blmZ(int Z)
+{
+	if (Z == 7) {
+
+		m.HI_Z = 1;
+	}
+	else {
+		m.HI_Z = 0;
+	}
+}
 
 static void
 sim_Tel(float *pTel)
@@ -84,13 +93,13 @@ sim_Tel(float *pTel)
 	pTel[20] = pm.vsi_IF;
 	pTel[21] = pm.vsi_UF;
 
-	/* VM voltages (ABC).
+	/* TVM voltages (ABC).
 	 * */
 	pTel[22] = pm.tvm_A;
 	pTel[23] = pm.tvm_B;
 	pTel[24] = pm.tvm_C;
 
-	/* VM voltages (XY).
+	/* TVM voltages (XY).
 	 * */
 	pTel[25] = pm.tvm_DX;
 	pTel[26] = pm.tvm_DY;
@@ -120,7 +129,7 @@ sim_Tel(float *pTel)
 	pTel[35] = pm.flux_H;
 	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
 	pTel[37] = pm.hfi_polarity;
-	pTel[38] = pm.watt_rattle_MAX;
+	pTel[38] = pm.lu_lpf_wS * 30. / M_PI / m.Zp;
 }
 
 static void
@@ -151,25 +160,34 @@ sim_F(FILE *fdTel, double dT)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		/* Collect telemetry.
-		 * */
-		sim_Tel(Tel);
+		if (fdTel != NULL) {
 
-		/* Dump telemetry array.
-		 * */
-		fwrite(Tel, sizeof(float), szTel, fdTel);
+			/* Collect telemetry.
+			 * */
+			sim_Tel(Tel);
+
+			/* Dump telemetry array.
+			 * */
+			fwrite(Tel, sizeof(float), szTel, fdTel);
+		}
 
 		if (pm.fail_reason != PM_OK) {
 
-			printf("%s\n", pm_strerror(pm.fail_reason));
-			exit(1);
+			printf("** pm.fail_reason: %s\n", pm_strerror(pm.fail_reason));
+			return ;
 		}
 	}
 }
 
-static void
-sim_Script(FILE *fdTel)
+#define t_xprintf(s)		fprintf(stderr, "** assert(%s) in %s:%i\n", s, __FILE__, __LINE__)
+#define t_assert(x)		if ((x) == 0) { t_xprintf(#x); return 0; }
+#define t_assert_ref(x,ref)	t_assert(fabs((x) - (ref)) / (ref) < 0.1)
+
+static int
+sim_test_BASE(FILE *fdTel)
 {
+	double		tau_A, tau_B, tau_C;
+
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
 	pm.dc_resolution = m.PWM_R;
@@ -183,70 +201,244 @@ sim_Script(FILE *fdTel)
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 	sim_F(fdTel, 0.);
 
-	printf("AB %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
+	printf("IAB %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
 
-	if (1) {
+	t_assert(pm.fail_reason == PM_OK);
 
-		pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
-		sim_F(fdTel, 0.);
+	pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
+	sim_F(fdTel, 0.);
 
-		printf("UA %.4f %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
-		printf("UB %.4f %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
-		printf("UC %.4f %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
+	printf("UA %.4f %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
+	printf("UB %.4f %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
+	printf("UC %.4f %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
 
-		printf("FIR_A: %.4e %.4e %.4e\n", pm.tvm_FIR_A[0], pm.tvm_FIR_A[1], pm.tvm_FIR_A[2]);
-		printf("FIR_B: %.4e %.4e %.4e\n", pm.tvm_FIR_B[0], pm.tvm_FIR_B[1], pm.tvm_FIR_B[2]);
-		printf("FIR_C: %.4e %.4e %.4e\n", pm.tvm_FIR_C[0], pm.tvm_FIR_C[1], pm.tvm_FIR_C[2]);
+	t_assert(pm.fail_reason == PM_OK);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
-		sim_F(fdTel, 0.);
+	tau_A = pm.dT / log(pm.tvm_FIR_A[0] / - pm.tvm_FIR_A[1]);
+	tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
+	tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
 
-		printf("R %.4e (Ohm)\n", pm.const_R);
+	printf("FIR_A %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_A[0],
+			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_L;
-		sim_F(fdTel, 0.);
+	printf("FIR_B %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_B[0],
+			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B);
 
-		printf("L %.4e (H)\n", pm.const_L);
-		printf("im_LD %.4e (H)\n", pm.const_im_LD);
-		printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
-		printf("im_B %.2f (g)\n", pm.const_im_B);
-		printf("im_R %.4e (Ohm)\n", pm.const_im_R);
+	printf("FIR_C %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_C[0],
+			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C);
 
-		pm.fsm_req = PM_STATE_LU_STARTUP;
-		sim_F(fdTel, 0.);
+	t_assert_ref(tau_A, m.tau_U);
+	t_assert_ref(tau_B, m.tau_U);
+	t_assert_ref(tau_C, m.tau_U);
 
-		pm.s_setpoint = pm.probe_speed_low;
-		sim_F(fdTel, 1.);
+	pm.fsm_req = PM_STATE_PROBE_CONST_R;
+	sim_F(fdTel, 0.);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_E;
-		sim_F(fdTel, 0.);
+	printf("R %.4e (Ohm)\n", pm.const_R);
 
-		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_R, m.R);
 
-		pm.s_setpoint = pm.probe_speed_ramp;
-		sim_F(fdTel, 1.);
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_E;
-		sim_F(fdTel, 0.);
+	t_assert(pm.fail_reason == PM_OK);
 
-		printf("Kv %.1f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
-	}
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
 
-	pm.config_HFI = 1;
+	printf("L %.4e (H)\n", pm.const_L);
+	printf("im_LD %.4e (H)\n", pm.const_im_LD);
+	printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
+	printf("im_B %.2f (g)\n", pm.const_im_B);
+	printf("im_R %.4e (Ohm)\n", pm.const_im_R);
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_im_LD, m.Ld);
+	t_assert_ref(pm.const_im_LQ, m.Lq);
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.s_setpoint = pm.probe_speed_low;
+	sim_F(fdTel, 1.);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_E;
+	sim_F(fdTel, 0.);
+
+	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_E, m.E);
+
+	pm.s_setpoint = pm.probe_speed_ramp;
+	sim_F(fdTel, 1.);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_E;
+	sim_F(fdTel, 0.);
+
+	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_E, m.E);
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	return 1;
+}
+
+static int
+sim_test_FLUX_1(FILE *fdTel)
+{
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	return 1;
+}
+
+static int
+sim_test_HFI(FILE *fdTel)
+{
+	/* TODO */
+
+	return 1;
+}
+
+static int
+sim_test_WEAK(FILE *fdTel)
+{
+	/* TODO */
+
+	return 1;
+}
+
+static int
+sim_TEST(FILE *fdTel)
+{
+	/* 250W E-scooter hub motor.
+         * */
+	m.R = 2.4E-1;
+	m.Ld = 5.2E-4;
+	m.Lq = 6.5E-4;
+	m.U = 48.;
+	m.Rs = 0.7;
+	m.Zp = 15;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
+	m.J = 5E-3;
+	m.M[0] = 0E-3;
+	m.M[1] = 5E-2;
+	m.M[2] = 5E-6;
+
+	if (sim_test_BASE(fdTel) == 0)
+		return 0;
+
+	if (sim_test_FLUX_1(fdTel) == 0)
+		return 0;
+
+	if (sim_test_HFI(NULL) == 0)
+		return 0;
+
+	if (sim_test_WEAK(NULL) == 0)
+		return 0;
+
+	/* Turnigy RotoMax 1.20.
+         * */
+	m.R = 22E-3;
+	m.Ld = 11E-6;
+	m.Lq = 17E-6;
+	m.U = 32.;
+	m.Rs = 0.2;
+	m.Zp = 7;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (280 * m.Zp);
+	m.J = 5E-4;
+	m.M[0] = 0E-3;
+	m.M[1] = 5E-3;
+	m.M[2] = 5E-6;
+
+	if (sim_test_BASE(NULL) == 0)
+		return 0;
+
+	return 1;
+}
+
+static int
+sim_RUN(FILE *fdTel)
+{
+	sim_test_BASE(NULL);
+
+	m.X[3] = 0.f;
+	m.R = 7E-3;
+	m.Ld = 3E-6;
+	m.Lq = 3E-6;
+	m.E = 0.f;
+
+	pm.const_L = 0.f;
+	pm.const_E = 0.f;
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_R;
+	sim_F(fdTel, 0.);
+
+	printf("R %.4e (Ohm)\n", pm.const_R);
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_R, m.R);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
+
+	printf("L %.4e (H)\n", pm.const_L);
+	printf("im_LD %.4e (H)\n", pm.const_im_LD);
+	printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
+	printf("im_B %.2f (g)\n", pm.const_im_B);
+	printf("im_R %.4e (Ohm)\n", pm.const_im_R);
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_im_LD, m.Ld);
+	t_assert_ref(pm.const_im_LQ, m.Lq);
+
+	/*pm.config_HFI = 1;
+	pm.config_WEAK = 1;
 
 	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 700.f;
+	pm.s_setpoint = 1700.f;
 	sim_F(fdTel, 1.);
 
-	m.Rs = 1000.;
+	pm.watt_dclink_LO = 35.f;
 
-	pm.s_setpoint = 20.f;
+	sim_F(fdTel, 1.);*/
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	sim_F(fdTel, 0.);
+
+	pm.forced_hold_D = 20.f;
+	pm.s_setpoint = 50. * 2. * M_PI;
 	sim_F(fdTel, 1.);
 
-	m.Rs = 1.1;
-	sim_F(fdTel, 1.);
+	return 1;
 }
 
 int main(int argc, char *argv[])
@@ -261,10 +453,16 @@ int main(int argc, char *argv[])
 	if (fdTel == NULL) {
 
 		fprintf(stderr, "fopen: %s", strerror(errno));
-		exit(2);
+		return 1;
 	}
 
-	sim_Script(fdTel);
+	if (argc == 2) {
+
+		sim_TEST(fdTel);
+	}
+	else {
+		sim_RUN(fdTel);
+	}
 
 	fclose(fdTel);
 	lib_stop();

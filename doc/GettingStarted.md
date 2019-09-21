@@ -8,7 +8,7 @@ other docs for specific issues.
 We do not assemble hardware for sales. You can get appropriate revision of PCB
 from repo and order fabrication and assembly somewhere.
 
-	# hg clone https://bitbucket.org/amaora/phobia-pcb
+	# hg clone https://hg.code.sf.net/p/phobia/pcb phobia-pcb
 
 The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
@@ -26,7 +26,7 @@ There is two parts of software:
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 toolchain for Cortex-M4F target.
 
-	# hg clone https://bitbucket.org/amaora/phobia
+	# hg clone https://hg.code.sf.net/p/phobia/code phobia
 	# cd phobia/src
 	# make flash
 

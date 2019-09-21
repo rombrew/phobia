@@ -169,6 +169,7 @@ typedef struct {
 	float		fault_voltage_halt;
 	float		fault_flux_lpfe_halt;
 
+	float		vsi_EU;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_DX;
@@ -235,11 +236,6 @@ typedef struct {
 	float		inject_bias_U;
 	float		inject_ratio_D;
 
-	/*
-	float		hall_X[5];
-	float		hall_range;
-	*/
-
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
 	float		hfi_derated;
@@ -252,6 +248,11 @@ typedef struct {
 	float		hfi_gain_EP;
 	float		hfi_gain_SF;
 	float		hfi_gain_FP;
+
+	/*
+	float		hall_X[5];
+	float		hall_range;
+	*/
 
 	float		const_lpf_U;
 	float		const_gain_LP_U;
@@ -268,45 +269,34 @@ typedef struct {
 
 	float		watt_wp_maximal;
 	float		watt_ib_maximal;
-	float		watt_derated_1;
 	float		watt_wp_reverse;
 	float		watt_ib_reverse;
-	float		watt_slewmax;
-	float		watt_derate_HI_U;
-	float		watt_derate_LO_U;
-	float		watt_derate_HI_S;
-	float		watt_integral[3];
-	float		watt_rattle_MAX;
-	float		watt_rattle_REV;
+	float		watt_dclink_HI;
+	float		watt_dclink_LO;
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_lpf_wP;
 	float		watt_gain_LP_F;
 	float		watt_gain_LP_P;
-	float		watt_gain_DU;
-	float		watt_gain_DS;
-	float		watt_gain_LP_I;
 
 	float		i_maximal;
-	float		i_slewmax;
 	float		i_derated_1;
-	float		i_brake;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
-	float		i_rattle_MAX;
 	float		i_gain_P;
 	float		i_gain_I;
 
-	float		weak_maximal_D;
+	float		weak_maximal;
 	float		weak_bias_U;
+	float		weak_D;
+	float		weak_gain_EU;
 
 	float		s_maximal;
 	float		s_setpoint;
 	int		s_brake_DIR;
 	float		s_accel;
-	float		s_interval;
 	float		s_track;
 	float		s_integral;
 	float		s_gain_P;

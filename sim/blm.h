@@ -7,11 +7,15 @@ typedef struct {
 	double		dT, sT;
 	int		PWM_R;
 
-	/* Duty Cycle (Input).
+	/* Duty Cycle (INPUT).
 	 * */
 	int		PWM_A;
 	int		PWM_B;
 	int		PWM_C;
+
+	/* Detached (INPUT).
+	 * */
+	int		HI_Z;
 
 	/* State of VSI.
 	 * */
@@ -57,7 +61,7 @@ typedef struct {
 	double		tau_I;
 	double		tau_U;
 
-	/* ADC result (Output).
+	/* ADC result (OUTPUT).
 	 * */
 	float		ADC_IA;
 	float		ADC_IB;

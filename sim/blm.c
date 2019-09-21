@@ -87,11 +87,11 @@ void blm_Enable(blm_t *m)
 
 	/* Source internal resistance. (Ohm)
 	 * */
-	m->Rs = 1.2;
+	m->Rs = 0.2;
 
 	/* Decoupling capacitance. (Farad)
 	 * */
-	m->Cb = 720E-6;
+	m->Cb = 2040E-6;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -111,14 +111,14 @@ void blm_Enable(blm_t *m)
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 0E-1;
-	m->M[2] = 5E-9;
+	m->M[1] = 2E-2;
+	m->M[2] = 5E-3;
 
-	/* ADC conversion time.
+	/* ADC conversion time (s).
 	 * */
 	m->T_ADC = 0.643E-6;
 
-	/* Sensor time constant.
+	/* Sensor time constant (s).
 	 * */
 	m->tau_I = 0.636E-6;
 	m->tau_U = 25.53E-6;
@@ -160,8 +160,15 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 	UD += - R1 * X[0] + m->Lq * X[2] * X[1];
 	UQ += - R1 * X[1] - m->Ld * X[2] * X[0] - E1 * X[2];
 
-	D[0] = UD / m->Ld;
-	D[1] = UQ / m->Lq;
+	if (m->HI_Z == 0) {
+
+		D[0] = UD / m->Ld;
+		D[1] = UQ / m->Lq;
+	}
+	else {
+		D[0] = 0.;
+		D[1] = 0.;
+	}
 
 	/* Torque production.
 	 * */
@@ -187,8 +194,15 @@ static void
 blm_Solve(blm_t *m, double dT)
 {
 	double		S1[7], S2[7], X2[7];
-	double		iA, iB, kI, kU;
+	double		iA, iB, uA, uB, uC;
+	double		uMIN, KI, KU;
 	int		j;
+
+	if (m->HI_Z != 0) {
+
+		m->X[0] = 0.;
+		m->X[1] = 0.;
+	}
 
 	/* Second-order ODE solver.
 	 * */
@@ -203,19 +217,38 @@ blm_Solve(blm_t *m, double dT)
 	for (j = 0; j < 7; ++j)
 		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
 
-	/* Sensor transient.
+	/* Sensor transient (fast).
 	 * */
-	kI = 1. - exp(- dT / m->tau_I);
-	kU = 1. - exp(- dT / m->tau_U);
+	KI = 1.0 - exp(- dT / m->tau_I);
+	KU = 1.0 - exp(- dT / m->tau_U);
 
 	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &iA, &iB);
 
-	m->X[7] += (iA - m->X[7]) * kI;
-	m->X[8] += (iB - m->X[8]) * kI;
+	m->X[7] += (iA - m->X[7]) * KI;
+	m->X[8] += (iB - m->X[8]) * KI;
 
-	m->X[9]  += (m->VSI[0] * m->X[6] - m->X[9]) * kU;
-	m->X[10] += (m->VSI[1] * m->X[6] - m->X[10]) * kU;
-	m->X[11] += (m->VSI[2] * m->X[6] - m->X[11]) * kU;
+	if (m->HI_Z == 0) {
+
+		uA = m->VSI[0] * m->X[6];
+		uB = m->VSI[1] * m->X[6];
+		uC = m->VSI[2] * m->X[6];
+	}
+	else {
+		blm_DQ_AB(m->X[3], 0., - m->E * m->X[2], &uA, &uB);
+
+		uC = 0. - (uA + uB);
+
+		uMIN = (uA < uB) ? uA : uB;
+		uMIN = (uMIN < uC) ? uMIN : uC;
+
+		uA += 0. - uMIN;
+		uB += 0. - uMIN;
+		uC += 0. - uMIN;
+	}
+
+	m->X[9]  += (uA - m->X[9])  * KU;
+	m->X[10] += (uB - m->X[10]) * KU;
+	m->X[11] += (uC - m->X[11]) * KU;
 }
 
 static void

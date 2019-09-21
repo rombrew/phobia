@@ -797,6 +797,21 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm_LSQ_3(pm->probe_LSQ_B, pm->tvm_FIR_B);
 			pm_LSQ_3(pm->probe_LSQ_C, pm->tvm_FIR_C);
 
+			if (		   m_isfinitef(pm->tvm_FIR_A[0]) == 0
+					|| m_isfinitef(pm->tvm_FIR_A[1]) == 0
+					|| m_isfinitef(pm->tvm_FIR_A[2]) == 0
+					|| m_isfinitef(pm->tvm_FIR_B[0]) == 0
+					|| m_isfinitef(pm->tvm_FIR_B[1]) == 0
+					|| m_isfinitef(pm->tvm_FIR_B[2]) == 0
+					|| m_isfinitef(pm->tvm_FIR_C[0]) == 0
+					|| m_isfinitef(pm->tvm_FIR_C[1]) == 0
+					|| m_isfinitef(pm->tvm_FIR_C[2]) == 0) {
+
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
+
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
 			break;
@@ -1129,8 +1144,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_IF = 3;
 				pm->vsi_UF = 3;
 
-				pm->forced_F[0] = 0.f;
-				pm->forced_F[1] = 1.f;
+				pm->forced_F[0] = 1.f;
+				pm->forced_F[1] = 0.f;
 				pm->forced_wS = 0.f;
 
 				for (N = 0; N < PM_FLUX_MAX; N++) {
@@ -1155,12 +1170,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hfi_wave[1] = 0.f;
 				pm->hfi_polarity = 0.f;
 
-				pm->watt_derated_1 = PM_INFINITY;
-				pm->watt_integral[0] = 1.f;
-				pm->watt_integral[1] = 1000.f;
-				pm->watt_integral[2] = 1.f;
-				pm->watt_rattle_MAX = PM_INFINITY;
-				pm->watt_rattle_REV = - PM_INFINITY;
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
@@ -1170,7 +1179,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->i_setpoint_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
-				pm->i_rattle_MAX = PM_INFINITY;
+
+				pm->weak_D = 0.f;
 
 				pm->s_setpoint = 0.f;
 				pm->s_brake_DIR = 1;
