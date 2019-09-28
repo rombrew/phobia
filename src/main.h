@@ -63,9 +63,9 @@ typedef struct {
 	/* Heat control.
 	 * */
 	float			heat_PCB;
-	float			heat_PCB_derated;
+	float			heat_PCB_derated_i;
 	float			heat_EXT;
-	float			heat_EXT_derated;
+	float			heat_EXT_derated_i;
 	float			heat_PCB_FAN;
 	float			heat_gap;
 
@@ -84,6 +84,7 @@ extern int flash_block_load();
 extern int pm_wait_for_IDLE();
 
 float ADC_get_ANALOG();
+float ADC_get_BRAKE();
 
 void lowTRACE(const char *fmt, ...);
 

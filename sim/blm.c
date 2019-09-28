@@ -41,12 +41,6 @@ void blm_Enable(blm_t *m)
 	m->sT = 1E-6; /* Solver step */
 	m->PWM_R = 2800; /* PWM resolution */
 
-	m->VSI[0] = 0;
-	m->VSI[1] = 0;
-	m->VSI[2] = 0;
-	m->surge_F = 0;
-	m->short_F = 0;
-
         m->X[0] = 0.; /* Axis D current (Ampere) */
 	m->X[1] = 0.; /* Axis Q current (Ampere) */
         m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
@@ -60,6 +54,11 @@ void blm_Enable(blm_t *m)
 	m->X[9] = 0.; /* Voltage Sensor A */
 	m->X[10] = 0.; /* Voltage Sensor B */
 	m->X[11] = 0.; /* Voltage Sensor C */
+
+	m->VSI[0] = 0;
+	m->VSI[1] = 0;
+	m->VSI[2] = 0;
+	m->surge_I = 0;
 
 	/* Winding resistance. (Ohm)
          * */
@@ -122,6 +121,20 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->tau_I = 0.636E-6;
 	m->tau_U = 25.53E-6;
+
+	/* Hall sensor angles.
+	 * */
+	m->HS[0] = 30.;
+	m->HS[1] = + 150.;
+	m->HS[2] = - 90.;
+
+	/* IQEP resolution.
+	 * */
+	m->IQEP_R = 400;
+
+	/* IQEP reduction ratio.
+	 * */
+	m->IQEP_Z = 1;
 }
 
 static void
@@ -258,34 +271,27 @@ blm_Solve_Split(blm_t *m, double dT)
 
 	if (dT > 0.) {
 
-		if (m->surge_F == 2) {
+		if (m->surge_I == 2) {
 
 			/* Distortion of A.
 			 * */
 			m->X[7] += 12.;
-			m->surge_F = 0;
+			m->surge_I = 0;
 		}
 
-		if (m->surge_F == 3) {
+		if (m->surge_I == 3) {
 
 			/* Distortion of B.
 			 * */
 			m->X[8] += 12.;
-			m->surge_F = 0;
+			m->surge_I = 0;
 		}
 
-		if (m->surge_F == 4) {
+		if (m->surge_I == 4) {
 
 			/* Distortion of C.
 			 * */
-			m->surge_F = 0;
-		}
-
-		if (m->short_F == 1) {
-
-			/* Short circuit.
-			 * */
-			m->VSI[0] = 1;
+			m->surge_I = 0;
 		}
 
 		/* Split the long interval.
@@ -310,7 +316,7 @@ blm_ADC(double u)
 {
 	int		ADC;
 
-	u += lib_gauss() * 7E-4;
+	u += lib_gauss() * 5E-4;
 
 	ADC = (int) (u * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
@@ -319,9 +325,42 @@ blm_ADC(double u)
 }
 
 static void
+blm_sample_HS(blm_t *m)
+{
+	double			EX, EY, SX, SY;
+	int			HS = 0;
+
+	EX = cos(m->X[3]);
+	EY = sin(m->X[3]);
+
+	SX = cos(m->HS[0] * M_PI / 180.);
+	SY = sin(m->HS[0] * M_PI / 180.);
+
+	HS |= (EX * SX + EY * SY < 0.) ? 1 : 0;
+
+	SX = cos(m->HS[1] * M_PI / 180.);
+	SY = sin(m->HS[1] * M_PI / 180.);
+
+	HS |= (EX * SX + EY * SY < 0.) ? 2 : 0;
+
+	SX = cos(m->HS[2] * M_PI / 180.);
+	SY = sin(m->HS[2] * M_PI / 180.);
+
+	HS |= (EX * SX + EY * SY < 0.) ? 4 : 0;
+
+	m->pulse_HS = HS;
+}
+
+static void
+blm_sample_IQEP(blm_t *m)
+{
+	m->pulse_EP = 0;
+}
+
+static void
 blm_VSI_Sample(blm_t *m, int N)
 {
-	const double	range_I = 55.;
+	const double	range_I = 165.;
 	const double	range_U = 60.;
 
 	int		ADC;
@@ -349,6 +388,9 @@ blm_VSI_Sample(blm_t *m, int N)
 
 		ADC = blm_ADC(m->X[11] / range_U);
 		m->ADC_UC = ADC * range_U / 4096.;
+
+		blm_sample_HS(m);
+		blm_sample_IQEP(m);
 	}
 }
 
@@ -406,7 +448,7 @@ blm_VSI_Solve(blm_t *m)
 		}
 		else {
 			m->VSI[pm[n] - 2] = 1;
-			m->surge_F = pm[n];
+			m->surge_I = pm[n];
 		}
 
 		tmp = Tev[pm[n]];
@@ -435,7 +477,7 @@ blm_VSI_Solve(blm_t *m)
 		blm_Solve_Split(m, dT);
 
 		m->VSI[pm[n] - 2] = 0;
-		m->surge_F = pm[n];
+		m->surge_I = pm[n];
 
 		tmp = Tev[pm[n]];
 	}

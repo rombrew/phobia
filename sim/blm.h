@@ -17,15 +17,11 @@ typedef struct {
 	 * */
 	int		HI_Z;
 
-	/* State of VSI.
-	 * */
-	int		VSI[3];
-	int		surge_F;
-	int		short_F;
-
-	/* Satate variabes.
+	/* State variabes.
 	 * */
 	double		X[12];
+	int		VSI[3];
+	int		surge_I;
 
 	/* Cycle Power.
 	 * */
@@ -61,6 +57,15 @@ typedef struct {
 	double		tau_I;
 	double		tau_U;
 
+	/* Hall sensor angles.
+	 * */
+	double		HS[3];
+
+	/* IQEP constants.
+	 * */
+	int		IQEP_R;
+	int		IQEP_Z;
+
 	/* ADC result (OUTPUT).
 	 * */
 	float		ADC_IA;
@@ -70,6 +75,14 @@ typedef struct {
 	float		ADC_UA;
 	float		ADC_UB;
 	float		ADC_UC;
+
+	/* Hall Sensors (OUTPUT).
+	 * */
+	int		pulse_HS;
+
+	/* Encoder Pulse (OUTPUT).
+	 * */
+	int		pulse_EP;
 }
 blm_t;
 

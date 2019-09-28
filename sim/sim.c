@@ -129,7 +129,7 @@ sim_Tel(float *pTel)
 	pTel[35] = pm.flux_H;
 	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
 	pTel[37] = pm.hfi_polarity;
-	pTel[38] = pm.lu_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[38] = pm.vsi_EU;
 }
 
 static void
@@ -155,6 +155,8 @@ sim_F(FILE *fdTel, double dT)
 		fb.voltage_A = m.ADC_UA;
 		fb.voltage_B = m.ADC_UB;
 		fb.voltage_C = m.ADC_UC;
+		fb.pulse_HS = m.pulse_HS;
+		fb.pulse_EP = m.pulse_EP;
 
 		/* PM update.
 		 * */
@@ -179,6 +181,7 @@ sim_F(FILE *fdTel, double dT)
 	}
 }
 
+#define t_prologue()		printf("\n# %s\n", __FUNCTION__);
 #define t_xprintf(s)		fprintf(stderr, "** assert(%s) in %s:%i\n", s, __FILE__, __LINE__)
 #define t_assert(x)		if ((x) == 0) { t_xprintf(#x); return 0; }
 #define t_assert_ref(x,ref)	t_assert(fabs((x) - (ref)) / (ref) < 0.1)
@@ -187,6 +190,8 @@ static int
 sim_test_BASE(FILE *fdTel)
 {
 	double		tau_A, tau_B, tau_C;
+
+	t_prologue();
 
 	pm.freq_hz = (float) (1. / m.dT);
 	pm.dT = 1.f / pm.freq_hz;
@@ -218,13 +223,13 @@ sim_test_BASE(FILE *fdTel)
 	tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
 	tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
 
-	printf("FIR_A %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_A[0],
+	printf("FIR_A %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_A[0],
 			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A);
 
-	printf("FIR_B %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_B[0],
+	printf("FIR_B %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_B[0],
 			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B);
 
-	printf("FIR_C %.4e %.4e %.4e [%.4e] (s)\n", pm.tvm_FIR_C[0],
+	printf("FIR_C %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_C[0],
 			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C);
 
 	t_assert_ref(tau_A, m.tau_U);
@@ -234,7 +239,7 @@ sim_test_BASE(FILE *fdTel)
 	pm.fsm_req = PM_STATE_PROBE_CONST_R;
 	sim_F(fdTel, 0.);
 
-	printf("R %.4e (Ohm)\n", pm.const_R);
+	printf("R %.4E (Ohm)\n", pm.const_R);
 
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_R, m.R);
@@ -247,11 +252,11 @@ sim_test_BASE(FILE *fdTel)
 	pm.fsm_req = PM_STATE_PROBE_CONST_L;
 	sim_F(fdTel, 0.);
 
-	printf("L %.4e (H)\n", pm.const_L);
-	printf("im_LD %.4e (H)\n", pm.const_im_LD);
-	printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
+	printf("L %.4E (H)\n", pm.const_L);
+	printf("im_LD %.4E (H)\n", pm.const_im_LD);
+	printf("im_LQ %.4E (H)\n", pm.const_im_LQ);
 	printf("im_B %.2f (g)\n", pm.const_im_B);
-	printf("im_R %.4e (Ohm)\n", pm.const_im_R);
+	printf("im_R %.4E (Ohm)\n", pm.const_im_R);
 
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_im_LD, m.Ld);
@@ -262,7 +267,7 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = pm.probe_speed_low;
+	pm.s_setpoint = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -273,7 +278,6 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
-	pm.s_setpoint = pm.probe_speed_ramp;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -293,12 +297,30 @@ sim_test_BASE(FILE *fdTel)
 }
 
 static int
-sim_test_FLUX_1(FILE *fdTel)
+sim_test_SPEED(FILE *fdTel)
 {
+	t_prologue();
+
+	pm.config_DRIVE = PM_DRIVE_SPEED;
+
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
 	t_assert(pm.fail_reason == PM_OK);
+
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.s_setpoint = .2f * m.U / m.E;
+	sim_F(fdTel, 2.);
+
+	printf("wSP %.2f (rpm)\n", pm.s_setpoint * 30. / M_PI / m.Zp);
+	printf("lu_wS %.2f (rpm)\n", pm.lu_wS * 30. / M_PI / m.Zp);
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.lu_wS, pm.s_setpoint);
 
 	pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1.);
@@ -317,6 +339,44 @@ static int
 sim_test_HFI(FILE *fdTel)
 {
 	/* TODO */
+
+	return 1;
+}
+
+static int
+sim_test_HALL(FILE *fdTel)
+{
+	double		rot_H;
+	int		N;
+
+	t_prologue();
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.s_setpoint = pm.probe_speed_hold;
+	sim_F(fdTel, 1.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.fsm_req = PM_STATE_ADJUST_HALL;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
+	for (N = 1; N < 7; ++N) {
+
+		rot_H = atan2(pm.hall_AT[N].F[1], pm.hall_AT[N].F[0]) * 180. / M_PI;
+
+		printf("hall_AT[%i] %.1f\n", N, rot_H);
+	}
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	sim_F(fdTel, 0.);
+
+	t_assert(pm.fail_reason == PM_OK);
 
 	return 1;
 }
@@ -349,10 +409,13 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_BASE(fdTel) == 0)
 		return 0;
 
-	if (sim_test_FLUX_1(fdTel) == 0)
+	if (sim_test_SPEED(fdTel) == 0)
 		return 0;
 
 	if (sim_test_HFI(NULL) == 0)
+		return 0;
+
+	if (sim_test_HALL(fdTel) == 0)
 		return 0;
 
 	if (sim_test_WEAK(NULL) == 0)
@@ -366,13 +429,16 @@ sim_TEST(FILE *fdTel)
 	m.U = 32.;
 	m.Rs = 0.2;
 	m.Zp = 7;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (280 * m.Zp);
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (280. * m.Zp);
 	m.J = 5E-4;
 	m.M[0] = 0E-3;
-	m.M[1] = 5E-3;
+	m.M[1] = 2E-3;
 	m.M[2] = 5E-6;
 
 	if (sim_test_BASE(NULL) == 0)
+		return 0;
+
+	if (sim_test_SPEED(NULL) == 0)
 		return 0;
 
 	return 1;
@@ -383,59 +449,22 @@ sim_RUN(FILE *fdTel)
 {
 	sim_test_BASE(NULL);
 
-	m.X[3] = 0.f;
-	m.R = 7E-3;
-	m.Ld = 3E-6;
-	m.Lq = 3E-6;
-	m.E = 0.f;
-
-	pm.const_L = 0.f;
-	pm.const_E = 0.f;
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_R;
-	sim_F(fdTel, 0.);
-
-	printf("R %.4e (Ohm)\n", pm.const_R);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_R, m.R);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
-
-	printf("L %.4e (H)\n", pm.const_L);
-	printf("im_LD %.4e (H)\n", pm.const_im_LD);
-	printf("im_LQ %.4e (H)\n", pm.const_im_LQ);
-	printf("im_B %.2f (g)\n", pm.const_im_B);
-	printf("im_R %.4e (Ohm)\n", pm.const_im_R);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_im_LD, m.Ld);
-	t_assert_ref(pm.const_im_LQ, m.Lq);
-
-	/*pm.config_HFI = 1;
-	pm.config_WEAK = 1;
-
-	pm.s_setpoint = 10.f;
-	sim_F(fdTel, 1.);
-
-	pm.s_setpoint = 1700.f;
-	sim_F(fdTel, 1.);
-
-	pm.watt_dclink_LO = 35.f;
-
-	sim_F(fdTel, 1.);*/
+	sim_test_HALL(fdTel);
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.forced_hold_D = 20.f;
-	pm.s_setpoint = 50. * 2. * M_PI;
+	t_assert(pm.fail_reason == PM_OK);
+
+	pm.config_SENSOR = PM_SENSOR_HALL;
+
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 1.);
+
+	pm.s_setpoint = 50.f;
+	sim_F(fdTel, 1.);
+
+	pm.s_setpoint = 2.f;
 	sim_F(fdTel, 1.);
 
 	return 1;

@@ -863,7 +863,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				break;
 			}
 
-			pm_voltage_control(pm, uX, 0.f);
+			pm_voltage(pm, uX, 0.f);
 
 			pm->tm_value++;
 
@@ -954,7 +954,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 				break;
 			}
 
-			pm_voltage_control(pm, uX, uY);
+			pm_voltage(pm, uX, uY);
 
 			pm->tm_value++;
 
@@ -1091,7 +1091,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			uX += pm->FIX[11] * pm->FIX[8];
 			uY += pm->FIX[11] * pm->FIX[9];
 
-			pm_voltage_control(pm, uX, uY);
+			pm_voltage(pm, uX, uY);
 
 			pm->tm_value++;
 
@@ -1170,6 +1170,10 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hfi_wave[1] = 0.f;
 				pm->hfi_polarity = 0.f;
 
+				pm->hall_F[0] = 1.f;
+				pm->hall_F[0] = 0.f;
+				pm->hall_TIM = PM_OVERFLOWED;
+
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
@@ -1183,7 +1187,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->weak_D = 0.f;
 
 				pm->s_setpoint = 0.f;
-				pm->s_brake_DIR = 1;
 				pm->s_track = 0.f;
 				pm->s_integral = 0.f;
 
@@ -1324,6 +1327,104 @@ pm_fsm_state_probe_const_j(pmc_t *pm)
 }
 
 static void
+pm_fsm_state_adjust_hall(pmc_t *pm)
+{
+	int		HS, N, min_S;
+	float		D;
+
+	switch (pm->fsm_phase) {
+
+		case 0:
+			if (pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
+
+				for (N = 0; N < 8; ++N) {
+
+					pm->hall_AT[N].F[0] = 0.f;
+					pm->hall_AT[N].F[1] = 0.f;
+
+					pm->probe_DFT[N] = 0.f;
+					pm->FIX[N] = 0.f;
+					pm->FIX[N + 8] = 0.f;
+				}
+
+				pm->tm_value = 0;
+				pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+
+				pm->fail_reason = PM_OK;
+				pm->fsm_phase = 1;
+			}
+			else {
+				pm->fsm_state = PM_STATE_IDLE;
+				pm->fsm_phase = 0;
+			}
+			break;
+
+		case 1:
+			HS = pm->fb_HS;
+
+			if (HS >= 1 && HS <= 6) {
+
+				pm_ADD(&pm->hall_AT[HS].F[0], &pm->FIX[HS], pm->flux_F[0]);
+				pm_ADD(&pm->hall_AT[HS].F[1], &pm->FIX[HS + 8], pm->flux_F[1]);
+
+				pm->probe_DFT[HS] += 1.f;
+			}
+			else {
+				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
+			min_S = (float) pm->tm_end / 12.f;
+			N = 0;
+
+			for (HS = 1; HS < 7; ++HS) {
+
+				if (pm->probe_DFT[HS] > min_S) {
+
+					D = pm->probe_DFT[HS];
+
+					pm->hall_AT[HS].F[0] /= D;
+					pm->hall_AT[HS].F[1] /= D;
+
+					D = m_sqrtf(pm->hall_AT[HS].F[0] * pm->hall_AT[HS].F[0]
+						+ pm->hall_AT[HS].F[1] * pm->hall_AT[HS].F[1]);
+
+					if (D > .5f) {
+
+						pm->hall_AT[HS].F[0] /= D;
+						pm->hall_AT[HS].F[1] /= D;
+
+						N += 1;
+					}
+				}
+			}
+
+			if (N < 6) {
+
+				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			pm->fsm_state = PM_STATE_IDLE;
+			pm->fsm_phase = 0;
+			break;
+	}
+}
+
+static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -1385,6 +1486,8 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
+		case PM_STATE_ADJUST_HALL:
+		case PM_STATE_ADJUST_IQEP:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1472,6 +1575,10 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_j(pm);
 			break;
 
+		case PM_STATE_ADJUST_HALL:
+			pm_fsm_state_adjust_hall(pm);
+			break;
+
 		case PM_STATE_HALT:
 		default:
 			pm_fsm_state_halt(pm);
@@ -1491,7 +1598,9 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_INLINE_OVER_CURRENT),
 		PM_SFI(PM_ERROR_DC_LINK_OVER_VOLTAGE),
 		PM_SFI(PM_ERROR_FLUX_UNSTABLE),
-		PM_SFI(PM_ERROR_INVALID_OPERATION)
+		PM_SFI(PM_ERROR_INVALID_OPERATION),
+		PM_SFI(PM_ERROR_SENSOR_HALL_FAULT),
+		PM_SFI(PM_ERROR_SENSOR_IQEP_FAULT),
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);

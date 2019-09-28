@@ -50,15 +50,15 @@ enum {
 
 enum {
 	HALL_DISABLED			= 0,
-	HALL_DRIVE_ABC,
-	HALL_DRIVE_QEP,
+	HALL_DRIVE_HALL,
+	HALL_DRIVE_IQEP,
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
-	PPM_CONTROL_QEP,
+	PPM_CONTROL_IQEP,
 };
 
 typedef struct {

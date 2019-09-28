@@ -11,13 +11,59 @@
 
 int pm_wait_for_IDLE()
 {
+	TickType_t		xTick = (TickType_t) 0;
+
 	do {
-		vTaskDelay((TickType_t) 5);
+		vTaskDelay((TickType_t) 10);
+		xTick += (TickType_t) 10;
 
 		if (pm.fsm_state == PM_STATE_IDLE)
 			break;
+
+		if (xTick > (TickType_t) 5000) {
+
+			printf("** timeout in %s" EOL, __FUNCTION__);
+			break;
+		}
 	}
 	while (1);
+
+	return pm.fail_reason;
+}
+
+int pm_wait_for_SPINUP(float ref)
+{
+	TickType_t		xTick = (TickType_t) 0;
+	float			wS = pm.lu_lpf_wS;
+
+	do {
+		vTaskDelay((TickType_t) 100);
+		xTick += (TickType_t) 100;
+
+		if (pm.fail_reason != PM_OK)
+			break;
+
+		if ((ref - pm.forced_wS) / ref < .1f)
+			break;
+
+		if ((ref - pm.lu_lpf_wS) / ref < .1f)
+			break;
+
+		if ((pm.lu_lpf_wS - wS) / pm.lu_lpf_wS < - M_EPS_F
+				&& xTick > (TickType_t) 1000)
+			break;
+
+		wS = pm.lu_lpf_wS;
+
+		if (xTick > (TickType_t) 5000) {
+
+			printf("** timeout in %s" EOL, __FUNCTION__);
+			break;
+		}
+	}
+	while (1);
+
+	vTaskDelay((TickType_t) 100);
 
 	return pm.fail_reason;
 }
@@ -207,8 +253,6 @@ SH_DEF(pm_probe_base)
 
 SH_DEF(pm_probe_spinup)
 {
-	TickType_t		xWait;
-
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
@@ -221,12 +265,10 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		xWait = (TickType_t) (pm.probe_speed_low / pm.forced_accel * 1000.f);
-		xWait += (TickType_t) 100;
+		pm.s_setpoint = pm.probe_speed_hold;
 
-		pm.s_setpoint = pm.probe_speed_low;
-
-		vTaskDelay(xWait);
+		if (pm_wait_for_SPINUP(pm.forced_maximal) != PM_OK)
+			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
@@ -235,12 +277,8 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		xWait = (TickType_t) (pm.probe_speed_ramp / pm.s_accel * 1000.f);
-		xWait = (TickType_t) 100;
-
-		pm.s_setpoint = pm.probe_speed_ramp;
-
-		vTaskDelay(xWait);
+		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
@@ -249,11 +287,65 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 		reg_format(&regfile[ID_PM_S_SETPOINT_PC]);
+
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
 	}
 	while (0);
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
-	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+}
+
+SH_DEF(pm_adjust_HALL)
+{
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		pm.s_setpoint = pm.probe_speed_hold;
+
+		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+			break;
+
+		pm.fsm_req = PM_STATE_ADJUST_HALL;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_HALL_AT_1]);
+		reg_format(&regfile[ID_PM_HALL_AT_2]);
+		reg_format(&regfile[ID_PM_HALL_AT_3]);
+		reg_format(&regfile[ID_PM_HALL_AT_4]);
+		reg_format(&regfile[ID_PM_HALL_AT_5]);
+		reg_format(&regfile[ID_PM_HALL_AT_6]);
+
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
+}
+
+SH_DEF(pm_adjust_IQEP)
+{
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
 }
 
 SH_DEF(pm_fsm_startup)

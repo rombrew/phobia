@@ -81,7 +81,7 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB) {
 
-				i_temp_PCB = ap.heat_PCB_derated;
+				i_temp_PCB = ap.heat_PCB_derated_i;
 			}
 			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_gap)) {
 
@@ -92,7 +92,7 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_EXT > ap.heat_EXT) {
 
-				i_temp_EXT = ap.heat_EXT_derated;
+				i_temp_EXT = ap.heat_EXT_derated_i;
 			}
 			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_gap)) {
 
@@ -415,11 +415,11 @@ void task_INIT(void *pData)
 		ap.ntc_EXT.ta_0 = 25.f;
 		ap.ntc_EXT.betta = 3380.f;
 
-		ap.heat_PCB = 100.f;
-		ap.heat_PCB_derated = 40.f;
+		ap.heat_PCB = 90.f;
+		ap.heat_PCB_derated_i = 40.f;
 		ap.heat_EXT = 90.f;
-		ap.heat_EXT_derated = 40.f;
-		ap.heat_PCB_FAN = 70.f;
+		ap.heat_EXT_derated_i = 40.f;
+		ap.heat_PCB_FAN = 60.f;
 		ap.heat_gap = 5.f;
 
 		ap.pull_ad[0] = 0.f;
@@ -562,11 +562,11 @@ void ADC_IRQ()
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
 
-	if (hal.HALL_mode == HALL_DRIVE_ABC) {
+	if (hal.HALL_mode == HALL_DRIVE_HALL) {
 
 		fb.pulse_HS = GPIO_get_HALL();
 	}
-	else if (hal.HALL_mode == HALL_DRIVE_QEP) {
+	else if (hal.HALL_mode == HALL_DRIVE_IQEP) {
 
 		/* TODO */
 	}
@@ -579,7 +579,7 @@ void ADC_IRQ()
 
 		input_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_CONTROL_QEP) {
+	else if (hal.PPM_mode == PPM_CONTROL_IQEP) {
 
 		input_CONTROL_QEP();
 	}

@@ -9,7 +9,8 @@
 #define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
 #define PM_FLUX_MAX			25
-#define PM_INFINITY			1E+33f
+#define PM_INFINITY			7E+27f
+#define PM_OVERFLOWED			16777216
 #define PM_SFI(s)			#s
 
 enum {
@@ -19,8 +20,8 @@ enum {
 
 enum {
 	PM_SENSOR_DISABLED			= 0,
-	PM_SENSOR_HALL_ABC,
-	PM_SENSOR_QEP_AB,
+	PM_SENSOR_HALL,
+	PM_SENSOR_IQEP,
 };
 
 enum {
@@ -29,10 +30,8 @@ enum {
 };
 
 enum {
-	PM_LOOP_DRIVE_CURRENT			= 0,
-	PM_LOOP_DRIVE_SPEED,
-	PM_LOOP_DRIVE_SERVO,
-	PM_LOOP_RECTIFIER_VOLTAGE,
+	PM_DRIVE_CURRENT			= 0,
+	PM_DRIVE_SPEED,
 };
 
 enum {
@@ -41,8 +40,8 @@ enum {
 	PM_LU_FORCED,
 	PM_LU_ESTIMATE_FLUX,
 	PM_LU_ESTIMATE_HFI,
-	PM_LU_SENSORED_HALL,
-	PM_LU_SENSORED_QEP,
+	PM_LU_SENSOR_HALL,
+	PM_LU_SENSOR_IQEP,
 };
 
 enum {
@@ -61,7 +60,7 @@ enum {
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_HALL,
-	PM_STATE_CHARGER_A,
+	PM_STATE_ADJUST_IQEP,
 	PM_STATE_HALT,
 };
 
@@ -76,6 +75,8 @@ enum {
 	PM_ERROR_DC_LINK_OVER_VOLTAGE,
 	PM_ERROR_FLUX_UNSTABLE,
 	PM_ERROR_INVALID_OPERATION,
+	PM_ERROR_SENSOR_HALL_FAULT,
+	PM_ERROR_SENSOR_IQEP_FAULT,
 };
 
 typedef struct {
@@ -89,7 +90,7 @@ typedef struct {
 	float		voltage_C;
 
 	int		pulse_HS;
-	int		pulse_QEP;
+	int		pulse_EP;
 }
 pmfb_t;
 
@@ -109,11 +110,11 @@ typedef struct {
 
 	int		config_NOP;
 	int		config_TVM;
-	int		config_SENSOR;
 	int		config_HFI;
-	int		config_LOOP;
+	int		config_SENSOR;
 	int		config_WEAK;
-	int		config_BRAKE;
+	int		config_DRIVE;
+	int		config_SERVO;
 	int		config_STAT;
 
 	int		fsm_req;
@@ -151,8 +152,7 @@ typedef struct {
 	float		probe_current_bias_Q;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
-	float		probe_speed_low;
-	float		probe_speed_ramp;
+	float		probe_speed_hold;
 	float		probe_gain_P;
 	float		probe_gain_I;
 	float		probe_DFT[8];
@@ -209,6 +209,7 @@ typedef struct {
 	float		forced_wS;
 	float		forced_hold_D;
 	float		forced_maximal;
+	float		forced_reverse;
 	float		forced_accel;
 
 	struct {
@@ -238,7 +239,7 @@ typedef struct {
 
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	float		hfi_derated;
+	float		hfi_derated_i;
 	float		hfi_iD;
 	float		hfi_iQ;
 	float		hfi_F[2];
@@ -249,10 +250,15 @@ typedef struct {
 	float		hfi_gain_SF;
 	float		hfi_gain_FP;
 
-	/*
-	float		hall_X[5];
-	float		hall_range;
-	*/
+	struct {
+
+		float	F[2];
+	}
+	hall_AT[8];
+
+	float		hall_F[2];
+	float		hall_wS;
+	int		hall_TIM;
 
 	float		const_lpf_U;
 	float		const_gain_LP_U;
@@ -267,10 +273,10 @@ typedef struct {
 	float		const_im_R;
 	float		const_dd_T;
 
-	float		watt_wp_maximal;
-	float		watt_ib_maximal;
-	float		watt_wp_reverse;
-	float		watt_ib_reverse;
+	float		watt_wP_maximal;
+	float		watt_iB_maximal;
+	float		watt_wP_reverse;
+	float		watt_iB_reverse;
 	float		watt_dclink_HI;
 	float		watt_dclink_LO;
 	float		watt_lpf_D;
@@ -280,6 +286,7 @@ typedef struct {
 	float		watt_gain_LP_P;
 
 	float		i_maximal;
+	float		i_reverse;
 	float		i_derated_1;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
@@ -293,9 +300,12 @@ typedef struct {
 	float		weak_D;
 	float		weak_gain_EU;
 
+	float		v_maximal;
+	float		v_reverse;
+
 	float		s_maximal;
+	float		s_reverse;
 	float		s_setpoint;
-	int		s_brake_DIR;
 	float		s_accel;
 	float		s_track;
 	float		s_integral;
@@ -336,7 +346,7 @@ pmc_t;
 
 void pm_default(pmc_t *pm);
 
-void pm_voltage_control(pmc_t *pm, float uX, float uY);
+void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_ADD(float *S, float *C, float X);

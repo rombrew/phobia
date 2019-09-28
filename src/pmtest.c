@@ -68,7 +68,7 @@ SH_DEF(pm_self_test)
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
-SH_DEF(pm_test_current_ramp)
+SH_DEF(pm_FT_current_ramp)
 {
 	float			iSP;
 
@@ -93,7 +93,7 @@ SH_DEF(pm_test_current_ramp)
 	while (0);
 }
 
-SH_DEF(pm_test_speed_ramp)
+SH_DEF(pm_FT_speed_ramp)
 {
 	float			wSP;
 
@@ -109,7 +109,7 @@ SH_DEF(pm_test_speed_ramp)
 		wSP = pm.s_setpoint;
 		vTaskDelay((TickType_t) 100);
 
-		pm.s_setpoint = pm.probe_speed_ramp;
+		pm.s_setpoint = pm.probe_speed_hold;
 		vTaskDelay((TickType_t) 500);
 
 		pm.s_setpoint = wSP;
@@ -118,7 +118,7 @@ SH_DEF(pm_test_speed_ramp)
 	while (0);
 }
 
-SH_DEF(pm_test_thrust_curve)
+SH_DEF(pm_FT_thrust_curve)
 {
 	/* TODO */
 }
@@ -151,6 +151,15 @@ SH_DEF(hal_ADC_get_ANALOG)
 	printf("%3f (V)" EOL, &analog);
 }
 
+SH_DEF(hal_ADC_get_BRAKE)
+{
+	float		analog;
+
+	analog = ADC_get_BRAKE();
+
+	printf("%3f (V)" EOL, &analog);
+}
+
 SH_DEF(hal_PWM_set_DC)
 {
 	int			xDC;
@@ -174,16 +183,6 @@ SH_DEF(hal_PWM_set_Z)
 	}
 }
 
-SH_DEF(hal_raise_memory_fault)
-{
-	*((unsigned long *) 0x77777777UL) = *((unsigned long *) 0x55555555UL);
-}
-
-SH_DEF(hal_ADC_irq_lock)
-{
-	ADC_irq_lock();
-}
-
 SH_DEF(hal_GPIO_set_high_BOOST_12V)
 {
 	GPIO_set_HIGH(GPIO_BOOST_12V);
@@ -192,5 +191,25 @@ SH_DEF(hal_GPIO_set_high_BOOST_12V)
 SH_DEF(hal_GPIO_set_low_BOOST_12V)
 {
 	GPIO_set_LOW(GPIO_BOOST_12V);
+}
+
+SH_DEF(hal_GPIO_set_high_FAN)
+{
+	GPIO_set_HIGH(GPIO_FAN);
+}
+
+SH_DEF(hal_GPIO_set_low_FAN)
+{
+	GPIO_set_LOW(GPIO_FAN);
+}
+
+SH_DEF(hal_GPIO_set_high_LED)
+{
+	GPIO_set_HIGH(GPIO_LED);
+}
+
+SH_DEF(hal_GPIO_set_low_LED)
+{
+	GPIO_set_LOW(GPIO_LED);
 }
 
