@@ -368,7 +368,7 @@ sim_test_HALL(FILE *fdTel)
 
 	for (N = 1; N < 7; ++N) {
 
-		rot_H = atan2(pm.hall_AT[N].F[1], pm.hall_AT[N].F[0]) * 180. / M_PI;
+		rot_H = atan2(pm.hall_AT[N].Y, pm.hall_AT[N].X) * 180. / M_PI;
 
 		printf("hall_AT[%i] %.1f\n", N, rot_H);
 	}

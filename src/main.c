@@ -369,6 +369,8 @@ void task_INIT(void *pData)
 		hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
 		hal.ADC_terminal_bias = vm_R1 * vm_R2 * hal.ADC_reference_voltage / vm_D;
 
+		hal.TIM_mode = TIM_DISABLED;
+
 		hal.PPM_mode = PPM_DISABLED;
 		hal.PPM_timebase = 2000000UL;
 
@@ -562,13 +564,13 @@ void ADC_IRQ()
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
 
-	if (hal.HALL_mode == HALL_DRIVE_HALL) {
+	if (hal.TIM_mode == TIM_DRIVE_HALL) {
 
 		fb.pulse_HS = GPIO_get_HALL();
 	}
-	else if (hal.HALL_mode == HALL_DRIVE_IQEP) {
+	else if (hal.TIM_mode == TIM_DRIVE_QEP) {
 
-		/* TODO */
+		fb.pulse_EP = TIM_get_EP();
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
@@ -579,7 +581,7 @@ void ADC_IRQ()
 
 		input_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_CONTROL_IQEP) {
+	else if (hal.PPM_mode == PPM_CONTROL_QEP) {
 
 		input_CONTROL_QEP();
 	}

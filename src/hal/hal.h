@@ -7,6 +7,7 @@
 #include "gpio.h"
 #include "ppm.h"
 #include "pwm.h"
+#include "tim.h"
 #include "usart.h"
 #include "wd.h"
 
@@ -16,14 +17,6 @@
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
-
-#define GPIO_TIM3_CH1			XGPIO_DEF4('C', 6, 0, 2)
-#define GPIO_TIM3_CH2			XGPIO_DEF4('C', 7, 0, 2)
-#define GPIO_TIM3_CH3			XGPIO_DEF4('C', 8, 0, 2)
-
-#define GPIO_HALL_A			GPIO_TIM3_CH1
-#define GPIO_HALL_B			GPIO_TIM3_CH2
-#define GPIO_HALL_C			GPIO_TIM3_CH3
 
 #define GPIO_SPI_NSS			XGPIO_DEF4('A', 4, 4, 5)
 #define GPIO_SPI_SCK			XGPIO_DEF4('A', 5, 5, 5)
@@ -49,16 +42,16 @@ enum {
 };
 
 enum {
-	HALL_DISABLED			= 0,
-	HALL_DRIVE_HALL,
-	HALL_DRIVE_IQEP,
+	TIM_DISABLED			= 0,
+	TIM_DRIVE_HALL,
+	TIM_DRIVE_QEP,
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
-	PPM_CONTROL_IQEP,
+	PPM_CONTROL_QEP,
 };
 
 typedef struct {
@@ -94,7 +87,7 @@ typedef struct {
 	}
 	ADC_const;
 
-	int		HALL_mode;
+	int		TIM_mode;
 
 	unsigned long	CAN_msg_ID;
 	int		CAN_msg_len;

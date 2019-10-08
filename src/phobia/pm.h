@@ -10,7 +10,7 @@
 
 #define PM_FLUX_MAX			25
 #define PM_INFINITY			7E+27f
-#define PM_OVERFLOWED			16777216
+#define PM_UNDEFINED			16777216
 #define PM_SFI(s)			#s
 
 enum {
@@ -21,7 +21,7 @@ enum {
 enum {
 	PM_SENSOR_DISABLED			= 0,
 	PM_SENSOR_HALL,
-	PM_SENSOR_IQEP,
+	PM_SENSOR_QEP,
 };
 
 enum {
@@ -41,7 +41,7 @@ enum {
 	PM_LU_ESTIMATE_FLUX,
 	PM_LU_ESTIMATE_HFI,
 	PM_LU_SENSOR_HALL,
-	PM_LU_SENSOR_IQEP,
+	PM_LU_SENSOR_QEP,
 };
 
 enum {
@@ -60,7 +60,7 @@ enum {
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_HALL,
-	PM_STATE_ADJUST_IQEP,
+	PM_STATE_ADJUST_QEP,
 	PM_STATE_HALT,
 };
 
@@ -76,7 +76,7 @@ enum {
 	PM_ERROR_FLUX_UNSTABLE,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
-	PM_ERROR_SENSOR_IQEP_FAULT,
+	PM_ERROR_SENSOR_QEP_FAULT,
 };
 
 typedef struct {
@@ -147,6 +147,7 @@ typedef struct {
 	float		fb_uB;
 	float		fb_uC;
 	int		fb_HS;
+	int		fb_EP;
 
 	float		probe_current_hold;
 	float		probe_current_bias_Q;
@@ -252,13 +253,22 @@ typedef struct {
 
 	struct {
 
-		float	F[2];
+		float	X;
+		float	Y;
 	}
 	hall_AT[8];
 
 	float		hall_F[2];
 	float		hall_wS;
 	int		hall_TIM;
+
+	/* FIXME !!!!!
+	 * */
+	int		iqep_prev;
+	int		iqep_delta;
+	float		iqep_F[2];
+	float		iqep_wS;
+	int		iqep_TIM;
 
 	float		const_lpf_U;
 	float		const_gain_LP_U;

@@ -28,7 +28,7 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 		taskENTER_CRITICAL();
 		ADC_irq_lock();
 
-		PWM_set_configuration();
+		PWM_configure();
 
 		pm.freq_hz = hal.PWM_frequency;
 		pm.dT = 1.f / pm.freq_hz;
@@ -53,7 +53,28 @@ reg_proc_ppm(const reg_t *reg, int *lval, const int *rval)
 		taskENTER_CRITICAL();
 		ADC_irq_lock();
 
-		PPM_set_configuration();
+		PPM_configure();
+
+		ADC_irq_unlock();
+		taskEXIT_CRITICAL();
+	}
+}
+
+static void
+reg_proc_tim(const reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = *rval;
+
+		taskENTER_CRITICAL();
+		ADC_irq_lock();
+
+		TIM_configure();
 
 		ADC_irq_unlock();
 		taskEXIT_CRITICAL();
@@ -379,7 +400,7 @@ reg_format_tvm_FIR(const reg_t *reg)
 }
 
 static void
-reg_format_hall_F(const reg_t *reg)
+reg_format_hall_AT(const reg_t *reg)
 {
 	float		*F = (void *) reg->link;
 	float		rot_g;
@@ -403,13 +424,13 @@ reg_format_enum(const reg_t *reg)
 
 	switch (n) {
 
-		case ID_HAL_HALL_MODE:
+		case ID_HAL_TIM_MODE:
 
 			switch (val) {
 
-				TEXT_ITEM(HALL_DISABLED);
-				TEXT_ITEM(HALL_DRIVE_HALL);
-				TEXT_ITEM(HALL_DRIVE_IQEP);
+				TEXT_ITEM(TIM_DISABLED);
+				TEXT_ITEM(TIM_DRIVE_HALL);
+				TEXT_ITEM(TIM_DRIVE_QEP);
 
 				default: break;
 			}
@@ -422,7 +443,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PPM_DISABLED);
 				TEXT_ITEM(PPM_PULSE_WIDTH);
 				TEXT_ITEM(PPM_STEP_DIR);
-				TEXT_ITEM(PPM_CONTROL_IQEP);
+				TEXT_ITEM(PPM_CONTROL_QEP);
 
 				default: break;
 			}
@@ -465,7 +486,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_SENSOR_DISABLED);
 				TEXT_ITEM(PM_SENSOR_HALL);
-				TEXT_ITEM(PM_SENSOR_IQEP);
+				TEXT_ITEM(PM_SENSOR_QEP);
 
 				default: break;
 			}
@@ -502,7 +523,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_PROBE_CONST_E);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
 				TEXT_ITEM(PM_STATE_ADJUST_HALL);
-				TEXT_ITEM(PM_STATE_ADJUST_IQEP);
+				TEXT_ITEM(PM_STATE_ADJUST_QEP);
 				TEXT_ITEM(PM_STATE_HALT);
 
 				default: break;
@@ -519,7 +540,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_LU_ESTIMATE_FLUX);
 				TEXT_ITEM(PM_LU_ESTIMATE_HFI);
 				TEXT_ITEM(PM_LU_SENSOR_HALL);
-				TEXT_ITEM(PM_LU_SENSOR_IQEP);
+				TEXT_ITEM(PM_LU_SENSOR_QEP);
 
 				default: break;
 			}
@@ -543,7 +564,7 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.ADC_voltage_ratio,,		"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_terminal_ratio,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.ADC_terminal_bias,,		"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.HALL_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
+	REG_DEF(hal.TIM_mode,,		"",	"%i", REG_CONFIG, &reg_proc_tim, &reg_format_enum),
 	REG_DEF(hal.PPM_mode,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_timebase,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
@@ -751,12 +772,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_gain_SF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_FP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.hall_AT[1],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
-	REG_DEF(pm.hall_AT[2],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
-	REG_DEF(pm.hall_AT[3],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
-	REG_DEF(pm.hall_AT[4],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
-	REG_DEF(pm.hall_AT[5],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
-	REG_DEF(pm.hall_AT[6],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_F),
+	REG_DEF(pm.hall_AT[1],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_AT[2],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_AT[3],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_AT[4],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_AT[5],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_AT[6],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
 	REG_DEF(pm.hall_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_F, g,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),

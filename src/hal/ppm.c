@@ -33,7 +33,8 @@ void irq_TIM4()
 	}
 }
 
-void PPM_mode_pulse_width()
+static void
+PPM_mode_PULSE_WIDTH()
 {
 	/* Enable TIM4 clock.
 	 * */
@@ -80,7 +81,7 @@ void PPM_startup()
 {
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
 
-		PPM_mode_pulse_width();
+		PPM_mode_PULSE_WIDTH();
 	}
 	else if (hal.PPM_mode == PPM_STEP_DIR) {
 
@@ -109,7 +110,7 @@ PPM_halt()
 	RCC->APB1ENR &= ~RCC_APB1ENR_TIM4EN;
 }
 
-void PPM_set_configuration()
+void PPM_configure()
 {
 	if (hal.PPM_mode != PPM_DISABLED) {
 

@@ -361,8 +361,8 @@ pm_sensor_HALL(pmc_t *pm)
 
 	if (HS >= 1 && HS <= 6) {
 
-		X = pm->hall_AT[HS].F[0];
-		Y = pm->hall_AT[HS].F[1];
+		X = pm->hall_AT[HS].X;
+		Y = pm->hall_AT[HS].Y;
 
 		pm->hall_TIM++;
 
@@ -385,7 +385,7 @@ pm_sensor_HALL(pmc_t *pm)
 }
 
 static void
-pm_sensor_IQEP(pmc_t *pm)
+pm_sensor_QEP(pmc_t *pm)
 {
 	/* TODO */
 }
@@ -473,7 +473,7 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->hall_F[0] = pm->lu_F[0];
 				pm->hall_F[1] = pm->lu_F[1];
-				pm->hall_TIM = PM_OVERFLOWED;
+				pm->hall_TIM = PM_UNDEFINED;
 			}
 			else if (pm->config_HFI == PM_ENABLED) {
 

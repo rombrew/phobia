@@ -91,7 +91,7 @@ void PWM_startup()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
 }
 
-void PWM_set_configuration()
+void PWM_configure()
 {
 	int		R, D;
 

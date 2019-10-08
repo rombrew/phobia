@@ -19,7 +19,7 @@ typedef struct {
 
 	/* State variabes.
 	 * */
-	double		X[12];
+	double		X[14];
 	int		VSI[3];
 	int		surge_I;
 
@@ -57,14 +57,14 @@ typedef struct {
 	double		tau_I;
 	double		tau_U;
 
-	/* Hall sensor angles.
+	/* Hall Sensors.
 	 * */
 	double		HS[3];
 
-	/* IQEP constants.
+	/* Quadrature Encoder.
 	 * */
-	int		IQEP_R;
-	int		IQEP_Z;
+	int		QEP_R;
+	double		QEP_Zq;
 
 	/* ADC result (OUTPUT).
 	 * */

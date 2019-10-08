@@ -8,7 +8,7 @@
 #define GPIO_I2C_DIR			GPIO_TIM4_CH2
 
 void PPM_startup();
-void PPM_set_configuration();
+void PPM_configure();
 
 float PPM_get_PERIOD();
 float PPM_get_PULSE();

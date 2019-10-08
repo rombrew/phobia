@@ -36,24 +36,27 @@ void blm_Enable(blm_t *m)
 {
 	double		Kv;
 
-	m->Tsim = 0.; /* Simulation time (Second) */
-        m->dT = 1. / 30000.; /* PWM period */
-	m->sT = 1E-6; /* Solver step */
-	m->PWM_R = 2800; /* PWM resolution */
+	m->Tsim = 0.;		/* Simulation time (Second) */
+        m->dT = 1. / 30000.;	/* PWM period */
+	m->sT = 1E-6;		/* Solver step */
+	m->PWM_R = 2800;	/* PWM resolution */
 
-        m->X[0] = 0.; /* Axis D current (Ampere) */
-	m->X[1] = 0.; /* Axis Q current (Ampere) */
-        m->X[2] = 0.; /* Electrical Speed (Radian/Sec) */
-        m->X[3] = 0.; /* Electrical Position (Radian) */
-        m->X[4] = 25.; /* Temperature (Celsius) */
-	m->X[5] = 0.; /* Energy consumption (Joule) */
-	m->X[6] = 5.; /* DC bus voltage (Volt) */
+        m->X[0] = 0.;	/* Axis D current (Ampere) */
+	m->X[1] = 0.;	/* Axis Q current (Ampere) */
+        m->X[2] = 0.;	/* Electrical Speed (Radian/Sec) */
+        m->X[3] = 0.;	/* Electrical Position (Radian) */
+        m->X[4] = 25.;	/* Temperature (Celsius) */
+	m->X[5] = 0.;	/* Energy consumption (Joule) */
+	m->X[6] = 5.;	/* DC bus voltage (Volt) */
 
-	m->X[7] = 0.; /* Current Sensor A */
-	m->X[8] = 0.; /* Current Sensor B */
-	m->X[9] = 0.; /* Voltage Sensor A */
-	m->X[10] = 0.; /* Voltage Sensor B */
-	m->X[11] = 0.; /* Voltage Sensor C */
+	m->X[7] = 0.;	/* Current Sensor A */
+	m->X[8] = 0.;	/* Current Sensor B */
+	m->X[9] = 0.;	/* Voltage Sensor A */
+	m->X[10] = 0.;	/* Voltage Sensor B */
+	m->X[11] = 0.;	/* Voltage Sensor C */
+
+	m->X[12] = 0.;	/* QEP internals */
+	m->X[13] = 1.;	/* QEP internals */
 
 	m->VSI[0] = 0;
 	m->VSI[1] = 0;
@@ -128,13 +131,10 @@ void blm_Enable(blm_t *m)
 	m->HS[1] = + 150.;
 	m->HS[2] = - 90.;
 
-	/* IQEP resolution.
+	/* Quadrature Encoder.
 	 * */
-	m->IQEP_R = 400;
-
-	/* IQEP reduction ratio.
-	 * */
-	m->IQEP_Z = 1;
+	m->QEP_R = 1600;	/* Mechanical resolution */
+	m->QEP_Zq = 1.0;	/* Reduction ratio */
 }
 
 static void
@@ -352,9 +352,21 @@ blm_sample_HS(blm_t *m)
 }
 
 static void
-blm_sample_IQEP(blm_t *m)
+blm_sample_EP(blm_t *m)
 {
-	m->pulse_EP = 0;
+	double		INC;
+
+	INC = (m->X[3] - m->X[12]) / (double) m->Zp;
+
+	m->X[12] = m->X[3];
+	m->X[13] += INC / (double) m->QEP_Zq;
+
+	/* Wrap QEP angular position.
+	 * */
+	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 2. * M_PI :
+		(m->X[13] > 2. * M_PI) ? m->X[13] - 2. * M_PI : m->X[13];
+
+	m->pulse_EP = (int) (m->X[13] * (double) m->QEP_R / (2. * M_PI));
 }
 
 static void
@@ -390,7 +402,7 @@ blm_VSI_Sample(blm_t *m, int N)
 		m->ADC_UC = ADC * range_U / 4096.;
 
 		blm_sample_HS(m);
-		blm_sample_IQEP(m);
+		blm_sample_EP(m);
 	}
 }
 

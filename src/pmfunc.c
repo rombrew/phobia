@@ -339,15 +339,6 @@ SH_DEF(pm_adjust_HALL)
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
-SH_DEF(pm_adjust_IQEP)
-{
-	if (pm.lu_mode != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-}
-
 SH_DEF(pm_fsm_startup)
 {
 	do {

@@ -1172,7 +1172,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[0] = 0.f;
-				pm->hall_TIM = PM_OVERFLOWED;
+				pm->hall_TIM = PM_UNDEFINED;
 
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
@@ -1339,8 +1339,8 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 				for (N = 0; N < 8; ++N) {
 
-					pm->hall_AT[N].F[0] = 0.f;
-					pm->hall_AT[N].F[1] = 0.f;
+					pm->hall_AT[N].X = 0.f;
+					pm->hall_AT[N].Y = 0.f;
 
 					pm->probe_DFT[N] = 0.f;
 					pm->FIX[N] = 0.f;
@@ -1364,8 +1364,8 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (HS >= 1 && HS <= 6) {
 
-				pm_ADD(&pm->hall_AT[HS].F[0], &pm->FIX[HS], pm->flux_F[0]);
-				pm_ADD(&pm->hall_AT[HS].F[1], &pm->FIX[HS + 8], pm->flux_F[1]);
+				pm_ADD(&pm->hall_AT[HS].X, &pm->FIX[HS], pm->flux_F[0]);
+				pm_ADD(&pm->hall_AT[HS].Y, &pm->FIX[HS + 8], pm->flux_F[1]);
 
 				pm->probe_DFT[HS] += 1.f;
 			}
@@ -1394,16 +1394,16 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 					D = pm->probe_DFT[HS];
 
-					pm->hall_AT[HS].F[0] /= D;
-					pm->hall_AT[HS].F[1] /= D;
+					pm->hall_AT[HS].X /= D;
+					pm->hall_AT[HS].Y /= D;
 
-					D = m_sqrtf(pm->hall_AT[HS].F[0] * pm->hall_AT[HS].F[0]
-						+ pm->hall_AT[HS].F[1] * pm->hall_AT[HS].F[1]);
+					D = m_sqrtf(pm->hall_AT[HS].X * pm->hall_AT[HS].X
+						+ pm->hall_AT[HS].Y * pm->hall_AT[HS].Y);
 
 					if (D > .5f) {
 
-						pm->hall_AT[HS].F[0] /= D;
-						pm->hall_AT[HS].F[1] /= D;
+						pm->hall_AT[HS].X /= D;
+						pm->hall_AT[HS].Y /= D;
 
 						N += 1;
 					}
@@ -1487,7 +1487,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
 		case PM_STATE_ADJUST_HALL:
-		case PM_STATE_ADJUST_IQEP:
+		case PM_STATE_ADJUST_QEP:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1600,7 +1600,7 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_FLUX_UNSTABLE),
 		PM_SFI(PM_ERROR_INVALID_OPERATION),
 		PM_SFI(PM_ERROR_SENSOR_HALL_FAULT),
-		PM_SFI(PM_ERROR_SENSOR_IQEP_FAULT),
+		PM_SFI(PM_ERROR_SENSOR_QEP_FAULT),
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);
