@@ -320,7 +320,7 @@ pm_estimate_HFI(pmc_t *pm)
 
 	if (m_fabsf(pm->hfi_gain_FP) > M_EPS_F) {
 
-		/* D axis responce has an asymmetry that we exctact with
+		/* D axis response has an asymmetry that we exctact with
 		 * doubled frequency cosine.
 		 * */
 		wD = pm->hfi_wave[0] * pm->hfi_wave[0] - pm->hfi_wave[1] * pm->hfi_wave[1];
@@ -361,10 +361,10 @@ pm_sensor_HALL(pmc_t *pm)
 
 	if (HS >= 1 && HS <= 6) {
 
+		pm->hall_TIM++;
+
 		X = pm->hall_AT[HS].X;
 		Y = pm->hall_AT[HS].Y;
-
-		pm->hall_TIM++;
 
 		EX = X * pm->hall_F[0] + Y * pm->hall_F[1];
 		EY = X * pm->hall_F[1] - Y * pm->hall_F[0];
@@ -372,7 +372,7 @@ pm_sensor_HALL(pmc_t *pm)
 		pm->hall_F[0] = X;
 		pm->hall_F[1] = Y;
 
-		if (m_fabsf(EY) > 5E-2f) {
+		if (m_fabsf(EY) > 7E-2f) {
 
 			pm->hall_wS = m_atan2f(- EY, EX) * pm->freq_hz / pm->hall_TIM;
 			pm->hall_TIM = 0;

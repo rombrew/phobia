@@ -206,7 +206,7 @@ sim_test_BASE(FILE *fdTel)
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 	sim_F(fdTel, 0.);
 
-	printf("IAB %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
+	printf("Z[AB] %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
 
 	t_assert(pm.fail_reason == PM_OK);
 
@@ -223,13 +223,13 @@ sim_test_BASE(FILE *fdTel)
 	tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
 	tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
 
-	printf("FIR_A %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_A[0],
+	printf("FIR[A] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_A[0],
 			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A);
 
-	printf("FIR_B %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_B[0],
+	printf("FIR[B] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_B[0],
 			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B);
 
-	printf("FIR_C %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_C[0],
+	printf("FIR[C] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_C[0],
 			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C);
 
 	t_assert_ref(tau_A, m.tau_U);
@@ -392,7 +392,7 @@ sim_test_WEAK(FILE *fdTel)
 static int
 sim_TEST(FILE *fdTel)
 {
-	/* 250W E-scooter hub motor.
+	/* E-scooter hub motor (250W).
          * */
 	m.R = 2.4E-1;
 	m.Ld = 5.2E-4;
@@ -406,10 +406,10 @@ sim_TEST(FILE *fdTel)
 	m.M[1] = 5E-2;
 	m.M[2] = 5E-6;
 
-	if (sim_test_BASE(fdTel) == 0)
+	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
-	if (sim_test_SPEED(fdTel) == 0)
+	if (sim_test_SPEED(NULL) == 0)
 		return 0;
 
 	if (sim_test_HFI(NULL) == 0)

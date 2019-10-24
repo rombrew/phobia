@@ -494,7 +494,8 @@ input_PULSE_WIDTH()
 						ap.ppm_locked = 0;
 					}
 				}
-				else if (pulse < ap.ppm_pulse_range[1]) {
+
+				if (pulse < ap.ppm_pulse_range[1]) {
 
 					range = ap.ppm_pulse_range[0] - ap.ppm_pulse_range[1];
 					scaled = (ap.ppm_pulse_range[1] - pulse) / range;

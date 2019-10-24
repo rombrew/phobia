@@ -3,24 +3,26 @@ BUILD	?= /tmp/pmc
 TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
-CROSS	?= armv7m-none-eabi-
-CC	= $(CROSS)gcc
-OC	= $(CROSS)objcopy
-GDB     = $(CROSS)gdb
+CROSS	?= armv7m-none-eabi
+CC	= $(CROSS)-gcc
+OC	= $(CROSS)-objcopy
+GDB     = $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-CFLAGS	= -pipe
+CC	= clang -target $(CROSS)
+
+CFLAGS	= -O3 -flto -g3 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -Os -flto -g3
-CFLAGS	+= -fno-hosted
+CFLAGS	+= -ffreestanding
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
 CFLAGS	+= -ffinite-math-only
 CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
+CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
 
 LDFLAGS	= -nostdlib

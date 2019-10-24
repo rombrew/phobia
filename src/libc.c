@@ -35,6 +35,8 @@ void *memset(void *d, int c, unsigned long sz)
 	return d;
 }
 
+void __attribute__ ((used)) __aeabi_memclr4(void *d, size_t n) { memset(d, 0, n); }
+
 void *memcpy(void *d, const void *s, unsigned long sz)
 {
 	long			*ld = (long *) d;

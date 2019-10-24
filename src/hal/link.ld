@@ -8,6 +8,8 @@ MEMORY
 
 ld_stack = ORIGIN(CCM) + LENGTH(CCM);
 
+ENTRY(irq_Reset);
+
 SECTIONS
 {
 	.text : ALIGN(4)
@@ -78,5 +80,7 @@ SECTIONS
 		ld_end_ccm = . ;
 
 	} > CCM
+
+	/DISCARD/ : { *(.ARM.exidx*) }
 }
 
