@@ -10,8 +10,8 @@ extern long			ld_begin_vectors;
 unsigned long			clock_cpu_hz;
 
 HAL_t				hal;
-LOG_t				log __section_noinit;
-int				bootload_jump __section_noinit;
+LOG_t				log		LD_NOINIT;
+volatile int			bootload_jump	LD_NOINIT;
 
 void irq_NMI()
 {
@@ -83,8 +83,8 @@ clock_startup()
 
 	/* Reset RCC.
 	 * */
+	RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_CSSON | RCC_CR_HSEBYP | RCC_CR_HSEON);
 	RCC->CFGR = 0;
-	RCC->CR &= ~(RCC_CR_HSEON | RCC_CR_CSSON | RCC_CR_HSEBYP | RCC_CR_PLLON);
 	RCC->CIR = 0;
 
 	/* Enable HSE.
@@ -96,6 +96,8 @@ clock_startup()
 	do {
 		HSE = RCC->CR & RCC_CR_HSERDY;
 		N++;
+
+		__NOP();
 	}
 	while (HSE == 0 && N < 20000UL);
 
@@ -159,7 +161,7 @@ clock_startup()
 
 	/* Wait till the main PLL is ready.
 	 * */
-	while (!(RCC->CR & RCC_CR_PLLRDY))
+	while ((RCC->CR & RCC_CR_PLLRDY) == 0)
 		__NOP();
 
 	/* Configure Flash.

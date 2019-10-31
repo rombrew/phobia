@@ -12,8 +12,8 @@ io_ops_t;
 
 extern io_ops_t		*iodef;
 
-void *memset(void *d, int c, unsigned long sz);
-void *memcpy(void *d, const void *s, unsigned long sz);
+void *memset(void *d, int c, int n);
+void *memcpy(void *d, const void *s, int n);
 
 int strcmp(const char *s, const char *p);
 int strcmpe(const char *s, const char *p);
@@ -35,7 +35,7 @@ void printf(const char *fmt, ...);
 const char *stoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-unsigned long crc32b(const void *s, int sz);
+unsigned long crc32b(const void *s, int n);
 
 #endif /* _H_LIBC_ */
 

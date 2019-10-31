@@ -10,7 +10,7 @@
 #define LOAD_COUNT_DELAY		((TickType_t) 100)
 
 application_t			ap;
-pmc_t 				pm __section_ccmram;
+pmc_t 				pm	LD_CCMRAM;
 tel_t				ti;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
@@ -151,7 +151,7 @@ float ADC_get_ANALOG()
 {
 	float			analog;
 
-	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_INPUT)
+	analog = ADC_get_VALUE(GPIO_ADC_ANALOG)
 		* hal.ADC_reference_voltage / ap.analog_voltage_ratio;
 
 	return analog;
@@ -161,7 +161,13 @@ float ADC_get_BRAKE()
 {
 	float			analog;
 
-	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_BRAKE)
+#ifdef _HW_REV4B
+
+	return 0.f;
+
+#endif /* _HW_REV4B */
+
+	analog = ADC_get_VALUE(GPIO_ADC_BRAKE)
 		* hal.ADC_reference_voltage / ap.analog_voltage_ratio;
 
 	return analog;
@@ -174,8 +180,8 @@ void task_ANALOG(void *pData)
 	float			brake, brake_scaled;
 	int			revol;
 
-	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG_INPUT);
-	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG_BRAKE);
+	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
+	GPIO_set_mode_ANALOG(GPIO_ADC_BRAKE);
 
 	xWake = xTaskGetTickCount();
 
@@ -198,28 +204,25 @@ void task_ANALOG(void *pData)
 				/* Loss of ANALOG signal.
 				 * */
 
-				scaled = 0.f;
-
 				if (ap.analog_locked == 1) {
 
 					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 					ap.analog_locked = 0;
 				}
 			}
-			else {
-				if (analog < ap.analog_voltage_ANALOG[1]) {
 
-					range = ap.analog_voltage_ANALOG[0] - ap.analog_voltage_ANALOG[1];
-					scaled = (ap.analog_voltage_ANALOG[1] - analog) / range;
-				}
-				else {
-					range = ap.analog_voltage_ANALOG[2] - ap.analog_voltage_ANALOG[1];
-					scaled = (analog - ap.analog_voltage_ANALOG[1]) / range;
-				}
+			if (analog < ap.analog_voltage_ANALOG[1]) {
 
-				scaled = (scaled < - 1.f) ? - 1.f :
-					(scaled > 1.f) ? 1.f : scaled;
+				range = ap.analog_voltage_ANALOG[0] - ap.analog_voltage_ANALOG[1];
+				scaled = (ap.analog_voltage_ANALOG[1] - analog) / range;
 			}
+			else {
+				range = ap.analog_voltage_ANALOG[2] - ap.analog_voltage_ANALOG[1];
+				scaled = (analog - ap.analog_voltage_ANALOG[1]) / range;
+			}
+
+			scaled = (scaled < - 1.f) ? - 1.f :
+				(scaled > 1.f) ? 1.f : scaled;
 
 			if (		brake < ap.analog_voltage_lost[0]
 					|| brake > ap.analog_voltage_lost[1]) {
@@ -360,6 +363,30 @@ void task_INIT(void *pData)
 		/* Default.
 		 * */
 		hal.USART_baud_rate = 57600;
+
+#ifdef _HW_REV4B
+
+		hal.PWM_frequency = 30000.f;
+		hal.PWM_deadtime = 190;
+		hal.ADC_reference_voltage = 3.3f;
+
+#ifdef _HW_REV4B_KOZIN
+		hal.ADC_shunt_resistance = 340E-6f;
+#endif /* _HW_REV4B_KOZIN */
+
+#ifdef _HW_REV4B_PAVLOV
+		hal.ADC_shunt_resistance = 170E-6f;
+#endif /* _HW_REV4B_PAVLOV */
+
+		hal.ADC_amplifier_gain = 60.f;
+		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_bias = 0.f;
+
+#endif /* _HW_REV4B */
+
+#ifdef _HW_REV4C
+
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
@@ -368,6 +395,8 @@ void task_INIT(void *pData)
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
 		hal.ADC_terminal_bias = vm_R1 * vm_R2 * hal.ADC_reference_voltage / vm_D;
+
+#endif /* _HW_REV4C */
 
 		hal.TIM_mode = TIM_DISABLED;
 
@@ -398,8 +427,8 @@ void task_INIT(void *pData)
 		ap.analog_voltage_BRAKE[2] = 4.8f;
 		ap.analog_voltage_lost[0] = 0.2f;
 		ap.analog_voltage_lost[1] = 4.8f;
-		ap.analog_control_ANALOG[0] = - 100.f;
-		ap.analog_control_ANALOG[1] = 0.f;
+		ap.analog_control_ANALOG[0] = 0.f;
+		ap.analog_control_ANALOG[1] = 40.f;
 		ap.analog_control_ANALOG[2] = 100.f;
 		ap.analog_control_BRAKE[0] = 0.f;
 		ap.analog_control_BRAKE[1] = - 100.f;
@@ -446,6 +475,12 @@ void task_INIT(void *pData)
 		tel_reg_default(&ti);
 
 		reg_SET_F(ID_PM_FAULT_CURRENT_HALT, -1.f);
+
+#ifdef _HW_REV4B_KOZIN
+		pm.i_maximal = 70.;
+		pm.i_reverse = - pm.i_maximal;
+#endif /* _HW_REV4B_KOZIN */
+
 	}
 
 	if (hal.PPM_mode != PPM_DISABLED) {
@@ -723,7 +758,7 @@ SH_DEF(rtos_heap)
 			xPortGetMinimumEverFreeHeapSize());
 }
 
-SH_DEF(rtos_log)
+SH_DEF(rtos_log_flush)
 {
 	if (log_validate() != 0) {
 
@@ -732,7 +767,7 @@ SH_DEF(rtos_log)
 	}
 }
 
-SH_DEF(rtos_log_reset)
+SH_DEF(rtos_log_cleanup)
 {
 	if (log_validate() != 0) {
 
@@ -740,7 +775,7 @@ SH_DEF(rtos_log_reset)
 	}
 }
 
-SH_DEF(rtos_reboot)
+SH_DEF(rtos_system_reset)
 {
 	if (pm.lu_mode != PM_LU_DISABLED) {
 

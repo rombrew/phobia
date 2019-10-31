@@ -29,11 +29,11 @@
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
-#define __section_ccmram		__attribute__ (( section(".ccmram") ))
-#define __section_ramfunc		__attribute__ (( section(".ramfunc"), used ))
-#define __section_noinit		__attribute__ (( section(".noinit") ))
+#define	LD_CCMRAM			__attribute__ ((section(".ccmram")))
+#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), used))
+#define LD_NOINIT			__attribute__ ((section(".noinit")))
 
-#define INIT_SIGNATURE			0x5555UL
+#define INIT_SIGNATURE			0x5577UL
 
 enum {
 	LEG_A				= 1,

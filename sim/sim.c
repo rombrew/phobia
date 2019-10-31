@@ -415,7 +415,7 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_HFI(NULL) == 0)
 		return 0;
 
-	if (sim_test_HALL(fdTel) == 0)
+	if (sim_test_HALL(NULL) == 0)
 		return 0;
 
 	if (sim_test_WEAK(NULL) == 0)
@@ -461,7 +461,7 @@ sim_RUN(FILE *fdTel)
 	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 50.f;
+	pm.s_setpoint = 5000.f;
 	sim_F(fdTel, 1.);
 
 	pm.s_setpoint = 2.f;

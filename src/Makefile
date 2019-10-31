@@ -1,18 +1,16 @@
-
 BUILD	?= /tmp/pmc
 TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
 CROSS	?= armv7m-none-eabi
-CC	= $(CROSS)-gcc
+#CC	= $(CROSS)-gcc
+CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
 GDB     = $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-CC	= clang -target $(CROSS)
-
-CFLAGS	= -O3 -flto -g3 -pipe
+CFLAGS	= -Os -flto -g3 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
@@ -24,6 +22,10 @@ CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
+CFLAGS  += -D_HW_REV4B
+#CFLAGS  += -D_HW_REV4B_KOZIN
+CFLAGS  += -D_HW_REV4B_PAVLOV
+#CFLAGS  += -D_HW_REV4C
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld
@@ -85,6 +87,10 @@ $(IMAGE): $(TARGET)
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
 	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v
+
+zip: $(IMAGE)
+	@ echo "  ZIP   " $(notdir $<)
+	@ zip -j9 $(BUILD)/pmc-$(shell hg id -b)-$(shell hg id -n).zip $<
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)

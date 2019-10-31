@@ -5,7 +5,18 @@
 
 io_ops_t		*iodef;
 
-void *memset(void *d, int c, unsigned long sz)
+void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
+{
+	unsigned long		*ld = (unsigned long *) d;
+
+	while (n >= sizeof(long)) {
+
+		*ld++ = 0UL;
+		n -= sizeof(long);
+	}
+}
+
+void *memset(void *d, int c, int n)
 {
 	unsigned long		fill, *ld = (unsigned long *) d;
 
@@ -15,29 +26,27 @@ void *memset(void *d, int c, unsigned long sz)
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (sz >= sizeof(long)) {
+		while (n >= sizeof(long)) {
 
 			*ld++ = fill;
-			sz -= sizeof(long);
+			n -= sizeof(long);
 		}
 	}
 
 	{
 		char		*xd = (char *) ld;
 
-		while (sz >= 1) {
+		while (n >= 1) {
 
 			*xd++ = c;
-			sz--;
+			n--;
 		}
 	}
 
 	return d;
 }
 
-void __attribute__ ((used)) __aeabi_memclr4(void *d, size_t n) { memset(d, 0, n); }
-
-void *memcpy(void *d, const void *s, unsigned long sz)
+void *memcpy(void *d, const void *s, int n)
 {
 	long			*ld = (long *) d;
 	const long		*ls = (const long *) s;
@@ -45,10 +54,10 @@ void *memcpy(void *d, const void *s, unsigned long sz)
 	if (((size_t) ld & (sizeof(long) - 1UL)) == 0
 		&& ((size_t) ls & (sizeof(long) - 1UL)) == 0) {
 
-		while (sz >= sizeof(long)) {
+		while (n >= sizeof(long)) {
 
 			*ld++ = *ls++;
-			sz -= sizeof(long);
+			n -= sizeof(long);
 		}
 	}
 
@@ -56,10 +65,10 @@ void *memcpy(void *d, const void *s, unsigned long sz)
 		char		*xd = (char *) ld;
 		const char	*xs = (const char *) ls;
 
-		while (sz >= 1) {
+		while (n >= 1) {
 
 			*xd++ = *xs++;
-			sz--;
+			n--;
 		}
 	}
 
@@ -619,7 +628,7 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-unsigned long crc32b(const void *s, int sz)
+unsigned long crc32b(const void *s, int n)
 {
         const char              *xs = (const char *) s;
         unsigned long           crc, b, m;
@@ -627,10 +636,10 @@ unsigned long crc32b(const void *s, int sz)
 
 	crc = 0xFFFFFFFF;
 
-	while (sz >= 1) {
+	while (n >= 1) {
 
 		b = *xs++;
-		sz--;
+		n--;
 
 		crc = crc ^ b;
 
