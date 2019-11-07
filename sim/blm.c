@@ -361,14 +361,10 @@ blm_sample_EP(blm_t *m)
 	m->X[12] = m->X[3];
 	m->X[13] += INC / (double) m->QEP_Zq;
 
-	// FIXME: Get INC
+	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 65536. :
+		(m->X[13] >= 65536.) ? m->X[13] - 65536. : m->X[13];
 
-	/* Wrap QEP angular position.
-	 * */
-	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 2. * M_PI :
-		(m->X[13] > 2. * M_PI) ? m->X[13] - 2. * M_PI : m->X[13];
-
-	m->pulse_EP = (int) (m->X[13] * (double) m->QEP_R / (2. * M_PI));
+	m->pulse_EP = (int) (m->X[13]);
 }
 
 static void

@@ -1231,9 +1231,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		}
 	}
 
-	/*
+	/* Get SENSOR values.
 	 * */
 	pm->fb_HS = fb->pulse_HS;
+	pm->fb_EP = fb->pulse_EP;
 
 	/* Main FSM is used to execute external commands.
 	 * */

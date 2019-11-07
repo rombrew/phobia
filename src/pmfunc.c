@@ -298,6 +298,11 @@ SH_DEF(pm_probe_spinup)
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
+SH_DEF(pm_probe_detached)
+{
+	/* TODO */
+}
+
 SH_DEF(pm_adjust_HALL)
 {
 	if (pm.lu_mode != PM_LU_DISABLED) {

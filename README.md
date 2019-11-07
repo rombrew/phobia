@@ -93,6 +93,8 @@ PCB design source files.
 * Analyse HFI operation on large current values.
 * Make a detailed documentation.
 
+* FIX: add detached motor Kv probing
+
 ## Current Status
 
 Now we can declare that PMC is ready to use in most applications. But there is

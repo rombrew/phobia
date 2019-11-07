@@ -529,34 +529,43 @@ void task_SH(void *pData)
 
 				sh_line_putc(sh, c);
 			}
-			else if (c == '\r') {
+			else if (c == K_CR) {
 
-				/* Echo.
+				/* Return.
 				 * */
 				puts(EOL);
-
 				sh_evaluate(sh);
 				sh_line_null(sh);
 			}
-			else if (c == '\b') {
+			else if (c == K_BS || c == K_DEL) {
 
+				/* Backspace.
+				 * */
 				sh_line_bs(sh);
 			}
-			else if (c == '\t') {
+			else if (c == K_TAB || c == '@') {
 
+				/* Tab.
+				 * */
 				sh_complete(sh, DIR_UP);
 			}
 			else if (c == K_ETX || c == K_EOT) {
 
+				/* Ctrl + C.
+				 * */
 				puts(EOL);
 				sh_line_null(sh);
 			}
-			else if (c == K_DLE) {
+			else if (c == K_DLE || c == '*') {
 
+				/* Ctrl + P.
+				 * */
 				sh_history(sh, DIR_UP);
 			}
-			else if (c == K_SO) {
+			else if (c == K_SO || c == '!') {
 
+				/* Ctrl + N.
+				 * */
 				sh_history(sh, DIR_DOWN);
 			}
 			else if (c == K_ESC) {
@@ -565,28 +574,81 @@ void task_SH(void *pData)
 			}
 		}
 		else {
-			if (sh->xESC == 1) {
+			switch (sh->xESC) {
 
-				sh->xESC = (c == '[') ? 2 : 0;
-			}
-			else {
-				if (c == 'A') {
+				case 1:
+					sh->xESC = (c == '[') ? 2 : 0;
+					break;
 
-					sh_history(sh, DIR_UP);
-				}
-				else if (c == 'B') {
+				case 2:
+					if (c == '3') {
 
-					sh_history(sh, DIR_DOWN);
-				}
-				else if (c == 'Z') {
+						sh->xESC = 3;
+					}
+					else if (c == 'A') {
 
-					sh_complete(sh, DIR_DOWN);
-				}
+						/* Up.
+						 * */
+						sh_history(sh, DIR_UP);
 
-				sh->xESC = 0;
+						sh->xESC = 0;
+					}
+					else if (c == 'B') {
+
+						/* Down.
+						 * */
+						sh_history(sh, DIR_DOWN);
+
+						sh->xESC = 0;
+					}
+					else if (c == 'Z') {
+
+						/* Shift + Tab.
+						 * */
+						sh_complete(sh, DIR_DOWN);
+
+						sh->xESC = 0;
+					}
+					else {
+						sh->xESC = 0;
+					}
+					break;
+
+				case 3:
+					if (c == '~') {
+
+						/* Delete.
+						 * */
+						puts(EOL);
+						sh_line_null(sh);
+
+						sh->xESC = 0;
+					}
+					else {
+						sh->xESC = 0;
+					}
+					break;
+
+				default:
+					sh->xESC = 0;
 			}
 		}
 	}
 	while (1);
+}
+
+#undef SH_DEF
+#define SH_DEF(name)		void name(const char *s)
+
+SH_DEF(shell_keycodes)
+{
+	int		c;
+
+	do {
+		c = getc();
+
+		printf("%2x" EOL, c);
+	}
+	while (c != K_EOT && c != 'D');
 }
 
