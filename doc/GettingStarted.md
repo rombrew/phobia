@@ -50,7 +50,7 @@ parity.
 [Input Analog](InputAnalog.md)  
 [Trouble Shooting](TroubleShooting.md)  
 
-[Porting Guide](PortingGuide.md)  
+[Internals](Internals.md)  
 [State Observer](StateObserver.md)  
 [High Frequency Injection](HFI.md)  
 

@@ -368,7 +368,7 @@ sim_test_HALL(FILE *fdTel)
 
 	for (N = 1; N < 7; ++N) {
 
-		rot_H = atan2(pm.hall_AT[N].Y, pm.hall_AT[N].X) * 180. / M_PI;
+		rot_H = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * 180. / M_PI;
 
 		printf("hall_AT[%i] %.1f\n", N, rot_H);
 	}
@@ -449,22 +449,22 @@ sim_RUN(FILE *fdTel)
 {
 	sim_test_BASE(NULL);
 
-	sim_test_HALL(fdTel);
+	pm.forced_hold_D = 0.f;
 
-	pm.fsm_req = PM_STATE_LU_STARTUP;
+	pm.fsm_req = PM_STATE_LU_DETACHED;
 	sim_F(fdTel, 0.);
 
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.config_SENSOR = PM_SENSOR_HALL;
-
-	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 5000.f;
+	m.M[0] = 1.f;
+
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 2.f;
+	pm.fsm_req = PM_STATE_PROBE_CONST_E;
+	sim_F(fdTel, 0.);
+
+	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+
 	sim_F(fdTel, 1.);
 
 	return 1;

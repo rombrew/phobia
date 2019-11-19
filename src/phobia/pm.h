@@ -9,8 +9,8 @@
 #define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
 #define PM_FLUX_MAX			25
-#define PM_INFINITY			7E+27f
-#define PM_UNDEFINED			16777216
+#define PM_MAX_F			7E+27f
+#define PM_MAX_I			16777216l
 #define PM_SFI(s)			#s
 
 enum {
@@ -21,7 +21,7 @@ enum {
 enum {
 	PM_SENSOR_DISABLED			= 0,
 	PM_SENSOR_HALL,
-	PM_SENSOR_QEP,
+	PM_SENSOR_QENC,
 };
 
 enum {
@@ -41,7 +41,7 @@ enum {
 	PM_LU_ESTIMATE_FLUX,
 	PM_LU_ESTIMATE_HFI,
 	PM_LU_SENSOR_HALL,
-	PM_LU_SENSOR_QEP,
+	PM_LU_SENSOR_QENC,
 };
 
 enum {
@@ -55,17 +55,20 @@ enum {
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
+	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_HALL,
-	PM_STATE_ADJUST_QEP,
 	PM_STATE_HALT,
 };
 
 enum {
 	PM_OK					= 0,
+
+	/* Internal.
+	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERORR_POWER_STAGE_FAULT,
@@ -76,7 +79,11 @@ enum {
 	PM_ERROR_FLUX_UNSTABLE,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
-	PM_ERROR_SENSOR_QEP_FAULT,
+	PM_ERROR_SENSOR_QENC_FAULT,
+
+	/* External.
+	 * */
+	PM_ERROR_TIMEOUT,
 };
 
 typedef struct {
@@ -154,12 +161,14 @@ typedef struct {
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
 	float		probe_speed_hold;
+	float		probe_speed_detached;
 	float		probe_gain_P;
 	float		probe_gain_I;
 	float		probe_DFT[8];
 	float		probe_LSQ_A[9];
 	float		probe_LSQ_B[9];
 	float		probe_LSQ_C[9];
+	float		probe_STD;
 
 	float		FIX[27];
 
@@ -205,6 +214,7 @@ typedef struct {
 	float		lu_lpf_wS;
 	float		lu_gain_LP_S;
 	int		lu_mode;
+	int		lu_TIM;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -224,9 +234,14 @@ typedef struct {
 	int		flux_N;
 	float		flux_lower_R;
 	float		flux_upper_R;
-	float		flux_transient_S;
+	float		flux_slope_S;
+	float		flux_slope_F;
 	float		flux_E;
+	float		flux_vm_X;
+	float		flux_vm_Y;
 	int		flux_H;
+	float		flux_V[2];
+	int		flux_TIM;
 	float		flux_F[2];
 	float		flux_wS;
 	float		flux_gain_IN;
@@ -256,11 +271,12 @@ typedef struct {
 		float	X;
 		float	Y;
 	}
-	hall_AT[8];
+	hall_ST[8];
 
 	float		hall_F[2];
 	float		hall_wS;
 	int		hall_TIM;
+	int		hall_IF;
 
 	/* FIXME !!!!!
 	 * */

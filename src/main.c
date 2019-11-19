@@ -63,8 +63,8 @@ void task_TERM(void *pData)
 
 	xWake = xTaskGetTickCount();
 
-	i_temp_PCB = PM_INFINITY;
-	i_temp_EXT = PM_INFINITY;
+	i_temp_PCB = PM_MAX_F;
+	i_temp_EXT = PM_MAX_F;
 
 	do {
 		/* 10 Hz.
@@ -85,7 +85,7 @@ void task_TERM(void *pData)
 			}
 			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_gap)) {
 
-				i_temp_PCB = PM_INFINITY;
+				i_temp_PCB = PM_MAX_F;
 			}
 
 			/* Derate current if EXT is overheat.
@@ -96,7 +96,7 @@ void task_TERM(void *pData)
 			}
 			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_gap)) {
 
-				i_temp_EXT = PM_INFINITY;
+				i_temp_EXT = PM_MAX_F;
 			}
 
 			pm.i_derated_1 = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
@@ -124,24 +124,30 @@ void task_ERROR(void *pData)
 	xWake = xTaskGetTickCount();
 
 	do {
-		/* 2 Hz.
-		 * */
-		vTaskDelayUntil(&xWake, (TickType_t) 500);
+		if (LED == 0) {
 
-		if (pm.fail_reason != PM_OK) {
+			GPIO_set_LOW(GPIO_LED);
 
-			if (LED == 0) {
+			vTaskDelayUntil(&xWake, (TickType_t) 1000);
+
+			LED = 2UL * pm.fail_reason - 1UL;
+		}
+		else {
+			/* NOTE: The number of LED flashes (2 Hz) corresponds
+			 * to the fail reason code.
+			 * */
+
+			if (LED & 1) {
 
 				GPIO_set_HIGH(GPIO_LED);
-				LED = 1;
 			}
 			else {
 				GPIO_set_LOW(GPIO_LED);
-				LED = 0;
 			}
-		}
-		else {
-			GPIO_set_LOW(GPIO_LED);
+
+			vTaskDelayUntil(&xWake, (TickType_t) 250);
+
+			LED--;
 		}
 	}
 	while (1);
@@ -321,9 +327,9 @@ void task_INIT(void *pData)
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
 
-	GPIO_set_mode_OUTPUT(GPIO_FAN);
 	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN);
 	GPIO_set_HIGH(GPIO_FAN);
+	GPIO_set_mode_OUTPUT(GPIO_FAN);
 
 	GPIO_set_mode_OUTPUT(GPIO_LED);
 	GPIO_set_HIGH(GPIO_LED);
@@ -583,7 +589,7 @@ input_STEP_DIR()
 }
 
 static void
-input_CONTROL_QEP()
+input_CONTROL_QENC()
 {
 	/* TODO */
 }
@@ -604,7 +610,7 @@ void ADC_IRQ()
 
 		fb.pulse_HS = GPIO_get_HALL();
 	}
-	else if (hal.TIM_mode == TIM_DRIVE_QEP) {
+	else if (hal.TIM_mode == TIM_DRIVE_QENC) {
 
 		fb.pulse_EP = TIM_get_EP();
 	}
@@ -617,9 +623,9 @@ void ADC_IRQ()
 
 		input_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_CONTROL_QEP) {
+	else if (hal.PPM_mode == PPM_CONTROL_QENC) {
 
-		input_CONTROL_QEP();
+		input_CONTROL_QENC();
 	}
 
 	pm_feedback(&pm, &fb);
@@ -795,7 +801,9 @@ SH_DEF(rtos_bootload)
 		return ;
 	}
 
+	GPIO_set_LOW(GPIO_BOOST_12V);
 	vTaskDelay((TickType_t) 10);
+
 	hal_bootload_jump();
 }
 

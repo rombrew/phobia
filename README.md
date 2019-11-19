@@ -4,7 +4,7 @@ PMC is an open project that aims to build the quality permanent magnet
 synchronous motor (PMSM) controller for use in a variety of scopes like RC or
 electrotransport.
 
-# ATTENTION: the repository is moving to [sf.net](https://sourceforge.net/projects/phobia/).
+## ATTENTION: the repository is moving to [sf.net](https://sourceforge.net/projects/phobia/).
 
 ## Hardware specification (rev4c)
 

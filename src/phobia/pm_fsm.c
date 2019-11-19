@@ -432,8 +432,6 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 static void
 pm_fsm_state_std_voltage(pmc_t *pm)
 {
-	float			STD;
-
 	switch (pm->fsm_phase) {
 
 		case 0:
@@ -464,9 +462,7 @@ pm_fsm_state_std_voltage(pmc_t *pm)
 			break;
 
 		case 2:
-			STD = pm->probe_DFT[4];
-
-			pm->ad_US[1] *= STD / pm->probe_DFT[0];
+			pm->ad_US[1] *= pm->probe_STD / pm->probe_DFT[0];
 
 			if (m_fabsf(pm->ad_US[1] - 1.f) > pm->fault_accuracy_tol) {
 
@@ -482,7 +478,7 @@ pm_fsm_state_std_voltage(pmc_t *pm)
 static void
 pm_fsm_state_std_current(pmc_t *pm)
 {
-	float			STD;
+	float			iSTD;
 
 	switch (pm->fsm_phase) {
 
@@ -522,9 +518,9 @@ pm_fsm_state_std_current(pmc_t *pm)
 			break;
 
 		case 2:
-			if (pm->probe_DFT[4] > 0.f) {
+			if (pm->probe_STD > M_EPS_F) {
 
-				STD = pm->probe_DFT[2] / pm->probe_DFT[4];
+				iSTD = pm->probe_DFT[2] / pm->probe_STD;
 			}
 			else {
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
@@ -549,8 +545,8 @@ pm_fsm_state_std_current(pmc_t *pm)
 				break;
 			}
 
-			pm->ad_IA[1] *= STD / pm->probe_DFT[0];
-			pm->ad_IB[1] *= STD / pm->probe_DFT[1];
+			pm->ad_IA[1] *= iSTD / pm->probe_DFT[0];
+			pm->ad_IB[1] *= iSTD / pm->probe_DFT[1];
 
 			if (		m_fabsf(pm->ad_IA[1] - 1.f) > pm->fault_accuracy_tol
 					|| m_fabsf(pm->ad_IB[1] - 1.f) > pm->fault_accuracy_tol) {
@@ -1131,12 +1127,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->const_L != 0.f) {
-
-				pm->lu_mode = PM_LU_DETACHED;
-
-				pm->proc_set_DC(0, 0, 0);
-				pm->proc_set_Z(7);
+			if (pm->const_L > M_EPS_F) {
 
 				pm->vsi_tm_A = 0;
 				pm->vsi_tm_B = 0;
@@ -1172,13 +1163,13 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[0] = 0.f;
-				pm->hall_TIM = PM_UNDEFINED;
+				pm->hall_TIM = PM_MAX_I;
 
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
 
-				pm->i_derated_1 = PM_INFINITY;
+				pm->i_derated_1 = PM_MAX_F;
 				pm->i_setpoint_D = 0.f;
 				pm->i_setpoint_Q = 0.f;
 				pm->i_integral_D = 0.f;
@@ -1200,39 +1191,29 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-					pm->tm_value = 0;
-					pm->tm_end = pm->freq_hz * pm->tm_startup;
+					pm->lu_mode = PM_LU_DETACHED;
+					pm->lu_TIM = (pm->fsm_state != PM_STATE_LU_DETACHED)
+						? - pm->freq_hz * pm->tm_startup : - PM_MAX_I;
 
-					pm->fsm_phase = 1;
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(7);
 				}
 				else {
-					pm->fsm_phase = 2;
+					pm->lu_mode = PM_LU_ESTIMATE_FLUX;
+					pm->lu_TIM = 0;
+
+					pm->proc_set_DC(0, 0, 0);
+					pm->proc_set_Z(0);
 				}
+
+				pm->fsm_state = PM_STATE_IDLE;
+				pm->fsm_phase = 0;
 			}
 			else {
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 			}
-			break;
-
-		case 1:
-			pm->tm_value++;
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->fsm_phase = 2;
-			}
-			break;
-
-		case 2:
-			pm->lu_mode = (pm->const_E > M_EPS_F)
-				? PM_LU_ESTIMATE_FLUX : PM_LU_FORCED;
-
-			pm->proc_set_Z(0);
-
-			pm->fsm_state = PM_STATE_IDLE;
-			pm->fsm_phase = 0;
 			break;
 	}
 }
@@ -1283,7 +1264,8 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			pm->FIX[0] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+			pm->tm_end = pm->freq_hz * ((pm->lu_mode == PM_LU_DETACHED)
+					? pm->tm_average_drift : pm->tm_average_probe);
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 1;
@@ -1339,8 +1321,8 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 				for (N = 0; N < 8; ++N) {
 
-					pm->hall_AT[N].X = 0.f;
-					pm->hall_AT[N].Y = 0.f;
+					pm->hall_ST[N].X = 0.f;
+					pm->hall_ST[N].Y = 0.f;
 
 					pm->probe_DFT[N] = 0.f;
 					pm->FIX[N] = 0.f;
@@ -1364,12 +1346,14 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (HS >= 1 && HS <= 6) {
 
-				pm_ADD(&pm->hall_AT[HS].X, &pm->FIX[HS], pm->flux_F[0]);
-				pm_ADD(&pm->hall_AT[HS].Y, &pm->FIX[HS + 8], pm->flux_F[1]);
+				pm_ADD(&pm->hall_ST[HS].X, &pm->FIX[HS], pm->flux_F[0]);
+				pm_ADD(&pm->hall_ST[HS].Y, &pm->FIX[HS + 8], pm->flux_F[1]);
 
 				pm->probe_DFT[HS] += 1.f;
 			}
 			else {
+				pm->hall_IF = 0;
+
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
@@ -1394,16 +1378,16 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 					D = pm->probe_DFT[HS];
 
-					pm->hall_AT[HS].X /= D;
-					pm->hall_AT[HS].Y /= D;
+					pm->hall_ST[HS].X /= D;
+					pm->hall_ST[HS].Y /= D;
 
-					D = m_sqrtf(pm->hall_AT[HS].X * pm->hall_AT[HS].X
-						+ pm->hall_AT[HS].Y * pm->hall_AT[HS].Y);
+					D = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
+						+ pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
 
 					if (D > .5f) {
 
-						pm->hall_AT[HS].X /= D;
-						pm->hall_AT[HS].Y /= D;
+						pm->hall_ST[HS].X /= D;
+						pm->hall_ST[HS].Y /= D;
 
 						N += 1;
 					}
@@ -1412,14 +1396,19 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (N < 6) {
 
+				pm->hall_IF = 0;
+
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
 			}
+			else {
+				pm->hall_IF = 1;
 
-			pm->fsm_state = PM_STATE_IDLE;
-			pm->fsm_phase = 0;
+				pm->fsm_state = PM_STATE_IDLE;
+				pm->fsm_phase = 0;
+			}
 			break;
 	}
 }
@@ -1471,6 +1460,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
 		case PM_STATE_PROBE_CONST_L:
+		case PM_STATE_LU_DETACHED:
 		case PM_STATE_LU_STARTUP:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
@@ -1487,7 +1477,6 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
 		case PM_STATE_ADJUST_HALL:
-		case PM_STATE_ADJUST_QEP:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1559,6 +1548,7 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_l(pm);
 			break;
 
+		case PM_STATE_LU_DETACHED:
 		case PM_STATE_LU_STARTUP:
 			pm_fsm_state_lu_startup(pm);
 			break;
@@ -1590,6 +1580,7 @@ const char *pm_strerror(int n)
 	const char	*list[] = {
 
 		PM_SFI(PM_OK),
+
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
 		PM_SFI(PM_ERORR_POWER_STAGE_FAULT),
@@ -1600,7 +1591,9 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_FLUX_UNSTABLE),
 		PM_SFI(PM_ERROR_INVALID_OPERATION),
 		PM_SFI(PM_ERROR_SENSOR_HALL_FAULT),
-		PM_SFI(PM_ERROR_SENSOR_QEP_FAULT),
+		PM_SFI(PM_ERROR_SENSOR_QENC_FAULT),
+
+		PM_SFI(PM_ERROR_TIMEOUT),
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);

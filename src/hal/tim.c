@@ -2,7 +2,7 @@
 #include "hal.h"
 
 static void
-TIM_mode_DRIVE_QEP()
+TIM_mode_DRIVE_QENC()
 {
 	/* Enable TIM3 clock.
 	 * */
@@ -36,9 +36,9 @@ TIM_mode_DRIVE_QEP()
 
 void TIM_startup()
 {
-	if (hal.TIM_mode == TIM_DRIVE_QEP) {
+	if (hal.TIM_mode == TIM_DRIVE_QENC) {
 
-		TIM_mode_DRIVE_QEP();
+		TIM_mode_DRIVE_QENC();
 	}
 }
 

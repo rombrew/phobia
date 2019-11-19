@@ -62,7 +62,7 @@ it later.
 
 Resistance is measured by holding a constant current vector for some time.
 Assuming that the rotor was fixed we can determine R as U/I. For greater
-accuracy you need to increase the probe current and reduce the supply voltage.
+accuracy you need to increase the probe current or reduce the supply voltage.
 
 We use a high frequency sinusoidal signal to measure the full impedance then we
 calculate DQ inductance and rotation angle.
@@ -92,6 +92,11 @@ enough) and request E probe manually. Do not load the motor.
 
 	# reg pm.s_setpoint_rpm <rpm>
 	# reg pm.fsm_state 12
+
+Also you have an option to identify E in detached mode. You will have to rotate
+the motor manually in this case.
+
+	# pm_probe_detached
 
 ## Moment of inertia
 

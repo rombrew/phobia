@@ -7,18 +7,19 @@ PMC internals.
 ## Hardware
 
 We have a three-phase voltage source inverter (VSI) which consists of six
-transistors. The voltage at each of the output terminals is measured. Phase
-current A and B is measured. The output terminals are connected to the motor.
+field-effect transistors (FET). The voltage at each of the output terminals is
+measured. Phase current A and B is measured. The output terminals are connected
+to the motor.
 
-	  (+)   >---+------+--------+--------+
-	            |      |        |        |
-	            |   --FET    --FET    --FET
-	           ---     |        |        |
-	           ---     +--< A   +--< B   +--< C
-	            |      |        |        |
-	            |   --FET    --FET    --FET
-	            |      |        |        |
-	  (GND) >---+------+--------+--------+
+	  (+)   >---+--------+---------+---------+
+	            |        |         |         |
+	            |     --FET     --FET     --FET
+	          -----      |         |         |
+	          -----      +--< A    +--< B    +--< C
+	            |        |         |         |
+	            |     --FET     --FET     --FET
+	            |        |         |         |
+	  (GND) >---+--------+---------+---------+
 	
 	  // Three-phase voltage source inverter //
 
@@ -112,7 +113,7 @@ voltage sensing if you do not need related features.
 The current (iA, iB) is measured in phases A and B using a shunt and amplifier.
 The measurement is distorted for some time after switching the half-bridge.
 Note that we use in-line current measurement. To use low-side measurement you
-need to adapt the software.
+will need to adapt the software.
 
 	                   // Current measurement //
 	  >-----+
@@ -129,6 +130,31 @@ need to adapt the software.
 	        +---< Terminal
 
 Also supply voltage (uS) is measured using a voltage divider.
+
+## Control loop
+
+ADC is sampled at the begin of PWM period. The values obtained are processed by
+software. The new value of duty cycle is loaded to the hardware timer. This
+value is used at next PWM period. ADC samples are made using two ADCs in order
+shown in the diagram.
+
+	                // Control loop diagram //
+	
+	     |<--------------------- dT ---------------------->|
+	     |                                                 |
+	     |  TIM update     +----+---+----+        PWM      |
+	     | /               |    |   |    | <--  waveforms  |
+	     |/                |    |   |    |                 |
+	  ---*--*--*-----------------------------+-------------*---
+	     |  |  |                             |             |
+	     iA uS uB         preload DC         |
+	     iB uA uC          to hw timer -->  TIM
+	             \                          /
+	              pm_feedback()            /
+	                    p_set_DC(xA, xB, xC)
+
+We need about 3 us before ADC samples to be clean. If MOSFET switching occurs
+at this time then the result is not used.
 
 ## Current zones
 

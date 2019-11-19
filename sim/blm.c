@@ -113,7 +113,7 @@ void blm_Enable(blm_t *m)
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 2E-2;
+	m->M[1] = 2E-7;
 	m->M[2] = 5E-3;
 
 	/* ADC conversion time (s).

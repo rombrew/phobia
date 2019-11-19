@@ -351,6 +351,32 @@ reg_proc_km(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
+reg_proc_tvm_FIR_tau(const reg_t *reg, float *lval, const float *rval)
+{
+	float		*FIR = (void *) reg->link;
+	float		tau;
+
+	if (lval != NULL) {
+
+		tau = FIR[0] / - FIR[1];
+		tau = (tau > M_EPS_F) ? pm.dT * 1000000.f / m_logf(tau) : 0.f;
+
+		*lval = tau;
+	}
+}
+
+static void
+reg_proc_hall_STg(const reg_t *reg, float *lval, const float *rval)
+{
+	float		*F = (void *) reg->link;
+
+	if (lval != NULL) {
+
+                *lval = m_atan2f(F[1], F[0]) * (180.f / M_PI_F);
+        }
+}
+
+static void
 reg_format_dcns(const reg_t *reg)
 {
 	float			dcns;
@@ -387,29 +413,6 @@ reg_format_self_RMS(const reg_t *reg)
 	printf("%3f %3f (A)", &RMS[0], &RMS[1]);
 }
 
-static void
-reg_format_tvm_FIR(const reg_t *reg)
-{
-	float		*FIR = (void *) reg->link;
-	float		tau;
-
-	tau = FIR[0] / - FIR[1];
-	tau = (tau > M_EPS_F) ? pm.dT * 1000000.f / m_logf(tau) : 0.f;
-
-	printf("%4e %4e %4e [%3f] (us)", &FIR[0], &FIR[1], &FIR[2], &tau);
-}
-
-static void
-reg_format_hall_AT(const reg_t *reg)
-{
-	float		*F = (void *) reg->link;
-	float		rot_g;
-
-	rot_g = m_atan2f(F[1], F[0]) * (180.f / M_PI_F);
-
-	printf("%2f (g)", &rot_g);
-}
-
 #define TEXT_ITEM(t)	case t: printf("(%s)", PM_SFI(t)); break
 
 static void
@@ -430,7 +433,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(TIM_DISABLED);
 				TEXT_ITEM(TIM_DRIVE_HALL);
-				TEXT_ITEM(TIM_DRIVE_QEP);
+				TEXT_ITEM(TIM_DRIVE_QENC);
 
 				default: break;
 			}
@@ -443,7 +446,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PPM_DISABLED);
 				TEXT_ITEM(PPM_PULSE_WIDTH);
 				TEXT_ITEM(PPM_STEP_DIR);
-				TEXT_ITEM(PPM_CONTROL_QEP);
+				TEXT_ITEM(PPM_CONTROL_QENC);
 
 				default: break;
 			}
@@ -486,7 +489,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_SENSOR_DISABLED);
 				TEXT_ITEM(PM_SENSOR_HALL);
-				TEXT_ITEM(PM_SENSOR_QEP);
+				TEXT_ITEM(PM_SENSOR_QENC);
 
 				default: break;
 			}
@@ -523,7 +526,6 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_PROBE_CONST_E);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
 				TEXT_ITEM(PM_STATE_ADJUST_HALL);
-				TEXT_ITEM(PM_STATE_ADJUST_QEP);
 				TEXT_ITEM(PM_STATE_HALT);
 
 				default: break;
@@ -540,7 +542,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_LU_ESTIMATE_FLUX);
 				TEXT_ITEM(PM_LU_ESTIMATE_HFI);
 				TEXT_ITEM(PM_LU_SENSOR_HALL);
-				TEXT_ITEM(PM_LU_SENSOR_QEP);
+				TEXT_ITEM(PM_LU_SENSOR_QENC);
 
 				default: break;
 			}
@@ -683,6 +685,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_freq_sine_hz,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_hold,,		"rad/s","%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_hold, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.probe_speed_detached,,	"rad/s","%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_speed_detached, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.probe_gain_P,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_gain_I,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
@@ -704,9 +708,18 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tvm_A,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_B,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_C,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_A,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_tvm_FIR),
-	REG_DEF(pm.tvm_FIR_B,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_tvm_FIR),
-	REG_DEF(pm.tvm_FIR_C,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_tvm_FIR),
+	REG_DEF(pm.tvm_FIR_A[0],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A[1],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A[2],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A, _tau,	"",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
+	REG_DEF(pm.tvm_FIR_B[0],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B[1],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B[2],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B, _tau,	"",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
+	REG_DEF(pm.tvm_FIR_C[0],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C[1],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C[2],,	"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C, _tau,	"",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
 	REG_DEF(pm.tvm_DX,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_DY,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
@@ -739,7 +752,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_N,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_lower_R,,		"",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_upper_R,,		"",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_transient_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_slope_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_slope_F,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_E,,			"Wb",	"%4e",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_H,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -772,12 +786,24 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_gain_SF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_FP,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.hall_AT[1],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
-	REG_DEF(pm.hall_AT[2],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
-	REG_DEF(pm.hall_AT[3],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
-	REG_DEF(pm.hall_AT[4],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
-	REG_DEF(pm.hall_AT[5],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
-	REG_DEF(pm.hall_AT[6],,		"g",	"%i",	REG_READ_ONLY, NULL, &reg_format_hall_AT),
+	REG_DEF(pm.hall_ST[1].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[1].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[1],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
+	REG_DEF(pm.hall_ST[2].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[2].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[2],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
+	REG_DEF(pm.hall_ST[3].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[3].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[3],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
+	REG_DEF(pm.hall_ST[4].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[4].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[4],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
+	REG_DEF(pm.hall_ST[5].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[5].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[5],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
+	REG_DEF(pm.hall_ST[6].X,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[6].Y,,	"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST[6],,		"g",	"%2f",	REG_READ_ONLY, &reg_proc_hall_STg, NULL),
 	REG_DEF(pm.hall_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_F, g,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
@@ -785,6 +811,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.hall_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
 	REG_DEF(pm.hall_TIM,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_IF,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_lpf_U,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_gain_LP_U,,		"",	"%2e",	REG_CONFIG, NULL, NULL),

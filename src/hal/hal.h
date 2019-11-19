@@ -44,14 +44,14 @@ enum {
 enum {
 	TIM_DISABLED			= 0,
 	TIM_DRIVE_HALL,
-	TIM_DRIVE_QEP,
+	TIM_DRIVE_QENC,
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
-	PPM_CONTROL_QEP,
+	PPM_CONTROL_QENC,
 };
 
 typedef struct {

@@ -40,8 +40,8 @@ registers provide a different way to access other registers (usually this is
 taking a value in other units). There are also link registers that are required
 to configure data transfer between different subsystems.
 
-Each register can have its own write and read handlers thus performing a
-complex non obvious actions during access to it.
+Each register can have its own write and read handler that can do a complex non
+obvious actions during access to it.
 
 ## Basic commands
 
