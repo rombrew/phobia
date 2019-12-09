@@ -1,7 +1,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		55
+#define REG_CONFIG_VERSION		56
 
 enum {
 	REG_CONFIG		= 1,

@@ -24,11 +24,11 @@ There is two parts of software:
 2. Firmware for MCU.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
-toolchain for Cortex-M4F target.
+or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.
 
 	# hg clone https://hg.code.sf.net/p/phobia/code phobia
 	# cd phobia/src
-	# make flash
+	# make zip
 
 We use [stmflasher](https://bitbucket.org/amaora/stmflasher) to upload the
 firmware into MCU. You should have a serial port connected to the board USART

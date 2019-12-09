@@ -124,16 +124,9 @@ void task_ERROR(void *pData)
 	xWake = xTaskGetTickCount();
 
 	do {
-		if (LED == 0) {
+		if (LED > 0) {
 
-			GPIO_set_LOW(GPIO_LED);
-
-			vTaskDelayUntil(&xWake, (TickType_t) 1000);
-
-			LED = 2UL * pm.fail_reason - 1UL;
-		}
-		else {
-			/* NOTE: The number of LED flashes (2 Hz) corresponds
+			/* NOTE: The number of LED flashes (~2 Hz) corresponds
 			 * to the fail reason code.
 			 * */
 
@@ -145,9 +138,16 @@ void task_ERROR(void *pData)
 				GPIO_set_LOW(GPIO_LED);
 			}
 
-			vTaskDelayUntil(&xWake, (TickType_t) 250);
+			vTaskDelayUntil(&xWake, (TickType_t) 200);
 
-			LED--;
+			LED += -1;
+		}
+		else {
+			GPIO_set_LOW(GPIO_LED);
+
+			vTaskDelayUntil(&xWake, (TickType_t) 1000);
+
+			LED = (int) (2 * pm.fail_reason - 1);
 		}
 	}
 	while (1);

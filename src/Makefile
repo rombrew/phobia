@@ -22,9 +22,10 @@ CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
+
 #CFLAGS  += -D_HW_REV4B
-#CFLAGS  += -D_HW_REV4B_KOZIN
-#CFLAGS  += -D_HW_REV4B_PAVLOV
+#CFLAGS  += -D_HW_REV4B -D_HW_REV4B_KOZIN
+#CFLAGS  += -D_HW_REV4B -D_HW_REV4B_PAVLOV
 CFLAGS  += -D_HW_REV4C
 
 LDFLAGS	= -nostdlib

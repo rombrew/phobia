@@ -65,8 +65,9 @@ void pm_default(pmc_t *pm)
 	pm->tvm_FIR_C[1] = 0.f;
 	pm->tvm_FIR_C[2] = 0.f;
 
-	pm->lu_lock_S = .2f;
-	pm->lu_unlock_S = .1f;
+	pm->lu_lock_E = .2f;
+	pm->lu_unlock_E = .1f;
+	pm->lu_detach_E = .2f;
 	pm->lu_gain_LP_S = 1E-1f;
 
 	pm->forced_hold_D = 10.f;
@@ -203,7 +204,7 @@ pm_detached_FLUX(pmc_t *pm)
 	 * */
 	U = m_sqrtf(uX * uX + uY * uY);
 
-	if (U > pm->lu_unlock_S) {
+	if (U > pm->lu_detach_E) {
 
 		uX /= U;
 		uY /= U;
@@ -227,7 +228,7 @@ pm_detached_FLUX(pmc_t *pm)
 				pm->flux_wS += - E * S * pm->flux_gain_SF;
 			}
 
-			pm->flux_E = U / pm->flux_wS;
+			pm->flux_E = U / m_fabsf(pm->flux_wS);
 
 			E = (pm->flux_wS < 0.f) ? - 1.f : 1.f;
 
@@ -495,12 +496,12 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->flux_F[1];
 		pm->lu_wS = pm->flux_wS;
 
-		if (pm->lu_TIM < 0) {
+		if (pm->lu_TIM != 0) {
 
-			pm->lu_TIM++;
+			pm->lu_TIM--;
 		}
 		else {
-			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_S) {
+			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 
@@ -532,7 +533,7 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->forced_hold_D > M_EPS_F) {
 
 				pm->lu_mode = PM_LU_FORCED;
-				pm->lu_TIM = - pm->freq_hz * pm->tm_transient_slow;
+				pm->lu_TIM = pm->freq_hz * pm->tm_transient_slow;
 
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
@@ -554,22 +555,26 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_F[1] = pm->forced_F[1];
 			pm->lu_wS = pm->forced_wS;
 
-			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_S) {
+			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
 
-				if (m_fabsf(pm->forced_wS * pm->const_E) > pm->lu_lock_S) {
+				if (m_fabsf(pm->forced_wS * pm->const_E) > pm->lu_lock_E) {
 
 					pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 				}
 			}
 		}
 		else {
-			if (pm->lu_TIM < 0) {
+			if (pm->lu_TIM != 0) {
 
-				pm->lu_TIM++;
+				pm->lu_TIM--;
 			}
 			else {
 				pm->lu_mode = PM_LU_DETACHED;
 				pm->lu_TIM = 0;
+
+				pm->watt_lpf_D = 0.f;
+				pm->watt_lpf_Q = 0.f;
+				pm->watt_lpf_wP = 0.f;
 
 				pm->proc_set_Z(7);
 			}
@@ -583,7 +588,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->flux_F[1];
 		pm->lu_wS = pm->flux_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) < pm->lu_unlock_S) {
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) < pm->lu_unlock_E) {
 
 			if (pm->config_SENSOR == PM_SENSOR_HALL
 					&& pm->hall_IF != 0) {
@@ -606,7 +611,7 @@ pm_lu_FSM(pmc_t *pm)
 			}
 			else {
 				pm->lu_mode = PM_LU_FORCED;
-				pm->lu_TIM = - pm->freq_hz * pm->tm_transient_slow;
+				pm->lu_TIM = pm->freq_hz * pm->tm_transient_slow;
 
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
@@ -623,9 +628,9 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->hfi_F[1];
 		pm->lu_wS = pm->hfi_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_S) {
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
 
-			if (m_fabsf(pm->hfi_wS * pm->const_E) > pm->lu_lock_S) {
+			if (m_fabsf(pm->hfi_wS * pm->const_E) > pm->lu_lock_E) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 			}
@@ -640,9 +645,9 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[1] = pm->hall_F[1];
 		pm->lu_wS = pm->hall_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_S) {
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
 
-			if (m_fabsf(pm->hall_wS * pm->const_E) > pm->lu_lock_S) {
+			if (m_fabsf(pm->hall_wS * pm->const_E) > pm->lu_lock_E) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 			}

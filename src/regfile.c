@@ -410,7 +410,8 @@ reg_format_self_RMS(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
-	printf("%3f %3f (A)", &RMS[0], &RMS[1]);
+	printf("%3f %3f (A) %3f %3f %3f %3f (V)", &RMS[0], &RMS[1],
+			&RMS[2], &RMS[3], &RMS[4], &RMS[5]);
 }
 
 #define TEXT_ITEM(t)	case t: printf("(%s)", PM_SFI(t)); break
@@ -515,8 +516,6 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_ZERO_DRIFT);
 				TEXT_ITEM(PM_STATE_SELF_TEST_POWER_STAGE);
 				TEXT_ITEM(PM_STATE_SELF_TEST_CLEARANCE);
-				TEXT_ITEM(PM_STATE_STD_VOLTAGE);
-				TEXT_ITEM(PM_STATE_STD_CURRENT);
 				TEXT_ITEM(PM_STATE_ADJUST_VOLTAGE);
 				TEXT_ITEM(PM_STATE_ADJUST_CURRENT);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_R);
@@ -733,8 +732,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_wS, _rpm,			"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_wS, _kmh,			"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.lu_lock_S,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.lu_unlock_S,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_lock_E,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_unlock_E,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_detach_E,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_lpf_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_lpf_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_lpf_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),

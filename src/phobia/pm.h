@@ -49,8 +49,6 @@ enum {
 	PM_STATE_ZERO_DRIFT,
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_CLEARANCE,
-	PM_STATE_STD_VOLTAGE,
-	PM_STATE_STD_CURRENT,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
@@ -113,7 +111,7 @@ typedef struct {
 
 	int		fail_reason;
 	int		self_BM[8];
-	float		self_RMS[2];
+	float		self_RMS[6];
 
 	int		config_NOP;
 	int		config_TVM;
@@ -168,7 +166,6 @@ typedef struct {
 	float		probe_LSQ_A[9];
 	float		probe_LSQ_B[9];
 	float		probe_LSQ_C[9];
-	float		probe_STD;
 
 	float		FIX[27];
 
@@ -209,8 +206,9 @@ typedef struct {
 	float		lu_iQ;
 	float		lu_F[2];
 	float		lu_wS;
-	float		lu_lock_S;
-	float		lu_unlock_S;
+	float		lu_lock_E;
+	float		lu_unlock_E;
+	float		lu_detach_E;
 	float		lu_lpf_wS;
 	float		lu_gain_LP_S;
 	int		lu_mode;

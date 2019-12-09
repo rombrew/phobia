@@ -374,13 +374,34 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 static void
 pm_fsm_state_self_test_clearance(pmc_t *pm)
 {
+	float			RMS, AVG;
+
 	switch (pm->fsm_phase) {
 
 		case 0:
 			pm->self_RMS[0] = 0.f;
 			pm->self_RMS[1] = 0.f;
+			pm->self_RMS[2] = 0.f;
+			pm->self_RMS[3] = 0.f;
+			pm->self_RMS[4] = 0.f;
+			pm->self_RMS[5] = 0.f;
+
 			pm->FIX[0] = 0.f;
 			pm->FIX[1] = 0.f;
+			pm->FIX[2] = 0.f;
+			pm->FIX[3] = 0.f;
+			pm->FIX[4] = 0.f;
+			pm->FIX[5] = 0.f;
+
+			pm->FIX[6] = 0.f;
+			pm->FIX[7] = 0.f;
+			pm->FIX[8] = 0.f;
+			pm->FIX[9] = 0.f;
+
+			pm->FIX[10] = 0.f;
+			pm->FIX[11] = 0.f;
+			pm->FIX[12] = 0.f;
+			pm->FIX[13] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = pm->freq_hz * pm->tm_transient_slow;
@@ -404,13 +425,41 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 		case 2:
 			pm_ADD(&pm->self_RMS[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
 			pm_ADD(&pm->self_RMS[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
+			pm_ADD(&pm->self_RMS[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
+			pm_ADD(&pm->self_RMS[3], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
+			pm_ADD(&pm->self_RMS[4], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
+			pm_ADD(&pm->self_RMS[5], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
+
+			pm_ADD(&pm->FIX[6], &pm->FIX[10], pm->const_lpf_U);
+			pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
+			pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
+			pm_ADD(&pm->FIX[9], &pm->FIX[13], pm->fb_uC);
 
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				pm->self_RMS[0] = m_sqrtf(pm->self_RMS[0] / pm->tm_end);
-				pm->self_RMS[1] = m_sqrtf(pm->self_RMS[1] / pm->tm_end);
+				RMS = pm->self_RMS[0] / pm->tm_end;
+				pm->self_RMS[0] = m_sqrtf(RMS);
+
+				RMS = pm->self_RMS[1] / pm->tm_end;
+				pm->self_RMS[1] = m_sqrtf(RMS);
+
+				RMS = pm->self_RMS[2] / pm->tm_end;
+				AVG = pm->FIX[6] / pm->tm_end;
+				pm->self_RMS[2] = m_sqrtf(RMS - AVG * AVG);
+
+				RMS = pm->self_RMS[3] / pm->tm_end;
+				AVG = pm->FIX[7] / pm->tm_end;
+				pm->self_RMS[3] = m_sqrtf(RMS - AVG * AVG);
+
+				RMS = pm->self_RMS[4] / pm->tm_end;
+				AVG = pm->FIX[8] / pm->tm_end;
+				pm->self_RMS[4] = m_sqrtf(RMS - AVG * AVG);
+
+				RMS = pm->self_RMS[5] / pm->tm_end;
+				AVG = pm->FIX[9] / pm->tm_end;
+				pm->self_RMS[5] = m_sqrtf(RMS - AVG * AVG);
 
 				pm->fsm_phase = 3;
 			}
@@ -423,133 +472,10 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
 
-			pm->fsm_state = PM_STATE_HALT;
-			pm->fsm_phase = 0;
-			break;
-	}
-}
-
-static void
-pm_fsm_state_std_voltage(pmc_t *pm)
-{
-	switch (pm->fsm_phase) {
-
-		case 0:
-			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(7);
-
-			pm->probe_DFT[0] = 0.f;
-			pm->FIX[0] = 0.f;
-
-			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_average_probe;
-
-			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
-			break;
-
-		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->const_lpf_U);
-
-			pm->tm_value++;
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->probe_DFT[0] /= pm->tm_end;
-
-				pm->fsm_phase = 2;
-			}
-			break;
-
-		case 2:
-			pm->ad_US[1] *= pm->probe_STD / pm->probe_DFT[0];
-
-			if (m_fabsf(pm->ad_US[1] - 1.f) > pm->fault_accuracy_tol) {
-
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
-			}
-
-			pm->fsm_state = PM_STATE_HALT;
-			pm->fsm_phase = 0;
-			break;
-	}
-}
-
-static void
-pm_fsm_state_std_current(pmc_t *pm)
-{
-	float			iSTD;
-
-	switch (pm->fsm_phase) {
-
-		case 0:
-			pm->proc_set_DC(pm->dc_resolution, 0, 0);
-			pm->proc_set_Z(4);
-
-			pm->probe_DFT[0] = 0.f;
-			pm->probe_DFT[1] = 0.f;
-			pm->probe_DFT[2] = 0.f;
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-
-			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * (pm->tm_voltage_hold + pm->tm_instant_probe);
-
-			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
-			break;
-
-		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_iA);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], - pm->fb_iB);
-			pm_ADD(&pm->probe_DFT[2], &pm->FIX[2], pm->const_lpf_U);
-
-			pm->tm_value++;
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->probe_DFT[0] /= pm->tm_end;
-				pm->probe_DFT[1] /= pm->tm_end;
-				pm->probe_DFT[2] /= pm->tm_end;
-
-				pm->fsm_phase = 2;
-			}
-			break;
-
-		case 2:
-			if (pm->probe_STD > M_EPS_F) {
-
-				iSTD = pm->probe_DFT[2] / pm->probe_STD;
-			}
-			else {
-				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
-
-			if (pm->probe_DFT[0] < pm->fault_current_tol) {
-
-				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
-
-			if (pm->probe_DFT[1] < pm->fault_current_tol) {
-
-				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
-
-			pm->ad_IA[1] *= iSTD / pm->probe_DFT[0];
-			pm->ad_IB[1] *= iSTD / pm->probe_DFT[1];
-
-			if (		m_fabsf(pm->ad_IA[1] - 1.f) > pm->fault_accuracy_tol
-					|| m_fabsf(pm->ad_IB[1] - 1.f) > pm->fault_accuracy_tol) {
+			if (		pm->self_RMS[2] > pm->fault_voltage_tol
+					|| pm->self_RMS[3] > pm->fault_voltage_tol
+					|| pm->self_RMS[4] > pm->fault_voltage_tol
+					|| pm->self_RMS[5] > pm->fault_voltage_tol) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
@@ -1193,7 +1119,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 					pm->lu_mode = PM_LU_DETACHED;
 					pm->lu_TIM = (pm->fsm_state != PM_STATE_LU_DETACHED)
-						? - pm->freq_hz * pm->tm_startup : - PM_MAX_I;
+						? pm->freq_hz * pm->tm_startup : PM_MAX_I;
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(7);
@@ -1454,8 +1380,6 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_ZERO_DRIFT:
 		case PM_STATE_SELF_TEST_POWER_STAGE:
 		case PM_STATE_SELF_TEST_CLEARANCE:
-		case PM_STATE_STD_VOLTAGE:
-		case PM_STATE_STD_CURRENT:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
@@ -1522,14 +1446,6 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_SELF_TEST_CLEARANCE:
 			pm_fsm_state_self_test_clearance(pm);
-			break;
-
-		case PM_STATE_STD_VOLTAGE:
-			pm_fsm_state_std_voltage(pm);
-			break;
-
-		case PM_STATE_STD_CURRENT:
-			pm_fsm_state_std_current(pm);
 			break;
 
 		case PM_STATE_ADJUST_VOLTAGE:

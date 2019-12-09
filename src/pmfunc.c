@@ -93,89 +93,6 @@ int pm_wait_for_MOTION(float ref)
 	return pm.fail_reason;
 }
 
-SH_DEF(pm_STD_voltage)
-{
-	float		STD;
-
-	if (pm.lu_mode != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
-	if (stof(&STD, s) != NULL) {
-
-		/* FIXME: The value could be validated here.
-		 * */
-	}
-	else {
-		printf("You must specify the voltage" EOL);
-		return;
-	}
-
-	do {
-		reg_format(&regfile[ID_PM_CONST_LPF_U]);
-
-		pm.probe_STD = STD;
-		hal_fence();
-
-		pm.fsm_req = PM_STATE_STD_VOLTAGE;
-		pm_wait_for_IDLE();
-
-		reg_format(&regfile[ID_PM_AD_US_0]);
-		reg_format(&regfile[ID_PM_AD_US_1]);
-	}
-	while (0);
-
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
-}
-
-SH_DEF(pm_STD_current)
-{
-	float		STD;
-
-	if (pm.lu_mode != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
-	if (stof(&STD, s) != NULL) {
-
-		/* FIXME: The value could be validated here.
-		 * */
-	}
-	else {
-		printf("You must specify the resistance" EOL);
-		return;
-	}
-
-	do {
-		reg_format(&regfile[ID_PM_CONST_LPF_U]);
-
-		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_for_IDLE();
-
-		reg_format(&regfile[ID_PM_AD_IA_0]);
-		reg_format(&regfile[ID_PM_AD_IB_0]);
-
-		if (pm.fail_reason != PM_OK)
-			break;
-
-		pm.probe_STD = STD;
-		hal_fence();
-
-		pm.fsm_req = PM_STATE_STD_CURRENT;
-		pm_wait_for_IDLE();
-
-		reg_format(&regfile[ID_PM_AD_IA_1]);
-		reg_format(&regfile[ID_PM_AD_IB_1]);
-	}
-	while (0);
-
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
-}
-
 SH_DEF(pm_self_adjust)
 {
 	if (pm.lu_mode != PM_LU_DISABLED) {
@@ -438,7 +355,6 @@ SH_DEF(pm_fsm_detached)
 {
 	pm.fsm_req = PM_STATE_LU_DETACHED;
 	pm_wait_for_IDLE();
-		pm_wait_for_IDLE();
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
@@ -448,7 +364,6 @@ SH_DEF(pm_fsm_startup)
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	pm_wait_for_IDLE();
 
-		pm_wait_for_IDLE();
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 

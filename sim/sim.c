@@ -267,7 +267,7 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = pm.probe_speed_hold;
+	/*pm.s_setpoint = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -286,7 +286,7 @@ sim_test_BASE(FILE *fdTel)
 	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 
 	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_E, m.E);
+	t_assert_ref(pm.const_E, m.E);*/
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	sim_F(fdTel, 0.);
@@ -447,6 +447,13 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
+	m.R = 7E-2;
+	m.Ld = 1E-4;
+	m.Lq = 1E-4;
+	m.U = 40.;
+	m.Zp = 23;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (9.2 * m.Zp);
+
 	sim_test_BASE(NULL);
 
 	pm.forced_hold_D = 0.f;
