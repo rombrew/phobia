@@ -389,10 +389,10 @@ void task_INIT(void *pData)
 		hal.ADC_shunt_resistance = 170E-6f;
 #endif /* _HW_REV4B_PAVLOV */
 
-#ifdef _HW_REV4B_PAVLOV_BARADA
+#ifdef _HW_REV4B_BARADA
 		hal.ADC_shunt_resistance = 550E-6f;
 		hal.ADC_amplifier_gain = 20.f;
-#endif /* _HW_REV4B_PAVLOV_BARADA */
+#endif /* _HW_REV4B_BARADA */
 
 #endif /* _HW_REV4B */
 
