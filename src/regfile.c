@@ -410,8 +410,12 @@ reg_format_self_RMS(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
-	printf("%3f %3f (A) %3f %3f %3f %3f (V)", &RMS[0], &RMS[1],
-			&RMS[2], &RMS[3], &RMS[4], &RMS[5]);
+	printf("%3f %3f (A) %4f (V)", &RMS[0], &RMS[1], &RMS[2]);
+
+	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+		printf(" %4f %4f %4f (V)", &RMS[3], &RMS[4], &RMS[5]);
+	}
 }
 
 #define TEXT_ITEM(t)	case t: printf("(%s)", PM_SFI(t)); break

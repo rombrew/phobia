@@ -426,14 +426,18 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			pm_ADD(&pm->self_RMS[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
 			pm_ADD(&pm->self_RMS[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
 			pm_ADD(&pm->self_RMS[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
-			pm_ADD(&pm->self_RMS[3], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
-			pm_ADD(&pm->self_RMS[4], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
-			pm_ADD(&pm->self_RMS[5], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
-
 			pm_ADD(&pm->FIX[6], &pm->FIX[10], pm->const_lpf_U);
-			pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
-			pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
-			pm_ADD(&pm->FIX[9], &pm->FIX[13], pm->fb_uC);
+
+			if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
+
+				pm_ADD(&pm->self_RMS[3], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
+				pm_ADD(&pm->self_RMS[4], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
+				pm_ADD(&pm->self_RMS[5], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
+
+				pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
+				pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
+				pm_ADD(&pm->FIX[9], &pm->FIX[13], pm->fb_uC);
+			}
 
 			pm->tm_value++;
 
