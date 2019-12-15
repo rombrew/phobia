@@ -375,6 +375,11 @@ void task_INIT(void *pData)
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
+		hal.ADC_shunt_resistance = 500E-6f;
+		hal.ADC_amplifier_gain = 60.f;
+		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_bias = 0.f;
 
 #ifdef _HW_REV4B_KOZIN
 		hal.ADC_shunt_resistance = 340E-6f;
@@ -384,10 +389,10 @@ void task_INIT(void *pData)
 		hal.ADC_shunt_resistance = 170E-6f;
 #endif /* _HW_REV4B_PAVLOV */
 
-		hal.ADC_amplifier_gain = 60.f;
-		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_bias = 0.f;
+#ifdef _HW_REV4B_PAVLOV_BARADA
+		hal.ADC_shunt_resistance = 550E-6f;
+		hal.ADC_amplifier_gain = 20.f;
+#endif /* _HW_REV4B_PAVLOV_BARADA */
 
 #endif /* _HW_REV4B */
 
