@@ -99,7 +99,7 @@ pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 {
 	float		LSQ[9], B[4], LXY[3], R, WF;
 
-	/* The initial expression Z * I = U.
+	/* The initial expression is Z * I = U.
 	 *
 	 * [R-j*WF*LXY[0]   j*WF*LXY[1]] * [IX] = [UX]
 	 * [  j*WF*LXY[1] R-j*WF*LXY[2]] * [IY]   [UY]
@@ -107,7 +107,7 @@ pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 	 * IX = [DFT[0]+j*DFT[1]], UX = [DFT[2]+j*DFT[3]]
 	 * IY = [DFT[4]+j*DFT[5]], UY = [DFT[6]+j*DFT[7]]
 	 *
-	 * Now we rewrite previous equation with respect to the impedance
+	 * We rewrite previous equation with respect to the impedance
 	 * components.
 	 *
 	 * [DFT[0]  DFT[1] -DFT[5]  0     ] * [R        ]   [DFT[2]]
@@ -215,6 +215,90 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 }
 
 static void
+pm_fsm_state_self_test_bootstrap(pmc_t *pm)
+{
+	float		uA, uB, uC;
+
+	switch (pm->fsm_phase) {
+
+		case 0:
+			pm->fail_reason = PM_OK;
+
+			if (		PM_CONFIG_TVM(pm) == PM_ENABLED
+					&& pm->ts_bootstrap != 0) {
+
+				pm->fsm_phase = 1;
+			}
+			else {
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
+			break;
+
+		case 1:
+			pm->self_BST[0] = 0.f;
+			pm->self_BST[1] = 0.f;
+			pm->self_BST[2] = 0.f;
+
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(0);
+
+			pm->tm_value = 0;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_fast;
+
+			pm->fsm_phase = 2;
+			break;
+
+		case 2:
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->proc_set_DC(pm->dc_resolution, pm->dc_resolution, pm->dc_resolution);
+
+				pm->tm_value = 0;
+				pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+
+				pm->fsm_phase = 3;
+			}
+			break;
+
+		case 3:
+			uA = pm->fb_uA - pm->const_lpf_U;
+			uB = pm->fb_uB - pm->const_lpf_U;
+			uC = pm->fb_uC - pm->const_lpf_U;
+
+			pm->self_BST[0] += (m_fabsf(uA) < pm->fault_voltage_tol) ? 1.f : 0.f;
+			pm->self_BST[1] += (m_fabsf(uB) < pm->fault_voltage_tol) ? 1.f : 0.f;
+			pm->self_BST[2] += (m_fabsf(uC) < pm->fault_voltage_tol) ? 1.f : 0.f;
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->self_BST[0] /= pm->freq_hz;
+				pm->self_BST[1] /= pm->freq_hz;
+				pm->self_BST[2] /= pm->freq_hz;
+
+				pm->fsm_phase = 4;
+			}
+			break;
+
+		case 4:
+			if (		pm->self_BST[0] < pm->ts_bootstrap
+					|| pm->self_BST[1] < pm->ts_bootstrap
+					|| pm->self_BST[2] < pm->ts_bootstrap) {
+
+				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
+			}
+
+			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
+			break;
+	}
+}
+
+static void
 pm_fsm_state_self_test_power_stage(pmc_t *pm)
 {
 	float			uA, uB, uC;
@@ -276,7 +360,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			}
 
 			pm->tm_value = 0;
-			pm->tm_end = pm->freq_hz * pm->tm_voltage_hold;
+			pm->tm_end = pm->freq_hz * pm->tm_transient_fast;
 
 			pm->fsm_phase = 2;
 			break;
@@ -362,7 +446,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
 			else {
-				pm->fail_reason = PM_ERORR_POWER_STAGE_FAULT;
+				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -379,12 +463,12 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->self_RMS[0] = 0.f;
-			pm->self_RMS[1] = 0.f;
-			pm->self_RMS[2] = 0.f;
-			pm->self_RMS[3] = 0.f;
-			pm->self_RMS[4] = 0.f;
-			pm->self_RMS[5] = 0.f;
+			pm->self_RMS_base[0] = 0.f;
+			pm->self_RMS_base[1] = 0.f;
+			pm->self_RMS_base[2] = 0.f;
+			pm->self_RMS_tvm[0] = 0.f;
+			pm->self_RMS_tvm[1] = 0.f;
+			pm->self_RMS_tvm[2] = 0.f;
 
 			pm->FIX[0] = 0.f;
 			pm->FIX[1] = 0.f;
@@ -392,12 +476,10 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			pm->FIX[3] = 0.f;
 			pm->FIX[4] = 0.f;
 			pm->FIX[5] = 0.f;
-
 			pm->FIX[6] = 0.f;
 			pm->FIX[7] = 0.f;
 			pm->FIX[8] = 0.f;
 			pm->FIX[9] = 0.f;
-
 			pm->FIX[10] = 0.f;
 			pm->FIX[11] = 0.f;
 			pm->FIX[12] = 0.f;
@@ -423,16 +505,16 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_ADD(&pm->self_RMS[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
-			pm_ADD(&pm->self_RMS[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
-			pm_ADD(&pm->self_RMS[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
+			pm_ADD(&pm->self_RMS_base[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
+			pm_ADD(&pm->self_RMS_base[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
+			pm_ADD(&pm->self_RMS_base[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
 			pm_ADD(&pm->FIX[6], &pm->FIX[10], pm->const_lpf_U);
 
 			if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-				pm_ADD(&pm->self_RMS[3], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
-				pm_ADD(&pm->self_RMS[4], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
-				pm_ADD(&pm->self_RMS[5], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
+				pm_ADD(&pm->self_RMS_tvm[0], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
+				pm_ADD(&pm->self_RMS_tvm[1], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
+				pm_ADD(&pm->self_RMS_tvm[2], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
 
 				pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
 				pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
@@ -443,43 +525,43 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				RMS = pm->self_RMS[0] / pm->tm_end;
-				pm->self_RMS[0] = m_sqrtf(RMS);
+				RMS = pm->self_RMS_base[0] / pm->tm_end;
+				pm->self_RMS_base[0] = m_sqrtf(RMS);
 
-				RMS = pm->self_RMS[1] / pm->tm_end;
-				pm->self_RMS[1] = m_sqrtf(RMS);
+				RMS = pm->self_RMS_base[1] / pm->tm_end;
+				pm->self_RMS_base[1] = m_sqrtf(RMS);
 
-				RMS = pm->self_RMS[2] / pm->tm_end;
+				RMS = pm->self_RMS_base[2] / pm->tm_end;
 				AVG = pm->FIX[6] / pm->tm_end;
-				pm->self_RMS[2] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMS_base[2] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS[3] / pm->tm_end;
+				RMS = pm->self_RMS_tvm[0] / pm->tm_end;
 				AVG = pm->FIX[7] / pm->tm_end;
-				pm->self_RMS[3] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMS_tvm[0] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS[4] / pm->tm_end;
+				RMS = pm->self_RMS_tvm[1] / pm->tm_end;
 				AVG = pm->FIX[8] / pm->tm_end;
-				pm->self_RMS[4] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMS_tvm[1] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS[5] / pm->tm_end;
+				RMS = pm->self_RMS_tvm[2] / pm->tm_end;
 				AVG = pm->FIX[9] / pm->tm_end;
-				pm->self_RMS[5] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMS_tvm[2] = m_sqrtf(RMS - AVG * AVG);
 
 				pm->fsm_phase = 3;
 			}
 			break;
 
 		case 3:
-			if (		pm->self_RMS[0] > pm->fault_current_tol
-					|| pm->self_RMS[1] > pm->fault_current_tol) {
+			if (		pm->self_RMS_base[0] > pm->fault_current_tol
+					|| pm->self_RMS_base[1] > pm->fault_current_tol) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
 
-			if (		pm->self_RMS[2] > pm->fault_voltage_tol
-					|| pm->self_RMS[3] > pm->fault_voltage_tol
-					|| pm->self_RMS[4] > pm->fault_voltage_tol
-					|| pm->self_RMS[5] > pm->fault_voltage_tol) {
+			if (		pm->self_RMS_base[2] > pm->fault_voltage_tol
+					|| pm->self_RMS_tvm[0] > pm->fault_voltage_tol
+					|| pm->self_RMS_tvm[1] > pm->fault_voltage_tol
+					|| pm->self_RMS_tvm[2] > pm->fault_voltage_tol) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
@@ -539,7 +621,9 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->tm_value = 0;
-				pm->tm_end = pm->freq_hz * (pm->tm_voltage_hold + pm->tm_instant_probe);
+				pm->tm_end = pm->freq_hz * pm->tm_voltage_hold;
+				pm->tm_end = (pm->tm_end > pm->ts_bootstrap)
+					? pm->ts_bootstrap : pm->tm_end;
 
 				pm->fsm_phase = 3;
 			}
@@ -616,7 +700,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			break;
 
 		case 6:
-			xMIN = pm->dc_minimal;
+			xMIN = pm->ts_minimal;
 			xMAX = (int) (pm->dc_resolution * pm->tvm_range);
 
 			switch (pm->fsm_phase_2) {
@@ -1059,9 +1143,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 		case 0:
 			if (pm->const_L > M_EPS_F) {
 
-				pm->vsi_tm_A = 0;
-				pm->vsi_tm_B = 0;
-				pm->vsi_tm_C = 0;
+				pm->vsi_SA = 0;
+				pm->vsi_SB = 0;
+				pm->vsi_SC = 0;
 				pm->vsi_IF = 3;
 				pm->vsi_UF = 3;
 
@@ -1215,6 +1299,8 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 
 		case 2:
 			pm->const_E = pm->probe_DFT[0];
+
+			pm_build(pm);
 
 			pm->fsm_state = PM_STATE_IDLE;
 			pm->fsm_phase = 0;
@@ -1382,6 +1468,7 @@ void pm_FSM(pmc_t *pm)
 	switch (pm->fsm_req) {
 
 		case PM_STATE_ZERO_DRIFT:
+		case PM_STATE_SELF_TEST_BOOTSTRAP:
 		case PM_STATE_SELF_TEST_POWER_STAGE:
 		case PM_STATE_SELF_TEST_CLEARANCE:
 		case PM_STATE_ADJUST_VOLTAGE:
@@ -1396,6 +1483,8 @@ void pm_FSM(pmc_t *pm)
 
 			if (pm->lu_mode != PM_LU_DISABLED)
 				break;
+
+			pm_build(pm);
 
 			pm->fsm_state = pm->fsm_req;
 			pm->fsm_phase = 0;
@@ -1442,6 +1531,10 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_ZERO_DRIFT:
 			pm_fsm_state_zero_drift(pm);
+			break;
+
+		case PM_STATE_SELF_TEST_BOOTSTRAP:
+			pm_fsm_state_self_test_bootstrap(pm);
 			break;
 
 		case PM_STATE_SELF_TEST_POWER_STAGE:
@@ -1503,7 +1596,7 @@ const char *pm_strerror(int n)
 
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
-		PM_SFI(PM_ERORR_POWER_STAGE_FAULT),
+		PM_SFI(PM_ERROR_POWER_STAGE_FAULT),
 		PM_SFI(PM_ERROR_ACCURACY_FAULT),
 		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
 		PM_SFI(PM_ERROR_INLINE_OVER_CURRENT),

@@ -33,6 +33,12 @@ SH_DEF(pm_self_test)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
+			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
+			pm_wait_for_IDLE();
+
+			reg_format(&regfile[ID_PM_SELF_BST]);
+			reg_format(&regfile[ID_PM_FAIL_REASON]);
+
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_IDLE();
 
@@ -40,7 +46,7 @@ SH_DEF(pm_self_test)
 			reg_format(&regfile[ID_PM_FAIL_REASON]);
 		}
 
-		xDC = pm.dc_resolution - pm.dc_clearance;
+		xDC = pm.dc_resolution - pm.ts_clearance;
 
 		for (N = 0; N < 2; ++N) {
 
@@ -60,7 +66,12 @@ SH_DEF(pm_self_test)
 			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
 			pm_wait_for_IDLE();
 
-			reg_format(&regfile[ID_PM_SELF_RMS]);
+			reg_format(&regfile[ID_PM_SELF_RMS_BASE]);
+
+			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+				reg_format(&regfile[ID_PM_SELF_RMS_TVM]);
+			}
 		}
 	}
 	while (0);

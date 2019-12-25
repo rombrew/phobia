@@ -458,9 +458,9 @@ void task_INIT(void *pData)
 		ap.ntc_EXT.betta = 3380.f;
 
 		ap.heat_PCB = 90.f;
-		ap.heat_PCB_derated_i = 40.f;
+		ap.heat_PCB_derated_i = 20.f;
 		ap.heat_EXT = 90.f;
-		ap.heat_EXT_derated_i = 40.f;
+		ap.heat_EXT_derated_i = 20.f;
 		ap.heat_PCB_FAN = 60.f;
 		ap.heat_gap = 5.f;
 
@@ -693,7 +693,7 @@ SH_DEF(rtos_cpu_usage)
 	printf("%1f (%%)" EOL, &pc);
 }
 
-SH_DEF(rtos_list)
+SH_DEF(rtos_task_list)
 {
 	TaskStatus_t		*pLIST;
 	int			xSIZE, xState, N;
@@ -751,7 +751,7 @@ SH_DEF(rtos_list)
 	}
 }
 
-SH_DEF(rtos_kill)
+SH_DEF(rtos_task_kill)
 {
 	TaskHandle_t		xHandle;
 
@@ -763,7 +763,7 @@ SH_DEF(rtos_kill)
 	}
 }
 
-SH_DEF(rtos_heap)
+SH_DEF(rtos_freeheap)
 {
 	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
 			xPortGetMinimumEverFreeHeapSize());
@@ -786,7 +786,7 @@ SH_DEF(rtos_log_cleanup)
 	}
 }
 
-SH_DEF(rtos_system_reset)
+SH_DEF(rtos_reboot)
 {
 	if (pm.lu_mode != PM_LU_DISABLED) {
 

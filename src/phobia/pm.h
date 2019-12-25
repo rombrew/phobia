@@ -47,6 +47,7 @@ enum {
 enum {
 	PM_STATE_IDLE				= 0,
 	PM_STATE_ZERO_DRIFT,
+	PM_STATE_SELF_TEST_BOOTSTRAP,
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_ADJUST_VOLTAGE,
@@ -69,7 +70,7 @@ enum {
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
-	PM_ERORR_POWER_STAGE_FAULT,
+	PM_ERROR_POWER_STAGE_FAULT,
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INLINE_OVER_CURRENT,
@@ -105,13 +106,20 @@ typedef struct {
 	float		dT;
 
 	int		dc_resolution;
-	int		dc_minimal;
-	int		dc_clearance;
-	int		dc_tm_hold;
+	float		dc_minimal;
+	float		dc_clearance;
+	float		dc_bootstrap;
+
+	int		ts_minimal;
+	int		ts_clearance;
+	int		ts_bootstrap;
+	float		ts_inverted;
 
 	int		fail_reason;
+	float		self_BST[3];
 	int		self_BM[8];
-	float		self_RMS[6];
+	float		self_RMS_base[3];
+	float		self_RMS_tvm[3];
 
 	int		config_NOP;
 	int		config_TVM;
@@ -181,9 +189,9 @@ typedef struct {
 	float		vsi_Y;
 	float		vsi_DX;
 	float		vsi_DY;
-	int		vsi_tm_A;
-	int		vsi_tm_B;
-	int		vsi_tm_C;
+	int		vsi_SA;
+	int		vsi_SB;
+	int		vsi_SC;
 	int		vsi_IF;
 	int		vsi_UF;
 	int		vsi_AZ;
@@ -297,6 +305,11 @@ typedef struct {
 	float		const_im_R;
 	float		const_dd_T;
 
+	float		temp_const_ilpfU;
+	float		temp_iE;
+	float		temp_loRupRiN;
+	float		temp_dTiL;
+
 	float		watt_wP_maximal;
 	float		watt_iB_maximal;
 	float		watt_wP_reverse;
@@ -349,11 +362,11 @@ typedef struct {
 	int		stat_revol_1;
 	int		stat_revol_total;
 	float		stat_distance;
-	float		stat_consumed_wh;
-	float		stat_consumed_ah;
-	float		stat_reverted_wh;
-	float		stat_reverted_ah;
-	float		stat_capacity_ah;
+	float		stat_consumed_Wh;
+	float		stat_consumed_Ah;
+	float		stat_reverted_Wh;
+	float		stat_reverted_Ah;
+	float		stat_capacity_Ah;
 	float		stat_fuel_pc;
 	float		stat_peak_consumed_watt;
 	float		stat_peak_reverted_watt;
@@ -369,6 +382,7 @@ typedef struct {
 pmc_t;
 
 void pm_default(pmc_t *pm);
+void pm_build(pmc_t *pm);
 
 void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);

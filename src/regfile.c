@@ -28,11 +28,14 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 		taskENTER_CRITICAL();
 		ADC_irq_lock();
 
-		PWM_configure();
+		if (pm.lu_mode == PM_LU_DISABLED) {
 
-		pm.freq_hz = hal.PWM_frequency;
-		pm.dT = 1.f / pm.freq_hz;
-		pm.dc_resolution = hal.PWM_resolution;
+			PWM_configure();
+
+			pm.freq_hz = hal.PWM_frequency;
+			pm.dT = 1.f / pm.freq_hz;
+			pm.dc_resolution = hal.PWM_resolution;
+		}
 
 		ADC_irq_unlock();
 		taskEXIT_CRITICAL();
@@ -377,24 +380,11 @@ reg_proc_hall_STg(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_format_dcns(const reg_t *reg)
+reg_format_self_BST(const reg_t *reg)
 {
-	float			dcns;
+	int		*BST = (void *) reg->link;
 
-	dcns = (float) (reg->link->i) * 1000000000.f
-		/ (hal.PWM_frequency * (float) hal.PWM_resolution);
-
-	printf("%i (%1f ns)", reg->link->i, &dcns);
-}
-
-static void
-reg_format_dcms(const reg_t *reg)
-{
-	float			dcms;
-
-	dcms = (float) (reg->link->i) * 1000.f / hal.PWM_frequency;
-
-	printf("%i (%1f ms)", reg->link->i, &dcms);
+	printf("%4f %4f %4f (s)", BST[0], BST[1], BST[2]);
 }
 
 static void
@@ -406,16 +396,19 @@ reg_format_self_BM(const reg_t *reg)
 }
 
 static void
-reg_format_self_RMS(const reg_t *reg)
+reg_format_self_RMS_base(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
 	printf("%3f %3f (A) %4f (V)", &RMS[0], &RMS[1], &RMS[2]);
+}
 
-	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+static void
+reg_format_self_RMS_tvm(const reg_t *reg)
+{
+	float		*RMS = (void *) reg->link;
 
-		printf(" %4f %4f %4f (V)", &RMS[3], &RMS[4], &RMS[5]);
-	}
+	printf("%4f %4f %4f (V)", &RMS[0], &RMS[1], &RMS[2]);
 }
 
 #define TEXT_ITEM(t)	case t: printf("(%s)", PM_SFI(t)); break
@@ -518,6 +511,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_STATE_IDLE);
 				TEXT_ITEM(PM_STATE_ZERO_DRIFT);
+				TEXT_ITEM(PM_STATE_SELF_TEST_BOOTSTRAP);
 				TEXT_ITEM(PM_STATE_SELF_TEST_POWER_STAGE);
 				TEXT_ITEM(PM_STATE_SELF_TEST_CLEARANCE);
 				TEXT_ITEM(PM_STATE_ADJUST_VOLTAGE);
@@ -575,11 +569,11 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.PPM_signal_caught,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(ap.ppm_reg_ID,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range[0],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range[1],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range[2],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_lost[0],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_lost[1],,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_pulse_range[0],,		"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_pulse_range[1],,		"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_pulse_range[2],,		"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_pulse_lost[0],,		"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_pulse_lost[1],,		"us",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[0],,	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[1],,	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range[2],,	"",	"%2f",	REG_CONFIG, NULL, NULL),
@@ -589,7 +583,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.analog_enabled,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_reg_ID,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ratio,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_timeout,,		"s",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_timeout,,		"s",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ANALOG[0],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ANALOG[1],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ANALOG[2],,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -632,13 +626,15 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.pull_ad[1],,			"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.dc_resolution,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dc_minimal,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_dcns),
-	REG_DEF(pm.dc_clearance,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_dcns),
-	REG_DEF(pm.dc_tm_hold,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_dcms),
+	REG_DEF(pm.dc_minimal,,		"us",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_clearance,,	"us",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_bootstrap,,	"s",	"%4f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.fail_reason,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
+	REG_DEF(pm.self_BST,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BST),
 	REG_DEF(pm.self_BM,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BM),
-	REG_DEF(pm.self_RMS,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS),
+	REG_DEF(pm.self_RMS_base,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS_base),
+	REG_DEF(pm.self_RMS_tvm,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS_tvm),
 
 	REG_DEF(pm.config_NOP,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_TVM,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -886,11 +882,11 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.stat_revol_total,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(pm.stat_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.stat_distance, _km,		"km",	"%3f",	REG_READ_ONLY, &reg_proc_km, NULL),
-	REG_DEF(pm.stat_consumed_wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_consumed_ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_reverted_wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_reverted_ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_capacity_ah,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.stat_consumed_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.stat_consumed_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.stat_reverted_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.stat_reverted_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.stat_capacity_Ah,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.stat_fuel_pc,,		"pc",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.stat_peak_consumed_watt,,	"W",	"%1f",	0, NULL, NULL),
 	REG_DEF(pm.stat_peak_reverted_watt,,	"W",	"%1f",	0, NULL, NULL),

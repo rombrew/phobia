@@ -3,9 +3,9 @@
 
 void pm_default(pmc_t *pm)
 {
-	pm->dc_minimal = 21;
-	pm->dc_clearance = 420;
-	pm->dc_tm_hold = 240;
+	pm->dc_minimal = 0.25f;
+	pm->dc_clearance = 5.0f;
+	pm->dc_bootstrap = 0.01f;
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_TVM = PM_ENABLED;
@@ -16,14 +16,14 @@ void pm_default(pmc_t *pm)
 	pm->config_SERVO = PM_DISABLED;
 	pm->config_STAT	= PM_ENABLED;
 
-	pm->tm_transient_slow = .05f;
-	pm->tm_transient_fast = .002f;
-	pm->tm_voltage_hold = .005f;
-	pm->tm_current_hold = .5f;
-	pm->tm_instant_probe = .002f;
-	pm->tm_average_drift = .1f;
-	pm->tm_average_probe = .5f;
-	pm->tm_startup = .1f;
+	pm->tm_transient_slow = 0.05f;
+	pm->tm_transient_fast = 0.002f;
+	pm->tm_voltage_hold = 0.1f;
+	pm->tm_current_hold = 0.5f;
+	pm->tm_instant_probe = 0.002f;
+	pm->tm_average_drift = 0.1f;
+	pm->tm_average_probe = 0.5f;
+	pm->tm_startup = 0.1f;
 
 	pm->ad_IA[0] = 0.f;
 	pm->ad_IA[1] = 1.f;
@@ -136,6 +136,20 @@ void pm_default(pmc_t *pm)
 	pm->x_gain_N = 50.f;
 }
 
+void pm_build(pmc_t *pm)
+{
+	pm->ts_minimal = (int) (pm->dc_minimal * (1.f / 1000000.f)
+			* pm->freq_hz * (float) pm->dc_resolution);
+	pm->ts_clearance = (int) (pm->dc_clearance * (1.f / 1000000.f)
+			* pm->freq_hz * (float) pm->dc_resolution);
+	pm->ts_bootstrap = (int) (pm->dc_bootstrap * pm->freq_hz);
+	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
+
+	pm->temp_iE = 1.f / pm->const_E;
+	pm->temp_loRupRiN = (pm->flux_lower_R - pm->flux_upper_R) / (float) pm->flux_N;
+	pm->temp_dTiL = pm->dT / pm->const_L;
+}
+
 static void
 pm_forced(pmc_t *pm)
 {
@@ -206,8 +220,10 @@ pm_detached_FLUX(pmc_t *pm)
 
 	if (U > pm->lu_detach_E) {
 
-		uX /= U;
-		uY /= U;
+		E = 1.f / U;
+
+		uX *= E;
+		uY *= E;
 
 		if (pm->flux_TIM != 0) {
 
@@ -262,7 +278,7 @@ pm_detached_FLUX(pmc_t *pm)
 static void
 pm_estimate_FLUX(pmc_t *pm)
 {
-	float		uX, uY, lX, lY, iE, iQ, EX, EY, DX, DY, E, F;
+	float		uX, uY, lX, lY, iQ, EX, EY, DX, DY, E, F;
 	int		N, H;
 
 	/* Get the actual voltage.
@@ -286,16 +302,13 @@ pm_estimate_FLUX(pmc_t *pm)
 		uX *= pm->dT;
 		uY *= pm->dT;
 
-		iE = 1.f / pm->const_E;
-		iQ = iE * iE;
+		iQ = pm->temp_iE * pm->temp_iE;
 
 		EX = pm->const_R * pm->lu_iX * pm->dT;
 		EY = pm->const_R * pm->lu_iY * pm->dT;
 
-		E = (pm->flux_lower_R - pm->flux_upper_R) / pm->flux_N;
-
-		DX = EX * E;
-		DY = EY * E;
+		DX = EX * pm->temp_loRupRiN;
+		DY = EY * pm->temp_loRupRiN;
 
 		uX += - EX * pm->flux_lower_R;
 		uY += - EY * pm->flux_lower_R;
@@ -305,7 +318,7 @@ pm_estimate_FLUX(pmc_t *pm)
 
 		/* Adaptive observer GAIN.
 		 * */
-		F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * iE;
+		F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * pm->temp_iE;
 
 		for (N = 0, H = 0; N < pm->flux_N; N++) {
 
@@ -380,8 +393,10 @@ pm_estimate_FLUX(pmc_t *pm)
 
 	if (E > M_EPS_F) {
 
-		pm->flux_F[0] = EX / E;
-		pm->flux_F[1] = EY / E;
+		E = 1.f / E;
+
+		pm->flux_F[0] = EX * E;
+		pm->flux_F[1] = EY * E;
 	}
 
 	/* Slow speed (LPF).
@@ -392,7 +407,7 @@ pm_estimate_FLUX(pmc_t *pm)
 static void
 pm_estimate_HFI(pmc_t *pm)
 {
-	float		iD, iQ, uD, uQ, dTL;
+	float		iD, iQ, uD, uQ;
 	float		eD, eQ, eR, dR, wD;
 
 	iD = pm->hfi_F[0] * pm->lu_iX + pm->hfi_F[1] * pm->lu_iY;
@@ -436,12 +451,10 @@ pm_estimate_HFI(pmc_t *pm)
 	uD = pm->hfi_F[0] * pm->vsi_X + pm->hfi_F[1] * pm->vsi_Y;
 	uQ = pm->hfi_F[0] * pm->vsi_Y - pm->hfi_F[1] * pm->vsi_X;
 
-	dTL = pm->dT / pm->const_L;
-
 	/* Rough forecast to the next cycle.
 	 * */
-	pm->hfi_iD = iD + (uD - pm->const_R * iD) * dTL;
-	pm->hfi_iQ = iQ + (uQ - pm->const_R * iQ) * dTL;
+	pm->hfi_iD = iD + (uD - pm->const_R * iD) * pm->temp_dTiL;
+	pm->hfi_iQ = iQ + (uQ - pm->const_R * iQ) * pm->temp_dTiL;
 }
 
 static void
@@ -507,7 +520,7 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->proc_set_Z(0);
 			}
-			else if (pm->config_SENSOR == PM_SENSOR_HALL
+			else if (	pm->config_SENSOR == PM_SENSOR_HALL
 					&& pm->hall_IF != 0) {
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
@@ -590,7 +603,7 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) < pm->lu_unlock_E) {
 
-			if (pm->config_SENSOR == PM_SENSOR_HALL
+			if (		pm->config_SENSOR == PM_SENSOR_HALL
 					&& pm->hall_IF != 0) {
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
@@ -665,8 +678,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	int		xA, xB, xC;
 	int		xMIN, xMAX;
 
-	uX /= pm->const_lpf_U;
-	uY /= pm->const_lpf_U;
+	uX *= pm->temp_const_ilpfU;
+	uY *= pm->temp_const_ilpfU;
 
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
@@ -726,7 +739,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
-		xMAX = pm->dc_resolution - pm->dc_clearance;
+		xMAX = pm->dc_resolution - pm->ts_clearance;
 
 		if (xA > xMAX || xB > xMAX) {
 
@@ -739,74 +752,42 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 			xC += xMIN;
 		}
 
-		xMAX = pm->dc_resolution - pm->dc_minimal;
+		xMAX = pm->dc_resolution - pm->ts_minimal;
 
-		xA = (xA < pm->dc_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
-		xB = (xB < pm->dc_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
-		xC = (xC < pm->dc_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
+		xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
+		xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
+		xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 	}
 	else {
-		xA += pm->dc_minimal;
-		xB += pm->dc_minimal;
-		xC += pm->dc_minimal;
+		xA += pm->ts_minimal;
+		xB += pm->ts_minimal;
+		xC += pm->ts_minimal;
 
-		xMAX = pm->dc_resolution - pm->dc_clearance;
+		xMAX = pm->dc_resolution - pm->ts_clearance;
 
 		xA = (xA > xMAX) ? pm->dc_resolution : xA;
 		xB = (xB > xMAX) ? pm->dc_resolution : xB;
 		xC = (xC > xMAX) ? pm->dc_resolution : xC;
 	}
 
-	if (pm->dc_tm_hold != 0) {
+	if (pm->ts_bootstrap != 0) {
 
-		xMAX = pm->dc_resolution - pm->dc_clearance;
+		pm->vsi_SA = (xA == pm->dc_resolution) ? pm->vsi_SA + 1 : 0;
+		pm->vsi_SB = (xB == pm->dc_resolution) ? pm->vsi_SB + 1 : 0;
+		pm->vsi_SC = (xC == pm->dc_resolution) ? pm->vsi_SC + 1 : 0;
 
-		if (xA == pm->dc_resolution) {
+		if (		pm->vsi_SA > pm->ts_bootstrap
+				|| pm->vsi_SB > pm->ts_bootstrap
+				|| pm->vsi_SC > pm->ts_bootstrap) {
 
-			pm->vsi_tm_A++;
-
-			if (pm->vsi_tm_A > pm->dc_tm_hold) {
-
-				xA = xMAX;
-				pm->vsi_tm_A = 0;
-			}
-		}
-		else {
-			pm->vsi_tm_A = 0;
-		}
-
-		if (xB == pm->dc_resolution) {
-
-			pm->vsi_tm_B++;
-
-			if (pm->vsi_tm_B > pm->dc_tm_hold) {
-
-				xB = xMAX;
-				pm->vsi_tm_B = 0;
-			}
-		}
-		else {
-			pm->vsi_tm_B = 0;
-		}
-
-		if (xC == pm->dc_resolution) {
-
-			pm->vsi_tm_C++;
-
-			if (pm->vsi_tm_C > pm->dc_tm_hold) {
-
-				xC = xMAX;
-				pm->vsi_tm_C = 0;
-			}
-		}
-		else {
-			pm->vsi_tm_C = 0;
+			pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
+			pm->fsm_req = PM_STATE_HALT;
 		}
 	}
 
 	pm->proc_set_DC(xA, xB, xC);
 
-	xMIN = pm->dc_resolution - pm->dc_clearance;
+	xMIN = pm->dc_resolution - pm->ts_clearance;
 
 	/* Check if there are PWM edges within clearance zone. The CURRENT
 	 * measurement will be used or rejected based on this flag.
@@ -841,15 +822,15 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		uQ = (1.f / 3.f) * (xA + xB + xC);
-		uA = (xA - uQ) * pm->const_lpf_U / pm->dc_resolution;
-		uB = (xB - uQ) * pm->const_lpf_U / pm->dc_resolution;
+		uA = (xA - uQ) * pm->const_lpf_U * pm->ts_inverted;
+		uB = (xB - uQ) * pm->const_lpf_U * pm->ts_inverted;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
 	}
 	else {
-		uA = (xA - xC) * pm->const_lpf_U / pm->dc_resolution;
-		uB = (xB - xC) * pm->const_lpf_U / pm->dc_resolution;
+		uA = (xA - xC) * pm->const_lpf_U * pm->ts_inverted;
+		uB = (xB - xC) * pm->const_lpf_U * pm->ts_inverted;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = uB;
@@ -1167,7 +1148,7 @@ pm_charger(pmc_t *pm)
 static void
 pm_statistics(pmc_t *pm)
 {
-	float		revdd, wh, ah, fuel, wS_abs;
+	float		revdd, Wh, Ah, fuel, wS_abs;
 
 	/* Quantum.
 	 * */
@@ -1206,25 +1187,25 @@ pm_statistics(pmc_t *pm)
 
 	/* Get WATT per HOUR.
 	 * */
-	wh = pm->watt_lpf_wP * pm->dT * (1.f / 3600.f);
-	ah = wh / pm->const_lpf_U;
+	Wh = pm->watt_lpf_wP * pm->dT * (1.f / 3600.f);
+	Ah = Wh * pm->temp_const_ilpfU;
 
-	if (wh > 0.f) {
+	if (Wh > 0.f) {
 
-		pm_ADD(&pm->stat_consumed_wh, &pm->stat_FIX[0], wh);
-		pm_ADD(&pm->stat_consumed_ah, &pm->stat_FIX[1], ah);
+		pm_ADD(&pm->stat_consumed_Wh, &pm->stat_FIX[0], Wh);
+		pm_ADD(&pm->stat_consumed_Ah, &pm->stat_FIX[1], Ah);
 	}
 	else {
-		pm_ADD(&pm->stat_reverted_wh, &pm->stat_FIX[2], - wh);
-		pm_ADD(&pm->stat_reverted_ah, &pm->stat_FIX[3], - ah);
+		pm_ADD(&pm->stat_reverted_Wh, &pm->stat_FIX[2], - Wh);
+		pm_ADD(&pm->stat_reverted_Ah, &pm->stat_FIX[3], - Ah);
 	}
 
 	/* Fuel gauge.
 	 * */
-	if (pm->stat_capacity_ah > M_EPS_F) {
+	if (pm->stat_capacity_Ah > M_EPS_F) {
 
-		fuel = pm->stat_consumed_ah - pm->stat_reverted_wh;
-		fuel /= pm->stat_capacity_ah;
+		fuel = pm->stat_consumed_Ah - pm->stat_reverted_Ah;
+		fuel /= pm->stat_capacity_Ah;
 
 		pm->stat_fuel_pc = 100.f * fuel;
 	}
@@ -1282,6 +1263,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	 * */
 	U = pm->ad_US[1] * fb->voltage_U + pm->ad_US[0];
 	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP_U;
+	pm->temp_const_ilpfU = 1.f / pm->const_lpf_U;
 
 	if (pm->const_lpf_U > pm->fault_voltage_halt) {
 
