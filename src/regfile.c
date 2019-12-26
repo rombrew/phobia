@@ -396,7 +396,7 @@ reg_format_self_BM(const reg_t *reg)
 }
 
 static void
-reg_format_self_RMS_base(const reg_t *reg)
+reg_format_self_RMSi(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
@@ -404,7 +404,7 @@ reg_format_self_RMS_base(const reg_t *reg)
 }
 
 static void
-reg_format_self_RMS_tvm(const reg_t *reg)
+reg_format_self_RMSu(const reg_t *reg)
 {
 	float		*RMS = (void *) reg->link;
 
@@ -633,8 +633,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fail_reason,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(pm.self_BST,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BST),
 	REG_DEF(pm.self_BM,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BM),
-	REG_DEF(pm.self_RMS_base,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS_base),
-	REG_DEF(pm.self_RMS_tvm,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMS_tvm),
+	REG_DEF(pm.self_RMSi,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMSi),
+	REG_DEF(pm.self_RMSu,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMSu),
 
 	REG_DEF(pm.config_NOP,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_TVM,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),

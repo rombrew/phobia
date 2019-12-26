@@ -118,8 +118,8 @@ typedef struct {
 	int		fail_reason;
 	float		self_BST[3];
 	int		self_BM[8];
-	float		self_RMS_base[3];
-	float		self_RMS_tvm[3];
+	float		self_RMSi[3];
+	float		self_RMSu[3];
 
 	int		config_NOP;
 	int		config_TVM;

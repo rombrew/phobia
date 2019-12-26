@@ -66,11 +66,11 @@ SH_DEF(pm_self_test)
 			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
 			pm_wait_for_IDLE();
 
-			reg_format(&regfile[ID_PM_SELF_RMS_BASE]);
+			reg_format(&regfile[ID_PM_SELF_RMSI]);
 
 			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-				reg_format(&regfile[ID_PM_SELF_RMS_TVM]);
+				reg_format(&regfile[ID_PM_SELF_RMSU]);
 			}
 		}
 	}

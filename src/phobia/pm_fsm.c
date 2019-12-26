@@ -463,12 +463,12 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->self_RMS_base[0] = 0.f;
-			pm->self_RMS_base[1] = 0.f;
-			pm->self_RMS_base[2] = 0.f;
-			pm->self_RMS_tvm[0] = 0.f;
-			pm->self_RMS_tvm[1] = 0.f;
-			pm->self_RMS_tvm[2] = 0.f;
+			pm->self_RMSi[0] = 0.f;
+			pm->self_RMSi[1] = 0.f;
+			pm->self_RMSi[2] = 0.f;
+			pm->self_RMSu[0] = 0.f;
+			pm->self_RMSu[1] = 0.f;
+			pm->self_RMSu[2] = 0.f;
 
 			pm->FIX[0] = 0.f;
 			pm->FIX[1] = 0.f;
@@ -505,16 +505,16 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_ADD(&pm->self_RMS_base[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
-			pm_ADD(&pm->self_RMS_base[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
-			pm_ADD(&pm->self_RMS_base[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
+			pm_ADD(&pm->self_RMSi[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
+			pm_ADD(&pm->self_RMSi[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
+			pm_ADD(&pm->self_RMSi[2], &pm->FIX[2], pm->const_lpf_U * pm->const_lpf_U);
 			pm_ADD(&pm->FIX[6], &pm->FIX[10], pm->const_lpf_U);
 
 			if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-				pm_ADD(&pm->self_RMS_tvm[0], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
-				pm_ADD(&pm->self_RMS_tvm[1], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
-				pm_ADD(&pm->self_RMS_tvm[2], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
+				pm_ADD(&pm->self_RMSu[0], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
+				pm_ADD(&pm->self_RMSu[1], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
+				pm_ADD(&pm->self_RMSu[2], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
 
 				pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
 				pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
@@ -525,43 +525,43 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				RMS = pm->self_RMS_base[0] / pm->tm_end;
-				pm->self_RMS_base[0] = m_sqrtf(RMS);
+				RMS = pm->self_RMSi[0] / pm->tm_end;
+				pm->self_RMSi[0] = m_sqrtf(RMS);
 
-				RMS = pm->self_RMS_base[1] / pm->tm_end;
-				pm->self_RMS_base[1] = m_sqrtf(RMS);
+				RMS = pm->self_RMSi[1] / pm->tm_end;
+				pm->self_RMSi[1] = m_sqrtf(RMS);
 
-				RMS = pm->self_RMS_base[2] / pm->tm_end;
+				RMS = pm->self_RMSi[2] / pm->tm_end;
 				AVG = pm->FIX[6] / pm->tm_end;
-				pm->self_RMS_base[2] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMSi[2] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS_tvm[0] / pm->tm_end;
+				RMS = pm->self_RMSu[0] / pm->tm_end;
 				AVG = pm->FIX[7] / pm->tm_end;
-				pm->self_RMS_tvm[0] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMSu[0] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS_tvm[1] / pm->tm_end;
+				RMS = pm->self_RMSu[1] / pm->tm_end;
 				AVG = pm->FIX[8] / pm->tm_end;
-				pm->self_RMS_tvm[1] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMSu[1] = m_sqrtf(RMS - AVG * AVG);
 
-				RMS = pm->self_RMS_tvm[2] / pm->tm_end;
+				RMS = pm->self_RMSu[2] / pm->tm_end;
 				AVG = pm->FIX[9] / pm->tm_end;
-				pm->self_RMS_tvm[2] = m_sqrtf(RMS - AVG * AVG);
+				pm->self_RMSu[2] = m_sqrtf(RMS - AVG * AVG);
 
 				pm->fsm_phase = 3;
 			}
 			break;
 
 		case 3:
-			if (		pm->self_RMS_base[0] > pm->fault_current_tol
-					|| pm->self_RMS_base[1] > pm->fault_current_tol) {
+			if (		pm->self_RMSi[0] > pm->fault_current_tol
+					|| pm->self_RMSi[1] > pm->fault_current_tol) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
 
-			if (		pm->self_RMS_base[2] > pm->fault_voltage_tol
-					|| pm->self_RMS_tvm[0] > pm->fault_voltage_tol
-					|| pm->self_RMS_tvm[1] > pm->fault_voltage_tol
-					|| pm->self_RMS_tvm[2] > pm->fault_voltage_tol) {
+			if (		pm->self_RMSi[2] > pm->fault_voltage_tol
+					|| pm->self_RMSu[0] > pm->fault_voltage_tol
+					|| pm->self_RMSu[1] > pm->fault_voltage_tol
+					|| pm->self_RMSu[2] > pm->fault_voltage_tol) {
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 			}
