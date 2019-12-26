@@ -54,7 +54,7 @@ SH_DEF(pm_self_test)
 
 				case 0:
 					pm.proc_set_DC(0, 0, 0);
-					pm.proc_set_Z(7);
+					pm.proc_set_Z(0);
 					break;
 
 				case 1:

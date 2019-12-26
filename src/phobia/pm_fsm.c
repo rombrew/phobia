@@ -285,9 +285,9 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			break;
 
 		case 4:
-			if (		pm->self_BST[0] < pm->ts_bootstrap
-					|| pm->self_BST[1] < pm->ts_bootstrap
-					|| pm->self_BST[2] < pm->ts_bootstrap) {
+			if (		pm->self_BST[0] < pm->dc_bootstrap
+					|| pm->self_BST[1] < pm->dc_bootstrap
+					|| pm->self_BST[2] < pm->dc_bootstrap) {
 
 				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
 			}
