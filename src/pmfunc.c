@@ -95,8 +95,6 @@ int pm_wait_for_MOTION(float ref)
 
 SH_DEF(pm_self_adjust)
 {
-	float		BST;
-
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
@@ -116,18 +114,6 @@ SH_DEF(pm_self_adjust)
 			break;
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
-
-			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
-			pm_wait_for_IDLE();
-
-			reg_format(&regfile[ID_PM_SELF_BST]);
-
-			BST = (pm.self_BST[0] < pm.self_BST[1])
-				? pm.self_BST[0] : pm.self_BST[1];
-			BST = (BST < pm.self_BST[2]) ? BST : pm.self_BST[2];
-
-			reg_SET_F(ID_PM_DC_BOOTSTRAP, BST * .7f);
-			reg_format(&regfile[ID_PM_DC_BOOTSTRAP]);
 
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			pm_wait_for_IDLE();

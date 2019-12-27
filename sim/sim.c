@@ -223,14 +223,14 @@ sim_test_BASE(FILE *fdTel)
 	tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
 	tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
 
-	printf("FIR[A] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_A[0],
-			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A);
+	printf("FIR[A] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_A[0],
+			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A * 1000000.);
 
-	printf("FIR[B] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_B[0],
-			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B);
+	printf("FIR[B] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_B[0],
+			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B * 1000000.);
 
-	printf("FIR[C] %.4E %.4E %.4E [%.4E] (s)\n", pm.tvm_FIR_C[0],
-			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C);
+	printf("FIR[C] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_C[0],
+			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C * 1000000.);
 
 	t_assert_ref(tau_A, m.tau_U);
 	t_assert_ref(tau_B, m.tau_U);
@@ -267,7 +267,7 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	/*pm.s_setpoint = pm.probe_speed_hold;
+	pm.s_setpoint = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -286,7 +286,7 @@ sim_test_BASE(FILE *fdTel)
 	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
 
 	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_E, m.E);*/
+	t_assert_ref(pm.const_E, m.E);
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	sim_F(fdTel, 0.);
@@ -370,7 +370,7 @@ sim_test_HALL(FILE *fdTel)
 
 		rot_H = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * 180. / M_PI;
 
-		printf("hall_AT[%i] %.1f\n", N, rot_H);
+		printf("hall_ST[%i] %.1f\n", N, rot_H);
 	}
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
