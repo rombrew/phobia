@@ -114,7 +114,8 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->M[0] = 0E-3;
 	m->M[1] = 2E-7;
-	m->M[2] = 5E-3;
+	m->M[2] = 5E-7;
+	m->M[3] = 1E-1;
 
 	/* ADC conversion time (s).
 	 * */
@@ -127,7 +128,7 @@ void blm_Enable(blm_t *m)
 
 	/* Hall sensor angles.
 	 * */
-	m->HS[0] = 30.;
+	m->HS[0] = + 30.;
 	m->HS[1] = + 150.;
 	m->HS[2] = - 90.;
 
@@ -191,6 +192,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 	 * */
 	wS = X[2] / m->Zp;
 	ML = m->M[0] - wS * (m->M[1] + fabs(wS) * m->M[2]);
+	ML += (wS < 0.) ? m->M[3] : - m->M[3];
 
 	/* Mechanical equations.
 	 * */

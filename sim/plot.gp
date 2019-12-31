@@ -37,7 +37,7 @@ figure 0 5 "m.X[4]"
 page "Supply Voltage"
 label 1 "(V)"
 figure 0 6 "m.X[6]"
-figure 0 32 "pm.const_lpf_U"
+figure 0 32 "pm.const_fb_U"
 
 page "Power Consumption"
 label 1 "(W)"
@@ -89,9 +89,9 @@ label 1 "(V)"
 figure 0 25 "pm.tvm_DX"
 figure 0 26 "pm.tvm_DY"
 
-page "HFI: pm.hfi_flux"
-figure 0 37 "pm.hfi_flux"
+page "S: pm.s_load"
+figure 0 37 "pm.s_load"
 
-page "STAT: pm.stat_X"
-figure 0 38 "pm.stat_X"
+page "S: pm.const_J"
+figure 0 38 "pm.const_J"
 

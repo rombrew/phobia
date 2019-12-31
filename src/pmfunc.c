@@ -102,7 +102,7 @@ SH_DEF(pm_self_adjust)
 	}
 
 	do {
-		reg_format(&regfile[ID_PM_CONST_LPF_U]);
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
@@ -153,7 +153,7 @@ SH_DEF(pm_probe_base)
 	}
 
 	do {
-		reg_format(&regfile[ID_PM_CONST_LPF_U]);
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
@@ -240,6 +240,17 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 		reg_format(&regfile[ID_PM_LU_LPF_WS_RPM]);
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_J;
+
+		vTaskDelay((TickType_t) 100);
+
+		pm.s_setpoint = 0.f;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_CONST_J]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 

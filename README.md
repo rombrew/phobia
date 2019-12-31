@@ -92,7 +92,6 @@ PCB design source files.
 
 * Analyse HFI operation on large current values.
 * Make a detailed documentation.
-* Add dc_tm_hold auto-test.
 
 ## Current Status
 

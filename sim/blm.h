@@ -49,7 +49,7 @@ typedef struct {
 	/* Mechanical constants.
 	 * */
 	double		J;
-	double		M[3];
+	double		M[4];
 
 	/* Sensor constants.
 	 * */

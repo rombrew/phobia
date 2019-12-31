@@ -117,7 +117,7 @@ sim_Tel(float *pTel)
 
 	/* DC link voltage measured.
 	 * */
-	pTel[32] = pm.const_lpf_U;
+	pTel[32] = pm.const_fb_U;
 
 	/* LU mode.
 	 * */
@@ -125,11 +125,11 @@ sim_Tel(float *pTel)
 
 	/* SPEED tracking point.
 	 * */
-	pTel[34] = pm.s_track * 30. / M_PI / m.Zp;
+	pTel[34] = pm.hall_wS * 30. / M_PI / m.Zp;
 	pTel[35] = pm.flux_H;
 	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
-	pTel[37] = pm.hfi_polarity;
-	pTel[38] = pm.vsi_EU;
+	pTel[37] = pm.s_integral;
+	pTel[38] = pm.const_J;
 }
 
 static void
@@ -288,6 +288,17 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
+	pm.fsm_req = PM_STATE_PROBE_CONST_J;
+	sim_F(fdTel, .1);
+
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	printf("J %.4E (kgm2) \n", pm.const_J);
+
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_J, m.J);
+
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	sim_F(fdTel, 0.);
 
@@ -403,8 +414,8 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
 	m.J = 5E-3;
 	m.M[0] = 0E-3;
-	m.M[1] = 5E-2;
-	m.M[2] = 5E-6;
+	m.M[1] = 5E-5;
+	m.M[2] = 5E-7;
 
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
@@ -421,6 +432,9 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_WEAK(NULL) == 0)
 		return 0;
 
+	m.X[2] = 0.;
+	m.X[4] = 25.;
+
 	/* Turnigy RotoMax 1.20.
          * */
 	m.R = 22E-3;
@@ -432,14 +446,17 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (280. * m.Zp);
 	m.J = 5E-4;
 	m.M[0] = 0E-3;
-	m.M[1] = 2E-3;
-	m.M[2] = 5E-6;
+	m.M[1] = 5E-5;
+	m.M[2] = 5E-7;
 
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
-	if (sim_test_SPEED(NULL) == 0)
+	if (sim_test_SPEED(fdTel) == 0)
 		return 0;
+
+	m.X[2] = 0.;
+	m.X[4] = 25.;
 
 	return 1;
 }
@@ -453,26 +470,29 @@ sim_RUN(FILE *fdTel)
 	m.U = 40.;
 	m.Zp = 23;
         m.E = 60. / 2. / M_PI / sqrt(3.) / (9.2 * m.Zp);
+	m.J = 1.5E-2;
 
 	sim_test_BASE(NULL);
 
-	pm.forced_hold_D = 0.f;
+	m.X[2] = 0.;
 
-	pm.fsm_req = PM_STATE_LU_DETACHED;
+	pm.s_gain_LP_I = 1E-3f;
+	//pm.const_J = 0.f;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	sim_F(fdTel, 1.);
-
-	m.M[0] = 1.f;
+	pm.s_setpoint = pm.probe_speed_hold;
 
 	sim_F(fdTel, 1.);
 
-	pm.fsm_req = PM_STATE_PROBE_CONST_E;
-	sim_F(fdTel, 0.);
+	m.M[2] = 5E-3;
 
-	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
+	sim_F(fdTel, .5);
 
-	sim_F(fdTel, 1.);
+	m.M[2] = 1E-7;
+
+	sim_F(fdTel, .5);
 
 	return 1;
 }

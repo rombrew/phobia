@@ -20,7 +20,7 @@ SH_DEF(pm_self_test)
 	}
 
 	do {
-		reg_format(&regfile[ID_PM_CONST_LPF_U]);
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();

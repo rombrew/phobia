@@ -78,11 +78,11 @@ void pm_default(pmc_t *pm)
 	pm->flux_N = PM_FLUX_MAX;
 	pm->flux_lower_R = - .1f;
 	pm->flux_upper_R = .4f;
-	pm->flux_slope_S = 2.f;
-	pm->flux_slope_F = 5.f;
 	pm->flux_gain_IN = 5E-4f;
 	pm->flux_gain_LO = 2E-5f;
 	pm->flux_gain_HI = 3E-4f;
+	pm->flux_gain_AS = 5E-1f;
+	pm->flux_gain_AF = 2E-1f;
 	pm->flux_gain_LP_E = 2E-5f;
 	pm->flux_gain_SF = 5E-2f;
 
@@ -96,7 +96,8 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_SF = 5E-3f;
 	pm->hfi_gain_FP = 0E-3f;
 
-	pm->const_gain_LP_U = 5E-1f;
+	pm->hall_freq = 6.f;
+
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
 	pm->const_L = 0.f;
@@ -128,7 +129,7 @@ void pm_default(pmc_t *pm)
 	pm->s_reverse = - pm->s_maximal;
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_LP_I = 5E-3f;
+	pm->s_gain_LP_I = 0E-2f;
 	pm->s_gain_HF_S = 5E-1f;
 
 	pm->x_near_EP = 5.f;
@@ -148,6 +149,9 @@ void pm_build(pmc_t *pm)
 	pm->temp_iE = 1.f / pm->const_E;
 	pm->temp_loRupRiN = (pm->flux_lower_R - pm->flux_upper_R) / (float) pm->flux_N;
 	pm->temp_dTiL = pm->dT / pm->const_L;
+	pm->temp_hTMAX = (int) (pm->freq_hz / pm->hall_freq);
+	pm->temp_JiEdTZp = pm->const_J / (1.5f * pm->const_E * pm->dT
+			* (float) (pm->const_Zp * pm->const_Zp));
 }
 
 static void
@@ -232,16 +236,16 @@ pm_detached_FLUX(pmc_t *pm)
 			m_rotf(pm->flux_V, pm->flux_wS * pm->dT, pm->flux_V);
 
 			EX = uX * pm->flux_V[0] + uY * pm->flux_V[1];
-			EY = uX * pm->flux_V[1] - uY * pm->flux_V[0];
+			EY = uY * pm->flux_V[0] - uX * pm->flux_V[1];
 
-			if (EX > (M_EPS_F * M_EPS_F)) {
+			if (EX > M_EPS_F) {
 
 				E = EY / EX * pm->freq_hz;
 
-				S = U / pm->flux_slope_S;
+				S = U * pm->flux_gain_AS;
 				S = (S > 1.f) ? 1.f : S;
 
-				pm->flux_wS += - E * S * pm->flux_gain_SF;
+				pm->flux_wS += E * S * pm->flux_gain_SF;
 			}
 
 			pm->flux_E = U / m_fabsf(pm->flux_wS);
@@ -313,7 +317,7 @@ pm_estimate_FLUX(pmc_t *pm)
 		uX += - EX * pm->flux_lower_R;
 		uY += - EY * pm->flux_lower_R;
 
-		E = m_fabsf(pm->flux_wS * pm->const_E) / pm->flux_slope_F;
+		E = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_gain_AF;
 		E = (E > 1.f) ? 1.f : 0.f;
 
 		/* Adaptive observer GAIN.
@@ -350,12 +354,12 @@ pm_estimate_FLUX(pmc_t *pm)
 		m_rotf(pm->flux_F, pm->flux_wS * pm->dT, pm->flux_F);
 
 		DX = EX * pm->flux_F[0] + EY * pm->flux_F[1];
-		DY = EX * pm->flux_F[1] - EY * pm->flux_F[0];
+		DY = EY * pm->flux_F[0] - EX * pm->flux_F[1];
 
 		if (DX > (M_EPS_F * M_EPS_F)) {
 
 			E = DY / DX * pm->freq_hz;
-			pm->flux_wS += - E * pm->flux_gain_SF;
+			pm->flux_wS += E * pm->flux_gain_SF;
 		}
 	}
 	else {
@@ -469,19 +473,26 @@ pm_sensor_HALL(pmc_t *pm)
 
 		pm->hall_TIM++;
 
-		X = pm->hall_ST[HS].X;
-		Y = pm->hall_ST[HS].Y;
+		if (HS != pm->hall_HS) {
 
-		EX = X * pm->hall_F[0] + Y * pm->hall_F[1];
-		EY = X * pm->hall_F[1] - Y * pm->hall_F[0];
+			X = pm->hall_ST[HS].X;
+			Y = pm->hall_ST[HS].Y;
 
-		pm->hall_F[0] = X;
-		pm->hall_F[1] = Y;
+			EX = X * pm->hall_F[0] + Y * pm->hall_F[1];
+			EY = Y * pm->hall_F[0] - X * pm->hall_F[1];
 
-		if (m_fabsf(EY) > 7E-2f) {
+			pm->hall_HS = HS;
+			pm->hall_F[0] = X;
+			pm->hall_F[1] = Y;
 
-			pm->hall_wS = m_atan2f(- EY, EX) * pm->freq_hz / pm->hall_TIM;
+			pm->hall_wS = m_atan2f(EY, EX) * pm->freq_hz / pm->hall_TIM;
 			pm->hall_TIM = 0;
+		}
+
+		if (pm->hall_TIM > pm->temp_hTMAX) {
+
+			pm->hall_TIM = PM_MAX_I;
+			pm->hall_wS = 0.f;
 		}
 	}
 	else {
@@ -678,8 +689,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	int		xA, xB, xC;
 	int		xMIN, xMAX;
 
-	uX *= pm->temp_const_ilpfU;
-	uY *= pm->temp_const_ilpfU;
+	uX *= pm->temp_const_ifbU;
+	uY *= pm->temp_const_ifbU;
 
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
@@ -822,15 +833,15 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		uQ = (1.f / 3.f) * (xA + xB + xC);
-		uA = (xA - uQ) * pm->const_lpf_U * pm->ts_inverted;
-		uB = (xB - uQ) * pm->const_lpf_U * pm->ts_inverted;
+		uA = (xA - uQ) * pm->const_fb_U * pm->ts_inverted;
+		uB = (xB - uQ) * pm->const_fb_U * pm->ts_inverted;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
 	}
 	else {
-		uA = (xA - xC) * pm->const_lpf_U * pm->ts_inverted;
-		uB = (xB - xC) * pm->const_lpf_U * pm->ts_inverted;
+		uA = (xA - xC) * pm->const_fb_U * pm->ts_inverted;
+		uB = (xB - xC) * pm->const_fb_U * pm->ts_inverted;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = uB;
@@ -870,7 +881,7 @@ pm_loop_current(pmc_t *pm)
 
 		if (pm->config_WEAK == PM_ENABLED) {
 
-			E = pm->vsi_EU * pm->const_lpf_U - pm->weak_bias_U;
+			E = pm->vsi_EU * pm->const_fb_U - pm->weak_bias_U;
 
 			pm->weak_D += E * pm->weak_gain_EU;
 			pm->weak_D = (pm->weak_D < - pm->weak_maximal) ? - pm->weak_maximal :
@@ -924,15 +935,15 @@ pm_loop_current(pmc_t *pm)
 
 	/* Maximal DC link CURRENT constraint.
 	 * */
-	wP = pm->watt_iB_maximal * pm->const_lpf_U;
+	wP = pm->watt_iB_maximal * pm->const_fb_U;
 	wMAX = (wP < wMAX) ? wP : wMAX;
-	wP = - pm->watt_iB_reverse * pm->const_lpf_U;
+	wP = - pm->watt_iB_reverse * pm->const_fb_U;
 	wREV = (wP > wREV) ? wP : wREV;
 
 	/* Prevent DC link OVERVOLTAGE.
 	 * */
-	wREV = (pm->const_lpf_U > pm->watt_dclink_HI) ? 0.f : wREV;
-	wMAX = (pm->const_lpf_U < pm->watt_dclink_LO) ? 0.f : wMAX;
+	wREV = (pm->const_fb_U > pm->watt_dclink_HI) ? 0.f : wREV;
+	wMAX = (pm->const_fb_U < pm->watt_dclink_LO) ? 0.f : wMAX;
 
 	/* Apply POWER constraints (with D-axis priority).
 	 * */
@@ -1000,7 +1011,7 @@ pm_loop_current(pmc_t *pm)
 	uD += - pm->lu_wS * pm->const_L * sQ;
 	uQ += pm->lu_wS * pm->const_L * sD;
 
-	uMAX = PM_UMAX(pm) * pm->const_lpf_U;
+	uMAX = PM_UMAX(pm) * pm->const_fb_U;
 
 	pm->i_integral_D += pm->i_gain_I * eD;
 	pm->i_integral_D = (pm->i_integral_D > uMAX) ? uMAX :
@@ -1037,7 +1048,7 @@ pm_loop_current(pmc_t *pm)
 static void
 pm_loop_speed(pmc_t *pm)
 {
-	float		iSP, wSP, eS, dS;
+	float		iSP, iFF, wSP, eS, dS;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
@@ -1063,18 +1074,18 @@ pm_loop_speed(pmc_t *pm)
 		 * */
 		eS = pm->s_track - pm->lu_wS;
 
-		if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
+		/* Slow down in case of HFI mode.
+		 * */
+		eS = (pm->lu_mode == PM_LU_ESTIMATE_HFI) ? eS * pm->s_gain_HF_S : eS;
 
-			/* Slow down in case of HFI mode.
-			 * */
-			eS *= pm->s_gain_HF_S;
-		}
-
-		/* Here is P+LP regulator.
+		/* Here is PI regulator with load reconstruction.
 		 * */
 		iSP = pm->s_gain_P * eS;
 
-		pm->s_integral += (pm->lu_iQ - pm->s_integral) * pm->s_gain_LP_I;
+		iFF = pm->lu_iQ - (pm->lu_wS - pm->s_last_wS) * pm->temp_JiEdTZp;
+		pm->s_last_wS = pm->lu_wS;
+
+		pm->s_integral += (iFF - pm->s_integral) * pm->s_gain_LP_I;
 		iSP += pm->s_integral;
 
 		/* Output clamp.
@@ -1188,7 +1199,7 @@ pm_statistics(pmc_t *pm)
 	/* Get WATT per HOUR.
 	 * */
 	Wh = pm->watt_lpf_wP * pm->dT * (1.f / 3600.f);
-	Ah = Wh * pm->temp_const_ilpfU;
+	Ah = Wh * pm->temp_const_ifbU;
 
 	if (Wh > 0.f) {
 
@@ -1225,7 +1236,7 @@ pm_statistics(pmc_t *pm)
 
 void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
-	float		vA, vB, vC, U, Q;
+	float		vA, vB, vC, Q;
 
 	if ((pm->vsi_IF & 2) == 0) {
 
@@ -1261,11 +1272,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 	/* Get DC link voltage.
 	 * */
-	U = pm->ad_US[1] * fb->voltage_U + pm->ad_US[0];
-	pm->const_lpf_U += (U - pm->const_lpf_U) * pm->const_gain_LP_U;
-	pm->temp_const_ilpfU = 1.f / pm->const_lpf_U;
+	pm->const_fb_U = pm->ad_US[1] * fb->voltage_U + pm->ad_US[0];
+	pm->temp_const_ifbU = 1.f / pm->const_fb_U;
 
-	if (pm->const_lpf_U > pm->fault_voltage_halt) {
+	if (pm->const_fb_U > pm->fault_voltage_halt) {
 
 		pm->fail_reason = PM_ERROR_DC_LINK_OVER_VOLTAGE;
 		pm->fsm_req = PM_STATE_HALT;

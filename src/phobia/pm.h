@@ -240,8 +240,6 @@ typedef struct {
 	int		flux_N;
 	float		flux_lower_R;
 	float		flux_upper_R;
-	float		flux_slope_S;
-	float		flux_slope_F;
 	float		flux_E;
 	float		flux_vm_X;
 	float		flux_vm_Y;
@@ -253,6 +251,8 @@ typedef struct {
 	float		flux_gain_IN;
 	float		flux_gain_LO;
 	float		flux_gain_HI;
+	float		flux_gain_AS;
+	float		flux_gain_AF;
 	float		flux_gain_LP_E;
 	float		flux_gain_SF;
 
@@ -279,21 +279,22 @@ typedef struct {
 	}
 	hall_ST[8];
 
+	int		hall_HS;
 	float		hall_F[2];
 	float		hall_wS;
+	float		hall_freq;
 	int		hall_TIM;
 	int		hall_IF;
 
 	/* FIXME !!!!!
 	 * */
-	int		iqep_prev;
-	int		iqep_delta;
-	float		iqep_F[2];
-	float		iqep_wS;
-	int		iqep_TIM;
+	int		iep_prev;
+	int		iep_delta;
+	float		iep_F[2];
+	float		iep_wS;
+	int		iep_TIM;
 
-	float		const_lpf_U;
-	float		const_gain_LP_U;
+	float		const_fb_U;
 	float		const_E;
 	float		const_R;
 	float		const_L;
@@ -305,10 +306,12 @@ typedef struct {
 	float		const_im_R;
 	float		const_dd_T;
 
-	float		temp_const_ilpfU;
+	float		temp_const_ifbU;
 	float		temp_iE;
 	float		temp_loRupRiN;
 	float		temp_dTiL;
+	int		temp_hTMAX;
+	float		temp_JiEdTZp;
 
 	float		watt_wP_maximal;
 	float		watt_iB_maximal;
@@ -346,6 +349,7 @@ typedef struct {
 	float		s_accel;
 	float		s_track;
 	float		s_integral;
+	float		s_last_wS;
 	float		s_gain_P;
 	float		s_gain_LP_I;
 	float		s_gain_HF_S;

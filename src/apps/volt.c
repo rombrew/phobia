@@ -30,7 +30,7 @@ void ap_VOLT(void *pData)
 		vTaskDelay(xTk);
 
 		xDC = (xDC < xMAX) ? xDC + 1 : xMIN;
-		pm.vsi_X = xDC * pm.const_lpf_U / pm.dc_resolution;
+		pm.vsi_X = xDC * pm.const_fb_U * pm.ts_inverted;
 
 		PWM_set_DC(xDC, xDC, xDC);
 	}
