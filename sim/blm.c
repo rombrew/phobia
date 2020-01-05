@@ -113,7 +113,7 @@ void blm_Enable(blm_t *m)
 	/* Load torque constants.
 	 * */
 	m->M[0] = 0E-3;
-	m->M[1] = 2E-7;
+	m->M[1] = 5E-5;
 	m->M[2] = 5E-7;
 	m->M[3] = 1E-1;
 
@@ -134,8 +134,8 @@ void blm_Enable(blm_t *m)
 
 	/* Quadrature Encoder.
 	 * */
-	m->QEP_R = 1600;	/* Mechanical resolution */
-	m->QEP_Zq = 1.0;	/* Reduction ratio */
+	m->EP_R = 1600;	/* Mechanical resolution */
+	m->EP_Zq = 1.0;	/* Reduction ratio */
 }
 
 static void
@@ -356,12 +356,15 @@ blm_sample_HS(blm_t *m)
 static void
 blm_sample_EP(blm_t *m)
 {
-	double		INC;
+	double		A, B, INC;
 
-	INC = (m->X[3] - m->X[12]) / (double) m->Zp;
+	A = cos(m->X[12]) * cos(m->X[3]) + sin(m->X[12]) * sin(m->X[3]);
+	B = cos(m->X[12]) * sin(m->X[3]) - sin(m->X[12]) * cos(m->X[3]);
+
+	INC = atan2(B, A) / (2. * M_PI * (double) m->Zp);
 
 	m->X[12] = m->X[3];
-	m->X[13] += INC / (double) m->QEP_Zq;
+	m->X[13] += INC * (double) m->EP_R / m->EP_Zq;
 
 	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 65536. :
 		(m->X[13] >= 65536.) ? m->X[13] - 65536. : m->X[13];

@@ -63,8 +63,8 @@ typedef struct {
 
 	/* Quadrature Encoder.
 	 * */
-	int		QEP_R;
-	double		QEP_Zq;
+	int		EP_R;
+	double		EP_Zq;
 
 	/* ADC result (OUTPUT).
 	 * */

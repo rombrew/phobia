@@ -115,10 +115,10 @@ You can limit acceleration.
 
 	# reg pm.s_accel_rpm <rpm/s>
 
-Also you can tune P+LP regulator gains.
+Also you can tune PI regulator gains.
 
 	# reg pm.s_gain_P <x>
-	# reg pm.s_gain_LP_I <x>
+	# reg pm.s_gain_I <x>
 
 ## Derating
 

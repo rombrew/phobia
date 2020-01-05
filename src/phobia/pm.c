@@ -73,7 +73,7 @@ void pm_default(pmc_t *pm)
 	pm->forced_hold_D = 10.f;
 	pm->forced_maximal = 200.f;
 	pm->forced_reverse = - pm->forced_maximal;
-	pm->forced_accel = 200.f;
+	pm->forced_accel = 400.f;
 
 	pm->flux_N = PM_FLUX_MAX;
 	pm->flux_lower_R = - .1f;
@@ -96,7 +96,10 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_SF = 5E-3f;
 	pm->hfi_gain_FP = 0E-3f;
 
-	pm->hall_freq = 6.f;
+	pm->hall_minimal_hz = 6.f;
+	pm->qenc_R = 1600;
+	pm->qenc_Zq = 1.f;
+	pm->qenc_gain_SF = 5E-3f;
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
@@ -129,8 +132,8 @@ void pm_default(pmc_t *pm)
 	pm->s_reverse = - pm->s_maximal;
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_LP_I = 0E-2f;
-	pm->s_gain_HF_S = 5E-1f;
+	pm->s_gain_I = 0E-2f;
+	pm->s_gain_S = 5E-1f;
 
 	pm->x_near_EP = 5.f;
 	pm->x_gain_P = 70.f;
@@ -149,7 +152,8 @@ void pm_build(pmc_t *pm)
 	pm->temp_iE = 1.f / pm->const_E;
 	pm->temp_loRupRiN = (pm->flux_lower_R - pm->flux_upper_R) / (float) pm->flux_N;
 	pm->temp_dTiL = pm->dT / pm->const_L;
-	pm->temp_hTMAX = (int) (pm->freq_hz / pm->hall_freq);
+	pm->temp_hTMAX = (int) (pm->freq_hz / pm->hall_minimal_hz);
+	pm->temp_2PZiR = 2.f * M_PI_F * pm->const_Zp * pm->qenc_Zq / (float) pm->qenc_R;
 	pm->temp_JiEdTZp = pm->const_J / (1.5f * pm->const_E * pm->dT
 			* (float) (pm->const_Zp * pm->const_Zp));
 }
@@ -506,7 +510,33 @@ pm_sensor_HALL(pmc_t *pm)
 static void
 pm_sensor_QENC(pmc_t *pm)
 {
-	/* TODO */
+	float			relR, dR, relF[2];
+	int			relEP, N;
+
+	relEP = (short int) (pm->fb_EP - pm->qenc_base_EP);
+	relR = (float) relEP * pm->temp_2PZiR;
+
+	dR = relR - pm->qenc_relR;
+	pm->qenc_relR = relR;
+
+	N = (int) (relR / (2.f * M_PI_F));
+	relR -= (float) (N * 2.f * M_PI_F);
+
+	relR += (relR < - M_PI_F) ? 2.f * M_PI_F : 0.f;
+	relR += (relR > M_PI_F) ? - 2.f * M_PI_F : 0.f;
+
+	relF[0] = m_cosf(relR);
+	relF[1] = m_sinf(relR);
+
+	pm->qenc_F[0] = relF[0] * pm->qenc_base_F[0] - relF[1] * pm->qenc_base_F[1];
+	pm->qenc_F[1] = relF[1] * pm->qenc_base_F[0] + relF[0] * pm->qenc_base_F[1];
+
+	if (pm->qenc_TIM != 0) {
+
+		pm->qenc_wS += (dR * pm->freq_hz - pm->qenc_wS) * pm->qenc_gain_SF;
+	}
+
+	pm->qenc_TIM++;
 }
 
 static void
@@ -623,6 +653,19 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hall_F[1] = pm->lu_F[1];
 				pm->hall_TIM = PM_MAX_I;
 			}
+			else if (pm->config_SENSOR == PM_SENSOR_QENC) {
+
+				pm->lu_mode = PM_LU_SENSOR_QENC;
+
+				pm->qenc_base_EP = pm->fb_EP;
+				pm->qenc_base_F[0] = pm->lu_F[0];
+				pm->qenc_base_F[1] = pm->lu_F[1];
+				pm->qenc_TIM = 0;
+
+				pm->qenc_F[0] = pm->lu_F[0];
+				pm->qenc_F[1] = pm->lu_F[1];
+				pm->qenc_wS = pm->lu_wS;
+			}
 			else if (pm->config_HFI == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_HFI;
@@ -672,6 +715,23 @@ pm_lu_FSM(pmc_t *pm)
 		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
 
 			if (m_fabsf(pm->hall_wS * pm->const_E) > pm->lu_lock_E) {
+
+				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
+			}
+		}
+	}
+	else if (pm->lu_mode == PM_LU_SENSOR_QENC) {
+
+		pm_estimate_FLUX(pm);
+		pm_sensor_QENC(pm);
+
+		pm->lu_F[0] = pm->qenc_F[0];
+		pm->lu_F[1] = pm->qenc_F[1];
+		pm->lu_wS = pm->qenc_wS;
+
+		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
+
+			if (m_fabsf(pm->qenc_wS * pm->const_E) > pm->lu_lock_E) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 			}
@@ -1074,9 +1134,9 @@ pm_loop_speed(pmc_t *pm)
 		 * */
 		eS = pm->s_track - pm->lu_wS;
 
-		/* Slow down in case of HFI mode.
+		/* Slow down in case of weak speed estimate.
 		 * */
-		eS = (pm->lu_mode == PM_LU_ESTIMATE_HFI) ? eS * pm->s_gain_HF_S : eS;
+		eS *= (pm->lu_mode != PM_LU_ESTIMATE_FLUX) ? pm->s_gain_S : 1.f;
 
 		/* Here is PI regulator with load reconstruction.
 		 * */
@@ -1085,13 +1145,13 @@ pm_loop_speed(pmc_t *pm)
 		iFF = pm->lu_iQ - (pm->lu_wS - pm->s_last_wS) * pm->temp_JiEdTZp;
 		pm->s_last_wS = pm->lu_wS;
 
-		pm->s_integral += (iFF - pm->s_integral) * pm->s_gain_LP_I;
+		pm->s_integral += (iFF - pm->s_integral) * pm->s_gain_I;
 		iSP += pm->s_integral;
 
 		/* Output clamp.
 		 * */
 		iSP = (iSP > pm->i_maximal) ? pm->i_maximal :
-			(iSP < - pm->i_maximal) ? - pm->i_maximal : iSP;
+			(iSP < pm->i_reverse) ? pm->i_reverse : iSP;
 
 		/* Update current loop setpoint. It would be possible here to
 		 * use MTPA or something else.

@@ -60,6 +60,7 @@ enum {
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_HALL,
+	PM_STATE_ADJUST_QENC,
 	PM_STATE_HALT,
 };
 
@@ -279,20 +280,22 @@ typedef struct {
 	}
 	hall_ST[8];
 
+	int		hall_IF;
 	int		hall_HS;
+	int		hall_TIM;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_freq;
-	int		hall_TIM;
-	int		hall_IF;
+	float		hall_minimal_hz;
 
-	/* FIXME !!!!!
-	 * */
-	int		iep_prev;
-	int		iep_delta;
-	float		iep_F[2];
-	float		iep_wS;
-	int		iep_TIM;
+	int		qenc_base_EP;
+	float		qenc_base_F[2];
+	int		qenc_TIM;
+	float		qenc_relR;
+	int		qenc_R;
+	float		qenc_Zq;
+	float		qenc_F[2];
+	float		qenc_wS;
+	float		qenc_gain_SF;
 
 	float		const_fb_U;
 	float		const_E;
@@ -311,6 +314,7 @@ typedef struct {
 	float		temp_loRupRiN;
 	float		temp_dTiL;
 	int		temp_hTMAX;
+	float		temp_2PZiR;
 	float		temp_JiEdTZp;
 
 	float		watt_wP_maximal;
@@ -351,8 +355,8 @@ typedef struct {
 	float		s_integral;
 	float		s_last_wS;
 	float		s_gain_P;
-	float		s_gain_LP_I;
-	float		s_gain_HF_S;
+	float		s_gain_I;
+	float		s_gain_S;
 
 	float		x_setpoint_F[2];
 	int		x_setpoint_revol;

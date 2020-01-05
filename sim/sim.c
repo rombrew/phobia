@@ -36,7 +36,7 @@ blmZ(int Z)
 static void
 sim_Tel(float *pTel)
 {
-	double		A, B, C, D, Q;
+	double		A, B, E, D, Q;
 
 	/* Model.
 	 * */
@@ -54,88 +54,82 @@ sim_Tel(float *pTel)
 	pTel[8] = (double) m.PWM_B * 100. / (double) m.PWM_R;
 	pTel[9] = (double) m.PWM_C * 100. / (double) m.PWM_R;
 
+	/* Sensor pulse.
+	 * */
+	pTel[10] = m.pulse_HS;
+	pTel[11] = m.pulse_EP;
+
 	/* Estimated current.
 	 * */
-	pTel[10] = pm.lu_iD;
-	pTel[11] = pm.lu_iQ;
+	pTel[12] = pm.lu_iD;
+	pTel[13] = pm.lu_iQ;
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
 	A = D * pm.lu_F[0] + Q * pm.lu_F[1];
 	B = D * pm.lu_F[1] - Q * pm.lu_F[0];
-	C = atan2(B, A);
+	E = atan2(B, A);
 
-	/* FLUX position.
-	 * */
-	pTel[12] = atan2(pm.lu_F[1], pm.lu_F[0]) * 180. / M_PI;
-	pTel[13] = C * 180. / M_PI;
+	pTel[14] = E * 180. / M_PI;
 
-	/* FLUX speed.
+	/* Estimated position.
 	 * */
-	pTel[14] = pm.lu_wS * 30. / M_PI / m.Zp;
+	pTel[15] = atan2(pm.lu_F[1], pm.lu_F[0]) * 180. / M_PI;
+	pTel[16] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
+	pTel[17] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
+	pTel[18] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
+	pTel[19] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
+	pTel[20] = atan2(pm.qenc_F[1], pm.qenc_F[0]) * 180. / M_PI;
 
-	/* FLUX E.
+	/* Estimated speed.
 	 * */
-	pTel[15] = pm.flux_E;
+	pTel[21] = pm.lu_wS * 30. / M_PI / m.Zp;
+	pTel[22] = pm.flux_wS * 30. / M_PI / m.Zp;
+	pTel[23] = pm.forced_wS * 30. / M_PI / m.Zp;
+	pTel[24] = pm.hfi_wS * 30. / M_PI / m.Zp;
+	pTel[25] = pm.hall_wS * 30. / M_PI / m.Zp;
+	pTel[26] = pm.qenc_wS * 30. / M_PI / m.Zp;
 
-	/* VSI voltage (XY).
-	 * */
-	pTel[16] = pm.vsi_X;
-	pTel[17] = pm.vsi_Y;
+	pTel[27] = pm.vsi_EU;
+	pTel[28] = pm.vsi_X;
+	pTel[29] = pm.vsi_Y;
+	pTel[30] = pm.vsi_IF;
+	pTel[31] = pm.vsi_UF;
 
-	/* WATT voltage (DQ).
-	 * */
-	pTel[18] = pm.watt_lpf_D;
-	pTel[19] = pm.watt_lpf_Q;
+	pTel[32] = pm.tvm_A;
+	pTel[33] = pm.tvm_B;
+	pTel[34] = pm.tvm_C;
+	pTel[35] = pm.tvm_DX;
+	pTel[36] = pm.tvm_DY;
 
-	/* VSI zone flags.
-	 * */
-	pTel[20] = pm.vsi_IF;
-	pTel[21] = pm.vsi_UF;
+	pTel[37] = pm.lu_mode;
+	pTel[38] = pm.lu_TIM;
 
-	/* TVM voltages (ABC).
-	 * */
-	pTel[22] = pm.tvm_A;
-	pTel[23] = pm.tvm_B;
-	pTel[24] = pm.tvm_C;
+	pTel[39] = pm.flux_E;
+	pTel[40] = pm.flux_H;
+	pTel[41] = pm.flux[pm.flux_H].lpf_E;
+	pTel[42] = pm.hfi_polarity;
 
-	/* TVM voltages (XY).
-	 * */
-	pTel[25] = pm.tvm_DX;
-	pTel[26] = pm.tvm_DY;
+	pTel[43] = pm.watt_lpf_D;
+	pTel[44] = pm.watt_lpf_Q;
+	pTel[45] = m.iP;
+	pTel[46] = pm.watt_lpf_wP;
+	pTel[47] = pm.const_fb_U;
 
-	/* FLUX residue (DQ).
-	 * */
-	pTel[27] = pm.flux[pm.flux_H].lpf_E;
-	pTel[28] = 0.f;
-	pTel[29] = 0.f;
+	pTel[48] = pm.i_setpoint_D;
+	pTel[49] = pm.i_setpoint_Q;
+	pTel[50] = pm.weak_D;
 
-	/* WATT power.
-	 * */
-	pTel[30] = m.iP;
-	pTel[31] = pm.watt_lpf_wP;
-
-	/* DC link voltage measured.
-	 * */
-	pTel[32] = pm.const_fb_U;
-
-	/* LU mode.
-	 * */
-	pTel[33] = pm.lu_mode;
-
-	/* SPEED tracking point.
-	 * */
-	pTel[34] = pm.hall_wS * 30. / M_PI / m.Zp;
-	pTel[35] = pm.flux_H;
-	pTel[36] = pm.s_setpoint * 30. / M_PI / m.Zp;
-	pTel[37] = pm.s_integral;
-	pTel[38] = pm.const_J;
+	pTel[51] = pm.s_setpoint * 30. / M_PI / m.Zp;
+	pTel[52] = pm.s_track * 30. / M_PI / m.Zp;
+	pTel[53] = pm.s_integral;
+	pTel[54] = pm.qenc_TIM;
 }
 
 static void
 sim_F(FILE *fdTel, double dT)
 {
-	const int	szTel = 40;
+	const int	szTel = 80;
 	float		Tel[szTel];
 	double		Tend;
 
@@ -325,7 +319,7 @@ sim_test_SPEED(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 
 	pm.s_setpoint = .2f * m.U / m.E;
-	sim_F(fdTel, 2.);
+	sim_F(fdTel, 3.);
 
 	printf("wSP %.2f (rpm)\n", pm.s_setpoint * 30. / M_PI / m.Zp);
 	printf("lu_wS %.2f (rpm)\n", pm.lu_wS * 30. / M_PI / m.Zp);
@@ -384,6 +378,11 @@ sim_test_HALL(FILE *fdTel)
 		printf("hall_ST[%i] %.1f\n", N, rot_H);
 	}
 
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	t_assert(pm.fail_reason == PM_OK);
+
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	sim_F(fdTel, 0.);
 
@@ -413,9 +412,6 @@ sim_TEST(FILE *fdTel)
 	m.Zp = 15;
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
 	m.J = 5E-3;
-	m.M[0] = 0E-3;
-	m.M[1] = 5E-5;
-	m.M[2] = 5E-7;
 
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
@@ -432,31 +428,22 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_WEAK(NULL) == 0)
 		return 0;
 
-	m.X[2] = 0.;
-	m.X[4] = 25.;
-
 	/* Turnigy RotoMax 1.20.
          * */
-	m.R = 22E-3;
-	m.Ld = 11E-6;
-	m.Lq = 17E-6;
-	m.U = 32.;
-	m.Rs = 0.2;
-	m.Zp = 7;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (280. * m.Zp);
-	m.J = 5E-4;
-	m.M[0] = 0E-3;
-	m.M[1] = 5E-5;
-	m.M[2] = 5E-7;
+	m.R = 14E-3;
+	m.Ld = 10E-6;
+	m.Lq = 15E-6;
+	m.U = 22.;
+	m.Rs = 0.1;
+	m.Zp = 14;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
+	m.J = 2.7E-4;
 
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
-	if (sim_test_SPEED(fdTel) == 0)
+	if (sim_test_SPEED(NULL) == 0)
 		return 0;
-
-	m.X[2] = 0.;
-	m.X[4] = 25.;
 
 	return 1;
 }
@@ -476,8 +463,8 @@ sim_RUN(FILE *fdTel)
 
 	m.X[2] = 0.;
 
-	pm.s_gain_LP_I = 1E-3f;
-	//pm.const_J = 0.f;
+	pm.s_gain_I = 5E-3f;
+	pm.config_SENSOR = PM_SENSOR_QENC;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
@@ -490,7 +477,24 @@ sim_RUN(FILE *fdTel)
 
 	sim_F(fdTel, .5);
 
+	pm.lu_unlock_E = 40.f;
+	pm.lu_lock_E = 40.f;
+
+	sim_F(fdTel, .5);
+
 	m.M[2] = 1E-7;
+
+	sim_F(fdTel, .5);
+
+	pm.s_setpoint = 30.f;
+
+	sim_F(fdTel, 1.);
+
+	pm.s_setpoint = 10.f;
+
+	sim_F(fdTel, 1.);
+
+	m.M[0] = -4.f;
 
 	sim_F(fdTel, .5);
 
