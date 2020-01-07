@@ -125,9 +125,6 @@ figure 0 37 "pm.lu_mode"
 page "pm.lu_TIM"
 figure 0 38 "pm.lu_TIM"
 
-page "pm.qenc_TIM"
-figure 0 54 "pm.qenc_TIM"
-
 page "pm.flux_E"
 label 1 "(Wb)"
 figure 0 39 "pm.flux_E"

@@ -9,6 +9,7 @@
 #define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
 #define PM_FLUX_MAX			25
+#define PM_HALL_SPAN			1.05f
 #define PM_MAX_F			7E+27f
 #define PM_MAX_I			16777216l
 #define PM_SFI(s)			#s
@@ -282,20 +283,30 @@ typedef struct {
 
 	int		hall_IF;
 	int		hall_HS;
-	int		hall_TIM;
+	int		hall_DIRF;
+	float		hall_prolS;
+	int		hall_prolTIM;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_minimal_hz;
+	float		hall_lpf_wS;
+	float		hall_prol_T;
+	float		hall_gain_PF;
+	float		hall_gain_SF;
+	float		hall_gain_LP;
 
-	int		qenc_base_EP;
-	float		qenc_base_F[2];
-	int		qenc_TIM;
-	float		qenc_relR;
+	int		qenc_baseEP;
+	float		qenc_baseF[2];
+	int		qenc_lastEP;
+	int		qenc_rotEP;
+	float		qenc_prolS;
 	int		qenc_R;
 	float		qenc_Zq;
 	float		qenc_F[2];
 	float		qenc_wS;
+	float		qenc_lpf_wS;
+	float		qenc_gain_PF;
 	float		qenc_gain_SF;
+	float		qenc_gain_LP;
 
 	float		const_fb_U;
 	float		const_E;
@@ -313,7 +324,6 @@ typedef struct {
 	float		temp_iE;
 	float		temp_loRupRiN;
 	float		temp_dTiL;
-	int		temp_hTMAX;
 	float		temp_2PZiR;
 	float		temp_JiEdTZp;
 

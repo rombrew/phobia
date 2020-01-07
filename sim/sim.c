@@ -123,7 +123,6 @@ sim_Tel(float *pTel)
 	pTel[51] = pm.s_setpoint * 30. / M_PI / m.Zp;
 	pTel[52] = pm.s_track * 30. / M_PI / m.Zp;
 	pTel[53] = pm.s_integral;
-	pTel[54] = pm.qenc_TIM;
 }
 
 static void
@@ -460,11 +459,12 @@ sim_RUN(FILE *fdTel)
 	m.J = 1.5E-2;
 
 	sim_test_BASE(NULL);
+	sim_test_HALL(NULL);
 
 	m.X[2] = 0.;
 
-	pm.s_gain_I = 5E-3f;
-	pm.config_SENSOR = PM_SENSOR_QENC;
+	pm.s_gain_I = 5E-3f / 10.f;
+	pm.config_SENSOR = PM_SENSOR_HALL;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
@@ -490,11 +490,19 @@ sim_RUN(FILE *fdTel)
 
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 10.f;
+	pm.s_setpoint = 0.f;
 
-	sim_F(fdTel, 1.);
+	sim_F(fdTel, .5);
 
 	m.M[0] = -4.f;
+
+	sim_F(fdTel, .5);
+
+	pm.s_setpoint = 100.f;
+
+	sim_F(fdTel, .5);
+
+	pm.s_setpoint = 400.f;
 
 	sim_F(fdTel, .5);
 

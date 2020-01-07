@@ -96,10 +96,16 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_SF = 5E-3f;
 	pm->hfi_gain_FP = 0E-3f;
 
-	pm->hall_minimal_hz = 6.f;
+	pm->hall_prol_T = 0.1f;
+	pm->hall_gain_PF = 1E-0f;
+	pm->hall_gain_SF = 1E-3f;
+	pm->hall_gain_LP = 5E-2f;
+
 	pm->qenc_R = 1600;
 	pm->qenc_Zq = 1.f;
+	pm->qenc_gain_PF = 1E-0f;
 	pm->qenc_gain_SF = 5E-3f;
+	pm->qenc_gain_LP = 1E-3f;
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
@@ -133,7 +139,7 @@ void pm_default(pmc_t *pm)
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 5E-2f;
 	pm->s_gain_I = 0E-2f;
-	pm->s_gain_S = 5E-1f;
+	pm->s_gain_S = 2E-1f;
 
 	pm->x_near_EP = 5.f;
 	pm->x_gain_P = 70.f;
@@ -152,7 +158,6 @@ void pm_build(pmc_t *pm)
 	pm->temp_iE = 1.f / pm->const_E;
 	pm->temp_loRupRiN = (pm->flux_lower_R - pm->flux_upper_R) / (float) pm->flux_N;
 	pm->temp_dTiL = pm->dT / pm->const_L;
-	pm->temp_hTMAX = (int) (pm->freq_hz / pm->hall_minimal_hz);
 	pm->temp_2PZiR = 2.f * M_PI_F * pm->const_Zp * pm->qenc_Zq / (float) pm->qenc_R;
 	pm->temp_JiEdTZp = pm->const_J / (1.5f * pm->const_E * pm->dT
 			* (float) (pm->const_Zp * pm->const_Zp));
@@ -468,36 +473,82 @@ pm_estimate_HFI(pmc_t *pm)
 static void
 pm_sensor_HALL(pmc_t *pm)
 {
-	float		X, Y, EX, EY;
+	float		hF[2], A, B, E;
 	int		HS;
 
 	HS = pm->fb_HS;
 
 	if (HS >= 1 && HS <= 6) {
 
-		pm->hall_TIM++;
+		if (HS == pm->hall_HS) {
 
-		if (HS != pm->hall_HS) {
+			if (pm->hall_DIRF * pm->hall_lpf_wS > M_EPS_F) {
 
-			X = pm->hall_ST[HS].X;
-			Y = pm->hall_ST[HS].Y;
+				E = pm->hall_lpf_wS * pm->hall_gain_PF * pm->dT;
+				B = PM_HALL_SPAN * pm->hall_gain_PF;
 
-			EX = X * pm->hall_F[0] + Y * pm->hall_F[1];
-			EY = Y * pm->hall_F[0] - X * pm->hall_F[1];
+				if (		m_fabsf(E) > M_EPS_F
+						&& m_fabsf(pm->hall_prolS) < B) {
+
+					m_rotf(pm->hall_F, E, pm->hall_F);
+
+					pm->hall_prolS += E;
+				}
+				else {
+					E = 0.f;
+				}
+
+				if (pm->hall_prolTIM != 0) {
+
+					pm->hall_prolTIM--;
+				}
+				else {
+					pm->hall_DIRF = 0;
+					pm->hall_F[0] = pm->hall_ST[HS].X;
+					pm->hall_F[1] = pm->hall_ST[HS].Y;
+
+					E = 0.f;
+				}
+			}
+			else if (pm->hall_DIRF != 0) {
+
+				pm->hall_DIRF = 0;
+				pm->hall_F[0] = pm->hall_ST[HS].X;
+				pm->hall_F[1] = pm->hall_ST[HS].Y;
+
+				E = 0.f;
+			}
+			else {
+				E = 0.f;
+			}
+		}
+		else {
+			hF[0] = pm->hall_ST[HS].X;
+			hF[1] = pm->hall_ST[HS].Y;
+
+			A = pm->hall_ST[pm->hall_HS].X;
+			B = pm->hall_ST[pm->hall_HS].Y;
+
+			E = hF[1] * A - hF[0] * B;
+			pm->hall_DIRF = (E < 0.f) ? - 1 : 1;
+
+			E = - pm->hall_DIRF * (PM_HALL_SPAN / 2.f);
+			m_rotf(hF, E * pm->hall_gain_PF, hF);
+
+			A = hF[0] * pm->hall_F[0] + hF[1] * pm->hall_F[1];
+			B = hF[1] * pm->hall_F[0] - hF[0] * pm->hall_F[1];
 
 			pm->hall_HS = HS;
-			pm->hall_F[0] = X;
-			pm->hall_F[1] = Y;
+			pm->hall_prolTIM = pm->hall_prol_T * pm->freq_hz;
+			pm->hall_prolS = 0.f;
+			pm->hall_F[0] = hF[0];
+			pm->hall_F[1] = hF[1];
 
-			pm->hall_wS = m_atan2f(EY, EX) * pm->freq_hz / pm->hall_TIM;
-			pm->hall_TIM = 0;
+			E = m_atan2f(B, A);
 		}
 
-		if (pm->hall_TIM > pm->temp_hTMAX) {
-
-			pm->hall_TIM = PM_MAX_I;
-			pm->hall_wS = 0.f;
-		}
+		pm->hall_wS += (E * pm->freq_hz - pm->hall_wS) * pm->hall_gain_SF;
+		pm->hall_lpf_wS += (pm->hall_wS - pm->hall_lpf_wS) * pm->hall_gain_LP;
 	}
 	else {
 		pm->hall_IF = 0;
@@ -510,33 +561,50 @@ pm_sensor_HALL(pmc_t *pm)
 static void
 pm_sensor_QENC(pmc_t *pm)
 {
-	float			relR, dR, relF[2];
+	float			relR, rotR, rotF[2];
 	int			relEP, N;
 
-	relEP = (short int) (pm->fb_EP - pm->qenc_base_EP);
-	relR = (float) relEP * pm->temp_2PZiR;
+	relEP = (short int) (pm->fb_EP - pm->qenc_baseEP);
 
-	dR = relR - pm->qenc_relR;
-	pm->qenc_relR = relR;
+	if (relEP == 0) {
 
-	N = (int) (relR / (2.f * M_PI_F));
-	relR -= (float) (N * 2.f * M_PI_F);
+		relR = pm->qenc_lpf_wS * pm->qenc_gain_PF * pm->dT;
+		relR = (m_fabsf(pm->qenc_prolS) < pm->temp_2PZiR) ? relR : 0.f;
+		relR = (pm->qenc_lastEP * pm->qenc_lpf_wS > M_EPS_F) ? relR : 0.f;
+		pm->qenc_prolS += relR;
 
-	relR += (relR < - M_PI_F) ? 2.f * M_PI_F : 0.f;
-	relR += (relR > M_PI_F) ? - 2.f * M_PI_F : 0.f;
+		rotR = pm->qenc_prolS + (float) pm->qenc_rotEP * pm->temp_2PZiR;
+	}
+	else {
+		pm->qenc_lastEP = relEP;
 
-	relF[0] = m_cosf(relR);
-	relF[1] = m_sinf(relR);
+		relR = (float) relEP * pm->temp_2PZiR;
+		rotR = relR + (float) pm->qenc_rotEP * pm->temp_2PZiR;
 
-	pm->qenc_F[0] = relF[0] * pm->qenc_base_F[0] - relF[1] * pm->qenc_base_F[1];
-	pm->qenc_F[1] = relF[1] * pm->qenc_base_F[0] + relF[0] * pm->qenc_base_F[1];
+		relR -= pm->qenc_prolS;
+		pm->qenc_prolS = 0.f;
 
-	if (pm->qenc_TIM != 0) {
-
-		pm->qenc_wS += (dR * pm->freq_hz - pm->qenc_wS) * pm->qenc_gain_SF;
+		pm->qenc_rotEP += relEP;
+		pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_R) ? pm->qenc_R : 0;
+		pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_R) ? - pm->qenc_R : 0;
 	}
 
-	pm->qenc_TIM++;
+	pm->qenc_baseEP = pm->fb_EP;
+
+	N = (int) (rotR / (2.f * M_PI_F));
+	rotR -= (float) (N * 2.f * M_PI_F);
+
+	rotR += (rotR < - M_PI_F) ? 2.f * M_PI_F : 0.f;
+	rotR += (rotR > M_PI_F) ? - 2.f * M_PI_F : 0.f;
+
+	rotF[0] = m_cosf(rotR);
+	rotF[1] = m_sinf(rotR);
+
+	pm->qenc_F[0] = rotF[0] * pm->qenc_baseF[0] - rotF[1] * pm->qenc_baseF[1];
+	pm->qenc_F[1] = rotF[1] * pm->qenc_baseF[0] + rotF[0] * pm->qenc_baseF[1];
+
+	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * pm->qenc_gain_SF;
+	pm->qenc_lpf_wS += (pm->qenc_wS - pm->qenc_lpf_wS) * pm->qenc_gain_LP;
 }
 
 static void
@@ -566,9 +634,13 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
+				pm->hall_HS = pm->fb_HS;
+				pm->hall_DIRF = 0;
+
 				pm->hall_F[0] = pm->lu_F[0];
 				pm->hall_F[1] = pm->lu_F[1];
-				pm->hall_TIM = PM_MAX_I;
+				pm->hall_wS = pm->lu_wS;
+				pm->hall_lpf_wS = pm->lu_wS;
 
 				pm->proc_set_Z(0);
 			}
@@ -649,22 +721,29 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
+				pm->hall_HS = pm->fb_HS;
+				pm->hall_DIRF = 0;
+
 				pm->hall_F[0] = pm->lu_F[0];
 				pm->hall_F[1] = pm->lu_F[1];
-				pm->hall_TIM = PM_MAX_I;
+				pm->hall_wS = pm->lu_wS;
+				pm->hall_lpf_wS = pm->lu_wS;
 			}
 			else if (pm->config_SENSOR == PM_SENSOR_QENC) {
 
 				pm->lu_mode = PM_LU_SENSOR_QENC;
 
-				pm->qenc_base_EP = pm->fb_EP;
-				pm->qenc_base_F[0] = pm->lu_F[0];
-				pm->qenc_base_F[1] = pm->lu_F[1];
-				pm->qenc_TIM = 0;
+				pm->qenc_baseEP = pm->fb_EP;
+				pm->qenc_baseF[0] = pm->lu_F[0];
+				pm->qenc_baseF[1] = pm->lu_F[1];
+				pm->qenc_lastEP = 0;
+				pm->qenc_rotEP = 0;
+				pm->qenc_prolS = 0.f;
 
 				pm->qenc_F[0] = pm->lu_F[0];
 				pm->qenc_F[1] = pm->lu_F[1];
 				pm->qenc_wS = pm->lu_wS;
+				pm->qenc_lpf_wS = pm->lu_wS;
 			}
 			else if (pm->config_HFI == PM_ENABLED) {
 
