@@ -64,7 +64,7 @@ void ap_HX711(void *pData)
 				hal_delay_us(1);
 			}
 
-			/* Convert the ADC code into grams.
+			/* Convert the ADC code into (gram).
 			 * */
 			ap.pull_g = (float) ADC * ap.pull_ad[1] + ap.pull_ad[0];
 		}

@@ -59,10 +59,26 @@ sim_Tel(float *pTel)
 	pTel[10] = m.pulse_HS;
 	pTel[11] = m.pulse_EP;
 
+	/* VSI.
+	 * */
+	pTel[12] = pm.vsi_EU;
+	pTel[13] = pm.vsi_X;
+	pTel[14] = pm.vsi_Y;
+	pTel[15] = pm.vsi_IF;
+	pTel[16] = pm.vsi_UF;
+
+	/* TVM.
+	 * */
+	pTel[17] = pm.tvm_A;
+	pTel[18] = pm.tvm_B;
+	pTel[19] = pm.tvm_C;
+	pTel[20] = pm.tvm_DX;
+	pTel[21] = pm.tvm_DY;
+
 	/* Estimated current.
 	 * */
-	pTel[12] = pm.lu_iD;
-	pTel[13] = pm.lu_iQ;
+	pTel[22] = pm.lu_iD;
+	pTel[23] = pm.lu_iQ;
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
@@ -70,59 +86,56 @@ sim_Tel(float *pTel)
 	B = D * pm.lu_F[1] - Q * pm.lu_F[0];
 	E = atan2(B, A);
 
-	pTel[14] = E * 180. / M_PI;
+	pTel[24] = E * 180. / M_PI;
 
 	/* Estimated position.
 	 * */
-	pTel[15] = atan2(pm.lu_F[1], pm.lu_F[0]) * 180. / M_PI;
-	pTel[16] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
-	pTel[17] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
-	pTel[18] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
-	pTel[19] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
-	pTel[20] = atan2(pm.qenc_F[1], pm.qenc_F[0]) * 180. / M_PI;
+	pTel[25] = atan2(pm.lu_F[1], pm.lu_F[0]) * 180. / M_PI;
 
 	/* Estimated speed.
 	 * */
-	pTel[21] = pm.lu_wS * 30. / M_PI / m.Zp;
-	pTel[22] = pm.flux_wS * 30. / M_PI / m.Zp;
-	pTel[23] = pm.forced_wS * 30. / M_PI / m.Zp;
-	pTel[24] = pm.hfi_wS * 30. / M_PI / m.Zp;
-	pTel[25] = pm.hall_wS * 30. / M_PI / m.Zp;
-	pTel[26] = pm.qenc_wS * 30. / M_PI / m.Zp;
+	pTel[26] = pm.lu_wS * 30. / M_PI / m.Zp;
 
-	pTel[27] = pm.vsi_EU;
-	pTel[28] = pm.vsi_X;
-	pTel[29] = pm.vsi_Y;
-	pTel[30] = pm.vsi_IF;
-	pTel[31] = pm.vsi_UF;
+	pTel[27] = pm.lu_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[28] = 0.f;
+	pTel[29] = pm.lu_caught;
+	pTel[30] = pm.lu_mode;
 
-	pTel[32] = pm.tvm_A;
-	pTel[33] = pm.tvm_B;
-	pTel[34] = pm.tvm_C;
-	pTel[35] = pm.tvm_DX;
-	pTel[36] = pm.tvm_DY;
+	pTel[31] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
+	pTel[32] = pm.forced_wS * 30. / M_PI / m.Zp;
+	pTel[33] = pm.detach_TIM;
 
-	pTel[37] = pm.lu_mode;
-	pTel[38] = pm.lu_TIM;
+	pTel[34] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
+	pTel[35] = pm.flux_wS * 30. / M_PI / m.Zp;
+	pTel[36] = pm.flux_E;
+	pTel[37] = pm.flux_H;
+	pTel[38] = pm.flux[pm.flux_H].lpf_E;
 
-	pTel[39] = pm.flux_E;
-	pTel[40] = pm.flux_H;
-	pTel[41] = pm.flux[pm.flux_H].lpf_E;
-	pTel[42] = pm.hfi_polarity;
+	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
+	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
+	pTel[41] = pm.hfi_polarity;
 
-	pTel[43] = pm.watt_lpf_D;
-	pTel[44] = pm.watt_lpf_Q;
-	pTel[45] = m.iP;
-	pTel[46] = pm.watt_lpf_wP;
-	pTel[47] = pm.const_fb_U;
+	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
+	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
+	pTel[44] = pm.hall_lpf_wS * 30. / M_PI / m.Zp;
 
-	pTel[48] = pm.i_setpoint_D;
-	pTel[49] = pm.i_setpoint_Q;
-	pTel[50] = pm.weak_D;
+	pTel[45] = atan2(pm.qenc_F[1], pm.qenc_F[0]) * 180. / M_PI;
+	pTel[46] = pm.qenc_wS * 30. / M_PI / m.Zp;
+	pTel[47] = pm.qenc_lpf_wS * 30. / M_PI / m.Zp;
 
-	pTel[51] = pm.s_setpoint * 30. / M_PI / m.Zp;
-	pTel[52] = pm.s_track * 30. / M_PI / m.Zp;
-	pTel[53] = pm.s_integral;
+	pTel[48] = pm.watt_lpf_D;
+	pTel[49] = pm.watt_lpf_Q;
+	pTel[50] = m.iP;
+	pTel[51] = pm.watt_lpf_wP;
+	pTel[52] = pm.const_fb_U;
+
+	pTel[53] = pm.i_setpoint_D;
+	pTel[54] = pm.i_setpoint_Q;
+	pTel[55] = pm.weak_D;
+
+	pTel[56] = pm.s_setpoint * 30. / M_PI / m.Zp;
+	pTel[57] = pm.s_track * 30. / M_PI / m.Zp;
+	pTel[58] = pm.s_integral;
 }
 
 static void
@@ -281,6 +294,11 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
+	pm.fsm_req = PM_STATE_PROBE_LU_MAE;
+	sim_F(fdTel, 0.);
+
+	printf("MAE %.2f (rpm)\n", pm.lu_MAE * 30. / M_PI / m.Zp);
+
 	pm.fsm_req = PM_STATE_PROBE_CONST_J;
 	sim_F(fdTel, .1);
 
@@ -410,7 +428,7 @@ sim_TEST(FILE *fdTel)
 	m.Rs = 0.7;
 	m.Zp = 15;
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 5E-3;
+	m.J = 6.2E-3;
 
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
@@ -441,7 +459,7 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
-	if (sim_test_SPEED(NULL) == 0)
+	if (sim_test_SPEED(fdTel) == 0)
 		return 0;
 
 	return 1;
@@ -450,61 +468,43 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
-	m.R = 7E-2;
-	m.Ld = 1E-4;
-	m.Lq = 1E-4;
-	m.U = 40.;
-	m.Zp = 23;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (9.2 * m.Zp);
-	m.J = 1.5E-2;
+	m.R = 2.4E-1;
+	m.Ld = 5.2E-4;
+	m.Lq = 6.5E-4;
+	m.U = 48.;
+	m.Rs = 0.7;
+	m.Zp = 15;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
+	m.J = 6.2E-3;
 
 	sim_test_BASE(NULL);
-	sim_test_HALL(NULL);
+	//sim_test_HALL(NULL);
 
-	m.X[2] = 0.;
-
-	pm.s_gain_I = 5E-3f / 10.f;
-	pm.config_SENSOR = PM_SENSOR_HALL;
+	pm.config_FORCED = 0;
+	pm.config_DRIVE = PM_DRIVE_CURRENT;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.s_setpoint = pm.probe_speed_hold;
+	m.M[1] = 1E-2;
+
+	sim_F(fdTel, .5);
+
+	m.M[0] = 1.f;
+
+	sim_F(fdTel, .5);
+
+	m.M[0] = 0.f;
 
 	sim_F(fdTel, 1.);
 
-	m.M[2] = 5E-3;
+	m.M[0] = 1.f;
 
 	sim_F(fdTel, .5);
 
-	pm.lu_unlock_E = 40.f;
-	pm.lu_lock_E = 40.f;
-
-	sim_F(fdTel, .5);
-
-	m.M[2] = 1E-7;
-
-	sim_F(fdTel, .5);
-
-	pm.s_setpoint = 30.f;
+	m.M[0] = 0.f;
 
 	sim_F(fdTel, 1.);
-
-	pm.s_setpoint = 0.f;
-
-	sim_F(fdTel, .5);
-
-	m.M[0] = -4.f;
-
-	sim_F(fdTel, .5);
-
-	pm.s_setpoint = 100.f;
-
-	sim_F(fdTel, .5);
-
-	pm.s_setpoint = 400.f;
-
-	sim_F(fdTel, .5);
 
 	return 1;
 }

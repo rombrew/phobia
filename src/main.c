@@ -794,7 +794,9 @@ SH_DEF(rtos_reboot)
 		return ;
 	}
 
+	GPIO_set_LOW(GPIO_BOOST_12V);
 	vTaskDelay((TickType_t) 10);
+
 	hal_system_reset();
 }
 

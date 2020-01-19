@@ -1147,9 +1147,21 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_IF = 3;
 				pm->vsi_UF = 3;
 
+				pm->lu_iX = 0.f;
+				pm->lu_iY = 0.f;
+				pm->lu_iD = 0.f;
+				pm->lu_iQ = 0.f;
+				pm->lu_F[0] = 1.f;
+				pm->lu_F[1] = 0.f;
+				pm->lu_wS = 0.f;
+				pm->lu_lpf_wS = 0.f;
+
 				pm->forced_F[0] = 1.f;
 				pm->forced_F[1] = 0.f;
 				pm->forced_wS = 0.f;
+
+				pm->detach_TIM = 0;
+				pm->detach_SKIP = 0;
 
 				for (N = 0; N < PM_FLUX_MAX; N++) {
 
@@ -1175,8 +1187,13 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
+				pm->hall_wS = 0.f;
+				pm->hall_lpf_wS = 0.f;
+
 				pm->qenc_F[0] = 1.f;
 				pm->qenc_F[1] = 0.f;
+				pm->qenc_wS = 0.f;
+				pm->qenc_lpf_wS = 0.f;
 
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
@@ -1206,15 +1223,15 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
 					pm->lu_mode = PM_LU_DETACHED;
-					pm->lu_TIM = (pm->fsm_state != PM_STATE_LU_DETACHED)
-						? pm->freq_hz * pm->tm_startup : PM_MAX_I;
+					pm->lu_caught = (pm->fsm_state == PM_STATE_LU_STARTUP)
+						? PM_LU_UNCERTAIN : PM_LU_LOCKED;
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(7);
 				}
 				else {
 					pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-					pm->lu_TIM = 0;
+					pm->lu_caught = PM_LU_UNCERTAIN;
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(0);
@@ -1274,11 +1291,6 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
-			break;
-
-		case 1:
 			pm->probe_DFT[0] = 0.f;
 			pm->FIX[0] = 0.f;
 
@@ -1286,10 +1298,11 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			pm->tm_end = pm->freq_hz * ((pm->lu_mode == PM_LU_DETACHED)
 					? pm->tm_average_drift : pm->tm_average_probe);
 
-			pm->fsm_phase = 2;
+			pm->fail_reason = PM_OK;
+			pm->fsm_phase = 1;
 			break;
 
-		case 2:
+		case 1:
 			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->flux_E);
 
 			pm->tm_value++;
@@ -1297,11 +1310,11 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->probe_DFT[0] /= pm->tm_end;
-				pm->fsm_phase = 3;
+				pm->fsm_phase = 2;
 			}
 			break;
 
-		case 3:
+		case 2:
 			pm->const_E = pm->probe_DFT[0];
 
 			if (m_isfinitef(pm->const_E) != 0 && pm->const_E > M_EPS_F) {
@@ -1411,6 +1424,52 @@ pm_fsm_state_probe_const_j(pmc_t *pm)
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
+			break;
+	}
+}
+
+static void
+pm_fsm_state_probe_lu_mae(pmc_t *pm)
+{
+	switch (pm->fsm_phase) {
+
+		case 0:
+			pm->probe_DFT[0] = 0.f;
+			pm->FIX[0] = 0.f;
+
+			pm->tm_value = 0;
+			pm->tm_end = pm->freq_hz * pm->tm_average_probe;
+
+			pm->fail_reason = PM_OK;
+			pm->fsm_phase = 1;
+			break;
+
+		case 1:
+			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], m_fabsf(pm->flux_wS - pm->lu_lpf_wS));
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->probe_DFT[0] /= pm->tm_end;
+				pm->fsm_phase = 2;
+			}
+			break;
+
+		case 2:
+			pm->lu_MAE = pm->probe_DFT[0];
+
+			if (m_isfinitef(pm->lu_MAE) != 0 && pm->lu_MAE > M_EPS_F) {
+
+				pm_build(pm);
+			}
+			else {
+				pm->lu_MAE = 5.f;
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
+			}
+
+			pm->fsm_state = PM_STATE_IDLE;
 			pm->fsm_phase = 0;
 			break;
 	}
@@ -1585,6 +1644,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
+		case PM_STATE_PROBE_LU_MAE:
 		case PM_STATE_ADJUST_HALL:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
@@ -1668,6 +1728,10 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_PROBE_CONST_J:
 			pm_fsm_state_probe_const_j(pm);
+			break;
+
+		case PM_STATE_PROBE_LU_MAE:
+			pm_fsm_state_probe_lu_mae(pm);
 			break;
 
 		case PM_STATE_ADJUST_HALL:

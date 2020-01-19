@@ -36,6 +36,12 @@ enum {
 };
 
 enum {
+	PM_LU_UNCERTAIN				= 0,
+	PM_LU_CAUGHT,
+	PM_LU_LOCKED
+};
+
+enum {
 	PM_LU_DISABLED				= 0,
 	PM_LU_DETACHED,
 	PM_LU_FORCED,
@@ -60,6 +66,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
+	PM_STATE_PROBE_LU_MAE,
 	PM_STATE_ADJUST_HALL,
 	PM_STATE_ADJUST_QENC,
 	PM_STATE_HALT,
@@ -125,6 +132,7 @@ typedef struct {
 
 	int		config_NOP;
 	int		config_TVM;
+	int		config_FORCED;
 	int		config_HFI;
 	int		config_SENSOR;
 	int		config_WEAK;
@@ -216,13 +224,14 @@ typedef struct {
 	float		lu_iQ;
 	float		lu_F[2];
 	float		lu_wS;
-	float		lu_lock_E;
-	float		lu_unlock_E;
-	float		lu_detach_E;
 	float		lu_lpf_wS;
+	float		lu_MAE;
 	float		lu_gain_LP_S;
+	float		lu_gain_TAKE;
+	float		lu_gain_GIVE;
+	float		lu_gain_LEVE;
+	int		lu_caught;
 	int		lu_mode;
-	int		lu_TIM;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -230,6 +239,15 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
+
+	float		detach_take_U;
+	float		detach_X;
+	float		detach_Y;
+	float		detach_V[2];
+	int		detach_TIM;
+	int		detach_SKIP;
+	float		detach_gain_AD;
+	float		detach_gain_SF;
 
 	struct {
 
@@ -243,18 +261,13 @@ typedef struct {
 	float		flux_lower_R;
 	float		flux_upper_R;
 	float		flux_E;
-	float		flux_vm_X;
-	float		flux_vm_Y;
 	int		flux_H;
-	float		flux_V[2];
-	int		flux_TIM;
 	float		flux_F[2];
 	float		flux_wS;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
 	float		flux_gain_HI;
-	float		flux_gain_AS;
-	float		flux_gain_AF;
+	float		flux_gain_AD;
 	float		flux_gain_LP_E;
 	float		flux_gain_SF;
 
@@ -263,7 +276,6 @@ typedef struct {
 
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	float		hfi_derated_i;
 	float		hfi_iD;
 	float		hfi_iQ;
 	float		hfi_F[2];
@@ -342,6 +354,7 @@ typedef struct {
 	float		i_maximal;
 	float		i_reverse;
 	float		i_derated_1;
+	float		i_derated_HFI;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
 	float		i_integral_D;
@@ -372,7 +385,7 @@ typedef struct {
 	int		x_setpoint_revol;
 	float		x_lu_F1;
 	int		x_lu_revol;
-	float		x_near_EP;
+	float		x_near_tol;
 	float		x_gain_P;
 	float		x_gain_N;
 

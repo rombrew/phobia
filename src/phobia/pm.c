@@ -9,6 +9,7 @@ void pm_default(pmc_t *pm)
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_TVM = PM_ENABLED;
+	pm->config_FORCED = PM_ENABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_WEAK = PM_DISABLED;
@@ -23,7 +24,7 @@ void pm_default(pmc_t *pm)
 	pm->tm_instant_probe = 0.002f;
 	pm->tm_average_drift = 0.1f;
 	pm->tm_average_probe = 0.5f;
-	pm->tm_startup = 0.1f;
+	pm->tm_startup = 0.05f;
 
 	pm->ad_IA[0] = 0.f;
 	pm->ad_IA[1] = 1.f;
@@ -65,15 +66,20 @@ void pm_default(pmc_t *pm)
 	pm->tvm_FIR_C[1] = 0.f;
 	pm->tvm_FIR_C[2] = 0.f;
 
-	pm->lu_lock_E = .2f;
-	pm->lu_unlock_E = .1f;
-	pm->lu_detach_E = .2f;
+	pm->lu_MAE = 5.f;
 	pm->lu_gain_LP_S = 1E-1f;
+	pm->lu_gain_TAKE = 21.f;
+	pm->lu_gain_GIVE = 11.f;
+	pm->lu_gain_LEVE = 2E-1f;
 
 	pm->forced_hold_D = 10.f;
 	pm->forced_maximal = 200.f;
 	pm->forced_reverse = - pm->forced_maximal;
-	pm->forced_accel = 400.f;
+	pm->forced_accel = 500.f;
+
+	pm->detach_take_U = .5f;
+	pm->detach_gain_AD = 2E-1f;
+	pm->detach_gain_SF = 5E-2f;
 
 	pm->flux_N = PM_FLUX_MAX;
 	pm->flux_lower_R = - .1f;
@@ -81,8 +87,7 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_IN = 5E-4f;
 	pm->flux_gain_LO = 2E-5f;
 	pm->flux_gain_HI = 3E-4f;
-	pm->flux_gain_AS = 5E-1f;
-	pm->flux_gain_AF = 2E-1f;
+	pm->flux_gain_AD = 2E-1f;
 	pm->flux_gain_LP_E = 2E-5f;
 	pm->flux_gain_SF = 5E-2f;
 
@@ -91,7 +96,6 @@ void pm_default(pmc_t *pm)
 
 	pm->hfi_freq_hz = pm->freq_hz / 6.f;
 	pm->hfi_swing_D = 1.f;
-	pm->hfi_derated_i = 5.f;
 	pm->hfi_gain_EP = 1E-1f;
 	pm->hfi_gain_SF = 5E-3f;
 	pm->hfi_gain_FP = 0E-3f;
@@ -124,6 +128,7 @@ void pm_default(pmc_t *pm)
 
 	pm->i_maximal = 120.f;
 	pm->i_reverse = - pm->i_maximal;
+	pm->i_derated_HFI = 5.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
@@ -138,10 +143,10 @@ void pm_default(pmc_t *pm)
 	pm->s_reverse = - pm->s_maximal;
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 5E-2f;
-	pm->s_gain_I = 0E-2f;
+	pm->s_gain_I = 0E-3f;
 	pm->s_gain_S = 2E-1f;
 
-	pm->x_near_EP = 5.f;
+	pm->x_near_tol = 3.f;
 	pm->x_gain_P = 70.f;
 	pm->x_gain_N = 50.f;
 }
@@ -172,7 +177,8 @@ pm_forced(pmc_t *pm)
 	 * */
 	if (pm->config_DRIVE == PM_DRIVE_CURRENT) {
 
-		wSP = (pm->i_setpoint_Q < 0.f) ? - PM_MAX_F : PM_MAX_F;
+		wSP = (pm->i_setpoint_Q < - pm->fault_current_tol) ? - PM_MAX_F
+			: (pm->i_setpoint_Q > pm->fault_current_tol) ? PM_MAX_F : 0.f;
 	}
 	else if (pm->config_DRIVE == PM_DRIVE_SPEED) {
 
@@ -224,40 +230,41 @@ pm_detached_FLUX(pmc_t *pm)
 		uY = uC - uB;
 	}
 
-	pm->flux_vm_X = uX;
-	pm->flux_vm_Y = uY;
+	pm->detach_X = uX;
+	pm->detach_Y = uY;
 
 	/* Absolute BEMF voltage.
 	 * */
 	U = m_sqrtf(uX * uX + uY * uY);
 
-	if (U > pm->lu_detach_E) {
+	if (U > pm->detach_take_U) {
 
 		E = 1.f / U;
 
 		uX *= E;
 		uY *= E;
 
-		if (pm->flux_TIM != 0) {
+		if (pm->detach_TIM != 0) {
 
 			/* Speed estimation (PLL).
 			 * */
-			m_rotf(pm->flux_V, pm->flux_wS * pm->dT, pm->flux_V);
+			m_rotf(pm->detach_V, pm->flux_wS * pm->dT, pm->detach_V);
 
-			EX = uX * pm->flux_V[0] + uY * pm->flux_V[1];
-			EY = uY * pm->flux_V[0] - uX * pm->flux_V[1];
+			EX = uX * pm->detach_V[0] + uY * pm->detach_V[1];
+			EY = uY * pm->detach_V[0] - uX * pm->detach_V[1];
 
 			if (EX > M_EPS_F) {
 
 				E = EY / EX * pm->freq_hz;
 
-				S = U * pm->flux_gain_AS;
+				S = U * pm->detach_gain_AD;
 				S = (S > 1.f) ? 1.f : S;
 
-				pm->flux_wS += E * S * pm->flux_gain_SF;
+				pm->flux_wS += E * S * pm->detach_gain_SF;
 			}
 
 			pm->flux_E = U / m_fabsf(pm->flux_wS);
+			pm->flux_H = 0;
 
 			E = (pm->flux_wS < 0.f) ? - 1.f : 1.f;
 
@@ -270,22 +277,19 @@ pm_detached_FLUX(pmc_t *pm)
 
 				pm->flux[N].X = E * pm->flux_F[0];
 				pm->flux[N].Y = E * pm->flux_F[1];
+				pm->flux[N].lpf_E = .1f;
 			}
 		}
 
-		pm->flux_V[0] = uX;
-		pm->flux_V[1] = uY;
+		pm->detach_V[0] = uX;
+		pm->detach_V[1] = uY;
 
-		pm->flux_TIM++;
+		pm->detach_TIM++;
 	}
 	else {
-		pm->flux_TIM = 0;
+		pm->detach_TIM = 0;
 		pm->flux_wS = 0.f;
 	}
-
-	/* Slow speed (LPF).
-	 * */
-	pm->lu_lpf_wS += (pm->flux_wS - pm->lu_lpf_wS) * pm->lu_gain_LP_S;
 }
 
 static void
@@ -326,7 +330,7 @@ pm_estimate_FLUX(pmc_t *pm)
 		uX += - EX * pm->flux_lower_R;
 		uY += - EY * pm->flux_lower_R;
 
-		E = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_gain_AF;
+		E = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_gain_AD;
 		E = (E > 1.f) ? 1.f : 0.f;
 
 		/* Adaptive observer GAIN.
@@ -412,9 +416,11 @@ pm_estimate_FLUX(pmc_t *pm)
 		pm->flux_F[1] = EY * E;
 	}
 
-	/* Slow speed (LPF).
-	 * */
-	pm->lu_lpf_wS += (pm->flux_wS - pm->lu_lpf_wS) * pm->lu_gain_LP_S;
+	if (pm->flux[pm->flux_H].lpf_E > pm->fault_flux_lpfe_halt) {
+
+		pm->fail_reason = PM_ERROR_FLUX_UNSTABLE;
+		pm->fsm_state = PM_STATE_HALT;
+	}
 }
 
 static void
@@ -539,7 +545,7 @@ pm_sensor_HALL(pmc_t *pm)
 			B = hF[1] * pm->hall_F[0] - hF[0] * pm->hall_F[1];
 
 			pm->hall_HS = HS;
-			pm->hall_prolTIM = pm->hall_prol_T * pm->freq_hz;
+			pm->hall_prolTIM = pm->freq_hz * pm->hall_prol_T;
 			pm->hall_prolS = 0.f;
 			pm->hall_F[0] = hF[0];
 			pm->hall_F[1] = hF[1];
@@ -608,26 +614,93 @@ pm_sensor_QENC(pmc_t *pm)
 }
 
 static void
+pm_lu_catch(pmc_t *pm)
+{
+	float			lev_wS, lev_E;
+	int			lev_TIM;
+
+	/* Smooth speed (LPF).
+	 * */
+	pm->lu_lpf_wS += (pm->flux_wS - pm->lu_lpf_wS) * pm->lu_gain_LP_S;
+
+	if (pm->lu_caught == PM_LU_UNCERTAIN) {
+
+		lev_wS = pm->lu_gain_TAKE * pm->lu_MAE;
+
+		if (pm->lu_mode == PM_LU_DETACHED) {
+
+			lev_TIM = pm->freq_hz * pm->tm_startup;
+
+			pm->lu_caught = (m_fabsf(pm->lu_lpf_wS) > lev_wS
+					&& pm->detach_TIM > lev_TIM)
+				? PM_LU_CAUGHT : pm->lu_caught;
+		}
+		else {
+			lev_E = pm->lu_gain_LEVE * pm->const_E;
+
+			if (m_fabsf(pm->flux_E - pm->const_E) < lev_E) {
+
+				pm->lu_caught = (pm->lu_lpf_wS > lev_wS
+						&& pm->lu_wS > lev_wS)
+					? PM_LU_CAUGHT :
+						(pm->lu_lpf_wS < - lev_wS
+						&& pm->lu_wS < - lev_wS)
+					? PM_LU_CAUGHT : pm->lu_caught;
+			}
+		}
+	}
+	else if (pm->lu_caught == PM_LU_CAUGHT) {
+
+		lev_wS = pm->lu_gain_GIVE * pm->lu_MAE;
+
+		if (pm->lu_mode == PM_LU_DETACHED) {
+
+			pm->lu_caught = (m_fabsf(pm->lu_lpf_wS) < lev_wS
+					|| pm->detach_TIM == 0)
+				? PM_LU_UNCERTAIN : pm->lu_caught;
+		}
+		else {
+			pm->lu_caught = (m_fabsf(pm->lu_lpf_wS) < lev_wS)
+				? PM_LU_UNCERTAIN : pm->lu_caught;
+		}
+	}
+}
+
+static void
 pm_lu_FSM(pmc_t *pm)
 {
+	int			lev_SKIP;
+
 	if (pm->lu_mode == PM_LU_DETACHED) {
 
-		pm_detached_FLUX(pm);
+		if (pm->detach_SKIP > 0) {
+
+			pm_detached_FLUX(pm);
+		}
+
+		pm_lu_catch(pm);
+
+		pm->detach_SKIP++;
 
 		pm->lu_F[0] = pm->flux_F[0];
 		pm->lu_F[1] = pm->flux_F[1];
 		pm->lu_wS = pm->flux_wS;
 
-		if (pm->lu_TIM != 0) {
+		if (pm->lu_caught != PM_LU_LOCKED) {
 
-			pm->lu_TIM--;
-		}
-		else {
-			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
+			lev_SKIP = 2.f * pm->freq_hz * pm->tm_startup;
+
+			if (pm->lu_caught == PM_LU_CAUGHT) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 
 				pm->proc_set_Z(0);
+			}
+			else if (pm->detach_SKIP < lev_SKIP) {
+
+				/* Not enough time passed to go into low speed
+				 * mode. Shut up here.
+				 * */
 			}
 			else if (	pm->config_SENSOR == PM_SENSOR_HALL
 					&& pm->hall_IF != 0) {
@@ -656,10 +729,9 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->proc_set_Z(0);
 			}
-			else if (pm->forced_hold_D > M_EPS_F) {
+			else if (pm->config_FORCED == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_FORCED;
-				pm->lu_TIM = pm->freq_hz * pm->tm_transient_slow;
 
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
@@ -672,49 +744,29 @@ pm_lu_FSM(pmc_t *pm)
 	else if (pm->lu_mode == PM_LU_FORCED) {
 
 		pm_estimate_FLUX(pm);
+		pm_forced(pm);
+		pm_lu_catch(pm);
 
-		if (pm->forced_hold_D > M_EPS_F) {
+		pm->lu_F[0] = pm->forced_F[0];
+		pm->lu_F[1] = pm->forced_F[1];
+		pm->lu_wS = pm->forced_wS;
 
-			pm_forced(pm);
+		if (		pm->lu_caught == PM_LU_CAUGHT
+				&& pm->const_E > M_EPS_F) {
 
-			pm->lu_F[0] = pm->forced_F[0];
-			pm->lu_F[1] = pm->forced_F[1];
-			pm->lu_wS = pm->forced_wS;
-
-			if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
-
-				if (m_fabsf(pm->forced_wS * pm->const_E) > pm->lu_lock_E) {
-
-					pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-				}
-			}
-		}
-		else {
-			if (pm->lu_TIM != 0) {
-
-				pm->lu_TIM--;
-			}
-			else {
-				pm->lu_mode = PM_LU_DETACHED;
-				pm->lu_TIM = 0;
-
-				pm->watt_lpf_D = 0.f;
-				pm->watt_lpf_Q = 0.f;
-				pm->watt_lpf_wP = 0.f;
-
-				pm->proc_set_Z(7);
-			}
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
 
 		pm_estimate_FLUX(pm);
+		pm_lu_catch(pm);
 
 		pm->lu_F[0] = pm->flux_F[0];
 		pm->lu_F[1] = pm->flux_F[1];
 		pm->lu_wS = pm->flux_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) < pm->lu_unlock_E) {
+		if (pm->lu_caught == PM_LU_UNCERTAIN) {
 
 			if (		pm->config_SENSOR == PM_SENSOR_HALL
 					&& pm->hall_IF != 0) {
@@ -755,13 +807,29 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hfi_F[1] = pm->lu_F[1];
 				pm->hfi_wS = pm->lu_wS;
 			}
-			else {
+			else if (pm->config_FORCED == PM_ENABLED) {
+
 				pm->lu_mode = PM_LU_FORCED;
-				pm->lu_TIM = pm->freq_hz * pm->tm_transient_slow;
 
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
 				pm->forced_wS = pm->flux_wS;
+			}
+			else {
+				pm->lu_mode = PM_LU_DETACHED;
+
+				pm->detach_TIM = 0;
+				pm->detach_SKIP = - pm->freq_hz * pm->tm_transient_fast;
+
+				pm->flux_F[0] = 1.f;
+				pm->flux_F[1] = 0.f;
+				pm->flux_wS = 0.f;
+
+				pm->watt_lpf_D = 0.f;
+				pm->watt_lpf_Q = 0.f;
+				pm->watt_lpf_wP = 0.f;
+
+				pm->proc_set_Z(7);
 			}
 		}
 	}
@@ -769,51 +837,45 @@ pm_lu_FSM(pmc_t *pm)
 
 		pm_estimate_FLUX(pm);
 		pm_estimate_HFI(pm);
+		pm_lu_catch(pm);
 
 		pm->lu_F[0] = pm->hfi_F[0];
 		pm->lu_F[1] = pm->hfi_F[1];
 		pm->lu_wS = pm->hfi_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
+		if (pm->lu_caught == PM_LU_CAUGHT) {
 
-			if (m_fabsf(pm->hfi_wS * pm->const_E) > pm->lu_lock_E) {
-
-				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-			}
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 	}
 	else if (pm->lu_mode == PM_LU_SENSOR_HALL) {
 
 		pm_estimate_FLUX(pm);
 		pm_sensor_HALL(pm);
+		pm_lu_catch(pm);
 
 		pm->lu_F[0] = pm->hall_F[0];
 		pm->lu_F[1] = pm->hall_F[1];
 		pm->lu_wS = pm->hall_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
+		if (pm->lu_caught == PM_LU_CAUGHT) {
 
-			if (m_fabsf(pm->hall_wS * pm->const_E) > pm->lu_lock_E) {
-
-				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-			}
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 	}
 	else if (pm->lu_mode == PM_LU_SENSOR_QENC) {
 
 		pm_estimate_FLUX(pm);
 		pm_sensor_QENC(pm);
+		pm_lu_catch(pm);
 
 		pm->lu_F[0] = pm->qenc_F[0];
 		pm->lu_F[1] = pm->qenc_F[1];
 		pm->lu_wS = pm->qenc_wS;
 
-		if (m_fabsf(pm->lu_lpf_wS * pm->const_E) > pm->lu_lock_E) {
+		if (pm->lu_caught == PM_LU_CAUGHT) {
 
-			if (m_fabsf(pm->qenc_wS * pm->const_E) > pm->lu_lock_E) {
-
-				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
-			}
+			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 	}
 
@@ -1060,8 +1122,8 @@ pm_loop_current(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-		iMAX = (iMAX < pm->hfi_derated_i) ? iMAX : pm->hfi_derated_i;
-		iREV = (iREV > - pm->hfi_derated_i) ? iREV : - pm->hfi_derated_i;
+		iMAX = (iMAX < pm->i_derated_HFI) ? iMAX : pm->i_derated_HFI;
+		iREV = (iREV > - pm->i_derated_HFI) ? iREV : - pm->i_derated_HFI;
 	}
 
 	sD = (sD > iMAX) ? iMAX : (sD < - iMAX) ? - iMAX : sD;
@@ -1187,44 +1249,41 @@ pm_loop_current(pmc_t *pm)
 static void
 pm_loop_speed(pmc_t *pm)
 {
-	float		iSP, iFF, wSP, eS, dS;
+	float		iSP, iFF, wSP, gain_S, eS, dS;
+
+	/* Maximal speed constraint.
+	 * */
+	wSP = pm->s_setpoint;
+	wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
+		(wSP < pm->s_reverse) ? pm->s_reverse : wSP;
+
+	/* Maximal acceleration constraint.
+	 * */
+	dS = pm->s_accel * pm->dT;
+	pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
+		: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
-		/* Feed from forced control.
-		 * */
-		pm->s_track = pm->forced_wS;
-		pm->s_integral = 0.f;
+		pm->i_setpoint_Q = 0.f;
 	}
 	else {
-		/* Maximal speed constraint.
-		 * */
-		wSP = pm->s_setpoint;
-		wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
-			(wSP < pm->s_reverse) ? pm->s_reverse : wSP;
-
-		/* Maximal acceleration constraint.
-		 * */
-		dS = pm->s_accel * pm->dT;
-		pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
-			: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
-
 		/* Get speed discrepancy.
 		 * */
 		eS = pm->s_track - pm->lu_wS;
 
 		/* Slow down in case of weak speed estimate.
 		 * */
-		eS *= (pm->lu_mode != PM_LU_ESTIMATE_FLUX) ? pm->s_gain_S : 1.f;
+		gain_S = (pm->lu_mode != PM_LU_ESTIMATE_FLUX) ? pm->s_gain_S : 1.f;
 
 		/* Here is PI regulator with load reconstruction.
 		 * */
-		iSP = pm->s_gain_P * eS;
+		iSP = pm->s_gain_P * gain_S * eS;
 
 		iFF = pm->lu_iQ - (pm->lu_wS - pm->s_last_wS) * pm->temp_JiEdTZp;
 		pm->s_last_wS = pm->lu_wS;
 
-		pm->s_integral += (iFF - pm->s_integral) * pm->s_gain_I;
+		pm->s_integral += (iFF - pm->s_integral) * pm->s_gain_I * gain_S;
 		iSP += pm->s_integral;
 
 		/* Output clamp.
@@ -1283,7 +1342,7 @@ pm_loop_servo(pmc_t *pm)
 	 * */
 	wS = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
 
-	gP = (eP_abs < pm->x_near_EP) ? eP_abs / pm->x_near_EP : 1.f;
+	gP = (eP_abs < pm->x_near_tol) ? eP_abs / pm->x_near_tol : 1.f;
 	gP = pm->x_gain_N + (pm->x_gain_P - pm->x_gain_N) * gP;
 
 	pm->s_setpoint = gP * wS;
@@ -1506,7 +1565,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (pm->lu_mode == PM_LU_DETACHED) {
 
-			pm_voltage(pm, pm->flux_vm_X, pm->flux_vm_Y);
+			pm_voltage(pm, pm->detach_X, pm->detach_Y);
 		}
 		else {
 			if (pm->config_DRIVE == PM_DRIVE_SPEED) {
@@ -1529,12 +1588,6 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			/* To collect statistics.
 			 * */
 			pm_statistics(pm);
-		}
-
-		if (pm->flux[pm->flux_H].lpf_E > pm->fault_flux_lpfe_halt) {
-
-			pm->fail_reason = PM_ERROR_FLUX_UNSTABLE;
-			pm->fsm_state = PM_STATE_HALT;
 		}
 
 		if (m_isfinitef(pm->lu_F[0]) == 0) {
