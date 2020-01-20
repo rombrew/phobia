@@ -66,10 +66,10 @@ void pm_default(pmc_t *pm)
 	pm->tvm_FIR_C[1] = 0.f;
 	pm->tvm_FIR_C[2] = 0.f;
 
-	pm->lu_MAE = 5.f;
+	pm->lu_MPPE = 30.f;
 	pm->lu_gain_LP_S = 1E-1f;
-	pm->lu_gain_TAKE = 21.f;
-	pm->lu_gain_GIVE = 11.f;
+	pm->lu_gain_TAKE = 4.f;
+	pm->lu_gain_GIVE = 2.f;
 	pm->lu_gain_LEVE = 2E-1f;
 
 	pm->forced_hold_D = 10.f;
@@ -625,7 +625,7 @@ pm_lu_catch(pmc_t *pm)
 
 	if (pm->lu_caught == PM_LU_UNCERTAIN) {
 
-		lev_wS = pm->lu_gain_TAKE * pm->lu_MAE;
+		lev_wS = pm->lu_gain_TAKE * pm->lu_MPPE;
 
 		if (pm->lu_mode == PM_LU_DETACHED) {
 
@@ -651,7 +651,7 @@ pm_lu_catch(pmc_t *pm)
 	}
 	else if (pm->lu_caught == PM_LU_CAUGHT) {
 
-		lev_wS = pm->lu_gain_GIVE * pm->lu_MAE;
+		lev_wS = pm->lu_gain_GIVE * pm->lu_MPPE;
 
 		if (pm->lu_mode == PM_LU_DETACHED) {
 

@@ -536,7 +536,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_LU_SHUTDOWN);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_E);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
-				TEXT_ITEM(PM_STATE_PROBE_LU_MAE);
+				TEXT_ITEM(PM_STATE_PROBE_LU_MPPE);
 				TEXT_ITEM(PM_STATE_ADJUST_HALL);
 				TEXT_ITEM(PM_STATE_HALT);
 
@@ -764,8 +764,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_lpf_wS,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_lpf_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_lpf_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.lu_MAE,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.lu_MAE, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
+	REG_DEF(pm.lu_MPPE,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_MPPE, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_gain_LP_S,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_gain_TAKE,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_gain_GIVE,,		"",	"%1f",	REG_CONFIG, NULL, NULL),

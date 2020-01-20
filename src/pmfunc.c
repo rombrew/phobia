@@ -241,12 +241,12 @@ SH_DEF(pm_probe_spinup)
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 		reg_format(&regfile[ID_PM_LU_LPF_WS_RPM]);
 
-		pm.fsm_req = PM_STATE_PROBE_LU_MAE;
+		pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_LU_MAE_RPM]);
+		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 

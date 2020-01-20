@@ -294,10 +294,10 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
-	pm.fsm_req = PM_STATE_PROBE_LU_MAE;
+	pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
 	sim_F(fdTel, 0.);
 
-	printf("MAE %.2f (rpm)\n", pm.lu_MAE * 30. / M_PI / m.Zp);
+	printf("MPPE %.2f (rpm)\n", pm.lu_MPPE * 30. / M_PI / m.Zp);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_J;
 	sim_F(fdTel, .1);

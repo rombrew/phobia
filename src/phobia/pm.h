@@ -66,7 +66,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
-	PM_STATE_PROBE_LU_MAE,
+	PM_STATE_PROBE_LU_MPPE,
 	PM_STATE_ADJUST_HALL,
 	PM_STATE_ADJUST_QENC,
 	PM_STATE_HALT,
@@ -225,7 +225,7 @@ typedef struct {
 	float		lu_F[2];
 	float		lu_wS;
 	float		lu_lpf_wS;
-	float		lu_MAE;
+	float		lu_MPPE;
 	float		lu_gain_LP_S;
 	float		lu_gain_TAKE;
 	float		lu_gain_GIVE;

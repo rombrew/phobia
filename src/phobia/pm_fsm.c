@@ -1288,6 +1288,8 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_e(pmc_t *pm)
 {
+	float			temp_E;
+
 	switch (pm->fsm_phase) {
 
 		case 0:
@@ -1315,14 +1317,14 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			break;
 
 		case 2:
-			pm->const_E = pm->probe_DFT[0];
+			temp_E = pm->probe_DFT[0];
 
-			if (m_isfinitef(pm->const_E) != 0 && pm->const_E > M_EPS_F) {
+			if (m_isfinitef(temp_E) != 0 && temp_E > M_EPS_F) {
 
+				pm->const_E = temp_E;
 				pm_build(pm);
 			}
 			else {
-				pm->const_E = 0.f;
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 			}
 
@@ -1335,6 +1337,8 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_j(pmc_t *pm)
 {
+	float			temp_J;
+
 	switch (pm->fsm_phase) {
 
 		case 0:
@@ -1410,16 +1414,16 @@ pm_fsm_state_probe_const_j(pmc_t *pm)
 		case 3:
 			pm_LSQ_3(pm->probe_LSQ_A, pm->probe_DFT);
 
-			pm->const_J = 1.5f * pm->const_E * pm->dT
+			temp_J = 1.5f * pm->const_E * pm->dT
 				* (float) (pm->const_Zp * pm->const_Zp)
 				/ pm->probe_DFT[0];
 
-			if (m_isfinitef(pm->const_J) != 0 && pm->const_J > M_EPS_F) {
+			if (m_isfinitef(temp_J) != 0 && temp_J > M_EPS_F) {
 
+				pm->const_J = temp_J;
 				pm_build(pm);
 			}
 			else {
-				pm->const_J = 0.f;
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 			}
 
@@ -1430,12 +1434,17 @@ pm_fsm_state_probe_const_j(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_lu_mae(pmc_t *pm)
+pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 {
+	float			temp_MPPE;
+
 	switch (pm->fsm_phase) {
 
 		case 0:
 			pm->probe_DFT[0] = 0.f;
+			pm->probe_DFT[0] = 0.f;
+
+			pm->FIX[0] = 0.f;
 			pm->FIX[0] = 0.f;
 
 			pm->tm_value = 0;
@@ -1446,26 +1455,30 @@ pm_fsm_state_probe_lu_mae(pmc_t *pm)
 			break;
 
 		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], m_fabsf(pm->flux_wS - pm->lu_lpf_wS));
+			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->flux_wS);
+			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->flux_wS * pm->flux_wS);
 
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->probe_DFT[0] /= pm->tm_end;
+				pm->probe_DFT[1] /= pm->tm_end;
+
 				pm->fsm_phase = 2;
 			}
 			break;
 
 		case 2:
-			pm->lu_MAE = pm->probe_DFT[0];
+			temp_MPPE = pm->probe_DFT[0] * pm->probe_DFT[0];
+			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 6.f;
 
-			if (m_isfinitef(pm->lu_MAE) != 0 && pm->lu_MAE > M_EPS_F) {
+			if (m_isfinitef(temp_MPPE) != 0 && temp_MPPE > M_EPS_F) {
 
+				pm->lu_MPPE = temp_MPPE;
 				pm_build(pm);
 			}
 			else {
-				pm->lu_MAE = 5.f;
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 			}
 
@@ -1644,7 +1657,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
-		case PM_STATE_PROBE_LU_MAE:
+		case PM_STATE_PROBE_LU_MPPE:
 		case PM_STATE_ADJUST_HALL:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
@@ -1730,8 +1743,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_j(pm);
 			break;
 
-		case PM_STATE_PROBE_LU_MAE:
-			pm_fsm_state_probe_lu_mae(pm);
+		case PM_STATE_PROBE_LU_MPPE:
+			pm_fsm_state_probe_lu_mppe(pm);
 			break;
 
 		case PM_STATE_ADJUST_HALL:
