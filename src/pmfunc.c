@@ -203,9 +203,9 @@ SH_DEF(pm_probe_spinup)
 		return;
 	}
 
-	if (pm.forced_hold_D < M_EPS_F) {
+	if (pm.config_FORCED == PM_DISABLED) {
 
-		printf("Unable when forced control disabled" EOL);
+		printf("Unable when forced control is disabled" EOL);
 		return;
 	}
 
@@ -283,9 +283,9 @@ SH_DEF(pm_probe_detached)
 		return;
 	}
 
-	if (pm.forced_hold_D > M_EPS_F) {
+	if (pm.config_FORCED == PM_ENABLED) {
 
-		printf("Unable when forced control enabled" EOL);
+		printf("Unable when forced control is enabled" EOL);
 		return;
 	}
 
