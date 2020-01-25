@@ -142,7 +142,7 @@ void pm_default(pmc_t *pm)
 	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 18.f);
 	pm->s_reverse = - pm->s_maximal;
 	pm->s_accel = 2000.f;
-	pm->s_gain_P = 5E-2f;
+	pm->s_gain_P = 3E-2f;
 	pm->s_gain_I = 0E-3f;
 	pm->s_gain_S = 2E-1f;
 

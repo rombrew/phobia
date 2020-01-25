@@ -1122,7 +1122,9 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->const_im_B = m_atan2f(LDQ[3], LDQ[2]) * (180.f / M_PI_F);
 			pm->const_im_R = LDQ[4];
 
-			pm->i_gain_P = .2f * pm->const_L * pm->freq_hz - pm->const_R;
+			/* Tune current loop.
+			 * */
+			pm->i_gain_P = 2E-1f * pm->const_L * pm->freq_hz - pm->const_R;
 			pm->i_gain_I = 1E-2f * pm->const_L * pm->freq_hz;
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -1477,6 +1479,11 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 
 				pm->lu_MPPE = temp_MPPE;
 				pm_build(pm);
+
+				/* Tune speed loop.
+				 * */
+				pm->s_gain_P = 1E-0f / pm->lu_MPPE;
+				pm->s_gain_I = 1E-1f / pm->lu_MPPE;
 			}
 			else {
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
