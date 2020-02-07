@@ -15,7 +15,7 @@ void pm_default(pmc_t *pm)
 	pm->config_WEAK = PM_DISABLED;
 	pm->config_DRIVE = PM_DRIVE_SPEED;
 	pm->config_SERVO = PM_DISABLED;
-	pm->config_STAT	= PM_ENABLED;
+	pm->config_INFO	= PM_ENABLED;
 
 	pm->tm_transient_slow = 0.05f;
 	pm->tm_transient_fast = 0.002f;
@@ -1355,9 +1355,9 @@ pm_charger(pmc_t *pm)
 }
 
 static void
-pm_statistics(pmc_t *pm)
+pm_infometer(pmc_t *pm)
 {
-	float		revdd, Wh, Ah, fuel, wS_abs;
+	float		revdd, Wh, Ah, fuel;
 
 	/* Quantum.
 	 * */
@@ -1369,30 +1369,30 @@ pm_statistics(pmc_t *pm)
 
 		if (pm->lu_F[1] < 0.f) {
 
-			pm->stat_revol_1 += (pm->stat_lu_F1 >= 0.f) ? 1 : 0;
+			pm->im_revol_1 += (pm->im_lu_F1 >= 0.f) ? 1 : 0;
 		}
 		else {
-			pm->stat_revol_1 += (pm->stat_lu_F1 < 0.f) ? - 1 : 0;
+			pm->im_revol_1 += (pm->im_lu_F1 < 0.f) ? - 1 : 0;
 		}
 	}
 
-	pm->stat_lu_F1 = pm->lu_F[1];
+	pm->im_lu_F1 = pm->lu_F[1];
 
-	if (pm->stat_revol_1 < - revqu) {
+	if (pm->im_revol_1 < - revqu) {
 
-		pm->stat_revol_total += - pm->stat_revol_1;
-		pm->stat_revol_1 = 0;
+		pm->im_revol_total += - pm->im_revol_1;
+		pm->im_revol_1 = 0;
 	}
-	else if (pm->stat_revol_1 > revqu) {
+	else if (pm->im_revol_1 > revqu) {
 
-		pm->stat_revol_total += pm->stat_revol_1;
-		pm->stat_revol_1 = 0;
+		pm->im_revol_total += pm->im_revol_1;
+		pm->im_revol_1 = 0;
 	}
 
 	/* Traveled distance.
 	 * */
-	revdd = (float) pm->stat_revol_total / (float) pm->const_Zp;
-	pm->stat_distance = revdd * pm->const_dd_T * M_PI_F;
+	revdd = (float) pm->im_revol_total / (float) pm->const_Zp;
+	pm->im_distance = revdd * pm->const_dd_T * M_PI_F;
 
 	/* Get WATT per HOUR.
 	 * */
@@ -1401,35 +1401,23 @@ pm_statistics(pmc_t *pm)
 
 	if (Wh > 0.f) {
 
-		pm_ADD(&pm->stat_consumed_Wh, &pm->stat_FIX[0], Wh);
-		pm_ADD(&pm->stat_consumed_Ah, &pm->stat_FIX[1], Ah);
+		pm_ADD(&pm->im_consumed_Wh, &pm->im_FIX[0], Wh);
+		pm_ADD(&pm->im_consumed_Ah, &pm->im_FIX[1], Ah);
 	}
 	else {
-		pm_ADD(&pm->stat_reverted_Wh, &pm->stat_FIX[2], - Wh);
-		pm_ADD(&pm->stat_reverted_Ah, &pm->stat_FIX[3], - Ah);
+		pm_ADD(&pm->im_reverted_Wh, &pm->im_FIX[2], - Wh);
+		pm_ADD(&pm->im_reverted_Ah, &pm->im_FIX[3], - Ah);
 	}
 
 	/* Fuel gauge.
 	 * */
-	if (pm->stat_capacity_Ah > M_EPS_F) {
+	if (pm->im_capacity_Ah > M_EPS_F) {
 
-		fuel = pm->stat_consumed_Ah - pm->stat_reverted_Ah;
-		fuel /= pm->stat_capacity_Ah;
+		fuel = pm->im_consumed_Ah - pm->im_reverted_Ah;
+		fuel /= pm->im_capacity_Ah;
 
-		pm->stat_fuel_pc = 100.f * fuel;
+		pm->im_fuel_pc = 100.f * fuel;
 	}
-
-	/* Get peak values.
-	 * */
-	pm->stat_peak_consumed_watt = (pm->watt_lpf_wP > pm->stat_peak_consumed_watt)
-		? pm->watt_lpf_wP : pm->stat_peak_consumed_watt;
-	pm->stat_peak_reverted_watt = (pm->watt_lpf_wP < - pm->stat_peak_reverted_watt)
-		? - pm->watt_lpf_wP : pm->stat_peak_reverted_watt;
-
-	wS_abs = m_fabsf(pm->lu_lpf_wS);
-	pm->stat_peak_speed = (wS_abs > pm->stat_peak_speed)
-		? wS_abs : pm->stat_peak_speed;
-
 }
 
 void pm_feedback(pmc_t *pm, pmfb_t *fb)
@@ -1583,11 +1571,11 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm_loop_current(pm);
 		}
 
-		if (pm->config_STAT == PM_ENABLED) {
+		if (pm->config_INFO == PM_ENABLED) {
 
-			/* To collect statistics.
+			/* To collect information.
 			 * */
-			pm_statistics(pm);
+			pm_infometer(pm);
 		}
 
 		if (m_isfinitef(pm->lu_F[0]) == 0) {

@@ -484,7 +484,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_HFI:
 		case ID_PM_CONFIG_WEAK:
 		case ID_PM_CONFIG_SERVO:
-		case ID_PM_CONFIG_STAT:
+		case ID_PM_CONFIG_INFO:
 
 			switch (val) {
 
@@ -671,7 +671,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_WEAK,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_DRIVE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SERVO,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_STAT,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_INFO,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
 	REG_DEF(pm.fsm_req,,		"",	"%i",	0, NULL, &reg_format_enum),
 	REG_DEF(pm.fsm_state,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
@@ -940,20 +940,15 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_N,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.stat_revol_total,,		"",	"%i",	0, NULL, NULL),
-	REG_DEF(pm.stat_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_distance, _km,		"km",	"%3f",	REG_READ_ONLY, &reg_proc_km, NULL),
-	REG_DEF(pm.stat_consumed_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_consumed_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_reverted_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_reverted_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_capacity_Ah,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.stat_fuel_pc,,		"pc",	"%2f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.stat_peak_consumed_watt,,	"W",	"%1f",	0, NULL, NULL),
-	REG_DEF(pm.stat_peak_reverted_watt,,	"W",	"%1f",	0, NULL, NULL),
-	REG_DEF(pm.stat_peak_speed,,	"rad/s",	"%2f",	0, NULL, NULL),
-	REG_DEF(pm.stat_peak_speed, _rpm,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.stat_peak_speed, _kmh,	"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
+	REG_DEF(pm.im_revol_total,,		"",	"%i",	0, NULL, NULL),
+	REG_DEF(pm.im_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.im_distance, _km,		"km",	"%3f",	REG_READ_ONLY, &reg_proc_km, NULL),
+	REG_DEF(pm.im_consumed_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.im_consumed_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.im_reverted_Wh,,		"Wh",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.im_reverted_Ah,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.im_capacity_Ah,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.im_fuel_pc,,			"pc",	"%2f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(ti.reg_ID[0],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ti.reg_ID[1],,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),

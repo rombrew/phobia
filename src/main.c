@@ -191,7 +191,7 @@ void task_ANALOG(void *pData)
 
 	xWake = xTaskGetTickCount();
 
-	revol = pm.stat_revol_total;
+	revol = pm.im_revol_total;
 	xTime = (TickType_t) 0;
 
 	do {
@@ -292,7 +292,7 @@ void task_ANALOG(void *pData)
 				/* Idle timeout.
 				 * */
 
-				if (ap.analog_locked == 1 && pm.stat_revol_total == revol) {
+				if (ap.analog_locked == 1 && pm.im_revol_total == revol) {
 
 					if (xTime > (TickType_t) (ap.analog_timeout * 1000.f)) {
 
@@ -306,7 +306,7 @@ void task_ANALOG(void *pData)
 					}
 				}
 				else {
-					revol = pm.stat_revol_total;
+					revol = pm.im_revol_total;
 					xTime = (TickType_t) 0;
 				}
 			}

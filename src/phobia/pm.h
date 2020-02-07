@@ -138,7 +138,7 @@ typedef struct {
 	int		config_WEAK;
 	int		config_DRIVE;
 	int		config_SERVO;
-	int		config_STAT;
+	int		config_INFO;
 
 	int		fsm_req;
 	int		fsm_state;
@@ -389,20 +389,17 @@ typedef struct {
 	float		x_gain_P;
 	float		x_gain_N;
 
-	float		stat_lu_F1;
-	int		stat_revol_1;
-	int		stat_revol_total;
-	float		stat_distance;
-	float		stat_consumed_Wh;
-	float		stat_consumed_Ah;
-	float		stat_reverted_Wh;
-	float		stat_reverted_Ah;
-	float		stat_capacity_Ah;
-	float		stat_fuel_pc;
-	float		stat_peak_consumed_watt;
-	float		stat_peak_reverted_watt;
-	float		stat_peak_speed;
-	float		stat_FIX[4];
+	float		im_lu_F1;
+	int		im_revol_1;
+	int		im_revol_total;
+	float		im_distance;
+	float		im_consumed_Wh;
+	float		im_consumed_Ah;
+	float		im_reverted_Wh;
+	float		im_reverted_Ah;
+	float		im_capacity_Ah;
+	float		im_fuel_pc;
+	float		im_FIX[4];
 
 	/*int		bt_mode;
 	float		bt_*/
