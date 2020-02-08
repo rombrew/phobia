@@ -1,6 +1,16 @@
 #ifndef _H_PM_
 #define _H_PM_
 
+/* Define the current sensing hardware configuration.
+ * */
+#define _HW_VSI_AB_INLINE		1
+#define _HW_VSI_AB_LOW			2
+#define _HW_VSI_FULL_LOW		3
+
+#ifndef _HW_VSI_SENSOR
+#define _HW_VSI_SENSOR			_HW_VSI_AB_INLINE
+#endif /* _HW_VSI_SENSOR */
+
 #define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
 
