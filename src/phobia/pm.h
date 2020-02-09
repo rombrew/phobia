@@ -1,18 +1,9 @@
 #ifndef _H_PM_
 #define _H_PM_
 
-/* Define the current sensing hardware configuration.
- * */
-#define _HW_VSI_AB_INLINE		1
-#define _HW_VSI_AB_LOW			2
-#define _HW_VSI_FULL_LOW		3
-
-#ifndef _HW_VSI_SENSOR
-#define _HW_VSI_SENSOR			_HW_VSI_AB_INLINE
-#endif /* _HW_VSI_SENSOR */
-
 #define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
+#define PM_CONFIG_VSI(pm)		PM_VSI_AB_INLINE
 
 #define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
 #define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
@@ -27,6 +18,12 @@
 enum {
 	PM_NOP_THREE_PHASE			= 0,
 	PM_NOP_TWO_PHASE,
+};
+
+enum {
+	PM_VSI_AB_INLINE			= 0,
+	PM_VSI_AB_LOW,
+	PM_VSI_FULL_LOW
 };
 
 enum {

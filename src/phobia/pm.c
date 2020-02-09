@@ -951,45 +951,38 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
-#if (_HW_VSI_SENSOR == _HW_VSI_AB_INLINE)
+		if (PM_CONFIG_VSI(pm) == PM_VSI_AB_INLINE) {
 
-		xMAX = pm->dc_resolution - pm->ts_clearance;
+			xMAX = pm->dc_resolution - pm->ts_clearance;
 
-		if (xA > xMAX || xB > xMAX) {
+			if (xA > xMAX || xB > xMAX) {
 
-			xMAX = (xA < xB) ? xB : xA;
-			xMAX = (xMAX < xC) ? xC : xMAX;
-			xMIN = pm->dc_resolution - xMAX;
+				xMAX = (xA < xB) ? xB : xA;
+				xMAX = (xMAX < xC) ? xC : xMAX;
+				xMIN = pm->dc_resolution - xMAX;
 
-			xA += xMIN;
-			xB += xMIN;
-			xC += xMIN;
+				xA += xMIN;
+				xB += xMIN;
+				xC += xMIN;
+			}
+
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+
+			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
+			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
+			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 		}
+		else if (PM_CONFIG_VSI(pm) == PM_VSI_AB_LOW) {
 
-		xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMAX = pm->dc_resolution - pm->ts_clearance;
 
-		xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
-		xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
-		xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
-
-#endif /* _HW_VSI_AB_INLINE */
-
-#if (_HW_VSI_SENSOR == _HW_VSI_AB_LOW)
-
-		xMAX = pm->dc_resolution - pm->ts_clearance;
-
-		xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? xMAX : xA;
-		xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? xMAX : xB;
-		xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? xMAX : xC;
-
-#endif /* _HW_VSI_AB_LOW */
-
-#if (_HW_VSI_SENSOR == _HW_VSI_FULL_LOW)
-
-	/* TODO */
-
-#endif /* _HW_VSI_FULL_LOW */
-
+			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? xMAX : xA;
+			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? xMAX : xB;
+			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? xMAX : xC;
+		}
+		else {
+			/* TODO */
+		}
 	}
 	else {
 		xA += pm->ts_minimal;
