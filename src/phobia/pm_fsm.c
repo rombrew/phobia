@@ -163,6 +163,32 @@ void pm_ADD(float *S, float *C, float X)
 }
 
 static void
+pm_fsm_state_idle(pmc_t *pm)
+{
+	if (		pm->lu_mode == PM_LU_DISABLED
+			&& pm->config_BOOST == PM_ENABLED) {
+
+		switch (pm->fsm_phase) {
+
+			case 0:
+				pm->proc_set_DC(0, 0, 0);
+				pm->proc_set_Z(5);
+
+				pm->fsm_phase = 1;
+				break;
+
+			case 1:
+				if (m_fabsf(pm->fb_iB) > pm->fault_current_tol) {
+
+					pm->fsm_state = PM_STATE_LOOP_BOOST;
+					pm->fsm_phase = 0;
+				}
+				break;
+		}
+	}
+}
+
+static void
 pm_fsm_state_zero_drift(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -1601,6 +1627,12 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 }
 
 static void
+pm_fsm_state_loop_boost(pmc_t *pm)
+{
+	/* TODO */
+}
+
+static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -1699,6 +1731,7 @@ void pm_FSM(pmc_t *pm)
 	switch (pm->fsm_state) {
 
 		case PM_STATE_IDLE:
+			pm_fsm_state_idle(pm);
 			break;
 
 		case PM_STATE_ZERO_DRIFT:
@@ -1756,6 +1789,10 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_ADJUST_HALL:
 			pm_fsm_state_adjust_hall(pm);
+			break;
+
+		case PM_STATE_LOOP_BOOST:
+			pm_fsm_state_loop_boost(pm);
 			break;
 
 		case PM_STATE_HALT:

@@ -171,15 +171,15 @@ reg_proc_kv(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_uE(const reg_t *reg, float *lval, const float *rval)
+reg_proc_BEMF(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
 
-		*lval = reg->link->f * pm.const_E;
+		*lval = reg->link->f * pm.lu_MPPE * pm.const_E;
 	}
 	else if (rval != NULL) {
 
-		reg->link->f = (*rval) / pm.const_E;
+		reg->link->f = (*rval) / (pm.lu_MPPE * pm.const_E);
 	}
 }
 
@@ -356,13 +356,26 @@ reg_proc_setpoint_Fg(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_km(const reg_t *reg, float *lval, const float *rval)
 {
+	if (lval != NULL) {
+
+		*lval = reg->link->f / 1000.f;
+	}
+	else if (rval != NULL) {
+
+		reg->link->f = (*rval) * 1000.f;
+	}
+}
+
+static void
+reg_proc_gain_accel(const reg_t *reg, float *lval, const float *rval)
+{
         if (lval != NULL) {
 
-                *lval = reg->link->f / 1000.f;
+                *lval = reg->link->f * reg->link->f / 2.f;
         }
         else if (rval != NULL) {
 
-                reg->link->f = (*rval) * 1000.f;
+                reg->link->f = m_sqrtf((*rval) * 2.f);
         }
 }
 
@@ -765,12 +778,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_lpf_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_lpf_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
 	REG_DEF(pm.lu_MPPE,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.lu_MPPE, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
+	REG_DEF(pm.lu_MPPE, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_gain_LP_S,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_gain_TAKE,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_gain_GIVE,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.lu_gain_TAKE,_u,		"",	"%3f",	REG_READ_ONLY, &reg_proc_uE, NULL),
-	REG_DEF(pm.lu_gain_GIVE,_u,		"",	"%3f",	REG_READ_ONLY, &reg_proc_uE, NULL),
+	REG_DEF(pm.lu_gain_TAKE, _BEMF,		"V",	"%3f",	0, &reg_proc_BEMF, NULL),
+	REG_DEF(pm.lu_gain_GIVE, _BEMF,		"V",	"%3f",	0, &reg_proc_BEMF, NULL),
 	REG_DEF(pm.lu_gain_LEVE,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_caught,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(pm.lu_mode,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
@@ -887,9 +900,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.const_dd_T,,			"m",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.watt_wP_maximal,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_iB_maximal,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_iDC_maximal,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_wP_reverse,,		"W",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.watt_iB_reverse,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_iDC_reverse,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_dclink_HI,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_dclink_LO,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_lpf_D,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -938,7 +951,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_setpoint_F, g,		"g",	"%2f",	0, &reg_proc_setpoint_Fg, NULL),
 	REG_DEF(pm.x_near_tol,,			"rad",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.x_gain_P, _accel,	"rad/s/s",	"%1f",	0, &reg_proc_gain_accel, NULL),
 	REG_DEF(pm.x_gain_N,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.x_gain_N, _accel,	"rad/s/s",	"%1f",	0, &reg_proc_gain_accel, NULL),
 
 	REG_DEF(pm.im_revol_total,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(pm.im_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),

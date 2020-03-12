@@ -38,7 +38,7 @@ void tel_reg_grab(tel_t *ti)
 
 				if (ti->reg_ID[N] != ID_NULL) {
 
-					/* Grab the value is register is not null.
+					/* Grab the value if register is not null.
 					 * */
 					reg = &regfile[ti->reg_ID[N]];
 					reg_getval(reg, &ti->data[ti->n][N]);

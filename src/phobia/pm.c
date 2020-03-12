@@ -16,6 +16,7 @@ void pm_default(pmc_t *pm)
 	pm->config_DRIVE = PM_DRIVE_SPEED;
 	pm->config_SERVO = PM_DISABLED;
 	pm->config_INFO	= PM_ENABLED;
+	pm->config_BOOST = PM_DISABLED;
 
 	pm->tm_transient_slow = 0.05f;
 	pm->tm_transient_fast = 0.002f;
@@ -105,7 +106,7 @@ void pm_default(pmc_t *pm)
 	pm->hall_gain_SF = 1E-3f;
 	pm->hall_gain_LP = 5E-2f;
 
-	pm->qenc_R = 1600;
+	pm->qenc_R = 2400;
 	pm->qenc_Zq = 1.f;
 	pm->qenc_gain_PF = 1E-0f;
 	pm->qenc_gain_SF = 5E-3f;
@@ -118,9 +119,9 @@ void pm_default(pmc_t *pm)
 	pm->const_J = 0.f;
 
 	pm->watt_wP_maximal = 4000.f;
-	pm->watt_iB_maximal = 80.f;
+	pm->watt_iDC_maximal = 80.f;
 	pm->watt_wP_reverse = 4000.f;
-	pm->watt_iB_reverse = 80.f;
+	pm->watt_iDC_reverse = 80.f;
 	pm->watt_dclink_HI = 56.f;
 	pm->watt_dclink_LO = 7.f;
 	pm->watt_gain_LP_F = 5E-2f;
@@ -149,6 +150,9 @@ void pm_default(pmc_t *pm)
 	pm->x_near_tol = 3.f;
 	pm->x_gain_P = 70.f;
 	pm->x_gain_N = 50.f;
+
+	pm->boost_gain_P = 1E-2f;
+	pm->boost_gain_I = 1E-3f;
 }
 
 void pm_build(pmc_t *pm)
@@ -1150,9 +1154,9 @@ pm_loop_current(pmc_t *pm)
 
 	/* Maximal DC link CURRENT constraint.
 	 * */
-	wP = pm->watt_iB_maximal * pm->const_fb_U;
+	wP = pm->watt_iDC_maximal * pm->const_fb_U;
 	wMAX = (wP < wMAX) ? wP : wMAX;
-	wP = - pm->watt_iB_reverse * pm->const_fb_U;
+	wP = - pm->watt_iDC_reverse * pm->const_fb_U;
 	wREV = (wP > wREV) ? wP : wREV;
 
 	/* Prevent DC link OVERVOLTAGE.
@@ -1360,12 +1364,6 @@ pm_loop_servo(pmc_t *pm)
 	gP = pm->x_gain_N + (pm->x_gain_P - pm->x_gain_N) * gP;
 
 	pm->s_setpoint = gP * wS;
-}
-
-static void
-pm_charger(pmc_t *pm)
-{
-	/* TODO */
 }
 
 static void

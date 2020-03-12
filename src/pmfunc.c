@@ -408,3 +408,58 @@ SH_DEF(pm_fsm_probe_const_E)
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
+SH_DEF(pm_fsm_probe_lu_MPPE)
+{
+	do {
+		pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
+}
+
+SH_DEF(pm_fsm_probe_const_J)
+{
+	float			wSP;
+
+	if (pm.lu_mode != PM_LU_ESTIMATE_FLUX) {
+
+		printf("Unable when LU is not locked" EOL);
+		return;
+	}
+
+	if (stof(&wSP, s) != NULL) {
+
+		if (m_fabsf(wSP - pm.lu_lpf_wS) < pm.lu_MPPE) {
+
+			printf("Insufficient speed change" EOL);
+			return;
+		}
+	}
+	else {
+		printf("You must specify a target speed" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_PROBE_CONST_J;
+
+		vTaskDelay((TickType_t) 100);
+
+		pm.s_setpoint = wSP;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_CONST_J]);
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FAIL_REASON]);
+}
+

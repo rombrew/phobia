@@ -480,31 +480,29 @@ sim_RUN(FILE *fdTel)
 	sim_test_BASE(NULL);
 	//sim_test_HALL(NULL);
 
-	pm.config_FORCED = 0;
-	pm.config_DRIVE = PM_DRIVE_CURRENT;
+	pm.config_SENSOR = PM_SENSOR_QENC;
+	pm.s_gain_P *= 5.f;
+	pm.s_gain_I *= 10.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	m.M[1] = 1E-2;
+	pm.s_setpoint = 500.f;
+	sim_F(fdTel, 1.);
 
-	sim_F(fdTel, .5);
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
 
-	m.M[0] = 1.f;
+	pm.config_SERVO = PM_ENABLED;
 
+	pm.x_setpoint_revol = 10.f;
+	sim_F(fdTel, 2.);
+
+	m.M[0] = 5.f;
 	sim_F(fdTel, .5);
 
 	m.M[0] = 0.f;
-
-	sim_F(fdTel, 1.);
-
-	m.M[0] = 1.f;
-
 	sim_F(fdTel, .5);
-
-	m.M[0] = 0.f;
-
-	sim_F(fdTel, 1.);
 
 	return 1;
 }

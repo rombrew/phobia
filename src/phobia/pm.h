@@ -76,6 +76,7 @@ enum {
 	PM_STATE_PROBE_LU_MPPE,
 	PM_STATE_ADJUST_HALL,
 	PM_STATE_ADJUST_QENC,
+	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT,
 };
 
@@ -146,6 +147,7 @@ typedef struct {
 	int		config_DRIVE;
 	int		config_SERVO;
 	int		config_INFO;
+	int		config_BOOST;
 
 	int		fsm_req;
 	int		fsm_state;
@@ -347,9 +349,9 @@ typedef struct {
 	float		temp_JiEdTZp;
 
 	float		watt_wP_maximal;
-	float		watt_iB_maximal;
+	float		watt_iDC_maximal;
 	float		watt_wP_reverse;
-	float		watt_iB_reverse;
+	float		watt_iDC_reverse;
 	float		watt_dclink_HI;
 	float		watt_dclink_LO;
 	float		watt_lpf_D;
@@ -408,8 +410,12 @@ typedef struct {
 	float		im_fuel_pc;
 	float		im_FIX[4];
 
-	/*int		bt_mode;
-	float		bt_*/
+	float		boost_iIN_HI;
+	float		boost_uIN_LO;
+	float		boost_iDC_HI;
+	float		boost_uDC_HI;
+	float		boost_gain_P;
+	float		boost_gain_I;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

@@ -614,10 +614,16 @@ void ADC_IRQ()
 	if (hal.TIM_mode == TIM_DRIVE_HALL) {
 
 		fb.pulse_HS = GPIO_get_HALL();
+		fb.pulse_EP = 0;
 	}
 	else if (hal.TIM_mode == TIM_DRIVE_QENC) {
 
+		fb.pulse_HS = 0;
 		fb.pulse_EP = TIM_get_EP();
+	}
+	else {
+		fb.pulse_HS = 0;
+		fb.pulse_EP = 0;
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {

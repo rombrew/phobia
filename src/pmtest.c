@@ -171,6 +171,24 @@ SH_DEF(hal_ADC_get_BRAKE)
 	printf("%3f (V)" EOL, &analog);
 }
 
+SH_DEF(hal_GPIO_get_HALL)
+{
+	int		HS;
+
+	HS = GPIO_get_HALL();
+
+	printf("%i" EOL, HS);
+}
+
+SH_DEF(hal_TIM_get_EP)
+{
+	int		EP;
+
+	EP = TIM_get_EP();
+
+	printf("%i" EOL, EP);
+}
+
 SH_DEF(hal_PWM_set_DC)
 {
 	int			xDC;
@@ -212,15 +230,5 @@ SH_DEF(hal_GPIO_set_high_FAN)
 SH_DEF(hal_GPIO_set_low_FAN)
 {
 	GPIO_set_LOW(GPIO_FAN);
-}
-
-SH_DEF(hal_GPIO_set_high_LED)
-{
-	GPIO_set_HIGH(GPIO_LED);
-}
-
-SH_DEF(hal_GPIO_set_low_LED)
-{
-	GPIO_set_LOW(GPIO_LED);
 }
 

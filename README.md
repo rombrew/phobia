@@ -86,7 +86,6 @@ PCB design source files.
 	* Total distance traveled.
 	* Source energy (Wh) and charge (Ah) consumed (or reverted).
 	* Fuel gauge percentage.
-	* Peak values.
 
 ## TODO
 

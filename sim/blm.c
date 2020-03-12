@@ -134,7 +134,7 @@ void blm_Enable(blm_t *m)
 
 	/* Quadrature Encoder.
 	 * */
-	m->EP_R = 1600;	/* Mechanical resolution */
+	m->EP_R = 2400;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;	/* Reduction ratio */
 }
 
