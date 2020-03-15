@@ -3,7 +3,7 @@
 
 #define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
-#define PM_CONFIG_VSI(pm)		PM_VSI_AB_INLINE
+#define PM_CONFIG_VSI(pm)		(pm)->config_VSI
 
 #define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
 #define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
@@ -75,7 +75,6 @@ enum {
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_PROBE_LU_MPPE,
 	PM_STATE_ADJUST_HALL,
-	PM_STATE_ADJUST_QENC,
 	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT,
 };
@@ -140,6 +139,7 @@ typedef struct {
 
 	int		config_NOP;
 	int		config_TVM;
+	int		config_VSI;
 	int		config_FORCED;
 	int		config_HFI;
 	int		config_SENSOR;
@@ -248,6 +248,7 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
+	float		forced_TIM;
 
 	float		detach_take_U;
 	float		detach_X;
@@ -302,7 +303,7 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_IF;
+	int		hall_ENAF;
 	int		hall_HS;
 	int		hall_DIRF;
 	float		hall_prolS;
@@ -315,6 +316,7 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_LP;
 
+	int		qenc_FORF;
 	int		qenc_baseEP;
 	float		qenc_baseF[2];
 	int		qenc_lastEP;
@@ -339,7 +341,7 @@ typedef struct {
 	float		const_im_LQ;
 	float		const_im_B;
 	float		const_im_R;
-	float		const_dd_T;
+	float		const_D;
 
 	float		temp_const_ifbU;
 	float		temp_iE;

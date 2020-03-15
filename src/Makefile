@@ -3,8 +3,8 @@ TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
 CROSS	?= armv7m-none-eabi
-#CC	= $(CROSS)-gcc
-CC	= clang -target $(CROSS)
+CC	= $(CROSS)-gcc
+#CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
 GDB     = $(CROSS)-gdb
 MK	= mkdir -p
@@ -66,6 +66,7 @@ OBJS    = freertos/heap_4.o \
 	  tel.o
 
 OBJS	+= apps/hx711.o \
+	   apps/linear.o \
 	   apps/push.o \
 	   apps/volt.o
 

@@ -9,6 +9,7 @@ void pm_default(pmc_t *pm)
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_TVM = PM_ENABLED;
+	pm->config_VSI = PM_VSI_AB_INLINE;
 	pm->config_FORCED = PM_ENABLED;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
@@ -101,11 +102,13 @@ void pm_default(pmc_t *pm)
 	pm->hfi_gain_SF = 5E-3f;
 	pm->hfi_gain_FP = 0E-3f;
 
+	pm->hall_ENAF = PM_DISABLED;
 	pm->hall_prol_T = 0.1f;
 	pm->hall_gain_PF = 1E-0f;
 	pm->hall_gain_SF = 1E-3f;
 	pm->hall_gain_LP = 5E-2f;
 
+	pm->qenc_FORF = PM_DISABLED;
 	pm->qenc_R = 2400;
 	pm->qenc_Zq = 1.f;
 	pm->qenc_gain_PF = 1E-0f;
@@ -168,8 +171,12 @@ void pm_build(pmc_t *pm)
 	pm->temp_loRupRiN = (pm->flux_lower_R - pm->flux_upper_R) / (float) pm->flux_N;
 	pm->temp_dTiL = pm->dT / pm->const_L;
 	pm->temp_2PZiR = 2.f * M_PI_F * pm->const_Zp * pm->qenc_Zq / (float) pm->qenc_R;
-	pm->temp_JiEdTZp = pm->const_J / (1.5f * pm->const_E * pm->dT
-			* (float) (pm->const_Zp * pm->const_Zp));
+
+	if (pm->const_E > M_EPS_F) {
+
+		pm->temp_JiEdTZp = pm->const_J / (1.5f * pm->const_E * pm->dT
+				* (float) (pm->const_Zp * pm->const_Zp));
+	}
 }
 
 static void
@@ -561,7 +568,7 @@ pm_sensor_HALL(pmc_t *pm)
 		pm->hall_lpf_wS += (pm->hall_wS - pm->hall_lpf_wS) * pm->hall_gain_LP;
 	}
 	else {
-		pm->hall_IF = 0;
+		pm->hall_ENAF = PM_DISABLED;
 
 		pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 		pm->lu_mode = PM_LU_ESTIMATE_FLUX;
@@ -673,7 +680,7 @@ pm_lu_catch(pmc_t *pm)
 static void
 pm_lu_FSM(pmc_t *pm)
 {
-	int			lev_SKIP;
+	int			lev_SKIP, lev_HOLD;
 
 	if (pm->lu_mode == PM_LU_DETACHED) {
 
@@ -707,7 +714,7 @@ pm_lu_FSM(pmc_t *pm)
 				 * */
 			}
 			else if (	pm->config_SENSOR == PM_SENSOR_HALL
-					&& pm->hall_IF != 0) {
+					&& pm->hall_ENAF == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
@@ -740,6 +747,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
 				pm->forced_wS = pm->flux_wS;
+				pm->forced_TIM = 0;
 
 				pm->proc_set_Z(0);
 			}
@@ -751,6 +759,8 @@ pm_lu_FSM(pmc_t *pm)
 		pm_forced(pm);
 		pm_lu_catch(pm);
 
+		pm->forced_TIM++;
+
 		pm->lu_F[0] = pm->forced_F[0];
 		pm->lu_F[1] = pm->forced_F[1];
 		pm->lu_wS = pm->forced_wS;
@@ -759,6 +769,28 @@ pm_lu_FSM(pmc_t *pm)
 				&& pm->const_E > M_EPS_F) {
 
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
+		}
+		else {
+			lev_HOLD = pm->freq_hz * pm->tm_current_hold;
+
+			if (		pm->config_SENSOR == PM_SENSOR_QENC
+					&& pm->qenc_FORF == PM_ENABLED
+					&& pm->forced_TIM > lev_HOLD) {
+
+				pm->lu_mode = PM_LU_SENSOR_QENC;
+
+				pm->qenc_baseEP = pm->fb_EP;
+				pm->qenc_baseF[0] = pm->lu_F[0];
+				pm->qenc_baseF[1] = pm->lu_F[1];
+				pm->qenc_lastEP = 0;
+				pm->qenc_rotEP = 0;
+				pm->qenc_prolS = 0.f;
+
+				pm->qenc_F[0] = pm->lu_F[0];
+				pm->qenc_F[1] = pm->lu_F[1];
+				pm->qenc_wS = pm->lu_wS;
+				pm->qenc_lpf_wS = pm->lu_wS;
+			}
 		}
 	}
 	else if (pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
@@ -773,7 +805,7 @@ pm_lu_FSM(pmc_t *pm)
 		if (pm->lu_caught == PM_LU_UNCERTAIN) {
 
 			if (		pm->config_SENSOR == PM_SENSOR_HALL
-					&& pm->hall_IF != 0) {
+					&& pm->hall_ENAF == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
@@ -818,6 +850,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->forced_F[0] = pm->flux_F[0];
 				pm->forced_F[1] = pm->flux_F[1];
 				pm->forced_wS = pm->flux_wS;
+				pm->forced_TIM = 0;
 			}
 			else {
 				pm->lu_mode = PM_LU_DETACHED;
@@ -1404,7 +1437,7 @@ pm_infometer(pmc_t *pm)
 	/* Traveled distance.
 	 * */
 	revdd = (float) pm->im_revol_total / (float) pm->const_Zp;
-	pm->im_distance = revdd * pm->const_dd_T * M_PI_F;
+	pm->im_distance = revdd * pm->const_D;
 
 	/* Get WATT per HOUR.
 	 * */

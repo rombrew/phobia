@@ -69,9 +69,9 @@ void tel_reg_grab(tel_t *ti)
 
 void tel_startup(tel_t *ti, int freq, int mode)
 {
-	if (freq > 0 && freq <= hal.PWM_frequency) {
+	if (freq > 0 && freq < hal.PWM_frequency) {
 
-		ti->d = (hal.PWM_frequency + freq / 2) / freq;
+		ti->d = (int) ((hal.PWM_frequency / (float) freq) + .5f);
 	}
 	else {
 		ti->d = 1;

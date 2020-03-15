@@ -1565,7 +1565,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 				pm->probe_DFT[HS] += 1.f;
 			}
 			else {
-				pm->hall_IF = 0;
+				pm->hall_ENAF = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1609,7 +1609,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (N < 6) {
 
-				pm->hall_IF = 0;
+				pm->hall_ENAF = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1617,7 +1617,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 				break;
 			}
 			else {
-				pm->hall_IF = 1;
+				pm->hall_ENAF = PM_ENABLED;
 
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;

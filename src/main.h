@@ -73,6 +73,15 @@ typedef struct {
 	 * */
 	float			pull_g;
 	float			pull_ad[2];
+
+	/* Linear Drive.
+	 * */
+	float			ld_probe_m[2];
+	float			ld_probe_mps;
+
+	/* .
+	 * */
+	int			FT_grab_hz;
 }
 application_t;
 

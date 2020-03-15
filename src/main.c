@@ -466,6 +466,12 @@ void task_INIT(void *pData)
 
 		ap.pull_ad[0] = 0.f;
 		ap.pull_ad[1] = 4.545E-3f;
+
+		ap.ld_probe_m[0] = - 50.f;
+		ap.ld_probe_m[1] = 50.f;
+		ap.ld_probe_mps = 40.f;
+
+		ap.FT_grab_hz = 200;
 	}
 
 	USART_startup();
@@ -499,6 +505,7 @@ void task_INIT(void *pData)
 		PPM_startup();
 	}
 
+	TIM_startup();
 	WD_startup();
 
 	ADC_irq_unlock();
