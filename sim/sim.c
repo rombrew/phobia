@@ -61,7 +61,7 @@ sim_Tel(float *pTel)
 
 	/* VSI.
 	 * */
-	pTel[12] = pm.vsi_EU;
+	pTel[12] = pm.vsi_DC;
 	pTel[13] = pm.vsi_X;
 	pTel[14] = pm.vsi_Y;
 	pTel[15] = pm.vsi_IF;
@@ -95,11 +95,11 @@ sim_Tel(float *pTel)
 	/* Estimated speed.
 	 * */
 	pTel[26] = pm.lu_wS * 30. / M_PI / m.Zp;
+	pTel[27] = pm.lu_mode;
 
-	pTel[27] = pm.lu_lpf_wS * 30. / M_PI / m.Zp;
-	pTel[28] = 0.f;
-	pTel[29] = pm.lu_caught;
-	pTel[30] = pm.lu_mode;
+	pTel[28] = pm.lu_flux_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[29] = pm.lu_flux_zone;
+	pTel[30] = pm.im_revol_1;
 
 	pTel[31] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
 	pTel[32] = pm.forced_wS * 30. / M_PI / m.Zp;
@@ -108,8 +108,8 @@ sim_Tel(float *pTel)
 	pTel[34] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
 	pTel[35] = pm.flux_wS * 30. / M_PI / m.Zp;
 	pTel[36] = pm.flux_E;
-	pTel[37] = pm.flux_H;
-	pTel[38] = pm.flux[pm.flux_H].lpf_E;
+	pTel[37] = 0.;
+	pTel[38] = 0.;
 
 	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
 	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
@@ -196,6 +196,7 @@ static int
 sim_test_BASE(FILE *fdTel)
 {
 	double		tau_A, tau_B, tau_C;
+	double		ZpE;
 
 	t_prologue();
 
@@ -299,16 +300,23 @@ sim_test_BASE(FILE *fdTel)
 
 	printf("MPPE %.2f (rpm)\n", pm.lu_MPPE * 30. / M_PI / m.Zp);
 
-	pm.fsm_req = PM_STATE_PROBE_CONST_J;
-	sim_F(fdTel, .1);
-
-	pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1.);
 
-	printf("J %.4E (kgm2) \n", pm.const_J);
+	pm.fsm_req = PM_STATE_PROBE_CONST_J;
+	sim_F(fdTel, .05);
+
+	pm.s_setpoint = pm.probe_speed_spinup;
+	sim_F(fdTel, .2);
+
+	pm.s_setpoint = pm.probe_speed_hold;
+	sim_F(fdTel, 0.);
+
+	ZpE = 1.5f * pm.const_Zp * pm.const_Zp * pm.const_E;
+
+	printf("J %.4E (kgm2) \n", pm.const_Ja * ZpE);
 
 	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_J, m.J);
+	t_assert_ref(pm.const_Ja * ZpE, m.J);
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	sim_F(fdTel, 0.);
@@ -430,7 +438,7 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
 	m.J = 6.2E-3;
 
-	if (sim_test_BASE(NULL) == 0)
+	if (sim_test_BASE(fdTel) == 0)
 		return 0;
 
 	if (sim_test_SPEED(NULL) == 0)
@@ -459,7 +467,7 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
-	if (sim_test_SPEED(fdTel) == 0)
+	if (sim_test_SPEED(NULL) == 0)
 		return 0;
 
 	return 1;
@@ -468,41 +476,39 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
-	m.R = 2.4E-1;
+	/*m.R = 2.4E-1;
 	m.Ld = 5.2E-4;
 	m.Lq = 6.5E-4;
 	m.U = 48.;
 	m.Rs = 0.7;
 	m.Zp = 15;
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;
+	m.J = 6.2E-3;*/
+
+	m.R = 14E-3;
+	m.Ld = 10E-6;
+	m.Lq = 20E-6;
+	m.U = 22.;
+	m.Rs = 0.1;
+	m.Zp = 14;
+	m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
+	m.J = 2.7E-4;
 
 	sim_test_BASE(NULL);
-	//sim_test_HALL(NULL);
 
-	pm.config_SENSOR = PM_SENSOR_QENC;
-	pm.s_gain_P *= 5.f;
-	pm.s_gain_I *= 10.f;
+	pm.s_accel = 50000000.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.s_setpoint = 500.f;
+	pm.s_setpoint = 1000.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 0.f;
+	pm.s_setpoint = 7000.f;
 	sim_F(fdTel, 1.);
 
-	pm.config_SERVO = PM_ENABLED;
-
-	pm.x_setpoint_revol = 10.f;
+	//m.M[0] = -2.;
 	sim_F(fdTel, 2.);
-
-	m.M[0] = 5.f;
-	sim_F(fdTel, .5);
-
-	m.M[0] = 0.f;
-	sim_F(fdTel, .5);
 
 	return 1;
 }

@@ -3,8 +3,8 @@ TARGET	= $(BUILD)/pmc
 IMAGE	= $(TARGET).b
 
 CROSS	?= armv7m-none-eabi
-CC	= $(CROSS)-gcc
-#CC	= clang -target $(CROSS)
+#CC	= $(CROSS)-gcc
+CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
 GDB     = $(CROSS)-gdb
 MK	= mkdir -p
@@ -24,9 +24,6 @@ CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
 
 #CFLAGS  += -D_HW_REV4B
-#CFLAGS  += -D_HW_REV4B -D_HW_REV4B_KOZIN
-#CFLAGS  += -D_HW_REV4B -D_HW_REV4B_PAVLOV
-#CFLAGS  += -D_HW_REV4B -D_HW_REV4B_BARADA
 CFLAGS  += -D_HW_REV4C
 
 LDFLAGS	= -nostdlib
@@ -62,11 +59,11 @@ OBJS    = freertos/heap_4.o \
 	  pmfunc.o \
 	  pmtest.o \
 	  regfile.o \
+	  servo.o \
 	  shell.o \
 	  tel.o
 
 OBJS	+= apps/hx711.o \
-	   apps/linear.o \
 	   apps/push.o \
 	   apps/volt.o
 
@@ -89,7 +86,7 @@ $(IMAGE): $(TARGET)
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ stmflasher -p $(TTY) -b $(BAUD) -w $< -v
+	@ stm32flash -w $< -v -S 0x08000000:262144 -b $(BAUD) -R $(TTY)
 
 zip: $(IMAGE)
 	@ echo "  ZIP   " $(notdir $<)

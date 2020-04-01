@@ -3,16 +3,14 @@
 
 #define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
-#define PM_CONFIG_VSI(pm)		(pm)->config_VSI
+#define PM_CONFIG_CURRENT(pm)		(pm)->config_CURRENT
 
 #define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
 #define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
 #define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 
-#define PM_FLUX_MAX			25
 #define PM_HALL_SPAN			1.05f
 #define PM_MAX_F			7E+27f
-#define PM_MAX_I			16777216l
 #define PM_SFI(s)			#s
 
 enum {
@@ -21,9 +19,15 @@ enum {
 };
 
 enum {
-	PM_VSI_AB_INLINE			= 0,
-	PM_VSI_AB_LOW,
-	PM_VSI_FULL_LOW
+	PM_CURRENT_AB_INLINE			= 0,
+	PM_CURRENT_AB_LOW,
+	PM_CURRENT_FULL_LOW
+};
+
+enum {
+	PM_ESTIMATE_DISABLED			= 0,
+	PM_ESTIMATE_FLUX,
+	PM_ESTIMATE_KALMAN,
 };
 
 enum {
@@ -43,9 +47,9 @@ enum {
 };
 
 enum {
-	PM_LU_UNCERTAIN				= 0,
-	PM_LU_CAUGHT,
-	PM_LU_LOCKED
+	PM_FLUX_UNCERTAIN			= 0,
+	PM_FLUX_HIGH,
+	PM_FLUX_DETACHED
 };
 
 enum {
@@ -87,11 +91,11 @@ enum {
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERROR_POWER_STAGE_FAULT,
+	PM_ERROR_BOOTSTRAP_FAULT,
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INLINE_OVER_CURRENT,
 	PM_ERROR_DC_LINK_OVER_VOLTAGE,
-	PM_ERROR_FLUX_UNSTABLE,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
 	PM_ERROR_SENSOR_QENC_FAULT,
@@ -139,8 +143,12 @@ typedef struct {
 
 	int		config_NOP;
 	int		config_TVM;
-	int		config_VSI;
+	int		config_CURRENT;
+	int		config_VSI_SILENT;
 	int		config_FORCED;
+	int		config_QENC_FORCED_ALIGN;
+	int		config_ESTIMATE;
+	int		config_FORECAST;
 	int		config_HFI;
 	int		config_SENSOR;
 	int		config_WEAK;
@@ -186,6 +194,7 @@ typedef struct {
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
 	float		probe_speed_hold;
+	float		probe_speed_spinup;
 	float		probe_speed_detached;
 	float		probe_gain_P;
 	float		probe_gain_I;
@@ -201,9 +210,8 @@ typedef struct {
 	float		fault_accuracy_tol;
 	float		fault_current_halt;
 	float		fault_voltage_halt;
-	float		fault_flux_lpfe_halt;
 
-	float		vsi_EU;
+	float		vsi_DC;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_DX;
@@ -217,7 +225,8 @@ typedef struct {
 	int		vsi_BZ;
 	int		vsi_CZ;
 
-	float		tvm_range;
+	int		tvm_READY;
+	float		tvm_range_DC;
 	float		tvm_A;
 	float		tvm_B;
 	float		tvm_C;
@@ -233,14 +242,16 @@ typedef struct {
 	float		lu_iQ;
 	float		lu_F[2];
 	float		lu_wS;
-	float		lu_lpf_wS;
+	int		lu_mode;
+
+	float		lu_flux_lpf_wS;
 	float		lu_MPPE;
-	float		lu_gain_LP_S;
+	int		lu_flux_zone;
+	int		lu_flux_locked;
 	float		lu_gain_TAKE;
 	float		lu_gain_GIVE;
 	float		lu_gain_LEVE;
-	int		lu_caught;
-	int		lu_mode;
+	float		lu_gain_LP;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -248,46 +259,30 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
-	float		forced_TIM;
+	int		forced_TIM;
 
-	float		detach_take_U;
 	float		detach_X;
 	float		detach_Y;
 	float		detach_V[2];
 	int		detach_TIM;
 	int		detach_SKIP;
+	float		detach_take_U;
 	float		detach_gain_AD;
 	float		detach_gain_SF;
 
-	struct {
-
-		float	X;
-		float	Y;
-		float	lpf_E;
-	}
-	flux[PM_FLUX_MAX];
-
-	int		flux_N;
-	float		flux_lower_R;
-	float		flux_upper_R;
+	float		flux_X;
+	float		flux_Y;
 	float		flux_E;
-	int		flux_H;
 	float		flux_F[2];
 	float		flux_wS;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
 	float		flux_gain_HI;
 	float		flux_gain_AD;
-	float		flux_gain_LP_E;
 	float		flux_gain_SF;
-
-	float		inject_bias_U;
-	float		inject_ratio_D;
 
 	float		hfi_freq_hz;
 	float		hfi_swing_D;
-	float		hfi_iD;
-	float		hfi_iQ;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_wave[2];
@@ -303,7 +298,7 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_ENAF;
+	int		hall_READY;
 	int		hall_HS;
 	int		hall_DIRF;
 	float		hall_prolS;
@@ -316,13 +311,12 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_LP;
 
-	int		qenc_FORF;
 	int		qenc_baseEP;
 	float		qenc_baseF[2];
 	int		qenc_lastEP;
 	int		qenc_rotEP;
 	float		qenc_prolS;
-	int		qenc_R;
+	int		qenc_PPR;
 	float		qenc_Zq;
 	float		qenc_F[2];
 	float		qenc_wS;
@@ -336,19 +330,17 @@ typedef struct {
 	float		const_R;
 	float		const_L;
 	int		const_Zp;
-	float		const_J;
+	float		const_Ja;
 	float		const_im_LD;
 	float		const_im_LQ;
 	float		const_im_B;
 	float		const_im_R;
-	float		const_D;
+	float		const_ld_S;
 
 	float		temp_const_ifbU;
-	float		temp_iE;
-	float		temp_loRupRiN;
+	float		temp_const_iE;
 	float		temp_dTiL;
-	float		temp_2PZiR;
-	float		temp_JiEdTZp;
+	float		temp_2PZiPPR;
 
 	float		watt_wP_maximal;
 	float		watt_iDC_maximal;
@@ -373,6 +365,9 @@ typedef struct {
 	float		i_gain_P;
 	float		i_gain_I;
 
+	float		inject_ratio_D;
+	float		inject_gain_AD;
+
 	float		weak_maximal;
 	float		weak_bias_U;
 	float		weak_D;
@@ -387,15 +382,17 @@ typedef struct {
 	float		s_accel;
 	float		s_track;
 	float		s_integral;
-	float		s_last_wS;
+	float		s_base_wS;
 	float		s_gain_P;
 	float		s_gain_I;
 	float		s_gain_S;
 
 	float		x_setpoint_F[2];
+	float		x_setpoint_wS;
 	int		x_setpoint_revol;
 	float		x_lu_F1;
 	int		x_lu_revol;
+	float		x_residual;
 	float		x_near_tol;
 	float		x_gain_P;
 	float		x_gain_N;

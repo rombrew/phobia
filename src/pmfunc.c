@@ -34,7 +34,7 @@ int pm_wait_for_IDLE()
 int pm_wait_for_SPINUP(float ref)
 {
 	TickType_t		xTick = (TickType_t) 0;
-	float			wS = pm.lu_lpf_wS;
+	float			wS = pm.lu_flux_lpf_wS;
 
 	do {
 		vTaskDelay((TickType_t) 100);
@@ -46,14 +46,14 @@ int pm_wait_for_SPINUP(float ref)
 		if (ref - pm.forced_wS < 1E-1f * ref)
 			break;
 
-		if (ref - pm.lu_lpf_wS < 1E-1f * ref)
+		if (ref - pm.lu_flux_lpf_wS < 1E-1f * ref)
 			break;
 
-		if (pm.lu_lpf_wS - wS < - M_EPS_F * pm.lu_lpf_wS
+		if (pm.lu_flux_lpf_wS - wS < - M_EPS_F * pm.lu_flux_lpf_wS
 				&& xTick > (TickType_t) 1000)
 			break;
 
-		wS = pm.lu_lpf_wS;
+		wS = pm.lu_flux_lpf_wS;
 
 		if (xTick > (TickType_t) 5000) {
 
@@ -71,6 +71,7 @@ int pm_wait_for_SPINUP(float ref)
 int pm_wait_for_MOTION(float ref)
 {
 	TickType_t		xTick = (TickType_t) 0;
+	int			revol = pm.im_revol_total;
 
 	do {
 		vTaskDelay((TickType_t) 100);
@@ -79,8 +80,11 @@ int pm_wait_for_MOTION(float ref)
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (m_fabsf(pm.lu_lpf_wS) > ref)
-			break;
+		if (pm.im_revol_total != revol) {
+
+			if (m_fabsf(pm.lu_flux_lpf_wS) > ref)
+				break;
+		}
 
 		if (xTick > (TickType_t) 10000) {
 
@@ -190,7 +194,7 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
-		reg_format(&regfile[ID_PM_LU_LPF_WS_RPM]);
+		reg_format(&regfile[ID_PM_LU_FLUX_LPF_WS_RPM]);
 
 		pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
 
@@ -199,16 +203,25 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
 
+		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+			break;
+
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
-		vTaskDelay((TickType_t) 100);
+		vTaskDelay((TickType_t) 50);
 
-		pm.s_setpoint = 0.f;
+		pm.s_setpoint = pm.probe_speed_spinup;
+
+		vTaskDelay((TickType_t) 200);
+
+		pm.s_setpoint = pm.probe_speed_hold;
+
+		vTaskDelay((TickType_t) 200);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_J]);
+		reg_format(&regfile[ID_PM_CONST_JA_KGM2]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -234,12 +247,6 @@ SH_DEF(pm_probe_detached)
 		return;
 	}
 
-	if (pm.config_FORCED == PM_ENABLED) {
-
-		printf("Unable when forced control is enabled" EOL);
-		return;
-	}
-
 	do {
 		pm.fsm_req = PM_STATE_LU_DETACHED;
 
@@ -255,7 +262,7 @@ SH_DEF(pm_probe_detached)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
-		reg_format(&regfile[ID_PM_LU_LPF_WS_RPM]);
+		reg_format(&regfile[ID_PM_LU_FLUX_LPF_WS_RPM]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -305,23 +312,23 @@ SH_DEF(pm_probe_lu_MPPE)
 
 SH_DEF(pm_probe_const_J)
 {
-	if (pm.lu_mode != PM_LU_ESTIMATE_FLUX) {
-
-		printf("Unable when LU is not locked" EOL);
-		return;
-	}
-
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
-		vTaskDelay((TickType_t) 100);
+		vTaskDelay((TickType_t) 50);
+
+		pm.s_setpoint = pm.probe_speed_spinup;
+
+		vTaskDelay((TickType_t) 200);
 
 		pm.s_setpoint = pm.probe_speed_hold;
+
+		vTaskDelay((TickType_t) 200);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_J]);
+		reg_format(&regfile[ID_PM_CONST_JA_KGM2]);
 	}
 	while (0);
 
@@ -352,12 +359,12 @@ SH_DEF(pm_adjust_HALL)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_HALL_ST_1]);
-		reg_format(&regfile[ID_PM_HALL_ST_2]);
-		reg_format(&regfile[ID_PM_HALL_ST_3]);
-		reg_format(&regfile[ID_PM_HALL_ST_4]);
-		reg_format(&regfile[ID_PM_HALL_ST_5]);
-		reg_format(&regfile[ID_PM_HALL_ST_6]);
+		reg_format(&regfile[ID_PM_HALL_ST_1_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_2_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_3_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_4_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_5_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_6_G]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 

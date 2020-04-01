@@ -15,9 +15,9 @@ void tel_reg_default(tel_t *ti)
 	ti->reg_ID[1] = ID_PM_FB_IB;
 	ti->reg_ID[2] = ID_PM_LU_ID;
 	ti->reg_ID[3] = ID_PM_LU_IQ;
-	ti->reg_ID[4] = ID_PM_LU_FG;
+	ti->reg_ID[4] = ID_PM_LU_F_G;
 	ti->reg_ID[5] = ID_PM_LU_WS_RPM;
-	ti->reg_ID[6] = ID_PM_FLUX_LPF_E;
+	ti->reg_ID[6] = ID_PM_S_INTEGRAL;
 	ti->reg_ID[7] = ID_PM_WATT_LPF_WP;
 	ti->reg_ID[8] = ID_PM_CONST_FB_U;
 	ti->reg_ID[9] = ID_AP_TEMP_PCB;

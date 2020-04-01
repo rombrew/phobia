@@ -29,6 +29,14 @@ typedef struct {
 	float			ppm_control_range[3];
 	float			ppm_startup_range[2];
 
+	/* STEP/DIR interface.
+	 * */
+	int			step_reg_ID;
+	int			step_locked;
+	int			step_baseEP;
+	int			step_accuEP;
+	float			step_const_ld_EP;
+
 	/* Analog interface.
 	 * */
 	int			analog_enabled;
@@ -74,12 +82,13 @@ typedef struct {
 	float			pull_g;
 	float			pull_ad[2];
 
-	/* Linear Drive.
+	/* Servo drive.
 	 * */
-	float			ld_probe_m[2];
-	float			ld_probe_mps;
+	float			servo_span_mm[2];
+	float			servo_uniform_mmps;
+	int			servo_mice_role;
 
-	/* .
+	/* FT constants.
 	 * */
 	int			FT_grab_hz;
 }

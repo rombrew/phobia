@@ -1,7 +1,7 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		64
+#define REG_CONFIG_VERSION		71
 
 enum {
 	REG_CONFIG		= 1,
@@ -43,6 +43,9 @@ const reg_t *reg_search(const char *sym);
 
 void reg_GET(int n, void *lval);
 void reg_SET(int n, const void *rval);
+
+int reg_GET_I(int n);
+float reg_GET_F(int n);
 
 void reg_SET_I(int n, int rval);
 void reg_SET_F(int n, float rval);

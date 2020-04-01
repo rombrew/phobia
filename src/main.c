@@ -277,7 +277,7 @@ void task_ANALOG(void *pData)
 				}
 			}
 
-			reg_SET(ap.analog_reg_ID, &control);
+			reg_SET_F(ap.analog_reg_ID, control);
 
 			if (pm.lu_mode == PM_LU_DISABLED) {
 
@@ -369,38 +369,22 @@ void task_INIT(void *pData)
 		/* Default.
 		 * */
 		hal.USART_baud_rate = 57600;
-
-#ifdef _HW_REV4B
-
 		hal.PWM_frequency = 30000.f;
 		hal.PWM_deadtime = 190;
 		hal.ADC_reference_voltage = 3.3f;
+
+#ifdef _HW_REV4B
+
 		hal.ADC_shunt_resistance = 500E-6f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
 		hal.ADC_terminal_bias = 0.f;
 
-#ifdef _HW_REV4B_KOZIN
-		hal.ADC_shunt_resistance = 340E-6f;
-#endif /* _HW_REV4B_KOZIN */
-
-#ifdef _HW_REV4B_PAVLOV
-		hal.ADC_shunt_resistance = 170E-6f;
-#endif /* _HW_REV4B_PAVLOV */
-
-#ifdef _HW_REV4B_BARADA
-		hal.ADC_shunt_resistance = 550E-6f;
-		hal.ADC_amplifier_gain = 20.f;
-#endif /* _HW_REV4B_BARADA */
-
 #endif /* _HW_REV4B */
 
 #ifdef _HW_REV4C
 
-		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190;
-		hal.ADC_reference_voltage = 3.3f;
 		hal.ADC_shunt_resistance = 500E-6f;
 		hal.ADC_amplifier_gain = 20.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
@@ -425,6 +409,9 @@ void task_INIT(void *pData)
 		ap.ppm_control_range[2] = 100.f;
 		ap.ppm_startup_range[0] = 0.f;
 		ap.ppm_startup_range[1] = 5.f;
+
+		ap.step_reg_ID = ID_PM_X_SETPOINT_F_MM;
+		ap.step_const_ld_EP = 0.f;
 
 		ap.analog_enabled = 0;
 		ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
@@ -467,9 +454,10 @@ void task_INIT(void *pData)
 		ap.pull_ad[0] = 0.f;
 		ap.pull_ad[1] = 4.545E-3f;
 
-		ap.ld_probe_m[0] = - 50.f;
-		ap.ld_probe_m[1] = 50.f;
-		ap.ld_probe_mps = 40.f;
+		ap.servo_span_mm[0] = - 25.f;
+		ap.servo_span_mm[1] = 25.f;
+		ap.servo_uniform_mmps = 20.f;
+		ap.servo_mice_role = 0;
 
 		ap.FT_grab_hz = 200;
 	}
@@ -491,13 +479,7 @@ void task_INIT(void *pData)
 		pm_default(&pm);
 		tel_reg_default(&ti);
 
-		reg_SET_F(ID_PM_FAULT_CURRENT_HALT, -1.f);
-
-#ifdef _HW_REV4B_KOZIN
-		pm.i_maximal = 70.;
-		pm.i_reverse = - pm.i_maximal;
-#endif /* _HW_REV4B_KOZIN */
-
+		reg_SET_F(ID_PM_FAULT_CURRENT_HALT, 0.f);
 	}
 
 	if (hal.PPM_mode != PPM_DISABLED) {
@@ -526,70 +508,67 @@ input_PULSE_WIDTH()
 {
 	float		pulse, control, range, scaled;
 
-	if (ap.ppm_reg_ID != ID_NULL) {
+	if (hal.PPM_signal_caught != 0) {
 
-		if (hal.PPM_signal_caught != 0) {
+		pulse = PPM_get_PULSE();
 
-			pulse = PPM_get_PULSE();
+		if (pulse != ap.ppm_pulse_cached) {
 
-			if (pulse != ap.ppm_pulse_cached) {
+			ap.ppm_pulse_cached = pulse;
 
-				ap.ppm_pulse_cached = pulse;
+			if (pulse < ap.ppm_pulse_lost[0] || pulse > ap.ppm_pulse_lost[1]) {
 
-				if (pulse < ap.ppm_pulse_lost[0] || pulse > ap.ppm_pulse_lost[1]) {
+				/* Loss of signal.
+				 * */
 
-					/* Loss of signal.
-					 * */
+				if (ap.ppm_locked == 1) {
 
-					if (ap.ppm_locked == 1) {
-
-						pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-						ap.ppm_locked = 0;
-					}
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+					ap.ppm_locked = 0;
 				}
+			}
 
-				if (pulse < ap.ppm_pulse_range[1]) {
+			if (pulse < ap.ppm_pulse_range[1]) {
 
-					range = ap.ppm_pulse_range[0] - ap.ppm_pulse_range[1];
-					scaled = (ap.ppm_pulse_range[1] - pulse) / range;
-				}
-				else {
-					range = ap.ppm_pulse_range[2] - ap.ppm_pulse_range[1];
-					scaled = (pulse - ap.ppm_pulse_range[1]) / range;
-				}
+				range = ap.ppm_pulse_range[0] - ap.ppm_pulse_range[1];
+				scaled = (ap.ppm_pulse_range[1] - pulse) / range;
+			}
+			else {
+				range = ap.ppm_pulse_range[2] - ap.ppm_pulse_range[1];
+				scaled = (pulse - ap.ppm_pulse_range[1]) / range;
+			}
 
-				scaled = (scaled < - 1.f) ? - 1.f :
-					(scaled > 1.f) ? 1.f : scaled;
+			scaled = (scaled < - 1.f) ? - 1.f :
+				(scaled > 1.f) ? 1.f : scaled;
 
-				if (scaled < 0.f) {
+			if (scaled < 0.f) {
 
-					range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
-					control = ap.ppm_control_range[1] + range * scaled;
-				}
-				else {
-					range = ap.ppm_control_range[2] - ap.ppm_control_range[1];
-					control = ap.ppm_control_range[1] + range * scaled;
-				}
+				range = ap.ppm_control_range[1] - ap.ppm_control_range[0];
+				control = ap.ppm_control_range[1] + range * scaled;
+			}
+			else {
+				range = ap.ppm_control_range[2] - ap.ppm_control_range[1];
+				control = ap.ppm_control_range[1] + range * scaled;
+			}
 
-				reg_SET(ap.ppm_reg_ID, &control);
+			reg_SET_F(ap.ppm_reg_ID, control);
 
-				if (pm.lu_mode == PM_LU_DISABLED) {
+			if (pm.lu_mode == PM_LU_DISABLED) {
 
-					if (		control > ap.ppm_startup_range[0]
-							&& control < ap.ppm_startup_range[1]) {
+				if (		control > ap.ppm_startup_range[0]
+						&& control < ap.ppm_startup_range[1]) {
 
-						pm.fsm_req = PM_STATE_LU_STARTUP;
-						ap.ppm_locked = 1;
-					}
+					pm.fsm_req = PM_STATE_LU_STARTUP;
+					ap.ppm_locked = 1;
 				}
 			}
 		}
-		else {
-			if (ap.ppm_locked == 1) {
+	}
+	else {
+		if (ap.ppm_locked == 1) {
 
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-				ap.ppm_locked = 0;
-			}
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+			ap.ppm_locked = 0;
 		}
 	}
 }
@@ -597,7 +576,37 @@ input_PULSE_WIDTH()
 static void
 input_STEP_DIR()
 {
-	/* TODO */
+	int		EP, relEP;
+	float		xSP, wSP;
+
+	EP = PPM_get_STEP_DIR();
+
+	relEP = (short int) (EP - ap.step_baseEP);
+	ap.step_baseEP = EP;
+
+	if (		pm.lu_mode == PM_LU_DISABLED
+			&& ap.step_locked == 0) {
+
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+		ap.ppm_locked = 1;
+	}
+
+	if (relEP != 0) {
+
+		ap.step_accuEP += relEP;
+		xSP = ap.step_accuEP * ap.step_const_ld_EP;
+
+		reg_SET_F(ap.step_reg_ID, xSP);
+	}
+
+	if (ap.step_reg_ID == ID_PM_X_SETPOINT_F_MM) {
+
+		/* FIXME */
+
+		wSP = relEP * pm.freq_hz * ap.step_const_ld_EP;
+
+		reg_SET_F(ID_PM_X_SETPOINT_WS_MMPS, wSP);
+	}
 }
 
 static void

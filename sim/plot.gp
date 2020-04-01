@@ -60,8 +60,8 @@ label 0 "(V)"
 label 1 "(V)"
 figure 13 14 "pm.vsi_X / pm.vsi_Y"
 
-page "pm.vsi_EU"
-figure 0 12 "pm.vsi_EU"
+page "pm.vsi_DC"
+figure 0 12 "pm.vsi_DC"
 
 page "pm.vsi_IF"
 figure 0 15 "pm.vsi_IF"
@@ -79,15 +79,18 @@ label 1 "(V)"
 figure 0 20 "pm.tvm_DX"
 figure 0 21 "pm.tvm_DY"
 
-page "pm.lu_lpf_wS"
-label 1 "(rpm)"
-figure 0 27 "pm.lu_lpf_wS"
-
-page "pm.lu_caught"
-figure 0 29 "pm.lu_caught"
-
 page "pm.lu_mode"
-figure 0 30 "pm.lu_mode"
+figure 0 27 "pm.lu_mode"
+
+page "pm.lu_flux_lpf_wS"
+label 1 "(rpm)"
+figure 0 28 "pm.lu_flux_lpf_wS"
+
+page "pm.lu_flux_zone"
+figure 0 29 "pm.lu_flux_zone"
+
+page "pm.im_revol_1"
+figure 0 30 "pm.im_revol_1"
 
 page "pm.forced_F"
 label 1 "(°)"
@@ -181,4 +184,8 @@ figure 0 57 "pm.s_track"
 page "pm.s_integral"
 label 1 "(A)"
 figure 0 58 "pm.s_integral"
+
+page "pm.s_forward"
+label 1 "(A)"
+figure 0 59 "pm.s_forward"
 

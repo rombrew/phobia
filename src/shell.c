@@ -283,38 +283,48 @@ static char *
 sh_get_args(char *s)
 {
 	const char		*delim = " ";
-	char			*s_arg;
-	int			n_arg, q;
+	char			*s_arg, *q;
+	int			n_arg, n;
 
 	s_arg = NULL;
-	n_arg = 0;
+	n_arg = 1;
 
-	q = -1;
+	q = s;
+	n = 1;
 
 	while (*s != 0) {
 
 		if (strchr(delim, *s) == NULL) {
 
-			if (q == 1)
-				s_arg = s;
+			if (n == 2) {
 
-			q = 0;
+				s_arg = q;
+			}
+
+			*q++ = *s;
+
+			n = 0;
 		}
 		else {
-			if (q == 0)
-				n_arg++;
+			if (n == 0) {
 
-			*s = 0;
-			q = n_arg;
+				*q++ = 0;
+				n_arg++;
+			}
+
+			n = n_arg;
 		}
 
 		++s;
 	}
 
-	if (s_arg == NULL)
-		s_arg = s;
+	if (s_arg == NULL) {
 
-	*(s + 1) = 0;
+		s_arg = q;
+	}
+
+	*(q + 0) = 0;
+	*(q + 1) = 0;
 
 	return s_arg;
 }
