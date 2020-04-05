@@ -121,7 +121,7 @@ sim_Tel(float *pTel)
 
 	pTel[45] = atan2(pm.qenc_F[1], pm.qenc_F[0]) * 180. / M_PI;
 	pTel[46] = pm.qenc_wS * 30. / M_PI / m.Zp;
-	pTel[47] = pm.qenc_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[47] = 0.f;
 
 	pTel[48] = pm.watt_lpf_D;
 	pTel[49] = pm.watt_lpf_Q;
@@ -496,7 +496,12 @@ sim_RUN(FILE *fdTel)
 
 	sim_test_BASE(NULL);
 
+	pm.config_SENSOR = PM_SENSOR_QENC;
+	pm.qenc_gain_PF = 0;
+
 	pm.s_accel = 50000000.f;
+	pm.s_gain_P *= 1.f;
+	pm.s_gain_I *= .1f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
@@ -504,11 +509,21 @@ sim_RUN(FILE *fdTel)
 	pm.s_setpoint = 1000.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 7000.f;
+	pm.s_setpoint = 7.f;
 	sim_F(fdTel, 1.);
 
-	//m.M[0] = -2.;
-	sim_F(fdTel, 2.);
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	pm.config_ESTIMATE = 0;
+	pm.s_setpoint = 700.f;
+	sim_F(fdTel, 1.);
+
+	pm.config_SERVO = PM_ENABLED;
+	sim_F(fdTel, 1.);
+
+	pm.x_setpoint_revol = 2;
+	sim_F(fdTel, 1.);
 
 	return 1;
 }

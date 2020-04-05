@@ -107,9 +107,9 @@ void pm_default(pmc_t *pm)
 
 	pm->qenc_PPR = 2600;
 	pm->qenc_Zq = 1.f;
+	pm->qenc_base_SF = 20;
 	pm->qenc_gain_PF = 1E-0f;
-	pm->qenc_gain_SF = 5E-3f;
-	pm->qenc_gain_LP = 1E-3f;
+	pm->qenc_gain_SF = 2E-2f;
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
@@ -129,6 +129,7 @@ void pm_default(pmc_t *pm)
 	pm->i_maximal = 120.f;
 	pm->i_reverse = pm->i_maximal;
 	pm->i_derated_HFI = 5.f;
+	pm->i_tol_Z = 0.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
@@ -149,7 +150,8 @@ void pm_default(pmc_t *pm)
 	pm->s_gain_I = 0E-3f;
 	pm->s_gain_S = 2E-1f;
 
-	pm->x_near_tol = 1.f;
+	pm->x_tol_N = 1.f;
+	pm->x_tol_Z = 0.f;
 	pm->x_gain_P = 35.f;
 	pm->x_gain_N = 20.f;
 
@@ -525,16 +527,18 @@ pm_sensor_HALL(pmc_t *pm)
 static void
 pm_sensor_QENC(pmc_t *pm)
 {
-	float			relR, rotR, rotF[2];
+	float			relR, rotR, rotF[2], gain_SF;
 	int			relEP, N;
 
 	relEP = (short int) (pm->fb_EP - pm->qenc_baseEP);
 
+	pm->qenc_prolTIM++;
+
 	if (relEP == 0) {
 
-		relR = pm->qenc_lpf_wS * pm->qenc_gain_PF * pm->dT;
+		relR = pm->qenc_wS * pm->qenc_gain_PF * pm->dT;
 		relR = (m_fabsf(pm->qenc_prolS) < pm->temp_2PZiPPR) ? relR : 0.f;
-		relR = (pm->qenc_lastEP * pm->qenc_lpf_wS > M_EPS_F) ? relR : 0.f;
+		relR = (pm->qenc_lastEP * pm->qenc_wS > M_EPS_F) ? relR : 0.f;
 		pm->qenc_prolS += relR;
 
 		rotR = pm->qenc_prolS + (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
@@ -567,8 +571,16 @@ pm_sensor_QENC(pmc_t *pm)
 	pm->qenc_F[0] = rotF[0] * pm->qenc_baseF[0] - rotF[1] * pm->qenc_baseF[1];
 	pm->qenc_F[1] = rotF[1] * pm->qenc_baseF[0] + rotF[0] * pm->qenc_baseF[1];
 
-	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * pm->qenc_gain_SF;
-	pm->qenc_lpf_wS += (pm->qenc_wS - pm->qenc_lpf_wS) * pm->qenc_gain_LP;
+	gain_SF = (pm->qenc_prolTIM > pm->qenc_base_SF)
+		? (1.f / (float) pm->qenc_prolTIM)
+		: pm->qenc_gain_SF;
+
+	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
+
+	if (relEP != 0) {
+
+		pm->qenc_prolTIM = 0;
+	}
 }
 
 static void
@@ -749,12 +761,12 @@ pm_lu_FSM(pmc_t *pm)
 				pm->qenc_baseF[1] = pm->lu_F[1];
 				pm->qenc_lastEP = 0;
 				pm->qenc_rotEP = 0;
+				pm->qenc_prolTIM = 0;
 				pm->qenc_prolS = 0.f;
 
 				pm->qenc_F[0] = pm->lu_F[0];
 				pm->qenc_F[1] = pm->lu_F[1];
 				pm->qenc_wS = pm->lu_wS;
-				pm->qenc_lpf_wS = pm->lu_wS;
 			}
 		}
 	}
@@ -795,12 +807,12 @@ pm_lu_FSM(pmc_t *pm)
 				pm->qenc_baseF[1] = pm->lu_F[1];
 				pm->qenc_lastEP = 0;
 				pm->qenc_rotEP = 0;
+				pm->qenc_prolTIM = 0;
 				pm->qenc_prolS = 0.f;
 
 				pm->qenc_F[0] = pm->lu_F[0];
 				pm->qenc_F[1] = pm->lu_F[1];
 				pm->qenc_wS = pm->lu_wS;
-				pm->qenc_lpf_wS = pm->lu_wS;
 			}
 			else if (pm->config_HFI == PM_ENABLED) {
 
@@ -1237,6 +1249,11 @@ pm_loop_current(pmc_t *pm)
 	eD = sD - pm->lu_iD;
 	eQ = sQ - pm->lu_iQ;
 
+	/* There is a DEAD zone.
+	 * */
+	eD = (m_fabsf(eD) > pm->i_tol_Z) ? eD : 0.f;
+	eQ = (m_fabsf(eQ) > pm->i_tol_Z) ? eQ : 0.f;
+
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
 		/* HF wave synthesis.
@@ -1402,9 +1419,17 @@ pm_loop_servo(pmc_t *pm)
 	 * */
 	wSP = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
 
-	gP = (eP_abs < pm->x_near_tol) ? eP_abs / pm->x_near_tol : 1.f;
+	/* Adaptive gain in NEAR zone.
+	 * */
+	gP = (eP_abs < pm->x_tol_N) ? eP_abs / pm->x_tol_N : 1.f;
 	gP = pm->x_gain_N + (pm->x_gain_P - pm->x_gain_N) * gP;
 
+	/* Stop in DEAD zone.
+	 * */
+	gP = (eP_abs > pm->x_tol_Z) ? gP : 0.f;
+
+	/* Update speed loop setpoint.
+	 * */
 	pm->s_setpoint = gP * wSP + pm->x_setpoint_wS;
 }
 

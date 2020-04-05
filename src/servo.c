@@ -20,7 +20,7 @@ int pm_wait_for_SETTLE()
 		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (m_fabsf(pm.x_residual) < pm.x_near_tol)
+		if (m_fabsf(pm.x_residual) < pm.x_tol_Z)
 			break;
 
 		if (xTick > (TickType_t) 5000) {
@@ -80,20 +80,30 @@ SH_DEF(mice)
 {
 	float		mice_x, mice_y;
 
-	/* FIXME: Move to application */
+	/* FIXME: Move this to application.
+	 * */
 
-	stof(&mice_x, s);
-	stof(&mice_y, sh_next_arg(s));
+	if (		pm.lu_mode == PM_LU_DISABLED
+			&& pm.fsm_state == PM_STATE_IDLE) {
 
-	if (ap.servo_mice_role == 1) {
-
-		mice_x += reg_GET_F(ID_PM_X_SETPOINT_F_MM);
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, mice_x);
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 	}
-	else if (ap.servo_mice_role == 2) {
 
-		mice_y += reg_GET_F(ID_PM_X_SETPOINT_F_MM);
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, mice_y);
+	if (pm.lu_mode == PM_LU_SENSOR_QENC) {
+
+		stof(&mice_x, s);
+		stof(&mice_y, sh_next_arg(s));
+
+		if (ap.servo_mice_role == 1) {
+
+			mice_x += reg_GET_F(ID_PM_X_SETPOINT_F_MM);
+			reg_SET_F(ID_PM_X_SETPOINT_F_MM, mice_x);
+		}
+		else if (ap.servo_mice_role == 2) {
+
+			mice_y += reg_GET_F(ID_PM_X_SETPOINT_F_MM);
+			reg_SET_F(ID_PM_X_SETPOINT_F_MM, mice_y);
+		}
 	}
 }
 

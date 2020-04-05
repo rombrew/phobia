@@ -315,15 +315,15 @@ typedef struct {
 	float		qenc_baseF[2];
 	int		qenc_lastEP;
 	int		qenc_rotEP;
+	int		qenc_prolTIM;
 	float		qenc_prolS;
 	int		qenc_PPR;
 	float		qenc_Zq;
 	float		qenc_F[2];
 	float		qenc_wS;
-	float		qenc_lpf_wS;
+	int		qenc_base_SF;
 	float		qenc_gain_PF;
 	float		qenc_gain_SF;
-	float		qenc_gain_LP;
 
 	float		const_fb_U;
 	float		const_E;
@@ -362,6 +362,7 @@ typedef struct {
 	float		i_setpoint_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
+	float		i_tol_Z;
 	float		i_gain_P;
 	float		i_gain_I;
 
@@ -393,7 +394,8 @@ typedef struct {
 	float		x_lu_F1;
 	int		x_lu_revol;
 	float		x_residual;
-	float		x_near_tol;
+	float		x_tol_N;
+	float		x_tol_Z;
 	float		x_gain_P;
 	float		x_gain_N;
 

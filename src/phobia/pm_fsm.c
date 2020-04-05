@@ -1224,7 +1224,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->qenc_F[0] = 1.f;
 				pm->qenc_F[1] = 0.f;
 				pm->qenc_wS = 0.f;
-				pm->qenc_lpf_wS = 0.f;
 
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
