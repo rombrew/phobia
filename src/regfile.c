@@ -709,13 +709,12 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_PM_CONFIG_CURRENT:
+		case ID_PM_CONFIG_IFB:
 
 			switch (val) {
 
-				TEXT_ITEM(PM_CURRENT_AB_INLINE);
-				TEXT_ITEM(PM_CURRENT_AB_LOW);
-				TEXT_ITEM(PM_CURRENT_FULL_LOW);
+				TEXT_ITEM(PM_IFB_AB_INLINE);
+				TEXT_ITEM(PM_IFB_AB_LOW);
 
 				default: break;
 			}
@@ -747,7 +746,6 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_ESTIMATE_DISABLED);
 				TEXT_ITEM(PM_ESTIMATE_FLUX);
-				TEXT_ITEM(PM_ESTIMATE_KALMAN);
 
 				default: break;
 			}
@@ -922,10 +920,10 @@ const reg_t		regfile[] = {
 
 	REG_DEF(ap.FT_grab_hz,,			"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.dc_resolution,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dc_minimal,,		"us",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.dc_clearance,,	"us",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.dc_bootstrap,,	"s",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_resolution,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dc_minimal,,			"us",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_clearance,,		"us",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_bootstrap,,		"s",	"%4f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.fail_reason,,	"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(pm.self_BST,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_BST),
@@ -933,24 +931,24 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.self_RMSi,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMSi),
 	REG_DEF(pm.self_RMSu,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_self_RMSu),
 
-	REG_DEF(pm.config_NOP,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_TVM,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_CURRENT,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_VSI_SILENT,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_FORCED,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_QENC_FORCED_ALIGN,,"","%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_ESTIMATE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_HFI,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_SENSOR,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_WEAK,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_DRIVE,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_SERVO,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_INFO,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_BOOST,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_NOP,,			"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_TVM,,			"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_IFB,,			"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_VSI_SILENT,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_FORCED,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_QENC_FORCED_ALIGN,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_ESTIMATE,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_HFI,,			"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_SENSOR,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_WEAK,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_DRIVE,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_SERVO,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_INFO,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_BOOST,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
-	REG_DEF(pm.fsm_req,,		"",	"%i",	0, NULL, &reg_format_enum),
-	REG_DEF(pm.fsm_state,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
-	REG_DEF(pm.fsm_phase,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.fsm_req,,			"",	"%i",	0, NULL, &reg_format_enum),
+	REG_DEF(pm.fsm_state,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
+	REG_DEF(pm.fsm_phase,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.tm_transient_slow,, 		"s",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_transient_fast,, 		"s",	"%4f",	REG_CONFIG, NULL, NULL),
@@ -1143,6 +1141,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.qenc_prolTIM,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_prolS,,			"rad",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_PPR,,			"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.qenc_JITE,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_Zq,,			"",	"%5f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1151,9 +1150,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.qenc_wS, _rpm,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.qenc_wS, _mmps,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.qenc_wS, _kmh,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.qenc_base_SF,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_gain_PF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_gain_SF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.qenc_gain_IF,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.const_fb_U,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_E,,			"Wb",	"%4e",	REG_CONFIG, NULL, NULL),
@@ -1229,6 +1228,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_setpoint_wS,,	"rad/s",	"%2f",	0, NULL, NULL),
 	REG_DEF(pm.x_setpoint_wS, _rpm,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.x_setpoint_wS, _mmps,	"mm/s",	"%2f",	0, &reg_proc_mmps, NULL),
+	REG_DEF(pm.x_residual,,			"rad",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.x_residual, _mm,		"mm",	"%3f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
+	REG_DEF(pm.x_residual, _ep,		"ep",	"%1f",	REG_READ_ONLY, &reg_proc_epps, NULL),
 	REG_DEF(pm.x_tol_N,,			"rad",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_tol_N, _mm,		"mm",	"%3f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.x_tol_Z,,			"rad",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1237,9 +1239,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_P, _accel,	"rad/s2",	"%1f",	0, &reg_proc_gain_accel, NULL),
 	REG_DEF(pm.x_gain_P, _accel_mm,	"mm/s2",	"%1f",	0, &reg_proc_gain_accel_mm, NULL),
-	REG_DEF(pm.x_gain_N,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.x_gain_N, _accel,	"rad/s2",	"%1f",	0, &reg_proc_gain_accel, NULL),
-	REG_DEF(pm.x_gain_N, _accel_mm,	"mm/s2",	"%1f",	0, &reg_proc_gain_accel_mm, NULL),
+	REG_DEF(pm.x_gain_N,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.im_revol_total,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.im_distance,,		"m",	"%1f",	REG_READ_ONLY, NULL, NULL),

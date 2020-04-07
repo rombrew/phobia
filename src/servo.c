@@ -17,10 +17,11 @@ int pm_wait_for_SETTLE()
 		vTaskDelay((TickType_t) 100);
 		xTick += (TickType_t) 100;
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fail_reason != PM_ERROR_TIMEOUT
+				&& pm.fail_reason != PM_OK)
 			break;
 
-		if (m_fabsf(pm.x_residual) < pm.x_tol_Z)
+		if (m_fabsf(pm.x_residual) < (pm.x_tol_Z * 3.f))
 			break;
 
 		if (xTick > (TickType_t) 5000) {

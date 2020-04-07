@@ -497,7 +497,7 @@ sim_RUN(FILE *fdTel)
 	sim_test_BASE(NULL);
 
 	pm.config_SENSOR = PM_SENSOR_QENC;
-	pm.qenc_gain_PF = 0;
+	//pm.qenc_gain_PF = 0;
 
 	pm.s_accel = 50000000.f;
 	pm.s_gain_P *= 1.f;
@@ -523,6 +523,27 @@ sim_RUN(FILE *fdTel)
 	sim_F(fdTel, 1.);
 
 	pm.x_setpoint_revol = 2;
+	sim_F(fdTel, 1.);
+
+	m.X[3] += 2. * M_PI * m.Zp / 2600.;
+	sim_F(fdTel, 50E-6);
+
+	m.X[3] -= 2. * M_PI * m.Zp / 2600.;
+	sim_F(fdTel, 50E-6);
+
+	m.X[3] += 2. * M_PI * m.Zp / 2600.;
+	sim_F(fdTel, 50E-6);
+
+	m.X[3] -= 2. * M_PI * m.Zp / 2600.;
+	sim_F(fdTel, 1.);
+
+	pm.config_SENSOR = PM_SENSOR_DISABLED;
+	pm.config_ESTIMATE = PM_ESTIMATE_FLUX;
+	pm.config_HFI = PM_ENABLED;
+	pm.x_setpoint_revol = 20;
+	sim_F(fdTel, 1.);
+
+	pm.x_setpoint_revol = 22;
 	sim_F(fdTel, 1.);
 
 	return 1;

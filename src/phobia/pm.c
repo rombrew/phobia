@@ -9,7 +9,7 @@ void pm_default(pmc_t *pm)
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_TVM = PM_ENABLED;
-	pm->config_CURRENT = PM_CURRENT_AB_INLINE;
+	pm->config_IFB = PM_IFB_AB_INLINE;
 	pm->config_VSI_SILENT = PM_DISABLED;
 	pm->config_FORCED = PM_ENABLED;
 	pm->config_QENC_FORCED_ALIGN = PM_DISABLED;
@@ -106,10 +106,11 @@ void pm_default(pmc_t *pm)
 	pm->hall_gain_LP = 5E-2f;
 
 	pm->qenc_PPR = 2600;
+	pm->qenc_JITE = 1;
 	pm->qenc_Zq = 1.f;
-	pm->qenc_base_SF = 20;
 	pm->qenc_gain_PF = 1E-0f;
 	pm->qenc_gain_SF = 2E-2f;
+	pm->qenc_gain_IF = 0E-1f;
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
@@ -153,7 +154,7 @@ void pm_default(pmc_t *pm)
 	pm->x_tol_N = 1.f;
 	pm->x_tol_Z = 0.f;
 	pm->x_gain_P = 35.f;
-	pm->x_gain_N = 20.f;
+	pm->x_gain_N = 2E-1f;
 
 	pm->boost_gain_P = 1E-2f;
 	pm->boost_gain_I = 1E-3f;
@@ -294,7 +295,7 @@ pm_detached_FLUX(pmc_t *pm)
 static void
 pm_estimate_FLUX(pmc_t *pm)
 {
-	float		uX, uY, lX, lY, iEE, EX, EY, DX, DY, E, F;
+	float		uX, uY, lX, lY, iEE, EX, EY, DX, DY, E, gain_F;
 
 	/* Get the actual voltage.
 	 * */
@@ -321,7 +322,7 @@ pm_estimate_FLUX(pmc_t *pm)
 		E = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_gain_AD;
 		E = (E > 1.f) ? 1.f : 0.f;
 
-		F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * pm->temp_const_iE;
+		gain_F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * pm->temp_const_iE;
 
 		/* FLUX observer equations.
 		 * */
@@ -331,10 +332,10 @@ pm_estimate_FLUX(pmc_t *pm)
 		EX = pm->flux_X - lX;
 		EY = pm->flux_Y - lY;
 
-		F *= 1.f - (EX * EX + EY * EY) * iEE;
+		gain_F *= 1.f - (EX * EX + EY * EY) * iEE;
 
-		pm->flux_X += EX * F;
-		pm->flux_Y += EY * F;
+		pm->flux_X += EX * gain_F;
+		pm->flux_Y += EY * gain_F;
 	}
 	else {
 		/* Startup estimation.
@@ -345,8 +346,10 @@ pm_estimate_FLUX(pmc_t *pm)
 		EX = pm->flux_X - lX;
 		EY = pm->flux_Y - lY;
 
-		pm->flux_X += - EX * pm->flux_gain_IN;
-		pm->flux_Y += - EY * pm->flux_gain_IN;
+		gain_F = - pm->flux_gain_IN;
+
+		pm->flux_X += EX * gain_F;
+		pm->flux_Y += EY * gain_F;
 	}
 
 	/* Extract rotor FLUX linkage.
@@ -532,6 +535,7 @@ pm_sensor_QENC(pmc_t *pm)
 
 	relEP = (short int) (pm->fb_EP - pm->qenc_baseEP);
 
+	pm->qenc_baseEP = pm->fb_EP;
 	pm->qenc_prolTIM++;
 
 	if (relEP == 0) {
@@ -544,20 +548,18 @@ pm_sensor_QENC(pmc_t *pm)
 		rotR = pm->qenc_prolS + (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
 	}
 	else {
-		pm->qenc_lastEP = relEP;
-
-		relR = (float) relEP * pm->temp_2PZiPPR;
-		rotR = relR + (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
-
-		relR -= pm->qenc_prolS;
+		relR = (float) relEP * pm->temp_2PZiPPR - pm->qenc_prolS;
 		pm->qenc_prolS = 0.f;
 
-		pm->qenc_rotEP += relEP;
-		pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_PPR) ? pm->qenc_PPR : 0;
-		pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_PPR) ? - pm->qenc_PPR : 0;
-	}
+		if (pm->qenc_JITE == 0 || relEP * pm->qenc_lastEP >= 0) {
 
-	pm->qenc_baseEP = pm->fb_EP;
+			pm->qenc_rotEP += relEP;
+			pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_PPR) ? pm->qenc_PPR : 0;
+			pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_PPR) ? - pm->qenc_PPR : 0;
+		}
+
+		rotR = (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
+	}
 
 	N = (int) (rotR / (2.f * M_PI_F));
 	rotR -= (float) (N * 2.f * M_PI_F);
@@ -571,14 +573,25 @@ pm_sensor_QENC(pmc_t *pm)
 	pm->qenc_F[0] = rotF[0] * pm->qenc_baseF[0] - rotF[1] * pm->qenc_baseF[1];
 	pm->qenc_F[1] = rotF[1] * pm->qenc_baseF[0] + rotF[0] * pm->qenc_baseF[1];
 
-	gain_SF = (pm->qenc_prolTIM > pm->qenc_base_SF)
-		? (1.f / (float) pm->qenc_prolTIM)
-		: pm->qenc_gain_SF;
+	if (pm->qenc_JITE == 0 || relEP * pm->qenc_lastEP >= 0) {
 
-	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
+		gain_SF = 1.f / (float) pm->qenc_prolTIM;
+		gain_SF = (gain_SF < pm->qenc_gain_SF) ? gain_SF : pm->qenc_gain_SF;
+
+		pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
+	}
+
+	if (		pm->config_DRIVE == PM_DRIVE_SPEED
+			&& pm->qenc_gain_IF > M_EPS_F
+			&& pm->const_Ja > M_EPS_F) {
+
+		pm->qenc_wS += (pm->lu_iQ - pm->s_integral)
+			* pm->qenc_gain_IF * pm->dT / pm->const_Ja;
+	}
 
 	if (relEP != 0) {
 
+		pm->qenc_lastEP = relEP;
 		pm->qenc_prolTIM = 0;
 	}
 }
@@ -985,7 +998,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (pm->lu_mode != PM_LU_DISABLED) {
 
-		if (PM_CONFIG_CURRENT(pm) == PM_CURRENT_AB_INLINE) {
+		if (PM_CONFIG_IFB(pm) == PM_IFB_AB_INLINE) {
 
 			xMAX = pm->dc_resolution - pm->ts_clearance;
 
@@ -1006,16 +1019,13 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
 			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 		}
-		else if (PM_CONFIG_CURRENT(pm) == PM_CURRENT_AB_LOW) {
+		else if (PM_CONFIG_IFB(pm) == PM_IFB_AB_LOW) {
 
 			xMAX = pm->dc_resolution - pm->ts_clearance;
 
 			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? xMAX : xA;
 			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? xMAX : xB;
 			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? xMAX : xC;
-		}
-		else {
-			/* TODO */
 		}
 	}
 	else {
@@ -1311,19 +1321,19 @@ pm_loop_speed(pmc_t *pm)
 {
 	float		iSP, iFD, wSP, gain_S, eS, dS;
 
+	/* Maximal speed constraint.
+	 * */
+	wSP = pm->s_setpoint;
+	wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
+		(wSP < - pm->s_reverse) ? - pm->s_reverse : wSP;
+
 	if (pm->config_SERVO == PM_ENABLED) {
 
 		/* No constraint required.
 		 * */
-		pm->s_track = pm->s_setpoint;
+		pm->s_track = wSP;
 	}
 	else {
-		/* Maximal speed constraint.
-		 * */
-		wSP = pm->s_setpoint;
-		wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
-			(wSP < - pm->s_reverse) ? - pm->s_reverse : wSP;
-
 		/* Maximal acceleration constraint.
 		 * */
 		dS = pm->s_accel * pm->dT;
@@ -1340,15 +1350,18 @@ pm_loop_speed(pmc_t *pm)
 		 * */
 		eS = pm->s_track - pm->lu_wS;
 
-		if (		pm->lu_mode != PM_LU_ESTIMATE_HFI
-				&& pm->lu_mode != PM_LU_SENSOR_HALL) {
+		/* Slow down in case of weak speed estimate.
+		 * */
+		if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
-			gain_S = 1.f;
+			gain_S = pm->s_gain_S;
+		}
+		else if (pm->lu_mode == PM_LU_SENSOR_HALL) {
+
+			gain_S = pm->s_gain_S;
 		}
 		else {
-			/* Slow down in case of weak speed estimate.
-			 * */
-			gain_S = pm->s_gain_S;
+			gain_S = 1.f;
 		}
 
 		/* Here is PI regulator with load reconstruction.
@@ -1376,7 +1389,7 @@ pm_loop_speed(pmc_t *pm)
 static void
 pm_loop_servo(pmc_t *pm)
 {
-	float		EX, EY, eP, eP_abs, wSP, gP;
+	float		EX, EY, eP, eP_abs, wSP, lerp_S;
 
 	/* Full revolution counter.
 	 * */
@@ -1417,20 +1430,22 @@ pm_loop_servo(pmc_t *pm)
 
 	/* Servo is based on constant acceleration formula.
 	 * */
-	wSP = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
+	eP = (eP < 0.f) ? - m_sqrtf(eP_abs) : m_sqrtf(eP_abs);
 
-	/* Adaptive gain in NEAR zone.
+	/* There is a DEAD zone.
 	 * */
-	gP = (eP_abs < pm->x_tol_N) ? eP_abs / pm->x_tol_N : 1.f;
-	gP = pm->x_gain_N + (pm->x_gain_P - pm->x_gain_N) * gP;
+	eP = (eP_abs > pm->x_tol_Z) ? eP : 0.f;
 
-	/* Stop in DEAD zone.
+	/* Slow down in NEAR zone.
 	 * */
-	gP = (eP_abs > pm->x_tol_Z) ? gP : 0.f;
+	lerp_S = (eP_abs < pm->x_tol_N) ? eP_abs / pm->x_tol_N : 1.f;
+	lerp_S = pm->x_gain_N + (1.f - pm->x_gain_N) * lerp_S;
+
+	wSP = eP * pm->x_gain_P * lerp_S + pm->x_setpoint_wS;
 
 	/* Update speed loop setpoint.
 	 * */
-	pm->s_setpoint = gP * wSP + pm->x_setpoint_wS;
+	pm->s_setpoint = wSP;
 }
 
 static void

@@ -3,7 +3,7 @@
 
 #define PM_CONFIG_NOP(pm)		(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)		(pm)->config_TVM
-#define PM_CONFIG_CURRENT(pm)		(pm)->config_CURRENT
+#define PM_CONFIG_IFB(pm)		(pm)->config_IFB
 
 #define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
 #define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
@@ -19,15 +19,13 @@ enum {
 };
 
 enum {
-	PM_CURRENT_AB_INLINE			= 0,
-	PM_CURRENT_AB_LOW,
-	PM_CURRENT_FULL_LOW
+	PM_IFB_AB_INLINE			= 0,
+	PM_IFB_AB_LOW,
 };
 
 enum {
 	PM_ESTIMATE_DISABLED			= 0,
 	PM_ESTIMATE_FLUX,
-	PM_ESTIMATE_KALMAN,
 };
 
 enum {
@@ -143,12 +141,11 @@ typedef struct {
 
 	int		config_NOP;
 	int		config_TVM;
-	int		config_CURRENT;
+	int		config_IFB;
 	int		config_VSI_SILENT;
 	int		config_FORCED;
 	int		config_QENC_FORCED_ALIGN;
 	int		config_ESTIMATE;
-	int		config_FORECAST;
 	int		config_HFI;
 	int		config_SENSOR;
 	int		config_WEAK;
@@ -318,12 +315,13 @@ typedef struct {
 	int		qenc_prolTIM;
 	float		qenc_prolS;
 	int		qenc_PPR;
+	int		qenc_JITE;
 	float		qenc_Zq;
 	float		qenc_F[2];
 	float		qenc_wS;
-	int		qenc_base_SF;
 	float		qenc_gain_PF;
 	float		qenc_gain_SF;
+	float		qenc_gain_IF;
 
 	float		const_fb_U;
 	float		const_E;

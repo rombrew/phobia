@@ -40,16 +40,14 @@ int pm_wait_for_SPINUP(float ref)
 		vTaskDelay((TickType_t) 100);
 		xTick += (TickType_t) 100;
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fail_reason != PM_ERROR_TIMEOUT
+				&& pm.fail_reason != PM_OK)
 			break;
 
-		if (ref - pm.forced_wS < 1E-1f * ref)
+		if (ref - pm.lu_wS < 1E-1f * ref)
 			break;
 
-		if (ref - pm.lu_flux_lpf_wS < 1E-1f * ref)
-			break;
-
-		if (pm.lu_flux_lpf_wS - wS < - M_EPS_F * pm.lu_flux_lpf_wS
+		if (pm.lu_wS - wS < - M_EPS_F * pm.lu_wS
 				&& xTick > (TickType_t) 1000)
 			break;
 
@@ -77,7 +75,8 @@ int pm_wait_for_MOTION(float ref)
 		vTaskDelay((TickType_t) 100);
 		xTick += (TickType_t) 100;
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fail_reason != PM_ERROR_TIMEOUT
+				&& pm.fail_reason != PM_OK)
 			break;
 
 		if (pm.im_revol_total != revol) {
@@ -96,8 +95,6 @@ int pm_wait_for_MOTION(float ref)
 
 	return pm.fail_reason;
 }
-
-
 
 SH_DEF(pm_probe_base)
 {
