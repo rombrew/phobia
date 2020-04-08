@@ -630,26 +630,30 @@ const char *stof(float *x, const char *s)
 
 unsigned long crc32b(const void *s, int n)
 {
-        const char              *xs = (const char *) s;
-        unsigned long           crc, xb, mask;
-        int                     j;
+	const char              *xs = (const char *) s;
+	unsigned long           crc, buf;
 
-	crc = 0xFFFFFFFF;
+	const unsigned long	mask[16] = {
+
+		0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC,
+		0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
+		0xEDB88320, 0xF00F9344, 0xD6D6A3E8, 0xCB61B38C,
+		0x9B64C2B0, 0x86D3D2D4, 0xA00AE278, 0xBDBDF21C
+	};
+
+	crc = 0xFFFFFFFFUL;
 
 	while (n >= 1) {
 
-		xb = *xs++;
+		buf = *xs++;
 		n--;
 
-		crc = crc ^ xb;
+		crc = crc ^ buf;
 
-		for (j = 0; j < 8; ++j) {
-
-			mask = -(crc & 1UL);
-			crc = (crc >> 1) ^ (0xEDB88320UL & mask);
-		}
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
 	}
 
-	return ~crc;
+	return crc ^ 0xFFFFFFFFUL;
 }
 
