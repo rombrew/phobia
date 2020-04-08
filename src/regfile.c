@@ -13,28 +13,28 @@
 #define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
 
 static int		null;
-static void		*silent;
+static void		*iodef_echo;
 
 static void
 silent_putc(int c) { /* Do nothing */ }
 
 static void
-reg_proc_silent(const reg_t *reg, int *lval, const int *rval)
+reg_proc_echo(const reg_t *reg, int *lval, const int *rval)
 {
 	void		(** kept) (int c) = (void *) reg->link;
 
 	if (lval != NULL) {
 
-		*lval = (*kept != NULL) ? 1 : 0;
+		*lval = (*kept == NULL) ? 1 : 0;
 	}
 	else if (rval != NULL) {
 
-		if (*rval == 1 && *kept == NULL) {
+		if (*rval == 0 && *kept == NULL) {
 
 			*kept = iodef->putc;
 			iodef->putc = &silent_putc;
 		}
-		else if (*rval == 0 && kept != NULL) {
+		else if (*rval == 1 && *kept != NULL) {
 
 			iodef->putc = *kept;
 			*kept = NULL;
@@ -835,7 +835,7 @@ reg_format_enum(const reg_t *reg)
 const reg_t		regfile[] = {
 
 	REG_DEF(null,,				"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(silent,,			"",	"%i",	0, &reg_proc_silent, NULL),
+	REG_DEF(iodef_echo,,			"",	"%i",	0, &reg_proc_echo, NULL),
 
 	REG_DEF(hal.HSE_crystal_clock,,		"Hz",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(hal.USART_baud_rate,,		"",	"%i",	REG_CONFIG, NULL, NULL),
@@ -1141,7 +1141,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.qenc_prolTIM,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_prolS,,			"rad",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_PPR,,			"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.qenc_JITE,,			"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.qenc_FILTER,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_Zq,,			"",	"%5f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.qenc_F[0],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.qenc_F[1],,			"",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1364,7 +1364,7 @@ const reg_t *reg_search(const char *sym)
 			}
 		}
 
-		if (found == NULL && silent == NULL) {
+		if (found == NULL && iodef_echo == NULL) {
 
 			for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -1465,9 +1465,13 @@ SH_DEF(reg)
 			}
 		}
 
-		reg_format(reg);
+		if (iodef_echo == NULL) {
+
+			reg_format(reg);
+		}
 	}
-	else {
+	else if (iodef_echo == NULL) {
+
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
 			if (strstr(reg->sym, s) != NULL) {
@@ -1483,7 +1487,7 @@ SH_DEF(conf_export)
 	reg_val_t		rval;
 	const reg_t		*reg;
 
-	puts("reg silent 1" EOL);
+	printf("reg %s 0" EOL, regfile[ID_IODEF_ECHO].sym);
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -1508,6 +1512,6 @@ SH_DEF(conf_export)
 		}
 	}
 
-	puts("reg silent 0" EOL);
+	printf("reg %s 1" EOL, regfile[ID_IODEF_ECHO].sym);
 }
 

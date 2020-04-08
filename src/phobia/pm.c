@@ -106,7 +106,7 @@ void pm_default(pmc_t *pm)
 	pm->hall_gain_LP = 5E-2f;
 
 	pm->qenc_PPR = 2600;
-	pm->qenc_JITE = 1;
+	pm->qenc_FILTER = 1;
 	pm->qenc_Zq = 1.f;
 	pm->qenc_gain_PF = 1E-0f;
 	pm->qenc_gain_SF = 2E-2f;
@@ -538,11 +538,20 @@ pm_sensor_QENC(pmc_t *pm)
 	pm->qenc_baseEP = pm->fb_EP;
 	pm->qenc_prolTIM++;
 
+	if (pm->qenc_FILTER == 1) {
+
+		N =  (relEP > 0 && pm->qenc_lastEP < 0) ? - 1 : 0;
+		N += (relEP < 0 && pm->qenc_lastEP > 0) ?   1 : 0;
+
+		pm->qenc_lastEP = (relEP != 0) ? relEP : pm->qenc_lastEP;
+
+		relEP += N;
+	}
+
 	if (relEP == 0) {
 
 		relR = pm->qenc_wS * pm->qenc_gain_PF * pm->dT;
 		relR = (m_fabsf(pm->qenc_prolS) < pm->temp_2PZiPPR) ? relR : 0.f;
-		relR = (pm->qenc_lastEP * pm->qenc_wS > M_EPS_F) ? relR : 0.f;
 		pm->qenc_prolS += relR;
 
 		rotR = pm->qenc_prolS + (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
@@ -551,12 +560,9 @@ pm_sensor_QENC(pmc_t *pm)
 		relR = (float) relEP * pm->temp_2PZiPPR - pm->qenc_prolS;
 		pm->qenc_prolS = 0.f;
 
-		if (pm->qenc_JITE == 0 || relEP * pm->qenc_lastEP >= 0) {
-
-			pm->qenc_rotEP += relEP;
-			pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_PPR) ? pm->qenc_PPR : 0;
-			pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_PPR) ? - pm->qenc_PPR : 0;
-		}
+		pm->qenc_rotEP += relEP;
+		pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_PPR) ? pm->qenc_PPR : 0;
+		pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_PPR) ? - pm->qenc_PPR : 0;
 
 		rotR = (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
 	}
@@ -573,17 +579,18 @@ pm_sensor_QENC(pmc_t *pm)
 	pm->qenc_F[0] = rotF[0] * pm->qenc_baseF[0] - rotF[1] * pm->qenc_baseF[1];
 	pm->qenc_F[1] = rotF[1] * pm->qenc_baseF[0] + rotF[0] * pm->qenc_baseF[1];
 
-	if (pm->qenc_JITE == 0 || relEP * pm->qenc_lastEP >= 0) {
+	gain_SF = 1.f / (float) pm->qenc_prolTIM;
+	gain_SF = (gain_SF < pm->qenc_gain_SF) ? gain_SF : pm->qenc_gain_SF;
 
-		gain_SF = 1.f / (float) pm->qenc_prolTIM;
-		gain_SF = (gain_SF < pm->qenc_gain_SF) ? gain_SF : pm->qenc_gain_SF;
-
-		pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
-	}
+	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
 
 	if (		pm->config_DRIVE == PM_DRIVE_SPEED
 			&& pm->qenc_gain_IF > M_EPS_F
 			&& pm->const_Ja > M_EPS_F) {
+
+		/* FIXME: Overflow in the LIMIT position as there is no
+		 * response from the encoder.
+		 * */
 
 		pm->qenc_wS += (pm->lu_iQ - pm->s_integral)
 			* pm->qenc_gain_IF * pm->dT / pm->const_Ja;
@@ -591,7 +598,6 @@ pm_sensor_QENC(pmc_t *pm)
 
 	if (relEP != 0) {
 
-		pm->qenc_lastEP = relEP;
 		pm->qenc_prolTIM = 0;
 	}
 }

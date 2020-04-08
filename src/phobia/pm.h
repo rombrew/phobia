@@ -315,7 +315,7 @@ typedef struct {
 	int		qenc_prolTIM;
 	float		qenc_prolS;
 	int		qenc_PPR;
-	int		qenc_JITE;
+	int		qenc_FILTER;
 	float		qenc_Zq;
 	float		qenc_F[2];
 	float		qenc_wS;
