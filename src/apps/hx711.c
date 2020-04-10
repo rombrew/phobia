@@ -46,7 +46,7 @@ void ap_HX711(void *pData)
 			for (N = 0; N < 25; ++N) {
 
 				GPIO_set_HIGH(gpio_PD_SCK);
-				hal_delay_us(1);
+				hal_delay_usec(1);
 
 				DOUT = GPIO_get_VALUE(gpio_DOUT);
 
@@ -61,7 +61,7 @@ void ap_HX711(void *pData)
 				}
 
 				GPIO_set_LOW(gpio_PD_SCK);
-				hal_delay_us(1);
+				hal_delay_usec(1);
 			}
 
 			/* Convert the ADC code into (gram).

@@ -24,6 +24,8 @@ void log_TRACE(const char *fmt, ...)
 		.putc = &log_putc
 	};
 
+	xprintf(&ops, "[%i.%i] ", log.boot_COUNT, xTaskGetTickCount());
+
         va_start(ap, fmt);
 	xvprintf(&ops, fmt, ap);
         va_end(ap);
@@ -346,7 +348,7 @@ void task_INIT(void *pData)
 	ap.io_USART.putc = &USART_putc;
 	iodef = &ap.io_USART;
 
-	if (log_validate() != 0) {
+	if (log_bootup() != 0) {
 
 		/* Slow down the startup to indicate a problem.
 		 * */
@@ -355,7 +357,7 @@ void task_INIT(void *pData)
 
 	rc_flash = flash_block_load();
 
-	if (rc_flash < 0) {
+	if (rc_flash == 0) {
 
 		/* Resistor values in the voltage measurement circuits.
 		 * */
@@ -472,7 +474,7 @@ void task_INIT(void *pData)
 	pm.proc_set_DC = &PWM_set_DC;
 	pm.proc_set_Z = &PWM_set_Z;
 
-	if (rc_flash < 0) {
+	if (rc_flash == 0) {
 
 		/* Default.
 		 * */
@@ -793,18 +795,20 @@ SH_DEF(rtos_freeheap)
 
 SH_DEF(rtos_log_flush)
 {
-	if (log_validate() != 0) {
+	if (log.textbuf[0] != 0) {
 
-		puts(log.text);
+		puts(log.textbuf);
 		puts(EOL);
 	}
 }
 
 SH_DEF(rtos_log_cleanup)
 {
-	if (log_validate() != 0) {
+	if (log.textbuf[0] != 0) {
 
-		log.finit = 0;
+		memset(log.textbuf, 0, sizeof(log.textbuf));
+
+		log.tail = 0;
 	}
 }
 

@@ -485,8 +485,9 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 					break;
 			}
 		}
-                else
+                else {
                         _io->putc(*fmt);
+		}
 
                 ++fmt;
         }

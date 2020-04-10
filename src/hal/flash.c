@@ -35,7 +35,7 @@ FLASH_wait_BSY()
 		__NOP();
 }
 
-void *FLASH_sector_erase(void *flash)
+void *FLASH_erase(void *flash)
 {
 	int		N, sector_N = 0;
 
@@ -68,7 +68,7 @@ void *FLASH_sector_erase(void *flash)
 	return flash;
 }
 
-void *FLASH_write(void *flash, const void *s, unsigned long sz)
+void *FLASH_prog(void *flash, const void *s, unsigned long sz)
 {
 	long			*ld = flash;
 	const long		*ls = s;

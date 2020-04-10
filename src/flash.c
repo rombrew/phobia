@@ -55,7 +55,7 @@ int flash_block_load()
 	const reg_t		*reg;
 	flash_block_t		*block;
 	unsigned long		*content;
-	int			rc = -1;
+	int			rc = 0;
 
 	block = flash_block_scan();
 
@@ -71,7 +71,7 @@ int flash_block_load()
 			}
 		}
 
-		rc = 0;
+		rc = 1;
 	}
 
 	return rc;
@@ -121,26 +121,10 @@ flash_block_write()
 		block = (void *) flash_ram_map[0];
 	}
 
-	temp = block;
+	if (flash_is_block_dirty(block) != 0) {
 
-	do {
-		if (flash_is_block_dirty(block) == 0) {
-
-			break;
-		}
-
-		block += 1;
-
-		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
-			block = (void *) flash_ram_map[0];
-
-		if (block == temp) {
-
-			block = FLASH_sector_erase(block);
-			break;
-		}
+		FLASH_erase(block);
 	}
-	while (1);
 
 	temp = pvPortMalloc(sizeof(flash_block_t));
 
@@ -162,7 +146,7 @@ flash_block_write()
 
 		temp->crc32 = crc32b(temp, sizeof(flash_block_t) - 4);
 
-		FLASH_write(block, temp, sizeof(flash_block_t));
+		FLASH_prog(block, temp, sizeof(flash_block_t));
 
 		vPortFree(temp);
 	}
@@ -236,6 +220,12 @@ SH_DEF(flash_cleanup)
 	flash_block_t			*block;
 	unsigned long			lz = 0;
 
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return ;
+	}
+
 	block = (void *) flash_ram_map[0];
 
 	do {
@@ -243,7 +233,7 @@ SH_DEF(flash_cleanup)
 
 			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
 
-				FLASH_write(&block->crc32, &lz, sizeof(unsigned long));
+				FLASH_prog(&block->crc32, &lz, sizeof(unsigned long));
 			}
 		}
 

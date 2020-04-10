@@ -1482,7 +1482,7 @@ SH_DEF(reg)
 	}
 }
 
-SH_DEF(conf_export)
+SH_DEF(config_export)
 {
 	reg_val_t		rval;
 	const reg_t		*reg;

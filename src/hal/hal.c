@@ -228,21 +228,21 @@ void hal_startup()
 	}
 }
 
-void hal_delay_us(int us)
+void hal_delay_usec(int usec)
 {
-	unsigned long		begVAL, xLOAD;
-	int			elapsed, delay;
+	unsigned long		xVAL, xLOAD;
+	int			elapsed, tickval;
 
-	begVAL = SysTick->VAL;
+	xVAL = SysTick->VAL;
 	xLOAD = SysTick->LOAD + 1UL;
 
-	delay = us * (clock_cpu_hz / 1000000UL);
+	tickval = usec * (clock_cpu_hz / 1000000UL);
 
 	do {
-		elapsed = (int) (begVAL - SysTick->VAL);
+		elapsed = (int) (xVAL - SysTick->VAL);
 		elapsed += (elapsed < 0) ? xLOAD : 0;
 
-		if (elapsed >= delay)
+		if (elapsed >= tickval)
 			break;
 
 		__NOP();
@@ -258,6 +258,7 @@ void hal_system_reset()
 void hal_bootload_jump()
 {
 	bootload_jump = INIT_SIGNATURE;
+
 	NVIC_SystemReset();
 }
 
@@ -271,40 +272,41 @@ void hal_fence()
 	__DMB();
 }
 
-void log_putc(int c)
-{
-	if (log.finit != INIT_SIGNATURE) {
-
-		/* Initialize log at first usage.
-		 * */
-		memset(log.text, 0, sizeof(log.text));
-
-		log.finit = INIT_SIGNATURE;
-		log.n = 0;
-	}
-
-	if (log.n < 0 || log.n > (sizeof(log.text) - 2UL)) {
-
-		log.n = 0;
-	}
-
-	log.text[log.n] = (char) c;
-	++log.n;
-}
-
-int log_validate()
+int log_bootup()
 {
 	int		rc = 0;
 
-	if (log.finit == INIT_SIGNATURE) {
+	if (log.boot_SIGNATURE != INIT_SIGNATURE) {
 
-		/* Make sure log is null-terminated.
+		log.boot_SIGNATURE = INIT_SIGNATURE;
+		log.boot_COUNT = 0;
+
+		/* Initialize LOG at first usage.
 		 * */
-		log.text[sizeof(log.text) - 1UL] = 0;
+		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		rc = 1;
+		log.tail = 0;
+	}
+	else {
+		log.boot_COUNT += 1;
+
+		/* Make sure LOG is null-terminated.
+		 * */
+		log.textbuf[sizeof(log.textbuf) - 1] = 0;
+
+		rc = (log.textbuf[0] != 0) ? 1 : 0;
 	}
 
 	return rc;
+}
+
+void log_putc(int c)
+{
+	const int	tailmax = sizeof(log.textbuf) - 1;
+
+	log.tail = (log.tail >= 0 && log.tail < tailmax) ? log.tail : 0;
+	log.textbuf[log.tail] = (char) c;
+
+	++log.tail;
 }
 

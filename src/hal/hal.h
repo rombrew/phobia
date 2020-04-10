@@ -33,7 +33,7 @@
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
 
-#define INIT_SIGNATURE			0x5577UL
+#define INIT_SIGNATURE			0x55775577UL
 
 enum {
 	LEG_A				= 1,
@@ -101,9 +101,11 @@ HAL_t;
 
 typedef struct {
 
-	char		text[512];
-	int		finit;
-	int		n;
+	int		boot_SIGNATURE;
+	int		boot_COUNT;
+
+	char		textbuf[1024];
+	int		tail;
 }
 LOG_t;
 
@@ -112,7 +114,7 @@ extern HAL_t			hal;
 extern LOG_t			log;
 
 void hal_startup();
-void hal_delay_us(int us);
+void hal_delay_usec(int usec);
 
 void hal_system_reset();
 void hal_bootload_jump();
@@ -120,8 +122,8 @@ void hal_bootload_jump();
 void hal_sleep();
 void hal_fence();
 
+int log_bootup();
 void log_putc(int c);
-int log_validate();
 
 extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();

@@ -5,8 +5,8 @@
 
 extern const unsigned long flash_ram_map[];
 
-void *FLASH_sector_erase(void *flash);
-void *FLASH_write(void *flash, const void *s, unsigned long sz);
+void *FLASH_erase(void *flash);
+void *FLASH_prog(void *flash, const void *s, unsigned long sz);
 
 #endif /* _H_FLASH_ */
 
