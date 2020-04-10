@@ -136,22 +136,22 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 };
 
 static void
-__init_data(const long *s, long *d, long *e)
+init_data(const long *s, long *d, long *e)
 {
 	while (d < e) { *d++ = *s++; }
 }
 
 static void
-__init_bss(long *d, long *e)
+init_bss(long *d, long *e)
 {
 	while (d < e) { *d++ = 0; }
 }
 
 void irq_Reset()
 {
-	__init_data(&ld_end_text, &ld_begin_data, &ld_end_data);
-	__init_bss(&ld_begin_bss, &ld_end_bss);
-	__init_bss(&ld_begin_ccm, &ld_end_ccm);
+	init_data(&ld_end_text, &ld_begin_data, &ld_end_data);
+	init_bss(&ld_begin_bss, &ld_end_bss);
+	init_bss(&ld_begin_ccm, &ld_end_ccm);
 
 	hal_startup();
 	app_MAIN();

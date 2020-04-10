@@ -3,6 +3,9 @@
 
 #define EOL			"\r\n"
 
+typedef unsigned long		u32_t;
+typedef unsigned char		u8_t;
+
 typedef struct {
 
 	int		(* getc) ();
@@ -35,7 +38,7 @@ void printf(const char *fmt, ...);
 const char *stoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-unsigned long crc32b(const void *s, int n);
+u32_t crc32b(const void *s, int n);
 
 #endif /* _H_LIBC_ */
 

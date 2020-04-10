@@ -50,7 +50,7 @@ void vApplicationMallocFailedHook()
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (unsigned long) xTask);
+	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (u32_t) xTask);
 
 	hal_system_reset();
 }
@@ -762,12 +762,12 @@ SH_DEF(rtos_task_list)
 			}
 
 			printf("%8x %i %s %c %i %8x %i" EOL,
-					(unsigned long) pLIST[N].xHandle,
+					(u32_t) pLIST[N].xHandle,
 					(int) pLIST[N].xTaskNumber,
 					(const char *) pLIST[N].pcTaskName,
 					(int) xState,
 					(int) pLIST[N].uxCurrentPriority,
-					(unsigned long) pLIST[N].pxStackBase,
+					(u32_t) pLIST[N].pxStackBase,
 					(int) pLIST[N].usStackHighWaterMark);
 		}
 

@@ -7,34 +7,34 @@ io_ops_t		*iodef;
 
 void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
 {
-	unsigned long		*ld = (unsigned long *) d;
+	u32_t		*ld = (u32_t *) d;
 
-	while (n >= sizeof(long)) {
+	while (n >= sizeof(u32_t)) {
 
 		*ld++ = 0UL;
-		n -= sizeof(long);
+		n -= sizeof(u32_t);
 	}
 }
 
 void *memset(void *d, int c, int n)
 {
-	unsigned long		fill, *ld = (unsigned long *) d;
+	u32_t		fill, *ld = (u32_t *) d;
 
-	if (((size_t) ld & (sizeof(long) - 1UL)) == 0) {
+	if (((u32_t) ld & (sizeof(u32_t) - 1UL)) == 0) {
 
 		fill = c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (n >= sizeof(long)) {
+		while (n >= sizeof(u32_t)) {
 
 			*ld++ = fill;
-			n -= sizeof(long);
+			n -= sizeof(u32_t);
 		}
 	}
 
 	{
-		char		*xd = (char *) ld;
+		u8_t		*xd = (u8_t *) ld;
 
 		while (n >= 1) {
 
@@ -48,22 +48,22 @@ void *memset(void *d, int c, int n)
 
 void *memcpy(void *d, const void *s, int n)
 {
-	long			*ld = (long *) d;
-	const long		*ls = (const long *) s;
+	u32_t		*ld = (u32_t *) d;
+	const u32_t	*ls = (const u32_t *) s;
 
-	if (((size_t) ld & (sizeof(long) - 1UL)) == 0
-		&& ((size_t) ls & (sizeof(long) - 1UL)) == 0) {
+	if (((u32_t) ld & (sizeof(u32_t) - 1UL)) == 0
+		&& ((u32_t) ls & (sizeof(u32_t) - 1UL)) == 0) {
 
-		while (n >= sizeof(long)) {
+		while (n >= sizeof(u32_t)) {
 
 			*ld++ = *ls++;
-			n -= sizeof(long);
+			n -= sizeof(u32_t);
 		}
 	}
 
 	{
-		char		*xd = (char *) ld;
-		const char	*xs = (const char *) ls;
+		u8_t		*xd = (u8_t *) ld;
+		const u8_t	*xs = (const u8_t *) ls;
 
 		while (n >= 1) {
 
@@ -253,7 +253,7 @@ fmt_hexb(io_ops_t *_io, int x)
 }
 
 static void
-fmt_hexl(io_ops_t *_io, unsigned long x)
+fmt_hexl(io_ops_t *_io, u32_t x)
 {
 	fmt_hexb(_io, (x & 0xFF000000UL) >> 24);
 	fmt_hexb(_io, (x & 0x00FF0000UL) >> 16);
@@ -291,7 +291,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
-		unsigned long	i;
+		u32_t		i;
 	}
 	u = { x };
 
@@ -306,11 +306,13 @@ fmt_float(io_ops_t *_io, float x, int n)
 
 	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
 
-		if ((u.i & 0x7FFFFFUL) != 0)
+		if ((u.i & 0x7FFFFFUL) != 0) {
 
 			xputs(_io, "NaN");
-		else
+		}
+		else {
 			xputs(_io, "Inf");
+		}
 
 		return ;
 	}
@@ -322,6 +324,9 @@ fmt_float(io_ops_t *_io, float x, int n)
 	x += h;
 
 	if (x < (float) (1UL << 31)) {
+
+		/* FIXME: Do not use conversion to INT.
+		 * */
 
 		i = (int) x;
 		fmt_int(_io, i);
@@ -354,7 +359,7 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
-		unsigned long	i;
+		u32_t		i;
 	}
 	u = { x };
 
@@ -369,11 +374,13 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
 
-		if ((u.i & 0x7FFFFFUL) != 0)
+		if ((u.i & 0x7FFFFFUL) != 0) {
 
 			xputs(_io, "NaN");
-		else
+		}
+		else {
 			xputs(_io, "Inf");
+		}
 
 		return ;
 	}
@@ -459,7 +466,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 						fmt_hexb(_io, va_arg(ap, int));
 					}
 					else {
-						fmt_hexl(_io, va_arg(ap, unsigned long));
+						fmt_hexl(_io, va_arg(ap, u32_t));
 					}
 					break;
 
@@ -629,12 +636,12 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-unsigned long crc32b(const void *s, int n)
+u32_t crc32b(const void *s, int n)
 {
-	const char              *xs = (const char *) s;
-	unsigned long           crc, buf;
+	const u32_t		*ls = (const u32_t *) s;
+	u32_t			crc, buf;
 
-	const unsigned long	mask[16] = {
+	const u32_t		mask[16] = {
 
 		0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC,
 		0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
@@ -644,13 +651,19 @@ unsigned long crc32b(const void *s, int n)
 
 	crc = 0xFFFFFFFFUL;
 
-	while (n >= 1) {
+	while (n >= sizeof(u32_t)) {
 
-		buf = *xs++;
-		n--;
+		buf = *ls++;
+		n -= sizeof(u32_t);
 
 		crc = crc ^ buf;
 
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
 		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
 		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
 	}

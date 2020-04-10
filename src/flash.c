@@ -10,10 +10,10 @@
 
 typedef struct {
 
-	unsigned long		number;
-	unsigned long		version;
-	unsigned long		content[1021];
-	unsigned long		crc32;
+	u32_t			number;
+	u32_t			version;
+	u32_t			content[1021];
+	u32_t			crc32;
 }
 flash_block_t;
 
@@ -42,7 +42,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
 			break;
 	}
 	while (1);
@@ -54,7 +54,7 @@ int flash_block_load()
 {
 	const reg_t		*reg;
 	flash_block_t		*block;
-	unsigned long		*content;
+	u32_t			*content;
 	int			rc = 0;
 
 	block = flash_block_scan();
@@ -67,7 +67,7 @@ int flash_block_load()
 
 			if (reg->mode & REG_CONFIG) {
 
-				* (unsigned long *) reg->link = *content++;
+				* (u32_t *) reg->link = *content++;
 			}
 		}
 
@@ -80,11 +80,11 @@ int flash_block_load()
 static int
 flash_is_block_dirty(const flash_block_t *block)
 {
-	const unsigned long	*lsrc, *lend;
+	const u32_t		*lsrc, *lend;
 	int			dirty = 0;
 
-	lsrc = (const unsigned long *) block;
-	lend = (const unsigned long *) (block + 1);
+	lsrc = (const u32_t *) block;
+	lend = (const u32_t *) (block + 1);
 
 	while (lsrc < lend) {
 
@@ -113,7 +113,7 @@ flash_block_write()
 		number = block->number + 1;
 		block += 1;
 
-		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
 			block = (void *) flash_ram_map[0];
 	}
 	else {
@@ -137,11 +137,11 @@ flash_block_write()
 
 			if (reg->mode & REG_CONFIG) {
 
-				temp->content[n++] = * (unsigned long *) reg->link;
+				temp->content[n++] = * (u32_t *) reg->link;
 			}
 		}
 
-		for (; n < sizeof(temp->content) / sizeof(unsigned long); ++n)
+		for (; n < sizeof(temp->content) / sizeof(u32_t); ++n)
 			temp->content[n] = 0xFFFFFFFFUL;
 
 		temp->crc32 = crc32b(temp, sizeof(flash_block_t) - 4);
@@ -202,7 +202,7 @@ SH_DEF(flash_info_map)
 
 		block += 1;
 
-		if ((unsigned long) block >= flash_ram_map[sector_N + 1]) {
+		if ((u32_t) block >= flash_ram_map[sector_N + 1]) {
 
 			puts(EOL);
 
@@ -218,7 +218,7 @@ SH_DEF(flash_info_map)
 SH_DEF(flash_cleanup)
 {
 	flash_block_t			*block;
-	unsigned long			lz = 0;
+	u32_t				lz = 0;
 
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
@@ -233,13 +233,13 @@ SH_DEF(flash_cleanup)
 
 			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
 
-				FLASH_prog(&block->crc32, &lz, sizeof(unsigned long));
+				FLASH_prog(&block->crc32, &lz, sizeof(u32_t));
 			}
 		}
 
 		block += 1;
 
-		if ((unsigned long) block >= flash_ram_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
 			break;
 	}
 	while (1);

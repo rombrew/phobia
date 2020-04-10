@@ -68,7 +68,7 @@ void *FLASH_erase(void *flash)
 	return flash;
 }
 
-void *FLASH_prog(void *flash, const void *s, unsigned long sz)
+void *FLASH_prog(void *flash, const void *s, int sz)
 {
 	long			*ld = flash;
 	const long		*ls = s;
