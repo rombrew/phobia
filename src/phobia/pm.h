@@ -1,17 +1,18 @@
 #ifndef _H_PM_
 #define _H_PM_
 
-#define PM_CONFIG_NOP(pm)		(pm)->config_NOP
-#define PM_CONFIG_TVM(pm)		(pm)->config_TVM
-#define PM_CONFIG_IFB(pm)		(pm)->config_IFB
+#define PM_CONFIG_NOP(pm)	(pm)->config_NOP
+#define PM_CONFIG_TVM(pm)	(pm)->config_TVM
+#define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 
-#define PM_UMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
-#define PM_EMAX(pm)			((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
-#define PM_KWAT(pm)			((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
+#define PM_UMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
+#define PM_EMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
+#define PM_KWAT(pm)		((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
+#define PM_TSMS(pm, ms)		(int) (pm->freq_hz * 1000.f * (ms))
 
-#define PM_HALL_SPAN			1.05f
-#define PM_MAX_F			7E+27f
-#define PM_SFI(s)			#s
+#define PM_HALL_SPAN		1.05f
+#define PM_MAX_F		7E+27f
+#define PM_SFI(s)		#s
 
 enum {
 	PM_NOP_THREE_PHASE			= 0,
@@ -70,6 +71,7 @@ enum {
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
+	PM_STATE_PROBE_CONST_K,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
@@ -187,7 +189,8 @@ typedef struct {
 	int		fb_EP;
 
 	float		probe_current_hold;
-	float		probe_current_bias_Q;
+	float		probe_hold_angle;
+	float		probe_current_weak;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
 	float		probe_speed_hold;
@@ -329,10 +332,11 @@ typedef struct {
 	float		const_L;
 	int		const_Zp;
 	float		const_Ja;
-	float		const_im_LD;
-	float		const_im_LQ;
+	float		const_im_L1;
+	float		const_im_L2;
 	float		const_im_B;
 	float		const_im_R;
+	float		const_im_K[3];
 	float		const_ld_S;
 
 	float		temp_const_ifbU;

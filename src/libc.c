@@ -9,10 +9,10 @@ void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
 {
 	u32_t		*ld = (u32_t *) d;
 
-	while (n >= sizeof(u32_t)) {
+	while (n >= 4) {
 
 		*ld++ = 0UL;
-		n -= sizeof(u32_t);
+		n += - 4;
 	}
 }
 
@@ -20,16 +20,16 @@ void *memset(void *d, int c, int n)
 {
 	u32_t		fill, *ld = (u32_t *) d;
 
-	if (((u32_t) ld & (sizeof(u32_t) - 1UL)) == 0) {
+	if (((u32_t) ld & 3UL) == 0) {
 
 		fill = c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (n >= sizeof(u32_t)) {
+		while (n >= 4) {
 
 			*ld++ = fill;
-			n -= sizeof(u32_t);
+			n += - 4;
 		}
 	}
 
@@ -39,7 +39,7 @@ void *memset(void *d, int c, int n)
 		while (n >= 1) {
 
 			*xd++ = c;
-			n--;
+			n += - 1;
 		}
 	}
 
@@ -51,13 +51,12 @@ void *memcpy(void *d, const void *s, int n)
 	u32_t		*ld = (u32_t *) d;
 	const u32_t	*ls = (const u32_t *) s;
 
-	if (((u32_t) ld & (sizeof(u32_t) - 1UL)) == 0
-		&& ((u32_t) ls & (sizeof(u32_t) - 1UL)) == 0) {
+	if (((u32_t) ld & 3UL) == 0 && ((u32_t) ls & 3UL) == 0) {
 
-		while (n >= sizeof(u32_t)) {
+		while (n >= 4) {
 
 			*ld++ = *ls++;
-			n -= sizeof(u32_t);
+			n += - 4;
 		}
 	}
 
@@ -68,7 +67,7 @@ void *memcpy(void *d, const void *s, int n)
 		while (n >= 1) {
 
 			*xd++ = *xs++;
-			n--;
+			n += - 1;
 		}
 	}
 
@@ -535,26 +534,34 @@ const char *stoi(int *x, const char *s)
 		n = -1;
 		s++;
 	}
-	else if (*s == '+')
+	else if (*s == '+') {
+		
 		s++;
+	}
 
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
 		k++;
 
-		if (i * n < 0)
+		if (i * n < 0) {
+
 			return NULL;
+		}
 	}
 
-	if (k == 0)
+	if (k == 0) {
+		
 		return NULL;
+	}
 
-	if (*s == 0 || strchr(" ", *s) != NULL)
+	if (*s == 0 || strchr(" ", *s) != NULL) {
 
 		*x = i;
-	else
+	}
+	else {
 		return NULL;
+	}
 
 	return s;
 }
@@ -569,9 +576,10 @@ const char *stof(float *x, const char *s)
 		n = -1;
 		s++;
 	}
-	else if (*s == '+')
-		s++;
+	else if (*s == '+') {
 
+		s++;
+	}
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10.f * f + (*s++ - '0') * n;
@@ -589,29 +597,46 @@ const char *stof(float *x, const char *s)
 		}
 	}
 
-	if (k == 0)
-		return NULL;
+	if (k == 0) {
 
-	if (*s == 'n')
+		return NULL;
+	}
+
+	if (*s == 'n') {
+
 		de += -9, s++;
-	else if (*s == 'u')
+	}
+	else if (*s == 'u') {
+
 		de += -6, s++;
-	else if (*s == 'm')
+	}
+	else if (*s == 'm') {
+
 		de += -3, s++;
-	else if (*s == 'K')
+	}
+	else if (*s == 'K') {
+
 		de += 3, s++;
-	else if (*s == 'M')
+	}
+	else if (*s == 'M') {
+
 		de += 6, s++;
-	else if (*s == 'G')
+	}
+	else if (*s == 'G') {
+
 		de += 9, s++;
+	}
 	else if (*s == 'e' || *s == 'E') {
 
 		s = stoi(&e, s + 1);
 
-		if (s != NULL)
+		if (s != NULL) {
+
 			de += e;
-		else
+		}
+		else {
 			return NULL;
+		}
 	}
 
 	if (*s == 0 || strchr(" ", *s) != NULL) {
@@ -630,8 +655,9 @@ const char *stof(float *x, const char *s)
 
 		*x = f;
 	}
-	else
+	else {
 		return NULL;
+	}
 
 	return s;
 }
@@ -651,10 +677,10 @@ u32_t crc32b(const void *s, int n)
 
 	crc = 0xFFFFFFFFUL;
 
-	while (n >= sizeof(u32_t)) {
+	while (n >= 4) {
 
 		buf = *ls++;
-		n -= sizeof(u32_t);
+		n += - 4;
 
 		crc = crc ^ buf;
 

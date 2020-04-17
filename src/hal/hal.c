@@ -1,6 +1,7 @@
+#include <stddef.h>
+
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
-
 #include "libc.h"
 
 #define CLOCK_CRYSTAL_HZ		12000000UL
@@ -64,7 +65,7 @@ base_startup()
 
 	/* Vector table offset.
 	 * */
-	SCB->VTOR = (unsigned long) &ld_begin_vectors;
+	SCB->VTOR = (u32_t) &ld_begin_vectors;
 
 	/* Configure priority grouping.
 	 * */
@@ -74,7 +75,7 @@ base_startup()
 static void
 clock_startup()
 {
-	unsigned long	CLOCK, PLLQ, PLLP, PLLN, PLLM;
+	u32_t		CLOCK, PLLQ, PLLP, PLLN, PLLM;
 	int		HSE, N = 0;
 
 	/* Enable HSI.
@@ -220,9 +221,9 @@ void hal_startup()
 		__DSB();
 		__ISB();
 
-		__set_MSP(* (unsigned long *) 0x1FFF0000UL);
+		__set_MSP(* (u32_t *) 0x1FFF0000UL);
 
-		((void (*) (void)) (* (unsigned long *) 0x1FFF0004UL)) ();
+		((void (*) (void)) (* (u32_t *) 0x1FFF0004UL)) ();
 
 		NVIC_SystemReset();
 	}
@@ -230,7 +231,7 @@ void hal_startup()
 
 void hal_delay_usec(int usec)
 {
-	unsigned long		xVAL, xLOAD;
+	u32_t			xVAL, xLOAD;
 	int			elapsed, tickval;
 
 	xVAL = SysTick->VAL;

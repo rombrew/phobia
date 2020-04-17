@@ -28,7 +28,7 @@ void tel_reg_grab(tel_t *ti)
 	const reg_t		*reg;
 	int			N;
 
-	if (ti->mode != 0) {
+	if (ti->mode != TEL_MODE_DISABLED) {
 
 		ti->i++;
 
@@ -46,7 +46,7 @@ void tel_reg_grab(tel_t *ti)
 			}
 		}
 
-		if (ti->i >= ti->d) {
+		if (ti->i >= ti->tim) {
 
 			ti->i = 0;
 
@@ -56,7 +56,7 @@ void tel_reg_grab(tel_t *ti)
 
 				if (ti->n >= TEL_DATA_MAX) {
 
-					ti->mode = 0;
+					ti->mode = TEL_MODE_DISABLED;
 				}
 			}
 			else if (ti->mode == TEL_MODE_LIVE) {
@@ -71,10 +71,10 @@ void tel_startup(tel_t *ti, int freq, int mode)
 {
 	if (freq > 0 && freq < hal.PWM_frequency) {
 
-		ti->d = (int) ((hal.PWM_frequency / (float) freq) + .5f);
+		ti->tim = (int) ((hal.PWM_frequency / (float) freq) + .5f);
 	}
 	else {
-		ti->d = 1;
+		ti->tim = 1;
 	}
 
 	ti->i = 0;
@@ -86,7 +86,7 @@ void tel_startup(tel_t *ti, int freq, int mode)
 
 void tel_halt(tel_t *ti)
 {
-	ti->mode = 0;
+	ti->mode = TEL_MODE_DISABLED;
 	hal_fence();
 }
 
@@ -211,7 +211,7 @@ SH_DEF(tel_live_sync)
 
 	if (stoi(&freq, s) != NULL) {
 
-		freq = (freq < 1) ? 1 : (freq > 50) ? 50 : freq;
+		freq = (freq < 1) ? 1 : (freq > 100) ? 100 : freq;
 	}
 
 	tel_startup(&ti, freq, TEL_MODE_LIVE);

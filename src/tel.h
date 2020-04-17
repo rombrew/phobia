@@ -15,15 +15,11 @@ enum {
 typedef struct {
 
 	int		mode;
-
 	int		reg_ID[TEL_INPUT_MAX];
-
-	int		d;
-	int		i;
 
 	reg_val_t	data[TEL_DATA_MAX][TEL_INPUT_MAX];
 
-	int		n;
+	int		tim, i, n;
 }
 tel_t;
 

@@ -260,14 +260,14 @@ sim_test_BASE(FILE *fdTel)
 	sim_F(fdTel, 0.);
 
 	printf("L %.4E (H)\n", pm.const_L);
-	printf("im_LD %.4E (H)\n", pm.const_im_LD);
-	printf("im_LQ %.4E (H)\n", pm.const_im_LQ);
+	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
+	printf("im_L2 %.4E (H)\n", pm.const_im_L2);
 	printf("im_B %.2f (g)\n", pm.const_im_B);
 	printf("im_R %.4E (Ohm)\n", pm.const_im_R);
 
 	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_im_LD, m.Ld);
-	t_assert_ref(pm.const_im_LQ, m.Lq);
+	t_assert_ref(pm.const_im_L1, m.Ld);
+	t_assert_ref(pm.const_im_L2, m.Lq);
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
@@ -486,7 +486,7 @@ sim_RUN(FILE *fdTel)
 	m.J = 6.2E-3;*/
 
 	m.R = 14E-3;
-	m.Ld = 10E-6;
+	m.Ld = 30E-6;
 	m.Lq = 20E-6;
 	m.U = 22.;
 	m.Rs = 0.1;
@@ -494,10 +494,9 @@ sim_RUN(FILE *fdTel)
 	m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
 	m.J = 2.7E-4;
 
-	sim_test_BASE(NULL);
+	sim_test_BASE(fdTel);
 
-	pm.config_SENSOR = PM_SENSOR_QENC;
-	//pm.qenc_gain_PF = 0;
+	/*pm.config_SENSOR = PM_SENSOR_QENC;
 
 	pm.s_accel = 50000000.f;
 	pm.s_gain_P *= 1.f;
@@ -544,7 +543,7 @@ sim_RUN(FILE *fdTel)
 	sim_F(fdTel, 1.);
 
 	pm.x_setpoint_revol = 22;
-	sim_F(fdTel, 1.);
+	sim_F(fdTel, 1.);*/
 
 	return 1;
 }

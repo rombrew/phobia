@@ -64,9 +64,9 @@ void ap_HX711(void *pData)
 				hal_delay_usec(1);
 			}
 
-			/* Convert the ADC code into (gram).
+			/* Convert the ADC code into KG.
 			 * */
-			ap.pull_g = (float) ADC * ap.pull_ad[1] + ap.pull_ad[0];
+			ap.pull_kg = (float) ADC * ap.pull_gain[1] + ap.pull_gain[0];
 		}
 	}
 	while (1);
@@ -108,10 +108,10 @@ SH_DEF(ap_hx711_adjust)
 
 		vTaskDelay((TickType_t) 10);
 
-		S += ap.pull_g;
+		S += ap.pull_kg;
 	}
 
-	ap.pull_ad[0] += - S / (float) N;
-	reg_format(&regfile[ID_AP_PULL_AD_0]);
+	ap.pull_gain[0] += - S / (float) N;
+	reg_format(&regfile[ID_AP_PULL_GAIN_0]);
 }
 

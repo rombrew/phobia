@@ -3,9 +3,9 @@
 
 void pm_default(pmc_t *pm)
 {
-	pm->dc_minimal = 0.25f;
-	pm->dc_clearance = 5.0f;
-	pm->dc_bootstrap = 0.01f;
+	pm->dc_minimal = 0.25f;		/* (us) */
+	pm->dc_clearance = 5.0f;	/* (us) */
+	pm->dc_bootstrap = 10.f;	/* (ms) */
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_TVM = PM_ENABLED;
@@ -22,14 +22,14 @@ void pm_default(pmc_t *pm)
 	pm->config_INFO	= PM_ENABLED;
 	pm->config_BOOST = PM_DISABLED;
 
-	pm->tm_transient_slow = 0.05f;
-	pm->tm_transient_fast = 0.002f;
-	pm->tm_voltage_hold = 0.1f;
-	pm->tm_current_hold = 0.5f;
-	pm->tm_instant_probe = 0.002f;
-	pm->tm_average_drift = 0.1f;
-	pm->tm_average_probe = 0.5f;
-	pm->tm_startup = 0.05f;
+	pm->tm_transient_slow = 50.f;	/* (ms) */
+	pm->tm_transient_fast = 2.f;	/* (ms) */
+	pm->tm_voltage_hold = 100.f;	/* (ms) */
+	pm->tm_current_hold = 500.f;	/* (ms) */
+	pm->tm_instant_probe = 2.f;	/* (ms) */
+	pm->tm_average_drift = 100.f;	/* (ms) */
+	pm->tm_average_probe = 500.f;	/* (ms) */
+	pm->tm_startup = 50.f;		/* (ms) */
 
 	pm->ad_IA[0] = 0.f;
 	pm->ad_IA[1] = 1.f;
@@ -45,7 +45,8 @@ void pm_default(pmc_t *pm)
 	pm->ad_UC[1] = 1.f;
 
 	pm->probe_current_hold = 10.f;
-	pm->probe_current_bias_Q = 0.f;
+	pm->probe_current_weak = 1.f;
+	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 24.f;
 	pm->probe_speed_hold = 700.f;
@@ -166,7 +167,7 @@ void pm_build(pmc_t *pm)
 			* pm->freq_hz * (float) pm->dc_resolution);
 	pm->ts_clearance = (int) (pm->dc_clearance * (1.f / 1000000.f)
 			* pm->freq_hz * (float) pm->dc_resolution);
-	pm->ts_bootstrap = (int) (pm->dc_bootstrap * pm->freq_hz);
+	pm->ts_bootstrap = PM_TSMS(pm, pm->dc_bootstrap);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
 	pm->temp_const_iE = 1.f / pm->const_E;
@@ -618,7 +619,7 @@ pm_lu_flux_zone(pmc_t *pm)
 
 		if (pm->lu_mode == PM_LU_DETACHED) {
 
-			lev_TIM = pm->freq_hz * pm->tm_startup;
+			lev_TIM = PM_TSMS(pm, pm->tm_startup);
 
 			if (		m_fabsf(pm->lu_flux_lpf_wS) > lev_wS
 					&& pm->detach_TIM > lev_TIM) {
@@ -693,7 +694,7 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (pm->lu_flux_zone != PM_FLUX_DETACHED) {
 
-			lev_SKIP = 2.f * pm->freq_hz * pm->tm_startup;
+			lev_SKIP = 2.f * PM_TSMS(pm, pm->tm_startup);
 
 			if (pm->lu_flux_zone == PM_FLUX_HIGH) {
 
@@ -767,7 +768,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 		else {
-			lev_HOLD = pm->freq_hz * pm->tm_current_hold;
+			lev_HOLD = PM_TSMS(pm, pm->tm_current_hold);
 
 			if (		pm->config_SENSOR == PM_SENSOR_QENC
 					&& pm->config_QENC_FORCED_ALIGN == PM_ENABLED
@@ -855,7 +856,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->lu_mode = PM_LU_DETACHED;
 
 				pm->detach_TIM = 0;
-				pm->detach_SKIP = - pm->freq_hz * pm->tm_transient_fast;
+				pm->detach_SKIP = - PM_TSMS(pm, pm->tm_transient_fast);
 
 				pm->flux_F[0] = 1.f;
 				pm->flux_F[1] = 0.f;

@@ -139,7 +139,7 @@ SH_DEF(pm_probe_base)
 		reg_format(&regfile[ID_PM_CONST_L]);
 		reg_format(&regfile[ID_PM_CONST_IM_LD]);
 		reg_format(&regfile[ID_PM_CONST_IM_LQ]);
-		reg_format(&regfile[ID_PM_CONST_IM_B]);
+		reg_format(&regfile[ID_PM_CONST_IM_ANGLE]);
 		reg_format(&regfile[ID_PM_CONST_IM_R]);
 	}
 	while (0);

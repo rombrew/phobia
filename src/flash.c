@@ -35,8 +35,9 @@ flash_block_scan()
 					last = (block->number > last->number)
 						? block : last;
 				}
-				else
+				else {
 					last = block;
+				}
 			}
 		}
 
@@ -98,12 +99,12 @@ flash_is_block_dirty(const flash_block_t *block)
 	return dirty;
 }
 
-static int
+	static int
 flash_block_write()
 {
 	const reg_t		*reg;
 	flash_block_t		*block, *temp;
-	unsigned int		number;
+	u32_t			number;
 	int			n, rc;
 
 	block = flash_block_scan();
@@ -121,9 +122,22 @@ flash_block_write()
 		block = (void *) flash_ram_map[0];
 	}
 
-	if (flash_is_block_dirty(block) != 0) {
+	temp = block;
 
-		FLASH_erase(block);
+	while (flash_is_block_dirty(block) != 0) {
+
+		block += 1;
+
+		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
+			block = (void *) flash_ram_map[0];
+
+		if (block == temp) {
+
+			/* All flash is dirty.
+			 * */
+			block = FLASH_erase(block);
+			break;
+		}
 	}
 
 	temp = pvPortMalloc(sizeof(flash_block_t));
@@ -176,10 +190,10 @@ SH_DEF(flash_write)
 SH_DEF(flash_info_map)
 {
 	flash_block_t			*block;
-	int				sector_N, info_sym;
+	int				N, info_sym;
 
 	block = (void *) flash_ram_map[0];
-	sector_N = 0;
+	N = 0;
 
 	do {
 		if (flash_is_block_dirty(block) != 0) {
@@ -202,13 +216,13 @@ SH_DEF(flash_info_map)
 
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[sector_N + 1]) {
+		if ((u32_t) block >= flash_ram_map[N + 1]) {
 
 			puts(EOL);
 
-			sector_N += 1;
+			N += 1;
 
-			if (sector_N >= FLASH_SECTOR_MAX)
+			if (N >= FLASH_SECTOR_MAX)
 				break;
 		}
 	}
@@ -233,7 +247,7 @@ SH_DEF(flash_cleanup)
 
 			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
 
-				FLASH_prog(&block->crc32, &lz, sizeof(u32_t));
+				FLASH_prog(&block->version, &lz, sizeof(u32_t));
 			}
 		}
 

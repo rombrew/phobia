@@ -4,6 +4,7 @@
 #define EOL			"\r\n"
 
 typedef unsigned long		u32_t;
+typedef unsigned short		u16_t;
 typedef unsigned char		u8_t;
 
 typedef struct {

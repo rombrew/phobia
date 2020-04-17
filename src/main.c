@@ -83,9 +83,9 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB) {
 
-				i_temp_PCB = ap.heat_PCB_derated_i;
+				i_temp_PCB = ap.heat_PCB_derated_1;
 			}
-			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_gap)) {
+			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_recovery_gap)) {
 
 				i_temp_PCB = PM_MAX_F;
 			}
@@ -94,9 +94,9 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_EXT > ap.heat_EXT) {
 
-				i_temp_EXT = ap.heat_EXT_derated_i;
+				i_temp_EXT = ap.heat_EXT_derated_1;
 			}
-			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_gap)) {
+			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_recovery_gap)) {
 
 				i_temp_EXT = PM_MAX_F;
 			}
@@ -109,7 +109,7 @@ void task_TERM(void *pData)
 
 				GPIO_set_LOW(GPIO_FAN);
 			}
-			else if (ap.temp_PCB < (ap.heat_PCB_FAN - ap.heat_gap)) {
+			else if (ap.temp_PCB < (ap.heat_PCB_FAN - ap.heat_recovery_gap)) {
 
 				GPIO_set_HIGH(GPIO_FAN);
 			}
@@ -377,7 +377,7 @@ void task_INIT(void *pData)
 
 #ifdef _HW_REV4B
 
-		hal.ADC_shunt_resistance = 500E-6f;
+		hal.ADC_shunt_resistance = 0.5E-3f;
 		hal.ADC_amplifier_gain = 60.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
@@ -387,7 +387,7 @@ void task_INIT(void *pData)
 
 #ifdef _HW_REV4C
 
-		hal.ADC_shunt_resistance = 500E-6f;
+		hal.ADC_shunt_resistance = 0.5E-3f;
 		hal.ADC_amplifier_gain = 20.f;
 		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
 		hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
@@ -447,14 +447,14 @@ void task_INIT(void *pData)
 		ap.ntc_EXT.betta = 3380.f;
 
 		ap.heat_PCB = 90.f;
-		ap.heat_PCB_derated_i = 20.f;
+		ap.heat_PCB_derated_1 = 20.f;
 		ap.heat_EXT = 90.f;
-		ap.heat_EXT_derated_i = 20.f;
+		ap.heat_EXT_derated_1 = 20.f;
 		ap.heat_PCB_FAN = 60.f;
-		ap.heat_gap = 5.f;
+		ap.heat_recovery_gap = 5.f;
 
-		ap.pull_ad[0] = 0.f;
-		ap.pull_ad[1] = 4.545E-3f;
+		ap.pull_gain[0] = 0.f;
+		ap.pull_gain[1] = 4.545E-6f;
 
 		ap.servo_span_mm[0] = - 25.f;
 		ap.servo_span_mm[1] = 25.f;
@@ -684,7 +684,7 @@ SH_DEF(rtos_uptime)
 	Min = Sec / 60;
 	Sec -= Min * 60;
 
-	printf("%id %ih %im %is" EOL, Day, Hour, Min, Sec);
+	printf("[%i] %id %ih %im %is" EOL, log.boot_COUNT, Day, Hour, Min, Sec);
 }
 
 void vApplicationIdleHook()
@@ -789,8 +789,8 @@ SH_DEF(rtos_task_kill)
 
 SH_DEF(rtos_freeheap)
 {
-	printf("Free %i (Minimum %i)" EOL, xPortGetFreeHeapSize(),
-			xPortGetMinimumEverFreeHeapSize());
+	printf("FreeHeap %i" EOL, xPortGetFreeHeapSize());
+	printf("MinimumEver %i" EOL, xPortGetMinimumEverFreeHeapSize());
 }
 
 SH_DEF(rtos_log_flush)

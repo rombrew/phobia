@@ -178,6 +178,23 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 		D[0] = UD / m->Ld;
 		D[1] = UQ / m->Lq;
+
+		{
+			double		A, B, vX, vY;
+
+			blm_DQ_AB(X[3], D[0], D[1], &A, &B);
+
+			vX = A;
+			vY = .577350269189626 * A + 1.15470053837925 * B;
+
+			vX *= 1.0;
+			vY *= 1.0;
+
+			A = vX;
+			B = - .5 * vX + .866025403784439 * vY;
+
+			blm_AB_DQ(X[3], A, B, &D[0], &D[1]);
+		}
 	}
 	else {
 		D[0] = 0.;

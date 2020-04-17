@@ -136,15 +136,15 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 };
 
 static void
-init_data(const long *s, long *d, long *e)
+init_data(const long *long_s, long *long_d, long *long_e)
 {
-	while (d < e) { *d++ = *s++; }
+	while (long_d < long_e) { *long_d++ = *long_s++; }
 }
 
 static void
-init_bss(long *d, long *e)
+init_bss(long *long_d, long *long_e)
 {
-	while (d < e) { *d++ = 0; }
+	while (long_d < long_e) { *long_d++ = 0; }
 }
 
 void irq_Reset()

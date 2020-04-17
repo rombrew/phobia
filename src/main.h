@@ -71,16 +71,16 @@ typedef struct {
 	/* Heat control.
 	 * */
 	float			heat_PCB;
-	float			heat_PCB_derated_i;
+	float			heat_PCB_derated_1;
 	float			heat_EXT;
-	float			heat_EXT_derated_i;
+	float			heat_EXT_derated_1;
 	float			heat_PCB_FAN;
-	float			heat_gap;
+	float			heat_recovery_gap;
 
 	/* Load cell.
 	 * */
-	float			pull_g;
-	float			pull_ad[2];
+	float			pull_kg;
+	float			pull_gain[2];
 
 	/* Servo drive.
 	 * */

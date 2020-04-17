@@ -30,7 +30,7 @@
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
 #define	LD_CCMRAM			__attribute__ ((section(".ccmram")))
-#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), used))
+#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
 
 #define INIT_SIGNATURE			0x55775577UL
@@ -104,7 +104,7 @@ typedef struct {
 	int		boot_SIGNATURE;
 	int		boot_COUNT;
 
-	char		textbuf[1024];
+	char		textbuf[512];
 	int		tail;
 }
 LOG_t;
