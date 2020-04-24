@@ -204,20 +204,20 @@ SH_DEF(hal_PPM_get_PULSE)
 	printf("%3f (us)" EOL, &pulse);
 }
 
-SH_DEF(hal_ADC_get_ANALOG)
+SH_DEF(hal_ADC_get_analog_ANG)
 {
 	float		analog;
 
-	analog = ADC_get_ANALOG();
+	analog = ADC_get_analog_ANG();
 
 	printf("%3f (V)" EOL, &analog);
 }
 
-SH_DEF(hal_ADC_get_BRAKE)
+SH_DEF(hal_ADC_get_analog_BRK)
 {
 	float		analog;
 
-	analog = ADC_get_BRAKE();
+	analog = ADC_get_analog_BRK();
 
 	printf("%3f (V)" EOL, &analog);
 }

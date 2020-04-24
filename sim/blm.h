@@ -33,6 +33,7 @@ typedef struct {
 	double		Ld;
 	double		Lq;
 	double		E;
+	double		Lk[3];
 	int		Zp;
 
 	/* Thermal constants.

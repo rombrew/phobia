@@ -155,27 +155,21 @@ void task_ERROR(void *pData)
 	while (1);
 }
 
-float ADC_get_ANALOG()
+float ADC_get_analog_ANG()
 {
 	float			analog;
 
-	analog = ADC_get_VALUE(GPIO_ADC_ANALOG)
+	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_ANG)
 		* hal.ADC_reference_voltage / ap.analog_voltage_ratio;
 
 	return analog;
 }
 
-float ADC_get_BRAKE()
+float ADC_get_analog_BRK()
 {
 	float			analog;
 
-#ifdef _HW_REV4B
-
-	return 0.f;
-
-#endif /* _HW_REV4B */
-
-	analog = ADC_get_VALUE(GPIO_ADC_BRAKE)
+	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_BRK)
 		* hal.ADC_reference_voltage / ap.analog_voltage_ratio;
 
 	return analog;
@@ -188,8 +182,8 @@ void task_ANALOG(void *pData)
 	float			brake, brake_scaled;
 	int			revol;
 
-	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG);
-	GPIO_set_mode_ANALOG(GPIO_ADC_BRAKE);
+	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG_ANG);
+	GPIO_set_mode_ANALOG(GPIO_ADC_ANALOG_BRK);
 
 	xWake = xTaskGetTickCount();
 
@@ -203,8 +197,8 @@ void task_ANALOG(void *pData)
 
 		if (ap.analog_enabled != 0) {
 
-			analog = ADC_get_ANALOG();
-			brake = ADC_get_BRAKE();
+			analog = ADC_get_analog_ANG();
+			brake = ADC_get_analog_BRK();
 
 			if (		analog < ap.analog_voltage_lost[0]
 					|| analog > ap.analog_voltage_lost[1]) {
@@ -219,14 +213,14 @@ void task_ANALOG(void *pData)
 				}
 			}
 
-			if (analog < ap.analog_voltage_ANALOG[1]) {
+			if (analog < ap.analog_voltage_ANG[1]) {
 
-				range = ap.analog_voltage_ANALOG[0] - ap.analog_voltage_ANALOG[1];
-				scaled = (ap.analog_voltage_ANALOG[1] - analog) / range;
+				range = ap.analog_voltage_ANG[0] - ap.analog_voltage_ANG[1];
+				scaled = (ap.analog_voltage_ANG[1] - analog) / range;
 			}
 			else {
-				range = ap.analog_voltage_ANALOG[2] - ap.analog_voltage_ANALOG[1];
-				scaled = (analog - ap.analog_voltage_ANALOG[1]) / range;
+				range = ap.analog_voltage_ANG[2] - ap.analog_voltage_ANG[1];
+				scaled = (analog - ap.analog_voltage_ANG[1]) / range;
 			}
 
 			scaled = (scaled < - 1.f) ? - 1.f :
@@ -241,14 +235,14 @@ void task_ANALOG(void *pData)
 				brake_scaled = - 2.f;
 			}
 			else {
-				if (brake < ap.analog_voltage_BRAKE[1]) {
+				if (brake < ap.analog_voltage_BRK[1]) {
 
-					range = ap.analog_voltage_BRAKE[0] - ap.analog_voltage_BRAKE[1];
-					brake_scaled = (ap.analog_voltage_BRAKE[1] - brake) / range;
+					range = ap.analog_voltage_BRK[0] - ap.analog_voltage_BRK[1];
+					brake_scaled = (ap.analog_voltage_BRK[1] - brake) / range;
 				}
 				else {
-					range = ap.analog_voltage_BRAKE[2] - ap.analog_voltage_BRAKE[1];
-					brake_scaled = (brake - ap.analog_voltage_BRAKE[1]) / range;
+					range = ap.analog_voltage_BRK[2] - ap.analog_voltage_BRK[1];
+					brake_scaled = (brake - ap.analog_voltage_BRK[1]) / range;
 				}
 			}
 
@@ -259,23 +253,23 @@ void task_ANALOG(void *pData)
 
 				if (brake_scaled < 0.f) {
 
-					range = ap.analog_control_BRAKE[1] - ap.analog_control_BRAKE[0];
-					control = ap.analog_control_BRAKE[1] + range * brake_scaled;
+					range = ap.analog_control_BRK[1] - ap.analog_control_BRK[0];
+					control = ap.analog_control_BRK[1] + range * brake_scaled;
 				}
 				else {
-					range = ap.analog_control_BRAKE[2] - ap.analog_control_BRAKE[1];
-					control = ap.analog_control_BRAKE[1] + range * brake_scaled;
+					range = ap.analog_control_BRK[2] - ap.analog_control_BRK[1];
+					control = ap.analog_control_BRK[1] + range * brake_scaled;
 				}
 			}
 			else {
 				if (scaled < 0.f) {
 
-					range = ap.analog_control_ANALOG[1] - ap.analog_control_ANALOG[0];
-					control = ap.analog_control_ANALOG[1] + range * scaled;
+					range = ap.analog_control_ANG[1] - ap.analog_control_ANG[0];
+					control = ap.analog_control_ANG[1] + range * scaled;
 				}
 				else {
-					range = ap.analog_control_ANALOG[2] - ap.analog_control_ANALOG[1];
-					control = ap.analog_control_ANALOG[1] + range * scaled;
+					range = ap.analog_control_ANG[2] - ap.analog_control_ANG[1];
+					control = ap.analog_control_ANG[1] + range * scaled;
 				}
 			}
 
@@ -419,20 +413,20 @@ void task_INIT(void *pData)
 		ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
 		ap.analog_timeout = 5.f;
-		ap.analog_voltage_ANALOG[0] = 0.8f;
-		ap.analog_voltage_ANALOG[1] = 2.0f;
-		ap.analog_voltage_ANALOG[2] = 4.0f;
-		ap.analog_voltage_BRAKE[0] = 1.0f;
-		ap.analog_voltage_BRAKE[1] = 4.0f;
-		ap.analog_voltage_BRAKE[2] = 4.8f;
+		ap.analog_voltage_ANG[0] = 0.8f;
+		ap.analog_voltage_ANG[1] = 2.0f;
+		ap.analog_voltage_ANG[2] = 4.0f;
+		ap.analog_voltage_BRK[0] = 1.0f;
+		ap.analog_voltage_BRK[1] = 4.0f;
+		ap.analog_voltage_BRK[2] = 4.8f;
 		ap.analog_voltage_lost[0] = 0.2f;
 		ap.analog_voltage_lost[1] = 4.8f;
-		ap.analog_control_ANALOG[0] = 0.f;
-		ap.analog_control_ANALOG[1] = 40.f;
-		ap.analog_control_ANALOG[2] = 100.f;
-		ap.analog_control_BRAKE[0] = 0.f;
-		ap.analog_control_BRAKE[1] = - 100.f;
-		ap.analog_control_BRAKE[2] = - 100.f;
+		ap.analog_control_ANG[0] = 0.f;
+		ap.analog_control_ANG[1] = 40.f;
+		ap.analog_control_ANG[2] = 100.f;
+		ap.analog_control_BRK[0] = 0.f;
+		ap.analog_control_BRK[1] = - 100.f;
+		ap.analog_control_BRK[2] = - 100.f;
 		ap.analog_startup_range[0] = 0.f;
 		ap.analog_startup_range[1] = 20.f;
 

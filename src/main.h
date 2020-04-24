@@ -44,11 +44,11 @@ typedef struct {
 	int			analog_locked;
 	float			analog_voltage_ratio;
 	float			analog_timeout;
-	float			analog_voltage_ANALOG[3];
-	float			analog_voltage_BRAKE[3];
+	float			analog_voltage_ANG[3];
+	float			analog_voltage_BRK[3];
 	float			analog_voltage_lost[2];
-	float			analog_control_ANALOG[3];
-	float			analog_control_BRAKE[3];
+	float			analog_control_ANG[3];
+	float			analog_control_BRK[3];
 	float			analog_startup_range[2];
 
 	/* CPU load.
@@ -101,8 +101,8 @@ extern tel_t			ti;
 extern int flash_block_load();
 extern int pm_wait_for_IDLE();
 
-float ADC_get_ANALOG();
-float ADC_get_BRAKE();
+float ADC_get_analog_ANG();
+float ADC_get_analog_BRK();
 
 void lowTRACE(const char *fmt, ...);
 

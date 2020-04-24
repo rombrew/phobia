@@ -113,7 +113,7 @@ sim_Tel(float *pTel)
 
 	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
 	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
-	pTel[41] = pm.hfi_polarity;
+	pTel[41] = 0.f;
 
 	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
 	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
@@ -486,7 +486,7 @@ sim_RUN(FILE *fdTel)
 	m.J = 6.2E-3;*/
 
 	m.R = 14E-3;
-	m.Ld = 30E-6;
+	m.Ld = 17E-6;
 	m.Lq = 20E-6;
 	m.U = 22.;
 	m.Rs = 0.1;
@@ -495,6 +495,47 @@ sim_RUN(FILE *fdTel)
 	m.J = 2.7E-4;
 
 	sim_test_BASE(fdTel);
+
+	//m.X[2] = 0.;
+	//m.X[3] = 0.;
+
+	sim_F(fdTel, 1.);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_IM_K;
+	sim_F(fdTel, 0.);
+
+	printf("im_K0 %.4E\n", pm.const_im_K[0]);
+	printf("im_K1 %.4E\n", pm.const_im_K[1]);
+	printf("im_K2 %.4E\n", pm.const_im_K[2]);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
+
+	printf("L %.4E (H)\n", pm.const_L);
+	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
+	printf("im_L2 %.4E (H)\n", pm.const_im_L2);
+	printf("im_B %.2f (g)\n", pm.const_im_B);
+	printf("im_R %.4E (Ohm)\n", pm.const_im_R);
+
+	pm.config_HFI = PM_ENABLED;
+	//pm.config_DRIVE = PM_DRIVE_CURRENT;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	sim_F(fdTel, 0.);
+
+	sim_F(fdTel, 1.);
+	m.M[0] = -1.f;
+	
+	pm.s_setpoint = 0.f;
+	sim_F(fdTel, 1.);
+
+	pm.s_setpoint = -50.f;
+	sim_F(fdTel, 1.);
+
+	m.M[0] = 1.f;
+
+	pm.s_setpoint = 50.f;
+	sim_F(fdTel, 1.);
 
 	/*pm.config_SENSOR = PM_SENSOR_QENC;
 

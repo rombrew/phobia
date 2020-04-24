@@ -6,8 +6,8 @@ pm_DFT_R(const float DFT[8])
 {
 	float			D, X, Y, E, R = 0.;
 
-	/* Here we make a simple resistance calculation on constant current
-	 * condition. R = U / I.
+	/* Here is resistance calculation on DC condition.
+	 * R = U / I.
 	 * */
 
 	D = m_sqrtf(DFT[2] * DFT[2] + DFT[3] * DFT[3]);
@@ -24,88 +24,17 @@ pm_DFT_R(const float DFT[8])
 	return R;
 }
 
-static void
-pm_DFT_EIG(float XY[3], float DQ[4])
-{
-	float		B, D, la1, la2;
-
-	/* Here we calculate the eigenvalues of the inductance matrix in order
-	 * to find the inductance in DQ-axes.
-	 *
-	 * R * [XY[0] XY[1]] * R' = [DQ[0] 0    ]
-	 *     [XY[1] XY[2]]        [0     DQ[1]]
-	 *
-	 * R = [DQ[2] -DQ[3]]
-	 *     [DQ[3]  DQ[2]].
-	 * */
-
-	B = XY[0] + XY[2];
-	D = B * B - 4.f * (XY[0] * XY[2] - XY[1] * XY[1]);
-
-	if (D > 0.f) {
-
-		D = m_sqrtf(D);
-		la1 = (B - D) / 2.f;
-		la2 = (B + D) / 2.f;
-
-		B = XY[2] - la1;
-		D = m_sqrtf(B * B + XY[1] * XY[1]);
-
-		DQ[0] = la1;
-		DQ[1] = la2;
-		DQ[2] = B / D;
-		DQ[3] = XY[1] / D;
-	}
-	else {
-		/* Looks like we have a problem.
-		 * */
-		DQ[0] = XY[0];
-		DQ[1] = XY[2];
-		DQ[2] = 1.f;
-		DQ[3] = 0.f;
-	}
-}
-
-static void
-pm_LSQ_3(const float LSQ[9], float X[3])
-{
-	float		LD[6], B[3];
-
-	/* This function solves the eqaution A*X = B by LDL' decomposition.
-	 *
-	 *     [LSQ[0] LSQ[1] LSQ[3]]      [LSQ[6]]
-	 * A = [LSQ[1] LSQ[2] LSQ[4]]  B = [LSQ[7]].
-	 *     [LSQ[3] LSQ[4] LSQ[5]]      [LSQ[8]]
-	 * */
-
-	LD[0] = LSQ[0];
-	LD[1] = LSQ[1] / LD[0];
-	LD[3] = LSQ[3] / LD[0];
-	LD[2] = LSQ[2] - LD[0] * LD[1] * LD[1];
-	LD[4] = (LSQ[4] - LD[0] * LD[3] * LD[1]) / LD[2];
-	LD[5] = LSQ[5] - (LD[0] * LD[3] * LD[3] + LD[2] * LD[4] * LD[4]);
-
-	B[0] = LSQ[6];
-	B[1] = LSQ[7] - LD[1] * B[0];
-	B[2] = LSQ[8] - (LD[3] * B[0] + LD[4] * B[1]);
-
-	X[2] = B[2] / LD[5];
-	X[1] = B[1] / LD[2] - LD[4] * X[2];
-	X[0] = B[0] / LD[0] - (LD[1] * X[1] + LD[3] * X[2]);
-}
-
-static void
-pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
+void pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 {
 	float		LSQ[9], B[4], LXY[3], R, WF;
 
-	/* The initial expression is Z * I = U.
+	/* The primary expression is Z * I = U, where
 	 *
 	 * [R-j*WF*LXY[0]   j*WF*LXY[1]] * [IX] = [UX]
-	 * [  j*WF*LXY[1] R-j*WF*LXY[2]] * [IY]   [UY]
+	 * [  j*WF*LXY[1] R-j*WF*LXY[2]] * [IY]   [UY],
 	 *
 	 * IX = [DFT[0]+j*DFT[1]], UX = [DFT[2]+j*DFT[3]]
-	 * IY = [DFT[4]+j*DFT[5]], UY = [DFT[6]+j*DFT[7]]
+	 * IY = [DFT[4]+j*DFT[5]], UY = [DFT[6]+j*DFT[7]].
 	 *
 	 * We rewrite previous equation with respect to the impedance
 	 * components.
@@ -135,7 +64,7 @@ pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 	LSQ[7] = - DFT[5] * B[0] + DFT[4] * B[1] - DFT[1] * B[2] + DFT[0] * B[3];
 	LSQ[8] = DFT[5] * B[2] - DFT[4] * B[3];
 
-	pm_LSQ_3(LSQ, LXY);
+	m_la_LSQ_3(LSQ, LXY);
 
 	if (HZ > M_EPS_F) {
 
@@ -145,30 +74,17 @@ pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 		LXY[1] /= WF;
 		LXY[2] /= WF;
 
-		pm_DFT_EIG(LXY, LDQ);
+		m_la_EIG(LXY, LDQ);
 
 		LDQ[4] = R;
 	}
 	else {
-		// FIXME !!!
-		LDQ[0] = LXY[0];
-		LDQ[1] = LXY[1];
-		LDQ[2] = LXY[2];
+		WF = 2.f / (LXY[0] + LXY[2]);
+
+		LDQ[0] = LXY[0] * WF;
+		LDQ[1] = LXY[1] * WF;
+		LDQ[2] = LXY[2] * WF;
 	}
-}
-
-void pm_ADD(float *S, float *C, float X)
-{
-	float		fixed_X, up_S;
-
-	/* Kahan summation algorithm.
-	 * */
-
-	fixed_X = X - *C;
-	up_S = *S + fixed_X;
-
-	*C = (up_S - *S) - fixed_X;
-	*S = up_S;
 }
 
 static void
@@ -208,8 +124,8 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_drift);
@@ -219,8 +135,8 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 			break;
 
 		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_iA);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->fb_iB);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->fb_iA);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->fb_iB);
 
 			pm->tm_value++;
 
@@ -408,9 +324,9 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 				pm->probe_DFT[0] = 0.f;
 				pm->probe_DFT[1] = 0.f;
 				pm->probe_DFT[2] = 0.f;
-				pm->FIX[0] = 0.f;
-				pm->FIX[1] = 0.f;
-				pm->FIX[2] = 0.f;
+				pm->REM[0] = 0.f;
+				pm->REM[1] = 0.f;
+				pm->REM[2] = 0.f;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_instant_probe);
@@ -420,9 +336,9 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			break;
 
 		case 3:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_uA);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->fb_uB);
-			pm_ADD(&pm->probe_DFT[2], &pm->FIX[2], pm->fb_uC);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->fb_uA);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->fb_uB);
+			m_rsum(&pm->probe_DFT[2], &pm->REM[2], pm->fb_uC);
 
 			pm->tm_value++;
 
@@ -505,20 +421,20 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			pm->self_RMSu[1] = 0.f;
 			pm->self_RMSu[2] = 0.f;
 
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-			pm->FIX[3] = 0.f;
-			pm->FIX[4] = 0.f;
-			pm->FIX[5] = 0.f;
-			pm->FIX[6] = 0.f;
-			pm->FIX[7] = 0.f;
-			pm->FIX[8] = 0.f;
-			pm->FIX[9] = 0.f;
-			pm->FIX[10] = 0.f;
-			pm->FIX[11] = 0.f;
-			pm->FIX[12] = 0.f;
-			pm->FIX[13] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
+			pm->REM[3] = 0.f;
+			pm->REM[4] = 0.f;
+			pm->REM[5] = 0.f;
+			pm->REM[6] = 0.f;
+			pm->REM[7] = 0.f;
+			pm->REM[8] = 0.f;
+			pm->REM[9] = 0.f;
+			pm->REM[10] = 0.f;
+			pm->REM[11] = 0.f;
+			pm->REM[12] = 0.f;
+			pm->REM[13] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_slow);
@@ -540,20 +456,20 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_ADD(&pm->self_RMSi[0], &pm->FIX[0], pm->fb_iA * pm->fb_iA);
-			pm_ADD(&pm->self_RMSi[1], &pm->FIX[1], pm->fb_iB * pm->fb_iB);
-			pm_ADD(&pm->self_RMSi[2], &pm->FIX[2], pm->const_fb_U * pm->const_fb_U);
-			pm_ADD(&pm->FIX[6], &pm->FIX[10], pm->const_fb_U);
+			m_rsum(&pm->self_RMSi[0], &pm->REM[0], pm->fb_iA * pm->fb_iA);
+			m_rsum(&pm->self_RMSi[1], &pm->REM[1], pm->fb_iB * pm->fb_iB);
+			m_rsum(&pm->self_RMSi[2], &pm->REM[2], pm->const_fb_U * pm->const_fb_U);
+			m_rsum(&pm->REM[6], &pm->REM[10], pm->const_fb_U);
 
 			if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-				pm_ADD(&pm->self_RMSu[0], &pm->FIX[3], pm->fb_uA * pm->fb_uA);
-				pm_ADD(&pm->self_RMSu[1], &pm->FIX[4], pm->fb_uB * pm->fb_uB);
-				pm_ADD(&pm->self_RMSu[2], &pm->FIX[5], pm->fb_uC * pm->fb_uC);
+				m_rsum(&pm->self_RMSu[0], &pm->REM[3], pm->fb_uA * pm->fb_uA);
+				m_rsum(&pm->self_RMSu[1], &pm->REM[4], pm->fb_uB * pm->fb_uB);
+				m_rsum(&pm->self_RMSu[2], &pm->REM[5], pm->fb_uC * pm->fb_uC);
 
-				pm_ADD(&pm->FIX[7], &pm->FIX[11], pm->fb_uA);
-				pm_ADD(&pm->FIX[8], &pm->FIX[12], pm->fb_uB);
-				pm_ADD(&pm->FIX[9], &pm->FIX[13], pm->fb_uC);
+				m_rsum(&pm->REM[7], &pm->REM[11], pm->fb_uA);
+				m_rsum(&pm->REM[8], &pm->REM[12], pm->fb_uB);
+				m_rsum(&pm->REM[9], &pm->REM[13], pm->fb_uC);
 			}
 
 			pm->tm_value++;
@@ -567,19 +483,19 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 				pm->self_RMSi[1] = m_sqrtf(RMS);
 
 				RMS = pm->self_RMSi[2] / pm->tm_end;
-				AVG = pm->FIX[6] / pm->tm_end;
+				AVG = pm->REM[6] / pm->tm_end;
 				pm->self_RMSi[2] = m_sqrtf(RMS - AVG * AVG);
 
 				RMS = pm->self_RMSu[0] / pm->tm_end;
-				AVG = pm->FIX[7] / pm->tm_end;
+				AVG = pm->REM[7] / pm->tm_end;
 				pm->self_RMSu[0] = m_sqrtf(RMS - AVG * AVG);
 
 				RMS = pm->self_RMSu[1] / pm->tm_end;
-				AVG = pm->FIX[8] / pm->tm_end;
+				AVG = pm->REM[8] / pm->tm_end;
 				pm->self_RMSu[1] = m_sqrtf(RMS - AVG * AVG);
 
 				RMS = pm->self_RMSu[2] / pm->tm_end;
-				AVG = pm->FIX[9] / pm->tm_end;
+				AVG = pm->REM[9] / pm->tm_end;
 				pm->self_RMSu[2] = m_sqrtf(RMS - AVG * AVG);
 
 				pm->fsm_phase = 3;
@@ -639,10 +555,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm->probe_DFT[1] = 0.f;
 			pm->probe_DFT[2] = 0.f;
 			pm->probe_DFT[3] = 0.f;
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-			pm->FIX[3] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
+			pm->REM[3] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
@@ -669,10 +585,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			break;
 
 		case 3:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_uA);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->fb_uB);
-			pm_ADD(&pm->probe_DFT[2], &pm->FIX[2], pm->fb_uC);
-			pm_ADD(&pm->probe_DFT[3], &pm->FIX[3], pm->const_fb_U);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->fb_uA);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->fb_uB);
+			m_rsum(&pm->probe_DFT[2], &pm->REM[2], pm->fb_uC);
+			m_rsum(&pm->probe_DFT[3], &pm->REM[3], pm->const_fb_U);
 
 			pm->tm_value++;
 
@@ -730,9 +646,9 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 				pm->probe_LSQ_A[N] = 0.f;
 				pm->probe_LSQ_B[N] = 0.f;
 				pm->probe_LSQ_C[N] = 0.f;
-				pm->FIX[N] = 0.f;
-				pm->FIX[N + 9] = 0.f;
-				pm->FIX[N + 18] = 0.f;
+				pm->REM[N] = 0.f;
+				pm->REM[N + 9] = 0.f;
+				pm->REM[N + 18] = 0.f;
 			}
 
 			pm->tm_value = 0;
@@ -800,35 +716,35 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 				REF = pm->probe_DFT[0] * pm->const_fb_U * pm->ts_inverted;
 
-				pm_ADD(&pm->probe_LSQ_A[0], &pm->FIX[0], pm->fb_uA * pm->fb_uA);
-				pm_ADD(&pm->probe_LSQ_A[1], &pm->FIX[1], pm->fb_uA * pm->probe_DFT[2]);
-				pm_ADD(&pm->probe_LSQ_A[2], &pm->FIX[2], pm->probe_DFT[2] * pm->probe_DFT[2]);
-				pm_ADD(&pm->probe_LSQ_A[3], &pm->FIX[3], pm->fb_uA);
-				pm_ADD(&pm->probe_LSQ_A[4], &pm->FIX[4], pm->probe_DFT[2]);
-				pm_ADD(&pm->probe_LSQ_A[5], &pm->FIX[5], 1.f);
-				pm_ADD(&pm->probe_LSQ_A[6], &pm->FIX[6], pm->fb_uA * REF);
-				pm_ADD(&pm->probe_LSQ_A[7], &pm->FIX[7], pm->probe_DFT[2] * REF);
-				pm_ADD(&pm->probe_LSQ_A[8], &pm->FIX[8], REF);
+				m_rsum(&pm->probe_LSQ_A[0], &pm->REM[0], pm->fb_uA * pm->fb_uA);
+				m_rsum(&pm->probe_LSQ_A[1], &pm->REM[1], pm->fb_uA * pm->probe_DFT[2]);
+				m_rsum(&pm->probe_LSQ_A[2], &pm->REM[2], pm->probe_DFT[2] * pm->probe_DFT[2]);
+				m_rsum(&pm->probe_LSQ_A[3], &pm->REM[3], pm->fb_uA);
+				m_rsum(&pm->probe_LSQ_A[4], &pm->REM[4], pm->probe_DFT[2]);
+				m_rsum(&pm->probe_LSQ_A[5], &pm->REM[5], 1.f);
+				m_rsum(&pm->probe_LSQ_A[6], &pm->REM[6], pm->fb_uA * REF);
+				m_rsum(&pm->probe_LSQ_A[7], &pm->REM[7], pm->probe_DFT[2] * REF);
+				m_rsum(&pm->probe_LSQ_A[8], &pm->REM[8], REF);
 
-				pm_ADD(&pm->probe_LSQ_B[0], &pm->FIX[9], pm->fb_uB * pm->fb_uB);
-				pm_ADD(&pm->probe_LSQ_B[1], &pm->FIX[10], pm->fb_uB * pm->probe_DFT[3]);
-				pm_ADD(&pm->probe_LSQ_B[2], &pm->FIX[11], pm->probe_DFT[3] * pm->probe_DFT[3]);
-				pm_ADD(&pm->probe_LSQ_B[3], &pm->FIX[12], pm->fb_uB);
-				pm_ADD(&pm->probe_LSQ_B[4], &pm->FIX[13], pm->probe_DFT[3]);
-				pm_ADD(&pm->probe_LSQ_B[5], &pm->FIX[14], 1.f);
-				pm_ADD(&pm->probe_LSQ_B[6], &pm->FIX[15], pm->fb_uB * REF);
-				pm_ADD(&pm->probe_LSQ_B[7], &pm->FIX[16], pm->probe_DFT[3] * REF);
-				pm_ADD(&pm->probe_LSQ_B[8], &pm->FIX[17], REF);
+				m_rsum(&pm->probe_LSQ_B[0], &pm->REM[9], pm->fb_uB * pm->fb_uB);
+				m_rsum(&pm->probe_LSQ_B[1], &pm->REM[10], pm->fb_uB * pm->probe_DFT[3]);
+				m_rsum(&pm->probe_LSQ_B[2], &pm->REM[11], pm->probe_DFT[3] * pm->probe_DFT[3]);
+				m_rsum(&pm->probe_LSQ_B[3], &pm->REM[12], pm->fb_uB);
+				m_rsum(&pm->probe_LSQ_B[4], &pm->REM[13], pm->probe_DFT[3]);
+				m_rsum(&pm->probe_LSQ_B[5], &pm->REM[14], 1.f);
+				m_rsum(&pm->probe_LSQ_B[6], &pm->REM[15], pm->fb_uB * REF);
+				m_rsum(&pm->probe_LSQ_B[7], &pm->REM[16], pm->probe_DFT[3] * REF);
+				m_rsum(&pm->probe_LSQ_B[8], &pm->REM[17], REF);
 
-				pm_ADD(&pm->probe_LSQ_C[0], &pm->FIX[18], pm->fb_uC * pm->fb_uC);
-				pm_ADD(&pm->probe_LSQ_C[1], &pm->FIX[19], pm->fb_uC * pm->probe_DFT[4]);
-				pm_ADD(&pm->probe_LSQ_C[2], &pm->FIX[20], pm->probe_DFT[4] * pm->probe_DFT[4]);
-				pm_ADD(&pm->probe_LSQ_C[3], &pm->FIX[21], pm->fb_uC);
-				pm_ADD(&pm->probe_LSQ_C[4], &pm->FIX[22], pm->probe_DFT[4]);
-				pm_ADD(&pm->probe_LSQ_C[5], &pm->FIX[23], 1.f);
-				pm_ADD(&pm->probe_LSQ_C[6], &pm->FIX[24], pm->fb_uC * REF);
-				pm_ADD(&pm->probe_LSQ_C[7], &pm->FIX[25], pm->probe_DFT[4] * REF);
-				pm_ADD(&pm->probe_LSQ_C[8], &pm->FIX[26], REF);
+				m_rsum(&pm->probe_LSQ_C[0], &pm->REM[18], pm->fb_uC * pm->fb_uC);
+				m_rsum(&pm->probe_LSQ_C[1], &pm->REM[19], pm->fb_uC * pm->probe_DFT[4]);
+				m_rsum(&pm->probe_LSQ_C[2], &pm->REM[20], pm->probe_DFT[4] * pm->probe_DFT[4]);
+				m_rsum(&pm->probe_LSQ_C[3], &pm->REM[21], pm->fb_uC);
+				m_rsum(&pm->probe_LSQ_C[4], &pm->REM[22], pm->probe_DFT[4]);
+				m_rsum(&pm->probe_LSQ_C[5], &pm->REM[23], 1.f);
+				m_rsum(&pm->probe_LSQ_C[6], &pm->REM[24], pm->fb_uC * REF);
+				m_rsum(&pm->probe_LSQ_C[7], &pm->REM[25], pm->probe_DFT[4] * REF);
+				m_rsum(&pm->probe_LSQ_C[8], &pm->REM[26], REF);
 			}
 
 			pm->probe_DFT[0] = pm->probe_DFT[1];
@@ -846,9 +762,9 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			break;
 
 		case 7:
-			pm_LSQ_3(pm->probe_LSQ_A, pm->tvm_FIR_A);
-			pm_LSQ_3(pm->probe_LSQ_B, pm->tvm_FIR_B);
-			pm_LSQ_3(pm->probe_LSQ_C, pm->tvm_FIR_C);
+			m_la_LSQ_3(pm->probe_LSQ_A, pm->tvm_FIR_A);
+			m_la_LSQ_3(pm->probe_LSQ_B, pm->tvm_FIR_B);
+			m_la_LSQ_3(pm->probe_LSQ_C, pm->tvm_FIR_C);
 
 			if (		   m_isfinitef(pm->tvm_FIR_A[0]) != 0
 					&& m_isfinitef(pm->tvm_FIR_A[1]) != 0
@@ -888,9 +804,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_slow);
@@ -900,14 +816,14 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->fb_iA);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], - pm->fb_iB);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->fb_iA);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], - pm->fb_iB);
 
 		case 1:
 			eX = pm->probe_current_hold - pm->fb_iA;
 
-			pm->FIX[2] += pm->probe_gain_I * eX;
-			uX = pm->probe_gain_P * eX + pm->FIX[2];
+			pm->REM[2] += pm->probe_gain_I * eX;
+			uX = pm->probe_gain_P * eX + pm->REM[2];
 
 			uMAX = PM_UMAX(pm) * pm->const_fb_U;
 
@@ -976,10 +892,10 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[4] = pm->probe_DFT[2] * pm->const_R;
 			pm->probe_DFT[5] = pm->probe_DFT[3] * pm->const_R;
 
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-			pm->FIX[3] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
+			pm->REM[3] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_current_hold);
@@ -992,18 +908,18 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			uX = pm->tvm_DX - pm->probe_DFT[4];
 			uY = pm->tvm_DY - pm->probe_DFT[5];
 
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], uX);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], uY);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], uX);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], uY);
 
 		case 1:
 			eX = pm->probe_DFT[2] - pm->lu_iX;
 			eY = pm->probe_DFT[3] - pm->lu_iY;
 
-			pm->FIX[2] += pm->probe_gain_I * eX;
-			uX = pm->probe_gain_P * eX + pm->FIX[2];
+			pm->REM[2] += pm->probe_gain_I * eX;
+			uX = pm->probe_gain_P * eX + pm->REM[2];
 
-			pm->FIX[3] += pm->probe_gain_I * eY;
-			uY = pm->probe_gain_P * eY + pm->FIX[3];
+			pm->REM[3] += pm->probe_gain_I * eY;
+			uY = pm->probe_gain_P * eY + pm->REM[3];
 
 			uMAX = PM_UMAX(pm) * pm->const_fb_U;
 
@@ -1043,7 +959,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 static void
 pm_fsm_state_probe_const_l(pmc_t *pm)
 {
-	float			uX, uY, eX, eY, uMAX;
+	float			iX, iY, eX, eY, uX, uY, uMAX;
 	float			imp_Z, hold_R, LDQ[5];
 
 	switch (pm->fsm_phase) {
@@ -1061,18 +977,18 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->probe_DFT[6] = 0.f;
 			pm->probe_DFT[7] = 0.f;
 
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-			pm->FIX[3] = 0.f;
-			pm->FIX[4] = 0.f;
-			pm->FIX[5] = 0.f;
-			pm->FIX[6] = 0.f;
-			pm->FIX[7] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
+			pm->REM[3] = 0.f;
+			pm->REM[4] = 0.f;
+			pm->REM[5] = 0.f;
+			pm->REM[6] = 0.f;
+			pm->REM[7] = 0.f;
 
-			pm->FIX[8] = 1.f;
-			pm->FIX[9] = 0.f;
-			pm->FIX[10] = 2.f * M_PI_F * pm->probe_freq_sine_hz * pm->dT;
+			pm->hfi_wave[0] = 1.f;
+			pm->hfi_wave[1] = 0.f;
+			pm->temp_HFI_wS = 2.f * M_PI_F * pm->probe_freq_sine_hz * pm->dT;
 
 			/* Assume minimal inductance.
 			 * */
@@ -1084,9 +1000,9 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			imp_Z = 2.f * M_PI_F * imp_Z * pm->probe_freq_sine_hz;
 			imp_Z = pm->const_R * pm->const_R + imp_Z * imp_Z;
 
-			pm->FIX[11] = pm->probe_current_sine * m_sqrtf(imp_Z);
+			pm->REM[9] = pm->probe_current_sine * m_sqrtf(imp_Z);
 
-			if (pm->FIX[11] < pm->const_fb_U * pm->ts_inverted) {
+			if (pm->REM[9] < pm->const_fb_U * pm->ts_inverted) {
 
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1094,18 +1010,18 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 				break;
 			}
 
-			pm->FIX[12] = m_cosf(pm->FIX[10] * .5f);
-			pm->FIX[13] = m_sinf(pm->FIX[10] * .5f);
+			pm->temp_HFI_HT[0] = m_cosf(pm->temp_HFI_wS * .5f);
+			pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * .5f);
 
-			pm->FIX[14] = 0.f;
-			pm->FIX[15] = 0.f;
+			pm->REM[10] = 0.f;
+			pm->REM[11] = 0.f;
 
 			hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
 			hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
 				(hold_R > M_PI_F) ? M_PI_F : hold_R;
 
-			pm->FIX[16] = m_cosf(hold_R) * pm->probe_current_weak;
-			pm->FIX[17] = m_sinf(hold_R) * pm->probe_current_weak;
+			pm->REM[12] = m_cosf(hold_R);
+			pm->REM[13] = m_sinf(hold_R);
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_current_hold);
@@ -1115,36 +1031,39 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 
 		case 2:
-			uX = pm->tvm_DX * pm->FIX[12] - pm->tvm_DY * pm->FIX[13];
-			uY = pm->tvm_DX * pm->FIX[13] + pm->tvm_DY * pm->FIX[12];
+			iX = pm->const_im_K[0] * pm->REM[14] - pm->const_im_K[1] * pm->REM[15];
+			iY = pm->const_im_K[2] * pm->REM[15] - pm->const_im_K[1] * pm->REM[14];
 
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->lu_iX * pm->FIX[8]);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->lu_iX * pm->FIX[9]);
-			pm_ADD(&pm->probe_DFT[2], &pm->FIX[2], uX * pm->FIX[8]);
-			pm_ADD(&pm->probe_DFT[3], &pm->FIX[3], uX * pm->FIX[9]);
-			pm_ADD(&pm->probe_DFT[4], &pm->FIX[4], pm->lu_iY * pm->FIX[8]);
-			pm_ADD(&pm->probe_DFT[5], &pm->FIX[5], pm->lu_iY * pm->FIX[9]);
-			pm_ADD(&pm->probe_DFT[6], &pm->FIX[6], uY * pm->FIX[8]);
-			pm_ADD(&pm->probe_DFT[7], &pm->FIX[7], uY * pm->FIX[9]);
+			uX = pm->tvm_DX * pm->temp_HFI_HT[0] + pm->tvm_DY * pm->temp_HFI_HT[1];
+			uY = pm->tvm_DY * pm->temp_HFI_HT[0] - pm->tvm_DX * pm->temp_HFI_HT[1];
+
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], iX * pm->hfi_wave[0]);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], iX * pm->hfi_wave[1]);
+			m_rsum(&pm->probe_DFT[2], &pm->REM[2], uX * pm->hfi_wave[0]);
+			m_rsum(&pm->probe_DFT[3], &pm->REM[3], uX * pm->hfi_wave[1]);
+			m_rsum(&pm->probe_DFT[4], &pm->REM[4], iY * pm->hfi_wave[0]);
+			m_rsum(&pm->probe_DFT[5], &pm->REM[5], iY * pm->hfi_wave[1]);
+			m_rsum(&pm->probe_DFT[6], &pm->REM[6], uY * pm->hfi_wave[0]);
+			m_rsum(&pm->probe_DFT[7], &pm->REM[7], uY * pm->hfi_wave[1]);
 
 		case 1:
-			m_rotf(&pm->FIX[8], pm->FIX[10], &pm->FIX[8]);
+			m_rotf(&pm->hfi_wave[0], pm->temp_HFI_wS, &pm->hfi_wave[0]);
 
-			if (pm->fsm_state == PM_STATE_PROBE_CONST_K) {
+			if (pm->fsm_state == PM_STATE_PROBE_CONST_IM_K) {
 
-				hold_R = 2.f * M_PI_F * pm->dT;
+				hold_R = 4.f * M_PI_F * pm->dT;
 
-				m_rotf(&pm->FIX[16], hold_R, &pm->FIX[16]);
+				m_rotf(&pm->REM[12], hold_R, &pm->REM[12]);
 			}
 
-			eX = pm->FIX[16] - pm->lu_iX;
-			eY = pm->FIX[17] - pm->lu_iY;
+			eX = pm->probe_current_weak * pm->REM[12] - pm->lu_iX;
+			eY = pm->probe_current_weak * pm->REM[13] - pm->lu_iY;
 
-			pm->FIX[14] += pm->probe_gain_I * eX;
-			uX = pm->probe_gain_P * eX + pm->FIX[14];
+			pm->REM[10] += pm->probe_gain_I * eX;
+			uX = pm->probe_gain_P * eX + pm->REM[10];
 
-			pm->FIX[15] += pm->probe_gain_I * eY;
-			uY = pm->probe_gain_P * eY + pm->FIX[15];
+			pm->REM[11] += pm->probe_gain_I * eY;
+			uY = pm->probe_gain_P * eY + pm->REM[11];
 
 			uMAX = PM_UMAX(pm) * pm->const_fb_U;
 
@@ -1156,8 +1075,11 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 				break;
 			}
 
-			uX += pm->FIX[11] * pm->FIX[8];
-			uY += pm->FIX[11] * pm->FIX[9];
+			pm->REM[14] = pm->lu_iX;
+			pm->REM[15] = pm->lu_iY;
+
+			uX += pm->REM[9] * pm->hfi_wave[0];
+			uY += pm->REM[9] * pm->hfi_wave[1];
 
 			pm_voltage(pm, uX, uY);
 
@@ -1189,7 +1111,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 				pm->i_gain_P = 2E-1f * pm->const_L * pm->freq_hz - pm->const_R;
 				pm->i_gain_I = 1E-2f * pm->const_L * pm->freq_hz;
 			}
-			else if (pm->fsm_state == PM_STATE_PROBE_CONST_K) {
+			else if (pm->fsm_state == PM_STATE_PROBE_CONST_IM_K) {
 
 				pm_DFT_LDQ(pm->probe_DFT, 0.f, LDQ);
 
@@ -1210,7 +1132,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->const_L > M_EPS_F && pm->temp_dTiL > M_EPS_F) {
+			if (pm->const_L > M_EPS_F) {
 
 				pm->vsi_SA = 0;
 				pm->vsi_SB = 0;
@@ -1250,7 +1172,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hfi_wS = 0.f;
 				pm->hfi_wave[0] = 1.f;
 				pm->hfi_wave[1] = 0.f;
-				pm->hfi_polarity = 0.f;
+				pm->hfi_DFT_N = 0;
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
@@ -1362,7 +1284,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 
 		case 0:
 			pm->probe_DFT[0] = 0.f;
-			pm->FIX[0] = 0.f;
+			pm->REM[0] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, (pm->lu_flux_zone == PM_FLUX_DETACHED)
@@ -1373,7 +1295,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			break;
 
 		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->flux_E);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->flux_E);
 
 			pm->tm_value++;
 
@@ -1428,17 +1350,17 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 			pm->probe_LSQ_A[7] = 0.f;
 			pm->probe_LSQ_A[8] = 0.f;
 
-			pm->FIX[0] = 0.f;
-			pm->FIX[1] = 0.f;
-			pm->FIX[2] = 0.f;
-			pm->FIX[3] = 0.f;
-			pm->FIX[4] = 0.f;
-			pm->FIX[5] = 0.f;
-			pm->FIX[6] = 0.f;
-			pm->FIX[7] = 0.f;
-			pm->FIX[8] = 0.f;
-			pm->FIX[9] = 0.f;
-			pm->FIX[10] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
+			pm->REM[2] = 0.f;
+			pm->REM[3] = 0.f;
+			pm->REM[4] = 0.f;
+			pm->REM[5] = 0.f;
+			pm->REM[6] = 0.f;
+			pm->REM[7] = 0.f;
+			pm->REM[8] = 0.f;
+			pm->REM[9] = 0.f;
+			pm->REM[10] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -1448,18 +1370,18 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 			break;
 
 		case 2:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->lu_iQ);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], 1.f);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->lu_iQ);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], 1.f);
 
-			pm_ADD(&pm->probe_LSQ_A[0], &pm->FIX[2], pm->probe_DFT[0] * pm->probe_DFT[0]);
-			pm_ADD(&pm->probe_LSQ_A[1], &pm->FIX[3], pm->probe_DFT[1] * pm->probe_DFT[0]);
-			pm_ADD(&pm->probe_LSQ_A[2], &pm->FIX[4], pm->probe_DFT[1] * pm->probe_DFT[1]);
-			pm_ADD(&pm->probe_LSQ_A[3], &pm->FIX[5], pm->probe_DFT[0]);
-			pm_ADD(&pm->probe_LSQ_A[4], &pm->FIX[6], pm->probe_DFT[1]);
-			pm_ADD(&pm->probe_LSQ_A[5], &pm->FIX[7], 1.f);
-			pm_ADD(&pm->probe_LSQ_A[6], &pm->FIX[8], pm->probe_DFT[0] * pm->lu_wS);
-			pm_ADD(&pm->probe_LSQ_A[7], &pm->FIX[9], pm->probe_DFT[1] * pm->lu_wS);
-			pm_ADD(&pm->probe_LSQ_A[8], &pm->FIX[10], pm->lu_wS);
+			m_rsum(&pm->probe_LSQ_A[0], &pm->REM[2], pm->probe_DFT[0] * pm->probe_DFT[0]);
+			m_rsum(&pm->probe_LSQ_A[1], &pm->REM[3], pm->probe_DFT[1] * pm->probe_DFT[0]);
+			m_rsum(&pm->probe_LSQ_A[2], &pm->REM[4], pm->probe_DFT[1] * pm->probe_DFT[1]);
+			m_rsum(&pm->probe_LSQ_A[3], &pm->REM[5], pm->probe_DFT[0]);
+			m_rsum(&pm->probe_LSQ_A[4], &pm->REM[6], pm->probe_DFT[1]);
+			m_rsum(&pm->probe_LSQ_A[5], &pm->REM[7], 1.f);
+			m_rsum(&pm->probe_LSQ_A[6], &pm->REM[8], pm->probe_DFT[0] * pm->lu_wS);
+			m_rsum(&pm->probe_LSQ_A[7], &pm->REM[9], pm->probe_DFT[1] * pm->lu_wS);
+			m_rsum(&pm->probe_LSQ_A[8], &pm->REM[10], pm->lu_wS);
 
 			pm->tm_value++;
 
@@ -1470,7 +1392,7 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 			break;
 
 		case 3:
-			pm_LSQ_3(pm->probe_LSQ_A, pm->probe_DFT);
+			m_la_LSQ_3(pm->probe_LSQ_A, pm->probe_DFT);
 
 			temp_Ja = pm->dT / pm->probe_DFT[0];
 
@@ -1499,8 +1421,8 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[0] = 0.f;
 
-			pm->FIX[0] = 0.f;
-			pm->FIX[0] = 0.f;
+			pm->REM[0] = 0.f;
+			pm->REM[0] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -1510,8 +1432,8 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 			break;
 
 		case 1:
-			pm_ADD(&pm->probe_DFT[0], &pm->FIX[0], pm->lu_wS);
-			pm_ADD(&pm->probe_DFT[1], &pm->FIX[1], pm->lu_wS * pm->lu_wS);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->lu_wS);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->lu_wS * pm->lu_wS);
 
 			pm->tm_value++;
 
@@ -1564,8 +1486,8 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 					pm->hall_ST[N].Y = 0.f;
 
 					pm->probe_DFT[N] = 0.f;
-					pm->FIX[N] = 0.f;
-					pm->FIX[N + 8] = 0.f;
+					pm->REM[N] = 0.f;
+					pm->REM[N + 8] = 0.f;
 				}
 
 				pm->tm_value = 0;
@@ -1585,8 +1507,8 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (HS >= 1 && HS <= 6) {
 
-				pm_ADD(&pm->hall_ST[HS].X, &pm->FIX[HS], pm->lu_F[0]);
-				pm_ADD(&pm->hall_ST[HS].Y, &pm->FIX[HS + 8], pm->lu_F[1]);
+				m_rsum(&pm->hall_ST[HS].X, &pm->REM[HS], pm->lu_F[0]);
+				m_rsum(&pm->hall_ST[HS].Y, &pm->REM[HS + 8], pm->lu_F[1]);
 
 				pm->probe_DFT[HS] += 1.f;
 			}
@@ -1704,7 +1626,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_ADJUST_CURRENT:
 		case PM_STATE_PROBE_CONST_R:
 		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_PROBE_CONST_K:
+		case PM_STATE_PROBE_CONST_IM_K:
 		case PM_STATE_LU_DETACHED:
 		case PM_STATE_LU_STARTUP:
 
@@ -1790,7 +1712,7 @@ void pm_FSM(pmc_t *pm)
 			break;
 
 		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_PROBE_CONST_K:
+		case PM_STATE_PROBE_CONST_IM_K:
 			pm_fsm_state_probe_const_l(pm);
 			break;
 

@@ -54,12 +54,12 @@ int m_isfinitef(float x)
 	return ((0xFFUL & (u.i >> 23)) != 0xFFUL) ? 1 : 0;
 }
 
-void m_rotf(float y[2], float r, const float x[2])
+void m_rotf(float y[2], float val, const float x[2])
 {
 	float           q, s, c, a, b;
 
-	q = r * r;
-	s = r - q * r * (1.f / 6.f - (1.f / 120.f) * q);
+	q = val * val;
+	s = val - q * val * (1.f / 6.f - (1.f / 120.f) * q);
 	c = 1.f - q * (.5f - (1.f / 24.f) * q);
 
 	a = c * x[0] - s * x[1];
@@ -69,6 +69,20 @@ void m_rotf(float y[2], float r, const float x[2])
 
 	y[0] = a * q;
 	y[1] = b * q;
+}
+
+void m_rsum(float *sum, float *rem, float val)
+{
+	float		fixed, newsum;
+
+	/* Kahan summation algorithm.
+	 * */
+
+	fixed = val - *rem;
+	newsum = *sum + fixed;
+
+	*rem = (newsum - *sum) - fixed;
+	*sum = newsum;
 }
 
 static float
@@ -205,5 +219,92 @@ float m_exp2f(float x)
 float m_expf(float x)
 {
 	return m_exp2f(x * (1.f / M_LOG2_F));
+}
+
+void m_la_EIG(float A[3], float EG[4])
+{
+	float		B, D, L1, L2;
+
+	/* Get the eigenvalues EV of quadratic form A.
+	 *
+	 * R * [A[0] A[1]] * R' = [EV[0] 0    ]
+	 *     [A[1] A[2]]        [0     EV[1]]
+	 *
+	 * R = [EV[2] -EV[3]]
+	 *     [EV[3]  EV[2]].
+	 * */
+
+	B = A[0] + A[2];
+	D = B * B - 4.f * (A[0] * A[2] - A[1] * A[1]);
+
+	if (D > 0.f) {
+
+		D = m_sqrtf(D);
+		L1 = (B - D) * .5f;
+		L2 = (B + D) * .5f;
+
+		B = A[2] - L1;
+		D = m_sqrtf(B * B + A[1] * A[1]);
+
+		EG[0] = L1;
+		EG[1] = L2;
+		EG[2] = B / D;
+		EG[3] = A[1] / D;
+	}
+	else {
+		/* Looks like we have a problem.
+		 * */
+	}
+}
+
+void m_la_EIV(float A[3], float EV[2])
+{
+	float		B, N;
+
+	/* Get the eigenvector E of quadratic form A.
+	 *
+	 * A = [A[0] A[1]],	E = [E[0]]
+	 *     [A[1] A[2]]	    [E[1]].
+	 * */
+
+	B = (A[2] - A[0]) * .5f;
+	N = m_sqrtf(B * B + A[1] * A[1]);
+
+	if (N > 0.f) {
+
+		EV[0] = m_sqrtf((1.f + B / N) * .5f);
+		EV[1] = A[1] / (2.f * EV[0] * N);
+	}
+	else {
+		/* Looks like we have a problem.
+		 * */
+	}
+}
+
+void m_la_LSQ_3(const float LSQ[9], float X[3])
+{
+	float		LD[6], B[3];
+
+	/* The function solves the equation A*X = B by LDL' decomposition.
+	 *
+	 *     [LSQ[0] LSQ[1] LSQ[3]]      [LSQ[6]]
+	 * A = [LSQ[1] LSQ[2] LSQ[4]]  B = [LSQ[7]].
+	 *     [LSQ[3] LSQ[4] LSQ[5]]      [LSQ[8]]
+	 * */
+
+	LD[0] = LSQ[0];
+	LD[1] = LSQ[1] / LD[0];
+	LD[3] = LSQ[3] / LD[0];
+	LD[2] = LSQ[2] - LD[0] * LD[1] * LD[1];
+	LD[4] = (LSQ[4] - LD[0] * LD[3] * LD[1]) / LD[2];
+	LD[5] = LSQ[5] - (LD[0] * LD[3] * LD[3] + LD[2] * LD[4] * LD[4]);
+
+	B[0] = LSQ[6];
+	B[1] = LSQ[7] - LD[1] * B[0];
+	B[2] = LSQ[8] - (LD[3] * B[0] + LD[4] * B[1]);
+
+	X[2] = B[2] / LD[5];
+	X[1] = B[1] / LD[2] - LD[4] * X[2];
+	X[0] = B[0] / LD[0] - (LD[1] * X[1] + LD[3] * X[2]);
 }
 

@@ -5,10 +5,10 @@
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 
-#define PM_UMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? 2.f / 3.f : 1.f)
+#define PM_UMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? .66666667f : 1.f)
 #define PM_EMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
 #define PM_KWAT(pm)		((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
-#define PM_TSMS(pm, ms)		(int) (pm->freq_hz * 1000.f * (ms))
+#define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) / 1000.f)
 
 #define PM_HALL_SPAN		1.05f
 #define PM_MAX_F		7E+27f
@@ -71,7 +71,7 @@ enum {
 	PM_STATE_ADJUST_CURRENT,
 	PM_STATE_PROBE_CONST_R,
 	PM_STATE_PROBE_CONST_L,
-	PM_STATE_PROBE_CONST_K,
+	PM_STATE_PROBE_CONST_IM_K,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
@@ -203,7 +203,7 @@ typedef struct {
 	float		probe_LSQ_B[9];
 	float		probe_LSQ_C[9];
 
-	float		FIX[27];
+	float		REM[27];
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -281,15 +281,17 @@ typedef struct {
 	float		flux_gain_AD;
 	float		flux_gain_SF;
 
-	float		hfi_freq_hz;
-	float		hfi_swing_D;
+	int		hfi_DIV;
+	int		hfi_SKIP;
+	int		hfi_SUM;
+	float		hfi_inject;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_wave[2];
-	float		hfi_polarity;
-	float		hfi_gain_EP;
+	float		hfi_DFT[8];
+	float		hfi_REM[8];
+	int		hfi_DFT_N;
 	float		hfi_gain_SF;
-	float		hfi_gain_FP;
 
 	struct {
 
@@ -341,7 +343,8 @@ typedef struct {
 
 	float		temp_const_ifbU;
 	float		temp_const_iE;
-	float		temp_dTiL;
+	float		temp_HFI_wS;
+	float		temp_HFI_HT[2];
 	float		temp_2PZiPPR;
 
 	float		watt_wP_maximal;
@@ -411,7 +414,7 @@ typedef struct {
 	float		im_reverted_Ah;
 	float		im_capacity_Ah;
 	float		im_fuel_pc;
-	float		im_FIX[4];
+	float		im_REM[4];
 
 	float		boost_iIN_HI;
 	float		boost_uIN_LO;
@@ -431,7 +434,6 @@ void pm_build(pmc_t *pm);
 void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
-void pm_ADD(float *S, float *C, float X);
 void pm_FSM(pmc_t *pm);
 
 const char *pm_strerror(int n);

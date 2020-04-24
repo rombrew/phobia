@@ -32,6 +32,27 @@ void blm_DQ_AB(double R, double D, double Q, double *A, double *B)
 	*B = - .5 * X + .866025403784439 * Y;
 }
 
+void blm_DQ_form(double R, double D, double Q, const double K[3], double Y[2])
+{
+	double		rS, rC, KT[3], DET, IK[3];
+
+	rS = sin(R);
+	rC = cos(R);
+
+	KT[0] = K[2] * rS * rS + 2.f * K[1] * rS * rC + K[0] * rC * rC;
+	KT[1] = K[1] * (rC * rC - rS * rS) + (K[2] - K[0]) * rC * rS;
+	KT[2] = K[0] * rS * rS - 2.f * K[1] * rS * rC + K[2] * rC * rC;
+
+	DET = KT[0] * KT[0] - KT[1] * KT[1];
+
+	IK[0] = KT[2] / DET;
+	IK[1] = - KT[1] / DET;
+	IK[2] = KT[0] / DET;
+
+	Y[0] = IK[0] * D + IK[1] * Q;
+	Y[1] = IK[1] * D + IK[2] * Q;
+}
+
 void blm_Enable(blm_t *m)
 {
 	double		Kv;
@@ -47,7 +68,7 @@ void blm_Enable(blm_t *m)
         m->X[3] = 0.;	/* Electrical Position (Radian) */
         m->X[4] = 25.;	/* Temperature (Celsius) */
 	m->X[5] = 0.;	/* Energy consumption (Joule) */
-	m->X[6] = 5.;	/* DC bus voltage (Volt) */
+	m->X[6] = 5.;	/* DC link voltage (Volt) */
 
 	m->X[7] = 0.;	/* Current Sensor A */
 	m->X[8] = 0.;	/* Current Sensor B */
@@ -66,18 +87,26 @@ void blm_Enable(blm_t *m)
 	/* Winding resistance. (Ohm)
          * */
 	m->R = 2.4E-1;
-	//m->R = 22E-3;
 
 	/* Winding inductance. (Henry)
          * */
 	m->Ld = 5.2E-4;
 	m->Lq = 6.5E-4;
-	//m->Ld = 11E-6;
-	//m->Lq = 17E-6;
 
-	/* Source voltage. (Volt)
+	/* BEMF constant. (Weber)
+         * */
+	Kv = 15.7; /* Total RPM per Volt */
+        m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
+
+	/* Inductance relative anisotropy in stator frame.
 	 * */
-	m->U = 48.;
+	m->Lk[0] = 1.05;
+	m->Lk[1] = -0.05;
+	m->Lk[2] = 1.;
+
+	/* Number of the rotor pole pairs.
+	 * */
+	m->Zp = 15;
 
 	/* Thermal capacity. (Joule/K)
 	 * */
@@ -87,6 +116,10 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->Rt = 0.5;
 
+	/* Source voltage. (Volt)
+	 * */
+	m->U = 48.;
+
 	/* Source internal resistance. (Ohm)
 	 * */
 	m->Rs = 0.2;
@@ -94,17 +127,6 @@ void blm_Enable(blm_t *m)
 	/* Decoupling capacitance. (Farad)
 	 * */
 	m->Cb = 2040E-6;
-
-	/* Number of the rotor pole pairs.
-	 * */
-	m->Zp = 15;
-	//m->Zp = 7;
-
-	/* BEMF constant. (Weber)
-         * */
-	Kv = 15.7; /* Total RPM per Volt */
-	//Kv = 300;
-        m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
 
 	/* Moment of inertia.
 	 * */
@@ -165,7 +187,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 	 * */
 	D[5] = 1.5 * (X[0] * UD + X[1] * UQ);
 
-	/* DC bus voltage equation.
+	/* DC link voltage equation.
 	 * */
 	D[6] = ((m->U - X[6]) / m->Rs - D[5] / X[6]) / m->Cb;
 
@@ -176,24 +198,16 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	if (m->HI_Z == 0) {
 
-		D[0] = UD / m->Ld;
-		D[1] = UQ / m->Lq;
+		if (1) {
 
-		{
-			double		A, B, vX, vY;
+			UD /= m->Ld;
+			UQ /= m->Lq;
 
-			blm_DQ_AB(X[3], D[0], D[1], &A, &B);
-
-			vX = A;
-			vY = .577350269189626 * A + 1.15470053837925 * B;
-
-			vX *= 1.0;
-			vY *= 1.0;
-
-			A = vX;
-			B = - .5 * vX + .866025403784439 * vY;
-
-			blm_AB_DQ(X[3], A, B, &D[0], &D[1]);
+			blm_DQ_form(X[3], UD, UQ, m->Lk, &D[0]);
+		}
+		else {
+			D[0] = UD / m->Ld;
+			D[1] = UQ / m->Lq;
 		}
 	}
 	else {

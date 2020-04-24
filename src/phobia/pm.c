@@ -45,7 +45,7 @@ void pm_default(pmc_t *pm)
 	pm->ad_UC[1] = 1.f;
 
 	pm->probe_current_hold = 10.f;
-	pm->probe_current_weak = 1.f;
+	pm->probe_current_weak = 5.f;
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 24.f;
@@ -94,11 +94,11 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_AD = 2E-1f;
 	pm->flux_gain_SF = 5E-2f;
 
-	pm->hfi_freq_hz = pm->freq_hz / 6.f;
-	pm->hfi_swing_D = 1.f;
-	pm->hfi_gain_EP = 1E-1f;
+	pm->hfi_DIV = 12;
+	pm->hfi_SKIP = 1;
+	pm->hfi_SUM = 5;
+	pm->hfi_inject = 4.f;
 	pm->hfi_gain_SF = 5E-3f;
-	pm->hfi_gain_FP = 0E-3f;
 
 	pm->hall_READY = PM_DISABLED;
 	pm->hall_prol_T = 0.1f;
@@ -119,6 +119,10 @@ void pm_default(pmc_t *pm)
 	pm->const_Zp = 1;
 	pm->const_Ja = 0.f;
 
+	pm->const_im_K[0] = 1.f;
+	pm->const_im_K[1] = 0.f;
+	pm->const_im_K[2] = 1.f;
+
 	pm->watt_wP_maximal = 4000.f;
 	pm->watt_iDC_maximal = 80.f;
 	pm->watt_wP_reverse = 4000.f;
@@ -130,7 +134,7 @@ void pm_default(pmc_t *pm)
 
 	pm->i_maximal = 120.f;
 	pm->i_reverse = pm->i_maximal;
-	pm->i_derated_HFI = 5.f;
+	pm->i_derated_HFI = 50.f;
 	pm->i_tol_Z = 0.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
@@ -150,7 +154,7 @@ void pm_default(pmc_t *pm)
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 2E-2f;
 	pm->s_gain_I = 0E-3f;
-	pm->s_gain_S = 2E-1f;
+	pm->s_gain_S = 1E-0f;
 
 	pm->x_tol_N = 1.f;
 	pm->x_tol_Z = 0.f;
@@ -170,9 +174,23 @@ void pm_build(pmc_t *pm)
 	pm->ts_bootstrap = PM_TSMS(pm, pm->dc_bootstrap);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
-	pm->temp_const_iE = 1.f / pm->const_E;
-	pm->temp_dTiL = pm->dT / pm->const_L;
-	pm->temp_2PZiPPR = 2.f * M_PI_F * pm->const_Zp * pm->qenc_Zq / (float) pm->qenc_PPR;
+	if (pm->config_ESTIMATE == PM_ESTIMATE_FLUX) {
+
+		pm->temp_const_iE = 1.f / pm->const_E;
+	}
+
+	if (pm->config_HFI == PM_ENABLED) {
+
+		pm->temp_HFI_wS = 2.f * M_PI_F * pm->freq_hz / (float) pm->hfi_DIV;
+		pm->temp_HFI_HT[0] = m_cosf(pm->temp_HFI_wS * pm->dT * .5f);
+		pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * pm->dT * .5f);
+	}
+
+	if (pm->config_SENSOR == PM_SENSOR_QENC) {
+
+		pm->temp_2PZiPPR = 2.f * M_PI_F * pm->const_Zp
+			* pm->qenc_Zq / (float) pm->qenc_PPR;
+	}
 }
 
 static void
@@ -395,49 +413,121 @@ pm_estimate_FLUX(pmc_t *pm)
 }
 
 static void
+pm_HFI_DFT(const float DFT[8], float EV[2])
+{
+	float		LSQ[9], B[4], IMP[3], R;
+
+	LSQ[0] = DFT[1] * DFT[1] + DFT[0] * DFT[0];
+	LSQ[1] = - DFT[1] * DFT[5] - DFT[0] * DFT[4];
+	LSQ[5] = DFT[5] * DFT[5] + DFT[4] * DFT[4];
+	LSQ[2] = LSQ[5] + LSQ[0];
+	LSQ[3] = 0.f;
+	LSQ[4] = LSQ[1];
+
+	R = (DFT[2] * DFT[0] + DFT[3] * DFT[1] + DFT[6] * DFT[4] + DFT[7] * DFT[5]) / LSQ[2];
+
+	B[0] = DFT[2] - DFT[0] * R;
+	B[1] = DFT[3] - DFT[1] * R;
+	B[2] = DFT[6] - DFT[4] * R;
+	B[3] = DFT[7] - DFT[5] * R;
+
+	LSQ[6] = DFT[1] * B[0] - DFT[0] * B[1];
+	LSQ[7] = - DFT[5] * B[0] + DFT[4] * B[1] - DFT[1] * B[2] + DFT[0] * B[3];
+	LSQ[8] = DFT[5] * B[2] - DFT[4] * B[3];
+
+	m_la_LSQ_3(LSQ, IMP);
+	m_la_EIV(IMP, EV);
+}
+
+static void
 pm_estimate_HFI(pmc_t *pm)
 {
-	float		iD, iQ, eD, eQ, eR, dR, wD;
+	float			iX, iY, iD, iQ, uD, uQ;
+	float			EV[2], F[2], E;
 
-	iD = pm->hfi_F[0] * pm->lu_iX + pm->hfi_F[1] * pm->lu_iY;
-	iQ = pm->hfi_F[0] * pm->lu_iY - pm->hfi_F[1] * pm->lu_iX;
+	if (pm->hfi_DFT_N == pm->hfi_DIV * pm->hfi_SKIP) {
 
-	/* FIXME */
+		pm->hfi_DFT[0] = 0.f;
+		pm->hfi_DFT[1] = 0.f;
+		pm->hfi_DFT[2] = 0.f;
+		pm->hfi_DFT[3] = 0.f;
+		pm->hfi_DFT[4] = 0.f;
+		pm->hfi_DFT[5] = 0.f;
+		pm->hfi_DFT[6] = 0.f;
+		pm->hfi_DFT[7] = 0.f;
 
-	eD = iD - pm->lu_iD;
-	eQ = iQ - pm->lu_iQ;
-
-	/* Demodulate the Q residue with carrier sine wave.
-	 * */
-	eR = eQ * pm->hfi_wave[1];
-	dR = pm->hfi_gain_EP * eR;
-	dR = (dR < - 1.f) ? - 1.f : (dR > 1.f) ? 1.f : dR;
-
-	m_rotf(pm->hfi_F, dR, pm->hfi_F);
-
-	pm->hfi_wS += (dR * pm->freq_hz - pm->hfi_wS) * pm->hfi_gain_SF;
-
-	if (m_fabsf(pm->hfi_gain_FP) > M_EPS_F) {
-
-		/* D axis response has an asymmetry that we exctact with
-		 * doubled frequency cosine.
-		 * */
-		wD = pm->hfi_wave[0] * pm->hfi_wave[0] - pm->hfi_wave[1] * pm->hfi_wave[1];
-		pm->hfi_polarity += pm->hfi_gain_FP * wD * eD;
-
-		if (pm->hfi_polarity > 1.f) {
-
-			/* Flip into the true position.
-			 * */
-			pm->hfi_F[0] = - pm->hfi_F[0];
-			pm->hfi_F[1] = - pm->hfi_F[1];
-			pm->hfi_polarity = 0.f;
-		}
-		else if (pm->hfi_polarity < 0.f) {
-
-			pm->hfi_polarity = 0.f;
-		}
+		pm->hfi_REM[0] = 0.f;
+		pm->hfi_REM[1] = 0.f;
+		pm->hfi_REM[2] = 0.f;
+		pm->hfi_REM[3] = 0.f;
+		pm->hfi_REM[4] = 0.f;
+		pm->hfi_REM[5] = 0.f;
+		pm->hfi_REM[6] = 0.f;
+		pm->hfi_REM[7] = 0.f;
 	}
+
+	/* Inductance relative anisotropy (K) compensation.
+	 * */
+	iX = pm->const_im_K[0] * pm->REM[14] - pm->const_im_K[1] * pm->REM[15];
+	iY = pm->const_im_K[2] * pm->REM[15] - pm->const_im_K[1] * pm->REM[14];
+
+	iD = pm->lu_F[0] * iX + pm->lu_F[1] * iY;
+	iQ = pm->lu_F[0] * iY - pm->lu_F[1] * iX;
+
+	/* Get corrected frame (half-period shift).
+	 * */
+	F[0] = pm->lu_F[0] * pm->temp_HFI_HT[0] - pm->lu_F[1] * pm->temp_HFI_HT[1];
+	F[1] = pm->lu_F[1] * pm->temp_HFI_HT[0] + pm->lu_F[0] * pm->temp_HFI_HT[1];
+
+	/* Get VSI voltages on DQ-axes.
+	 * */
+	uD = F[0] * pm->tvm_DX + F[1] * pm->tvm_DY;
+	uQ = F[0] * pm->tvm_DY - F[1] * pm->tvm_DX;
+
+	/* Discrete Fourier Transform (DFT).
+	 * */
+	m_rsum(&pm->hfi_DFT[0], &pm->hfi_REM[0], iD * pm->hfi_wave[0]);
+	m_rsum(&pm->hfi_DFT[1], &pm->hfi_REM[1], iD * pm->hfi_wave[1]);
+	m_rsum(&pm->hfi_DFT[2], &pm->hfi_REM[2], uD * pm->hfi_wave[0]);
+	m_rsum(&pm->hfi_DFT[3], &pm->hfi_REM[3], uD * pm->hfi_wave[1]);
+	m_rsum(&pm->hfi_DFT[4], &pm->hfi_REM[4], iQ * pm->hfi_wave[0]);
+	m_rsum(&pm->hfi_DFT[5], &pm->hfi_REM[5], iQ * pm->hfi_wave[1]);
+	m_rsum(&pm->hfi_DFT[6], &pm->hfi_REM[6], uQ * pm->hfi_wave[0]);
+	m_rsum(&pm->hfi_DFT[7], &pm->hfi_REM[7], uQ * pm->hfi_wave[1]);
+
+	pm->REM[14] = pm->lu_iX;
+	pm->REM[15] = pm->lu_iY;
+
+	pm->hfi_DFT_N += 1;
+
+	if (pm->hfi_DFT_N >= pm->hfi_DIV * (pm->hfi_SUM + pm->hfi_SKIP)) {
+
+		pm_HFI_DFT(pm->hfi_DFT, EV);
+
+		/* Speed estimation (PLL).
+		 * */
+		if (EV[0] > M_EPS_F) {
+
+			E = EV[1] / EV[0] * pm->freq_hz;
+			pm->hfi_wS += E * pm->hfi_gain_SF;
+		}
+
+		/* Get actual saliency frame.
+		 * */
+		F[0] = pm->lu_F[0] * EV[0] - pm->lu_F[1] * EV[1];
+		F[1] = pm->lu_F[1] * EV[0] + pm->lu_F[0] * EV[1];
+
+		E = (3.f - F[0] * F[0] - F[1] * F[1]) * .5f;
+
+		pm->hfi_F[0] = F[0] * E;
+		pm->hfi_F[1] = F[1] * E;
+
+		pm->hfi_DFT_N = 0;
+	}
+
+	/* Extrapolate rotor position.
+	 * */
+	m_rotf(pm->hfi_F, pm->hfi_wS * pm->dT, pm->hfi_F);
 }
 
 static void
@@ -589,7 +679,7 @@ pm_sensor_QENC(pmc_t *pm)
 			&& pm->qenc_gain_IF > M_EPS_F
 			&& pm->const_Ja > M_EPS_F) {
 
-		/* FIXME: Overflow in the LIMIT position as there is no
+		/* REMME: Overflow in the LIMIT position as there is no
 		 * response from the encoder.
 		 * */
 
@@ -727,6 +817,8 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_ESTIMATE_HFI;
 
+				pm->hfi_DFT_N = 0;
+
 				pm->hfi_F[0] = pm->lu_F[0];
 				pm->hfi_F[1] = pm->lu_F[1];
 				pm->hfi_wS = pm->lu_wS;
@@ -837,6 +929,8 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->config_HFI == PM_ENABLED) {
 
 				pm->lu_mode = PM_LU_ESTIMATE_HFI;
+
+				pm->hfi_DFT_N = 0;
 
 				pm->hfi_F[0] = pm->lu_F[0];
 				pm->hfi_F[1] = pm->lu_F[1];
@@ -1118,7 +1212,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 static void
 pm_loop_current(pmc_t *pm)
 {
-	float		sD, sQ, eD, eQ, uD, uQ, uX, uY, wP, wS;
+	float		sD, sQ, eD, eQ, uD, uQ, uX, uY, wP, hfi_U;
 	float		iMAX, iREV, uMAX, wMAX, wREV, E;
 
 	if (pm->lu_mode == PM_LU_FORCED) {
@@ -1271,16 +1365,6 @@ pm_loop_current(pmc_t *pm)
 	eD = (m_fabsf(eD) > pm->i_tol_Z) ? eD : 0.f;
 	eQ = (m_fabsf(eQ) > pm->i_tol_Z) ? eQ : 0.f;
 
-	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
-
-		/* HF wave synthesis.
-		 * */
-		wS = 2.f * M_PI_F * pm->hfi_freq_hz;
-		m_rotf(pm->hfi_wave, wS * pm->dT, pm->hfi_wave);
-
-		eD += pm->hfi_wave[1] * pm->hfi_swing_D;
-	}
-
 	uD = pm->i_gain_P * eD;
 	uQ = pm->i_gain_P * eQ;
 
@@ -1310,9 +1394,16 @@ pm_loop_current(pmc_t *pm)
 
 	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
 
+		/* HF wave synthesis.
+		 * */
+		m_rotf(pm->hfi_wave, pm->temp_HFI_wS * pm->dT, pm->hfi_wave);
+
 		/* HF injection.
 		 * */
-		uD += pm->hfi_wave[0] * pm->hfi_swing_D * wS * pm->const_L;
+		hfi_U = pm->hfi_inject * pm->temp_HFI_wS * pm->const_L;
+
+		uD += pm->hfi_wave[0] * hfi_U;
+		uQ += pm->hfi_wave[1] * hfi_U;
 	}
 
 	/* Go to XY-axes.
@@ -1502,12 +1593,12 @@ pm_infometer(pmc_t *pm)
 
 	if (Wh > 0.f) {
 
-		pm_ADD(&pm->im_consumed_Wh, &pm->im_FIX[0], Wh);
-		pm_ADD(&pm->im_consumed_Ah, &pm->im_FIX[1], Ah);
+		m_rsum(&pm->im_consumed_Wh, &pm->im_REM[0], Wh);
+		m_rsum(&pm->im_consumed_Ah, &pm->im_REM[1], Ah);
 	}
 	else {
-		pm_ADD(&pm->im_reverted_Wh, &pm->im_FIX[2], - Wh);
-		pm_ADD(&pm->im_reverted_Ah, &pm->im_FIX[3], - Ah);
+		m_rsum(&pm->im_reverted_Wh, &pm->im_REM[2], - Wh);
+		m_rsum(&pm->im_reverted_Ah, &pm->im_REM[3], - Ah);
 	}
 
 	/* Fuel gauge.
