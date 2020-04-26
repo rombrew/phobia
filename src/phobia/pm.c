@@ -679,7 +679,7 @@ pm_sensor_QENC(pmc_t *pm)
 			&& pm->qenc_gain_IF > M_EPS_F
 			&& pm->const_Ja > M_EPS_F) {
 
-		/* REMME: Overflow in the LIMIT position as there is no
+		/* FIXME: Overflow in the LIMIT position as there is no
 		 * response from the encoder.
 		 * */
 

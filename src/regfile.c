@@ -1245,16 +1245,16 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.im_capacity_Ah,,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.im_fuel_pc,,,		"pc",	"%2f",	0, &reg_proc_im_fuel, NULL),
 
-	REG_DEF(ti.reg_ID[0],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[1],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[2],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[3],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[4],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[5],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[6],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[7],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[8],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID[9],,,			"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _0, [0],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _1, [1],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _2, [2],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _3, [3],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _4, [4],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _5, [5],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _6, [6],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _7, [7],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _8, [8],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ti.reg_ID, _9, [9],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
 	{ NULL, "", 0, NULL, NULL, NULL }
 };
