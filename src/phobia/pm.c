@@ -677,11 +677,8 @@ pm_sensor_QENC(pmc_t *pm)
 
 	if (		pm->config_DRIVE == PM_DRIVE_SPEED
 			&& pm->qenc_gain_IF > M_EPS_F
-			&& pm->const_Ja > M_EPS_F) {
-
-		/* FIXME: Overflow in the LIMIT position as there is no
-		 * response from the encoder.
-		 * */
+			&& pm->const_Ja > M_EPS_F
+			&& m_fabsf(pm->qenc_prolS) < pm->temp_2PZiPPR) {
 
 		pm->qenc_wS += (pm->lu_iQ - pm->s_integral)
 			* pm->qenc_gain_IF * pm->dT / pm->const_Ja;
