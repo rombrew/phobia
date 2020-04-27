@@ -70,7 +70,7 @@ reg pm.dc_clearance 5.0000
 reg pm.dc_bootstrap 0.0
 reg pm.config_NOP 0
 reg pm.config_TVM 0
-reg pm.config_IFB 0
+reg pm.config_IFB 1
 reg pm.config_VSI_SILENT 1
 reg pm.config_FORCED 1
 reg pm.config_QENC_FORCED_ALIGN 1
@@ -90,9 +90,9 @@ reg pm.tm_instant_probe 2.0
 reg pm.tm_average_drift 100.0
 reg pm.tm_average_probe 500.0
 reg pm.tm_startup 50.0
-reg pm.ad_IA_0 -0.010
+reg pm.ad_IA_0 -0.011
 reg pm.ad_IA_1 1.0128E+0
-reg pm.ad_IB_0 -0.009
+reg pm.ad_IB_0 -0.010
 reg pm.ad_IB_1 9.8751E-1
 reg pm.ad_US_0 0.000
 reg pm.ad_US_1 1.0000E+0
@@ -216,7 +216,7 @@ reg pm.x_tol_N 4.83E-1
 reg pm.x_tol_Z 1.21E-3
 reg pm.x_gain_P 35.0
 reg pm.x_gain_N 1.00E-1
-reg pm.im_revol_total 1580
+reg pm.im_revol_total 1608
 reg pm.im_capacity_Ah 0.000
 reg ti.reg_ID_0 pm.fb_iA
 reg ti.reg_ID_1 pm.fb_iB

@@ -366,7 +366,7 @@ void task_INIT(void *pData)
 		 * */
 		hal.USART_baud_rate = 57600;
 		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190;
+		hal.PWM_deadtime = 190.f;
 		hal.ADC_reference_voltage = 3.3f;
 
 #ifdef _HW_REV4B

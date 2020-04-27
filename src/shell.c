@@ -526,7 +526,7 @@ static sh_t			shlocal;
 
 void task_SH(void *pData)
 {
-	const char	*allowed = "+-_.[] ";
+	const char	*allowed = "+-_. ";
 	sh_t		*sh = &shlocal;
 	int		c;
 
