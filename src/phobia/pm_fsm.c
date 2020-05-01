@@ -28,21 +28,20 @@ void pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 {
 	float		LSQ[9], B[4], LXY[3], R, WF;
 
-	/* The primary expression is Z * I = U, where
+	/* The primary equation is Z * I = U,
 	 *
-	 * [R-j*WF*LXY[0]   j*WF*LXY[1]] * [IX] = [UX]
-	 * [  j*WF*LXY[1] R-j*WF*LXY[2]] * [IY]   [UY],
+	 * [R-j*LXY[0]   j*LXY[1]] * [IX] = [UX]
+	 * [  j*LXY[1] R-j*LXY[2]] * [IY]   [UY], where
 	 *
 	 * IX = [DFT[0]+j*DFT[1]], UX = [DFT[2]+j*DFT[3]]
 	 * IY = [DFT[4]+j*DFT[5]], UY = [DFT[6]+j*DFT[7]].
 	 *
-	 * We rewrite previous equation with respect to the impedance
-	 * components.
+	 * Then rewrite it with respect to the impedance components.
 	 *
-	 * [DFT[0]  DFT[1] -DFT[5]  0     ] * [R        ]   [DFT[2]]
-	 * [DFT[1] -DFT[0]  DFT[4]  0     ]   [WF*LXY[0]] = [DFT[3]]
-	 * [DFT[4]  0      -DFT[1]  DFT[5]]   [WF*LXY[1]]   [DFT[6]].
-	 * [DFT[5]  0       DFT[0] -DFT[4]]   [WF*LYY[2]]   [DFT[7]]
+	 * [DFT[0]  DFT[1] -DFT[5]  0     ] * [R     ]   [DFT[2]]
+	 * [DFT[1] -DFT[0]  DFT[4]  0     ]   [LXY[0]] = [DFT[3]]
+	 * [DFT[4]  0      -DFT[1]  DFT[5]]   [LXY[1]]   [DFT[6]].
+	 * [DFT[5]  0       DFT[0] -DFT[4]]   [LYY[2]]   [DFT[7]]
 	 *
 	 * */
 
@@ -236,9 +235,9 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			break;
 
 		case 4:
-			if (		pm->self_BST[0] < pm->dc_bootstrap
-					|| pm->self_BST[1] < pm->dc_bootstrap
-					|| pm->self_BST[2] < pm->dc_bootstrap) {
+			if (		pm->self_BST[0] < pm->ts_bootstrap
+					|| pm->self_BST[1] < pm->ts_bootstrap
+					|| pm->self_BST[2] < pm->ts_bootstrap) {
 
 				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
 			}
@@ -1190,6 +1189,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->i_derated_1 = PM_MAX_F;
 				pm->i_setpoint_D = 0.f;
 				pm->i_setpoint_Q = 0.f;
+				pm->i_track_D = 0.f;
+				pm->i_track_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 

@@ -284,7 +284,7 @@ typedef struct {
 	int		hfi_DIV;
 	int		hfi_SKIP;
 	int		hfi_SUM;
-	float		hfi_inject;
+	float		hfi_current_sine;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_wave[2];
@@ -365,6 +365,8 @@ typedef struct {
 	float		i_derated_HFI;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
+	float		i_track_D;
+	float		i_track_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_tol_Z;

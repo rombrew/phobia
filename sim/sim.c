@@ -524,17 +524,18 @@ sim_RUN(FILE *fdTel)
 	sim_F(fdTel, 0.);
 
 	sim_F(fdTel, 1.);
-	m.M[0] = -1.f;
-	
+	//m.M[0] = -1.f;
+
 	pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1.);
 
 	pm.s_setpoint = -50.f;
 	sim_F(fdTel, 1.);
 
-	m.M[0] = 1.f;
+	//m.M[0] = 0.f;
 
-	pm.s_setpoint = 50.f;
+	pm.s_setpoint = 500.f;
+	pm.s_accel = 50000.f;
 	sim_F(fdTel, 1.);
 
 	/*pm.config_SENSOR = PM_SENSOR_QENC;

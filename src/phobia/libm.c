@@ -254,6 +254,10 @@ void m_la_EIG(float A[3], float EG[4])
 	else {
 		/* Looks like we have a problem.
 		 * */
+		EG[0] = 0.f;
+		EG[1] = 0.f;
+		EG[2] = 1.f;
+		EG[3] = 0.f;
 	}
 }
 
@@ -267,10 +271,10 @@ void m_la_EIV(float A[3], float EV[2])
 	 *     [A[1] A[2]]	    [E[1]].
 	 * */
 
-	B = (A[2] - A[0]) * .5f;
-	N = m_sqrtf(B * B + A[1] * A[1]);
+	if (m_fabsf(A[1]) > 0.f) {
 
-	if (N > 0.f) {
+		B = (A[2] - A[0]) * .5f;
+		N = m_sqrtf(B * B + A[1] * A[1]);
 
 		EV[0] = m_sqrtf((1.f + B / N) * .5f);
 		EV[1] = A[1] / (2.f * EV[0] * N);
@@ -278,6 +282,8 @@ void m_la_EIV(float A[3], float EV[2])
 	else {
 		/* Looks like we have a problem.
 		 * */
+		EV[0] = 1.f;
+		EV[1] = 0.f;
 	}
 }
 

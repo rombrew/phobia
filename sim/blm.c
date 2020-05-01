@@ -100,8 +100,8 @@ void blm_Enable(blm_t *m)
 
 	/* Inductance relative anisotropy in stator frame.
 	 * */
-	m->Lk[0] = 1.05;
-	m->Lk[1] = -0.05;
+	m->Lk[0] = 1.;
+	m->Lk[1] = 0.;
 	m->Lk[2] = 1.;
 
 	/* Number of the rotor pole pairs.

@@ -1086,7 +1086,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.hfi_DIV,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_SUM,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_inject,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_current_sine,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_F_g, NULL),
 	REG_DEF(pm.hfi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
@@ -1199,9 +1199,11 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.s_maximal,,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_maximal, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.s_maximal, _mmps,,		"mm/s",	"%2f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.s_maximal, _kmh,,		"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.s_reverse,,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_reverse, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.s_reverse, _mmps,,		"mm/s",	"%2f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.s_reverse, _kmh,,		"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.s_setpoint,,,	"rad/s",	"%2f",	0, NULL, NULL),
 	REG_DEF(pm.s_setpoint, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
