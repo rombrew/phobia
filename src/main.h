@@ -82,6 +82,11 @@ typedef struct {
 	float			pull_kg;
 	float			pull_gain[2];
 
+	/*
+	 * */
+	float			invert_freq_hz;
+	float			invert_voltage;
+
 	/* Servo drive.
 	 * */
 	float			servo_span_mm[2];

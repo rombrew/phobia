@@ -24,9 +24,9 @@ pm_DFT_R(const float DFT[8])
 	return R;
 }
 
-void pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
+void pm_DFT_LDQ(const float DFT[8], float WF, float LDQ[5])
 {
-	float		LSQ[9], B[4], LXY[3], R, WF;
+	float		LSQ[9], B[4], LXY[3], R;
 
 	/* The primary equation is Z * I = U,
 	 *
@@ -65,25 +65,35 @@ void pm_DFT_LDQ(const float DFT[8], float HZ, float LDQ[5])
 
 	m_la_LSQ_3(LSQ, LXY);
 
-	if (HZ > M_EPS_F) {
+	WF = 1.f / WF;
 
-		WF = 2.f * M_PI_F * HZ;
+	LXY[0] *= WF;
+	LXY[1] *= WF;
+	LXY[2] *= WF;
 
-		LXY[0] /= WF;
-		LXY[1] /= WF;
-		LXY[2] /= WF;
+	m_la_EIG(LXY, LDQ);
 
-		m_la_EIG(LXY, LDQ);
+	LDQ[4] = R;
+}
 
-		LDQ[4] = R;
-	}
-	else {
-		WF = 2.f / (LXY[0] + LXY[2]);
+static void
+pm_DFT_L1(const float DFT[8], float WF, float LDQ[5])
+{
+	float		I, R, L1;
 
-		LDQ[0] = LXY[0] * WF;
-		LDQ[1] = LXY[1] * WF;
-		LDQ[2] = LXY[2] * WF;
-	}
+	/* The primary equation is Z * I = U.
+	 * */
+
+	I = DFT[0] * DFT[0] + DFT[1] * DFT[1];
+	R = (DFT[2] * DFT[0] + DFT[3] * DFT[1]) / I;
+
+	L1 = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / (I * WF);
+
+	LDQ[0] = 1.f;
+	LDQ[1] = 0.f;
+	LDQ[2] = L1;
+	LDQ[3] = L1;
+	LDQ[4] = R;
 }
 
 static void
@@ -226,18 +236,18 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				pm->self_BST[0] /= pm->freq_hz;
-				pm->self_BST[1] /= pm->freq_hz;
-				pm->self_BST[2] /= pm->freq_hz;
+				pm->self_BST[0] *= 1000.f / pm->freq_hz;
+				pm->self_BST[1] *= 1000.f / pm->freq_hz;
+				pm->self_BST[2] *= 1000.f / pm->freq_hz;
 
 				pm->fsm_phase = 4;
 			}
 			break;
 
 		case 4:
-			if (		pm->self_BST[0] < pm->ts_bootstrap
-					|| pm->self_BST[1] < pm->ts_bootstrap
-					|| pm->self_BST[2] < pm->ts_bootstrap) {
+			if (		pm->self_BST[0] < pm->dc_bootstrap
+					|| pm->self_BST[1] < pm->dc_bootstrap
+					|| pm->self_BST[2] < pm->dc_bootstrap) {
 
 				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
 			}
@@ -611,7 +621,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 					|| m_fabsf(pm->ad_UB[0]) > pm->fault_voltage_tol
 					|| m_fabsf(pm->ad_UC[0]) > pm->fault_voltage_tol) {
 
-				pm->tvm_READY = PM_DISABLED;
+				pm->tvm_ENABLED = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -632,7 +642,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 					|| m_fabsf(pm->ad_UB[1] - 1.f) > pm->fault_accuracy_tol
 					|| m_fabsf(pm->ad_UC[1] - 1.f) > pm->fault_accuracy_tol) {
 
-				pm->tvm_READY = PM_DISABLED;
+				pm->tvm_ENABLED = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -775,10 +785,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 					&& m_isfinitef(pm->tvm_FIR_C[1]) != 0
 					&& m_isfinitef(pm->tvm_FIR_C[2]) != 0) {
 
-				pm->tvm_READY = PM_ENABLED;
+				pm->tvm_ENABLED = PM_ENABLED;
 			}
 			else {
-				pm->tvm_READY = PM_DISABLED;
+				pm->tvm_ENABLED = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 			}
@@ -824,9 +834,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->REM[2] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->REM[2];
 
-			uMAX = PM_UMAX(pm) * pm->const_fb_U;
+			uMAX = pm->k_UMAX * pm->const_fb_U;
 
-			if (m_fabsf(uX) > uMAX) {
+			if (m_fabsf(pm->REM[2]) > uMAX) {
 
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -868,10 +878,10 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_const_r(pmc_t *pm)
+pm_fsm_state_probe_const_rl(pmc_t *pm)
 {
-	float			eX, eY, uX, uY;
-	float			uMAX, hold_R;
+	float			iX, iY, eHF, eX, eY, uHF, uX, uY;
+	float			uMAX, hold_R, LDQ[5];
 
 	switch (pm->fsm_phase) {
 
@@ -882,9 +892,15 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
 
-			hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
-				(hold_R > M_PI_F) ? M_PI_F : hold_R;
+			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
+
+				hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
+				hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
+					(hold_R > M_PI_F) ? M_PI_F : hold_R;
+			}
+			else {
+				hold_R = 0.f;
+			}
 
 			pm->probe_DFT[2] = m_cosf(hold_R) * pm->probe_current_hold;
 			pm->probe_DFT[3] = m_sinf(hold_R) * pm->probe_current_hold;
@@ -917,12 +933,15 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->REM[2] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->REM[2];
 
-			pm->REM[3] += pm->probe_gain_I * eY;
-			uY = pm->probe_gain_P * eY + pm->REM[3];
+			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
 
-			uMAX = PM_UMAX(pm) * pm->const_fb_U;
+				pm->REM[3] += pm->probe_gain_I * eY;
+				uY = pm->probe_gain_P * eY + pm->REM[3];
+			}
 
-			if (m_fabsf(uX) > uMAX || m_fabsf(uY) > uMAX) {
+			uMAX = pm->k_UMAX * pm->const_fb_U;
+
+			if (m_fabsf(pm->REM[2]) > uMAX || m_fabsf(pm->REM[3]) > uMAX) {
 
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -949,24 +968,6 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			pm->const_R += pm_DFT_R(pm->probe_DFT);
 
-			pm->fsm_state = PM_STATE_HALT;
-			pm->fsm_phase = 0;
-			break;
-	}
-}
-
-static void
-pm_fsm_state_probe_const_l(pmc_t *pm)
-{
-	float			iX, iY, eX, eY, uX, uY, uMAX;
-	float			imp_Z, hold_R, LDQ[5];
-
-	switch (pm->fsm_phase) {
-
-		case 0:
-			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(0);
-
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
 			pm->probe_DFT[2] = 0.f;
@@ -987,51 +988,38 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 			pm->hfi_wave[0] = 1.f;
 			pm->hfi_wave[1] = 0.f;
-			pm->temp_HFI_wS = 2.f * M_PI_F * pm->probe_freq_sine_hz * pm->dT;
 
-			/* Assume minimal inductance.
-			 * */
-			imp_Z = 1E-6f;
+			pm->temp_HFI_wS = 2.f * M_PI_F * pm->probe_freq_sine_hz;
+			pm->temp_HFI_HT[0] = m_cosf(pm->temp_HFI_wS * pm->dT * .5f);
+			pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * pm->dT * .5f);
 
-			/* The estimated impedance.
-			 * */
-			imp_Z = (pm->const_L > imp_Z) ? pm->const_L : imp_Z;
-			imp_Z = 2.f * M_PI_F * imp_Z * pm->probe_freq_sine_hz;
-			imp_Z = pm->const_R * pm->const_R + imp_Z * imp_Z;
-
-			pm->REM[9] = pm->probe_current_sine * m_sqrtf(imp_Z);
-
-			if (pm->REM[9] < pm->const_fb_U * pm->ts_inverted) {
-
-				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
-
-			pm->temp_HFI_HT[0] = m_cosf(pm->temp_HFI_wS * .5f);
-			pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * .5f);
-
+			pm->REM[9] = 0.f;
 			pm->REM[10] = 0.f;
 			pm->REM[11] = 0.f;
 
-			hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
-				(hold_R > M_PI_F) ? M_PI_F : hold_R;
+			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
 
-			pm->REM[12] = m_cosf(hold_R);
-			pm->REM[13] = m_sinf(hold_R);
+				hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
+				hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
+					(hold_R > M_PI_F) ? M_PI_F : hold_R;
+			}
+			else {
+				hold_R = 0.f;
+			}
+
+			pm->REM[12] = pm->probe_current_weak * m_cosf(hold_R);
+			pm->REM[13] = pm->probe_current_weak * m_sinf(hold_R);
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_current_hold);
 
 			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
+			pm->fsm_phase = 4;
 			break;
 
-		case 2:
-			iX = pm->const_im_K[0] * pm->REM[14] - pm->const_im_K[1] * pm->REM[15];
-			iY = pm->const_im_K[2] * pm->REM[15] - pm->const_im_K[1] * pm->REM[14];
+		case 5:
+			iX = pm->REM[14];
+			iY = pm->REM[15];
 
 			uX = pm->tvm_DX * pm->temp_HFI_HT[0] + pm->tvm_DY * pm->temp_HFI_HT[1];
 			uY = pm->tvm_DY * pm->temp_HFI_HT[0] - pm->tvm_DX * pm->temp_HFI_HT[1];
@@ -1045,28 +1033,31 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			m_rsum(&pm->probe_DFT[6], &pm->REM[6], uY * pm->hfi_wave[0]);
 			m_rsum(&pm->probe_DFT[7], &pm->REM[7], uY * pm->hfi_wave[1]);
 
-		case 1:
-			m_rotf(&pm->hfi_wave[0], pm->temp_HFI_wS, &pm->hfi_wave[0]);
+		case 4:
+			m_rotf(&pm->hfi_wave[0], pm->temp_HFI_wS * pm->dT, &pm->hfi_wave[0]);
 
-			if (pm->fsm_state == PM_STATE_PROBE_CONST_IM_K) {
+			eX = pm->REM[12] - pm->lu_iX;
+			eY = pm->REM[13] - pm->lu_iY;
 
-				hold_R = 4.f * M_PI_F * pm->dT;
+			eHF = pm->probe_current_sine - m_sqrtf(eX * eX + eY * eY);
 
-				m_rotf(&pm->REM[12], hold_R, &pm->REM[12]);
-			}
-
-			eX = pm->probe_current_weak * pm->REM[12] - pm->lu_iX;
-			eY = pm->probe_current_weak * pm->REM[13] - pm->lu_iY;
+			pm->REM[9] += pm->probe_gain_I * eHF;
+			uHF = pm->probe_gain_P * eHF + pm->REM[9];
 
 			pm->REM[10] += pm->probe_gain_I * eX;
 			uX = pm->probe_gain_P * eX + pm->REM[10];
 
-			pm->REM[11] += pm->probe_gain_I * eY;
-			uY = pm->probe_gain_P * eY + pm->REM[11];
+			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
 
-			uMAX = PM_UMAX(pm) * pm->const_fb_U;
+				pm->REM[11] += pm->probe_gain_I * eY;
+				uY = pm->probe_gain_P * eY + pm->REM[11];
+			}
 
-			if (m_fabsf(uX) > uMAX || m_fabsf(uY) > uMAX) {
+			uMAX = pm->k_UMAX * pm->const_fb_U;
+
+			if (		m_fabsf(pm->REM[9]) > uMAX
+					|| m_fabsf(pm->REM[10]) > uMAX
+					|| m_fabsf(pm->REM[11]) > uMAX) {
 
 				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1077,8 +1068,8 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->REM[14] = pm->lu_iX;
 			pm->REM[15] = pm->lu_iY;
 
-			uX += pm->REM[9] * pm->hfi_wave[0];
-			uY += pm->REM[9] * pm->hfi_wave[1];
+			uX += uHF * pm->hfi_wave[0];
+			uY += uHF * pm->hfi_wave[1];
 
 			pm_voltage(pm, uX, uY);
 
@@ -1093,31 +1084,26 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			}
 			break;
 
-		case 3:
-			if (pm->fsm_state == PM_STATE_PROBE_CONST_L) {
+		case 6:
+			if (PM_CONFIG_NOP(pm) == PM_NOP_ONE_PHASE) {
 
-				pm_DFT_LDQ(pm->probe_DFT, pm->probe_freq_sine_hz, LDQ);
-
-				pm->const_L = LDQ[1];
-
-				pm->const_im_L1 = LDQ[0];
-				pm->const_im_L2 = LDQ[1];
-				pm->const_im_B = m_atan2f(LDQ[3], LDQ[2]) * (180.f / M_PI_F);
-				pm->const_im_R = LDQ[4];
-
-				/* Tune current loop.
-				 * */
-				pm->i_gain_P = 2E-1f * pm->const_L * pm->freq_hz - pm->const_R;
-				pm->i_gain_I = 1E-2f * pm->const_L * pm->freq_hz;
+				pm_DFT_L1(pm->probe_DFT, pm->temp_HFI_wS, LDQ);
 			}
-			else if (pm->fsm_state == PM_STATE_PROBE_CONST_IM_K) {
-
-				pm_DFT_LDQ(pm->probe_DFT, 0.f, LDQ);
-
-				pm->const_im_K[0] = LDQ[0];
-				pm->const_im_K[1] = LDQ[1];
-				pm->const_im_K[2] = LDQ[2];
+			else {
+				pm_DFT_LDQ(pm->probe_DFT, pm->temp_HFI_wS, LDQ);
 			}
+
+			pm->const_L = LDQ[3];
+
+			pm->const_im_L1 = LDQ[2];
+			pm->const_im_L2 = LDQ[3];
+			pm->const_im_B = m_atan2f(LDQ[1], LDQ[0]) * (180.f / M_PI_F);
+			pm->const_im_R = LDQ[4];
+
+			/* Tune current loop.
+			 * */
+			pm->i_gain_P = 2E-1f * pm->const_L * pm->freq_hz - pm->const_R;
+			pm->i_gain_I = 1E-2f * pm->const_L * pm->freq_hz;
 
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
@@ -1136,7 +1122,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_SA = 0;
 				pm->vsi_SB = 0;
 				pm->vsi_SC = 0;
-				pm->vsi_IF = 3;
+				pm->vsi_AF = 3;
+				pm->vsi_BF = 3;
 				pm->vsi_UF = 3;
 
 				pm->lu_iX = 0.f;
@@ -1172,6 +1159,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hfi_wave[0] = 1.f;
 				pm->hfi_wave[1] = 0.f;
 				pm->hfi_DFT_N = 0;
+				pm->hfi_DFT_P = 0;
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
@@ -1263,7 +1251,8 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(7);
 
-				pm->vsi_IF = 0;
+				pm->vsi_AF = 0;
+				pm->vsi_BF = 0;
 				pm->vsi_UF = 0;
 				pm->vsi_AZ = 0;
 				pm->vsi_BZ = 0;
@@ -1514,7 +1503,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 				pm->probe_DFT[HS] += 1.f;
 			}
 			else {
-				pm->hall_READY = PM_DISABLED;
+				pm->hall_ENABLED = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1558,7 +1547,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 
 			if (N < 6) {
 
-				pm->hall_READY = PM_DISABLED;
+				pm->hall_ENABLED = PM_DISABLED;
 
 				pm->fail_reason = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -1566,7 +1555,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 				break;
 			}
 			else {
-				pm->hall_READY = PM_ENABLED;
+				pm->hall_ENABLED = PM_ENABLED;
 
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;
@@ -1592,7 +1581,8 @@ pm_fsm_state_halt(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(7);
 
-			pm->vsi_IF = 0;
+			pm->vsi_AF = 0;
+			pm->vsi_BF = 0;
 			pm->vsi_UF = 0;
 			pm->vsi_AZ = 0;
 			pm->vsi_BZ = 0;
@@ -1625,9 +1615,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_SELF_TEST_CLEARANCE:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
-		case PM_STATE_PROBE_CONST_R:
-		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_PROBE_CONST_IM_K:
+		case PM_STATE_PROBE_CONST_RL:
 		case PM_STATE_LU_DETACHED:
 		case PM_STATE_LU_STARTUP:
 
@@ -1708,13 +1696,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_adjust_current(pm);
 			break;
 
-		case PM_STATE_PROBE_CONST_R:
-			pm_fsm_state_probe_const_r(pm);
-			break;
-
-		case PM_STATE_PROBE_CONST_L:
-		case PM_STATE_PROBE_CONST_IM_K:
-			pm_fsm_state_probe_const_l(pm);
+		case PM_STATE_PROBE_CONST_RL:
+			pm_fsm_state_probe_const_rl(pm);
 			break;
 
 		case PM_STATE_LU_DETACHED:
@@ -1764,8 +1747,8 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_BOOTSTRAP_FAULT),
 		PM_SFI(PM_ERROR_ACCURACY_FAULT),
 		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
-		PM_SFI(PM_ERROR_INLINE_OVER_CURRENT),
-		PM_SFI(PM_ERROR_DC_LINK_OVER_VOLTAGE),
+		PM_SFI(PM_ERROR_INLINE_OVERCURRENT),
+		PM_SFI(PM_ERROR_DC_LINK_OVERVOLTAGE),
 		PM_SFI(PM_ERROR_INVALID_OPERATION),
 		PM_SFI(PM_ERROR_SENSOR_HALL_FAULT),
 		PM_SFI(PM_ERROR_SENSOR_QENC_FAULT),

@@ -16,7 +16,7 @@
  * [B]+[A]	- START in reverse.
  * */
 
-void ap_PUSH(void *pData)
+void ap_PUSHB(void *pData)
 {
 	TickType_t		xWake;
 
@@ -103,23 +103,23 @@ void ap_PUSH(void *pData)
 	while (1);
 }
 
-SH_DEF(ap_push_startup)
+SH_DEF(ap_pushb_startup)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("PUSH");
+	xHandle = xTaskGetHandle("PUSHB");
 
 	if (xHandle == NULL) {
 
-		xTaskCreate(ap_PUSH, "PUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+		xTaskCreate(ap_PUSHB, "PUSHB", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
-SH_DEF(ap_push_halt)
+SH_DEF(ap_pushb_halt)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("PUSH");
+	xHandle = xTaskGetHandle("PUSHB");
 
 	if (xHandle != NULL) {
 

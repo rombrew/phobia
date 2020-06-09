@@ -221,69 +221,40 @@ float m_expf(float x)
 	return m_exp2f(x * (1.f / M_LOG2_F));
 }
 
-void m_la_EIG(float A[3], float EG[4])
+void m_la_EIG(const float A[3], float EV[4])
 {
-	float		B, D, L1, L2;
+	float		B, N, X;
 
 	/* Get the eigenvalues EV of quadratic form A.
 	 *
-	 * R * [A[0] A[1]] * R' = [EV[0] 0    ]
-	 *     [A[1] A[2]]        [0     EV[1]]
+	 * R * [A[0] A[1]] * R' = [EV[2] 0    ]
+	 *     [A[1] A[2]]        [0     EV[3]]
 	 *
-	 * R = [EV[2] -EV[3]]
-	 *     [EV[3]  EV[2]].
-	 * */
-
-	B = A[0] + A[2];
-	D = B * B - 4.f * (A[0] * A[2] - A[1] * A[1]);
-
-	if (D > 0.f) {
-
-		D = m_sqrtf(D);
-		L1 = (B - D) * .5f;
-		L2 = (B + D) * .5f;
-
-		B = A[2] - L1;
-		D = m_sqrtf(B * B + A[1] * A[1]);
-
-		EG[0] = L1;
-		EG[1] = L2;
-		EG[2] = B / D;
-		EG[3] = A[1] / D;
-	}
-	else {
-		/* Looks like we have a problem.
-		 * */
-		EG[0] = 0.f;
-		EG[1] = 0.f;
-		EG[2] = 1.f;
-		EG[3] = 0.f;
-	}
-}
-
-void m_la_EIV(float A[3], float EV[2])
-{
-	float		B, N;
-
-	/* Get the eigenvector E of quadratic form A.
-	 *
-	 * A = [A[0] A[1]],	E = [E[0]]
-	 *     [A[1] A[2]]	    [E[1]].
+	 * R = [EV[0] -EV[1]]
+	 *     [EV[1]  EV[0]].
 	 * */
 
 	if (m_fabsf(A[1]) > 0.f) {
 
 		B = (A[2] - A[0]) * .5f;
 		N = m_sqrtf(B * B + A[1] * A[1]);
+		X = (1.f + B / N) * .5f;
 
-		EV[0] = m_sqrtf((1.f + B / N) * .5f);
+		EV[0] = m_sqrtf(X);
 		EV[1] = A[1] / (2.f * EV[0] * N);
+
+		B = EV[0] * EV[0];
+		N = EV[1] * EV[1];
+		X = 2.f * EV[0] * EV[1];
+
+		EV[2] = A[0] * B + A[2] * N + A[1] * X;
+		EV[3] = A[2] * B + A[0] * N - A[1] * X;
 	}
 	else {
-		/* Looks like we have a problem.
-		 * */
 		EV[0] = 1.f;
 		EV[1] = 0.f;
+		EV[2] = A[0];
+		EV[3] = A[2];
 	}
 }
 

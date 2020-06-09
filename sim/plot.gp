@@ -129,8 +129,8 @@ page "pm.hfi_wS"
 label 1 "(rpm)"
 figure 0 40 "pm.hfi_wS"
 
-page "pm.hfi_polarity"
-figure 0 41 "pm.hfi_polarity"
+page "pm.hfi_const_POLAR"
+figure 0 41 "pm.hfi_const_POLAR"
 
 page "pm.hall_F"
 label 1 "(°)"

@@ -124,18 +124,12 @@ SH_DEF(pm_probe_base)
 				break;
 		}
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+		pm.fsm_req = PM_STATE_PROBE_CONST_RL;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_R]);
-
-		pm.fsm_req = PM_STATE_PROBE_CONST_L;
-
-		if (pm_wait_for_IDLE() != PM_OK)
-			break;
-
 		reg_format(&regfile[ID_PM_CONST_L]);
 		reg_format(&regfile[ID_PM_CONST_IM_L1]);
 		reg_format(&regfile[ID_PM_CONST_IM_L2]);

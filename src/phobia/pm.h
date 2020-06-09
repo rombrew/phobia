@@ -5,9 +5,6 @@
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 
-#define PM_UMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? .66666667f : 1.f)
-#define PM_EMAX(pm)		((PM_CONFIG_NOP(pm) == 0) ? .57735027f : .70710678f)
-#define PM_KWAT(pm)		((PM_CONFIG_NOP(pm) == 0) ? 1.5f : 1.f)
 #define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) / 1000.f)
 
 #define PM_HALL_SPAN		1.05f
@@ -17,6 +14,7 @@
 enum {
 	PM_NOP_THREE_PHASE			= 0,
 	PM_NOP_TWO_PHASE,
+	PM_NOP_ONE_PHASE,
 };
 
 enum {
@@ -69,9 +67,7 @@ enum {
 	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
-	PM_STATE_PROBE_CONST_R,
-	PM_STATE_PROBE_CONST_L,
-	PM_STATE_PROBE_CONST_IM_K,
+	PM_STATE_PROBE_CONST_RL,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
@@ -94,8 +90,8 @@ enum {
 	PM_ERROR_BOOTSTRAP_FAULT,
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
-	PM_ERROR_INLINE_OVER_CURRENT,
-	PM_ERROR_DC_LINK_OVER_VOLTAGE,
+	PM_ERROR_INLINE_OVERCURRENT,
+	PM_ERROR_DC_LINK_OVERVOLTAGE,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
 	PM_ERROR_SENSOR_QENC_FAULT,
@@ -129,6 +125,10 @@ typedef struct {
 	float		dc_minimal;
 	float		dc_clearance;
 	float		dc_bootstrap;
+
+	float		k_UMAX;
+	float		k_EMAX;
+	float		k_KWAT;
 
 	int		ts_minimal;
 	int		ts_clearance;
@@ -219,13 +219,14 @@ typedef struct {
 	int		vsi_SA;
 	int		vsi_SB;
 	int		vsi_SC;
-	int		vsi_IF;
+	int		vsi_AF;
+	int		vsi_BF;
 	int		vsi_UF;
 	int		vsi_AZ;
 	int		vsi_BZ;
 	int		vsi_CZ;
 
-	int		tvm_READY;
+	int		tvm_ENABLED;
 	float		tvm_range_DC;
 	float		tvm_A;
 	float		tvm_B;
@@ -281,16 +282,23 @@ typedef struct {
 	float		flux_gain_AD;
 	float		flux_gain_SF;
 
-	int		hfi_DIV;
-	int		hfi_SKIP;
-	int		hfi_SUM;
-	float		hfi_current_sine;
+	int		hfi_tm_DIV;
+	int		hfi_tm_SKIP;
+	int		hfi_tm_SUM;
+	int		hfi_tm_POLAR;
+	float		hfi_inject_sine;
+	float		hfi_maximal;
 	float		hfi_F[2];
 	float		hfi_wS;
+	float		hfi_const_L1;
+	float		hfi_const_L2;
+	float		hfi_const_R;
+	float		hfi_const_POLAR;
 	float		hfi_wave[2];
-	float		hfi_DFT[8];
-	float		hfi_REM[8];
+	float		hfi_DFT[9];
+	float		hfi_REM[9];
 	int		hfi_DFT_N;
+	int		hfi_DFT_P;
 	float		hfi_gain_SF;
 
 	struct {
@@ -300,7 +308,7 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_READY;
+	int		hall_ENABLED;
 	int		hall_HS;
 	int		hall_DIRF;
 	float		hall_prolS;
@@ -338,7 +346,6 @@ typedef struct {
 	float		const_im_L2;
 	float		const_im_B;
 	float		const_im_R;
-	float		const_im_K[3];
 	float		const_ld_S;
 
 	float		temp_const_ifbU;
@@ -437,6 +444,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);
+void pm_DFT_LDQ(const float DFT[8], float WF, float LDQ[5]);
 
 const char *pm_strerror(int n);
 

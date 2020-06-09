@@ -64,7 +64,7 @@ sim_Tel(float *pTel)
 	pTel[12] = pm.vsi_DC;
 	pTel[13] = pm.vsi_X;
 	pTel[14] = pm.vsi_Y;
-	pTel[15] = pm.vsi_IF;
+	pTel[15] = pm.vsi_AF;
 	pTel[16] = pm.vsi_UF;
 
 	/* TVM.
@@ -113,7 +113,7 @@ sim_Tel(float *pTel)
 
 	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
 	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
-	pTel[41] = 0.f;
+	pTel[41] = pm.hfi_const_POLAR;
 
 	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
 	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
@@ -208,6 +208,8 @@ sim_test_BASE(FILE *fdTel)
 
 	pm_default(&pm);
 
+	pm.config_NOP = PM_NOP_ONE_PHASE;
+
 	pm.const_Zp = m.Zp;
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
@@ -243,21 +245,13 @@ sim_test_BASE(FILE *fdTel)
 	t_assert_ref(tau_B, m.tau_U);
 	t_assert_ref(tau_C, m.tau_U);
 
-	pm.fsm_req = PM_STATE_PROBE_CONST_R;
+	pm.fsm_req = PM_STATE_PROBE_CONST_RL;
 	sim_F(fdTel, 0.);
 
 	printf("R %.4E (Ohm)\n", pm.const_R);
 
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_R, m.R);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
+	//t_assert(pm.fail_reason == PM_OK);
+	//t_assert_ref(pm.const_R, m.R);
 
 	printf("L %.4E (H)\n", pm.const_L);
 	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
@@ -501,42 +495,25 @@ sim_RUN(FILE *fdTel)
 
 	sim_F(fdTel, 1.);
 
-	pm.fsm_req = PM_STATE_PROBE_CONST_IM_K;
-	sim_F(fdTel, 0.);
+	//return ;
 
-	printf("im_K0 %.4E\n", pm.const_im_K[0]);
-	printf("im_K1 %.4E\n", pm.const_im_K[1]);
-	printf("im_K2 %.4E\n", pm.const_im_K[2]);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
-
-	printf("L %.4E (H)\n", pm.const_L);
-	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
-	printf("im_L2 %.4E (H)\n", pm.const_im_L2);
-	printf("im_B %.2f (g)\n", pm.const_im_B);
-	printf("im_R %.4E (Ohm)\n", pm.const_im_R);
-
-	pm.config_HFI = PM_ENABLED;
+	//pm.config_HFI = PM_ENABLED;
 	//pm.config_DRIVE = PM_DRIVE_CURRENT;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	sim_F(fdTel, 1.);
-	//m.M[0] = -1.f;
-
 	pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = -50.f;
+	pm.s_setpoint = 50.f;
 	sim_F(fdTel, 1.);
 
 	//m.M[0] = 0.f;
 
-	pm.s_setpoint = 500.f;
+	/*pm.s_setpoint = 500.f;
 	pm.s_accel = 50000.f;
-	sim_F(fdTel, 1.);
+	sim_F(fdTel, 1.);*/
 
 	/*pm.config_SENSOR = PM_SENSOR_QENC;
 

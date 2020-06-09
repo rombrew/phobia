@@ -32,27 +32,6 @@ void blm_DQ_AB(double R, double D, double Q, double *A, double *B)
 	*B = - .5 * X + .866025403784439 * Y;
 }
 
-void blm_DQ_form(double R, double D, double Q, const double K[3], double Y[2])
-{
-	double		rS, rC, KT[3], DET, IK[3];
-
-	rS = sin(R);
-	rC = cos(R);
-
-	KT[0] = K[2] * rS * rS + 2.f * K[1] * rS * rC + K[0] * rC * rC;
-	KT[1] = K[1] * (rC * rC - rS * rS) + (K[2] - K[0]) * rC * rS;
-	KT[2] = K[0] * rS * rS - 2.f * K[1] * rS * rC + K[2] * rC * rC;
-
-	DET = KT[0] * KT[0] - KT[1] * KT[1];
-
-	IK[0] = KT[2] / DET;
-	IK[1] = - KT[1] / DET;
-	IK[2] = KT[0] / DET;
-
-	Y[0] = IK[0] * D + IK[1] * Q;
-	Y[1] = IK[1] * D + IK[2] * Q;
-}
-
 void blm_Enable(blm_t *m)
 {
 	double		Kv;
@@ -97,12 +76,6 @@ void blm_Enable(blm_t *m)
          * */
 	Kv = 15.7; /* Total RPM per Volt */
         m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
-
-	/* Inductance relative anisotropy in stator frame.
-	 * */
-	m->Lk[0] = 1.;
-	m->Lk[1] = 0.;
-	m->Lk[2] = 1.;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -198,17 +171,8 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	if (m->HI_Z == 0) {
 
-		if (1) {
-
-			UD /= m->Ld;
-			UQ /= m->Lq;
-
-			blm_DQ_form(X[3], UD, UQ, m->Lk, &D[0]);
-		}
-		else {
-			D[0] = UD / m->Ld;
-			D[1] = UQ / m->Lq;
-		}
+		D[0] = UD / m->Ld;
+		D[1] = UQ / m->Lq;
 	}
 	else {
 		D[0] = 0.;
