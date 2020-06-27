@@ -66,7 +66,7 @@ void ap_HX711(void *pData)
 
 			/* Convert the ADC code into KG.
 			 * */
-			ap.pull_kg = (float) ADC * ap.pull_gain[1] + ap.pull_gain[0];
+			ap.hx711_kg = (float) ADC * ap.hx711_gain[1] + ap.hx711_gain[0];
 		}
 	}
 	while (1);
@@ -108,10 +108,10 @@ SH_DEF(ap_hx711_adjust)
 
 		vTaskDelay((TickType_t) 10);
 
-		S += ap.pull_kg;
+		S += ap.hx711_kg;
 	}
 
-	ap.pull_gain[0] += - S / (float) N;
-	reg_format(&regfile[ID_AP_PULL_GAIN_0]);
+	ap.hx711_gain[0] += - S / (float) N;
+	reg_format(&regfile[ID_AP_HX711_GAIN_0]);
 }
 

@@ -67,7 +67,8 @@ enum {
 	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
-	PM_STATE_PROBE_CONST_RL,
+	PM_STATE_PROBE_CONST_R,
+	PM_STATE_PROBE_CONST_L,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
@@ -129,6 +130,7 @@ typedef struct {
 	float		k_UMAX;
 	float		k_EMAX;
 	float		k_KWAT;
+	int		k_ZNUL;
 
 	int		ts_minimal;
 	int		ts_clearance;

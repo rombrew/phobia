@@ -245,13 +245,18 @@ sim_test_BASE(FILE *fdTel)
 	t_assert_ref(tau_B, m.tau_U);
 	t_assert_ref(tau_C, m.tau_U);
 
-	pm.fsm_req = PM_STATE_PROBE_CONST_RL;
+	pm.fsm_req = PM_STATE_PROBE_CONST_R;
 	sim_F(fdTel, 0.);
+
+	pm.const_R = pm.const_im_R;
 
 	printf("R %.4E (Ohm)\n", pm.const_R);
 
-	//t_assert(pm.fail_reason == PM_OK);
-	//t_assert_ref(pm.const_R, m.R);
+	t_assert(pm.fail_reason == PM_OK);
+	t_assert_ref(pm.const_R, m.R);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_L;
+	sim_F(fdTel, 0.);
 
 	printf("L %.4E (H)\n", pm.const_L);
 	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
@@ -499,6 +504,7 @@ sim_RUN(FILE *fdTel)
 
 	//pm.config_HFI = PM_ENABLED;
 	//pm.config_DRIVE = PM_DRIVE_CURRENT;
+	//pm.config_VSI_SILENT = PM_ENABLED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);

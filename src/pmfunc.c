@@ -124,12 +124,20 @@ SH_DEF(pm_probe_base)
 				break;
 		}
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_RL;
+		pm.fsm_req = PM_STATE_PROBE_CONST_R;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
+		pm.const_R = pm.const_im_R;
+
 		reg_format(&regfile[ID_PM_CONST_R]);
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_L;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
 		reg_format(&regfile[ID_PM_CONST_L]);
 		reg_format(&regfile[ID_PM_CONST_IM_L1]);
 		reg_format(&regfile[ID_PM_CONST_IM_L2]);
@@ -149,9 +157,11 @@ SH_DEF(pm_probe_spinup)
 		return;
 	}
 
-	if (pm.config_FORCED == PM_DISABLED) {
+	if (		pm.config_FORCED == PM_DISABLED
+			|| pm.config_DRIVE != PM_DRIVE_SPEED
+			|| pm.config_SERVO == PM_ENABLED) {
 
-		printf("Unable when forced control is disabled" EOL);
+		printf("Enable SPEED control mode before" EOL);
 		return;
 	}
 
@@ -331,6 +341,13 @@ SH_DEF(pm_adjust_HALL)
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	if (		pm.config_DRIVE != PM_DRIVE_SPEED
+			|| pm.config_SERVO == PM_ENABLED) {
+
+		printf("Enable SPEED control mode before" EOL);
 		return;
 	}
 

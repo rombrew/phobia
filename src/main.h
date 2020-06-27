@@ -77,16 +77,6 @@ typedef struct {
 	float			heat_PCB_FAN;
 	float			heat_recovery_gap;
 
-	/* Load cell.
-	 * */
-	float			pull_kg;
-	float			pull_gain[2];
-
-	/*
-	 * */
-	float			invert_freq_hz;
-	float			invert_voltage;
-
 	/* Servo drive.
 	 * */
 	float			servo_span_mm[2];
@@ -96,6 +86,11 @@ typedef struct {
 	/* FT constants.
 	 * */
 	int			FT_grab_hz;
+
+	/* HX711 (load cell amplifier).
+	 * */
+	float			hx711_kg;
+	float			hx711_gain[2];
 }
 application_t;
 

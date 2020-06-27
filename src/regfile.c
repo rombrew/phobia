@@ -704,6 +704,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_NOP_THREE_PHASE);
 				TEXT_ITEM(PM_NOP_TWO_PHASE);
+				TEXT_ITEM(PM_NOP_ONE_PHASE);
 
 				default: break;
 			}
@@ -786,7 +787,8 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_SELF_TEST_CLEARANCE);
 				TEXT_ITEM(PM_STATE_ADJUST_VOLTAGE);
 				TEXT_ITEM(PM_STATE_ADJUST_CURRENT);
-				TEXT_ITEM(PM_STATE_PROBE_CONST_RL);
+				TEXT_ITEM(PM_STATE_PROBE_CONST_R);
+				TEXT_ITEM(PM_STATE_PROBE_CONST_L);
 				TEXT_ITEM(PM_STATE_LU_STARTUP);
 				TEXT_ITEM(PM_STATE_LU_SHUTDOWN);
 				TEXT_ITEM(PM_STATE_PROBE_CONST_E);
@@ -908,19 +910,16 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_PCB_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_recovery_gap,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.pull_kg,,,			"kg",	"%4f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(ap.pull_gain, _0, [0],		"kg",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.pull_gain, _1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
-
-	REG_DEF(ap.invert_freq_hz,,,		"Hz",	"%1f",	0, NULL, NULL),
-	REG_DEF(ap.invert_voltage,,,		"V",	"%3f",	0, NULL, NULL),
-
 	REG_DEF(ap.servo_span_mm, _0, [0],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.servo_span_mm, _1, [1],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.servo_uniform_mmps,,,	"mm/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.servo_mice_role,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.FT_grab_hz,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(ap.hx711_kg,,,			"kg",	"%4f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(ap.hx711_gain, _0, [0],		"kg",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.hx711_gain, _1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.dc_resolution,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.dc_minimal,,,			"us",	"%4f",	REG_CONFIG, NULL, NULL),

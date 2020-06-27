@@ -447,8 +447,8 @@ void task_INIT(void *pData)
 		ap.heat_PCB_FAN = 60.f;
 		ap.heat_recovery_gap = 5.f;
 
-		ap.pull_gain[0] = 0.f;
-		ap.pull_gain[1] = 4.545E-6f;
+		ap.hx711_gain[0] = 0.f;
+		ap.hx711_gain[1] = 4.545E-6f;
 
 		ap.servo_span_mm[0] = - 25.f;
 		ap.servo_span_mm[1] = 25.f;

@@ -45,7 +45,7 @@ SH_DEF(servo_probe_const_J)
 			|| pm.config_SERVO == PM_DISABLED
 			|| pm.const_ld_S < M_EPS_F) {
 
-		printf("Unable when SERVO mode is not functioning" EOL);
+		printf("Enable SERVO mode before" EOL);
 		return;
 	}
 
@@ -120,7 +120,7 @@ SH_DEF(servo_FT_uniform)
 			|| pm.config_SERVO == PM_DISABLED
 			|| pm.const_ld_S < M_EPS_F) {
 
-		printf("Unable when SERVO mode is not functioning" EOL);
+		printf("Enable SERVO mode before" EOL);
 		return;
 	}
 

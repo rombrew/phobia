@@ -132,6 +132,7 @@ SH_DEF(pm_self_adjust)
 
 SH_DEF(pm_FT_current_ramp)
 {
+	TickType_t		xTS1;
 	float			iSP;
 
 	if (pm.lu_mode == PM_LU_DISABLED) {
@@ -140,23 +141,26 @@ SH_DEF(pm_FT_current_ramp)
 		return;
 	}
 
+	xTS1 = (TickType_t) (100UL * TEL_DATA_MAX / ap.FT_grab_hz);
+
 	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = pm.i_setpoint_Q;
-		vTaskDelay((TickType_t) 1);
+		vTaskDelay(xTS1);
 
 		pm.i_setpoint_Q = pm.i_maximal;
-		vTaskDelay((TickType_t) 5);
+		vTaskDelay(5UL * xTS1);
 
 		pm.i_setpoint_Q = iSP;
-		vTaskDelay((TickType_t) 4);
+		vTaskDelay(4UL * xTS1);
 	}
 	while (0);
 }
 
 SH_DEF(pm_FT_speed_ramp)
 {
+	TickType_t		xTS1;
 	float			wSP;
 
 	if (pm.lu_mode == PM_LU_DISABLED) {
@@ -165,17 +169,19 @@ SH_DEF(pm_FT_speed_ramp)
 		return;
 	}
 
+	xTS1 = (TickType_t) (100UL * TEL_DATA_MAX / ap.FT_grab_hz);
+
 	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = pm.s_setpoint;
-		vTaskDelay((TickType_t) 100);
+		vTaskDelay(xTS1);
 
 		pm.s_setpoint = pm.probe_speed_hold;
-		vTaskDelay((TickType_t) 500);
+		vTaskDelay(5UL * xTS1);
 
 		pm.s_setpoint = wSP;
-		vTaskDelay((TickType_t) 400);
+		vTaskDelay(4UL * xTS1);
 	}
 	while (0);
 }
@@ -183,6 +189,73 @@ SH_DEF(pm_FT_speed_ramp)
 SH_DEF(pm_FT_thrust_curve)
 {
 	/* TODO */
+}
+
+SH_DEF(pm_FT_tvm_ramp)
+{
+	TickType_t		xWake, xTim0;
+	int			xDC, xMIN, xMAX;
+
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	if (		PM_CONFIG_TVM(&pm) == PM_DISABLED
+			|| pm.tvm_ENABLED == PM_DISABLED) {
+
+		printf("Enable TVM before" EOL);
+		return;
+	}
+
+	xMIN = pm.dc_minimal;
+	xMAX = (int) (pm.dc_resolution * pm.tvm_range_DC);
+
+	xDC = xMIN;
+
+	PWM_set_DC(xDC, xDC, xDC);
+	PWM_set_Z(0);
+
+	pm.vsi_UF = 0;
+	pm.vsi_AZ = 0;
+	pm.vsi_BZ = 0;
+	pm.vsi_CZ = 0;
+
+	xWake = xTaskGetTickCount();
+	xTim0 = xWake;
+
+	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
+
+	do {
+		/* 1000 Hz.
+		 * */
+		vTaskDelayUntil(&xWake, (TickType_t) 1);
+
+		xDC = (xDC < xMAX) ? xDC + 1 : xMIN;
+
+		PWM_set_DC(xDC, xDC, xDC);
+
+		/* Reference voltage.
+		 * */
+		pm.vsi_X = xDC * pm.const_fb_U * pm.ts_inverted;
+
+		if (ti.mode == TEL_MODE_DISABLED)
+			break;
+
+		if ((xWake - xTim0) > (TickType_t) 8000) {
+
+			pm.fail_reason = PM_ERROR_TIMEOUT;
+			break;
+		}
+
+		if (pm.fail_reason != PM_OK)
+			break;
+	}
+	while (1);
+
+	pm.fsm_req = PM_STATE_HALT;
+	pm_wait_for_IDLE();
 }
 
 SH_DEF(hal_PPM_get_PERIOD)

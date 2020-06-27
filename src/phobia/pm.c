@@ -45,7 +45,7 @@ void pm_default(pmc_t *pm)
 	pm->ad_UC[1] = 1.f;
 
 	pm->probe_current_hold = 10.f;
-	pm->probe_current_weak = 5.f;
+	pm->probe_current_weak = 0.f;
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = pm->freq_hz / 12.f;
@@ -170,17 +170,20 @@ void pm_build(pmc_t *pm)
 		pm->k_UMAX = .66666667f;
 		pm->k_EMAX = .57735027f;
 		pm->k_KWAT = 1.5f;
+		pm->k_ZNUL = 0;
 	}
 	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
 
 		pm->k_UMAX = 1.f;
 		pm->k_EMAX = .70710678f;
 		pm->k_KWAT = 1.f;
+		pm->k_ZNUL = 0;
 	}
 	else {
 		pm->k_UMAX = 1.f;
 		pm->k_EMAX = 1.f;
 		pm->k_KWAT = 1.f;
+		pm->k_ZNUL = 4;
 	}
 
 	pm->ts_minimal = (int) (pm->dc_minimal * (1.f / 1000000.f)
@@ -824,7 +827,7 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 
-				pm->proc_set_Z(0);
+				pm->proc_set_Z(pm->k_ZNUL);
 			}
 			else if (pm->detach_SKIP < lev_SKIP) {
 
@@ -845,7 +848,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hall_wS = pm->lu_wS;
 				pm->hall_lpf_wS = pm->lu_wS;
 
-				pm->proc_set_Z(0);
+				pm->proc_set_Z(pm->k_ZNUL);
 			}
 			else if (pm->config_HFI == PM_ENABLED) {
 
@@ -858,7 +861,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hfi_F[1] = pm->lu_F[1];
 				pm->hfi_wS = pm->lu_wS;
 
-				pm->proc_set_Z(0);
+				pm->proc_set_Z(pm->k_ZNUL);
 			}
 			else if (pm->config_FORCED == PM_ENABLED) {
 
@@ -869,7 +872,7 @@ pm_lu_FSM(pmc_t *pm)
 				pm->forced_wS = pm->flux_wS;
 				pm->forced_TIM = 0;
 
-				pm->proc_set_Z(0);
+				pm->proc_set_Z(pm->k_ZNUL);
 			}
 		}
 	}
@@ -1420,17 +1423,10 @@ pm_loop_current(pmc_t *pm)
 		pm->i_track_Q = track_Q;
 	}
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_ONE_PHASE) {
-
-		eD = pm->i_track_D * pm->lu_F[0] - pm->lu_iX;
-		eQ = 0.f;
-	}
-	else {
-		/* Obtain discrepancy in DQ-axes.
-		 * */
-		eD = pm->i_track_D - pm->lu_iD;
-		eQ = pm->i_track_Q - pm->lu_iQ;
-	}
+	/* Obtain discrepancy in DQ-axes.
+	 * */
+	eD = pm->i_track_D - pm->lu_iD;
+	eQ = pm->i_track_Q - pm->lu_iQ;
 
 	/* There is a DEAD zone.
 	 * */
@@ -1474,17 +1470,10 @@ pm_loop_current(pmc_t *pm)
 		uQ += pm->hfi_wave[1] * hfi_U;
 	}
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_ONE_PHASE) {
-
-		uX = uD;
-		uY = 0.f;
-	}
-	else {
-		/* Go to XY-axes.
-		 * */
-		uX = pm->lu_F[0] * uD - pm->lu_F[1] * uQ;
-		uY = pm->lu_F[1] * uD + pm->lu_F[0] * uQ;
-	}
+	/* Go to XY-axes.
+	 * */
+	uX = pm->lu_F[0] * uD - pm->lu_F[1] * uQ;
+	uY = pm->lu_F[1] * uD + pm->lu_F[0] * uQ;
 
 	pm_voltage(pm, uX, uY);
 }
@@ -1753,7 +1742,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	}
 	else {
 		pm->lu_iX = .5f * (pm->fb_iA - pm->fb_iB);
-		pm->lu_iY = 0.f;
+		pm->lu_iY = pm->lu_F[1] * pm->i_track_D + pm->lu_F[0] * pm->i_track_Q;
 	}
 
 	/* Get DC link voltage.
