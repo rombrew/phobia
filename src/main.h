@@ -39,7 +39,7 @@ typedef struct {
 
 	/* Analog interface.
 	 * */
-	int			analog_enabled;
+	int			analog_ENABLED;
 	int			analog_reg_ID;
 	int			analog_locked;
 	float			analog_voltage_ratio;

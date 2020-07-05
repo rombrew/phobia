@@ -12,7 +12,7 @@ RM	= rm -rf
 
 CFLAGS	= -Os -flto -g3 -pipe
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
-CFLAGS	+= -mhard-float -mfpu=fpv4-sp-d16
+CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS	+= -Wall -Wdouble-promotion
 CFLAGS	+= -ffreestanding
 CFLAGS	+= -fno-stack-protector
@@ -23,8 +23,9 @@ CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
 
+CFLAGS  += -D_HW_REV2
 #CFLAGS  += -D_HW_REV4B
-CFLAGS  += -D_HW_REV4C
+#CFLAGS  += -D_HW_REV4C
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld

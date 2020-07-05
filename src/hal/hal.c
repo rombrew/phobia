@@ -7,6 +7,13 @@
 #define CLOCK_CRYSTAL_HZ		12000000UL
 #define CLOCK_CPU_TARGET_HZ		168000000UL
 
+#ifdef _HW_REV2
+
+#undef CLOCK_CRYSTAL_HZ
+#define CLOCK_CRYSTAL_HZ		8000000UL
+
+#endif /* _HW_REV2 */
+
 extern long			ld_begin_vectors;
 unsigned long			clock_cpu_hz;
 

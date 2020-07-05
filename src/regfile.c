@@ -869,7 +869,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.step_accuEP,,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(ap.step_const_ld_EP,,,		"mm",	"%3f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.analog_enabled,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.analog_voltage_ratio,,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_timeout,,,		"s",	"%4f",	REG_CONFIG, NULL, NULL),
@@ -1090,6 +1090,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_tm_SUM,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_tm_POLAR,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_inject_sine,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_maximal,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_maximal, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.hfi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_F_g, NULL),
 	REG_DEF(pm.hfi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hfi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),

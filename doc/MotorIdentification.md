@@ -17,28 +17,9 @@ believe that they will need a change only in a very complicated case.
 
 ## Sensors adjustment
 
-To achieve a good result adjust the voltage and current sensors. If you have a
-accurate voltmeter do an adjustment with standard. To do this measure the
-supply voltage and call the command.
-
-	# pm_STD_voltage <U>
-
-Note that our PCB has 1% divider tolerance and 0.2% reference voltage. So you
-need more accurate measurement.
-
-To adjust the current sensors you will need a standard resistor. Choose a
-resistance value based on supply voltage to get large enough current. Values
-from 1 to 5 Ohm are fit. It would be nice to have at least 1% resistor
-tolerance.  Connect the resistor to the terminal A and B then call the
-command.
-
-	# pm_STD_current <R>
-
-If you do not have a voltage or resistance standard skip the above steps.
-
-Next is automatic self-adjustment that is necessary for matching the voltage
-measurement channels. Also current sensors will be self-adjusted if motor is
-connected.
+To achieve a good result adjust the voltage and current sensors. The automatic
+self-adjustment that is necessary for matching the voltage measurement
+channels. Also current sensors will be self-adjusted if motor is connected.
 
 	# pm_self_adjust
 
@@ -91,14 +72,16 @@ To get more accurate estimate run the motor at high speed (~10v of BEMF is
 enough) and request E probe manually. Do not load the motor.
 
 	# reg pm.s_setpoint_rpm <rpm>
-	# reg pm.fsm_state 12
+	# pm_probe_const_E
 
 Also you have an option to identify E in detached mode. You will have to rotate
 the motor manually in this case.
 
 	# pm_probe_detached
 
+## Mean Peak to Peak Error (MPPE)
 ## Moment of inertia
+## Hall sensors adjustment
 
 **TODO**
 

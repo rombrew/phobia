@@ -195,7 +195,7 @@ void task_ANALOG(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 10);
 
-		if (ap.analog_enabled != 0) {
+		if (ap.analog_ENABLED == PM_ENABLED) {
 
 			analog = ADC_get_analog_ANG();
 			brake = ADC_get_analog_BRK();
@@ -316,6 +316,8 @@ void task_ANALOG(void *pData)
 	while (1);
 }
 
+void ap_pushb_startup(char *s);
+
 void task_INIT(void *pData)
 {
 	int			rc_flash;
@@ -369,6 +371,17 @@ void task_INIT(void *pData)
 		hal.PWM_deadtime = 190.f;
 		hal.ADC_reference_voltage = 3.3f;
 
+#ifdef _HW_REV2
+
+		hal.PWM_deadtime = 90.f;
+		hal.ADC_shunt_resistance = 0.5E-3f;
+		hal.ADC_amplifier_gain = 60.f;
+		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+		hal.ADC_terminal_bias = 0.f;
+
+#endif /* _HW_REV2 */
+
 #ifdef _HW_REV4B
 
 		hal.ADC_shunt_resistance = 0.5E-3f;
@@ -409,20 +422,20 @@ void task_INIT(void *pData)
 		ap.step_reg_ID = ID_PM_X_SETPOINT_F_MM;
 		ap.step_const_ld_EP = 0.f;
 
-		ap.analog_enabled = 0;
+		ap.analog_ENABLED = PM_DISABLED;
 		ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
 		ap.analog_voltage_ratio = ag_R2 / (ag_R1 + ag_R2);
 		ap.analog_timeout = 5.f;
-		ap.analog_voltage_ANG[0] = 0.8f;
-		ap.analog_voltage_ANG[1] = 2.0f;
+		ap.analog_voltage_ANG[0] = 1.0f;
+		ap.analog_voltage_ANG[1] = 2.5f;
 		ap.analog_voltage_ANG[2] = 4.0f;
 		ap.analog_voltage_BRK[0] = 1.0f;
 		ap.analog_voltage_BRK[1] = 4.0f;
-		ap.analog_voltage_BRK[2] = 4.8f;
+		ap.analog_voltage_BRK[2] = 4.1f;
 		ap.analog_voltage_lost[0] = 0.2f;
 		ap.analog_voltage_lost[1] = 4.8f;
 		ap.analog_control_ANG[0] = 0.f;
-		ap.analog_control_ANG[1] = 40.f;
+		ap.analog_control_ANG[1] = 50.f;
 		ap.analog_control_ANG[2] = 100.f;
 		ap.analog_control_BRK[0] = 0.f;
 		ap.analog_control_BRK[1] = - 100.f;
@@ -495,6 +508,8 @@ void task_INIT(void *pData)
 	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
+
+	ap_pushb_startup(EOL);
 
 	vTaskDelete(NULL);
 }

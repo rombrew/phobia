@@ -68,6 +68,7 @@ void ap_PUSHB(void *pData)
 				reverse = (pushed_B == 0) ? -1 : 1;
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
+				pm_wait_for_IDLE();
 			}
 			else {
 				N = (N < rpm_table_MAX - 1) ? N + 1 : 0;
@@ -93,6 +94,7 @@ void ap_PUSHB(void *pData)
 				reverse = 0;
 
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+				pm_wait_for_IDLE();
 			}
 		}
 		else if (pushed_B == 0 && value_B != 0) {

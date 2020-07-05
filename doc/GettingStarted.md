@@ -18,19 +18,20 @@ sometimes cross the border of quality in favor of PCB size.
 
 There is two parts of software:
 
-1. Numerical model of VSI with BLDC connected. The model enables us to develop
-   control code in fast cycle without hardware tests. It is complete enough to
-   take into account all of motor parameters.
+1. Numerical model of VSI with PMSM connected.
 2. Firmware for MCU.
+
+The model enables us to develop control code in fast cycle without hardware
+tests. It is complete enough to take into account all of motor parameters.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.
 
 	# hg clone https://hg.code.sf.net/p/phobia/code phobia
 	# cd phobia/src
-	# make zip
+	# make flash
 
-We use [stmflasher](https://bitbucket.org/amaora/stmflasher) to upload the
+We use [stm32flash](https://sourceforge.net/projects/stm32flash/) to upload the
 firmware into MCU. You should have a serial port connected to the board USART
 pins and BOOT pin shorted to the +3.3v. Alternatively, you can use SWD.
 

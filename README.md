@@ -49,7 +49,7 @@ PCB design source files.
 
 * Sensorless vector control of PMSM based on two inline current measurements.
 * Advanced PWM scheme to reduce switching losses and fully utilise DC link voltage.
-* Fast and robust multi-hypothesis flux observer (MHFO) with gain scheduling.
+* Fast and robust FLUX observer with gain scheduling.
 * Terminal voltage sensing to reduce the effect of Dead-Time.
 * Automated motor parameters identification with no additional tools.
 * Self test of hardware integrity to diagnose troubles.
@@ -57,19 +57,19 @@ PCB design source files.
 * Terminal voltage tracking to get smooth start when motor is already running (**EXPERIMENTAL**).
 * Two phase machine support (e.g. bipolar stepper) (**EXPERIMENTAL**).
 * Advanced command line interface (CLI) with autocompletion and history.
-* Non critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
+* Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
 * Flash storage for all of configurable parameters.
 
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to force rotor turn.
+	* Freewheling.
 	* High frequency injection (HFI) based on magnetic saliency (**EXPERIMENTAL**).
-	* Hall Sensors or Quadrature Encoder (**TODO**).
+	* Hall Sensors or Quadrature Encoder.
 * Control loops:
 	* Current control is always enabled.
 	* Speed control loop.
 	* Servo operation (**EXPERIMENTAL**).
 	* Battery charger (**TODO**).
-	* Voltage rectifier (**TODO**).
 * Adjustable limits:
 	* Phase current (with adjustable derate from overheat).
 	* Source current (or power) consumption and regeneration.
@@ -92,7 +92,6 @@ PCB design source files.
 * Analyse HFI operation on large current values.
 * Make a detailed documentation.
 * Add flux observer saliency tracking (for SRM).
-* Add simple rotating vector HFI.
 
 ## Current Status
 

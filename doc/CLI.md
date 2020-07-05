@@ -27,8 +27,8 @@ Something like that.
 Almost all of the configuration is to change the value of the registers.
 
 You can also export configuration registers values in plain text using a
-**reg_export** command. The output of this command can be fed back into the CLI
-to restore the configuration.
+**config_export** command. The output of this command can be fed back into the
+CLI to restore the configuration.
 
 To save the values of the configuration registers in the flash there is a
 **flash_write** command. Register values from the flash are loaded
