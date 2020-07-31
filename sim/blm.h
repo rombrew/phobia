@@ -62,7 +62,7 @@ typedef struct {
 	 * */
 	double		HS[3];
 
-	/* Quadrature Encoder.
+	/* Incremental Encoder.
 	 * */
 	int		EP_PPR;
 	double		EP_Zq;

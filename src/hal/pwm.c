@@ -106,14 +106,32 @@ void PWM_configure()
 
 void PWM_set_DC(int A, int B, int C)
 {
+#ifdef _HW_KLEN
+
+	TIM1->CCR1 = C;
+	TIM1->CCR2 = B;
+	TIM1->CCR3 = A;
+
+#else /* _HW_KLEN */
+
 	TIM1->CCR1 = A;
 	TIM1->CCR2 = B;
 	TIM1->CCR3 = C;
+
+#endif
 }
 
 void PWM_set_Z(int Z)
 {
+#ifdef _HW_KLEN
+
+	if (Z & LEG_C) {
+
+#else /* _HW_KLEN */
+
 	if (Z & LEG_A) {
+
+#endif
 
 		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
 	}
@@ -129,8 +147,15 @@ void PWM_set_Z(int Z)
 		TIM1->CCER |= (TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
 
+#ifdef _HW_KLEN
+
+	if (Z & LEG_A) {
+
+#else /* _HW_KLEN */
+
 	if (Z & LEG_C) {
 
+#endif
 		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}
 	else {

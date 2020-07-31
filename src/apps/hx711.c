@@ -72,7 +72,7 @@ void ap_HX711(void *pData)
 	while (1);
 }
 
-SH_DEF(ap_hx711_startup)
+SH_DEF(hx711_startup)
 {
 	TaskHandle_t		xHandle;
 
@@ -84,7 +84,7 @@ SH_DEF(ap_hx711_startup)
 	}
 }
 
-SH_DEF(ap_hx711_halt)
+SH_DEF(hx711_halt)
 {
 	TaskHandle_t		xHandle;
 
@@ -96,7 +96,7 @@ SH_DEF(ap_hx711_halt)
 	}
 }
 
-SH_DEF(ap_hx711_adjust)
+SH_DEF(hx711_adjust)
 {
 	float			S = 0.f;
 	int			J, N = 100;

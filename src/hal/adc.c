@@ -179,6 +179,11 @@ void ADC_startup()
 	NVIC_EnableIRQ(ADC_IRQn);
 }
 
+void ADC_configure()
+{
+	ADC_const_setup();
+}
+
 float ADC_get_VALUE(int xGPIO)
 {
 	float			fVAL = 0.f;

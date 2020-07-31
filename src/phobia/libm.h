@@ -5,8 +5,6 @@
 #define M_PI_F			3.14159265f
 #define M_LOG2_F		0.69314718f
 
-inline float m_absi(int x) { return (x < 0) ? - x : x; }
-
 inline float m_fabsf(float x) { return __builtin_fabsf(x); }
 inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 

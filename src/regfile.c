@@ -53,20 +53,46 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 
 		reg->link->f = *rval;
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
-
 		if (pm.lu_mode == PM_LU_DISABLED) {
+
+			taskENTER_CRITICAL();
+			ADC_irq_lock();
 
 			PWM_configure();
 
 			pm.freq_hz = hal.PWM_frequency;
 			pm.dT = 1.f / pm.freq_hz;
 			pm.dc_resolution = hal.PWM_resolution;
-		}
 
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
+			ADC_irq_unlock();
+			taskEXIT_CRITICAL();
+		}
+	}
+}
+
+static void
+reg_proc_adc(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->f;
+	}
+	else if (rval != NULL) {
+
+		reg->link->f = *rval;
+
+		if (pm.lu_mode == PM_LU_DISABLED) {
+
+			taskENTER_CRITICAL();
+			ADC_irq_lock();
+
+			ADC_configure();
+
+			reg_SET_F(ID_PM_FAULT_CURRENT_HALT, 0.f);
+
+			ADC_irq_unlock();
+			taskEXIT_CRITICAL();
+		}
 	}
 }
 
@@ -312,7 +338,9 @@ reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
 				? pm.ad_IA[1] : pm.ad_IB[1];
 			adjust = (adjust == 0.f) ? 1.f : adjust;
 
-			reg->link->f = (float) (int) (halt * hal.ADC_const.GA * adjust);
+			halt *= m_fabsf(hal.ADC_const.GA * adjust);
+
+			reg->link->f = (float) (int) (halt);
 		}
 		else {
 			reg->link->f = *rval;
@@ -674,7 +702,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(TIM_DISABLED);
 				TEXT_ITEM(TIM_DRIVE_HALL);
-				TEXT_ITEM(TIM_DRIVE_QENC);
+				TEXT_ITEM(TIM_DRIVE_ABI);
 
 				default: break;
 			}
@@ -687,7 +715,8 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PPM_DISABLED);
 				TEXT_ITEM(PPM_PULSE_WIDTH);
 				TEXT_ITEM(PPM_STEP_DIR);
-				TEXT_ITEM(PPM_CONTROL_QENC);
+				TEXT_ITEM(PPM_OUTPULSE);
+				TEXT_ITEM(PPM_BACKUP_ABI);
 
 				default: break;
 			}
@@ -704,7 +733,6 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_NOP_THREE_PHASE);
 				TEXT_ITEM(PM_NOP_TWO_PHASE);
-				TEXT_ITEM(PM_NOP_ONE_PHASE);
 
 				default: break;
 			}
@@ -724,7 +752,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_TVM:
 		case ID_PM_CONFIG_VSI_SILENT:
 		case ID_PM_CONFIG_FORCED:
-		case ID_PM_CONFIG_QENC_FORCED_ALIGN:
+		case ID_PM_CONFIG_ABI_FORCED_ALIGN:
 		case ID_PM_CONFIG_HFI:
 		case ID_PM_CONFIG_WEAK:
 		case ID_PM_CONFIG_SERVO:
@@ -758,7 +786,7 @@ reg_format_enum(const reg_t *reg)
 
 				TEXT_ITEM(PM_SENSOR_DISABLED);
 				TEXT_ITEM(PM_SENSOR_HALL);
-				TEXT_ITEM(PM_SENSOR_QENC);
+				TEXT_ITEM(PM_SENSOR_ABI);
 
 				default: break;
 			}
@@ -795,6 +823,8 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
 				TEXT_ITEM(PM_STATE_PROBE_LU_MPPE);
 				TEXT_ITEM(PM_STATE_ADJUST_HALL);
+				TEXT_ITEM(PM_STATE_GO_DRIVE_CURRENT);
+				TEXT_ITEM(PM_STATE_GO_DRIVE_SPEED);
 				TEXT_ITEM(PM_STATE_HALT);
 
 				default: break;
@@ -811,7 +841,7 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_LU_ESTIMATE_FLUX);
 				TEXT_ITEM(PM_LU_ESTIMATE_HFI);
 				TEXT_ITEM(PM_LU_SENSOR_HALL);
-				TEXT_ITEM(PM_LU_SENSOR_QENC);
+				TEXT_ITEM(PM_LU_SENSOR_ABI);
 
 				default: break;
 			}
@@ -842,28 +872,24 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.USART_baud_rate,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PWM_frequency,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
 	REG_DEF(hal.PWM_deadtime,,,		"ns",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
-	REG_DEF(hal.ADC_reference_voltage,,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_shunt_resistance,,,	"Ohm",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_amplifier_gain,,,	"",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_voltage_ratio,,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_terminal_ratio,,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(hal.ADC_terminal_bias,,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(hal.ADC_reference_voltage,,,	"V",	"%3f",	REG_CONFIG, &reg_proc_adc, NULL),
+	REG_DEF(hal.ADC_shunt_resistance,,,	"Ohm",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
+	REG_DEF(hal.ADC_amplifier_gain,,,	"",	"%1f",	REG_CONFIG, &reg_proc_adc, NULL),
+	REG_DEF(hal.ADC_voltage_ratio,,,	"",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
+	REG_DEF(hal.ADC_terminal_ratio,,,	"",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
+	REG_DEF(hal.ADC_terminal_bias,,,	"",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
 	REG_DEF(hal.TIM_mode,,,		"",	"%i", REG_CONFIG, &reg_proc_tim, &reg_format_enum),
 	REG_DEF(hal.PPM_mode,,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_timebase,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(ap.ppm_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range, _1, [1],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_range, _2, [2],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_lost, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_pulse_lost, _1, [1],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_in_range, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_in_range, _1, [1],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.ppm_in_range, _2, [2],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_control_range, _2, [2],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_startup_range, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_startup_range, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.step_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.step_accuEP,,,		"",	"%i",	0, NULL, NULL),
@@ -871,24 +897,22 @@ const reg_t		regfile[] = {
 
 	REG_DEF(ap.analog_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ap.analog_voltage_ratio,,,	"",	"%4e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_timeout,,,		"s",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_ANG, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_ANG, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_ANG, _2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_BRK, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_BRK, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_BRK, _2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_lost, _0, [0],"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_voltage_lost, _1, [1],"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_ANG, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_ANG, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_ANG, _2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_BRK, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_BRK, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_lost, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_in_lost, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_ANG, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_ANG, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_ANG, _2, [2],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_control_BRK, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_control_BRK, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_control_BRK, _2, [2],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_startup_range, _0, [0],"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.analog_startup_range, _1, [1],"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_control_BRK,,,	"",	"%2f",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(ap.startup_in_range, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.startup_in_range, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_in_tol,,,		"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_shutdown,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.ntc_PCB.r_balance,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ntc_PCB.r_ntc_0,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -937,7 +961,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_IFB,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_VSI_SILENT,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_FORCED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_QENC_FORCED_ALIGN,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_ABI_FORCED_ALIGN,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_ESTIMATE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SENSOR,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),

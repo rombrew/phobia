@@ -6,7 +6,7 @@
 	            |                 // Temperature measurement schematic //
 	            |
 	           | |
-	           | | R_balance 10K 1%
+	           | | R_balance 10K (1%)
 	           |_|
 	            |               +---+
 	            |              /    |

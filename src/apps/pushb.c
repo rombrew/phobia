@@ -105,7 +105,7 @@ void ap_PUSHB(void *pData)
 	while (1);
 }
 
-SH_DEF(ap_pushb_startup)
+SH_DEF(pushb_startup)
 {
 	TaskHandle_t		xHandle;
 
@@ -117,7 +117,7 @@ SH_DEF(ap_pushb_startup)
 	}
 }
 
-SH_DEF(ap_pushb_halt)
+SH_DEF(pushb_halt)
 {
 	TaskHandle_t		xHandle;
 

@@ -23,9 +23,10 @@ CFLAGS	+= -fno-trapping-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
 
-CFLAGS  += -D_HW_REV2
+#CFLAGS  += -D_HW_REV2
+#CFLAGS  += -D_HW_KLEN
 #CFLAGS  += -D_HW_REV4B
-#CFLAGS  += -D_HW_REV4C
+CFLAGS  += -D_HW_REV4C
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld
@@ -65,8 +66,8 @@ OBJS    = freertos/heap_4.o \
 	  tel.o
 
 OBJS	+= apps/hx711.o \
-	   apps/pushb.o \
-	   apps/rlc.o
+	   apps/mice.o \
+	   apps/pushb.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 

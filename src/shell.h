@@ -12,6 +12,10 @@
 #define K_ESC			0x1B	/* Ctrl + [ */
 #define K_DEL			0x7F
 
+#define SH_DEF(name)		void name(const char *s);
+#include "shdefs.h"
+
+#undef SH_DEF
 #define SH_DEF(name)		void name(const char *s)
 
 typedef struct {
@@ -23,7 +27,7 @@ sh_cmd_t;
 
 const char *sh_next_arg(const char *s);
 
-void task_SH(void *); 
+void task_SH(void *);
 
 #endif /* _H_SHELL_ */
 

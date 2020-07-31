@@ -77,30 +77,6 @@ void pm_DFT_LDQ(const float DFT[8], float WF, float LDQ[5])
 }
 
 static void
-pm_DFT_L1(float DFT[8], float WF, float LDQ[5])
-{
-	float		I, R, Z, L1;
-
-	/* The primary equation is Z * I = U.
-	 * */
-
-	I = DFT[0] * DFT[0] + DFT[1] * DFT[1];
-	R = (DFT[2] * DFT[0] + DFT[3] * DFT[1]) / I;
-	Z = (DFT[2] * DFT[1] - DFT[3] * DFT[0]) / I;
-
-	DFT[0] = R;
-	DFT[1] = Z;
-
-	L1 = Z / WF;
-
-	LDQ[0] = 1.f;
-	LDQ[1] = 0.f;
-	LDQ[2] = L1;
-	LDQ[3] = L1;
-	LDQ[4] = R;
-}
-
-static void
 pm_fsm_state_idle(pmc_t *pm)
 {
 	if (		pm->lu_mode == PM_LU_DISABLED
@@ -896,15 +872,9 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
 
-			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
-
-				hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
-				hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
-					(hold_R > M_PI_F) ? M_PI_F : hold_R;
-			}
-			else {
-				hold_R = 0.f;
-			}
+			hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
+			hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
+				(hold_R > M_PI_F) ? M_PI_F : hold_R;
 
 			pm->lu_F[0] = 1.f;
 			pm->lu_F[1] = 0.f;
@@ -1017,15 +987,9 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->REM[10] = 0.f;
 			pm->REM[11] = 0.f;
 
-			if (PM_CONFIG_NOP(pm) != PM_NOP_ONE_PHASE) {
-
-				hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
-				hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
-					(hold_R > M_PI_F) ? M_PI_F : hold_R;
-			}
-			else {
-				hold_R = 0.f;
-			}
+			hold_R = pm->probe_hold_angle * (M_PI_F / 180.f);
+			hold_R = (hold_R < - M_PI_F) ? - M_PI_F :
+				(hold_R > M_PI_F) ? M_PI_F : hold_R;
 
 			pm->lu_F[0] = 1.f;
 			pm->lu_F[1] = 0.f;
@@ -1062,14 +1026,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			eX = pm->i_track_D - pm->lu_iX;
 			eY = pm->i_track_Q - pm->lu_iY;
 
-			if (PM_CONFIG_NOP(pm) == PM_NOP_ONE_PHASE) {
-
-				eHF = pm->hfi_wave[0] * pm->probe_current_sine;
-				eHF = pm->probe_current_sine - m_sqrtf(eX * eX + eHF * eHF);
-			}
-			else {
-				eHF = pm->probe_current_sine - m_sqrtf(eX * eX + eY * eY);
-			}
+			eHF = pm->probe_current_sine - m_sqrtf(eX * eX + eY * eY);
 
 			pm->REM[9] += pm->probe_gain_I * eHF;
 			uHF = pm->probe_gain_P * eHF + pm->REM[9];
@@ -1112,13 +1069,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			break;
 
 		case 3:
-			if (PM_CONFIG_NOP(pm) == PM_NOP_ONE_PHASE) {
-
-				pm_DFT_L1(pm->probe_DFT, pm->temp_HFI_wS, LDQ);
-			}
-			else {
-				pm_DFT_LDQ(pm->probe_DFT, pm->temp_HFI_wS, LDQ);
-			}
+			pm_DFT_LDQ(pm->probe_DFT, pm->temp_HFI_wS, LDQ);
 
 			if (m_isfinitef(LDQ[3]) != 0 && LDQ[3] > M_EPS_F) {
 
@@ -1604,6 +1555,35 @@ pm_fsm_state_loop_boost(pmc_t *pm)
 }
 
 static void
+pm_fsm_state_go_drive_current(pmc_t *pm)
+{
+	if (pm->config_DRIVE != PM_DRIVE_CURRENT) {
+
+		pm->config_DRIVE = PM_DRIVE_CURRENT;
+	}
+
+	pm->fsm_state = PM_STATE_IDLE;
+	pm->fsm_phase = 0;
+}
+
+static void
+pm_fsm_state_go_drive_speed(pmc_t *pm)
+{
+	if (pm->config_DRIVE != PM_DRIVE_SPEED) {
+
+		pm->s_setpoint = pm->lu_wS;
+		pm->s_track = pm->lu_wS;
+		pm->s_integral = pm->lu_iQ;
+		pm->s_base_wS = pm->lu_wS;
+
+		pm->config_DRIVE = PM_DRIVE_SPEED;
+	}
+
+	pm->fsm_state = PM_STATE_IDLE;
+	pm->fsm_phase = 0;
+}
+
+static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -1670,6 +1650,8 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_PROBE_CONST_J:
 		case PM_STATE_PROBE_LU_MPPE:
 		case PM_STATE_ADJUST_HALL:
+		case PM_STATE_GO_DRIVE_CURRENT:
+		case PM_STATE_GO_DRIVE_SPEED:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1767,6 +1749,14 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_loop_boost(pm);
 			break;
 
+		case PM_STATE_GO_DRIVE_CURRENT:
+			pm_fsm_state_go_drive_current(pm);
+			break;
+
+		case PM_STATE_GO_DRIVE_SPEED:
+			pm_fsm_state_go_drive_speed(pm);
+			break;
+
 		case PM_STATE_HALT:
 		default:
 			pm_fsm_state_halt(pm);
@@ -1789,7 +1779,7 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_DC_LINK_OVERVOLTAGE),
 		PM_SFI(PM_ERROR_INVALID_OPERATION),
 		PM_SFI(PM_ERROR_SENSOR_HALL_FAULT),
-		PM_SFI(PM_ERROR_SENSOR_QENC_FAULT),
+		PM_SFI(PM_ERROR_SENSOR_ABI_FAULT),
 
 		PM_SFI(PM_ERROR_TIMEOUT),
 	};

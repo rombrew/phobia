@@ -22,6 +22,13 @@
 
 #endif /* _HW_REV2 */
 
+#ifdef _HW_KLEN
+
+#undef GPIO_LED
+#define GPIO_LED			XGPIO_DEF2('C', 4)
+
+#endif /* _HW_KLEN */
+
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
 
@@ -51,14 +58,15 @@ enum {
 enum {
 	TIM_DISABLED			= 0,
 	TIM_DRIVE_HALL,
-	TIM_DRIVE_QENC,
+	TIM_DRIVE_ABI,
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
 	PPM_STEP_DIR,
-	PPM_CONTROL_QENC,
+	PPM_OUTPULSE,
+	PPM_BACKUP_ABI,
 };
 
 typedef struct {
@@ -76,6 +84,7 @@ typedef struct {
 	float		ADC_voltage_ratio;
 	float		ADC_terminal_ratio;
 	float		ADC_terminal_bias;
+	float		ADC_analog_ratio;
 
 	float		ADC_current_A;
 	float		ADC_current_B;

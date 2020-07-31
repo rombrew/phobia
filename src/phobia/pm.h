@@ -13,8 +13,7 @@
 
 enum {
 	PM_NOP_THREE_PHASE			= 0,
-	PM_NOP_TWO_PHASE,
-	PM_NOP_ONE_PHASE,
+	PM_NOP_TWO_PHASE
 };
 
 enum {
@@ -30,7 +29,7 @@ enum {
 enum {
 	PM_SENSOR_DISABLED			= 0,
 	PM_SENSOR_HALL,
-	PM_SENSOR_QENC,
+	PM_SENSOR_ABI,
 };
 
 enum {
@@ -56,7 +55,7 @@ enum {
 	PM_LU_ESTIMATE_FLUX,
 	PM_LU_ESTIMATE_HFI,
 	PM_LU_SENSOR_HALL,
-	PM_LU_SENSOR_QENC,
+	PM_LU_SENSOR_ABI,
 };
 
 enum {
@@ -77,6 +76,8 @@ enum {
 	PM_STATE_PROBE_LU_MPPE,
 	PM_STATE_ADJUST_HALL,
 	PM_STATE_LOOP_BOOST,
+	PM_STATE_GO_DRIVE_CURRENT,
+	PM_STATE_GO_DRIVE_SPEED,
 	PM_STATE_HALT,
 };
 
@@ -95,7 +96,7 @@ enum {
 	PM_ERROR_DC_LINK_OVERVOLTAGE,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
-	PM_ERROR_SENSOR_QENC_FAULT,
+	PM_ERROR_SENSOR_ABI_FAULT,
 
 	/* External.
 	 * */
@@ -148,7 +149,7 @@ typedef struct {
 	int		config_IFB;
 	int		config_VSI_SILENT;
 	int		config_FORCED;
-	int		config_QENC_FORCED_ALIGN;
+	int		config_ABI_FORCED_ALIGN;
 	int		config_ESTIMATE;
 	int		config_HFI;
 	int		config_SENSOR;

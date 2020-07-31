@@ -208,8 +208,6 @@ sim_test_BASE(FILE *fdTel)
 
 	pm_default(&pm);
 
-	pm.config_NOP = PM_NOP_ONE_PHASE;
-
 	pm.const_Zp = m.Zp;
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;

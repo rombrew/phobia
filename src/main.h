@@ -19,37 +19,44 @@ typedef struct {
 	 * */
 	int			can_node_ID;
 
-	/* PPM interface.
+	/* PPM (PWM) interface.
 	 * */
 	int			ppm_reg_ID;
-	int			ppm_locked;
-	float			ppm_pulse_cached;
-	float			ppm_pulse_range[3];
-	float			ppm_pulse_lost[2];
+	float			ppm_in_cached;
+	float			ppm_in_range[3];
 	float			ppm_control_range[3];
-	float			ppm_startup_range[2];
 
 	/* STEP/DIR interface.
 	 * */
 	int			step_reg_ID;
-	int			step_locked;
 	int			step_baseEP;
 	int			step_accuEP;
 	float			step_const_ld_EP;
 
 	/* Analog interface.
 	 * */
+	float			analog_const_GU;
 	int			analog_ENABLED;
 	int			analog_reg_ID;
-	int			analog_locked;
-	float			analog_voltage_ratio;
-	float			analog_timeout;
-	float			analog_voltage_ANG[3];
-	float			analog_voltage_BRK[3];
-	float			analog_voltage_lost[2];
+	float			analog_in_ANG[3];
+	float			analog_in_BRK[2];
+	float			analog_in_lost[2];
 	float			analog_control_ANG[3];
-	float			analog_control_BRK[3];
-	float			analog_startup_range[2];
+	float			analog_control_BRK;
+
+	/* Startup control.
+	 * */
+	int			startup_locked;
+	float			startup_in_range[2];
+
+	/* Timeout control.
+	 * */
+	int			timeout_BASE;
+	int			timeout_TIME;
+	int			timeout_revol_cached;
+	float			timeout_in_cached;
+	float			timeout_in_tol;
+	float			timeout_shutdown;
 
 	/* CPU load.
 	 * */
@@ -103,8 +110,6 @@ extern int pm_wait_for_IDLE();
 
 float ADC_get_analog_ANG();
 float ADC_get_analog_BRK();
-
-void lowTRACE(const char *fmt, ...);
 
 #endif /* _H_MAIN_ */
 

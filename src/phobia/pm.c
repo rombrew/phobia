@@ -12,7 +12,7 @@ void pm_default(pmc_t *pm)
 	pm->config_IFB = PM_IFB_AB_INLINE;
 	pm->config_VSI_SILENT = PM_DISABLED;
 	pm->config_FORCED = PM_ENABLED;
-	pm->config_QENC_FORCED_ALIGN = PM_DISABLED;
+	pm->config_ABI_FORCED_ALIGN = PM_DISABLED;
 	pm->config_ESTIMATE = PM_ESTIMATE_FLUX;
 	pm->config_HFI = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
@@ -132,7 +132,7 @@ void pm_default(pmc_t *pm)
 
 	pm->i_maximal = 120.f;
 	pm->i_reverse = pm->i_maximal;
-	pm->i_derated_HFI = 50.f;
+	pm->i_derated_HFI = 10.f;
 	pm->i_tol_Z = 0.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
@@ -159,7 +159,7 @@ void pm_default(pmc_t *pm)
 	pm->x_gain_P = 35.f;
 	pm->x_gain_N = 2E-1f;
 
-	pm->boost_gain_P = 1E-2f;
+	pm->boost_gain_P = 1E-1f;
 	pm->boost_gain_I = 1E-3f;
 }
 
@@ -172,18 +172,11 @@ void pm_build(pmc_t *pm)
 		pm->k_KWAT = 1.5f;
 		pm->k_ZNUL = 0;
 	}
-	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
+	else {
 		pm->k_UMAX = 1.f;
 		pm->k_EMAX = .70710678f;
 		pm->k_KWAT = 1.f;
 		pm->k_ZNUL = 0;
-	}
-	else {
-		pm->k_UMAX = 1.f;
-		pm->k_EMAX = 1.f;
-		pm->k_KWAT = 1.f;
-		pm->k_ZNUL = 4;
 	}
 
 	pm->ts_minimal = (int) (pm->dc_minimal * (1.f / 1000000.f)
@@ -205,7 +198,7 @@ void pm_build(pmc_t *pm)
 		pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * pm->dT * .5f);
 	}
 
-	if (pm->config_SENSOR == PM_SENSOR_QENC) {
+	if (pm->config_SENSOR == PM_SENSOR_ABI) {
 
 		pm->temp_2PZiPPR = 2.f * M_PI_F * pm->const_Zp
 			* pm->qenc_Zq / (float) pm->qenc_PPR;
@@ -268,14 +261,9 @@ pm_detached_FLUX(pmc_t *pm)
 		uX = uA;
 		uY = .57735027f * uA + 1.1547005f * uB;
 	}
-	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
+	else {
 		uX = uC - uA;
 		uY = uC - uB;
-	}
-	else {
-		uX = 0.f;
-		uY = 0.f;
 	}
 
 	pm->detach_X = uX;
@@ -542,9 +530,9 @@ pm_estimate_HFI(pmc_t *pm)
 				pm->hfi_const_POLAR += pm->hfi_DFT[8];
 				pm->hfi_DFT_P += 1;
 
-				if (pm->hfi_DFT_P >= m_absi(pm->hfi_tm_POLAR)) {
+				if (pm->hfi_DFT_P >= pm->hfi_tm_POLAR) {
 
-					if (pm->hfi_const_POLAR * pm->hfi_tm_POLAR > 0.f) {
+					if (pm->hfi_const_POLAR > 0.f) {
 
 						/* Flip DQ-frame.
 						 * */
@@ -659,7 +647,7 @@ pm_sensor_HALL(pmc_t *pm)
 }
 
 static void
-pm_sensor_QENC(pmc_t *pm)
+pm_sensor_ABI(pmc_t *pm)
 {
 	float			relR, rotR, rotF[2], gain_SF;
 	int			relEP, N;
@@ -900,11 +888,11 @@ pm_lu_FSM(pmc_t *pm)
 		else {
 			lev_HOLD = PM_TSMS(pm, pm->tm_current_hold);
 
-			if (		pm->config_SENSOR == PM_SENSOR_QENC
-					&& pm->config_QENC_FORCED_ALIGN == PM_ENABLED
+			if (		pm->config_SENSOR == PM_SENSOR_ABI
+					&& pm->config_ABI_FORCED_ALIGN == PM_ENABLED
 					&& pm->forced_TIM > lev_HOLD) {
 
-				pm->lu_mode = PM_LU_SENSOR_QENC;
+				pm->lu_mode = PM_LU_SENSOR_ABI;
 
 				pm->qenc_baseEP = pm->fb_EP;
 				pm->qenc_baseF[0] = pm->lu_F[0];
@@ -947,10 +935,10 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hall_wS = pm->lu_wS;
 				pm->hall_lpf_wS = pm->lu_wS;
 			}
-			else if (	pm->config_SENSOR == PM_SENSOR_QENC
+			else if (	pm->config_SENSOR == PM_SENSOR_ABI
 					&& pm->lu_flux_locked == 1) {
 
-				pm->lu_mode = PM_LU_SENSOR_QENC;
+				pm->lu_mode = PM_LU_SENSOR_ABI;
 
 				pm->qenc_baseEP = pm->fb_EP;
 				pm->qenc_baseF[0] = pm->lu_F[0];
@@ -1041,9 +1029,9 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_mode = PM_LU_ESTIMATE_FLUX;
 		}
 	}
-	else if (pm->lu_mode == PM_LU_SENSOR_QENC) {
+	else if (pm->lu_mode == PM_LU_SENSOR_ABI) {
 
-		pm_sensor_QENC(pm);
+		pm_sensor_ABI(pm);
 
 		if (pm->config_ESTIMATE == PM_ESTIMATE_FLUX) {
 
@@ -1079,15 +1067,9 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		uB = - .5f * uX + .8660254f * uY;
 		uC = - .5f * uX - .8660254f * uY;
 	}
-	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
-		uA = uX;
-		uB = uY;
-		uC = 0.f;
-	}
 	else {
 		uA = uX;
-		uB = 0.f;
+		uB = uY;
 		uC = 0.f;
 	}
 
@@ -1246,19 +1228,12 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		pm->vsi_X = uA;
 		pm->vsi_Y = .57735027f * uA + 1.1547005f * uB;
 	}
-	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
+	else {
 		uA = (xA - xC) * pm->const_fb_U * pm->ts_inverted;
 		uB = (xB - xC) * pm->const_fb_U * pm->ts_inverted;
 
 		pm->vsi_X = uA;
 		pm->vsi_Y = uB;
-	}
-	else {
-		uA = (xA - xB) * pm->const_fb_U * pm->ts_inverted;
-
-		pm->vsi_X = uA;
-		pm->vsi_Y = 0.f;
 	}
 }
 
@@ -1693,14 +1668,9 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm->fb_iA = pm->lu_iX;
 			pm->fb_iB = - .5f * pm->lu_iX + .8660254f * pm->lu_iY;
 		}
-		else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
-			pm->fb_iA = pm->lu_iX;
-			pm->fb_iB = pm->lu_iY;
-		}
 		else {
 			pm->fb_iA = pm->lu_iX;
-			pm->fb_iB = - pm->lu_iX;
+			pm->fb_iB = pm->lu_iY;
 		}
 	}
 
@@ -1735,14 +1705,9 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		pm->lu_iX = pm->fb_iA;
 		pm->lu_iY = .57735027f * pm->fb_iA + 1.1547005f * pm->fb_iB;
 	}
-	else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
+	else {
 		pm->lu_iX = pm->fb_iA;
 		pm->lu_iY = pm->fb_iB;
-	}
-	else {
-		pm->lu_iX = .5f * (pm->fb_iA - pm->fb_iB);
-		pm->lu_iY = pm->lu_F[1] * pm->i_track_D + pm->lu_F[0] * pm->i_track_Q;
 	}
 
 	/* Get DC link voltage.
@@ -1815,8 +1780,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				pm->tvm_DX = vA;
 				pm->tvm_DY = .57735027f * vA + 1.1547005f * vB;
 			}
-			else if (PM_CONFIG_NOP(pm) == PM_NOP_TWO_PHASE) {
-
+			else {
 				vA = vA - vC;
 				vB = vB - vC;
 

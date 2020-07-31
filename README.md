@@ -92,6 +92,7 @@ PCB design source files.
 * Analyse HFI operation on large current values.
 * Make a detailed documentation.
 * Add flux observer saliency tracking (for SRM).
+* Add pulse output signal.
 
 ## Current Status
 

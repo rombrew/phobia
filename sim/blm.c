@@ -127,7 +127,7 @@ void blm_Enable(blm_t *m)
 	m->HS[1] = + 150.;
 	m->HS[2] = - 90.;
 
-	/* Quadrature Encoder.
+	/* Incremental Encoder.
 	 * */
 	m->EP_PPR = 2600;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;		/* Reduction ratio */

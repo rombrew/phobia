@@ -14,6 +14,13 @@
 
 #endif /* _HW_REV2 */
 
+#ifdef _HW_KLEN
+
+#undef CLOCK_CRYSTAL_HZ
+#define CLOCK_CRYSTAL_HZ		25000000UL
+
+#endif /* _HW_KLEN */
+
 extern long			ld_begin_vectors;
 unsigned long			clock_cpu_hz;
 

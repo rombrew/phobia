@@ -82,11 +82,44 @@ PPM_mode_STEP_DIR()
 {
 	/* Enable TIM4 clock.
 	 * */
-	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
 
 	TIM4->CR1 = 0;
 	TIM4->CR2 = 0;
 	TIM4->SMCR = TIM_SMCR_SMS_0;
+	TIM4->DIER = 0;
+	TIM4->CCMR1 = TIM_CCMR1_IC2F_1 | TIM_CCMR1_CC2S_0 | TIM_CCMR1_IC1F_1
+		| TIM_CCMR1_CC1S_0;
+	TIM4->CCMR2 = 0;
+	TIM4->CCER = 0;
+	TIM4->CNT = 32767;
+	TIM4->PSC = 0;
+	TIM4->ARR = 65535;
+	TIM4->CCR1 = 0;
+	TIM4->CCR2 = 0;
+	TIM4->CCR3 = 0;
+	TIM4->CCR4 = 0;
+
+	/* Start TIM4.
+	 * */
+	TIM4->CR1 |= TIM_CR1_CEN;
+
+	/* Enable TIM4 pins.
+	 * */
+	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
+	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
+}
+
+static void
+PPM_mode_BACKUP_ABI()
+{
+	/* Enable TIM4 clock.
+	 * */
+	RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
+
+	TIM4->CR1 = 0;
+	TIM4->CR2 = 0;
+	TIM4->SMCR = TIM_SMCR_SMS_0 | TIM_SMCR_SMS_1;
 	TIM4->DIER = 0;
 	TIM4->CCMR1 = TIM_CCMR1_IC2F_1 | TIM_CCMR1_CC2S_0 | TIM_CCMR1_IC1F_1
 		| TIM_CCMR1_CC1S_0;
@@ -119,6 +152,14 @@ void PPM_startup()
 	else if (hal.PPM_mode == PPM_STEP_DIR) {
 
 		PPM_mode_STEP_DIR();
+	}
+	else if (hal.PPM_mode == PPM_OUTPULSE) {
+
+		/* TODO */
+	}
+	else if (hal.PPM_mode == PPM_BACKUP_ABI) {
+
+		PPM_mode_BACKUP_ABI();
 	}
 }
 
@@ -174,6 +215,11 @@ float PPM_get_PULSE()
 }
 
 int PPM_get_STEP_DIR()
+{
+	return TIM4->CNT;
+}
+
+int PPM_get_backup_EP()
 {
 	return TIM4->CNT;
 }
