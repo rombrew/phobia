@@ -1,9 +1,29 @@
 #ifndef _H_CAN_
 #define _H_CAN_
 
+enum {
+	CAN_MODE_STANDARD		= 0,
+	CAN_MODE_NO_AUTO_RETRANSMIT
+};
+
+enum {
+	CAN_TX_OK			= 0,
+	CAN_TX_FAILED,
+};
+
+typedef struct {
+
+	unsigned short		ID;
+	unsigned short		len;
+	char			payload[8];
+}
+CAN_msg_t;
+
 void CAN_startup();
-void CAN_set_filter(int nfilt, int fifo, unsigned long ID, unsigned long mID);
-void CAN_send_msg(unsigned long ID, int len, const unsigned char payload[8]);
+void CAN_configure();
+
+void CAN_filter_ID(int fs, int mb, int ID, int mID);
+int CAN_send_msg(const CAN_msg_t *msg);
 
 extern void CAN_IRQ();
 

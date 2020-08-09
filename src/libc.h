@@ -3,6 +3,9 @@
 
 #define EOL			"\r\n"
 
+#define	IODEF_TO_USART()	if (iodef != &io_USART) { iodef = &io_USART; }
+#define	IODEF_TO_CAN()		if (iodef != &io_CAN) { iodef = &io_CAN; }
+
 typedef unsigned long		u32_t;
 typedef unsigned short		u16_t;
 typedef unsigned char		u8_t;
@@ -14,6 +17,13 @@ typedef struct {
 }
 io_ops_t;
 
+/* Serial IO interfaces.
+ * */
+extern io_ops_t		io_USART;
+extern io_ops_t		io_CAN;
+
+/* Currently used.
+ * */
 extern io_ops_t		*iodef;
 
 void *memset(void *d, int c, int n);

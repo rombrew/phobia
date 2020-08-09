@@ -4,7 +4,6 @@
 void USART_startup();
 int USART_getc();
 void USART_putc(int c);
-void USART_debug_putc(int c);
 
 #endif /* _H_USART_ */
 

@@ -5,6 +5,7 @@
 #include "hal/hal.h"
 
 #include "main.h"
+#include "ifcan.h"
 #include "libc.h"
 #include "shell.h"
 
@@ -332,7 +333,7 @@ inner_ANALOG(float in_ANG, float in_BRK)
 	reg_SET_F(ap.analog_reg_ID, control);
 }
 
-void task_in_ANALOG(void *pData)
+void task_ANALOG(void *pData)
 {
 	TickType_t		xWake;
 	float			in_ANG, in_BRK;
@@ -368,9 +369,174 @@ void task_in_ANALOG(void *pData)
 	while (1);
 }
 
+/* Terminal voltage measurement schematic.
+ *
+                        +------< vREF
+                        |
+                        |
+                       | |
+                       | | R3 (1%)
+                       |_|
+              R1 (1%)   |               +---+
+               _____    |              /    |
+     vIN >----|_____|---+--------+----- ADC |
+                        |        |     \    |
+                        |        |      +---+
+                       | |       |
+               R2 (1%) | |     -----
+                       |_|     -----
+                        |        |    C1 (C0G)
+                        |        |
+                        +--------+
+                        |
+                       ---
+                       \ /  AGND
+ */
+
+static void
+app_load_configuration()
+{
+	float		vm_R1 = 470000.f;
+	float		vm_R2 = 27000.f;
+	float		vm_R3 = 470000.f;
+	float		vm_D = (vm_R1 * vm_R2 + vm_R2 * vm_R3 + vm_R1 * vm_R3);
+	float		in_R1 = 10000.f;
+	float		in_R2 = 10000.f;
+
+	hal.USART_baud_rate = 57600;
+	hal.PWM_frequency = 30000.f;
+	hal.PWM_deadtime = 190.f;
+	hal.ADC_reference_voltage = 3.3f;
+	hal.ADC_shunt_resistance = 0.5E-3f;
+	hal.ADC_amplifier_gain = 20.f;
+	hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
+	hal.ADC_terminal_bias = vm_R1 * vm_R2 * hal.ADC_reference_voltage / vm_D;
+	hal.ADC_analog_ratio = in_R2 / (in_R1 + in_R2);
+
+#ifdef _HW_REV2
+
+	hal.PWM_deadtime = 90.f;
+	hal.ADC_shunt_resistance = 0.5E-3f;
+	hal.ADC_amplifier_gain = 60.f;
+	hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_bias = 0.f;
+
+#endif /* _HW_REV2 */
+
+#ifdef _HW_KLEN
+
+	vm_R1 = 47000.f;
+	vm_R2 = 2200.f;
+
+	hal.PWM_deadtime = 90.f;
+	hal.ADC_shunt_resistance = 5E-3f;
+	hal.ADC_amplifier_gain = - 5.f;
+	hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_bias = 0.f;
+
+#endif /* _HW_KLEN */
+
+#ifdef _HW_REV4B
+
+	hal.ADC_shunt_resistance = 0.5E-3f;
+	hal.ADC_amplifier_gain = 60.f;
+	hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
+	hal.ADC_terminal_bias = 0.f;
+
+#endif /* _HW_REV4B */
+
+#ifdef _HW_REV4C
+
+	/* Default */
+
+#endif /* _HW_REV4C */
+
+	hal.TIM_mode = TIM_DISABLED;
+	hal.CAN_mode_NART = CAN_MODE_STANDARD;
+	hal.PPM_mode = PPM_DISABLED;
+	hal.PPM_timebase = 2000000UL;
+
+	can.node_ID = 0;
+	can.log_MODE = IFCAN_LOG_DISABLED;
+
+	ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
+	ap.ppm_in_range[0] = 1000.f;
+	ap.ppm_in_range[1] = 1500.f;
+	ap.ppm_in_range[2] = 2000.f;
+	ap.ppm_control_range[0] = 0.f;
+	ap.ppm_control_range[1] = 50.f;
+	ap.ppm_control_range[2] = 100.f;
+
+	ap.step_reg_ID = ID_PM_X_SETPOINT_F_MM;
+	ap.step_const_ld_EP = 0.f;
+
+	ap.analog_ENABLED = PM_DISABLED;
+	ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
+	ap.analog_in_ANG[0] = 1.0f;
+	ap.analog_in_ANG[1] = 2.5f;
+	ap.analog_in_ANG[2] = 4.0f;
+	ap.analog_in_BRK[0] = 2.0f;
+	ap.analog_in_BRK[1] = 4.0f;
+	ap.analog_in_lost[0] = 0.2f;
+	ap.analog_in_lost[1] = 4.8f;
+	ap.analog_control_ANG[0] = 0.f;
+	ap.analog_control_ANG[1] = 50.f;
+	ap.analog_control_ANG[2] = 100.f;
+	ap.analog_control_BRK = - 100.f;
+
+	ap.startup_in_range[0] = - 95E-2f;
+	ap.startup_in_range[1] = 95E-2f;
+	ap.timeout_in_tol = 5E-2f;
+	ap.timeout_shutdown = 10.f;
+
+	ap.ntc_PCB.r_balance = 10000.f;
+	ap.ntc_PCB.r_ntc_0 = 10000.f;
+	ap.ntc_PCB.ta_0 = 25.f;
+	ap.ntc_PCB.betta = 3435.f;
+
+	ap.ntc_EXT.r_balance = 10000.f;
+	ap.ntc_EXT.r_ntc_0 = 10000.f;
+	ap.ntc_EXT.ta_0 = 25.f;
+	ap.ntc_EXT.betta = 3380.f;
+
+	ap.heat_PCB = 90.f;
+	ap.heat_PCB_derated_1 = 20.f;
+	ap.heat_EXT = 90.f;
+	ap.heat_EXT_derated_1 = 20.f;
+	ap.heat_PCB_FAN = 60.f;
+	ap.heat_recovery_gap = 5.f;
+
+	ap.hx711_gain[0] = 0.f;
+	ap.hx711_gain[1] = 4.545E-6f;
+
+	ap.servo_span_mm[0] = - 25.f;
+	ap.servo_span_mm[1] = 25.f;
+	ap.servo_uniform_mmps = 20.f;
+	ap.servo_mice_role = 0;
+
+	ap.FT_grab_hz = 200;
+
+	pm.freq_hz = hal.PWM_frequency;
+	pm.dT = 1.f / pm.freq_hz;
+	pm.dc_resolution = hal.PWM_resolution;
+	pm.proc_set_DC = &PWM_set_DC;
+	pm.proc_set_Z = &PWM_set_Z;
+
+	pm_default(&pm);
+	tel_reg_default(&ti);
+
+	/* Try to load from flash.
+	 * */
+	flash_block_load();
+}
+
 void task_INIT(void *pData)
 {
-	int			rc_flash;
+	int			irq;
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
@@ -382,6 +548,15 @@ void task_INIT(void *pData)
 	GPIO_set_mode_OUTPUT(GPIO_LED);
 	GPIO_set_HIGH(GPIO_LED);
 
+	io_USART.getc = &USART_getc;
+	io_USART.putc = &USART_putc;
+	io_CAN.getc = &IFCAN_getc;
+	io_CAN.putc = &IFCAN_putc;
+
+	/* Default to USART.
+	 * */
+	iodef = &io_USART;
+
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
 
@@ -390,9 +565,30 @@ void task_INIT(void *pData)
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
 
-	ap.io_USART.getc = &USART_getc;
-	ap.io_USART.putc = &USART_putc;
-	iodef = &ap.io_USART;
+	app_load_configuration();
+
+	irq = hal_lock_irq();
+
+	ADC_startup();
+	PWM_startup();
+	WD_startup();
+
+	pm.freq_hz = hal.PWM_frequency;
+	pm.dT = 1.f / pm.freq_hz;
+	pm.dc_resolution = hal.PWM_resolution;
+
+	hal_unlock_irq(irq);
+
+	PPM_startup();
+	TIM_startup();
+
+	USART_startup();
+	IFCAN_startup();
+
+	xTaskCreate(task_TERM, "TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
 	if (log_bootup() != 0) {
 
@@ -401,191 +597,9 @@ void task_INIT(void *pData)
 		vTaskDelay((TickType_t) 1000);
 	}
 
-	rc_flash = flash_block_load();
-
-	if (rc_flash == 0) {
-
-		/* Resistor values in the voltage measurement circuits.
-		 *
-	                            +------< vREF
-	                            |
-	                            |
-	                           | |
-	                           | | R3 (1%)
-	                           |_|
-	                  R1 (1%)   |               +---+
-	                   _____    |              /    |
-	         vIN >----|_____|---+--------+----- ADC |
-	                            |        |     \    |
-	                            |        |      +---+
-	                           | |       |
-	                   R2 (1%) | |     -----
-	                           |_|     -----
-	                            |        |    C1 (C0G)
-	                            |        |
-	                            +--------+
-	                            |
-	                           ---
-	                           \ /  AGND
-		 */
-
-		float		vm_R1 = 470000.f;
-		float		vm_R2 = 27000.f;
-		float		vm_R3 = 470000.f;
-		float		vm_D = (vm_R1 * vm_R2 + vm_R2 * vm_R3 + vm_R1 * vm_R3);
-
-		float		in_R1 = 10000.f;
-		float		in_R2 = 10000.f;
-
-		/* Default.
-		 * */
-		hal.USART_baud_rate = 57600;
-		hal.PWM_frequency = 30000.f;
-		hal.PWM_deadtime = 190.f;
-		hal.ADC_reference_voltage = 3.3f;
-		hal.ADC_shunt_resistance = 0.5E-3f;
-		hal.ADC_amplifier_gain = 20.f;
-		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_ratio = vm_R2 * vm_R3 / vm_D;
-		hal.ADC_terminal_bias = vm_R1 * vm_R2 * hal.ADC_reference_voltage / vm_D;
-		hal.ADC_analog_ratio = in_R2 / (in_R1 + in_R2);
-
-#ifdef _HW_REV2
-
-		hal.PWM_deadtime = 90.f;
-		hal.ADC_shunt_resistance = 0.5E-3f;
-		hal.ADC_amplifier_gain = 60.f;
-		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_bias = 0.f;
-
-#endif /* _HW_REV2 */
-
-#ifdef _HW_KLEN
-
-		vm_R1 = 47000.f;
-		vm_R2 = 2200.f;
-
-		hal.PWM_deadtime = 90.f;
-		hal.ADC_shunt_resistance = 5E-3f;
-		hal.ADC_amplifier_gain = - 5.f;
-		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_bias = 0.f;
-
-#endif /* _HW_KLEN */
-
-#ifdef _HW_REV4B
-
-		hal.ADC_shunt_resistance = 0.5E-3f;
-		hal.ADC_amplifier_gain = 60.f;
-		hal.ADC_voltage_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_ratio = vm_R2 / (vm_R1 + vm_R2);
-		hal.ADC_terminal_bias = 0.f;
-
-#endif /* _HW_REV4B */
-
-#ifdef _HW_REV4C
-
-		/* Default */
-
-#endif /* _HW_REV4C */
-
-		hal.TIM_mode = TIM_DISABLED;
-		hal.PPM_mode = PPM_DISABLED;
-		hal.PPM_timebase = 2000000UL;
-
-		ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
-		ap.ppm_in_range[0] = 1000.f;
-		ap.ppm_in_range[1] = 1500.f;
-		ap.ppm_in_range[2] = 2000.f;
-		ap.ppm_control_range[0] = 0.f;
-		ap.ppm_control_range[1] = 50.f;
-		ap.ppm_control_range[2] = 100.f;
-
-		ap.step_reg_ID = ID_PM_X_SETPOINT_F_MM;
-		ap.step_const_ld_EP = 0.f;
-
-		ap.analog_ENABLED = PM_DISABLED;
-		ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
-		ap.analog_in_ANG[0] = 1.0f;
-		ap.analog_in_ANG[1] = 2.5f;
-		ap.analog_in_ANG[2] = 4.0f;
-		ap.analog_in_BRK[0] = 2.0f;
-		ap.analog_in_BRK[1] = 4.0f;
-		ap.analog_in_lost[0] = 0.2f;
-		ap.analog_in_lost[1] = 4.8f;
-		ap.analog_control_ANG[0] = 0.f;
-		ap.analog_control_ANG[1] = 50.f;
-		ap.analog_control_ANG[2] = 100.f;
-		ap.analog_control_BRK = - 100.f;
-
-		ap.startup_in_range[0] = - 95E-2f;
-		ap.startup_in_range[1] = 95E-2f;
-		ap.timeout_in_tol = 5E-2f;
-		ap.timeout_shutdown = 10.f;
-
-		ap.ntc_PCB.r_balance = 10000.f;
-		ap.ntc_PCB.r_ntc_0 = 10000.f;
-		ap.ntc_PCB.ta_0 = 25.f;
-		ap.ntc_PCB.betta = 3435.f;
-
-		ap.ntc_EXT.r_balance = 10000.f;
-		ap.ntc_EXT.r_ntc_0 = 10000.f;
-		ap.ntc_EXT.ta_0 = 25.f;
-		ap.ntc_EXT.betta = 3380.f;
-
-		ap.heat_PCB = 90.f;
-		ap.heat_PCB_derated_1 = 20.f;
-		ap.heat_EXT = 90.f;
-		ap.heat_EXT_derated_1 = 20.f;
-		ap.heat_PCB_FAN = 60.f;
-		ap.heat_recovery_gap = 5.f;
-
-		ap.hx711_gain[0] = 0.f;
-		ap.hx711_gain[1] = 4.545E-6f;
-
-		ap.servo_span_mm[0] = - 25.f;
-		ap.servo_span_mm[1] = 25.f;
-		ap.servo_uniform_mmps = 20.f;
-		ap.servo_mice_role = 0;
-
-		ap.FT_grab_hz = 200;
-	}
-
-	USART_startup();
-	ADC_startup();
-	PWM_startup();
-
-	pm.freq_hz = hal.PWM_frequency;
-	pm.dT = 1.f / pm.freq_hz;
-	pm.dc_resolution = hal.PWM_resolution;
-	pm.proc_set_DC = &PWM_set_DC;
-	pm.proc_set_Z = &PWM_set_Z;
-
-	if (rc_flash == 0) {
-
-		/* Default.
-		 * */
-		pm_default(&pm);
-		tel_reg_default(&ti);
-
-		reg_SET_F(ID_PM_FAULT_CURRENT_HALT, 0.f);
-	}
-
-	PPM_startup();
-	TIM_startup();
-	WD_startup();
-
-	ADC_irq_unlock();
 	GPIO_set_LOW(GPIO_LED);
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
-
-	xTaskCreate(task_TERM, "TERM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	xTaskCreate(task_in_ANALOG, "in_ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
 	/* Do app startup here.
 	 * */

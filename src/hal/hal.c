@@ -30,42 +30,42 @@ volatile int			bootload_jump	LD_NOINIT;
 
 void irq_NMI()
 {
-	log_TRACE("IRQ: NMI\r\n");
+	log_TRACE("IRQ: NMI" EOL);
 
 	hal_system_reset();
 }
 
 void irq_HardFault()
 {
-	log_TRACE("IRQ: HardFault\r\n");
+	log_TRACE("IRQ: HardFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_MemoryFault()
 {
-	log_TRACE("IRQ: MemoryFault\r\n");
+	log_TRACE("IRQ: MemoryFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_BusFault()
 {
-	log_TRACE("IRQ: BusFault\r\n");
+	log_TRACE("IRQ: BusFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_UsageFault()
 {
-	log_TRACE("IRQ: UsageFault\r\n");
+	log_TRACE("IRQ: UsageFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_Default()
 {
-	log_TRACE("IRQ: Default\r\n");
+	log_TRACE("IRQ: Default" EOL);
 
 	hal_system_reset();
 }
@@ -114,7 +114,7 @@ clock_startup()
 
 		__NOP();
 	}
-	while (HSE == 0 && N < 20000UL);
+	while (HSE == 0 && N < 40000UL);
 
 	/* Enable power interface clock.
 	 * */
@@ -130,9 +130,10 @@ clock_startup()
 
 	if (HSE != 0) {
 
+		CLOCK = CLOCK_CRYSTAL_HZ;
+
 		/* From HSE.
 		 * */
-		CLOCK = CLOCK_CRYSTAL_HZ;
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
 
 		/* Define HSE frequency.
@@ -140,16 +141,17 @@ clock_startup()
 		hal.HSE_crystal_clock = CLOCK_CRYSTAL_HZ;
 	}
 	else {
+		CLOCK = 16000000UL;
+
 		/* From HSI.
 		 * */
-		CLOCK = 16000000UL;
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
 
 		/* Define that HSE is disabled.
 		 * */
 		hal.HSE_crystal_clock = 0;
 
-		log_TRACE("HSE failed\r\n");
+		log_TRACE("HSE failed" EOL);
 	}
 
 	PLLP = 2;
@@ -176,8 +178,10 @@ clock_startup()
 
 	/* Wait till the main PLL is ready.
 	 * */
-	while ((RCC->CR & RCC_CR_PLLRDY) == 0)
+	while ((RCC->CR & RCC_CR_PLLRDY) == 0) {
+
 		__NOP();
+	}
 
 	/* Configure Flash.
 	 * */
@@ -189,8 +193,10 @@ clock_startup()
 
 	/* Wait till PLL is used.
 	 * */
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL)
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {
+
 		__NOP();
+	}
 }
 
 static void
@@ -213,21 +219,27 @@ periph_startup()
 	 * */
 	if (RCC->CSR & RCC_CSR_WDGRSTF) {
 
-		log_TRACE("RESET: WD\r\n");
+		log_TRACE("RESET: WD" EOL);
 	}
 
 	RCC->CSR |= RCC_CSR_RMVF;
 }
 
-void hal_startup()
+static void
+firmware_info()
 {
-	if (bootload_jump != INIT_SIGNATURE) {
+	u32_t		*flash = (u32_t *) &ld_begin_vectors;
 
-		base_startup();
-		clock_startup();
-		periph_startup();
-	}
-	else {
+	/* Define firmware INFO.
+	 * */
+	hal.FLASH_sizeof = * (flash + 8) - * (flash + 7);
+	hal.FLASH_crc32 = crc32b(flash, hal.FLASH_sizeof);
+}
+
+void hal_bootload()
+{
+	if (bootload_jump == INIT_SIGNATURE) {
+
 		bootload_jump = 0;
 
 		SYSCFG->MEMRMP = SYSCFG_MEMRMP_MEM_MODE_0;
@@ -235,12 +247,22 @@ void hal_startup()
 		__DSB();
 		__ISB();
 
+		/* Load MSP.
+		 * */
 		__set_MSP(* (u32_t *) 0x1FFF0000UL);
 
+		/* Jump to bootloader.
+		 * */
 		((void (*) (void)) (* (u32_t *) 0x1FFF0004UL)) ();
-
-		NVIC_SystemReset();
 	}
+}
+
+void hal_startup()
+{
+	base_startup();
+	clock_startup();
+	periph_startup();
+	firmware_info();
 }
 
 void hal_delay_usec(int usec)
@@ -263,6 +285,21 @@ void hal_delay_usec(int usec)
 		__NOP();
 	}
 	while (1);
+}
+
+int hal_lock_irq()
+{
+	int		irq;
+
+	irq = __get_BASEPRI();
+	__set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
+
+	return irq;
+}
+
+void hal_unlock_irq(int irq)
+{
+	__set_BASEPRI(irq);
 }
 
 void hal_system_reset()

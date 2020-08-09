@@ -5,6 +5,7 @@
 
 #include "libc.h"
 #include "main.h"
+#include "ifcan.h"
 #include "regfile.h"
 #include "shell.h"
 #include "tel.h"
@@ -13,13 +14,13 @@
 #define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
 
 static int		null;
-static void		*iodef_echo;
+static void		*iodef_ECHO;
 
 static void
 silent_putc(int c) { /* Do nothing */ }
 
 static void
-reg_proc_echo(const reg_t *reg, int *lval, const int *rval)
+reg_proc_ECHO(const reg_t *reg, int *lval, const int *rval)
 {
 	void		(** kept) (int c) = (void *) reg->link;
 
@@ -45,6 +46,8 @@ reg_proc_echo(const reg_t *reg, int *lval, const int *rval)
 static void
 reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 {
+	int			irq;
+
 	if (lval != NULL) {
 
 		*lval = reg->link->f;
@@ -55,8 +58,7 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 
 		if (pm.lu_mode == PM_LU_DISABLED) {
 
-			taskENTER_CRITICAL();
-			ADC_irq_lock();
+			irq = hal_lock_irq();
 
 			PWM_configure();
 
@@ -64,8 +66,7 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 			pm.dT = 1.f / pm.freq_hz;
 			pm.dc_resolution = hal.PWM_resolution;
 
-			ADC_irq_unlock();
-			taskEXIT_CRITICAL();
+			hal_unlock_irq(irq);
 		}
 	}
 }
@@ -73,6 +74,8 @@ reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_adc(const reg_t *reg, float *lval, const float *rval)
 {
+	int			irq;
+
 	if (lval != NULL) {
 
 		*lval = reg->link->f;
@@ -83,16 +86,29 @@ reg_proc_adc(const reg_t *reg, float *lval, const float *rval)
 
 		if (pm.lu_mode == PM_LU_DISABLED) {
 
-			taskENTER_CRITICAL();
-			ADC_irq_lock();
+			irq = hal_lock_irq();
 
 			ADC_configure();
 
 			reg_SET_F(ID_PM_FAULT_CURRENT_HALT, 0.f);
 
-			ADC_irq_unlock();
-			taskEXIT_CRITICAL();
+			hal_unlock_irq(irq);
 		}
+	}
+}
+
+static void
+reg_proc_can_NART(const reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = *rval;
+
+		CAN_configure();
 	}
 }
 
@@ -107,13 +123,7 @@ reg_proc_ppm(const reg_t *reg, int *lval, const int *rval)
 
 		reg->link->i = *rval;
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
-
 		PPM_configure();
-
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
 	}
 }
 
@@ -128,13 +138,22 @@ reg_proc_tim(const reg_t *reg, int *lval, const int *rval)
 
 		reg->link->i = *rval;
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
-
 		TIM_configure();
+	}
+}
 
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
+static void
+reg_proc_node_ID(const reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = *rval;
+
+		IFCAN_filter_ID();
 	}
 }
 
@@ -420,17 +439,16 @@ reg_proc_F_g(const reg_t *reg, float *lval, const float *rval)
 {
 	float			*F = (void *) reg->link;
 	float			f_cosine, f_sine;
+	int			irq;
 
 	if (lval != NULL) {
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
+		irq = hal_lock_irq();
 
 		f_cosine = F[0];
 		f_sine   = F[1];
 
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
+		hal_unlock_irq(irq);
 
 		*lval = m_atan2f(f_sine, f_cosine) * (180.f / M_PI_F);
 	}
@@ -452,19 +470,17 @@ reg_proc_setpoint_F(const reg_t *reg, float *lval, const float *rval)
 {
 	float			*F = (void *) reg->link;
 	float			angle, f_cosine, f_sine;
-	int			revol;
+	int			revol, irq;
 
         if (lval != NULL) {
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
+		irq = hal_lock_irq();
 
 		f_cosine = F[0];
 		f_sine   = F[1];
 		revol    = pm.x_setpoint_revol;
 
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
+		hal_unlock_irq(irq);
 
 		angle = m_atan2f(f_sine, f_cosine);
 		*lval = angle + (float) revol * 2.f * M_PI_F;
@@ -490,15 +506,13 @@ reg_proc_setpoint_F(const reg_t *reg, float *lval, const float *rval)
 		f_cosine = m_cosf(angle);
 		f_sine   = m_sinf(angle);
 
-		taskENTER_CRITICAL();
-		ADC_irq_lock();
+		irq = hal_lock_irq();
 
 		F[0] = f_cosine;
 		F[1] = f_sine;
 		pm.x_setpoint_revol = revol;
 
-		ADC_irq_unlock();
-		taskEXIT_CRITICAL();
+		hal_unlock_irq(irq);
         }
 }
 
@@ -626,6 +640,8 @@ reg_proc_tvm_FIR_tau(const reg_t *reg, float *lval, const float *rval)
 static void
 reg_proc_im_fuel(const reg_t *reg, float *lval, const float *rval)
 {
+	int			irq;
+
 	if (lval != NULL) {
 
 		*lval = reg->link->f;
@@ -634,20 +650,24 @@ reg_proc_im_fuel(const reg_t *reg, float *lval, const float *rval)
 
 		if (*rval < M_EPS_F) {
 
-			taskENTER_CRITICAL();
-			ADC_irq_lock();
+			irq = hal_lock_irq();
 
 			pm.im_consumed_Wh = 0.f;
 			pm.im_consumed_Ah = 0.f;
 			pm.im_reverted_Wh = 0.f;
 			pm.im_reverted_Ah = 0.f;
 
-			ADC_irq_unlock();
-			taskEXIT_CRITICAL();
+			hal_unlock_irq(irq);
 
 			vTaskDelay((TickType_t) 1);
 		}
 	}
+}
+
+static void
+reg_format_hex(const reg_t *reg)
+{
+	printf("%8x", * (u32_t *) reg->link);
 }
 
 static void
@@ -708,6 +728,17 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
+		case ID_HAL_CAN_MODE_NART:
+
+			switch (val) {
+
+				TEXT_ITEM(CAN_MODE_STANDARD);
+				TEXT_ITEM(CAN_MODE_NO_AUTO_RETRANSMIT);
+
+				default: break;
+			}
+			break;
+
 		case ID_HAL_PPM_MODE:
 
 			switch (val) {
@@ -717,6 +748,18 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PPM_STEP_DIR);
 				TEXT_ITEM(PPM_OUTPULSE);
 				TEXT_ITEM(PPM_BACKUP_ABI);
+
+				default: break;
+			}
+			break;
+
+		case ID_CAN_LOG_MODE:
+
+			switch (val) {
+
+				TEXT_ITEM(IFCAN_LOG_DISABLED);
+				TEXT_ITEM(IFCAN_LOG_FILTERED);
+				TEXT_ITEM(IFCAN_LOG_PROMISCUOUS);
 
 				default: break;
 			}
@@ -866,7 +909,10 @@ reg_format_enum(const reg_t *reg)
 const reg_t		regfile[] = {
 
 	REG_DEF(null,,,				"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(iodef_echo,,,			"",	"%i",	0, &reg_proc_echo, NULL),
+	REG_DEF(iodef_ECHO,,,			"",	"%i",	0, &reg_proc_ECHO, NULL),
+
+	REG_DEF(hal.FLASH_sizeof,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(hal.FLASH_crc32,,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_hex),
 
 	REG_DEF(hal.HSE_crystal_clock,,,	"Hz",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(hal.USART_baud_rate,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
@@ -879,9 +925,13 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.ADC_terminal_ratio,,,	"",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
 	REG_DEF(hal.ADC_terminal_bias,,,	"",	"%4e",	REG_CONFIG, &reg_proc_adc, NULL),
 	REG_DEF(hal.TIM_mode,,,		"",	"%i", REG_CONFIG, &reg_proc_tim, &reg_format_enum),
+	REG_DEF(hal.CAN_mode_NART,,,	"",	"%i", REG_CONFIG, &reg_proc_can_NART, &reg_format_enum),
 	REG_DEF(hal.PPM_mode,,,		"",	"%i", REG_CONFIG, &reg_proc_ppm, &reg_format_enum),
 	REG_DEF(hal.PPM_timebase,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
+
+	REG_DEF(can.node_ID,,,		"",	"%i",	REG_CONFIG, &reg_proc_node_ID, NULL),
+	REG_DEF(can.log_MODE,,,		"",	"%i",	REG_CONFIG, &reg_proc_node_ID, &reg_format_enum),
 
 	REG_DEF(ap.ppm_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.ppm_in_range, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
@@ -1373,6 +1423,22 @@ void reg_format(const reg_t *reg)
 const reg_t *reg_search(const char *sym)
 {
 	const reg_t		*reg, *found = NULL;
+
+	for (reg = regfile; reg->sym != NULL; ++reg) {
+
+		if (strcmp(reg->sym, sym) == 0) {
+
+			found = reg;
+			break;
+		}
+	}
+
+	return found;
+}
+
+const reg_t *reg_search_fuzzy(const char *sym)
+{
+	const reg_t		*reg, *found = NULL;
 	int			n;
 
 	if (stoi(&n, sym) != NULL) {
@@ -1390,7 +1456,7 @@ const reg_t *reg_search(const char *sym)
 			}
 		}
 
-		if (found == NULL && iodef_echo == NULL) {
+		if (found == NULL && iodef_ECHO == NULL) {
 
 			for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -1461,7 +1527,7 @@ SH_DEF(reg)
 	reg_val_t		rval;
 	const reg_t		*reg, *lreg;
 
-	reg = reg_search(s);
+	reg = reg_search_fuzzy(s);
 
 	if (reg != NULL) {
 
@@ -1471,7 +1537,7 @@ SH_DEF(reg)
 
 			if (reg->mode & REG_LINKED) {
 
-				lreg = reg_search(s);
+				lreg = reg_search_fuzzy(s);
 
 				if (lreg != NULL) {
 
@@ -1491,12 +1557,12 @@ SH_DEF(reg)
 			}
 		}
 
-		if (iodef_echo == NULL) {
+		if (iodef_ECHO == NULL) {
 
 			reg_format(reg);
 		}
 	}
-	else if (iodef_echo == NULL) {
+	else if (iodef_ECHO == NULL) {
 
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 

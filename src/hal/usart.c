@@ -1,6 +1,9 @@
+#include <stddef.h>
+
 #include "freertos/FreeRTOS.h"
 #include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "libc.h"
 
 #define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
@@ -16,8 +19,8 @@
 
 typedef struct {
 
-	QueueHandle_t		xRX;
-	QueueHandle_t		xTX;
+	QueueHandle_t		queue_RX;
+	QueueHandle_t		queue_TX;
 }
 HAL_USART_t;
 
@@ -26,7 +29,7 @@ static HAL_USART_t		hal_USART;
 void irq_USART3()
 {
 	BaseType_t		xWoken = pdFALSE;
-	unsigned int 		SR;
+	u32_t 			SR;
 	char			xC;
 
 	SR = USART3->SR;
@@ -34,12 +37,14 @@ void irq_USART3()
 	if (SR & USART_SR_RXNE) {
 
 		xC = USART3->DR;
-		xQueueSendToBackFromISR(hal_USART.xRX, &xC, &xWoken);
+		xQueueSendToBackFromISR(hal_USART.queue_RX, &xC, &xWoken);
+
+		IODEF_TO_USART();
 	}
 
 	if (SR & USART_SR_TXE) {
 
-		if (xQueueReceiveFromISR(hal_USART.xTX, &xC, &xWoken) == pdTRUE) {
+		if (xQueueReceiveFromISR(hal_USART.queue_TX, &xC, &xWoken) == pdTRUE) {
 
 			USART3->DR = xC;
 		}
@@ -64,8 +69,8 @@ void USART_startup()
 
 	/* Alloc queues.
 	 * */
-	hal_USART.xRX = xQueueCreate(40, sizeof(char));
-	hal_USART.xTX = xQueueCreate(80, sizeof(char));
+	hal_USART.queue_RX = xQueueCreate(40, sizeof(char));
+	hal_USART.queue_TX = xQueueCreate(80, sizeof(char));
 
 	/* Configure USART.
 	 * */
@@ -85,7 +90,7 @@ int USART_getc()
 {
 	char		xC;
 
-	xQueueReceive(hal_USART.xRX, &xC, portMAX_DELAY);
+	xQueueReceive(hal_USART.queue_RX, &xC, portMAX_DELAY);
 
 	return (int) xC;
 }
@@ -96,7 +101,7 @@ void USART_putc(int c)
 
 	GPIO_set_HIGH(GPIO_LED);
 
-	if (xQueueSendToBack(hal_USART.xTX, &xC, portMAX_DELAY) == pdTRUE) {
+	if (xQueueSendToBack(hal_USART.queue_TX, &xC, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
@@ -104,11 +109,5 @@ void USART_putc(int c)
 	GPIO_set_LOW(GPIO_LED);
 }
 
-void USART_debug_putc(int c)
-{
-	while ((USART3->SR & USART_SR_TXE) == 0)
-		__NOP();
-
-	USART3->DR = c;
-}
+QueueHandle_t USART_queue_RX() { return hal_USART.queue_RX; }
 

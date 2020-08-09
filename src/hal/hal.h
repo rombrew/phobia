@@ -44,7 +44,7 @@
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
 #define	LD_CCMRAM			__attribute__ ((section(".ccmram")))
-#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline))
+#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
 
 #define INIT_SIGNATURE			0x55775577UL
@@ -70,6 +70,9 @@ enum {
 };
 
 typedef struct {
+
+	int		FLASH_sizeof;
+	int		FLASH_crc32;
 
 	int		HSE_crystal_clock;
 	int		USART_baud_rate;
@@ -105,9 +108,8 @@ typedef struct {
 
 	int		TIM_mode;
 
-	unsigned long	CAN_msg_ID;
-	int		CAN_msg_len;
-	unsigned char	CAN_msg_payload[8];
+	int		CAN_mode_NART;
+	CAN_msg_t	CAN_msg;
 
 	int		PPM_mode;
 	int		PPM_timebase;
@@ -129,8 +131,12 @@ extern unsigned long		clock_cpu_hz;
 extern HAL_t			hal;
 extern LOG_t			log;
 
+void hal_bootload();
 void hal_startup();
 void hal_delay_usec(int usec);
+
+int hal_lock_irq();
+void hal_unlock_irq(int irq);
 
 void hal_system_reset();
 void hal_bootload_jump();

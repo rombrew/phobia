@@ -11,11 +11,17 @@
 typedef struct {
 
 	u32_t			number;
-	u32_t			version;
-	u32_t			content[1021];
+	u32_t			regs_N;
+	u32_t			content[4093];
 	u32_t			crc32;
 }
 flash_block_t;
+
+static u32_t
+flash_block_crc32(flash_block_t *block)
+{
+	return crc32b(block, sizeof(flash_block_t) - sizeof(u32_t));
+}
 
 static flash_block_t *
 flash_block_scan()
@@ -26,18 +32,15 @@ flash_block_scan()
 	last = NULL;
 
 	do {
-		if (block->version == REG_CONFIG_VERSION) {
+		if (flash_block_crc32(block) == block->crc32) {
 
-			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
+			if (last != NULL) {
 
-				if (last != NULL) {
-
-					last = (block->number > last->number)
-						? block : last;
-				}
-				else {
-					last = block;
-				}
+				last = (block->number > last->number)
+					? block : last;
+			}
+			else {
+				last = block;
 			}
 		}
 
@@ -55,21 +58,29 @@ int flash_block_load()
 {
 	const reg_t		*reg;
 	flash_block_t		*block;
-	u32_t			*content;
-	int			rc = 0;
+	char			*lsyms;
+	int			N, rc = 0;
 
 	block = flash_block_scan();
 
 	if (block != NULL) {
 
-		content = block->content;
+		lsyms = (char *) (block->content + block->regs_N);
 
-		for (reg = regfile; reg->sym != NULL; ++reg) {
+		for (N = 0; N < block->regs_N; ++N) {
 
-			if (reg->mode & REG_CONFIG) {
+			/* Search for an exact match.
+			 * */
+			reg = reg_search(lsyms);
 
-				* (u32_t *) reg->link = *content++;
+			if (reg != NULL && reg->mode & REG_CONFIG) {
+
+				/* Load content of the REGISTER.
+				 * */
+				* (u32_t *) reg->link = block->content[N];
 			}
+
+			lsyms += strlen(lsyms) + 1;
 		}
 
 		rc = 1;
@@ -99,13 +110,64 @@ flash_is_block_dirty(const flash_block_t *block)
 	return dirty;
 }
 
-	static int
-flash_block_write()
+static int
+flash_block_store_content(flash_block_t *block)
 {
 	const reg_t		*reg;
+	char			*lsyms;
+	int			N;
+
+	for (reg = regfile, N = 0; reg->sym != NULL; ++reg) {
+
+		if (reg->mode & REG_CONFIG) {
+
+			/* Store binary VALUE of register.
+			 * */
+			block->content[N++] = * (u32_t *) reg->link;
+		}
+	}
+
+	block->regs_N = N;
+
+	lsyms = (char *) (block->content + N);
+
+	for (reg = regfile; reg->sym != NULL; ++reg) {
+
+		if (reg->mode & REG_CONFIG) {
+
+			/* Store symbolic NAME of register.
+			 * */
+			strcpy(lsyms, reg->sym);
+			lsyms += strlen(reg->sym) + 1;
+
+			if (lsyms >= (char *) &block->crc32) {
+
+				/* Block is full.
+				 * */
+				return 0;
+			}
+		}
+	}
+
+	N = lsyms - (char *) block->content;
+	N = (N & 3UL) ? N / 4 + 1 : N / 4;
+
+	/* Fill the tail.
+	 * */
+	for (; N < sizeof(block->content) / sizeof(u32_t); ++N)
+		block->content[N] = 0xFFFFFFFFUL;
+
+	block->crc32 = flash_block_crc32(block);
+
+	return 1;
+}
+
+static int
+flash_block_write()
+{
 	flash_block_t		*block, *temp;
 	u32_t			number;
-	int			n, rc;
+	int			rc = 0;
 
 	block = flash_block_scan();
 
@@ -145,27 +207,60 @@ flash_block_write()
 	if (temp != NULL) {
 
 		temp->number = number;
-		temp->version = REG_CONFIG_VERSION;
 
-		for (reg = regfile, n = 0; reg->sym != NULL; ++reg) {
+		rc = flash_block_store_content(temp);
 
-			if (reg->mode & REG_CONFIG) {
+		if (rc != 0) {
 
-				temp->content[n++] = * (u32_t *) reg->link;
+			FLASH_prog(block, temp, sizeof(flash_block_t));
+		}
+
+		vPortFree(temp);
+
+		if (rc != 0) {
+
+			rc = (flash_block_crc32(block) == block->crc32) ? 1 : 0;
+		}
+	}
+
+	return rc;
+}
+
+int flash_block_relocate()
+{
+	flash_block_t		*block, *reloc;
+	u32_t			number, crc32;
+	int			rc = 1;
+
+	block = flash_block_scan();
+	reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 1];
+
+	if (block != NULL && block < reloc) {
+
+		while (flash_is_block_dirty(reloc) != 0) {
+
+			reloc += 1;
+
+			if ((u32_t) reloc >= flash_ram_map[FLASH_SECTOR_MAX]) {
+
+				reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 1];
+				reloc = FLASH_erase(reloc);
+				break;
 			}
 		}
 
-		for (; n < sizeof(temp->content) / sizeof(u32_t); ++n)
-			temp->content[n] = 0xFFFFFFFFUL;
+		number = block->number + 1;
 
-		temp->crc32 = crc32b(temp, sizeof(flash_block_t) - 4);
+		FLASH_prog(&reloc->number, &number, sizeof(u32_t));
+		FLASH_prog(&reloc->regs_N, &block->regs_N, sizeof(u32_t));
+		FLASH_prog(&reloc->content, &block->content, sizeof(block->content));
 
-		FLASH_prog(block, temp, sizeof(flash_block_t));
+		crc32 = flash_block_crc32(reloc);
 
-		vPortFree(temp);
+		FLASH_prog(&reloc->crc32, &crc32, sizeof(u32_t));
+
+		rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
 	}
-
-	rc = (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) ? 0 : -1;
 
 	return rc;
 }
@@ -184,7 +279,7 @@ SH_DEF(flash_write)
 
 	rc = flash_block_write();
 
-	printf("%s" EOL, (rc == 0) ? "Done" : "Failed");
+	printf("%s" EOL, (rc != 0) ? "Done" : "Failed");
 }
 
 SH_DEF(flash_info_map)
@@ -200,19 +295,16 @@ SH_DEF(flash_info_map)
 
 			info_sym = 'x';
 
-			if (block->version == REG_CONFIG_VERSION) {
+			if (flash_block_crc32(block) == block->crc32) {
 
-				if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
-
-					info_sym = 'a';
-				}
+				info_sym = 'a';
 			}
 		}
 		else {
 			info_sym = '.';
 		}
 
-		iodef->putc(info_sym);
+		printf(" %c", info_sym);
 
 		block += 1;
 
@@ -243,12 +335,9 @@ SH_DEF(flash_cleanup)
 	block = (void *) flash_ram_map[0];
 
 	do {
-		if (block->version == REG_CONFIG_VERSION) {
+		if (flash_block_crc32(block) == block->crc32) {
 
-			if (crc32b(block, sizeof(flash_block_t) - 4) == block->crc32) {
-
-				FLASH_prog(&block->version, &lz, sizeof(u32_t));
-			}
+			FLASH_prog(&block->crc32, &lz, sizeof(u32_t));
 		}
 
 		block += 1;

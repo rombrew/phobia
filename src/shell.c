@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include "shell.h"
+#include "ifcan.h"
 #include "libc.h"
 
 #define SH_CLINE_SZ			84
@@ -504,9 +505,17 @@ sh_line_null(sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
-	/* Prompt.
-	 * */
-	puts(SH_PROMPT);
+	if (iodef == &io_CAN) {
+
+		/* Prompt with CAN node ID.
+		 * */
+		printf("(can/%i) ", can.node_ID);
+	}
+	else {
+		/* Prompt (local).
+		 * */
+		puts(SH_PROMPT);
+	}
 
 	sh->mCOMP = 0;
 	sh->mHIST = 0;

@@ -1,8 +1,6 @@
 #ifndef _H_REGFILE_
 #define _H_REGFILE_
 
-#define REG_CONFIG_VERSION		86
-
 enum {
 	REG_CONFIG		= 1,
 	REG_READ_ONLY		= 2,
@@ -39,7 +37,9 @@ void reg_getval(const reg_t *reg, void *lval);
 void reg_setval(const reg_t *reg, const void *rval);
 void reg_format_rval(const reg_t *reg, const void *rval);
 void reg_format(const reg_t *reg);
+
 const reg_t *reg_search(const char *sym);
+const reg_t *reg_search_fuzzy(const char *sym);
 
 void reg_GET(int n, void *lval);
 void reg_SET(int n, const void *rval);

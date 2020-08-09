@@ -26,6 +26,7 @@ SECTIONS
 
 		. = ALIGN(4);
 		ld_end_text = . ;
+		ld_end_flash = . + SIZEOF(.data) ;
 
 	} > FLASH
 

@@ -86,16 +86,6 @@ ADC_set_SMPR(ADC_TypeDef *pADC, int xCH, int xSMP)
 	}
 }
 
-void ADC_irq_lock()
-{
-	NVIC_DisableIRQ(EXTI0_IRQn);
-}
-
-void ADC_irq_unlock()
-{
-	NVIC_EnableIRQ(EXTI0_IRQn);
-}
-
 void ADC_startup()
 {
 	/* Enable ADC clock.
@@ -177,6 +167,7 @@ void ADC_startup()
 	NVIC_SetPriority(ADC_IRQn, 0);
 	NVIC_SetPriority(EXTI0_IRQn, 1);
 	NVIC_EnableIRQ(ADC_IRQn);
+	NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
 void ADC_configure()

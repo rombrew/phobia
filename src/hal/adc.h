@@ -69,9 +69,6 @@
 
 #endif /* _HW_REV4C */
 
-void ADC_irq_lock();
-void ADC_irq_unlock();
-
 void ADC_startup();
 void ADC_configure();
 float ADC_get_VALUE(int xGPIO);

@@ -10,16 +10,7 @@
 
 typedef struct {
 
-	/* Serial IO interfaces.
-	 * */
-	io_ops_t		io_USART;
-	io_ops_t		io_CAN;
-
-	/* CAN interface.
-	 * */
-	int			can_node_ID;
-
-	/* PPM (PWM) interface.
+	/* PPM interface (PWM).
 	 * */
 	int			ppm_reg_ID;
 	float			ppm_in_cached;
@@ -106,6 +97,7 @@ extern pmc_t			pm;
 extern tel_t			ti;
 
 extern int flash_block_load();
+extern int flash_block_relocate();
 extern int pm_wait_for_IDLE();
 
 float ADC_get_analog_ANG();

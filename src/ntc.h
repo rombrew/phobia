@@ -1,9 +1,10 @@
 #ifndef _H_NTC_
 #define _H_NTC_
 
-/*
+/* Temperature measurement schematic
+ *
 	            +------< vREF
-	            |                 // Temperature measurement schematic //
+	            |
 	            |
 	           | |
 	           | | R_balance 10K (1%)
