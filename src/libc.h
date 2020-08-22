@@ -26,6 +26,10 @@ extern io_ops_t		io_CAN;
  * */
 extern io_ops_t		*iodef;
 
+/* EHCO mode.
+ * */
+extern int		iodef_ECHO;
+
 void *memset(void *d, int c, int n);
 void *memcpy(void *d, const void *s, int n);
 

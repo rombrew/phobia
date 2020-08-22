@@ -11,8 +11,7 @@
 typedef struct {
 
 	u32_t			number;
-	u32_t			regs_N;
-	u32_t			content[4093];
+	u32_t			content[4094];
 	u32_t			crc32;
 }
 flash_block_t;
@@ -54,39 +53,49 @@ flash_block_scan()
 	return last;
 }
 
-int flash_block_load()
+int flash_block_regs_load()
 {
 	const reg_t		*reg;
 	flash_block_t		*block;
-	char			*lsyms;
-	int			N, rc = 0;
+	char			*lsyms, *lvals, *lnull;
 
 	block = flash_block_scan();
 
 	if (block != NULL) {
 
-		lsyms = (char *) (block->content + block->regs_N);
+		lsyms = (char *) block->content;
 
-		for (N = 0; N < block->regs_N; ++N) {
+		while (*lsyms != 0) {
 
-			/* Search for an exact match.
-			 * */
-			reg = reg_search(lsyms);
+			lvals = lsyms + strlen(lsyms) + 1;
+			lnull = lvals + 4;
 
-			if (reg != NULL && reg->mode & REG_CONFIG) {
+			if (lnull < (char *) &block->crc32) {
 
-				/* Load content of the REGISTER.
+				/* Search for an exact match of symbolic NAME.
 				 * */
-				* (u32_t *) reg->link = block->content[N];
+				reg = reg_search(lsyms);
+
+				if (reg != NULL && reg->mode & REG_CONFIG) {
+
+					/* Load binary VALUE of the register.
+					 * */
+					memcpy(reg->link, lvals, sizeof(u32_t));
+				}
+			}
+			else {
+				/* Unable to load.
+				 * */
+				return 0;
 			}
 
-			lsyms += strlen(lsyms) + 1;
+			lsyms = lnull;
 		}
 
-		rc = 1;
+		return 1;
 	}
 
-	return rc;
+	return 0;
 }
 
 static int
@@ -111,51 +120,49 @@ flash_is_block_dirty(const flash_block_t *block)
 }
 
 static int
-flash_block_store_content(flash_block_t *block)
+flash_block_regs_store(flash_block_t *block)
 {
 	const reg_t		*reg;
-	char			*lsyms;
-	int			N;
+	char			*lsyms, *lvals, *lnull;
 
-	for (reg = regfile, N = 0; reg->sym != NULL; ++reg) {
-
-		if (reg->mode & REG_CONFIG) {
-
-			/* Store binary VALUE of register.
-			 * */
-			block->content[N++] = * (u32_t *) reg->link;
-		}
-	}
-
-	block->regs_N = N;
-
-	lsyms = (char *) (block->content + N);
+	lsyms = (char *) block->content;
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
 
 		if (reg->mode & REG_CONFIG) {
 
-			/* Store symbolic NAME of register.
-			 * */
-			strcpy(lsyms, reg->sym);
-			lsyms += strlen(reg->sym) + 1;
+			lvals = lsyms + strlen(reg->sym) + 1;
+			lnull = lvals + 4;
 
-			if (lsyms >= (char *) &block->crc32) {
+			if (lnull < (char *) &block->crc32) {
 
-				/* Block is full.
+				/* Store symbolic NAME of register.
+				 * */
+				strcpy(lsyms, reg->sym);
+
+				/* Store binary VALUE of the register.
+				 * */
+				memcpy(lvals, reg->link, sizeof(u32_t));
+			}
+			else {
+				/* Unable to store as block is full.
 				 * */
 				return 0;
 			}
+
+			lsyms = lnull;
 		}
 	}
 
-	N = lsyms - (char *) block->content;
-	N = (N & 3UL) ? N / 4 + 1 : N / 4;
+	/* Null-terminated.
+	 * */
+	*lsyms++ = 0;
+	*lsyms++ = 0;
 
 	/* Fill the tail.
 	 * */
-	for (; N < sizeof(block->content) / sizeof(u32_t); ++N)
-		block->content[N] = 0xFFFFFFFFUL;
+	while (lsyms < (char *) &block->crc32)
+		*lsyms++ = 0xFF;
 
 	block->crc32 = flash_block_crc32(block);
 
@@ -208,7 +215,7 @@ flash_block_write()
 
 		temp->number = number;
 
-		rc = flash_block_store_content(temp);
+		rc = flash_block_regs_store(temp);
 
 		if (rc != 0) {
 
@@ -252,7 +259,6 @@ int flash_block_relocate()
 		number = block->number + 1;
 
 		FLASH_prog(&reloc->number, &number, sizeof(u32_t));
-		FLASH_prog(&reloc->regs_N, &block->regs_N, sizeof(u32_t));
 		FLASH_prog(&reloc->content, &block->content, sizeof(block->content));
 
 		crc32 = flash_block_crc32(reloc);
@@ -279,7 +285,7 @@ SH_DEF(flash_write)
 
 	rc = flash_block_write();
 
-	printf("%s" EOL, (rc != 0) ? "Done" : "Failed");
+	printf("%s" EOL, (rc != 0) ? "Done" : "Fail");
 }
 
 SH_DEF(flash_info_map)

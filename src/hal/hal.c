@@ -21,7 +21,6 @@
 
 #endif /* _HW_KLEN */
 
-extern long			ld_begin_vectors;
 unsigned long			clock_cpu_hz;
 
 HAL_t				hal;
@@ -135,10 +134,6 @@ clock_startup()
 		/* From HSE.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
-
-		/* Define HSE frequency.
-		 * */
-		hal.HSE_crystal_clock = CLOCK_CRYSTAL_HZ;
 	}
 	else {
 		CLOCK = 16000000UL;
@@ -146,10 +141,6 @@ clock_startup()
 		/* From HSI.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
-
-		/* Define that HSE is disabled.
-		 * */
-		hal.HSE_crystal_clock = 0;
 
 		log_TRACE("HSE failed" EOL);
 	}
@@ -225,17 +216,6 @@ periph_startup()
 	RCC->CSR |= RCC_CSR_RMVF;
 }
 
-static void
-firmware_info()
-{
-	u32_t		*flash = (u32_t *) &ld_begin_vectors;
-
-	/* Define firmware INFO.
-	 * */
-	hal.FLASH_sizeof = * (flash + 8) - * (flash + 7);
-	hal.FLASH_crc32 = crc32b(flash, hal.FLASH_sizeof);
-}
-
 void hal_bootload()
 {
 	if (bootload_jump == INIT_SIGNATURE) {
@@ -262,10 +242,9 @@ void hal_startup()
 	base_startup();
 	clock_startup();
 	periph_startup();
-	firmware_info();
 }
 
-void hal_delay_usec(int usec)
+void hal_delay_ns(int ns)
 {
 	u32_t			xVAL, xLOAD;
 	int			elapsed, tickval;
@@ -273,7 +252,7 @@ void hal_delay_usec(int usec)
 	xVAL = SysTick->VAL;
 	xLOAD = SysTick->LOAD + 1UL;
 
-	tickval = usec * (clock_cpu_hz / 1000000UL);
+	tickval = ns * (clock_cpu_hz / 1000000UL) / 1000UL;
 
 	do {
 		elapsed = (int) (xVAL - SysTick->VAL);

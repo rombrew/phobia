@@ -11,9 +11,9 @@
 
 #define LOAD_COUNT_DELAY		((TickType_t) 100)
 
-application_t			ap;
+app_main_t			ap;
 pmc_t 				pm	LD_CCMRAM;
-tel_t				ti;
+TLM_t				tlm;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
@@ -140,137 +140,66 @@ void task_TERM(void *pData)
 
 void task_ERROR(void *pData)
 {
-	TickType_t		xWake;
-	int			LED = 0;
-
-	xWake = xTaskGetTickCount();
-
 	do {
-		if (LED > 0) {
+		if (pm.fail_reason != PM_OK) {
 
-			/* NOTE: The number of LED flashes (~2 Hz) corresponds
-			 * to the fail reason code.
-			 * */
+			GPIO_set_HIGH(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
 
-			if (LED & 1) {
+			GPIO_set_LOW(GPIO_LED);
+			vTaskDelay((TickType_t) 800);
+		}
+		else if (log.textbuf[0] != 0) {
 
-				GPIO_set_HIGH(GPIO_LED);
-			}
-			else {
-				GPIO_set_LOW(GPIO_LED);
-			}
+			GPIO_set_HIGH(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
 
-			vTaskDelayUntil(&xWake, (TickType_t) 200);
+			GPIO_set_LOW(GPIO_LED);
+			vTaskDelay((TickType_t) 300);
 
-			LED += -1;
+			GPIO_set_HIGH(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
+
+			GPIO_set_LOW(GPIO_LED);
+			vTaskDelay((TickType_t) 800);
 		}
 		else {
-			GPIO_set_LOW(GPIO_LED);
-
-			vTaskDelayUntil(&xWake, (TickType_t) 1000);
-
-			LED = (int) (2 * pm.fail_reason - 1);
+			vTaskDelay((TickType_t) 200);
 		}
 	}
 	while (1);
 }
 
 static void
-pm_STARTUP(float scaled)
+inner_TIMEOUT()
 {
-	if (pm.lu_mode == PM_LU_DISABLED) {
-
-		switch (ap.startup_locked) {
-
-			case 0:
-				if (scaled < ap.startup_in_range[0]) {
-
-					ap.startup_locked = 2;
-				}
-				break;
-
-			case 1:
-				if (scaled > ap.startup_in_range[1]) {
-
-					ap.startup_locked = 0;
-				}
-				break;
-
-			case 2:
-				if (scaled > ap.startup_in_range[1]) {
-
-					ap.startup_locked = 3;
-				}
-				break;
-
-			case 3:
-				if (scaled < ap.startup_in_range[0]) {
-
-					pm.fsm_req = PM_STATE_LU_STARTUP;
-					ap.startup_locked = 1;
-				}
-				break;
-
-			default:
-				ap.startup_locked = 0;
-				break;
-		}
-	}
-}
-
-static void
-pm_SHUTDOWN()
-{
-	if (ap.startup_locked != 0) {
-
-		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-		ap.startup_locked = 0;
-	}
-}
-
-static void
-pm_TIMEOUT(float scaled)
-{
-	TickType_t		xTick, xDT;
 	float			tIDLE;
 
-	if (ap.startup_locked != 0) {
+	ap.timeout_TIME += (TickType_t) 10;
 
-		xTick = xTaskGetTickCount();
+	do {
+		if (pm.im_revol_total != ap.timeout_revol_cached) {
 
-		xDT = xTick - ap.timeout_BASE;
-		xDT = (xDT > (TickType_t) 100) ? 0 : xDT;
-
-		ap.timeout_TIME += xDT;
-		ap.timeout_BASE = xTick;
-
-		do {
-			if (pm.im_revol_total != ap.timeout_revol_cached) {
-
-				ap.timeout_TIME = 0;
-				ap.timeout_revol_cached = pm.im_revol_total;
-				break;
-			}
-
-			if (m_fabsf(scaled - ap.timeout_in_cached) > ap.timeout_in_tol) {
-
-				ap.timeout_TIME = 0;
-				ap.timeout_in_cached = scaled;
-				break;
-			}
-
-			tIDLE = ap.timeout_TIME * (1.f / (float) configTICK_RATE_HZ);
-
-			if (tIDLE > ap.timeout_shutdown) {
-
-				ap.timeout_TIME = 0;
-
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-				ap.startup_locked = 0;
-			}
+			ap.timeout_TIME = 0;
+			ap.timeout_revol_cached = pm.im_revol_total;
+			break;
 		}
-		while (0);
+
+		if (m_fabsf(pm.lu_iQ) > ap.timeout_current_tol) {
+
+			ap.timeout_TIME = 0;
+			break;
+		}
+
+		tIDLE = ap.timeout_TIME * (1.f / (float) configTICK_RATE_HZ);
+
+		if (tIDLE > ap.timeout_IDLE_s) {
+
+			ap.timeout_TIME = 0;
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+		}
 	}
+	while (0);
 }
 
 static void
@@ -297,11 +226,20 @@ inner_ANALOG(float in_ANG, float in_BRK)
 			scaled = (in_ANG - ap.analog_in_ANG[1]) / range;
 		}
 
-		scaled = (scaled < - 1.f) ? - 1.f : (scaled > 1.f) ? 1.f : scaled;
-	}
+		if (scaled < - 1.f) {
 
-	pm_STARTUP(scaled);
-	pm_TIMEOUT(scaled);
+			scaled = - 1.f;
+		}
+		else if (scaled > 1.f) {
+
+			scaled = 1.f;
+		}
+		else if (	ap.analog_STARTUP == PM_ENABLED
+				&& pm.lu_mode == PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_LU_STARTUP;
+		}
+	}
 
 	if (scaled < 0.f) {
 
@@ -359,10 +297,14 @@ void task_ANALOG(void *pData)
 
 				inner_ANALOG(in_ANG, in_BRK);
 			}
+
+			if (		pm.lu_mode != PM_LU_DISABLED
+					&& ap.timeout_IDLE_s > M_EPS_F) {
+
+				inner_TIMEOUT();
+			}
 		}
 		else {
-			/* Relax while ANALOG is disabled.
-			 * */
 			vTaskDelayUntil(&xWake, (TickType_t) 100);
 		}
 	}
@@ -394,7 +336,7 @@ void task_ANALOG(void *pData)
  */
 
 static void
-app_load_configuration()
+app_flash_load()
 {
 	float		vm_R1 = 470000.f;
 	float		vm_R2 = 27000.f;
@@ -462,8 +404,27 @@ app_load_configuration()
 
 	can.node_ID = 0;
 	can.log_MODE = IFCAN_LOG_DISABLED;
+	can.startup_LOST = 3000;
+
+	can.pipe[0].ID = 10;
+	can.pipe[0].tim = 30;
+	can.pipe[1].ID = 20;
+	can.pipe[1].tim = 30;
+	can.pipe[2].ID = 30;
+	can.pipe[2].tim = 30;
+	can.pipe[3].ID = 40;
+	can.pipe[3].tim = 30;
+	can.pipe[4].ID = 50;
+	can.pipe[4].tim = 30;
+	can.pipe[5].ID = 60;
+	can.pipe[5].tim = 30;
+	can.pipe[6].ID = 70;
+	can.pipe[6].tim = 30;
+	can.pipe[7].ID = 80;
+	can.pipe[7].tim = 30;
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
+	ap.ppm_STARTUP = PM_DISABLED;
 	ap.ppm_in_range[0] = 1000.f;
 	ap.ppm_in_range[1] = 1500.f;
 	ap.ppm_in_range[2] = 2000.f;
@@ -472,10 +433,12 @@ app_load_configuration()
 	ap.ppm_control_range[2] = 100.f;
 
 	ap.step_reg_ID = ID_PM_X_SETPOINT_F_MM;
+	ap.step_STARTUP = PM_DISABLED;
 	ap.step_const_ld_EP = 0.f;
 
 	ap.analog_ENABLED = PM_DISABLED;
 	ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
+	ap.analog_STARTUP = PM_DISABLED;
 	ap.analog_in_ANG[0] = 1.0f;
 	ap.analog_in_ANG[1] = 2.5f;
 	ap.analog_in_ANG[2] = 4.0f;
@@ -488,10 +451,8 @@ app_load_configuration()
 	ap.analog_control_ANG[2] = 100.f;
 	ap.analog_control_BRK = - 100.f;
 
-	ap.startup_in_range[0] = - 95E-2f;
-	ap.startup_in_range[1] = 95E-2f;
-	ap.timeout_in_tol = 5E-2f;
-	ap.timeout_shutdown = 10.f;
+	ap.timeout_current_tol = 2.f;
+	ap.timeout_IDLE_s = 10.f;
 
 	ap.ntc_PCB.r_balance = 10000.f;
 	ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -510,12 +471,12 @@ app_load_configuration()
 	ap.heat_PCB_FAN = 60.f;
 	ap.heat_recovery_gap = 5.f;
 
-	ap.hx711_gain[0] = 0.f;
-	ap.hx711_gain[1] = 4.545E-6f;
+	ap.hx711_scale[0] = 0.f;
+	ap.hx711_scale[1] = 4.545E-6f;
 
-	ap.servo_span_mm[0] = - 25.f;
-	ap.servo_span_mm[1] = 25.f;
-	ap.servo_uniform_mmps = 20.f;
+	ap.servo_SPAN_mm[0] = - 25.f;
+	ap.servo_SPAN_mm[1] = 25.f;
+	ap.servo_UNIFORM_mmps = 20.f;
 	ap.servo_mice_role = 0;
 
 	ap.FT_grab_hz = 200;
@@ -527,11 +488,11 @@ app_load_configuration()
 	pm.proc_set_Z = &PWM_set_Z;
 
 	pm_default(&pm);
-	tel_reg_default(&ti);
+	TLM_reg_default(&tlm);
 
-	/* Try to load from flash.
+	/* Try to load all above params from flash.
 	 * */
-	flash_block_load();
+	flash_block_regs_load();
 }
 
 void task_INIT(void *pData)
@@ -556,6 +517,7 @@ void task_INIT(void *pData)
 	/* Default to USART.
 	 * */
 	iodef = &io_USART;
+	iodef_ECHO = 1;
 
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
@@ -565,7 +527,9 @@ void task_INIT(void *pData)
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
 
-	app_load_configuration();
+	/* Load the configuration.
+	 * */
+	app_flash_load();
 
 	irq = hal_lock_irq();
 
@@ -601,9 +565,12 @@ void task_INIT(void *pData)
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 
-	/* Do app startup here.
+	/* Do apps startup here.
 	 * */
-	//pushb_startup(EOL);
+
+	/*
+	pushb_startup(EOL);
+	*/
 
 	vTaskDelete(NULL);
 }
@@ -624,8 +591,6 @@ inner_PULSE_WIDTH(float pulse)
 	}
 
 	scaled = (scaled < - 1.f) ? - 1.f : (scaled > 1.f) ? 1.f : scaled;
-
-	pm_STARTUP(scaled);
 
 	if (scaled < 0.f) {
 
@@ -656,11 +621,21 @@ in_PULSE_WIDTH()
 			if (ap.ppm_reg_ID != ID_NULL) {
 
 				inner_PULSE_WIDTH(pulse);
+
+				if (		ap.ppm_STARTUP == PM_ENABLED
+						&& pm.lu_mode == PM_LU_DISABLED) {
+
+					pm.fsm_req = PM_STATE_LU_STARTUP;
+				}
 			}
 		}
 	}
 	else {
-		pm_SHUTDOWN();
+		if (		ap.ppm_STARTUP == PM_ENABLED
+				&& pm.lu_mode != PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+		}
 	}
 }
 
@@ -681,11 +656,15 @@ in_STEP_DIR()
 
 		if (ap.step_reg_ID != ID_NULL) {
 
-			pm_STARTUP(0.f);
-
 			xSP = ap.step_accuEP * ap.step_const_ld_EP;
 
 			reg_SET_F(ap.step_reg_ID, xSP);
+		}
+
+		if (		ap.step_STARTUP == PM_ENABLED
+				&& pm.lu_mode == PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_LU_STARTUP;
 		}
 	}
 
@@ -723,7 +702,9 @@ void ADC_IRQ()
 	}
 
 	pm_feedback(&pm, &fb);
-	tel_reg_grab(&ti);
+
+	IFCAN_pipes_REGULAR();
+	TLM_reg_grab(&tlm);
 
 	WD_kick();
 }
@@ -732,6 +713,18 @@ void app_MAIN()
 {
 	xTaskCreate(task_INIT, "INIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
 	vTaskStartScheduler();
+}
+
+SH_DEF(rtos_firmware)
+{
+	u32_t		*flash = (u32_t *) &ld_begin_vectors;
+	u32_t		FW_sizeof, FW_crc32;
+
+	FW_sizeof = * (flash + 8) - * (flash + 7);
+	FW_crc32 = crc32b(flash, FW_sizeof);
+
+	printf("FW_sizeof %i" EOL, FW_sizeof);
+	printf("FW_crc32 %8x" EOL, FW_crc32);
 }
 
 SH_DEF(rtos_uptime)
@@ -855,7 +848,7 @@ SH_DEF(rtos_task_kill)
 SH_DEF(rtos_freeheap)
 {
 	printf("FreeHeap %i" EOL, xPortGetFreeHeapSize());
-	printf("MinimumEver %i" EOL, xPortGetMinimumEverFreeHeapSize());
+	printf("Minimum %i" EOL, xPortGetMinimumEverFreeHeapSize());
 }
 
 SH_DEF(rtos_log_flush)
@@ -886,7 +879,7 @@ SH_DEF(rtos_reboot)
 	}
 
 	GPIO_set_LOW(GPIO_BOOST_12V);
-	vTaskDelay((TickType_t) 10);
+	vTaskDelay((TickType_t) 50);
 
 	hal_system_reset();
 }
@@ -900,7 +893,7 @@ SH_DEF(rtos_bootload)
 	}
 
 	GPIO_set_LOW(GPIO_BOOST_12V);
-	vTaskDelay((TickType_t) 10);
+	vTaskDelay((TickType_t) 50);
 
 	hal_bootload_jump();
 }

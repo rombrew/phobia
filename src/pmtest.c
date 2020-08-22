@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "tel.h"
+#include "tlm.h"
 
 SH_DEF(pm_self_test)
 {
@@ -141,9 +141,9 @@ SH_DEF(pm_FT_current_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TEL_DATA_MAX / ap.FT_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / ap.FT_grab_hz);
 
-	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = pm.i_setpoint_Q;
@@ -169,9 +169,9 @@ SH_DEF(pm_FT_speed_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TEL_DATA_MAX / ap.FT_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / ap.FT_grab_hz);
 
-	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = pm.s_setpoint;
@@ -225,7 +225,7 @@ SH_DEF(pm_FT_tvm_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.
@@ -240,7 +240,7 @@ SH_DEF(pm_FT_tvm_ramp)
 		 * */
 		pm.vsi_X = xDC * pm.const_fb_U * pm.ts_inverted;
 
-		if (ti.mode == TEL_MODE_DISABLED)
+		if (tlm.mode == TLM_MODE_DISABLED)
 			break;
 
 		if ((xWake - xTim0) > (TickType_t) 8000) {

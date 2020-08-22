@@ -6,13 +6,14 @@
 
 #include "libc.h"
 #include "ntc.h"
-#include "tel.h"
+#include "tlm.h"
 
 typedef struct {
 
 	/* PPM interface (PWM).
 	 * */
 	int			ppm_reg_ID;
+	int			ppm_STARTUP;
 	float			ppm_in_cached;
 	float			ppm_in_range[3];
 	float			ppm_control_range[3];
@@ -20,6 +21,7 @@ typedef struct {
 	/* STEP/DIR interface.
 	 * */
 	int			step_reg_ID;
+	int			step_STARTUP;
 	int			step_baseEP;
 	int			step_accuEP;
 	float			step_const_ld_EP;
@@ -29,25 +31,19 @@ typedef struct {
 	float			analog_const_GU;
 	int			analog_ENABLED;
 	int			analog_reg_ID;
+	int			analog_STARTUP;
 	float			analog_in_ANG[3];
 	float			analog_in_BRK[2];
 	float			analog_in_lost[2];
 	float			analog_control_ANG[3];
 	float			analog_control_BRK;
 
-	/* Startup control.
-	 * */
-	int			startup_locked;
-	float			startup_in_range[2];
-
 	/* Timeout control.
 	 * */
-	int			timeout_BASE;
 	int			timeout_TIME;
 	int			timeout_revol_cached;
-	float			timeout_in_cached;
-	float			timeout_in_tol;
-	float			timeout_shutdown;
+	float			timeout_current_tol;
+	float			timeout_IDLE_s;
 
 	/* CPU load.
 	 * */
@@ -77,8 +73,8 @@ typedef struct {
 
 	/* Servo drive.
 	 * */
-	float			servo_span_mm[2];
-	float			servo_uniform_mmps;
+	float			servo_SPAN_mm[2];
+	float			servo_UNIFORM_mmps;
 	int			servo_mice_role;
 
 	/* FT constants.
@@ -88,15 +84,15 @@ typedef struct {
 	/* HX711 (load cell amplifier).
 	 * */
 	float			hx711_kg;
-	float			hx711_gain[2];
+	float			hx711_scale[2];
 }
-application_t;
+app_main_t;
 
-extern application_t		ap;
+extern app_main_t		ap;
 extern pmc_t			pm;
-extern tel_t			ti;
+extern TLM_t			tlm;
 
-extern int flash_block_load();
+extern int flash_block_regs_load();
 extern int flash_block_relocate();
 extern int pm_wait_for_IDLE();
 

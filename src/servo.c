@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "tel.h"
+#include "tlm.h"
 
 int pm_wait_for_SETTLE()
 {
@@ -50,7 +50,7 @@ SH_DEF(servo_probe_const_J)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_span_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
 
 		if (pm_wait_for_SETTLE() != PM_OK)
 			break;
@@ -59,11 +59,11 @@ SH_DEF(servo_probe_const_J)
 
 		vTaskDelay((TickType_t) 50);
 
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_span_mm[1]);
+		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[1]);
 
 		vTaskDelay((TickType_t) 200);
 
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_span_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
 
 		vTaskDelay((TickType_t) 200);
 
@@ -94,7 +94,7 @@ SH_DEF(servo_FT_uniform)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_span_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
 
 		if (pm_wait_for_SETTLE() != PM_OK)
 			break;
@@ -104,12 +104,12 @@ SH_DEF(servo_FT_uniform)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	xSP = ap.servo_span_mm[0];
-	wSP = ap.servo_uniform_mmps;
+	xSP = ap.servo_SPAN_mm[0];
+	wSP = ap.servo_UNIFORM_mmps;
 	tDT = 1.f / (float) configTICK_RATE_HZ;
 	DIRF = 1;
 
-	tel_startup(&ti, ap.FT_grab_hz, TEL_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.
@@ -123,11 +123,11 @@ SH_DEF(servo_FT_uniform)
 
 		if (DIRF == 1) {
 
-			if (xSP >= ap.servo_span_mm[1])
+			if (xSP >= ap.servo_SPAN_mm[1])
 				DIRF = - 1;
 		}
 		else {
-			if (xSP <= ap.servo_span_mm[0])
+			if (xSP <= ap.servo_SPAN_mm[0])
 				break;
 		}
 

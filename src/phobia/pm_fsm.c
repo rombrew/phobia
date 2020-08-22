@@ -1555,35 +1555,6 @@ pm_fsm_state_loop_boost(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_go_drive_current(pmc_t *pm)
-{
-	if (pm->config_DRIVE != PM_DRIVE_CURRENT) {
-
-		pm->config_DRIVE = PM_DRIVE_CURRENT;
-	}
-
-	pm->fsm_state = PM_STATE_IDLE;
-	pm->fsm_phase = 0;
-}
-
-static void
-pm_fsm_state_go_drive_speed(pmc_t *pm)
-{
-	if (pm->config_DRIVE != PM_DRIVE_SPEED) {
-
-		pm->s_setpoint = pm->lu_wS;
-		pm->s_track = pm->lu_wS;
-		pm->s_integral = pm->lu_iQ;
-		pm->s_base_wS = pm->lu_wS;
-
-		pm->config_DRIVE = PM_DRIVE_SPEED;
-	}
-
-	pm->fsm_state = PM_STATE_IDLE;
-	pm->fsm_phase = 0;
-}
-
-static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -1650,8 +1621,6 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_PROBE_CONST_J:
 		case PM_STATE_PROBE_LU_MPPE:
 		case PM_STATE_ADJUST_HALL:
-		case PM_STATE_GO_DRIVE_CURRENT:
-		case PM_STATE_GO_DRIVE_SPEED:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1747,14 +1716,6 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_LOOP_BOOST:
 			pm_fsm_state_loop_boost(pm);
-			break;
-
-		case PM_STATE_GO_DRIVE_CURRENT:
-			pm_fsm_state_go_drive_current(pm);
-			break;
-
-		case PM_STATE_GO_DRIVE_SPEED:
-			pm_fsm_state_go_drive_speed(pm);
 			break;
 
 		case PM_STATE_HALT:

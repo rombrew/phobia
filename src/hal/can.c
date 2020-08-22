@@ -84,22 +84,21 @@ void CAN_startup()
 static int
 CAN_wait_for_MSR(u32_t xBITS, u32_t xVAL)
 {
-	int		xMSR, N = 0, rc = 0;
+	int		xMSR, N = 0;
 
 	do {
 		xMSR = CAN1->MSR & xBITS;
 
 		if (xMSR == xVAL) {
 
-			rc = 1;
-			break;
+			return 1;
 		}
 
 		N++; __NOP();
 	}
 	while (N < 70000UL);
 
-	return rc;
+	return 0;
 }
 
 void CAN_configure()

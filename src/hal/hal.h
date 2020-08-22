@@ -71,10 +71,6 @@ enum {
 
 typedef struct {
 
-	int		FLASH_sizeof;
-	int		FLASH_crc32;
-
-	int		HSE_crystal_clock;
 	int		USART_baud_rate;
 
 	float		PWM_frequency;
@@ -127,13 +123,14 @@ typedef struct {
 }
 LOG_t;
 
+extern long			ld_begin_vectors;
 extern unsigned long		clock_cpu_hz;
 extern HAL_t			hal;
 extern LOG_t			log;
 
 void hal_bootload();
 void hal_startup();
-void hal_delay_usec(int usec);
+void hal_delay_ns(int ns);
 
 int hal_lock_irq();
 void hal_unlock_irq(int irq);

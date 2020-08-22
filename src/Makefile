@@ -63,7 +63,7 @@ OBJS    = freertos/heap_4.o \
 	  regfile.o \
 	  servo.o \
 	  shell.o \
-	  tel.o
+	  tlm.o
 
 OBJS	+= apps/hx711.o \
 	   apps/mice.o \

@@ -475,9 +475,12 @@ sh_line_putc(sh_t *sh, char c)
 		sh->cLINE[sh->cEOL++] = c;
 		sh->cLINE[sh->cEOL] = 0;
 
-		/* Echo.
-		 * */
-		putc(c);
+		if (iodef_ECHO != 0) {
+
+			/* Echo.
+			 * */
+			putc(c);
+		}
 
 		sh->mCOMP = 0;
 		sh->mHIST = 0;
@@ -505,16 +508,19 @@ sh_line_null(sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
-	if (iodef == &io_CAN) {
+	if (iodef_ECHO != 0) {
 
-		/* Prompt with CAN node ID.
-		 * */
-		printf("(can/%i) ", can.node_ID);
-	}
-	else {
-		/* Prompt (local).
-		 * */
-		puts(SH_PROMPT);
+		if (iodef == &io_CAN) {
+
+			/* Prompt with CAN node ID.
+			 * */
+			printf("(can/%i) ", can.node_ID);
+		}
+		else {
+			/* Prompt (local).
+			 * */
+			puts(SH_PROMPT);
+		}
 	}
 
 	sh->mCOMP = 0;
@@ -550,9 +556,13 @@ void task_SH(void *pData)
 			}
 			else if (c == K_CR) {
 
-				/* Return.
-				 * */
-				puts(EOL);
+				if (iodef_ECHO != 0) {
+
+					/* Return.
+					 * */
+					puts(EOL);
+				}
+
 				sh_evaluate(sh);
 				sh_line_null(sh);
 			}

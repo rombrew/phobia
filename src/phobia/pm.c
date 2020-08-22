@@ -48,7 +48,7 @@ void pm_default(pmc_t *pm)
 	pm->probe_current_weak = 0.f;
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
-	pm->probe_freq_sine_hz = pm->freq_hz / 12.f;
+	pm->probe_freq_sine_hz = 2000.f;
 	pm->probe_speed_hold = 700.f;
 	pm->probe_speed_spinup = 1700.f;
 	pm->probe_speed_detached = 50.f;
@@ -147,7 +147,7 @@ void pm_default(pmc_t *pm)
 	pm->v_maximal = 60.f;
 	pm->v_reverse = pm->v_maximal;
 
-	pm->s_maximal = pm->freq_hz * (2.f * M_PI_F / 18.f);
+	pm->s_maximal = 10470.f;
 	pm->s_reverse = pm->s_maximal;
 	pm->s_accel = 2000.f;
 	pm->s_gain_P = 2E-2f;

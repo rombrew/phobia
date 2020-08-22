@@ -7,6 +7,7 @@ io_ops_t		io_USART;
 io_ops_t		io_CAN;
 
 io_ops_t		*iodef;
+int			iodef_ECHO;
 
 void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
 {

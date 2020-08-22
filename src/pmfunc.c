@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "tel.h"
+#include "tlm.h"
 
 int pm_wait_for_IDLE()
 {

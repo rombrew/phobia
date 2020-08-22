@@ -10,27 +10,59 @@ enum {
 };
 
 enum {
-	IFCAN_STREAMS_MAX		= 8,
+	IFCAN_PIPE_DISABLED		= 0,
+	IFCAN_PIPE_INCOMING,
+	IFCAN_PIPE_OUTGOING_REGULAR,
+	IFCAN_PIPE_OUTGOING_TRIGGERED
 };
+
+enum {
+	IFCAN_PAYLOAD_FLOAT		= 0,
+	IFCAN_PAYLOAD_INT_16,
+	IFCAN_PAYLOAD_INT_32,
+	IFCAN_PAYLOAD_PACKED_INT_16_0,
+	IFCAN_PAYLOAD_PACKED_INT_16_1,
+	IFCAN_PAYLOAD_PACKED_INT_16_2,
+	IFCAN_PAYLOAD_PACKED_INT_16_3,
+};
+
+enum {
+	IFCAN_PIPES_MAX		= 8,
+};
+
+typedef struct {
+
+	int		ID;
+
+	float		reg_DATA;
+	int		reg_ID;
+
+	int		MODE;
+	int		STARTUP;
+	int		tim;
+	int		trigger_ID;
+	int		PAYLOAD;
+	float		range[2];
+
+	int		tim_N;
+	int		flag_TX;
+}
+ifcan_pipe_t;
 
 typedef struct {
 
 	int			node_ID;
 	int			log_MODE;
 
-	struct {
+	int			startup_LOST;
 
-		/* TODO */
-		float		reg_VAL;
-		int		reg_ID;
-		float		reg_range[2];
-		int		f_func;
-	}
-	stream[IFCAN_STREAMS_MAX];
+	ifcan_pipe_t		pipe[IFCAN_PIPES_MAX];
 }
 ifcan_t;
 
 extern ifcan_t			can;
+
+void IFCAN_pipes_REGULAR();
 
 int IFCAN_getc();
 void IFCAN_putc(int c);

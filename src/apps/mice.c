@@ -14,8 +14,7 @@ SH_DEF(mice)
 {
 	float		mice_x, mice_y;
 
-	if (		pm.lu_mode == PM_LU_DISABLED
-			&& pm.fsm_state == PM_STATE_IDLE) {
+	if (pm.lu_mode == PM_LU_DISABLED) {
 
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 	}

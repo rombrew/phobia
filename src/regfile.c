@@ -8,40 +8,12 @@
 #include "ifcan.h"
 #include "regfile.h"
 #include "shell.h"
-#include "tel.h"
+#include "tlm.h"
 
 #define REG_DEF(l, e, i, u, f, m, p, t)	{ #l #e "\0" u, f, m, (void *) &l i, (void *) p, (void *) t}
 #define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1UL)
 
 static int		null;
-static void		*iodef_ECHO;
-
-static void
-silent_putc(int c) { /* Do nothing */ }
-
-static void
-reg_proc_ECHO(const reg_t *reg, int *lval, const int *rval)
-{
-	void		(** kept) (int c) = (void *) reg->link;
-
-	if (lval != NULL) {
-
-		*lval = (*kept == NULL) ? 1 : 0;
-	}
-	else if (rval != NULL) {
-
-		if (*rval == 0 && *kept == NULL) {
-
-			*kept = iodef->putc;
-			iodef->putc = &silent_putc;
-		}
-		else if (*rval == 1 && *kept != NULL) {
-
-			iodef->putc = *kept;
-			*kept = NULL;
-		}
-	}
-}
 
 static void
 reg_proc_pwm(const reg_t *reg, float *lval, const float *rval)
@@ -113,6 +85,34 @@ reg_proc_can_NART(const reg_t *reg, int *lval, const int *rval)
 }
 
 static void
+reg_proc_can_TIM(const reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
+
+		*lval = (int) (hal.PWM_frequency / (float) reg->link->i + .5f);
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = (int) (hal.PWM_frequency / (float) *rval + .5f);
+	}
+}
+
+static void
+reg_proc_can_IDs(const reg_t *reg, int *lval, const int *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = *rval;
+
+		IFCAN_filter_ID();
+	}
+}
+
+static void
 reg_proc_ppm(const reg_t *reg, int *lval, const int *rval)
 {
 	if (lval != NULL) {
@@ -139,21 +139,6 @@ reg_proc_tim(const reg_t *reg, int *lval, const int *rval)
 		reg->link->i = *rval;
 
 		TIM_configure();
-	}
-}
-
-static void
-reg_proc_node_ID(const reg_t *reg, int *lval, const int *rval)
-{
-	if (lval != NULL) {
-
-		*lval = reg->link->i;
-	}
-	else if (rval != NULL) {
-
-		reg->link->i = *rval;
-
-		IFCAN_filter_ID();
 	}
 }
 
@@ -665,12 +650,6 @@ reg_proc_im_fuel(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_format_hex(const reg_t *reg)
-{
-	printf("%8x", * (u32_t *) reg->link);
-}
-
-static void
 reg_format_self_BST(const reg_t *reg)
 {
 	int		*BST = (void *) reg->link;
@@ -760,6 +739,63 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(IFCAN_LOG_DISABLED);
 				TEXT_ITEM(IFCAN_LOG_FILTERED);
 				TEXT_ITEM(IFCAN_LOG_PROMISCUOUS);
+
+				default: break;
+			}
+			break;
+
+		case ID_CAN_PIPE_0_MODE:
+		case ID_CAN_PIPE_1_MODE:
+
+			switch (val) {
+
+				TEXT_ITEM(IFCAN_PIPE_DISABLED);
+				TEXT_ITEM(IFCAN_PIPE_INCOMING);
+				TEXT_ITEM(IFCAN_PIPE_OUTGOING_REGULAR);
+				TEXT_ITEM(IFCAN_PIPE_OUTGOING_TRIGGERED);
+
+				default: break;
+			}
+			break;
+
+		case ID_CAN_PIPE_0_STARTUP:
+		case ID_CAN_PIPE_1_STARTUP:
+
+			switch (val) {
+
+				TEXT_ITEM(PM_DISABLED);
+				TEXT_ITEM(PM_ENABLED);
+
+				default: break;
+			}
+			break;
+
+		case ID_CAN_PIPE_0_PAYLOAD:
+		case ID_CAN_PIPE_1_PAYLOAD:
+
+			switch (val) {
+
+				TEXT_ITEM(IFCAN_PAYLOAD_FLOAT);
+				TEXT_ITEM(IFCAN_PAYLOAD_INT_16);
+				TEXT_ITEM(IFCAN_PAYLOAD_INT_32);
+				TEXT_ITEM(IFCAN_PAYLOAD_PACKED_INT_16_0);
+				TEXT_ITEM(IFCAN_PAYLOAD_PACKED_INT_16_1);
+				TEXT_ITEM(IFCAN_PAYLOAD_PACKED_INT_16_2);
+				TEXT_ITEM(IFCAN_PAYLOAD_PACKED_INT_16_3);
+
+				default: break;
+			}
+			break;
+
+		case ID_AP_PPM_STARTUP:
+		case ID_AP_STEP_STARTUP:
+		case ID_AP_ANALOG_ENABLED:
+		case ID_AP_ANALOG_STARTUP:
+
+			switch (val) {
+
+				TEXT_ITEM(PM_DISABLED);
+				TEXT_ITEM(PM_ENABLED);
 
 				default: break;
 			}
@@ -866,8 +902,6 @@ reg_format_enum(const reg_t *reg)
 				TEXT_ITEM(PM_STATE_PROBE_CONST_J);
 				TEXT_ITEM(PM_STATE_PROBE_LU_MPPE);
 				TEXT_ITEM(PM_STATE_ADJUST_HALL);
-				TEXT_ITEM(PM_STATE_GO_DRIVE_CURRENT);
-				TEXT_ITEM(PM_STATE_GO_DRIVE_SPEED);
 				TEXT_ITEM(PM_STATE_HALT);
 
 				default: break;
@@ -909,12 +943,8 @@ reg_format_enum(const reg_t *reg)
 const reg_t		regfile[] = {
 
 	REG_DEF(null,,,				"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(iodef_ECHO,,,			"",	"%i",	0, &reg_proc_ECHO, NULL),
+	REG_DEF(iodef_ECHO,,,			"",	"%i",	0, 0, NULL),
 
-	REG_DEF(hal.FLASH_sizeof,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(hal.FLASH_crc32,,,		"",	"%i",	REG_READ_ONLY, NULL, &reg_format_hex),
-
-	REG_DEF(hal.HSE_crystal_clock,,,	"Hz",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(hal.USART_baud_rate,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PWM_frequency,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
 	REG_DEF(hal.PWM_deadtime,,,		"ns",	"%1f",	REG_CONFIG, &reg_proc_pwm, NULL),
@@ -930,10 +960,34 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.PPM_timebase,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(can.node_ID,,,		"",	"%i",	REG_CONFIG, &reg_proc_node_ID, NULL),
-	REG_DEF(can.log_MODE,,,		"",	"%i",	REG_CONFIG, &reg_proc_node_ID, &reg_format_enum),
+	REG_DEF(can.node_ID,,,		"",	"%i",	REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.log_MODE,,,		"",	"%i",	REG_CONFIG, &reg_proc_can_IDs, &reg_format_enum),
+	REG_DEF(can.startup_LOST,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+
+	REG_DEF(can.pipe, _0_ID, [0].ID,"",		"%i",	REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _0_reg_DATA, [0].reg_DATA,"",	"%4e",	0, NULL, NULL),
+	REG_DEF(can.pipe, _0_reg_ID, [0].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(can.pipe, _0_MODE, [0].MODE,"", "%i",	REG_CONFIG, &reg_proc_can_IDs, &reg_format_enum),
+	REG_DEF(can.pipe, _0_STARTUP, [0].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _0_tim_hz, [0].tim,	"Hz",	"%i",	REG_CONFIG, &reg_proc_can_TIM, NULL),
+	REG_DEF(can.pipe, _0_trigger_ID, [0].trigger_ID,"","%i",REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _0_PAYLOAD, [0].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _0_range_0, [0].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(can.pipe, _0_range_1, [0].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(can.pipe, _1_ID, [1].ID,"",		"%i",	REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _1_reg_DATA, [1].reg_DATA,"",	"%4e",	0, NULL, NULL),
+	REG_DEF(can.pipe, _1_reg_ID, [1].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(can.pipe, _1_MODE, [1].MODE,"", "%i",	REG_CONFIG, &reg_proc_can_IDs, &reg_format_enum),
+	REG_DEF(can.pipe, _1_STARTUP, [1].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _1_tim_hz, [1].tim,	"Hz",	"%i",	REG_CONFIG, &reg_proc_can_TIM, NULL),
+	REG_DEF(can.pipe, _1_trigger_ID, [1].trigger_ID,"","%i",REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _1_PAYLOAD, [1].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _1_range_0, [1].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(can.pipe, _1_range_1, [1].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.ppm_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.ppm_STARTUP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.ppm_in_range, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_in_range, _1, [1],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_in_range, _2, [2],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
@@ -942,11 +996,13 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.ppm_control_range, _2, [2],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.step_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.step_STARTUP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.step_accuEP,,,		"",	"%i",	0, NULL, NULL),
 	REG_DEF(ap.step_const_ld_EP,,,		"mm",	"%3f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.analog_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.analog_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.analog_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.analog_STARTUP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.analog_in_ANG, _0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_in_ANG, _1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_in_ANG, _2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -959,10 +1015,8 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.analog_control_ANG, _2, [2],	"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.analog_control_BRK,,,	"",	"%2f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.startup_in_range, _0, [0],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.startup_in_range, _1, [1],	"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.timeout_in_tol,,,		"",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.timeout_shutdown,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_current_tol,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_IDLE_s,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.ntc_PCB.r_balance,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ntc_PCB.r_ntc_0,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -984,19 +1038,19 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_PCB_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_recovery_gap,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.servo_span_mm, _0, [0],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.servo_span_mm, _1, [1],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.servo_uniform_mmps,,,	"mm/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.servo_SPAN_mm, _0, [0],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.servo_SPAN_mm, _1, [1],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.servo_UNIFORM_mmps,,,	"mm/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.servo_mice_role,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.FT_grab_hz,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.hx711_kg,,,			"kg",	"%4f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(ap.hx711_gain, _0, [0],		"kg",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.hx711_gain, _1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.hx711_scale, _0, [0],	"kg",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.hx711_scale, _1, [1],	"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.dc_resolution,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dc_minimal,,,			"us",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_minimal,,,		"us",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.dc_clearance,,,		"us",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.dc_bootstrap,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 
@@ -1327,16 +1381,16 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.im_capacity_Ah,,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.im_fuel_pc,,,		"pc",	"%2f",	0, &reg_proc_im_fuel, NULL),
 
-	REG_DEF(ti.reg_ID, _0, [0],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _1, [1],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _2, [2],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _3, [3],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _4, [4],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _5, [5],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _6, [6],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _7, [7],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _8, [8],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ti.reg_ID, _9, [9],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _0, [0],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _1, [1],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _2, [2],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _3, [3],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _4, [4],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _5, [5],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _6, [6],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _7, [7],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _8, [8],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, _9, [9],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
 	{ NULL, "", 0, NULL, NULL, NULL }
 };
@@ -1456,7 +1510,7 @@ const reg_t *reg_search_fuzzy(const char *sym)
 			}
 		}
 
-		if (found == NULL && iodef_ECHO == NULL) {
+		if (found == NULL && iodef_ECHO != 0) {
 
 			for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -1557,12 +1611,12 @@ SH_DEF(reg)
 			}
 		}
 
-		if (iodef_ECHO == NULL) {
+		if (iodef_ECHO != 0) {
 
 			reg_format(reg);
 		}
 	}
-	else if (iodef_ECHO == NULL) {
+	else if (iodef_ECHO != 0) {
 
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
