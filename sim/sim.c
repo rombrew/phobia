@@ -500,7 +500,7 @@ sim_RUN(FILE *fdTel)
 	pm.s_setpoint = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 0.f;
+	pm.s_setpoint = -50.f;
 	sim_F(fdTel, 1.);
 
 	return 1;

@@ -577,7 +577,7 @@ pm_sensor_HALL(pmc_t *pm)
 
 		if (HS == pm->hall_HS) {
 
-			if (pm->hall_DIRF * pm->hall_wS > M_EPS_F) {
+			if (pm->hall_DIRF != 0) {
 
 				relE = pm->hall_wS * pm->hall_gain_PF * pm->dT;
 				B = PM_HALL_SPAN * pm->hall_gain_PF;
@@ -596,21 +596,14 @@ pm_sensor_HALL(pmc_t *pm)
 				if (pm->hall_prolTIM >= pm->temp_prol_T) {
 
 					pm->hall_DIRF = 0;
-					pm->hall_F[0] = pm->hall_ST[HS].X;
-					pm->hall_F[1] = pm->hall_ST[HS].Y;
 
 					relE = 0.f;
 				}
 			}
-			else if (pm->hall_DIRF != 0) {
-
-				pm->hall_DIRF = 0;
+			else {
 				pm->hall_F[0] = pm->hall_ST[HS].X;
 				pm->hall_F[1] = pm->hall_ST[HS].Y;
 
-				relE = 0.f;
-			}
-			else {
 				relE = 0.f;
 			}
 		}
@@ -847,7 +840,7 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
-				pm->hall_HS = 0;
+				pm->hall_HS = pm->fb_HS;
 				pm->hall_DIRF = 0;
 				pm->hall_prolTIM = pm->temp_prol_T;
 
@@ -946,7 +939,7 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
-				pm->hall_HS = 0;
+				pm->hall_HS = pm->fb_HS;
 				pm->hall_DIRF = 0;
 				pm->hall_prolTIM = pm->temp_prol_T;
 
