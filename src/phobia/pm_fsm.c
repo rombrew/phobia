@@ -1150,9 +1150,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hall_wS = 0.f;
 				pm->hall_lpf_wS = 0.f;
 
-				pm->qenc_F[0] = 1.f;
-				pm->qenc_F[1] = 0.f;
-				pm->qenc_wS = 0.f;
+				pm->abi_F[0] = 1.f;
+				pm->abi_F[1] = 0.f;
+				pm->abi_wS = 0.f;
 
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
@@ -1172,6 +1172,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->s_track = 0.f;
 				pm->s_integral = 0.f;
 				pm->s_base_wS = 0.f;
+				pm->s_iSP = 0.f;
 
 				pm->x_setpoint_F[0] = 1.f;
 				pm->x_setpoint_F[1] = 0.f;

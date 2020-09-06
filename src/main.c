@@ -527,12 +527,21 @@ void task_INIT(void *pData)
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
 
+	if (log_bootup() != 0) {
+
+		/* Slow down the startup to find out a problem.
+		 * */
+		vTaskDelay((TickType_t) 1000);
+	}
+
 	/* Load the configuration.
 	 * */
 	app_flash_load();
 
 	irq = hal_lock_irq();
 
+	/* Do CORE startup.
+	 * */
 	ADC_startup();
 	PWM_startup();
 	WD_startup();
@@ -553,13 +562,6 @@ void task_INIT(void *pData)
 	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
-
-	if (log_bootup() != 0) {
-
-		/* Slow down the startup to indicate a problem.
-		 * */
-		vTaskDelay((TickType_t) 1000);
-	}
 
 	GPIO_set_LOW(GPIO_LED);
 

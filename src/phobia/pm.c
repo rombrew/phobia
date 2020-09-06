@@ -18,7 +18,6 @@ void pm_default(pmc_t *pm)
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_WEAK = PM_DISABLED;
 	pm->config_DRIVE = PM_DRIVE_SPEED;
-	pm->config_SERVO = PM_DISABLED;
 	pm->config_INFO	= PM_ENABLED;
 	pm->config_BOOST = PM_DISABLED;
 
@@ -49,7 +48,7 @@ void pm_default(pmc_t *pm)
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = 2000.f;
-	pm->probe_speed_hold = 700.f;
+	pm->probe_speed_hold = 200.f;
 	pm->probe_speed_spinup = 1700.f;
 	pm->probe_speed_detached = 50.f;
 	pm->probe_gain_P = 1E-1f;
@@ -108,12 +107,12 @@ void pm_default(pmc_t *pm)
 	pm->hall_gain_SF = 1E-3f;
 	pm->hall_gain_LP = 5E-2f;
 
-	pm->qenc_PPR = 2600;
-	pm->qenc_FILTER = 1;
-	pm->qenc_Zq = 1.f;
-	pm->qenc_gain_PF = 1E-0f;
-	pm->qenc_gain_SF = 2E-2f;
-	pm->qenc_gain_IF = 0E-1f;
+	pm->abi_PPR = 2600;
+	pm->abi_FILTER = 1;
+	pm->abi_Zq = 1.f;
+	pm->abi_gain_PF = 1E-0f;
+	pm->abi_gain_SF = 2E-2f;
+	pm->abi_gain_IF = 0E-1f;
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
@@ -201,7 +200,7 @@ void pm_build(pmc_t *pm)
 	if (pm->config_SENSOR == PM_SENSOR_ABI) {
 
 		pm->temp_2PZiPPR = 2.f * M_PI_F * pm->const_Zp
-			* pm->qenc_Zq / (float) pm->qenc_PPR;
+			* pm->abi_Zq / (float) pm->abi_PPR;
 	}
 }
 
@@ -212,12 +211,14 @@ pm_forced(pmc_t *pm)
 
 	/* Get the setpoint of forced speed.
 	 * */
-	if (pm->config_DRIVE == PM_DRIVE_CURRENT) {
+	if (		pm->config_DRIVE == PM_DRIVE_CURRENT
+			|| pm->config_DRIVE == PM_DRIVE_LIMITED) {
 
 		wSP = (pm->i_setpoint_Q < - pm->fault_current_tol) ? - PM_MAX_F
 			: (pm->i_setpoint_Q > pm->fault_current_tol) ? PM_MAX_F : 0.f;
 	}
-	else if (pm->config_DRIVE == PM_DRIVE_SPEED) {
+	else if (	pm->config_DRIVE == PM_DRIVE_SPEED
+			|| pm->config_DRIVE == PM_DRIVE_SERVO) {
 
 		wSP = pm->s_setpoint;
 	}
@@ -652,38 +653,38 @@ pm_sensor_ABI(pmc_t *pm)
 	float			relR, rotR, rotF[2], gain_SF;
 	int			relEP, N;
 
-	relEP = (short int) (pm->fb_EP - pm->qenc_baseEP);
+	relEP = (short int) (pm->fb_EP - pm->abi_baseEP);
 
-	pm->qenc_baseEP = pm->fb_EP;
-	pm->qenc_prolTIM++;
+	pm->abi_baseEP = pm->fb_EP;
+	pm->abi_prolTIM++;
 
-	if (pm->qenc_FILTER == 1) {
+	if (pm->abi_FILTER == 1) {
 
-		N =  (relEP > 0 && pm->qenc_lastEP < 0) ? - 1 : 0;
-		N += (relEP < 0 && pm->qenc_lastEP > 0) ?   1 : 0;
+		N =  (relEP > 0 && pm->abi_lastEP < 0) ? - 1 : 0;
+		N += (relEP < 0 && pm->abi_lastEP > 0) ?   1 : 0;
 
-		pm->qenc_lastEP = (relEP != 0) ? relEP : pm->qenc_lastEP;
+		pm->abi_lastEP = (relEP != 0) ? relEP : pm->abi_lastEP;
 
 		relEP += N;
 	}
 
 	if (relEP == 0) {
 
-		relR = pm->qenc_wS * pm->qenc_gain_PF * pm->dT;
-		relR = (m_fabsf(pm->qenc_prolS) < pm->temp_2PZiPPR) ? relR : 0.f;
-		pm->qenc_prolS += relR;
+		relR = pm->abi_wS * pm->abi_gain_PF * pm->dT;
+		relR = (m_fabsf(pm->abi_prolS) < pm->temp_2PZiPPR) ? relR : 0.f;
+		pm->abi_prolS += relR;
 
-		rotR = pm->qenc_prolS + (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
+		rotR = pm->abi_prolS + (float) pm->abi_rotEP * pm->temp_2PZiPPR;
 	}
 	else {
-		relR = (float) relEP * pm->temp_2PZiPPR - pm->qenc_prolS;
-		pm->qenc_prolS = 0.f;
+		relR = (float) relEP * pm->temp_2PZiPPR - pm->abi_prolS;
+		pm->abi_prolS = 0.f;
 
-		pm->qenc_rotEP += relEP;
-		pm->qenc_rotEP += (pm->qenc_rotEP < - pm->qenc_PPR) ? pm->qenc_PPR : 0;
-		pm->qenc_rotEP += (pm->qenc_rotEP > pm->qenc_PPR) ? - pm->qenc_PPR : 0;
+		pm->abi_rotEP += relEP;
+		pm->abi_rotEP += (pm->abi_rotEP < - pm->abi_PPR) ? pm->abi_PPR : 0;
+		pm->abi_rotEP += (pm->abi_rotEP > pm->abi_PPR) ? - pm->abi_PPR : 0;
 
-		rotR = (float) pm->qenc_rotEP * pm->temp_2PZiPPR;
+		rotR = (float) pm->abi_rotEP * pm->temp_2PZiPPR;
 	}
 
 	N = (int) (rotR / (2.f * M_PI_F));
@@ -695,26 +696,26 @@ pm_sensor_ABI(pmc_t *pm)
 	rotF[0] = m_cosf(rotR);
 	rotF[1] = m_sinf(rotR);
 
-	pm->qenc_F[0] = rotF[0] * pm->qenc_baseF[0] - rotF[1] * pm->qenc_baseF[1];
-	pm->qenc_F[1] = rotF[1] * pm->qenc_baseF[0] + rotF[0] * pm->qenc_baseF[1];
+	pm->abi_F[0] = rotF[0] * pm->abi_baseF[0] - rotF[1] * pm->abi_baseF[1];
+	pm->abi_F[1] = rotF[1] * pm->abi_baseF[0] + rotF[0] * pm->abi_baseF[1];
 
-	gain_SF = 1.f / (float) pm->qenc_prolTIM;
-	gain_SF = (gain_SF < pm->qenc_gain_SF) ? gain_SF : pm->qenc_gain_SF;
+	gain_SF = 1.f / (float) pm->abi_prolTIM;
+	gain_SF = (gain_SF < pm->abi_gain_SF) ? gain_SF : pm->abi_gain_SF;
 
-	pm->qenc_wS += (relR * pm->freq_hz - pm->qenc_wS) * gain_SF;
+	pm->abi_wS += (relR * pm->freq_hz - pm->abi_wS) * gain_SF;
 
-	if (		pm->config_DRIVE == PM_DRIVE_SPEED
-			&& pm->qenc_gain_IF > M_EPS_F
+	if (		pm->config_DRIVE == PM_DRIVE_SERVO
+			&& pm->abi_gain_IF > M_EPS_F
 			&& pm->const_Ja > M_EPS_F
-			&& m_fabsf(pm->qenc_prolS) < pm->temp_2PZiPPR) {
+			&& m_fabsf(pm->abi_prolS) < pm->temp_2PZiPPR) {
 
-		pm->qenc_wS += (pm->lu_iQ - pm->s_integral)
-			* pm->qenc_gain_IF * pm->dT / pm->const_Ja;
+		pm->abi_wS += (pm->lu_iQ - pm->s_integral)
+			* pm->abi_gain_IF * pm->dT / pm->const_Ja;
 	}
 
 	if (relEP != 0) {
 
-		pm->qenc_prolTIM = 0;
+		pm->abi_prolTIM = 0;
 	}
 }
 
@@ -894,17 +895,17 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_ABI;
 
-				pm->qenc_baseEP = pm->fb_EP;
-				pm->qenc_baseF[0] = pm->lu_F[0];
-				pm->qenc_baseF[1] = pm->lu_F[1];
-				pm->qenc_lastEP = 0;
-				pm->qenc_rotEP = 0;
-				pm->qenc_prolTIM = 0;
-				pm->qenc_prolS = 0.f;
+				pm->abi_baseEP = pm->fb_EP;
+				pm->abi_baseF[0] = pm->lu_F[0];
+				pm->abi_baseF[1] = pm->lu_F[1];
+				pm->abi_lastEP = 0;
+				pm->abi_rotEP = 0;
+				pm->abi_prolTIM = 0;
+				pm->abi_prolS = 0.f;
 
-				pm->qenc_F[0] = pm->lu_F[0];
-				pm->qenc_F[1] = pm->lu_F[1];
-				pm->qenc_wS = pm->lu_wS;
+				pm->abi_F[0] = pm->lu_F[0];
+				pm->abi_F[1] = pm->lu_F[1];
+				pm->abi_wS = pm->lu_wS;
 			}
 		}
 	}
@@ -940,17 +941,17 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_ABI;
 
-				pm->qenc_baseEP = pm->fb_EP;
-				pm->qenc_baseF[0] = pm->lu_F[0];
-				pm->qenc_baseF[1] = pm->lu_F[1];
-				pm->qenc_lastEP = 0;
-				pm->qenc_rotEP = 0;
-				pm->qenc_prolTIM = 0;
-				pm->qenc_prolS = 0.f;
+				pm->abi_baseEP = pm->fb_EP;
+				pm->abi_baseF[0] = pm->lu_F[0];
+				pm->abi_baseF[1] = pm->lu_F[1];
+				pm->abi_lastEP = 0;
+				pm->abi_rotEP = 0;
+				pm->abi_prolTIM = 0;
+				pm->abi_prolS = 0.f;
 
-				pm->qenc_F[0] = pm->lu_F[0];
-				pm->qenc_F[1] = pm->lu_F[1];
-				pm->qenc_wS = pm->lu_wS;
+				pm->abi_F[0] = pm->lu_F[0];
+				pm->abi_F[1] = pm->lu_F[1];
+				pm->abi_wS = pm->lu_wS;
 			}
 			else if (pm->config_HFI == PM_ENABLED) {
 
@@ -1039,9 +1040,9 @@ pm_lu_FSM(pmc_t *pm)
 			pm_lu_flux_zone(pm);
 		}
 
-		pm->lu_F[0] = pm->qenc_F[0];
-		pm->lu_F[1] = pm->qenc_F[1];
-		pm->lu_wS = pm->qenc_wS;
+		pm->lu_F[0] = pm->abi_F[0];
+		pm->lu_F[1] = pm->abi_F[1];
+		pm->lu_wS = pm->abi_wS;
 
 		if (pm->lu_flux_zone == PM_FLUX_HIGH) {
 
@@ -1256,7 +1257,7 @@ pm_loop_current(pmc_t *pm)
 	}
 	else {
 		track_D = pm->i_setpoint_D;
-		track_Q = pm->i_setpoint_Q;
+		track_Q = pm->i_setpoint_Q + pm->s_iSP;
 
 		if (pm->inject_ratio_D > M_EPS_F) {
 
@@ -1464,23 +1465,24 @@ pm_loop_speed(pmc_t *pm)
 	wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
 		(wSP < - pm->s_reverse) ? - pm->s_reverse : wSP;
 
-	if (pm->config_SERVO == PM_ENABLED) {
+	if (pm->config_DRIVE != PM_DRIVE_SERVO) {
 
-		/* No constraint required.
-		 * */
-		pm->s_track = wSP;
-	}
-	else {
 		/* Maximal acceleration constraint.
 		 * */
 		dS = pm->s_accel * pm->dT;
 		pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
 			: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 	}
+	else {
+		/* No constraint required.
+		 * */
+		pm->s_track = wSP;
+	}
 
 	if (pm->lu_mode == PM_LU_FORCED) {
 
-		pm->i_setpoint_Q = 0.f;
+		pm->s_integral = 0.f;
+		pm->s_iSP = 0.f;
 	}
 	else {
 		/* Get speed discrepancy.
@@ -1505,7 +1507,7 @@ pm_loop_speed(pmc_t *pm)
 		 * */
 		iSP = pm->s_gain_P * gain_S * eS;
 
-		iFD = pm->lu_iQ - (pm->lu_wS - pm->s_base_wS) * pm->freq_hz * pm->const_Ja;
+		iFD = pm->s_iSP - (pm->lu_wS - pm->s_base_wS) * pm->freq_hz * pm->const_Ja;
 		pm->s_base_wS = pm->lu_wS;
 
 		pm->s_integral += (iFD - pm->s_integral) * pm->s_gain_I * gain_S;
@@ -1513,14 +1515,14 @@ pm_loop_speed(pmc_t *pm)
 
 		/* Output clamp.
 		 * */
-		iSP = (iSP > pm->i_maximal) ? pm->i_maximal :
+		pm->s_iSP = (iSP > pm->i_maximal) ? pm->i_maximal :
 			(iSP < - pm->i_reverse) ? - pm->i_reverse : iSP;
-
-		/* Update current loop setpoint. It would be possible here to
-		 * use MTPA or something else.
-		 * */
-		pm->i_setpoint_Q = iSP;
 	}
+}
+
+static void
+pm_loop_limited(pmc_t *pm)
+{
 }
 
 static void
@@ -1812,14 +1814,18 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		else {
 			if (pm->lu_flux_zone != PM_FLUX_DETACHED) {
 
-				if (pm->config_SERVO == PM_ENABLED) {
+				if (pm->config_DRIVE == PM_DRIVE_SERVO) {
 
 					pm_loop_servo(pm);
+					pm_loop_speed(pm);
 				}
-
-				if (pm->config_DRIVE == PM_DRIVE_SPEED) {
+				else if (pm->config_DRIVE == PM_DRIVE_SPEED) {
 
 					pm_loop_speed(pm);
+				}
+				else if (pm->config_DRIVE == PM_DRIVE_LIMITED) {
+
+					pm_loop_limited(pm);
 				}
 			}
 

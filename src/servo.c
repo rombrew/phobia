@@ -42,7 +42,7 @@ SH_DEF(servo_probe_const_J)
 	if (		pm.lu_mode == PM_LU_DISABLED
 			|| pm.lu_mode == PM_LU_DETACHED
 			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_SERVO == PM_DISABLED
+			|| pm.config_DRIVE == PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);
@@ -86,7 +86,7 @@ SH_DEF(servo_FT_uniform)
 	if (		pm.lu_mode == PM_LU_DISABLED
 			|| pm.lu_mode == PM_LU_DETACHED
 			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_SERVO == PM_DISABLED
+			|| pm.config_DRIVE == PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);

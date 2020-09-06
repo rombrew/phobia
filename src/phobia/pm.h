@@ -40,6 +40,8 @@ enum {
 enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
+	PM_DRIVE_LIMITED,
+	PM_DRIVE_SERVO,
 };
 
 enum {
@@ -153,7 +155,6 @@ typedef struct {
 	int		config_SENSOR;
 	int		config_WEAK;
 	int		config_DRIVE;
-	int		config_SERVO;
 	int		config_INFO;
 	int		config_BOOST;
 
@@ -322,20 +323,20 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_LP;
 
-	int		qenc_baseEP;
-	float		qenc_baseF[2];
-	int		qenc_lastEP;
-	int		qenc_rotEP;
-	int		qenc_prolTIM;
-	float		qenc_prolS;
-	int		qenc_PPR;
-	int		qenc_FILTER;
-	float		qenc_Zq;
-	float		qenc_F[2];
-	float		qenc_wS;
-	float		qenc_gain_PF;
-	float		qenc_gain_SF;
-	float		qenc_gain_IF;
+	int		abi_baseEP;
+	float		abi_baseF[2];
+	int		abi_lastEP;
+	int		abi_rotEP;
+	int		abi_prolTIM;
+	float		abi_prolS;
+	int		abi_PPR;
+	int		abi_FILTER;
+	float		abi_Zq;
+	float		abi_F[2];
+	float		abi_wS;
+	float		abi_gain_PF;
+	float		abi_gain_SF;
+	float		abi_gain_IF;
 
 	float		const_fb_U;
 	float		const_E;
@@ -402,6 +403,7 @@ typedef struct {
 	float		s_gain_P;
 	float		s_gain_I;
 	float		s_gain_S;
+	float		s_iSP;
 
 	float		x_setpoint_F[2];
 	float		x_setpoint_wS;

@@ -189,8 +189,6 @@ void *FLASH_prog(void *flash, const void *s, int n)
 
 void FLASH_selfupdate()
 {
-	GPIO_set_HIGH(GPIO_LED);
-
 	FLASH_unlock();
 	FLASH_wait_BSY();
 

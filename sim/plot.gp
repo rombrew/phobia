@@ -144,17 +144,17 @@ page "pm.hall_lpf_wS"
 label 1 "(rpm)"
 figure 0 44 "pm.hall_lpf_wS"
 
-page "pm.qenc_F"
+page "pm.abi_F"
 label 1 "(°)"
-figure 0 45 "pm.qenc_F"
+figure 0 45 "pm.abi_F"
 
-page "pm.qenc_wS"
+page "pm.abi_wS"
 label 1 "(rpm)"
-figure 0 46 "pm.qenc_wS"
+figure 0 46 "pm.abi_wS"
 
-page "pm.qenc_lpf_wS"
+page "pm.abi_lpf_wS"
 label 1 "(rpm)"
-figure 0 47 "pm.qenc_lpf_wS"
+figure 0 47 "pm.abi_lpf_wS"
 
 page "pm.watt_lpf_D, pm.watt_lpf_Q"
 label 1 "(V)"

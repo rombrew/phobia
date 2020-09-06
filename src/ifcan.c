@@ -233,8 +233,7 @@ IFCAN_pipes_message_IN(const CAN_msg_t *msg)
 
 			IFCAN_pipe_INCOMING(pp, msg);
 		}
-
-		if (pp->MODE == IFCAN_PIPE_OUTGOING_TRIGGERED
+		else if (pp->MODE == IFCAN_PIPE_OUTGOING_TRIGGERED
 				&& pp->trigger_ID == msg->ID) {
 
 			pp->flag_TX = 1;
@@ -518,12 +517,23 @@ IFCAN_log_msg(CAN_msg_t *msg, const char *sym)
 	}
 }
 
-static void
+static int
 IFCAN_send_msg(CAN_msg_t *msg)
 {
-	int			N = 0;
+	int			rc, N = 0;
 
-	while (CAN_send_msg(msg) != CAN_TX_OK) {
+	do {
+		rc = CAN_send_msg(msg);
+
+		if (rc == CAN_TX_OK) {
+
+			if (can.log_MODE != IFCAN_LOG_DISABLED) {
+
+				IFCAN_log_msg(msg, "TX");
+			}
+
+			break;
+		}
 
 		N++;
 
@@ -536,11 +546,9 @@ IFCAN_send_msg(CAN_msg_t *msg)
 		 * */
 		hal_delay_ns(50000);
 	}
+	while (1);
 
-	if (can.log_MODE != IFCAN_LOG_DISABLED) {
-
-		IFCAN_log_msg(msg, "TX");
-	}
+	return rc;
 }
 
 static void
@@ -727,6 +735,9 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 					== local.flash_INIT_crc32) {
 
 				IFCAN_flash_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
+
+				GPIO_set_LOW(GPIO_BOOST_12V);
+				GPIO_set_HIGH(GPIO_LED);
 
 				/* Go into the dark.
 				 * */
@@ -1050,13 +1061,15 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 {
 	u32_t			*flash_end;
 	CAN_msg_t		msg;
-	int			N, blk_N;
+	int			rc, N, blk_N, fail_N;
 
 	msg.ID = IFCAN_ID_FLASH_DATA;
 	msg.len = 8;
 
 	flash_end = (u32_t *) ((u32_t) flash + flash_sizeof);
+
 	blk_N = 0;
+	fail_N = 0;
 
 	puts("Flash ");
 
@@ -1081,20 +1094,33 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 			vTaskDelay((TickType_t) 1);
 		}
 
-		* (u32_t *) &msg.payload[0] = *flash++;
-		* (u32_t *) &msg.payload[4] = *flash++;
+		* (u32_t *) &msg.payload[0] = *(flash + 0);
+		* (u32_t *) &msg.payload[4] = *(flash + 1);
 
-		IFCAN_send_msg(&msg);
+		rc = IFCAN_send_msg(&msg);
 
-		blk_N += 8;
+		if (rc == CAN_TX_OK) {
 
-		if (blk_N >= 8192) {
+			flash += 2UL;
+			blk_N += 8;
 
-			blk_N = 0;
+			if (blk_N >= 8192) {
 
-			/* Display progress.
-			 * */
-			putc('.');
+				blk_N = 0;
+
+				/* Display uploading progress.
+				 * */
+				putc('.');
+			}
+		}
+		else {
+			fail_N += 8;
+
+			if (fail_N >= 8192) {
+
+				puts(" Fail");
+				break;
+			}
 		}
 	}
 
@@ -1256,10 +1282,10 @@ SH_DEF(can_node_remote)
 		do {
 			xC = getc();
 
+			IFCAN_remote_putc(xC);
+
 			if (xC == K_EOT)
 				break;
-
-			IFCAN_remote_putc(xC);
 		}
 		while (1);
 

@@ -119,8 +119,8 @@ sim_Tel(float *pTel)
 	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
 	pTel[44] = pm.hall_lpf_wS * 30. / M_PI / m.Zp;
 
-	pTel[45] = atan2(pm.qenc_F[1], pm.qenc_F[0]) * 180. / M_PI;
-	pTel[46] = pm.qenc_wS * 30. / M_PI / m.Zp;
+	pTel[45] = atan2(pm.abi_F[1], pm.abi_F[0]) * 180. / M_PI;
+	pTel[46] = pm.abi_wS * 30. / M_PI / m.Zp;
 	pTel[47] = 0.f;
 
 	pTel[48] = pm.watt_lpf_D;
@@ -473,100 +473,32 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
-	/*m.R = 2.4E-1;
-	m.Ld = 5.2E-4;
-	m.Lq = 6.5E-4;
+	m.R = 0.140;
+	m.Ld = 557E-6;
+	m.Lq = 557E-6;
 	m.U = 48.;
-	m.Rs = 0.7;
-	m.Zp = 15;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;*/
-
-	m.R = 14E-3;
-	m.Ld = 17E-6;
-	m.Lq = 20E-6;
-	m.U = 22.;
 	m.Rs = 0.1;
-	m.Zp = 14;
-	m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
+	m.Zp = 1;
+	m.E = 60. / 2. / M_PI / sqrt(3.) / (70. * m.Zp);
 	m.J = 2.7E-4;
 
 	sim_test_BASE(fdTel);
 
-	//m.X[2] = 0.;
-	//m.X[3] = 0.;
-
 	sim_F(fdTel, 1.);
 
-	//return ;
-
-	//pm.config_HFI = PM_ENABLED;
-	//pm.config_DRIVE = PM_DRIVE_CURRENT;
-	//pm.config_VSI_SILENT = PM_ENABLED;
+	pm.config_DRIVE = PM_DRIVE_CURRENT;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.s_setpoint = 0.f;
+	pm.i_setpoint_Q = 20.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 50.f;
+	pm.i_setpoint_Q = 0.f;
+	sim_F(fdTel, .2);
+
+	pm.i_setpoint_Q = 1.f;
 	sim_F(fdTel, 1.);
-
-	//m.M[0] = 0.f;
-
-	/*pm.s_setpoint = 500.f;
-	pm.s_accel = 50000.f;
-	sim_F(fdTel, 1.);*/
-
-	/*pm.config_SENSOR = PM_SENSOR_QENC;
-
-	pm.s_accel = 50000000.f;
-	pm.s_gain_P *= 1.f;
-	pm.s_gain_I *= .1f;
-
-	pm.fsm_req = PM_STATE_LU_STARTUP;
-	sim_F(fdTel, 0.);
-
-	pm.s_setpoint = 1000.f;
-	sim_F(fdTel, 1.);
-
-	pm.s_setpoint = 7.f;
-	sim_F(fdTel, 1.);
-
-	pm.s_setpoint = 0.f;
-	sim_F(fdTel, 1.);
-
-	pm.config_ESTIMATE = 0;
-	pm.s_setpoint = 700.f;
-	sim_F(fdTel, 1.);
-
-	pm.config_SERVO = PM_ENABLED;
-	sim_F(fdTel, 1.);
-
-	pm.x_setpoint_revol = 2;
-	sim_F(fdTel, 1.);
-
-	m.X[3] += 2. * M_PI * m.Zp / 2600.;
-	sim_F(fdTel, 50E-6);
-
-	m.X[3] -= 2. * M_PI * m.Zp / 2600.;
-	sim_F(fdTel, 50E-6);
-
-	m.X[3] += 2. * M_PI * m.Zp / 2600.;
-	sim_F(fdTel, 50E-6);
-
-	m.X[3] -= 2. * M_PI * m.Zp / 2600.;
-	sim_F(fdTel, 1.);
-
-	pm.config_SENSOR = PM_SENSOR_DISABLED;
-	pm.config_ESTIMATE = PM_ESTIMATE_FLUX;
-	pm.config_HFI = PM_ENABLED;
-	pm.x_setpoint_revol = 20;
-	sim_F(fdTel, 1.);
-
-	pm.x_setpoint_revol = 22;
-	sim_F(fdTel, 1.);*/
 
 	return 1;
 }

@@ -159,7 +159,7 @@ SH_DEF(pm_probe_spinup)
 
 	if (		pm.config_FORCED == PM_DISABLED
 			|| pm.config_DRIVE != PM_DRIVE_SPEED
-			|| pm.config_SERVO == PM_ENABLED) {
+			|| pm.config_DRIVE == PM_DRIVE_SERVO) {
 
 		printf("Enable SPEED control mode before" EOL);
 		return;
@@ -345,7 +345,7 @@ SH_DEF(pm_adjust_HALL)
 	}
 
 	if (		pm.config_DRIVE != PM_DRIVE_SPEED
-			|| pm.config_SERVO == PM_ENABLED) {
+			|| pm.config_DRIVE == PM_DRIVE_SERVO) {
 
 		printf("Enable SPEED control mode before" EOL);
 		return;

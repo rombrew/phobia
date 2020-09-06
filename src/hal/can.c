@@ -36,20 +36,26 @@ irq_CAN1_RX(int mb)
 		hal.CAN_msg.payload[6] = (char) ((payload >> 16) & 0xFFUL);
 		hal.CAN_msg.payload[7] = (char) ((payload >> 24) & 0xFFUL);
 	}
+}
 
-	if (mb == 0) {
+void irq_CAN1_RX0()
+{
+	irq_CAN1_RX(0);
 
-		CAN1->RF0R |= CAN_RF0R_RFOM0;
-	}
-	else {
-		CAN1->RF1R |= CAN_RF1R_RFOM1;
-	}
+	CAN1->RF0R |= CAN_RF0R_RFOM0;
 
 	CAN_IRQ();
 }
 
-void irq_CAN1_RX0() { irq_CAN1_RX(0); }
-void irq_CAN1_RX1() { irq_CAN1_RX(1); }
+void irq_CAN1_RX1()
+{
+	irq_CAN1_RX(1);
+
+	CAN1->RF1R |= CAN_RF1R_RFOM1;
+
+	CAN_IRQ();
+}
+
 void irq_CAN1_SCE() { }
 
 void CAN_startup()
@@ -84,7 +90,8 @@ void CAN_startup()
 static int
 CAN_wait_for_MSR(u32_t xBITS, u32_t xVAL)
 {
-	int		xMSR, N = 0;
+	u32_t		xMSR;
+	int		N = 0;
 
 	do {
 		xMSR = CAN1->MSR & xBITS;
@@ -121,7 +128,7 @@ void CAN_configure()
 		log_TRACE("CAN to INIT failed" EOL);
 	}
 
-	CAN1->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM;
+	CAN1->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP;
 	CAN1->IER = CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
 
 	/* Bit timing (1 Mbit/s).
@@ -135,6 +142,14 @@ void CAN_configure()
 	else {
 		CAN1->MCR &= ~CAN_MCR_NART;
 	}
+
+	CAN1->FMR |= CAN_FMR_FINIT;
+
+	/* Enable all 28 filters to CAN1.
+	 * */
+	MODIFY_REG(CAN1->FMR, 0x3F00UL, 28UL << 8);
+
+	CAN1->FMR &= ~CAN_FMR_FINIT;
 
 	/* Go to mode NORMAL.
 	 * */
@@ -172,19 +187,22 @@ void CAN_filter_ID(int fs, int mb, int ID, int mID)
 
 int CAN_send_msg(const CAN_msg_t *msg)
 {
+	u32_t		xTSR;
 	int		mb, irq;
 
 	irq = hal_lock_irq();
 
-	if (CAN1->TSR & CAN_TSR_TME0) {
+	xTSR = CAN1->TSR;
+
+	if (xTSR & CAN_TSR_TME0) {
 
 		mb = 0;
 	}
-	else if (CAN1->TSR & CAN_TSR_TME1) {
+	else if (xTSR & CAN_TSR_TME1) {
 
 		mb = 1;
 	}
-	else if (CAN1->TSR & CAN_TSR_TME2) {
+	else if (xTSR & CAN_TSR_TME2) {
 
 		mb = 2;
 	}

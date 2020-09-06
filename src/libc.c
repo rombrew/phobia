@@ -539,7 +539,7 @@ const char *stoi(int *x, const char *s)
 		s++;
 	}
 	else if (*s == '+') {
-		
+
 		s++;
 	}
 
@@ -555,7 +555,7 @@ const char *stoi(int *x, const char *s)
 	}
 
 	if (k == 0) {
-		
+
 		return NULL;
 	}
 
