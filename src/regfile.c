@@ -1280,11 +1280,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.hall_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.hall_wS, _kmh,,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.hall_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_prol_T,,, 		"s",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_PF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hall_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hall_gain_IF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.abi_baseEP,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.abi_lastEP,,,		"",	"%i",	REG_READ_ONLY, NULL, NULL),
