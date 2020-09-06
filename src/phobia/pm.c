@@ -49,7 +49,7 @@ void pm_default(pmc_t *pm)
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = 2000.f;
 	pm->probe_speed_hold = 200.f;
-	pm->probe_speed_spinup = 1700.f;
+	pm->probe_speed_spinup = 700.f;
 	pm->probe_speed_detached = 50.f;
 	pm->probe_gain_P = 1E-1f;
 	pm->probe_gain_I = 1E-3f;
@@ -104,8 +104,8 @@ void pm_default(pmc_t *pm)
 	pm->hall_ENABLED = PM_DISABLED;
 	pm->hall_prol_T = 0.1f;
 	pm->hall_gain_PF = 1E-0f;
-	pm->hall_gain_SF = 1E-3f;
-	pm->hall_gain_LP = 5E-2f;
+	pm->hall_gain_SF = 5E-3f;
+	pm->hall_gain_IF = 1E-0f;
 
 	pm->abi_PPR = 2600;
 	pm->abi_FILTER = 1;
@@ -197,7 +197,11 @@ void pm_build(pmc_t *pm)
 		pm->temp_HFI_HT[1] = m_sinf(pm->temp_HFI_wS * pm->dT * .5f);
 	}
 
-	if (pm->config_SENSOR == PM_SENSOR_ABI) {
+	if (pm->config_SENSOR == PM_SENSOR_HALL) {
+
+		pm->temp_prol_T = pm->freq_hz * pm->hall_prol_T;
+	}
+	else if (pm->config_SENSOR == PM_SENSOR_ABI) {
 
 		pm->temp_2PZiPPR = 2.f * M_PI_F * pm->const_Zp
 			* pm->abi_Zq / (float) pm->abi_PPR;
@@ -562,41 +566,40 @@ pm_estimate_HFI(pmc_t *pm)
 static void
 pm_sensor_HALL(pmc_t *pm)
 {
-	float		hF[2], A, B, E;
+	float		hF[2], A, B, relE, gain_SF;
 	int		HS;
 
 	HS = pm->fb_HS;
 
 	if (HS >= 1 && HS <= 6) {
 
+		pm->hall_prolTIM++;
+
 		if (HS == pm->hall_HS) {
 
-			if (pm->hall_DIRF * pm->hall_lpf_wS > M_EPS_F) {
+			if (pm->hall_DIRF * pm->hall_wS > M_EPS_F) {
 
-				E = pm->hall_lpf_wS * pm->hall_gain_PF * pm->dT;
+				relE = pm->hall_wS * pm->hall_gain_PF * pm->dT;
 				B = PM_HALL_SPAN * pm->hall_gain_PF;
 
-				if (		m_fabsf(E) > M_EPS_F
+				if (		m_fabsf(relE) > M_EPS_F
 						&& m_fabsf(pm->hall_prolS) < B) {
 
-					m_rotf(pm->hall_F, E, pm->hall_F);
+					m_rotf(pm->hall_F, relE, pm->hall_F);
 
-					pm->hall_prolS += E;
+					pm->hall_prolS += relE;
 				}
 				else {
-					E = 0.f;
+					relE = 0.f;
 				}
 
-				if (pm->hall_prolTIM != 0) {
+				if (pm->hall_prolTIM >= pm->temp_prol_T) {
 
-					pm->hall_prolTIM--;
-				}
-				else {
 					pm->hall_DIRF = 0;
 					pm->hall_F[0] = pm->hall_ST[HS].X;
 					pm->hall_F[1] = pm->hall_ST[HS].Y;
 
-					E = 0.f;
+					relE = 0.f;
 				}
 			}
 			else if (pm->hall_DIRF != 0) {
@@ -605,10 +608,10 @@ pm_sensor_HALL(pmc_t *pm)
 				pm->hall_F[0] = pm->hall_ST[HS].X;
 				pm->hall_F[1] = pm->hall_ST[HS].Y;
 
-				E = 0.f;
+				relE = 0.f;
 			}
 			else {
-				E = 0.f;
+				relE = 0.f;
 			}
 		}
 		else {
@@ -618,26 +621,42 @@ pm_sensor_HALL(pmc_t *pm)
 			A = pm->hall_ST[pm->hall_HS].X;
 			B = pm->hall_ST[pm->hall_HS].Y;
 
-			E = hF[1] * A - hF[0] * B;
-			pm->hall_DIRF = (E < 0.f) ? - 1 : 1;
+			relE = hF[1] * A - hF[0] * B;
+			pm->hall_DIRF = (relE < 0.f) ? - 1 : 1;
 
-			E = - pm->hall_DIRF * (PM_HALL_SPAN / 2.f);
-			m_rotf(hF, E * pm->hall_gain_PF, hF);
+			relE = - pm->hall_DIRF * (PM_HALL_SPAN / 2.f);
+			m_rotf(hF, relE * pm->hall_gain_PF, hF);
 
 			A = hF[0] * pm->hall_F[0] + hF[1] * pm->hall_F[1];
 			B = hF[1] * pm->hall_F[0] - hF[0] * pm->hall_F[1];
 
-			pm->hall_HS = HS;
-			pm->hall_prolTIM = pm->freq_hz * pm->hall_prol_T;
 			pm->hall_prolS = 0.f;
 			pm->hall_F[0] = hF[0];
 			pm->hall_F[1] = hF[1];
 
-			E = m_atan2f(B, A);
+			relE = m_atan2f(B, A);
 		}
 
-		pm->hall_wS += (E * pm->freq_hz - pm->hall_wS) * pm->hall_gain_SF;
-		pm->hall_lpf_wS += (pm->hall_wS - pm->hall_lpf_wS) * pm->hall_gain_LP;
+		gain_SF = 1.f / (float) pm->hall_prolTIM;
+		gain_SF = (gain_SF < pm->hall_gain_SF) ? gain_SF : pm->hall_gain_SF;
+
+		pm->hall_wS += (relE * pm->freq_hz - pm->hall_wS) * gain_SF;
+
+		B = PM_HALL_SPAN * pm->hall_gain_PF;
+
+		if (		pm->hall_gain_IF > M_EPS_F
+				&& pm->const_Ja > M_EPS_F
+				&& m_fabsf(pm->hall_prolS) < B) {
+
+			pm->hall_wS += (pm->lu_iQ - pm->s_integral)
+				* pm->hall_gain_IF * pm->dT / pm->const_Ja;
+		}
+
+		if (HS != pm->hall_HS) {
+
+			pm->hall_HS = HS;
+			pm->hall_prolTIM = 0;
+		}
 	}
 	else {
 		pm->hall_ENABLED = PM_DISABLED;
@@ -704,8 +723,7 @@ pm_sensor_ABI(pmc_t *pm)
 
 	pm->abi_wS += (relR * pm->freq_hz - pm->abi_wS) * gain_SF;
 
-	if (		pm->config_DRIVE == PM_DRIVE_SERVO
-			&& pm->abi_gain_IF > M_EPS_F
+	if (		pm->abi_gain_IF > M_EPS_F
 			&& pm->const_Ja > M_EPS_F
 			&& m_fabsf(pm->abi_prolS) < pm->temp_2PZiPPR) {
 
@@ -829,13 +847,13 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
-				pm->hall_HS = pm->fb_HS;
+				pm->hall_HS = 0;
 				pm->hall_DIRF = 0;
+				pm->hall_prolTIM = pm->temp_prol_T;
 
 				pm->hall_F[0] = pm->lu_F[0];
 				pm->hall_F[1] = pm->lu_F[1];
 				pm->hall_wS = pm->lu_wS;
-				pm->hall_lpf_wS = pm->lu_wS;
 
 				pm->proc_set_Z(pm->k_ZNUL);
 			}
@@ -928,13 +946,13 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_mode = PM_LU_SENSOR_HALL;
 
-				pm->hall_HS = pm->fb_HS;
+				pm->hall_HS = 0;
 				pm->hall_DIRF = 0;
+				pm->hall_prolTIM = pm->temp_prol_T;
 
 				pm->hall_F[0] = pm->lu_F[0];
 				pm->hall_F[1] = pm->lu_F[1];
 				pm->hall_wS = pm->lu_wS;
-				pm->hall_lpf_wS = pm->lu_wS;
 			}
 			else if (	pm->config_SENSOR == PM_SENSOR_ABI
 					&& pm->lu_flux_locked == 1) {

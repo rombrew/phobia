@@ -117,7 +117,7 @@ sim_Tel(float *pTel)
 
 	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
 	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
-	pTel[44] = pm.hall_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[44] = 0.f;
 
 	pTel[45] = atan2(pm.abi_F[1], pm.abi_F[0]) * 180. / M_PI;
 	pTel[46] = pm.abi_wS * 30. / M_PI / m.Zp;
@@ -473,31 +473,34 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
-	m.R = 0.140;
-	m.Ld = 557E-6;
-	m.Lq = 557E-6;
+	m.R = 2.4E-1;
+	m.Ld = 5.2E-4;
+	m.Lq = 6.5E-4;
 	m.U = 48.;
-	m.Rs = 0.1;
-	m.Zp = 1;
-	m.E = 60. / 2. / M_PI / sqrt(3.) / (70. * m.Zp);
-	m.J = 2.7E-4;
+	m.Rs = 0.7;
+	m.Zp = 15;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
+	m.J = 6.2E-3;
 
 	sim_test_BASE(fdTel);
+	sim_test_HALL(fdTel);
 
 	sim_F(fdTel, 1.);
 
-	pm.config_DRIVE = PM_DRIVE_CURRENT;
+	pm.config_DRIVE = PM_DRIVE_SPEED;
+	pm.config_SENSOR = PM_SENSOR_HALL;
+	pm.config_ESTIMATE = PM_ESTIMATE_DISABLED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.i_setpoint_Q = 20.f;
+	pm.s_setpoint = 500.f;
 	sim_F(fdTel, 1.);
 
-	pm.i_setpoint_Q = 0.f;
-	sim_F(fdTel, .2);
+	pm.s_setpoint = 10.f;
+	sim_F(fdTel, 1.);
 
-	pm.i_setpoint_Q = 1.f;
+	pm.s_setpoint = 0.f;
 	sim_F(fdTel, 1.);
 
 	return 1;

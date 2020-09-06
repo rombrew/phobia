@@ -317,11 +317,10 @@ typedef struct {
 	int		hall_prolTIM;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_lpf_wS;
 	float		hall_prol_T;
 	float		hall_gain_PF;
 	float		hall_gain_SF;
-	float		hall_gain_LP;
+	float		hall_gain_IF;
 
 	int		abi_baseEP;
 	float		abi_baseF[2];
@@ -354,6 +353,7 @@ typedef struct {
 	float		temp_const_iE;
 	float		temp_HFI_wS;
 	float		temp_HFI_HT[2];
+	int		temp_prol_T;
 	float		temp_2PZiPPR;
 
 	float		watt_wP_maximal;

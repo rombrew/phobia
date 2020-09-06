@@ -32,6 +32,7 @@ LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld
 
 TTY	= /dev/rfcomm0
+#TTY	= /dev/ttyUSB0
 BAUD	= 57600
 
 OBJS    = freertos/heap_4.o \

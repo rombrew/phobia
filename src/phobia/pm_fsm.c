@@ -1148,7 +1148,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
 				pm->hall_wS = 0.f;
-				pm->hall_lpf_wS = 0.f;
 
 				pm->abi_F[0] = 1.f;
 				pm->abi_F[1] = 0.f;
