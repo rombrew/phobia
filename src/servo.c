@@ -119,7 +119,7 @@ SH_DEF(servo_FT_uniform)
 		xSP += wSP * tDT * DIRF;
 
 		reg_SET_F(ID_PM_X_SETPOINT_F_MM, xSP);
-		reg_SET_F(ID_PM_X_SETPOINT_WS_MMPS, wSP * DIRF);
+		reg_SET_F(ID_PM_X_SETPOINT_SPEED_MMPS, wSP * DIRF);
 
 		if (DIRF == 1) {
 
@@ -142,7 +142,7 @@ SH_DEF(servo_FT_uniform)
 	}
 	while (1);
 
-	reg_SET_F(ID_PM_X_SETPOINT_WS_MMPS, 0.f);
+	reg_SET_F(ID_PM_X_SETPOINT_SPEED_MMPS, 0.f);
 
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }

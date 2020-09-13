@@ -85,7 +85,7 @@ int strcmp(const char *s, const char *p)
 	do {
 		c = *s - *p;
 
-		if (c || !*s)
+		if (c || *s == 0)
 			break;
 
 		++s;
@@ -101,7 +101,7 @@ int strcmpe(const char *s, const char *p)
 	char		c;
 
 	do {
-		if (!*s)
+		if (*s == 0)
 			return 0;
 
 		c = *s - *p;
@@ -128,7 +128,7 @@ int strcmpn(const char *s, const char *p, int n)
 
 		c = *s - *p;
 
-		if (c || !*s)
+		if (c || *s == 0)
 			break;
 
 		++s;
@@ -172,7 +172,7 @@ const char *strstr(const char *s, const char *p)
 char *strcpy(char *d, const char *s)
 {
 	do {
-		if (!(*d = *s))
+		if ((*d = *s) == 0)
 			break;
 
 		++d;
@@ -192,12 +192,12 @@ char *strcpyn(char *d, const char *s, int n)
 			break;
 		}
 
-		if (!(*d = *s))
+		if ((*d = *s) == 0)
 			break;
 
 		++d;
 		++s;
-		--n;
+		n--;
 	}
 	while (1);
 
@@ -209,7 +209,7 @@ int strlen(const char *s)
 	int		len = 0;
 
 	do {
-		if (!*s)
+		if (*s == 0)
 			break;
 
 		++s;
@@ -223,7 +223,7 @@ int strlen(const char *s)
 const char *strchr(const char *s, int c)
 {
 	do {
-		if (!*s)
+		if (*s == 0)
 			return NULL;
 
 		if (*s == c)
@@ -239,6 +239,21 @@ const char *strchr(const char *s, int c)
 void xputs(io_ops_t *_io, const char *s)
 {
 	while (*s) _io->putc(*s++);
+}
+
+void xputsp(io_ops_t *_io, const char *s, int nleft)
+{
+	while (*s) {
+
+		_io->putc(*s++);
+		nleft--;
+	}
+
+	while (nleft > 0) {
+
+		_io->putc(' ');
+		nleft--;
+	}
 }
 
 static void
@@ -265,7 +280,7 @@ fmt_hexl(io_ops_t *_io, u32_t x)
 }
 
 static void
-fmt_int(io_ops_t *_io, int x)
+fmt_intp(io_ops_t *_io, int x, int nleft)
 {
 	char		s[16], *p;
 	int		n;
@@ -274,6 +289,7 @@ fmt_int(io_ops_t *_io, int x)
 
 		_io->putc('-');
 		x = -x;
+		nleft--;
 	}
 
 	p = s + 16;
@@ -286,7 +302,17 @@ fmt_int(io_ops_t *_io, int x)
 	}
 	while (x);
 
-	while (*p) _io->putc(*p++);
+	while (*p) {
+
+		_io->putc(*p++);
+		nleft--;
+	}
+
+	while (nleft > 0) {
+
+		_io->putc(' ');
+		nleft--;
+	}
 }
 
 static void
@@ -332,8 +358,9 @@ fmt_float(io_ops_t *_io, float x, int n)
 		 * */
 
 		i = (int) x;
-		fmt_int(_io, i);
 		x -= i;
+
+		fmt_intp(_io, i, 0);
 	}
 	else {
 		xputs(_io, "MAX");
@@ -437,16 +464,18 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 	_io->putc('E');
 
-	if (e >= 0)
-		_io->putc('+');
+	if (e >= 0) {
 
-	fmt_int(_io, e);
+		_io->putc('+');
+	}
+
+	fmt_intp(_io, e, 0);
 }
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 {
 	const char	*s;
-	int		n = 5;
+	int		n = 0;
 
 	while (*fmt) {
 
@@ -454,8 +483,13 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
                         ++fmt;
 
-			if (*fmt >= '0' && *fmt <= '9')
+			if (*fmt >= '0' && *fmt <= '9') {
+
 				n = *fmt++ - '0';
+
+				if (*fmt >= '0' && *fmt <= '9')
+					n = 10 * n + (*fmt++ - '0');
+			}
 
 			switch (*fmt) {
 
@@ -474,7 +508,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 					break;
 
 				case 'i':
-					fmt_int(_io, va_arg(ap, int));
+					fmt_intp(_io, va_arg(ap, int), n);
 					break;
 
 				case 'f':
@@ -491,7 +525,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
 				case 's':
 					s = va_arg(ap, const char *);
-					xputs(_io, (s != NULL) ? s : "(null)");
+					xputsp(_io, (s != NULL) ? s : "(null)", n);
 					break;
 			}
 		}
@@ -562,6 +596,58 @@ const char *stoi(int *x, const char *s)
 	if (*s == 0 || strchr(" ", *s) != NULL) {
 
 		*x = i;
+	}
+	else {
+		return NULL;
+	}
+
+	return s;
+}
+
+const char *htoi(int *x, const char *s)
+{
+	int		i, k = 0, h = 0;
+
+	if (*s == '0' && *(s + 1) == 'x') {
+
+		s += 2;
+	}
+
+	do {
+		if (*s >= '0' && *s <= '9') {
+
+			i = *s++ - '0';
+		}
+		else if (*s >= 'A' && *s <= 'F') {
+
+			i = 10 + *s++ - 'A';
+		}
+		else if (*s >= 'a' && *s <= 'f') {
+
+			i = 10 + *s++ - 'a';
+		}
+		else {
+			break;
+		}
+
+		h = 16 * h + i;
+		k++;
+
+		if (k > 8) {
+
+			return NULL;
+		}
+	}
+	while (1);
+
+	if (k == 0) {
+
+		return NULL;
+	}
+
+	if (*s == 0 || strchr(" ", *s) != NULL) {
+
+		*x = h;
 	}
 	else {
 		return NULL;

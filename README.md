@@ -60,10 +60,11 @@ PCB design source files.
 * Advanced PWM scheme provides:
 	* Reduced switching losses and fully utilised DC link voltage.
 	* Clearance tracking to get accurate measurement of inline currents.
-	* Optional reduced ripple for precise control.
+	* Prevents bootstrap circuit undervoltage condition.
+	* Optional reduced ripple mode for precise control.
 
 * Terminal voltage measurements (TVM):
-	* In operation is used to reduce the effect of Dead-Time.
+	* In operation is used to reduce the effect of Dead-Time distortion.
 	* BEMF tracking to get smooth start when motor is already running.
 	* Self test of power stages integrity.
 	* Self test of bootstrap retention time.
@@ -87,7 +88,7 @@ PCB design source files.
 	* Forced control that applies a current vector without feedback to force rotor turn.
 	* Freewheling.
 	* High frequency injection (HFI) based on magnetic saliency (**EXPERIMENTAL**).
-	* Hall sensors or ABI encoder.
+	* Hall sensors or ABI incremental encoder.
 
 * Control loops:
 	* Current control is always enabled.
@@ -96,8 +97,9 @@ PCB design source files.
 	* Boost loop (battery charger) (**TODO**).
 
 * Adjustable limits:
-	* Phase current (with adjustable derate from overheat).
-	* Source current (or power) consumption and regeneration.
+	* Phase current with adjustable derate on PCB overheat.
+	* Motor voltage appied from VSI.
+	* Battery current (power) consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration (as part of speed control loop).
 
@@ -111,7 +113,7 @@ PCB design source files.
 
 * Available information:
 	* Total distance traveled.
-	* Source energy (Wh) and charge (Ah) consumed (or reverted).
+	* Battery energy (Wh) and charge (Ah) consumed (reverted).
 	* Fuel gauge percentage.
 
 ## TODO

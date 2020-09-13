@@ -1,7 +1,7 @@
 #ifndef _H_FLASH_
 #define _H_FLASH_
 
-#define FLASH_SECTOR_MAX		4
+#define FLASH_SECTOR_MAX		5
 
 extern const unsigned long flash_ram_map[];
 

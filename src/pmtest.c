@@ -146,13 +146,13 @@ SH_DEF(pm_FT_current_ramp)
 	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
-		iSP = pm.i_setpoint_Q;
+		iSP = reg_GET_F(ID_PM_I_SETPOINT_TORQUE);
 		vTaskDelay(xTS1);
 
-		pm.i_setpoint_Q = pm.i_maximal;
+		reg_SET_F(ID_PM_I_SETPOINT_TORQUE, pm.i_maximal);
 		vTaskDelay(5UL * xTS1);
 
-		pm.i_setpoint_Q = iSP;
+		reg_SET_F(ID_PM_I_SETPOINT_TORQUE, iSP);
 		vTaskDelay(4UL * xTS1);
 	}
 	while (0);
@@ -174,13 +174,13 @@ SH_DEF(pm_FT_speed_ramp)
 	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
-		wSP = pm.s_setpoint;
+		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		vTaskDelay(xTS1);
 
-		pm.s_setpoint = pm.probe_speed_hold;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
 		vTaskDelay(5UL * xTS1);
 
-		pm.s_setpoint = wSP;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
 		vTaskDelay(4UL * xTS1);
 	}
 	while (0);
@@ -209,7 +209,7 @@ SH_DEF(pm_FT_tvm_ramp)
 		return;
 	}
 
-	xMIN = pm.dc_minimal;
+	xMIN = pm.ts_minimal;
 	xMAX = (int) (pm.dc_resolution * pm.tvm_range_DC);
 
 	xDC = xMIN;

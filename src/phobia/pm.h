@@ -40,7 +40,7 @@ enum {
 enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
-	PM_DRIVE_LIMITED,
+	PM_DRIVE_COMBINED,
 	PM_DRIVE_SERVO,
 };
 
@@ -88,8 +88,8 @@ enum {
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
-	PM_ERROR_POWER_STAGE_FAULT,
 	PM_ERROR_BOOTSTRAP_FAULT,
+	PM_ERROR_POWER_STAGE_FAULT,
 	PM_ERROR_ACCURACY_FAULT,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INLINE_OVERCURRENT,
@@ -127,6 +127,7 @@ typedef struct {
 	float		dc_minimal;
 	float		dc_clearance;
 	float		dc_bootstrap;
+	float		dc_clamped;
 
 	float		k_UMAX;
 	float		k_EMAX;
@@ -136,6 +137,7 @@ typedef struct {
 	int		ts_minimal;
 	int		ts_clearance;
 	int		ts_bootstrap;
+	int		ts_clamped;
 	float		ts_inverted;
 
 	int		fail_reason;
@@ -155,6 +157,7 @@ typedef struct {
 	int		config_SENSOR;
 	int		config_WEAK;
 	int		config_DRIVE;
+	int		config_SPEED_FROM_TORQUE;
 	int		config_INFO;
 	int		config_BOOST;
 
@@ -195,8 +198,8 @@ typedef struct {
 	float		probe_current_weak;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
-	float		probe_speed_hold;
-	float		probe_speed_spinup;
+	float		probe_speed_hold_pc;
+	float		probe_speed_spinup_pc;
 	float		probe_speed_detached;
 	float		probe_gain_P;
 	float		probe_gain_I;
@@ -221,6 +224,7 @@ typedef struct {
 	int		vsi_SA;
 	int		vsi_SB;
 	int		vsi_SC;
+	int		vsi_TIM;
 	int		vsi_AF;
 	int		vsi_BF;
 	int		vsi_UF;
@@ -283,6 +287,7 @@ typedef struct {
 	float		flux_gain_HI;
 	float		flux_gain_AD;
 	float		flux_gain_SF;
+	float		flux_gain_IF;
 
 	int		hfi_tm_DIV;
 	int		hfi_tm_SKIP;
@@ -302,6 +307,7 @@ typedef struct {
 	int		hfi_DFT_N;
 	int		hfi_DFT_P;
 	float		hfi_gain_SF;
+	float		hfi_gain_IF;
 
 	struct {
 
@@ -374,6 +380,7 @@ typedef struct {
 	float		i_derated_HFI;
 	float		i_setpoint_D;
 	float		i_setpoint_Q;
+	float		i_setpoint_torque;
 	float		i_track_D;
 	float		i_track_Q;
 	float		i_integral_D;
@@ -395,18 +402,20 @@ typedef struct {
 
 	float		s_maximal;
 	float		s_reverse;
-	float		s_setpoint;
+	float		s_setpoint_speed;
 	float		s_accel;
 	float		s_track;
 	float		s_integral;
 	float		s_base_wS;
+	float		s_tol_Z;
 	float		s_gain_P;
 	float		s_gain_I;
 	float		s_gain_S;
+	float		s_gain_D;
 	float		s_iSP;
 
 	float		x_setpoint_F[2];
-	float		x_setpoint_wS;
+	float		x_setpoint_speed;
 	int		x_setpoint_revol;
 	float		x_lu_F1;
 	int		x_lu_revol;

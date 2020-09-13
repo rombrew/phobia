@@ -8,6 +8,8 @@
 #include "regfile.h"
 #include "shell.h"
 
+#define REGS_SYM_MAX				79
+
 typedef struct {
 
 	u32_t			number;
@@ -16,8 +18,88 @@ typedef struct {
 }
 flash_block_t;
 
+typedef struct {
+
+	u32_t			*flash;
+
+	union {
+		u32_t		l;
+		u8_t		b[4];
+	}
+	packed;
+
+	int			pack_i;
+	int			bleft;
+}
+FE_prog_t;
+
+static int
+FE_prog_putc(FE_prog_t *pg, int c)
+{
+	int			rc = 0;
+
+	if (pg->bleft > 0) {
+
+		pg->packed.b[pg->pack_i++] = (u8_t) c;
+
+		if (pg->pack_i >= 4) {
+
+			FLASH_prog(pg->flash, &pg->packed.l, sizeof(u32_t));
+
+			pg->flash += 1;
+			pg->pack_i = 0;
+
+			pg->bleft -= 4;
+		}
+
+		rc = 1;
+	}
+
+	return rc;
+}
+
+static void
+FE_prog_long(FE_prog_t *pg, u32_t l)
+{
+	union {
+		u32_t		l;
+		u8_t		b[4];
+	}
+	packed = { l };
+
+	FE_prog_putc(pg, packed.b[0]);
+	FE_prog_putc(pg, packed.b[1]);
+	FE_prog_putc(pg, packed.b[2]);
+	FE_prog_putc(pg, packed.b[3]);
+}
+
+static const char *
+FE_strcpyn(char *d, const char *s, int n)
+{
+	do {
+		if (n <= 0) {
+
+			*d = 0;
+			break;
+		}
+
+		if (*s == 0xFF || *s == 0xFE) {
+
+			*d = 0;
+			break;
+		}
+
+		*d++ = *s++;
+
+		n--;
+	}
+	while (1);
+
+	return s;
+}
+
 static u32_t
-flash_block_crc32(flash_block_t *block)
+flash_block_crc32(const flash_block_t *block)
 {
 	return crc32b(block, sizeof(flash_block_t) - sizeof(u32_t));
 }
@@ -25,7 +107,7 @@ flash_block_crc32(flash_block_t *block)
 static flash_block_t *
 flash_block_scan()
 {
-	flash_block_t			*block, *last;
+	flash_block_t		*block, *last;
 
 	block = (void *) flash_ram_map[0];
 	last = NULL;
@@ -55,47 +137,76 @@ flash_block_scan()
 
 int flash_block_regs_load()
 {
-	const reg_t		*reg;
-	flash_block_t		*block;
-	char			*lsyms, *lvals, *lnull;
+	const flash_block_t	*block;
+	const reg_t		*reg, *linked;
+	const char		*lsym;
+
+	char			*temp_s;
+	int			FE_fail = 0;
 
 	block = flash_block_scan();
 
-	if (block != NULL) {
+	if (block == NULL) {
 
-		lsyms = (char *) block->content;
-
-		while (*lsyms != 0) {
-
-			lvals = lsyms + strlen(lsyms) + 1;
-			lnull = lvals + 4;
-
-			if (lnull < (char *) &block->crc32) {
-
-				/* Search for an exact match of symbolic NAME.
-				 * */
-				reg = reg_search(lsyms);
-
-				if (reg != NULL && reg->mode & REG_CONFIG) {
-
-					/* Load binary VALUE of the register.
-					 * */
-					memcpy(reg->link, lvals, sizeof(u32_t));
-				}
-			}
-			else {
-				/* Unable to load.
-				 * */
-				return 0;
-			}
-
-			lsyms = lnull;
-		}
-
-		return 1;
+		/* No valid configuration block found.
+		 * */
+		return FE_fail;
 	}
 
-	return 0;
+	temp_s = pvPortMalloc(REGS_SYM_MAX + 1);
+	lsym = (const char *) block->content;
+
+	while (*lsym != 0xFF) {
+
+		lsym = FE_strcpyn(temp_s, lsym, REGS_SYM_MAX);
+
+		/* Search for an exact match of symbolic NAME.
+		 * */
+		reg = reg_search(temp_s);
+
+		if (*lsym == 0xFE) {
+
+			lsym = FE_strcpyn(temp_s, lsym + 1, REGS_SYM_MAX);
+
+			if (reg != NULL && reg->mode & REG_CONFIG
+					&& reg->mode & REG_LINKED) {
+
+				linked = reg_search(temp_s);
+
+				if (linked != NULL) {
+
+					reg->link->i = (int) (linked - regfile);
+				}
+			}
+		}
+		else if (*lsym == 0xFF) {
+
+			if (reg != NULL && reg->mode & REG_CONFIG) {
+
+				/* Load binary VALUE.
+				 * */
+				memcpy(reg->link, lsym + 1, sizeof(u32_t));
+			}
+
+			lsym += 5;
+		}
+		else {
+			FE_fail = 1;
+			break;
+		}
+
+		if (*lsym != 0xFF) {
+
+			FE_fail = 1;
+			break;
+		}
+
+		lsym++;
+	}
+
+	vPortFree(temp_s);
+
+	return FE_fail;
 }
 
 static int
@@ -120,60 +231,67 @@ flash_is_block_dirty(const flash_block_t *block)
 }
 
 static int
-flash_block_regs_store(flash_block_t *block)
+flash_regs_FE_prog(flash_block_t *block)
 {
 	const reg_t		*reg;
-	char			*lsyms, *lvals, *lnull;
+	const char		*lsym;
 
-	lsyms = (char *) block->content;
+	FE_prog_t		pg;
+	int			rc = 0;
+
+	pg.flash = block->content;
+	pg.pack_i = 0;
+	pg.bleft = sizeof(block->content);
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
 
 		if (reg->mode & REG_CONFIG) {
 
-			lvals = lsyms + strlen(reg->sym) + 1;
-			lnull = lvals + 4;
+			lsym = reg->sym;
 
-			if (lnull < (char *) &block->crc32) {
+			/* Store symbolic NAME of register.
+			 * */
+			while (*lsym != 0) { FE_prog_putc(&pg, *lsym++); }
 
-				/* Store symbolic NAME of register.
-				 * */
-				strcpy(lsyms, reg->sym);
+			if (reg->mode & REG_LINKED) {
 
-				/* Store binary VALUE of the register.
-				 * */
-				memcpy(lvals, reg->link, sizeof(u32_t));
+				lsym = regfile[reg->link->i].sym;
+
+				FE_prog_putc(&pg, 0xFE);
+
+				while (*lsym != 0) { FE_prog_putc(&pg, *lsym++); }
 			}
 			else {
-				/* Unable to store as block is full.
+				/* Store binary VALUE.
 				 * */
-				return 0;
+				FE_prog_putc(&pg, 0xFF);
+				FE_prog_long(&pg, reg->link->i);
 			}
 
-			lsyms = lnull;
+			rc = FE_prog_putc(&pg, 0xFF);
+
+			if (rc == 0) {
+
+				break;
+			}
 		}
 	}
 
-	/* Null-terminated.
-	 * */
-	*lsyms++ = 0;
-	*lsyms++ = 0;
+	if (rc != 0) {
 
-	/* Fill the tail.
-	 * */
-	while (lsyms < (char *) &block->crc32)
-		*lsyms++ = 0xFF;
+		/* Fill the tail.
+		 * */
+		while (FE_prog_putc(&pg, 0xFF) != 0) ;
+	}
 
-	block->crc32 = flash_block_crc32(block);
-
-	return 1;
+	return rc;
 }
 
 static int
-flash_block_write()
+flash_block_prog()
 {
-	flash_block_t		*block, *temp;
-	u32_t			number;
+	flash_block_t		*block, *origin;
+	u32_t			number, crc32;
 	int			rc = 0;
 
 	block = flash_block_scan();
@@ -191,7 +309,7 @@ flash_block_write()
 		block = (void *) flash_ram_map[0];
 	}
 
-	temp = block;
+	origin = block;
 
 	while (flash_is_block_dirty(block) != 0) {
 
@@ -200,7 +318,7 @@ flash_block_write()
 		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
 			block = (void *) flash_ram_map[0];
 
-		if (block == temp) {
+		if (block == origin) {
 
 			/* All flash is dirty.
 			 * */
@@ -209,25 +327,17 @@ flash_block_write()
 		}
 	}
 
-	temp = pvPortMalloc(sizeof(flash_block_t));
+	FLASH_prog(&block->number, &number, sizeof(u32_t));
 
-	if (temp != NULL) {
+	rc = flash_regs_FE_prog(block);
 
-		temp->number = number;
+	if (rc != 0) {
 
-		rc = flash_block_regs_store(temp);
+		crc32 = flash_block_crc32(block);
 
-		if (rc != 0) {
+		FLASH_prog(&block->crc32, &crc32, sizeof(u32_t));
 
-			FLASH_prog(block, temp, sizeof(flash_block_t));
-		}
-
-		vPortFree(temp);
-
-		if (rc != 0) {
-
-			rc = (flash_block_crc32(block) == block->crc32) ? 1 : 0;
-		}
+		rc = (flash_block_crc32(block) == block->crc32) ? 1 : 0;
 	}
 
 	return rc;
@@ -240,7 +350,7 @@ int flash_block_relocate()
 	int			rc = 1;
 
 	block = flash_block_scan();
-	reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 1];
+	reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 2];
 
 	if (block != NULL && block < reloc) {
 
@@ -271,7 +381,7 @@ int flash_block_relocate()
 	return rc;
 }
 
-SH_DEF(flash_write)
+SH_DEF(flash_prog)
 {
 	int			rc;
 
@@ -283,7 +393,7 @@ SH_DEF(flash_write)
 
 	printf("Flash ... ");
 
-	rc = flash_block_write();
+	rc = flash_block_prog();
 
 	printf("%s" EOL, (rc != 0) ? "Done" : "Fail");
 }

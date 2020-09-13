@@ -6,6 +6,7 @@
 
 const unsigned long flash_ram_map[] = {
 
+	0x08060000UL,
 	0x08080000UL,
 	0x080A0000UL,
 	0x080C0000UL,
@@ -130,7 +131,7 @@ void *FLASH_erase(void *flash)
 				&& (u32_t) flash < flash_ram_map[N + 1]) {
 
 			flash = (void *) flash_ram_map[N];
-			sector_N = N + 8;
+			sector_N = N + 7;
 
 			break;
 		}

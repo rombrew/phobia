@@ -18,7 +18,6 @@ page "Mechanical Speed"
 label 1 "(rpm)"
 figure 0 3 "m.X[2]"
 figure 0 26 "pm.lu_wS"
-figure 0 56 "pm.s_setpoint"
 
 page "Electrical Position"
 label 1 "(°)"
@@ -115,12 +114,6 @@ page "pm.flux_E"
 label 1 "(Wb)"
 figure 0 36 "pm.flux_E"
 
-page "pm.flux_H"
-figure 0 37 "pm.flux_H"
-
-page "pm.flux[H].lpf_E"
-figure 0 38 "pm.flux[H].lpf_E"
-
 page "pm.hfi_F"
 label 1 "(°)"
 figure 0 39 "pm.hfi_F"
@@ -140,10 +133,6 @@ page "pm.hall_wS"
 label 1 "(rpm)"
 figure 0 43 "pm.hall_wS"
 
-page "pm.hall_lpf_wS"
-label 1 "(rpm)"
-figure 0 44 "pm.hall_lpf_wS"
-
 page "pm.abi_F"
 label 1 "(°)"
 figure 0 45 "pm.abi_F"
@@ -152,30 +141,20 @@ page "pm.abi_wS"
 label 1 "(rpm)"
 figure 0 46 "pm.abi_wS"
 
-page "pm.abi_lpf_wS"
-label 1 "(rpm)"
-figure 0 47 "pm.abi_lpf_wS"
-
-page "pm.watt_lpf_D, pm.watt_lpf_Q"
+page "pm.watt_lpf_D,[Q]"
 label 1 "(V)"
 figure 0 48 "pm.watt_lpf_D"
 figure 0 49 "pm.watt_lpf_Q"
 
-page "pm.i_setpoint_D"
+page "pm.i_setpoint_D,[Q,torque]"
 label 1 "(A)"
 figure 0 53 "pm.i_setpoint_D"
-
-page "pm.i_setpoint_Q"
-label 1 "(A)"
 figure 0 54 "pm.i_setpoint_Q"
+figure 0 55 "pm.i_setpoint_torque"
 
-page "pm.weak_D"
-label 1 "(A)"
-figure 0 55 "pm.weak_D"
-
-page "pm.s_setpoint"
+page "pm.s_setpoint_speed"
 label 1 "(rpm)"
-figure 0 56 "pm.s_setpoint"
+figure 0 56 "pm.s_setpoint_speed"
 
 page "pm.s_track"
 label 1 "(rpm)"
@@ -185,7 +164,11 @@ page "pm.s_integral"
 label 1 "(A)"
 figure 0 58 "pm.s_integral"
 
-page "pm.s_forward"
+page "pm.s_iSP"
 label 1 "(A)"
-figure 0 59 "pm.s_forward"
+figure 0 59 "pm.s_iSP"
+
+page "pm.weak_D"
+label 1 "(A)"
+figure 0 60 "pm.weak_D"
 

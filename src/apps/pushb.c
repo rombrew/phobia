@@ -76,7 +76,7 @@ void ap_PUSHB(void *pData)
 
 			rpm = rpm_table[N] * (float) reverse;
 
-			reg_SET_F(ID_PM_S_SETPOINT_RPM, rpm);
+			reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, rpm);
 		}
 		else if (pushed_A == 0 && value_A != 0) {
 

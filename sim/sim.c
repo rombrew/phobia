@@ -96,7 +96,6 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[26] = pm.lu_wS * 30. / M_PI / m.Zp;
 	pTel[27] = pm.lu_mode;
-
 	pTel[28] = pm.lu_flux_lpf_wS * 30. / M_PI / m.Zp;
 	pTel[29] = pm.lu_flux_zone;
 	pTel[30] = pm.im_revol_1;
@@ -131,11 +130,14 @@ sim_Tel(float *pTel)
 
 	pTel[53] = pm.i_setpoint_D;
 	pTel[54] = pm.i_setpoint_Q;
-	pTel[55] = pm.weak_D;
+	pTel[55] = pm.i_setpoint_torque;
 
-	pTel[56] = pm.s_setpoint * 30. / M_PI / m.Zp;
+	pTel[56] = pm.s_setpoint_speed * 30. / M_PI / m.Zp;
 	pTel[57] = pm.s_track * 30. / M_PI / m.Zp;
 	pTel[58] = pm.s_integral;
+	pTel[59] = pm.s_iSP;
+
+	pTel[60] = pm.weak_D;
 }
 
 static void
@@ -271,7 +273,7 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = pm.probe_speed_hold;
+	pm.s_setpoint_speed = pm.forced_maximal;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -281,6 +283,9 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
+
+	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f)
+		* pm.const_fb_U / pm.const_E;
 
 	sim_F(fdTel, 1.);
 
@@ -302,10 +307,14 @@ sim_test_BASE(FILE *fdTel)
 	pm.fsm_req = PM_STATE_PROBE_CONST_J;
 	sim_F(fdTel, .05);
 
-	pm.s_setpoint = pm.probe_speed_spinup;
+	pm.s_setpoint_speed = pm.probe_speed_spinup_pc * (pm.k_EMAX / 100.f)
+		* pm.const_fb_U / pm.const_E;
+
 	sim_F(fdTel, .2);
 
-	pm.s_setpoint = pm.probe_speed_hold;
+	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f)
+		* pm.const_fb_U / pm.const_E;
+
 	sim_F(fdTel, 0.);
 
 	ZpE = 1.5f * pm.const_Zp * pm.const_Zp * pm.const_E;
@@ -335,21 +344,21 @@ sim_test_SPEED(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = 0.f;
+	pm.s_setpoint_speed = 0.f;
 	sim_F(fdTel, 1.);
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = .2f * m.U / m.E;
+	pm.s_setpoint_speed = .2f * m.U / m.E;
 	sim_F(fdTel, 3.);
 
-	printf("wSP %.2f (rpm)\n", pm.s_setpoint * 30. / M_PI / m.Zp);
+	printf("wSP %.2f (rpm)\n", pm.s_setpoint_speed * 30. / M_PI / m.Zp);
 	printf("lu_wS %.2f (rpm)\n", pm.lu_wS * 30. / M_PI / m.Zp);
 
 	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.lu_wS, pm.s_setpoint);
+	t_assert_ref(pm.lu_wS, pm.s_setpoint_speed);
 
-	pm.s_setpoint = 0.f;
+	pm.s_setpoint_speed = 0.f;
 	sim_F(fdTel, 1.);
 
 	t_assert(pm.fail_reason == PM_OK);
@@ -383,7 +392,7 @@ sim_test_HALL(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint = pm.probe_speed_hold;
+	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f) * pm.const_fb_U / pm.const_E;
 	sim_F(fdTel, 1.);
 
 	t_assert(pm.fail_reason == PM_OK);
@@ -400,7 +409,7 @@ sim_test_HALL(FILE *fdTel)
 		printf("hall_ST[%i] %.1f\n", N, rot_H);
 	}
 
-	pm.s_setpoint = 0.f;
+	pm.s_setpoint_speed = 0.f;
 	sim_F(fdTel, 1.);
 
 	t_assert(pm.fail_reason == PM_OK);
@@ -473,35 +482,38 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
-	m.R = 2.4E-1;
-	m.Ld = 5.2E-4;
-	m.Lq = 6.5E-4;
-	m.U = 48.;
+	m.R = 3.0670E-1;
+	m.Ld = 2.9530E-4;
+	m.Lq = 2.9530E-4;
+	m.U = 40.;
 	m.Rs = 0.7;
-	m.Zp = 15;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;
+	m.Zp = 1;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (87.4 * m.Zp);
+	m.J = 2.4E-3;
 
 	sim_test_BASE(fdTel);
-	sim_test_HALL(fdTel);
 
 	sim_F(fdTel, 1.);
 
-	pm.config_DRIVE = PM_DRIVE_SPEED;
-	pm.config_SENSOR = PM_SENSOR_HALL;
-	pm.config_ESTIMATE = PM_ESTIMATE_DISABLED;
+	pm.config_DRIVE = PM_DRIVE_COMBINED;
+
+	pm.s_maximal = 270.f;
+	pm.s_reverse = 0.f;
+	pm.s_accel = 800;
+
+	pm.forced_reverse = 0;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	sim_F(fdTel, 0.);
 
-	pm.s_setpoint = 500.f;
+	pm.i_setpoint_torque = 10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = 10.f;
+	pm.i_setpoint_torque = -10.f;
 	sim_F(fdTel, 1.);
 
-	pm.s_setpoint = -50.f;
-	sim_F(fdTel, 1.);
+	pm.i_setpoint_torque = 10.f;
+	sim_F(fdTel, 2.);
 
 	return 1;
 }

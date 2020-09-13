@@ -229,7 +229,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 					|| pm->self_BST[1] < pm->dc_bootstrap
 					|| pm->self_BST[2] < pm->dc_bootstrap) {
 
-				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
+				pm->fail_reason = PM_ERROR_BOOTSTRAP_FAULT;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -1160,6 +1160,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->i_derated_1 = PM_MAX_F;
 				pm->i_setpoint_D = 0.f;
 				pm->i_setpoint_Q = 0.f;
+				pm->i_setpoint_torque = 0.f;
 				pm->i_track_D = 0.f;
 				pm->i_track_Q = 0.f;
 				pm->i_integral_D = 0.f;
@@ -1167,7 +1168,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->weak_D = 0.f;
 
-				pm->s_setpoint = 0.f;
+				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
 				pm->s_integral = 0.f;
 				pm->s_base_wS = 0.f;
@@ -1175,7 +1176,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->x_setpoint_F[0] = 1.f;
 				pm->x_setpoint_F[1] = 0.f;
-				pm->x_setpoint_wS = 0.f;
+				pm->x_setpoint_speed = 0.f;
 				pm->x_setpoint_revol = 0;
 				pm->x_lu_F1 = pm->lu_F[1];
 				pm->x_lu_revol = 0;
@@ -1393,10 +1394,10 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 
 		case 0:
 			pm->probe_DFT[0] = 0.f;
-			pm->probe_DFT[0] = 0.f;
+			pm->probe_DFT[1] = 0.f;
 
 			pm->REM[0] = 0.f;
-			pm->REM[0] = 0.f;
+			pm->REM[1] = 0.f;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -1422,7 +1423,7 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 
 		case 2:
 			temp_MPPE = pm->probe_DFT[0] * pm->probe_DFT[0];
-			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 6.f;
+			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 7.f;
 
 			if (m_isfinitef(temp_MPPE) != 0 && temp_MPPE > M_EPS_F) {
 
@@ -1430,8 +1431,9 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 
 				/* Tune speed loop.
 				 * */
-				pm->s_gain_P = 1E-0f / pm->lu_MPPE;
-				pm->s_gain_I = 1E-1f / pm->lu_MPPE;
+				pm->s_gain_P = 2E-0f / pm->lu_MPPE;
+				pm->s_gain_I = 1E-2f / pm->lu_MPPE;
+				pm->s_gain_D = 1E-0f / pm->lu_MPPE;
 			}
 			else {
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
@@ -1732,8 +1734,8 @@ const char *pm_strerror(int n)
 
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
-		PM_SFI(PM_ERROR_POWER_STAGE_FAULT),
 		PM_SFI(PM_ERROR_BOOTSTRAP_FAULT),
+		PM_SFI(PM_ERROR_POWER_STAGE_FAULT),
 		PM_SFI(PM_ERROR_ACCURACY_FAULT),
 		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
 		PM_SFI(PM_ERROR_INLINE_OVERCURRENT),

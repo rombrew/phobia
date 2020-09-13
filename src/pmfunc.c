@@ -31,7 +31,7 @@ int pm_wait_for_IDLE()
 	return pm.fail_reason;
 }
 
-int pm_wait_for_SPINUP(float ref)
+int pm_wait_for_SPINUP()
 {
 	TickType_t		xTick = (TickType_t) 0;
 	float			wS = pm.lu_flux_lpf_wS;
@@ -44,11 +44,11 @@ int pm_wait_for_SPINUP(float ref)
 				&& pm.fail_reason != PM_OK)
 			break;
 
-		if (ref - pm.lu_wS < 1E-1f * ref)
+		if (pm.s_setpoint_speed - pm.lu_wS < 1E-1f * pm.s_setpoint_speed)
 			break;
 
 		if (pm.lu_wS - wS < - M_EPS_F * pm.lu_wS
-				&& xTick > (TickType_t) 1000)
+				&& xTick > (TickType_t) 3000)
 			break;
 
 		wS = pm.lu_flux_lpf_wS;
@@ -158,8 +158,7 @@ SH_DEF(pm_probe_spinup)
 	}
 
 	if (		pm.config_FORCED == PM_DISABLED
-			|| pm.config_DRIVE != PM_DRIVE_SPEED
-			|| pm.config_DRIVE == PM_DRIVE_SERVO) {
+			|| pm.config_DRIVE != PM_DRIVE_SPEED) {
 
 		printf("Enable SPEED control mode before" EOL);
 		return;
@@ -171,11 +170,11 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm.s_setpoint = pm.probe_speed_hold;
-
 		if (pm.const_E < M_EPS_F) {
 
-			if (pm_wait_for_SPINUP(pm.forced_maximal) != PM_OK)
+			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.forced_maximal);
+
+			if (pm_wait_for_SPINUP() != PM_OK)
 				break;
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -186,7 +185,9 @@ SH_DEF(pm_probe_spinup)
 			reg_format(&regfile[ID_PM_CONST_E_KV]);
 		}
 
-		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
+
+		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -204,18 +205,18 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
 
-		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
 		vTaskDelay((TickType_t) 50);
 
-		pm.s_setpoint = pm.probe_speed_spinup;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
 
 		vTaskDelay((TickType_t) 200);
 
-		pm.s_setpoint = pm.probe_speed_hold;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
 
 		vTaskDelay((TickType_t) 200);
 
@@ -318,11 +319,11 @@ SH_DEF(pm_probe_const_J)
 
 		vTaskDelay((TickType_t) 50);
 
-		pm.s_setpoint = pm.probe_speed_spinup;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
 
 		vTaskDelay((TickType_t) 200);
 
-		pm.s_setpoint = pm.probe_speed_hold;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
 
 		vTaskDelay((TickType_t) 200);
 
@@ -344,8 +345,7 @@ SH_DEF(pm_adjust_HALL)
 		return;
 	}
 
-	if (		pm.config_DRIVE != PM_DRIVE_SPEED
-			|| pm.config_DRIVE == PM_DRIVE_SERVO) {
+	if (pm.config_DRIVE != PM_DRIVE_SPEED) {
 
 		printf("Enable SPEED control mode before" EOL);
 		return;
@@ -357,9 +357,9 @@ SH_DEF(pm_adjust_HALL)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm.s_setpoint = pm.probe_speed_hold;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
 
-		if (pm_wait_for_SPINUP(pm.s_setpoint) != PM_OK)
+		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_ADJUST_HALL;

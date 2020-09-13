@@ -590,7 +590,7 @@ IFCAN_flash_erase()
 
 		flash_end = (void *) (flash_ram_map[0] + local.flash_INIT_sizeof);
 
-		if ((u32_t) flash_end > flash_ram_map[FLASH_SECTOR_MAX - 1]) {
+		if ((u32_t) flash_end > flash_ram_map[FLASH_SECTOR_MAX - 2]) {
 
 			rc = 0;
 		}
@@ -601,7 +601,7 @@ IFCAN_flash_erase()
 
 			if (rc != 0) {
 
-				for (N = 0; N < FLASH_SECTOR_MAX - 1; ++N) {
+				for (N = 0; N < FLASH_SECTOR_MAX - 2; ++N) {
 
 					if ((u32_t) flash_end > flash_ram_map[N]) {
 
@@ -970,7 +970,7 @@ SH_DEF(can_net_survey)
 
 				if (local.node[N].node_ID >= IFCAN_ID_NODE_BASE) {
 
-					printf("%i", local.node[N].node_ID);
+					printf("%4i    ", local.node[N].node_ID);
 				}
 				else {
 					printf("(not assigned)");

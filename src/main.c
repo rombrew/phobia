@@ -423,7 +423,7 @@ app_flash_load()
 	can.pipe[7].ID = 80;
 	can.pipe[7].tim = 30;
 
-	ap.ppm_reg_ID = ID_PM_S_SETPOINT_PC;
+	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
 	ap.ppm_STARTUP = PM_DISABLED;
 	ap.ppm_in_range[0] = 1000.f;
 	ap.ppm_in_range[1] = 1500.f;
@@ -437,7 +437,7 @@ app_flash_load()
 	ap.step_const_ld_EP = 0.f;
 
 	ap.analog_ENABLED = PM_DISABLED;
-	ap.analog_reg_ID = ID_PM_I_SETPOINT_Q_PC;
+	ap.analog_reg_ID = ID_PM_I_SETPOINT_TORQUE_PC;
 	ap.analog_STARTUP = PM_DISABLED;
 	ap.analog_in_ANG[0] = 1.0f;
 	ap.analog_in_ANG[1] = 2.5f;
@@ -487,7 +487,12 @@ app_flash_load()
 	pm.proc_set_DC = &PWM_set_DC;
 	pm.proc_set_Z = &PWM_set_Z;
 
+	/* Default PMC configuration.
+	 * */
 	pm_default(&pm);
+
+	/* Default telemetry.
+	 * */
 	TLM_reg_default(&tlm);
 
 	/* Try to load all above params from flash.
@@ -789,7 +794,7 @@ SH_DEF(rtos_task_list)
 
 		xSIZE = uxTaskGetSystemState(pLIST, xSIZE, NULL);
 
-		printf("TCB ID Name Stat Prio Stack Free" EOL);
+		printf("TCB      ID Name              Stat Prio Stack    Free" EOL);
 
 		for (N = 0; N < xSIZE; ++N) {
 
@@ -821,10 +826,10 @@ SH_DEF(rtos_task_list)
 					break;
 			}
 
-			printf("%8x %i %s %c %i %8x %i" EOL,
+			printf("%8x %2i %17s %c    %2i   %8x %i" EOL,
 					(u32_t) pLIST[N].xHandle,
 					(int) pLIST[N].xTaskNumber,
-					(const char *) pLIST[N].pcTaskName,
+					pLIST[N].pcTaskName,
 					(int) xState,
 					(int) pLIST[N].uxCurrentPriority,
 					(u32_t) pLIST[N].pxStackBase,
@@ -835,15 +840,46 @@ SH_DEF(rtos_task_list)
 	}
 }
 
-SH_DEF(rtos_task_kill)
+SH_DEF(rtos_hexdump)
 {
-	TaskHandle_t		xHandle;
+	u8_t			*m_dump;
+	int			l, j, b_ascii, n_lines = 4;
 
-	xHandle = xTaskGetHandle(s);
+	if (htoi((int *) &m_dump, s) != NULL) {
 
-	if (xHandle != NULL) {
+		stoi(&n_lines, sh_next_arg(s));
 
-		vTaskDelete(xHandle);
+		for (l = 0; l < n_lines; ++l) {
+
+			printf("%8x  ", (u32_t) m_dump);
+
+			for (j = 0; j < 8; ++j) {
+
+				printf("%2x ", m_dump[j]);
+			}
+
+			puts(" ");
+
+			for (j = 0; j < 8; ++j) {
+
+				printf("%2x ", m_dump[j + 8]);
+			}
+
+			puts(" |");
+
+			for (j = 0; j < 16; ++j) {
+
+				b_ascii = m_dump[j];
+				b_ascii = (b_ascii >= 0x20 && b_ascii <= 0x7E)
+					? b_ascii : '.';
+
+				putc(b_ascii);
+			}
+
+			puts("|" EOL);
+
+			m_dump += 16;
+		}
 	}
 }
 
