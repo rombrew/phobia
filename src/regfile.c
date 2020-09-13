@@ -1009,6 +1009,17 @@ const reg_t		regfile[] = {
 	REG_DEF(can.pipe, _2_range_0, [2].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(can.pipe, _2_range_1, [2].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(can.pipe, _3_ID, [3].ID,"",		"%i",	REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _3_reg_DATA, [3].reg_DATA,"",	"%4e",	0, NULL, NULL),
+	REG_DEF(can.pipe, _3_reg_ID, [3].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(can.pipe, _3_MODE, [3].MODE,"", "%i",	REG_CONFIG, &reg_proc_can_IDs, &reg_format_enum),
+	REG_DEF(can.pipe, _3_STARTUP, [3].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _3_tim_hz, [3].tim,	"Hz",	"%i",	REG_CONFIG, &reg_proc_can_TIM, NULL),
+	REG_DEF(can.pipe, _3_trigger_ID, [3].trigger_ID,"","%i",REG_CONFIG, &reg_proc_can_IDs, NULL),
+	REG_DEF(can.pipe, _3_PAYLOAD, [3].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(can.pipe, _3_range_0, [3].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(can.pipe, _3_range_1, [3].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
+
 	REG_DEF(ap.ppm_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.ppm_STARTUP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.ppm_in_range, _0, [0],	"us",	"%2f",	REG_CONFIG, NULL, NULL),
