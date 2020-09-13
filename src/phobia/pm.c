@@ -28,8 +28,9 @@ void pm_default(pmc_t *pm)
 	pm->tm_voltage_hold = 100.f;	/* (ms) */
 	pm->tm_current_hold = 500.f;	/* (ms) */
 	pm->tm_instant_probe = 2.f;	/* (ms) */
-	pm->tm_average_drift = 100.f;	/* (ms) */
 	pm->tm_average_probe = 500.f;	/* (ms) */
+	pm->tm_average_drift = 100.f;	/* (ms) */
+	pm->tm_average_inertia = 700.f;	/* (ms) */
 	pm->tm_startup = 50.f;		/* (ms) */
 
 	pm->ad_IA[0] = 0.f;

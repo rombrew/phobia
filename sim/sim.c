@@ -305,12 +305,12 @@ sim_test_BASE(FILE *fdTel)
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_J;
-	sim_F(fdTel, .05);
+	sim_F(fdTel, .1);
 
 	pm.s_setpoint_speed = pm.probe_speed_spinup_pc * (pm.k_EMAX / 100.f)
 		* pm.const_fb_U / pm.const_E;
 
-	sim_F(fdTel, .2);
+	sim_F(fdTel, .3);
 
 	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f)
 		* pm.const_fb_U / pm.const_E;

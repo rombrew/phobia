@@ -1338,7 +1338,7 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 			pm->REM[10] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
+			pm->tm_end = PM_TSMS(pm, pm->tm_average_inertia);
 
 			pm->fail_reason = PM_OK;
 			pm->fsm_phase = 2;
@@ -1506,7 +1506,7 @@ pm_fsm_state_adjust_hall(pmc_t *pm)
 			break;
 
 		case 2:
-			min_S = (float) pm->tm_end / 12.f;
+			min_S = pm->tm_end / 12;
 			N = 0;
 
 			for (HS = 1; HS < 7; ++HS) {

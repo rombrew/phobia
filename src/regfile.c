@@ -1108,8 +1108,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tm_voltage_hold,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_current_hold,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_instant_probe,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.tm_average_drift,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_average_probe,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_average_drift,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_average_inertia,,, 	"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_startup,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.ad_IA, _0, [0],		"A",	"%3f",	REG_CONFIG, NULL, NULL),

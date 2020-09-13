@@ -210,15 +210,15 @@ SH_DEF(pm_probe_spinup)
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
-		vTaskDelay((TickType_t) 50);
+		vTaskDelay((TickType_t) 100);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -317,15 +317,15 @@ SH_DEF(pm_probe_const_J)
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
-		vTaskDelay((TickType_t) 50);
+		vTaskDelay((TickType_t) 100);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;

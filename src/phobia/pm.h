@@ -174,8 +174,9 @@ typedef struct {
 	float		tm_voltage_hold;
 	float		tm_current_hold;
 	float		tm_instant_probe;
-	float		tm_average_drift;
 	float		tm_average_probe;
+	float		tm_average_drift;
+	float		tm_average_inertia;
 	float		tm_startup;
 
 	float		ad_IA[2];
