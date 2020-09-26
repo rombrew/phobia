@@ -177,7 +177,7 @@ SH_DEF(pm_FT_speed_ramp)
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		vTaskDelay(xTS1);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
 		vTaskDelay(5UL * xTS1);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
@@ -255,7 +255,6 @@ SH_DEF(pm_FT_tvm_ramp)
 	while (1);
 
 	pm.fsm_req = PM_STATE_HALT;
-	pm_wait_for_IDLE();
 }
 
 SH_DEF(hal_PPM_get_PERIOD)

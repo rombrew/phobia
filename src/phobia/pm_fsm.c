@@ -1106,9 +1106,16 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_SA = 0;
 				pm->vsi_SB = 0;
 				pm->vsi_SC = 0;
-				pm->vsi_AF = 3;
-				pm->vsi_BF = 3;
-				pm->vsi_UF = 3;
+				pm->vsi_AG = 0;
+				pm->vsi_BG = 0;
+				pm->vsi_CG = 0;
+				pm->vsi_AF = 0;
+				pm->vsi_BF = 0;
+				pm->vsi_SF = 0;
+				pm->vsi_UF = 0;
+				pm->vsi_AZ = 0;
+				pm->vsi_BZ = 0;
+				pm->vsi_CZ = 0;
 
 				pm->lu_iX = 0.f;
 				pm->lu_iY = 0.f;
@@ -1118,10 +1125,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->lu_F[1] = 0.f;
 				pm->lu_wS = 0.f;
 				pm->lu_mode = PM_LU_DETACHED;
-
-				pm->lu_flux_lpf_wS = 0.f;
-				pm->lu_flux_zone = PM_FLUX_UNCERTAIN;
-				pm->lu_flux_locked = 0;
 
 				pm->forced_F[0] = 1.f;
 				pm->forced_F[1] = 0.f;
@@ -1136,6 +1139,10 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_F[0] = 1.f;
 				pm->flux_F[1] = 0.f;
 				pm->flux_wS = 0.f;
+
+				pm->flux_lpf_wS = 0.f;
+				pm->flux_mode = PM_FLUX_UNCERTAIN;
+				pm->flux_locked = PM_FLUX_UNCERTAIN;
 
 				pm->hfi_F[0] = 1.f;
 				pm->hfi_F[1] = 0.f;
@@ -1186,7 +1193,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				if (pm->fsm_state == PM_STATE_LU_DETACHED) {
 
-					pm->lu_flux_zone = PM_FLUX_DETACHED;
+					pm->flux_mode = PM_FLUX_DETACHED;
 				}
 
 				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
@@ -1238,6 +1245,7 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 
 				pm->vsi_AF = 0;
 				pm->vsi_BF = 0;
+				pm->vsi_SF = 0;
 				pm->vsi_UF = 0;
 				pm->vsi_AZ = 0;
 				pm->vsi_BZ = 0;
@@ -1262,7 +1270,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			pm->REM[0] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, (pm->lu_flux_zone == PM_FLUX_DETACHED)
+			pm->tm_end = PM_TSMS(pm, (pm->flux_mode == PM_FLUX_DETACHED)
 					? pm->tm_average_drift : pm->tm_average_probe);
 
 			pm->fail_reason = PM_OK;
@@ -1386,7 +1394,7 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_lu_mppe(pmc_t *pm)
+pm_fsm_state_probe_flux_mppe(pmc_t *pm)
 {
 	float			temp_MPPE;
 
@@ -1407,8 +1415,8 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 			break;
 
 		case 1:
-			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->lu_wS);
-			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->lu_wS * pm->lu_wS);
+			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->flux_wS);
+			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->flux_wS * pm->flux_wS);
 
 			pm->tm_value++;
 
@@ -1423,17 +1431,17 @@ pm_fsm_state_probe_lu_mppe(pmc_t *pm)
 
 		case 2:
 			temp_MPPE = pm->probe_DFT[0] * pm->probe_DFT[0];
-			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 7.f;
+			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 5.f;
 
 			if (m_isfinitef(temp_MPPE) != 0 && temp_MPPE > M_EPS_F) {
 
-				pm->lu_MPPE = temp_MPPE;
+				pm->flux_MPPE = temp_MPPE;
 
 				/* Tune speed loop.
 				 * */
-				pm->s_gain_P = 2E-0f / pm->lu_MPPE;
-				pm->s_gain_I = 1E-2f / pm->lu_MPPE;
-				pm->s_gain_D = 1E-0f / pm->lu_MPPE;
+				pm->s_gain_P = 2E-0f / pm->flux_MPPE;
+				pm->s_gain_I = 1E-2f / pm->flux_MPPE;
+				pm->s_gain_D = 1E-0f / pm->flux_MPPE;
 			}
 			else {
 				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
@@ -1562,20 +1570,28 @@ pm_fsm_state_halt(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->lu_mode = PM_LU_DISABLED;
-
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(7);
 
 			pm->vsi_AF = 0;
 			pm->vsi_BF = 0;
+			pm->vsi_SF = 0;
 			pm->vsi_UF = 0;
 			pm->vsi_AZ = 0;
 			pm->vsi_BZ = 0;
 			pm->vsi_CZ = 0;
 
-			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, pm->tm_transient_slow);
+			if (pm->lu_mode != PM_LU_DISABLED) {
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_halt_pause);
+
+				pm->lu_mode = PM_LU_DISABLED;
+			}
+			else {
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_transient_slow);
+			}
 
 			pm->fsm_phase = 1;
 
@@ -1621,7 +1637,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
-		case PM_STATE_PROBE_LU_MPPE:
+		case PM_STATE_PROBE_FLUX_MPPE:
 		case PM_STATE_ADJUST_HALL:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
@@ -1708,8 +1724,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_ja(pm);
 			break;
 
-		case PM_STATE_PROBE_LU_MPPE:
-			pm_fsm_state_probe_lu_mppe(pm);
+		case PM_STATE_PROBE_FLUX_MPPE:
+			pm_fsm_state_probe_flux_mppe(pm);
 			break;
 
 		case PM_STATE_ADJUST_HALL:

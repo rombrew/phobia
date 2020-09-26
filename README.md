@@ -10,26 +10,26 @@ electrotransport.
 * Weight: 40g (PCB) or 400g (with wires and heatsink).
 * Wires: 10 AWG.
 * Connector: XT90-S and bullet 5.5mm.
-* Supply voltage from 5v to 54v.
-* Phase current up to 120A (IPT007N06N, 60v, 0.75 mOhm).
+* Battery voltage from 5v to 50v.
+* Phase current up to 120A (with IPT007N06N, 60v, 0.75 mOhm).
 * Light capacitor bank (4 x 4.7uF + 2 x 680uF).
 * PWM frequency from 20 to 60 kHz.
 * STM32F405RG microcontroller (Cortex-M4F at 168 MHz).
 
 * Onboard sensors:
 	* Two current shunts (0.5 mOhm) with amplifiers (AD8418) give a measuring range of 165A.
-	* Supply voltage from 0 to 60v.
+	* Battery voltage from 0 to 60v.
 	* Three terminal voltages from 0 to 60v.
 	* Temperature of PCB with NTC resistor.
 
 * Motor interfaces:
-	* Hall sensors or ABI encoder (5v pull-up).
+	* Discrete Hall sensors or ABI incremental encoder (5v pull-up).
 	* External NTC resistor (e.g. motor temperature sensing).
 
 * Control interfaces:
 	* CAN transceiver with optional termination resistor on PCB (5v).
 	* USART to bootload and configure (3.3v).
-	* Pulse input: RC servo pulse width, STEP/DIR, backup ABI (5v pull-up).
+	* Pulse input: RC servo, STEP/DIR, backup ABI (5v pull-up).
 	* Two analog input channels (from 0 to 6v).
 
 * Auxiliary interfaces:
@@ -39,7 +39,7 @@ electrotransport.
 	* External FAN control (5v, 0.5A).
 
 * Power conversion:
-	* Supply voltage to 5v buck (up to 1A).
+	* Battery voltage to 5v buck (up to 1A).
 	* 5v to 12v boost (up to 100 mA).
 	* 5v to 3.3v linear (up to 400 mA).
 
@@ -58,10 +58,10 @@ PCB design source files.
 * Flash storage for all of configurable parameters.
 
 * Advanced PWM scheme provides:
-	* Reduced switching losses and fully utilised DC link voltage.
-	* Clearance tracking to get accurate measurement of inline currents.
+	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
+	* Hopping to get accurate ADC measurements near PWM-edges.
 	* Prevents bootstrap circuit undervoltage condition.
-	* Optional reduced ripple mode for precise control.
+	* Optional reduced ripple mode (clamp to middle) for precise control.
 
 * Terminal voltage measurements (TVM):
 	* In operation is used to reduce the effect of Dead-Time distortion.
@@ -88,7 +88,7 @@ PCB design source files.
 	* Forced control that applies a current vector without feedback to force rotor turn.
 	* Freewheling.
 	* High frequency injection (HFI) based on magnetic saliency (**EXPERIMENTAL**).
-	* Hall sensors or ABI incremental encoder.
+	* Discrete Hall sensors or ABI incremental encoder.
 
 * Control loops:
 	* Current control is always enabled.
@@ -98,7 +98,7 @@ PCB design source files.
 
 * Adjustable limits:
 	* Phase current with adjustable derate on PCB overheat.
-	* Motor voltage appied from VSI.
+	* Motor voltage applied from VSI.
 	* Battery current (power) consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration (as part of speed control loop).
@@ -135,6 +135,7 @@ There are a few videos that show the operation of the prototypes (may be outdate
 [![PMC](https://i.ytimg.com/vi/ANp_5zZkh48/default.jpg)](https://www.youtube.com/watch?v=ANp_5zZkh48)
 [![PMC](https://i.ytimg.com/vi/IM0k0_boXc4/default.jpg)](https://www.youtube.com/watch?v=IM0k0_boXc4)
 [![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
+[![PMC](https://i.ytimg.com/vi/7AedIaMOno0/default.jpg)](https://www.youtube.com/watch?v=7AedIaMOno0)
 
 Read more in [Getting Started](doc/GettingStarted.md).
 

@@ -62,8 +62,12 @@ figure 13 14 "pm.vsi_X / pm.vsi_Y"
 page "pm.vsi_DC"
 figure 0 12 "pm.vsi_DC"
 
-page "pm.vsi_IF"
-figure 0 15 "pm.vsi_IF"
+page "pm.vsi_AF,[BF]"
+figure 0 37 "pm.vsi_AF"
+figure 0 38 "pm.vsi_BF"
+
+page "pm.vsi_SF"
+figure 0 15 "pm.vsi_SF"
 
 page "pm.vsi_UF"
 figure 0 16 "pm.vsi_UF"
@@ -81,12 +85,12 @@ figure 0 21 "pm.tvm_DY"
 page "pm.lu_mode"
 figure 0 27 "pm.lu_mode"
 
-page "pm.lu_flux_lpf_wS"
+page "pm.flux_lpf_wS"
 label 1 "(rpm)"
-figure 0 28 "pm.lu_flux_lpf_wS"
+figure 0 28 "pm.flux_lpf_wS"
 
-page "pm.lu_flux_zone"
-figure 0 29 "pm.lu_flux_zone"
+page "pm.flux_mode"
+figure 0 29 "pm.flux_mode"
 
 page "pm.im_revol_1"
 figure 0 30 "pm.im_revol_1"
@@ -122,8 +126,8 @@ page "pm.hfi_wS"
 label 1 "(rpm)"
 figure 0 40 "pm.hfi_wS"
 
-page "pm.hfi_const_POLAR"
-figure 0 41 "pm.hfi_const_POLAR"
+page "pm.hfi_const_FP"
+figure 0 41 "pm.hfi_const_FP"
 
 page "pm.hall_F"
 label 1 "(°)"

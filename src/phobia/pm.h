@@ -40,7 +40,6 @@ enum {
 enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
-	PM_DRIVE_COMBINED,
 	PM_DRIVE_SERVO,
 };
 
@@ -75,7 +74,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
-	PM_STATE_PROBE_LU_MPPE,
+	PM_STATE_PROBE_FLUX_MPPE,
 	PM_STATE_ADJUST_HALL,
 	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT,
@@ -126,6 +125,7 @@ typedef struct {
 	int		dc_resolution;
 	float		dc_minimal;
 	float		dc_clearance;
+	float		dc_skip;
 	float		dc_bootstrap;
 	float		dc_clamped;
 
@@ -136,6 +136,7 @@ typedef struct {
 
 	int		ts_minimal;
 	int		ts_clearance;
+	int		ts_skip;
 	int		ts_bootstrap;
 	int		ts_clamped;
 	float		ts_inverted;
@@ -149,7 +150,7 @@ typedef struct {
 	int		config_NOP;
 	int		config_TVM;
 	int		config_IFB;
-	int		config_VSI_SILENT;
+	int		config_VSI_PRECISE;
 	int		config_FORCED;
 	int		config_ABI_FORCED_ALIGN;
 	int		config_ESTIMATE;
@@ -157,7 +158,6 @@ typedef struct {
 	int		config_SENSOR;
 	int		config_WEAK;
 	int		config_DRIVE;
-	int		config_SPEED_FROM_TORQUE;
 	int		config_INFO;
 	int		config_BOOST;
 
@@ -178,6 +178,7 @@ typedef struct {
 	float		tm_average_drift;
 	float		tm_average_inertia;
 	float		tm_startup;
+	float		tm_halt_pause;
 
 	float		ad_IA[2];
 	float		ad_IB[2];
@@ -199,8 +200,7 @@ typedef struct {
 	float		probe_current_weak;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
-	float		probe_speed_hold_pc;
-	float		probe_speed_spinup_pc;
+	float		probe_speed_hold;
 	float		probe_speed_detached;
 	float		probe_gain_P;
 	float		probe_gain_I;
@@ -226,8 +226,12 @@ typedef struct {
 	int		vsi_SB;
 	int		vsi_SC;
 	int		vsi_TIM;
+	int		vsi_AG;
+	int		vsi_BG;
+	int		vsi_CG;
 	int		vsi_AF;
 	int		vsi_BF;
+	int		vsi_SF;
 	int		vsi_UF;
 	int		vsi_AZ;
 	int		vsi_BZ;
@@ -251,15 +255,6 @@ typedef struct {
 	float		lu_F[2];
 	float		lu_wS;
 	int		lu_mode;
-
-	float		lu_flux_lpf_wS;
-	float		lu_MPPE;
-	int		lu_flux_zone;
-	int		lu_flux_locked;
-	float		lu_gain_TAKE;
-	float		lu_gain_GIVE;
-	float		lu_gain_LEVE;
-	float		lu_gain_LP;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -290,18 +285,27 @@ typedef struct {
 	float		flux_gain_SF;
 	float		flux_gain_IF;
 
+	int		flux_mode;
+	int		flux_locked;
+	float		flux_lpf_wS;
+	float		flux_MPPE;
+	float		flux_gain_TAKE;
+	float		flux_gain_GIVE;
+	float		flux_gain_LEVE;
+	float		flux_gain_LP_S;
+
 	int		hfi_tm_DIV;
 	int		hfi_tm_SKIP;
 	int		hfi_tm_SUM;
-	int		hfi_tm_POLAR;
-	float		hfi_inject_sine;
-	float		hfi_maximal;
+	int		hfi_tm_FLUX;
 	float		hfi_F[2];
 	float		hfi_wS;
+	float		hfi_inject_sine;
+	float		hfi_maximal;
 	float		hfi_const_L1;
 	float		hfi_const_L2;
 	float		hfi_const_R;
-	float		hfi_const_POLAR;
+	float		hfi_const_FP;
 	float		hfi_wave[2];
 	float		hfi_DFT[9];
 	float		hfi_REM[9];

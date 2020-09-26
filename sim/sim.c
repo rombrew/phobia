@@ -64,7 +64,7 @@ sim_Tel(float *pTel)
 	pTel[12] = pm.vsi_DC;
 	pTel[13] = pm.vsi_X;
 	pTel[14] = pm.vsi_Y;
-	pTel[15] = pm.vsi_AF;
+	pTel[15] = pm.vsi_SF;
 	pTel[16] = pm.vsi_UF;
 
 	/* TVM.
@@ -96,8 +96,8 @@ sim_Tel(float *pTel)
 	 * */
 	pTel[26] = pm.lu_wS * 30. / M_PI / m.Zp;
 	pTel[27] = pm.lu_mode;
-	pTel[28] = pm.lu_flux_lpf_wS * 30. / M_PI / m.Zp;
-	pTel[29] = pm.lu_flux_zone;
+	pTel[28] = pm.flux_lpf_wS * 30. / M_PI / m.Zp;
+	pTel[29] = pm.flux_mode;
 	pTel[30] = pm.im_revol_1;
 
 	pTel[31] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
@@ -107,12 +107,12 @@ sim_Tel(float *pTel)
 	pTel[34] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
 	pTel[35] = pm.flux_wS * 30. / M_PI / m.Zp;
 	pTel[36] = pm.flux_E;
-	pTel[37] = 0.;
-	pTel[38] = 0.;
+	pTel[37] = pm.vsi_AF;
+	pTel[38] = pm.vsi_BF;
 
 	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
 	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
-	pTel[41] = pm.hfi_const_POLAR;
+	pTel[41] = pm.hfi_const_FP;
 
 	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
 	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
@@ -273,7 +273,7 @@ sim_test_BASE(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint_speed = pm.forced_maximal;
+	pm.s_setpoint_speed = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -284,9 +284,7 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
-	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f)
-		* pm.const_fb_U / pm.const_E;
-
+	pm.s_setpoint_speed = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
@@ -297,24 +295,20 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 	t_assert_ref(pm.const_E, m.E);
 
-	pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
+	pm.fsm_req = PM_STATE_PROBE_FLUX_MPPE;
 	sim_F(fdTel, 0.);
 
-	printf("MPPE %.2f (rpm)\n", pm.lu_MPPE * 30. / M_PI / m.Zp);
+	printf("MPPE %.2f (rpm)\n", pm.flux_MPPE * 30. / M_PI / m.Zp);
 
 	sim_F(fdTel, 1.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_J;
 	sim_F(fdTel, .1);
 
-	pm.s_setpoint_speed = pm.probe_speed_spinup_pc * (pm.k_EMAX / 100.f)
-		* pm.const_fb_U / pm.const_E;
-
+	pm.s_setpoint_speed = pm.k_EMAX * pm.const_fb_U / pm.const_E;
 	sim_F(fdTel, .3);
 
-	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f)
-		* pm.const_fb_U / pm.const_E;
-
+	pm.s_setpoint_speed = pm.probe_speed_hold;
 	sim_F(fdTel, 0.);
 
 	ZpE = 1.5f * pm.const_Zp * pm.const_Zp * pm.const_E;
@@ -392,7 +386,7 @@ sim_test_HALL(FILE *fdTel)
 
 	t_assert(pm.fail_reason == PM_OK);
 
-	pm.s_setpoint_speed = pm.probe_speed_hold_pc * (pm.k_EMAX / 100.f) * pm.const_fb_U / pm.const_E;
+	pm.s_setpoint_speed = pm.probe_speed_hold;
 	sim_F(fdTel, 1.);
 
 	t_assert(pm.fail_reason == PM_OK);
@@ -495,11 +489,7 @@ sim_RUN(FILE *fdTel)
 
 	sim_F(fdTel, 1.);
 
-	pm.config_DRIVE = PM_DRIVE_COMBINED;
-
-	pm.s_maximal = 270.f;
-	pm.s_reverse = 0.f;
-	pm.s_accel = 800;
+	pm.config_DRIVE = PM_DRIVE_CURRENT;
 
 	pm.forced_reverse = 0;
 

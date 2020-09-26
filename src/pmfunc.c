@@ -34,7 +34,7 @@ int pm_wait_for_IDLE()
 int pm_wait_for_SPINUP()
 {
 	TickType_t		xTick = (TickType_t) 0;
-	float			wS = pm.lu_flux_lpf_wS;
+	float			wS = pm.flux_lpf_wS;
 
 	do {
 		vTaskDelay((TickType_t) 100);
@@ -51,7 +51,7 @@ int pm_wait_for_SPINUP()
 				&& xTick > (TickType_t) 3000)
 			break;
 
-		wS = pm.lu_flux_lpf_wS;
+		wS = pm.flux_lpf_wS;
 
 		if (xTick > (TickType_t) 5000) {
 
@@ -81,7 +81,7 @@ int pm_wait_for_MOTION(float ref)
 
 		if (pm.im_revol_total != revol) {
 
-			if (m_fabsf(pm.lu_flux_lpf_wS) > ref)
+			if (m_fabsf(pm.flux_lpf_wS) > ref)
 				break;
 		}
 
@@ -172,7 +172,7 @@ SH_DEF(pm_probe_spinup)
 
 		if (pm.const_E < M_EPS_F) {
 
-			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.forced_maximal);
+			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 			if (pm_wait_for_SPINUP() != PM_OK)
 				break;
@@ -185,7 +185,7 @@ SH_DEF(pm_probe_spinup)
 			reg_format(&regfile[ID_PM_CONST_E_KV]);
 		}
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
@@ -196,14 +196,16 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
-		reg_format(&regfile[ID_PM_LU_FLUX_LPF_WS_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_LPF_WS_RPM]);
 
-		pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
+		pm.fsm_req = PM_STATE_PROBE_FLUX_MPPE;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_MPPE_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_BEMF]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_BEMF]);
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
@@ -212,11 +214,11 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -237,7 +239,6 @@ SH_DEF(pm_probe_spinup)
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		pm.fsm_req = PM_STATE_HALT;
-		pm_wait_for_IDLE();
 	}
 }
 
@@ -264,7 +265,7 @@ SH_DEF(pm_probe_detached)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
-		reg_format(&regfile[ID_PM_LU_FLUX_LPF_WS_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_LPF_WS_RPM]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -278,7 +279,6 @@ SH_DEF(pm_probe_detached)
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		pm.fsm_req = PM_STATE_HALT;
-		pm_wait_for_IDLE();
 	}
 }
 
@@ -300,12 +300,14 @@ SH_DEF(pm_probe_const_E)
 SH_DEF(pm_probe_lu_MPPE)
 {
 	do {
-		pm.fsm_req = PM_STATE_PROBE_LU_MPPE;
+		pm.fsm_req = PM_STATE_PROBE_FLUX_MPPE;
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_LU_MPPE_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_MPPE_RPM]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_BEMF]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_BEMF]);
 	}
 	while (0);
 
@@ -319,11 +321,11 @@ SH_DEF(pm_probe_const_J)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_spinup_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -357,7 +359,7 @@ SH_DEF(pm_adjust_HALL)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_hold_pc);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
@@ -386,7 +388,6 @@ SH_DEF(pm_adjust_HALL)
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
 		pm.fsm_req = PM_STATE_HALT;
-		pm_wait_for_IDLE();
 	}
 }
 
