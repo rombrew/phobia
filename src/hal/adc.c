@@ -7,7 +7,7 @@
 
 typedef struct {
 
-	SemaphoreHandle_t	xSem;
+	SemaphoreHandle_t	sem_MUX;
 }
 HAL_ADC_t;
 
@@ -148,9 +148,9 @@ void ADC_startup()
 	 * */
 	ADC_const_setup();
 
-	/* Alloc Semaphore.
+	/* Allocate Semaphore.
 	 * */
-	hal_ADC.xSem = xSemaphoreCreateMutex();
+	hal_ADC.sem_MUX = xSemaphoreCreateMutex();
 
 	/* Enable ADC.
 	 * */
@@ -180,7 +180,7 @@ float ADC_get_VALUE(int xGPIO)
 	float			fVAL = 0.f;
 	int			xCH, xADC;
 
-	if (xSemaphoreTake(hal_ADC.xSem, (TickType_t) 10) == pdTRUE) {
+	if (xSemaphoreTake(hal_ADC.sem_MUX, (TickType_t) 10) == pdTRUE) {
 
 		xCH = (xGPIO == GPIO_ADC_INTERNAL_TEMP) ? 16
 			: XGPIO_GET_CH(xGPIO);
@@ -205,7 +205,7 @@ float ADC_get_VALUE(int xGPIO)
 			fVAL = (float) xADC * hal.ADC_const.GS;
 		}
 
-		xSemaphoreGive(hal_ADC.xSem);
+		xSemaphoreGive(hal_ADC.sem_MUX);
 	}
 
 	return fVAL;

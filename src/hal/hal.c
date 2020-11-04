@@ -281,6 +281,12 @@ void hal_unlock_irq(int irq)
 	__set_BASEPRI(irq);
 }
 
+void hal_system_debug()
+{
+	DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
+	DBGMCU->APB2FZ |= DBGMCU_APB1_FZ_DBG_TIM1_STOP;
+}
+
 void hal_system_reset()
 {
 	NVIC_SystemReset();

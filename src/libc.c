@@ -9,6 +9,8 @@ io_ops_t		io_CAN;
 io_ops_t		*iodef;
 int			iodef_ECHO;
 
+u32_t			rseed;
+
 void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
 {
 	u32_t		*ld = (u32_t *) d;
@@ -785,5 +787,15 @@ u32_t crc32b(const void *s, int n)
 	}
 
 	return crc ^ 0xFFFFFFFFUL;
+}
+
+u32_t urand()
+{
+	u32_t			rval;
+
+	rseed = rseed * 17317UL + 1UL;
+	rval = rseed >> 16;
+
+	return rval;
 }
 

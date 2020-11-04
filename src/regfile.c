@@ -1075,8 +1075,6 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.servo_UNIFORM_mmps,,,	"mm/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.servo_mice_role,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.FT_grab_hz,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
-
 	REG_DEF(ap.hx711_kg,,,			"kg",	"%4f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.hx711_scale, _0, [0],	"kg",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.hx711_scale, _1, [1],	"",	"%4e",	REG_CONFIG, NULL, NULL),
@@ -1427,6 +1425,9 @@ const reg_t		regfile[] = {
 	REG_DEF(tlm.reg_ID, _7, [7],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(tlm.reg_ID, _8, [8],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(tlm.reg_ID, _9, [9],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+
+	REG_DEF(tlm.def_grab_hz,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(tlm.def_live_hz,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 
 	{ NULL, "", 0, NULL, NULL, NULL }
 };

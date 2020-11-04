@@ -1,6 +1,6 @@
 BUILD	?= /tmp/pmc
 TARGET	= $(BUILD)/pmc
-IMAGE	= $(TARGET).b
+IMAGE	= $(TARGET).bin
 
 CROSS	?= armv7m-none-eabi
 #CC	= $(CROSS)-gcc
@@ -26,7 +26,8 @@ CFLAGS  += -I.
 #CFLAGS  += -D_HW_REV2
 #CFLAGS  += -D_HW_KLEN
 #CFLAGS  += -D_HW_REV4B
-CFLAGS  += -D_HW_REV4C
+#CFLAGS  += -D_HW_REV4C
+CFLAGS  += -D_HW_REV5A
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld
@@ -48,6 +49,7 @@ OBJS    = freertos/heap_4.o \
 	  hal/hal.o \
 	  hal/ppm.o \
 	  hal/pwm.o \
+	  hal/rng.o \
 	  hal/tim.o \
 	  hal/usart.o \
 	  hal/wd.o \

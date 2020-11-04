@@ -5,7 +5,7 @@ void pm_default(pmc_t *pm)
 {
 	pm->dc_minimal = 0.25f;		/* (us) */
 	pm->dc_clearance = 5.0f;	/* (us) */
-	pm->dc_skip = 1.0f;		/* (us) */
+	pm->dc_skip = 2.0f;		/* (us) */
 	pm->dc_bootstrap = 10.f;	/* (ms) */
 	pm->dc_clamped = 1.f;		/* (s)  */
 

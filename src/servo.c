@@ -109,7 +109,7 @@ SH_DEF(servo_FT_uniform)
 	tDT = 1.f / (float) configTICK_RATE_HZ;
 	DIRF = 1;
 
-	TLM_startup(&tlm, ap.FT_grab_hz, TLM_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.

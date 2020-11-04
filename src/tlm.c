@@ -21,6 +21,9 @@ void TLM_reg_default(TLM_t *tlm)
 	tlm->reg_ID[7] = ID_PM_WATT_LPF_WP;
 	tlm->reg_ID[8] = ID_PM_CONST_FB_U;
 	tlm->reg_ID[9] = ID_AP_TEMP_PCB;
+
+	tlm->def_grab_hz = 200;
+	tlm->def_live_hz = 20;
 }
 
 void TLM_reg_grab(TLM_t *tlm)
@@ -205,7 +208,7 @@ void task_LIVE(void *pData)
 SH_DEF(tlm_live_sync)
 {
 	TaskHandle_t		xHandle;
-	int			freq = 20;
+	int			freq = tlm.def_live_hz;
 
 	xTaskCreate(task_LIVE, "LIVE", configMINIMAL_STACK_SIZE, (void *) &tlm, 1, &xHandle);
 

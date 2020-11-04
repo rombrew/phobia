@@ -77,10 +77,6 @@ typedef struct {
 	float			servo_UNIFORM_mmps;
 	int			servo_mice_role;
 
-	/* FT constants.
-	 * */
-	int			FT_grab_hz;
-
 	/* HX711 (load cell amplifier).
 	 * */
 	float			hx711_kg;

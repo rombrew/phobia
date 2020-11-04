@@ -397,6 +397,12 @@ app_flash_load()
 
 #endif /* _HW_REV4C */
 
+#ifdef _HW_REV5A
+
+	/* Default */
+
+#endif /* _HW_REV5A */
+
 	hal.TIM_mode = TIM_DISABLED;
 	hal.CAN_mode_NART = CAN_MODE_STANDARD;
 	hal.PPM_mode = PPM_DISABLED;
@@ -472,14 +478,12 @@ app_flash_load()
 	ap.heat_recovery_gap = 5.f;
 
 	ap.hx711_scale[0] = 0.f;
-	ap.hx711_scale[1] = 4.545E-6f;
+	ap.hx711_scale[1] = 4.6493E-6f;
 
 	ap.servo_SPAN_mm[0] = - 25.f;
 	ap.servo_SPAN_mm[1] = 25.f;
 	ap.servo_UNIFORM_mmps = 20.f;
 	ap.servo_mice_role = 0;
-
-	ap.FT_grab_hz = 200;
 
 	pm.freq_hz = hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
@@ -502,6 +506,7 @@ app_flash_load()
 
 void task_INIT(void *pData)
 {
+	u32_t			lep[2];
 	int			irq;
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
@@ -513,6 +518,8 @@ void task_INIT(void *pData)
 
 	GPIO_set_mode_OUTPUT(GPIO_LED);
 	GPIO_set_HIGH(GPIO_LED);
+
+	RNG_startup();
 
 	io_USART.getc = &USART_getc;
 	io_USART.putc = &USART_putc;
@@ -532,9 +539,21 @@ void task_INIT(void *pData)
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
 
+	lep[0] = RNG_urand();
+	lep[1] = RNG_urand();
+
+	if (lep[0] == lep[1]) {
+
+		log_TRACE("RNG failed" EOL);
+	}
+
+	/* Initial SEED.
+	 * */
+	rseed = lep[1];
+
 	if (log_bootup() != 0) {
 
-		/* Slow down the startup to find out a problem.
+		/* Slow the startup to show down a problem.
 		 * */
 		vTaskDelay((TickType_t) 1000);
 	}
@@ -906,6 +925,11 @@ SH_DEF(rtos_log_cleanup)
 
 		log.tail = 0;
 	}
+}
+
+SH_DEF(rtos_debug_mode)
+{
+	hal_system_debug();
 }
 
 SH_DEF(rtos_reboot)

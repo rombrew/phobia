@@ -7,6 +7,7 @@
 #include "gpio.h"
 #include "ppm.h"
 #include "pwm.h"
+#include "rng.h"
 #include "tim.h"
 #include "usart.h"
 #include "wd.h"
@@ -135,6 +136,7 @@ void hal_delay_ns(int ns);
 int hal_lock_irq();
 void hal_unlock_irq(int irq);
 
+void hal_system_debug();
 void hal_system_reset();
 void hal_bootload_jump();
 

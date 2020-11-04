@@ -6,6 +6,8 @@
 #define	IODEF_TO_USART()	if (iodef != &io_USART) { iodef = &io_USART; }
 #define	IODEF_TO_CAN()		if (iodef != &io_CAN) { iodef = &io_CAN; }
 
+#define URAND_MAX		65535
+
 typedef unsigned long		u32_t;
 typedef unsigned short		u16_t;
 typedef unsigned char		u8_t;
@@ -29,6 +31,10 @@ extern io_ops_t		*iodef;
 /* EHCO mode.
  * */
 extern int		iodef_ECHO;
+
+/* Random SEED.
+ * */
+extern u32_t		rseed;
 
 void *memset(void *d, int c, int n);
 void *memcpy(void *d, const void *s, int n);
@@ -55,6 +61,7 @@ const char *htoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
 u32_t crc32b(const void *s, int n);
+u32_t urand();
 
 #endif /* _H_LIBC_ */
 

@@ -20,6 +20,11 @@ typedef struct {
 	reg_val_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
 
 	int		tim, i, n;
+
+	/* Default frequency.
+	 * */
+	int		def_grab_hz;
+	int		def_live_hz;
 }
 TLM_t;
 

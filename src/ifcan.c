@@ -9,60 +9,67 @@
 #include "regfile.h"
 #include "shell.h"
 
+#define IFCAN_ID(node_ID, func)		(1024U | (node_ID) << 5 | (func))
+
+#define IFCAN_GET_NODE(ID)		(((ID) >> 5) & 31U)
+#define IFCAN_GET_FUNC(ID)		((ID) & 31U)
+
+/* Network functions.
+ * */
+#define IFCAN_ID_NET_SURVEY		IFCAN_ID(31U, 31U)
+#define IFCAN_ID_NET_ASSIGN		IFCAN_ID(31U, 29U)
+
+/* Flash functions.
+ * */
+#define IFCAN_ID_FLASH_INIT		IFCAN_ID(31U, 27U)
+#define IFCAN_ID_FLASH_DATA		IFCAN_ID(31U, 26U)
+
+/* Lower IDs is for DATA streaming.
+ * */
+#define	IFCAN_ID_NODE_BASE		IFCAN_ID(0U, 0U)
+
+#define IFCAN_FILTER_MATCH		IFCAN_ID(31U, 31U)
+#define IFCAN_FILTER_NETWORK		IFCAN_ID(31U, 0U)
+
+/* Maximal number of nodes in network.
+ * */
+#define IFCAN_NODES_MAX			30
+
 enum {
-	/* Network functions.
-	 * */
-	IFCAN_ID_NET_SURVEY		= 2047,
-	IFCAN_ID_NET_REPLY		= 2046,
-	IFCAN_ID_NET_ASSIGN		= 2045,
-
-	/* Flash functions.
-	 * */
-	IFCAN_ID_FLASH_INIT		= 2044,
-	IFCAN_ID_FLASH_DATA		= 2043,
-	IFCAN_ID_FLASH_ACK		= 2042,
-
 	/* Node functions (offset).
 	 * */
-	IFCAN_ID_NODE_CTL		= 0,
-	IFCAN_ID_NODE_RX		= 1,
-	IFCAN_ID_NODE_TX		= 2,
-	IFCAN_ID_NODE_END_OF		= 32,
+	IFCAN_NODE_REQ			= 0,
+	IFCAN_NODE_ACK,
+	IFCAN_NODE_RX,
+	IFCAN_NODE_TX,
+};
 
-	/* Lower IDs is for DATA streaming.
+enum {
+	IFCAN_REQ_NOTHING		= 0,
+
+	/* Node flow control.
 	 * */
-	IFCAN_ID_NODE_BASE		= 1056,
+	IFCAN_REQ_FLOW_TX_PAUSE,
 };
 
 enum {
 	IFCAN_ACK_NOTHING		= 0,
 
+	/* Network ACKs.
+	 * */
+	IFCAN_ACK_NETWORK_REPLY,
+	IFCAN_ACK_NETWORK_HEARTBEAT,
+	IFCAN_ACK_NETWORK_RESERVED1,
+
 	/* Flash ACKs.
 	 * */
 	IFCAN_ACK_FLASH_UP_TO_DATE,
+	IFCAN_ACK_FLASH_FAILURE,
 	IFCAN_ACK_FLASH_WAIT_FOR_ERASE,
-	IFCAN_ACK_FLASH_INIT_FAILURE,
 	IFCAN_ACK_FLASH_DATA_ACCEPT,
 	IFCAN_ACK_FLASH_DATA_PAUSE,
 	IFCAN_ACK_FLASH_CRC32_INVALID,
 	IFCAN_ACK_FLASH_SELFUPDATE,
-};
-
-enum {
-	IFCAN_NODE_CTL_NOTHING		= 0,
-
-	/* Node control.
-	 * */
-	IFCAN_NODE_CTL_FLOW_TX_PAUSE,
-};
-
-enum {
-	IFCAN_FILTER_MATCH		= 2047,
-	IFCAN_FILTER_NETWORK		= 2016,
-
-	/* Maximal number of nodes.
-	 * */
-	IFCAN_NODES_MAX			= 30,
 };
 
 typedef struct {
@@ -84,6 +91,10 @@ typedef struct {
 	QueueHandle_t		queue_LOG;
 	int			log_skipped;
 
+	/* Network service.
+	 * */
+	QueueHandle_t		queue_NET;
+
 	/* FLASH update across network.
 	 * */
 	u32_t			flash_INIT_sizeof;
@@ -95,10 +106,11 @@ typedef struct {
 	/* Remote node ID we connected to.
 	 * */
 	int			remote_node_ID;
+	int			remote_EOT;
 
 	/* TX pause notice (flow control).
 	 * */
-	int			flow_TX_pause;
+	int			flow_TX_paused;
 
 	/* Remote nodes TABLE.
 	 * */
@@ -301,7 +313,7 @@ void CAN_IRQ()
 		IFCAN_pipes_message_IN(&hal.CAN_msg);
 	}
 
-	if (hal.CAN_msg.ID >= IFCAN_ID_NODE_BASE
+	if (		hal.CAN_msg.ID >= IFCAN_ID_NODE_BASE
 			|| can.log_MODE == IFCAN_LOG_PROMISCUOUS) {
 
 		xQueueSendToBackFromISR(local.queue_IN, &hal.CAN_msg, &xWoken);
@@ -330,6 +342,20 @@ local_node_discard_ACK()
 	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
 
 		local.node[N].node_ACK = 0;
+	}
+}
+
+static void
+local_node_replace_ACK(int node_ACK, int node_NACK)
+{
+	int			N;
+
+	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
+
+		if (local.node[N].node_ACK == node_ACK) {
+
+			local.node[N].node_ACK = node_NACK;
+		}
 	}
 }
 
@@ -374,7 +400,7 @@ local_nodes_N()
 
 	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
 
-		if (local.node[N].node_ID >= IFCAN_ID_NODE_BASE) {
+		if (local.node[N].node_ID != 0) {
 
 			nodes_N += 1;
 		}
@@ -384,14 +410,14 @@ local_nodes_N()
 }
 
 static int
-local_nodes_by_ACK(int ack)
+local_nodes_by_ACK(int node_ACK)
 {
 	int		N, nodes_N = 0;
 
 	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
 
-		if (local.node[N].node_ID >= IFCAN_ID_NODE_BASE
-				&& local.node[N].node_ACK == ack) {
+		if (		local.node[N].node_ID != 0
+				&& local.node[N].node_ACK == node_ACK) {
 
 			nodes_N += 1;
 		}
@@ -401,7 +427,7 @@ local_nodes_by_ACK(int ack)
 }
 
 static void
-local_node_update_ACK(int node_ID, int ack)
+local_node_update_ACK(int node_ID, int node_ACK)
 {
 	int			N;
 
@@ -411,7 +437,7 @@ local_node_update_ACK(int node_ID, int ack)
 
 			/* Update node ACK.
 			 * */
-			local.node[N].node_ACK = ack;
+			local.node[N].node_ACK = node_ACK;
 			break;
 		}
 	}
@@ -431,10 +457,7 @@ local_node_is_valid_remote(int node_ID)
 		}
 	}
 
-	if (node_ID == can.node_ID) {
-
-		rc = 0;
-	}
+	rc = (node_ID == can.node_ID) ? 0 : rc;
 
 	return rc;
 }
@@ -442,11 +465,9 @@ local_node_is_valid_remote(int node_ID)
 static int
 local_node_assign_ID()
 {
-	int		N, node_ID, found_ID = 0;
+	int		node_ID, found_ID = 0;
 
-	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
-
-		node_ID = IFCAN_ID_NODE_BASE + N * IFCAN_ID_NODE_END_OF;
+	for (node_ID = 1; node_ID <= IFCAN_NODES_MAX; ++node_ID) {
 
 		if (local_node_is_valid_remote(node_ID) == 0
 				&& node_ID != can.node_ID) {
@@ -454,6 +475,31 @@ local_node_assign_ID()
 			found_ID = node_ID;
 			break;
 		}
+	}
+
+	return found_ID;
+}
+
+static int
+local_node_random_ID()
+{
+	int		list_ID[IFCAN_NODES_MAX];
+
+	int		node_ID, found_ID = 0;
+	int		N = 0;
+
+	for (node_ID = 1; node_ID <= IFCAN_NODES_MAX; ++node_ID) {
+
+		if (local_node_is_valid_remote(node_ID) == 0
+				&& node_ID != can.node_ID) {
+
+			list_ID[N++] = node_ID;
+		}
+	}
+
+	if (N > 0) {
+
+		found_ID = list_ID[urand() % N];
 	}
 
 	return found_ID;
@@ -551,18 +597,85 @@ IFCAN_send_msg(CAN_msg_t *msg)
 	return rc;
 }
 
+void task_IFCAN_NET(void *pData)
+{
+	CAN_msg_t		msg;
+	int			node_ACK, node_ID;
+
+	do {
+		while (xQueueReceive(local.queue_NET, &node_ACK, portMAX_DELAY) == pdTRUE) {
+
+			if (node_ACK == IFCAN_ACK_NETWORK_REPLY) {
+
+				if (can.node_ID != 0) {
+
+					/* Case of assigned node ID.
+					 * */
+					node_ID = can.node_ID;
+				}
+				else {
+					/* Wait for assigned nodes have replied.
+					 * */
+					vTaskDelay((TickType_t) 10);
+
+					/* Get a random node ID from list of
+					 * free ones.
+					 * */
+					node_ID = local_node_random_ID();
+
+					/* Also we delay the transmission by
+					 * random value to reduce the chance of
+					 * a data collision.
+					 * */
+					vTaskDelay((TickType_t) (urand() % 30U));
+				}
+
+				msg.ID = IFCAN_ID(node_ID, IFCAN_NODE_ACK);
+				msg.len = 6;
+
+				* (u32_t *) &msg.payload[0] = local.UID;
+
+				msg.payload[4] = can.node_ID;
+				msg.payload[5] = node_ACK;
+
+				IFCAN_send_msg(&msg);
+			}
+		}
+
+		/* TODO: send heartbeat messages from here */
+	}
+	while (1);
+}
+
 static void
-IFCAN_net_REPLY()
+IFCAN_node_ACK(int node_ACK)
 {
 	CAN_msg_t		msg;
 
-	msg.ID = IFCAN_ID_NET_REPLY;
-	msg.len = 6;
+	if (node_ACK == IFCAN_ACK_NETWORK_REPLY) {
 
-	* (u32_t *) &msg.payload[0] = local.UID;
-	* (u16_t *) &msg.payload[4] = can.node_ID;
+		xQueueSendToBack(local.queue_NET, &node_ACK, (TickType_t) 0);
+	}
+	else {
+		msg.ID = IFCAN_ID(can.node_ID, IFCAN_NODE_ACK);
+		msg.len = 2;
 
-	vTaskDelay((TickType_t) 1);
+		msg.payload[0] = can.node_ID;
+		msg.payload[1] = node_ACK;
+
+		IFCAN_send_msg(&msg);
+	}
+}
+
+static void
+IFCAN_remote_node_REQ(int node_REQ)
+{
+	CAN_msg_t		msg;
+
+	msg.ID = IFCAN_ID(local.remote_node_ID, IFCAN_NODE_REQ);
+	msg.len = 1;
+
+	msg.payload[0] = node_REQ;
 
 	IFCAN_send_msg(&msg);
 }
@@ -616,33 +729,6 @@ IFCAN_flash_erase()
 }
 
 static void
-IFCAN_flash_ACK(int ack)
-{
-	CAN_msg_t		msg;
-
-	msg.ID = IFCAN_ID_FLASH_ACK;
-	msg.len = 4;
-
-	* (u16_t *) &msg.payload[0] = can.node_ID;
-	* (u16_t *) &msg.payload[2] = ack;
-
-	IFCAN_send_msg(&msg);
-}
-
-static void
-IFCAN_remote_node_CTL(int ctl)
-{
-	CAN_msg_t		msg;
-
-	msg.ID = local.remote_node_ID + IFCAN_ID_NODE_CTL;
-	msg.len = 2;
-
-	* (u16_t *) &msg.payload[0] = ctl;
-
-	IFCAN_send_msg(&msg);
-}
-
-static void
 IFCAN_message_IN(const CAN_msg_t *msg)
 {
 	int			N;
@@ -651,24 +737,24 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 	 * */
 	if (msg->ID == IFCAN_ID_NET_SURVEY) {
 
-		IFCAN_net_REPLY();
-	}
-	else if (msg->ID == IFCAN_ID_NET_REPLY
-			&& msg->len == 6) {
+		local_node_discard();
 
-		local_node_insert(* (u32_t *) &msg->payload[0],
-				* (u16_t *) &msg->payload[4]);
+		IFCAN_node_ACK(IFCAN_ACK_NETWORK_REPLY);
 	}
 	else if (msg->ID == IFCAN_ID_NET_ASSIGN
-			&& msg->len == 6) {
+			&& msg->len == 5) {
 
 		if (* (u32_t *) &msg->payload[0] == local.UID) {
 
 			/* Accept new node ID.
 			 * */
-			can.node_ID = * (u16_t *) &msg->payload[4];
+			can.node_ID = msg->payload[4];
 
 			IFCAN_filter_ID();
+		}
+		else {
+			local_node_insert(* (u32_t *) &msg->payload[0],
+					msg->payload[4]);
 		}
 	}
 
@@ -676,18 +762,21 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 	 * */
 	else if (msg->ID == IFCAN_ID_FLASH_INIT
 			&& msg->len == 8
-			&& can.node_ID >= IFCAN_ID_NODE_BASE
-			&& pm.lu_mode == PM_LU_DISABLED) {
+			&& can.node_ID != 0) {
 
 		local.flash_INIT_sizeof = * (u32_t *) &msg->payload[0];
 		local.flash_INIT_crc32 = * (u32_t *) &msg->payload[4];
 
 		if (IFCAN_flash_is_up_to_date() != 0) {
 
-			IFCAN_flash_ACK(IFCAN_ACK_FLASH_UP_TO_DATE);
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_UP_TO_DATE);
+		}
+		else if (pm.lu_mode != PM_LU_DISABLED) {
+
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
 		}
 		else {
-			IFCAN_flash_ACK(IFCAN_ACK_FLASH_WAIT_FOR_ERASE);
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_WAIT_FOR_ERASE);
 
 			if (IFCAN_flash_erase() != 0) {
 
@@ -695,17 +784,16 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 				local.flash_DATA_accepted = 0;
 				local.flash_DATA_paused = 0;
 
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
 			}
 			else {
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_INIT_FAILURE);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
 			}
 		}
 	}
 	else if (msg->ID == IFCAN_ID_FLASH_DATA
 			&& msg->len == 8
-			&& can.node_ID >= IFCAN_ID_NODE_BASE
-			&& pm.lu_mode == PM_LU_DISABLED
+			&& can.node_ID != 0
 			&& (u32_t) local.flash_long >= flash_ram_map[0]) {
 
 		FLASH_prog(local.flash_long, &msg->payload[0], msg->len);
@@ -717,16 +805,23 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 			if (uxQueueSpacesAvailable(local.queue_IN) < 5) {
 
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_DATA_PAUSE);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_PAUSE);
 				local.flash_DATA_paused = 1;
 			}
 		}
 		else {
 			if (uxQueueMessagesWaiting(local.queue_IN) < 5) {
 
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
 				local.flash_DATA_paused = 0;
 			}
+		}
+
+		if (pm.lu_mode != PM_LU_DISABLED) {
+
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
+
+			local.flash_long = NULL;
 		}
 
 		if (local.flash_DATA_accepted >= local.flash_INIT_sizeof) {
@@ -734,7 +829,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			if (crc32b((u32_t *) flash_ram_map[0], local.flash_INIT_sizeof)
 					== local.flash_INIT_crc32) {
 
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
 
 				GPIO_set_LOW(GPIO_BOOST_12V);
 				GPIO_set_HIGH(GPIO_LED);
@@ -744,32 +839,39 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 				FLASH_selfupdate();
 			}
 			else {
-				IFCAN_flash_ACK(IFCAN_ACK_FLASH_CRC32_INVALID);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_CRC32_INVALID);
 			}
 
 			local.flash_long = NULL;
 		}
 	}
-	else if (msg->ID == IFCAN_ID_FLASH_ACK
-			&& msg->len == 4
-			&& can.node_ID >= IFCAN_ID_NODE_BASE
-			&& pm.lu_mode == PM_LU_DISABLED) {
-
-		local_node_update_ACK(* (u16_t *) &msg->payload[0],
-				* (u16_t *) &msg->payload[2]);
-	}
 
 	/* Node functions.
 	 * */
-	else if (msg->ID == can.node_ID + IFCAN_ID_NODE_CTL) {
+	else if (msg->ID == IFCAN_ID(can.node_ID, IFCAN_NODE_REQ)) {
 
-		if (* (u16_t *) &msg->payload[0] == IFCAN_NODE_CTL_FLOW_TX_PAUSE
-				&& msg->len == 2) {
+		if (msg->payload[0] == IFCAN_REQ_FLOW_TX_PAUSE
+				&& msg->len == 1) {
 
-			local.flow_TX_pause = 1;
+			local.flow_TX_paused = 1;
 		}
 	}
-	else if (msg->ID == can.node_ID + IFCAN_ID_NODE_RX) {
+	else if ((msg->ID & IFCAN_ID(0, 31)) == IFCAN_ID(0, IFCAN_NODE_ACK)
+			&& IFCAN_GET_NODE(msg->ID) != 31U
+			&& IFCAN_GET_NODE(msg->ID) != 0U) {
+
+		if (msg->payload[5] == IFCAN_ACK_NETWORK_REPLY
+				&& msg->len == 6) {
+
+			local_node_insert(* (u32_t *) &msg->payload[0],
+					msg->payload[4]);
+		}
+		else if (msg->len == 2) {
+
+			local_node_update_ACK(msg->payload[0], msg->payload[1]);
+		}
+	}
+	else if (msg->ID == IFCAN_ID(can.node_ID, IFCAN_NODE_RX)) {
 
 		for (N = 0; N < msg->len; ++N) {
 
@@ -778,20 +880,28 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 		IODEF_TO_CAN();
 	}
-	else if (msg->ID == local.remote_node_ID + IFCAN_ID_NODE_TX) {
+	else if (msg->ID == IFCAN_ID(local.remote_node_ID, IFCAN_NODE_TX)) {
 
 		for (N = 0; N < msg->len; ++N) {
 
-			/* Remote NODE output via LOG.
-			 * */
-			IFCAN_log_putc(msg->payload[N]);
+			if (msg->payload[N] == K_EOT) {
+
+				/* Remote node signals us about EOT.
+				 * */
+				local.remote_EOT = 1;
+			}
+			else {
+				/* Remote NODE output via LOG.
+				 * */
+				IFCAN_log_putc(msg->payload[N]);
+			}
 		}
 
 		if (uxQueueSpacesAvailable(local.queue_LOG) < 20) {
 
 			/* Notify remote node about overflow.
 			 * */
-			IFCAN_remote_node_CTL(IFCAN_NODE_CTL_FLOW_TX_PAUSE);
+			IFCAN_remote_node_REQ(IFCAN_REQ_FLOW_TX_PAUSE);
 		}
 	}
 }
@@ -832,20 +942,20 @@ void task_IFCAN_TX(void *pData)
 			}
 		}
 
-		if (msg.len != 0) {
+		if (msg.len > 0) {
 
-			msg.ID = can.node_ID + IFCAN_ID_NODE_TX;
+			msg.ID = IFCAN_ID(can.node_ID, IFCAN_NODE_TX);
 
 			IFCAN_send_msg(&msg);
 
 			/* Do not send messages too frequently especially if
 			 * you were asked to.
 			 * */
-			if (local.flow_TX_pause != 0) {
+			if (local.flow_TX_paused != 0) {
 
 				vTaskDelay((TickType_t) 10);
 
-				local.flow_TX_pause = 0;
+				local.flow_TX_paused = 0;
 			}
 			else {
 				vTaskDelay((TickType_t) 1);
@@ -889,12 +999,14 @@ void IFCAN_startup()
 	local.queue_RX = USART_queue_RX();
 	local.queue_TX = xQueueCreate(80, sizeof(char));
 	local.queue_EX = xQueueCreate(40, sizeof(char));
+	local.queue_NET = xQueueCreate(1, sizeof(int));
 	local.queue_LOG = xQueueCreate(400, sizeof(char));
 
 	/* Create IFCAN tasks.
 	 * */
 	xTaskCreate(task_IFCAN_IN, "IFCAN_IN", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 	xTaskCreate(task_IFCAN_TX, "IFCAN_TX", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_IFCAN_NET, "IFCAN_NET", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 	xTaskCreate(task_IFCAN_LOG, "IFCAN_LOG", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 	CAN_startup();
@@ -914,16 +1026,18 @@ void IFCAN_filter_ID()
 		CAN_filter_ID(0, 0, IFCAN_FILTER_NETWORK, IFCAN_FILTER_NETWORK);
 	}
 
-	if (can.node_ID >= IFCAN_ID_NODE_BASE) {
+	if (can.node_ID != 0) {
 
-		CAN_filter_ID(1, 0, can.node_ID + IFCAN_ID_NODE_CTL, IFCAN_FILTER_MATCH);
-		CAN_filter_ID(2, 0, can.node_ID + IFCAN_ID_NODE_RX, IFCAN_FILTER_MATCH);
-		CAN_filter_ID(3, 0, 0, 0);
+		CAN_filter_ID(1, 0, IFCAN_ID(can.node_ID, IFCAN_NODE_REQ), IFCAN_FILTER_MATCH);
+		CAN_filter_ID(2, 0, IFCAN_ID(0, IFCAN_NODE_ACK), IFCAN_ID(0, 31));
+		CAN_filter_ID(3, 0, IFCAN_ID(can.node_ID, IFCAN_NODE_RX), IFCAN_FILTER_MATCH);
+		CAN_filter_ID(4, 0, 0, 0);
 	}
 	else {
 		CAN_filter_ID(1, 0, 0, 0);
 		CAN_filter_ID(2, 0, 0, 0);
 		CAN_filter_ID(3, 0, 0, 0);
+		CAN_filter_ID(4, 0, 0, 0);
 	}
 
 	for (N = 0; N < IFCAN_PIPES_MAX; ++N) {
@@ -968,7 +1082,7 @@ SH_DEF(can_net_survey)
 
 				printf("%8x    ", local.node[N].UID);
 
-				if (local.node[N].node_ID >= IFCAN_ID_NODE_BASE) {
+				if (local.node[N].node_ID != 0) {
 
 					printf("%4i    ", local.node[N].node_ID);
 				}
@@ -1008,10 +1122,10 @@ SH_DEF(can_net_assign)
 			if (local.node[N].node_ID != 0) {
 
 				msg.ID = IFCAN_ID_NET_ASSIGN;
-				msg.len = 6;
+				msg.len = 5;
 
 				* (u32_t *) &msg.payload[0] = local.node[N].UID;
-				* (u16_t *) &msg.payload[4] = local.node[N].node_ID;
+				msg.payload[4] = local.node[N].node_ID;
 
 				IFCAN_send_msg(&msg);
 
@@ -1043,10 +1157,10 @@ SH_DEF(can_net_revoke)
 				local.node[N].node_ID = 0;
 
 				msg.ID = IFCAN_ID_NET_ASSIGN;
-				msg.len = 6;
+				msg.len = 5;
 
 				* (u32_t *) &msg.payload[0] = local.node[N].UID;
-				* (u16_t *) &msg.payload[4] = 0;
+				msg.payload[4] = 0;
 
 				IFCAN_send_msg(&msg);
 
@@ -1087,11 +1201,20 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 
 			if (N >= 5) {
 
-				local_node_discard_ACK();
+				local_node_replace_ACK(IFCAN_ACK_FLASH_DATA_PAUSE,
+						IFCAN_ACK_FLASH_FAILURE);
 				break;
 			}
 
 			vTaskDelay((TickType_t) 1);
+		}
+
+		/* Check if there are nodes ready to accept data.
+		 * */
+		if (local_nodes_by_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT) == 0) {
+
+			puts(" Fail");
+			break;
 		}
 
 		* (u32_t *) &msg.payload[0] = *(flash + 0);
@@ -1191,7 +1314,7 @@ SH_DEF(can_flash_update)
 			printf("%i nodes are up to date" EOL, nodes_N);
 		}
 
-		nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_INIT_FAILURE);
+		nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_FAILURE);
 
 		if (nodes_N != 0) {
 
@@ -1231,9 +1354,9 @@ void task_REMOTE(void *pData)
 			}
 		}
 
-		if (msg.len != 0) {
+		if (msg.len > 0) {
 
-			msg.ID = local.remote_node_ID + IFCAN_ID_NODE_RX;
+			msg.ID = IFCAN_ID(local.remote_node_ID, IFCAN_NODE_RX);
 
 			IFCAN_send_msg(&msg);
 		}
@@ -1273,7 +1396,9 @@ SH_DEF(can_node_remote)
 
 	if (local.remote_node_ID != 0) {
 
-		CAN_filter_ID(3, 0, local.remote_node_ID + IFCAN_ID_NODE_TX, IFCAN_FILTER_MATCH);
+		local.remote_EOT = 0;
+
+		CAN_filter_ID(4, 0, IFCAN_ID(local.remote_node_ID, IFCAN_NODE_TX), IFCAN_FILTER_MATCH);
 
 		xTaskCreate(task_REMOTE, "REMOTE", configMINIMAL_STACK_SIZE, NULL, 2, &xHandle);
 
@@ -1283,19 +1408,18 @@ SH_DEF(can_node_remote)
 			xC = getc();
 
 			IFCAN_remote_putc(xC);
-
-			if (xC == K_EOT)
-				break;
 		}
-		while (1);
+		while (local.remote_EOT == 0);
 
 		vTaskDelete(xHandle);
 
-		CAN_filter_ID(3, 0, 0, 0);
-
-		local.remote_node_ID = 0;
-
-		puts(EOL EOL);
+		CAN_filter_ID(4, 0, 0, 0);
 	}
+}
+
+SH_DEF(can_node_leave)
+{
+	puts(EOL);
+	putc(K_EOT);
 }
 

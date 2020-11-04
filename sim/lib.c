@@ -17,10 +17,19 @@ lib_t;
 
 static lib_t		lib;
 
+static unsigned long
+lib_lcgu(unsigned long rseed)
+{
+	/* Linear congruential generator.
+	 * */
+
+	return rseed * 17317UL + 1UL;
+}
+
 void lib_start()
 {
 	FILE		*fseed;
-	unsigned int	r = 0;
+	unsigned long	rseed = 0;
 	int		j;
 
 	fseed = fopen(FSEED_FILE, "rb");
@@ -33,12 +42,15 @@ void lib_start()
 
 	if (r != 1) {
 
+		/* Initial SEED.
+		 * */
+
 		r = (unsigned int) time(NULL);
-		r = r * 17317 + 1;
+		r = lib_lcgu(r);
 
 		for (j = 0; j < 55; ++j) {
 
-			r = r * 17317 + 1;
+			r = lib_lcgu(r);
 			lib.seed[j] = (double) r / (double) UINT_MAX;
 		}
 
@@ -64,6 +76,9 @@ double lib_rand()
 {
 	double		x, a, b;
 
+	/* Lagged Fibonacci generator.
+	 * */
+
 	a = lib.seed[lib.ra];
 	b = lib.seed[lib.rb];
 
@@ -81,14 +96,17 @@ double lib_gauss()
 {
 	double		s, x;
 
+	/* Box-Muller transform.
+	 * */
+
 	do {
 		s = 2. * lib_rand() - 1.;
 		x = 2. * lib_rand() - 1.;
 		s = s * s + x * x;
 	}
-	while (s >= 1.);
+	while (s > 1. || s == 0.);
 
-	x *= sqrt(-2. * log(s) / s);
+	x *= sqrt(- 2. * log(s) / s);
 
 	return x;
 }
