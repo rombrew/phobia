@@ -106,7 +106,6 @@ typedef struct {
 	/* Remote node ID we connected to.
 	 * */
 	int			remote_node_ID;
-	int			remote_EOT;
 
 	/* TX pause notice (flow control).
 	 * */
@@ -884,17 +883,9 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 		for (N = 0; N < msg->len; ++N) {
 
-			if (msg->payload[N] == K_EOT) {
-
-				/* Remote node signals us about EOT.
-				 * */
-				local.remote_EOT = 1;
-			}
-			else {
-				/* Remote NODE output via LOG.
-				 * */
-				IFCAN_log_putc(msg->payload[N]);
-			}
+			/* Remote NODE output via LOG.
+			 * */
+			IFCAN_log_putc(msg->payload[N]);
 		}
 
 		if (uxQueueSpacesAvailable(local.queue_LOG) < 20) {
@@ -1035,7 +1026,7 @@ void IFCAN_filter_ID()
 	}
 	else {
 		CAN_filter_ID(1, 0, 0, 0);
-		CAN_filter_ID(2, 0, 0, 0);
+		CAN_filter_ID(2, 0, IFCAN_ID(0, IFCAN_NODE_ACK), IFCAN_ID(0, 31));
 		CAN_filter_ID(3, 0, 0, 0);
 		CAN_filter_ID(4, 0, 0, 0);
 	}
@@ -1396,10 +1387,12 @@ SH_DEF(can_node_remote)
 
 	if (local.remote_node_ID != 0) {
 
-		local.remote_EOT = 0;
-
+		/* Do listen to incoming messages from remote node.
+		 * */
 		CAN_filter_ID(4, 0, IFCAN_ID(local.remote_node_ID, IFCAN_NODE_TX), IFCAN_FILTER_MATCH);
 
+		/* Create task to outgoing message packaging.
+		 * */
 		xTaskCreate(task_REMOTE, "REMOTE", configMINIMAL_STACK_SIZE, NULL, 2, &xHandle);
 
 		xputs(&ops, EOL);
@@ -1408,18 +1401,27 @@ SH_DEF(can_node_remote)
 			xC = getc();
 
 			IFCAN_remote_putc(xC);
+
+			if (xC == K_EOT)
+				break;
 		}
-		while (local.remote_EOT == 0);
+		while (1);
+
+		/* Drop incoming connection immediately.
+		 * */
+		CAN_filter_ID(4, 0, 0, 0);
+
+		local.remote_node_ID = 0;
+
+		/* Wait for task_REMOTE to transmit the last message.
+		 * */
+		vTaskDelay((TickType_t) 20);
 
 		vTaskDelete(xHandle);
 
-		CAN_filter_ID(4, 0, 0, 0);
+		/* Do pretty line feed.
+		 * */
+		puts(EOL);
 	}
-}
-
-SH_DEF(can_node_leave)
-{
-	puts(EOL);
-	putc(K_EOT);
 }
 

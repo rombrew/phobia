@@ -9,7 +9,7 @@ void RNG_startup()
 
 	/* Enable RNG.
 	 * */
-	RNG->CR = RNG_CR_RNGEN;
+	RNG->CR |= RNG_CR_RNGEN;
 }
 
 unsigned long RNG_urand()
@@ -18,6 +18,16 @@ unsigned long RNG_urand()
 	int			N = 0;
 
 	do {
+		/* Check that no error occured.
+		 * */
+		if (RNG->SR & (RNG_SR_SEIS | RNG_SR_CEIS)) {
+
+			RNG->SR &= ~(RNG_SR_SEIS | RNG_SR_CEIS);
+
+			RNG->CR &= ~(RNG_CR_RNGEN);
+			RNG->CR |= RNG_CR_RNGEN;
+		}
+
 		/* Wait till RNG is ready.
 		 * */
 		if (RNG->SR & RNG_SR_DRDY) {
@@ -28,7 +38,7 @@ unsigned long RNG_urand()
 
 		N++; __NOP();
 	}
-	while (N < 70000UL);
+	while (N < 700000UL);
 
 	return urand;
 }

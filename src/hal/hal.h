@@ -136,7 +136,6 @@ void hal_delay_ns(int ns);
 int hal_lock_irq();
 void hal_unlock_irq(int irq);
 
-void hal_system_debug();
 void hal_system_reset();
 void hal_bootload_jump();
 
@@ -145,6 +144,8 @@ void hal_fence();
 
 int log_bootup();
 void log_putc(int c);
+
+void hal_DBGMCU_mode_stop();
 
 extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();

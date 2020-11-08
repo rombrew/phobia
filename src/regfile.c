@@ -654,7 +654,7 @@ reg_format_self_BST(const reg_t *reg)
 {
 	int		*BST = (void *) reg->link;
 
-	printf("%4f %4f %4f (ms)", &BST[0], &BST[1], &BST[2]);
+	printf("%1f %1f %1f (ms)", &BST[0], &BST[1], &BST[2]);
 }
 
 static void

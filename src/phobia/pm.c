@@ -6,7 +6,7 @@ void pm_default(pmc_t *pm)
 	pm->dc_minimal = 0.25f;		/* (us) */
 	pm->dc_clearance = 5.0f;	/* (us) */
 	pm->dc_skip = 2.0f;		/* (us) */
-	pm->dc_bootstrap = 10.f;	/* (ms) */
+	pm->dc_bootstrap = 100.f;	/* (ms) */
 	pm->dc_clamped = 1.f;		/* (s)  */
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
@@ -1299,9 +1299,9 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		/* Check if terminal voltages are exactly zero to get more
 		 * accuracy.
 		 * */
-		pm->vsi_AZ = (pm->vsi_AG == pm->dc_resolution) ? 0 : 1;
-		pm->vsi_BZ = (pm->vsi_BG == pm->dc_resolution) ? 0 : 1;
-		pm->vsi_CZ = (pm->vsi_CG == pm->dc_resolution) ? 0 : 1;
+		pm->vsi_AZ = (pm->vsi_AG == 0) ? 0 : 1;
+		pm->vsi_BZ = (pm->vsi_BG == 0) ? 0 : 1;
+		pm->vsi_CZ = (pm->vsi_CG == 0) ? 0 : 1;
 	}
 
 	pm->vsi_AG = xA;

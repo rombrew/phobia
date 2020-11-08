@@ -218,9 +218,9 @@ SH_DEF(pm_FT_tvm_ramp)
 	PWM_set_Z(0);
 
 	pm.vsi_UF = 0;
-	pm.vsi_AZ = 0;
-	pm.vsi_BZ = 0;
-	pm.vsi_CZ = 0;
+	pm.vsi_AZ = 1;
+	pm.vsi_BZ = 1;
+	pm.vsi_CZ = 1;
 
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
@@ -228,7 +228,7 @@ SH_DEF(pm_FT_tvm_ramp)
 	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
-		/* 1000 Hz.
+		/* Frequency 1000 Hz.
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 1);
 
@@ -255,6 +255,11 @@ SH_DEF(pm_FT_tvm_ramp)
 	while (1);
 
 	pm.fsm_req = PM_STATE_HALT;
+}
+
+SH_DEF(hal_DBGMCU_enable)
+{
+	hal_DBGMCU_mode_stop();
 }
 
 SH_DEF(hal_PPM_get_PERIOD)
@@ -333,6 +338,13 @@ SH_DEF(hal_PWM_set_Z)
 
 		PWM_set_Z(xZ);
 	}
+}
+
+SH_DEF(hal_RNG_rseed)
+{
+	rseed = RNG_urand();
+
+	printf("%8x " EOL, rseed);
 }
 
 SH_DEF(hal_GPIO_set_high_BOOST_12V)

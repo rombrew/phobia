@@ -506,7 +506,7 @@ app_flash_load()
 
 void task_INIT(void *pData)
 {
-	u32_t			lep[2];
+	u32_t			seed[3];
 	int			irq;
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
@@ -539,17 +539,22 @@ void task_INIT(void *pData)
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
 
-	lep[0] = RNG_urand();
-	lep[1] = RNG_urand();
+	seed[0] = RNG_urand();
 
-	if (lep[0] == lep[1]) {
+	/* We drop the first value and check if RNG
+	 * gives the same number each time.
+	 * */
+	seed[1] = RNG_urand();
+	seed[2] = RNG_urand();
+
+	if (seed[1] == seed[2]) {
 
 		log_TRACE("RNG failed" EOL);
 	}
 
 	/* Initial SEED.
 	 * */
-	rseed = lep[1];
+	rseed = seed[2];
 
 	if (log_bootup() != 0) {
 
@@ -925,11 +930,6 @@ SH_DEF(rtos_log_cleanup)
 
 		log.tail = 0;
 	}
-}
-
-SH_DEF(rtos_debug_mode)
-{
-	hal_system_debug();
 }
 
 SH_DEF(rtos_reboot)
