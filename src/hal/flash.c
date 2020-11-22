@@ -4,7 +4,7 @@
 #include "hal.h"
 #include "libc.h"
 
-const unsigned long flash_ram_map[] = {
+const unsigned long FLASH_map[] = {
 
 	0x08060000UL,
 	0x08080000UL,
@@ -67,7 +67,7 @@ FLASH_erase_on_IWDG(int N)
 LD_RAMFUNC static void
 FLASH_selfupdate_on_IWDG()
 {
-	u32_t			*long_s = (u32_t *) flash_ram_map[0];
+	u32_t			*long_s = (u32_t *) FLASH_map[0];
 	u32_t			*long_flash, *long_end;
 	int			N;
 
@@ -84,6 +84,7 @@ FLASH_selfupdate_on_IWDG()
 		while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) {
 
 			IWDG->KR = 0xAAAA;
+
 			__NOP();
 		}
 	}
@@ -100,6 +101,8 @@ FLASH_selfupdate_on_IWDG()
 	while (long_flash < long_end) {
 
 		*long_flash++ = *long_s++;
+
+		__DSB();
 
 		while ((FLASH->SR & FLASH_SR_BSY) == FLASH_SR_BSY) {
 
@@ -127,10 +130,10 @@ void *FLASH_erase(void *flash)
 
 	for (N = 0; N < FLASH_SECTOR_MAX; ++N) {
 
-		if (		(u32_t) flash >= flash_ram_map[N]
-				&& (u32_t) flash < flash_ram_map[N + 1]) {
+		if (		(u32_t) flash >= FLASH_map[N]
+				&& (u32_t) flash < FLASH_map[N + 1]) {
 
-			flash = (void *) flash_ram_map[N];
+			flash = (void *) FLASH_map[N];
 			sector_N = N + 7;
 
 			break;
@@ -162,20 +165,32 @@ void *FLASH_erase(void *flash)
 void *FLASH_prog(void *flash, const void *s, int n)
 {
 	u32_t			*long_flash = flash;
-	const u32_t		*long_s = s;
+	const u32_t		*long_end, *long_s = s;
 
-	if (		(u32_t) flash >= flash_ram_map[0]
-			&& (u32_t) flash < flash_ram_map[FLASH_SECTOR_MAX]) {
+	if (		((u32_t) long_flash & 3UL) != 0
+			|| ((u32_t) long_s & 3UL) != 0
+			|| ((u32_t) n & 3UL) != 0) {
+
+		/* Unable to program with unaligned inputs.
+		 * */
+		return NULL;
+	}
+
+	long_end = (u32_t *) ((u32_t) long_flash + n);
+
+	if (		(u32_t) long_flash >= FLASH_map[0]
+			&& (u32_t) long_end <= FLASH_map[FLASH_SECTOR_MAX]) {
 
 		FLASH_unlock();
 		FLASH_wait_BSY();
 
 		FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
 
-		while (n >= 4) {
+		while (long_flash < long_end) {
 
 			*long_flash++ = *long_s++;
-			n += - 4;
+
+			__DSB();
 
 			FLASH_wait_BSY();
 		}

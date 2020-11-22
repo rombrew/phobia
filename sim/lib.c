@@ -17,8 +17,8 @@ lib_t;
 
 static lib_t		lib;
 
-static unsigned long
-lib_lcgu(unsigned long rseed)
+static unsigned int
+lib_lcgu(unsigned int rseed)
 {
 	/* Linear congruential generator.
 	 * */
@@ -29,7 +29,7 @@ lib_lcgu(unsigned long rseed)
 void lib_start()
 {
 	FILE		*fseed;
-	unsigned long	rseed = 0;
+	unsigned int	r = 0;
 	int		j;
 
 	fseed = fopen(FSEED_FILE, "rb");

@@ -222,16 +222,16 @@ void hal_bootload()
 
 		bootload_jump = 0;
 
-		SYSCFG->MEMRMP = SYSCFG_MEMRMP_MEM_MODE_0;
+		/*SYSCFG->MEMRMP = SYSCFG_MEMRMP_MEM_MODE_0;
 
 		__DSB();
-		__ISB();
+		__ISB();*/
 
 		/* Load MSP.
 		 * */
 		__set_MSP(* (u32_t *) 0x1FFF0000UL);
 
-		/* Jump to bootloader.
+		/* Jump to the bootloader.
 		 * */
 		((void (*) (void)) (* (u32_t *) 0x1FFF0004UL)) ();
 	}
@@ -341,7 +341,7 @@ void log_putc(int c)
 	++log.tail;
 }
 
-void hal_DBGMCU_mode_stop()
+void DBGMCU_mode_stop()
 {
 	DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
 	DBGMCU->APB2FZ |= DBGMCU_APB1_FZ_DBG_TIM1_STOP;

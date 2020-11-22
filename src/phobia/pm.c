@@ -52,7 +52,8 @@ void pm_default(pmc_t *pm)
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 2.f;
 	pm->probe_freq_sine_hz = 2000.f;
-	pm->probe_speed_hold = 200.f;
+	pm->probe_speed_maximal_pc = 70.f;
+	pm->probe_speed_hold = 700.f;
 	pm->probe_speed_detached = 50.f;
 	pm->probe_gain_P = 1E-1f;
 	pm->probe_gain_I = 1E-3f;
@@ -64,7 +65,7 @@ void pm_default(pmc_t *pm)
 	pm->fault_voltage_halt = 59.f;
 
 	pm->tvm_ENABLED = PM_DISABLED;
-	pm->tvm_range_DC = .16f;
+	pm->tvm_range_DC = .1f;
 	pm->tvm_FIR_A[0] = 0.f;
 	pm->tvm_FIR_A[1] = 0.f;
 	pm->tvm_FIR_A[2] = 0.f;
@@ -157,7 +158,7 @@ void pm_default(pmc_t *pm)
 	pm->s_tol_Z = 0.f;
 	pm->s_gain_P = 5E-2f;
 	pm->s_gain_I = 0E-3f;
-	pm->s_gain_S = 1E-0f;
+	pm->s_gain_S = 5E-1f;
 	pm->s_gain_D = 0E-0f;
 
 	pm->x_tol_N = 1.f;
@@ -197,7 +198,7 @@ void pm_build(pmc_t *pm)
 
 	if (pm->config_ESTIMATE == PM_ESTIMATE_FLUX) {
 
-		pm->temp_const_iE = 1.f / pm->const_E;
+		pm->temp_const_iE = (pm->const_E > M_EPS_F) ? 1.f / pm->const_E : 0.f;
 	}
 
 	if (pm->config_HFI == PM_ENABLED) {
@@ -1236,6 +1237,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		}
 	}
 
+	/* Output DC values to PWM.
+	 * */
 	pm->proc_set_DC(xA, xB, xC);
 
 	pm->vsi_DX = pm->vsi_X;
@@ -1329,11 +1332,11 @@ pm_loop_current(pmc_t *pm)
 	else {
 		if (pm->config_DRIVE == PM_DRIVE_CURRENT) {
 
-			track_D = pm->i_setpoint_D;
-			track_Q = pm->i_setpoint_Q + pm->i_setpoint_torque;
+			track_D = 0.f;
+			track_Q = pm->i_setpoint_torque;
 		}
 		else {
-			track_D = pm->i_setpoint_D;
+			track_D = 0.f;
 			track_Q = pm->s_iSP;
 		}
 

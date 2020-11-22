@@ -88,6 +88,7 @@ typedef struct {
 blm_t;
 
 void blm_Enable(blm_t *m);
+void blm_Stop(blm_t *m);
 void blm_Update(blm_t *m);
 
 #endif /* _H_BLM_ */

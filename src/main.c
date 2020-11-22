@@ -470,11 +470,11 @@ app_flash_load()
 	ap.ntc_EXT.ta_0 = 25.f;
 	ap.ntc_EXT.betta = 3380.f;
 
-	ap.heat_PCB = 90.f;
-	ap.heat_PCB_derated_1 = 20.f;
-	ap.heat_EXT = 90.f;
-	ap.heat_EXT_derated_1 = 20.f;
-	ap.heat_PCB_FAN = 60.f;
+	ap.heat_PCB = 95.f;
+	ap.heat_PCB_derated_1 = 30.f;
+	ap.heat_EXT = 95.f;
+	ap.heat_EXT_derated_1 = 30.f;
+	ap.heat_PCB_FAN = 70.f;
 	ap.heat_recovery_gap = 5.f;
 
 	ap.hx711_scale[0] = 0.f;

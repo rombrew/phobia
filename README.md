@@ -12,7 +12,7 @@ electrotransport.
 * Connector: XT90-S and bullet 5.5mm.
 * Battery voltage from 5v to 50v.
 * Phase current up to 120A (with IPT007N06N, 60v, 0.75 mOhm).
-* Light capacitor bank (4 x 4.7uF + 2 x 680uF).
+* Light capacitor bank (4 x 4.7uF + 2 x 330uF).
 * PWM frequency from 20 to 60 kHz.
 * STM32F405RG microcontroller (Cortex-M4F at 168 MHz).
 
@@ -44,7 +44,8 @@ electrotransport.
 	* 5v to 3.3v linear (up to 400 mA).
 
 Look into [phobia-pcb](https://sourceforge.net/p/phobia/pcb/) repository for
-PCB design source files.
+PCB design source files. Also view a photos of the assembled PCBs in
+[doc/imgs/](doc/imgs/).
 
 ## Software features
 
@@ -118,9 +119,9 @@ PCB design source files.
 
 ## TODO
 
-* Analyse HFI operation on large current values.
+* Try to implement progressive initial motor spinup and identification.
 * Make a detailed documentation.
-* Add flux observer saliency tracking (for SRM).
+* Consider to add flux observer saliency tracking (for SRM).
 * Add pulse output signal.
 
 ## Current Status
@@ -129,13 +130,8 @@ Now we can declare that PMC is ready to use in most applications. But there is
 still a lot of unresolved issues. It may be difficult to configure the PMC for
 a specific motor.
 
-There are a few videos that show the operation of the prototypes (may be outdated).
+There are a few videos about PMC on
+[youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
 
-[![PMC](https://i.ytimg.com/vi/phLGdwzEnQY/default.jpg)](https://www.youtube.com/watch?v=phLGdwzEnQY)
-[![PMC](https://i.ytimg.com/vi/ANp_5zZkh48/default.jpg)](https://www.youtube.com/watch?v=ANp_5zZkh48)
-[![PMC](https://i.ytimg.com/vi/IM0k0_boXc4/default.jpg)](https://www.youtube.com/watch?v=IM0k0_boXc4)
-[![PMC](https://i.ytimg.com/vi/rfigI6fnWxI/default.jpg)](https://www.youtube.com/watch?v=rfigI6fnWxI)
-[![PMC](https://i.ytimg.com/vi/7AedIaMOno0/default.jpg)](https://www.youtube.com/watch?v=7AedIaMOno0)
-
-Read more in [Getting Started](doc/GettingStarted.md).
+Read further in [doc/GettingStarted](doc/GettingStarted.md).
 

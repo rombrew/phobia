@@ -31,8 +31,8 @@ You can also export configuration registers values in plain text using a
 CLI to restore the configuration.
 
 To save the values of the configuration registers in the flash there is a
-**flash_write** command. Register values from the flash are loaded
-automatically at startup.
+**flash_prog** command. Register values from the flash are loaded automatically
+at startup.
 
 Note the different types of registers. There are registers intended for saving
 as configuration. Other registers provide information to read only. Virtual
@@ -43,28 +43,65 @@ to configure data transfer between different subsystems.
 Each register can have its own write and read handler that can do a complex non
 obvious actions during access to it.
 
+## Examples
+
+Show all raw feedback values that PMC uses in control loops.
+
+	# reg pm.fb_
+
+Show all motor constants.
+
+	# reg pm.const_
+
+Enable analog control input.
+
+	# reg ap.analog_ENABLED 1
+
+Define what registers are to grab into telemetry.
+
+	# reg tlm.reg_ID_0 pm.tvm_A
+	# reg tlm.reg_ID_1 pm.tvm_B
+
+Look for speed setpoint register.
+
+	# reg pm.s_setpoint
+
+Access to the register by its number.
+
+	# reg 377 700
+
 ## Basic commands
 
-Basic informational commands.
+There are some commands that you can use to get started. Basic informational
+commands.
 
 	# rtos_uptime
 	# rtos_cpu_usage
+
+Get firmware size and crc32.
+
+	# rtos_firmware
 
 Manual PWM control for testing.
 
 	# hal_PWM_set_DC <DC>
 	# hal_PWM_set_Z <Z>
 
-Telemetry grab (to fill the memory buffer) and flush.
+Show instant analog input values.
 
-	# tel_grab <freq>
-	# tel_flush_sync
+	# hal_ADC_get_analog_ANG
+	# hal_ADC_get_analog_BRK
+
+Telemetry grab (to fill the memory buffer) and flush textual dump.
+
+	# tlm_grab <freq>
+	# tlm_flush_sync
 
 Live telemetry printout.
 
-	# tel_live_sync
+	# tlm_live_sync
 
 Start the HX711 helper application.
 
-	# ap_hx711_startup
+	# hx711_startup
 

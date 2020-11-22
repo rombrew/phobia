@@ -15,6 +15,9 @@ aware. These parameters are used to probe the motor.
 There are a lot of parameters that can affect the motor identification. But we
 believe that they will need a change only in a very complicated case.
 
+Most likely you will change **pm.probe_speed_hold** parameter. The probe speed
+should provide enough BEMF but not to exceed **pm.forced_hold_D** speed.
+
 ## Sensors adjustment
 
 To achieve a good result adjust the voltage and current sensors. The automatic
@@ -52,7 +55,7 @@ calculate DQ inductance and rotation angle.
 
 Normally it will print the values of the identified parameters. In case of
 failure the error will be printed out. We recommend to do this procedure twice
-to get accurate estimates.
+to make sure of reliable estimates.
 
 ## Rotor flux linkage
 
@@ -68,19 +71,53 @@ significant speed. We do a forced spinup to reach this condition.
 
 	# pm_probe_spinup
 
-To get more accurate estimate run the motor at high speed (~10v of BEMF is
-enough) and request E probe manually. Do not load the motor.
+To get more accurate estimate run the motor at high speed and request E probe
+manually. Do not load the motor.
 
 	# reg pm.s_setpoint_rpm <rpm>
 	# pm_probe_const_E
 
-Also you have an option to identify E in detached mode. You will have to rotate
-the motor manually in this case.
+## No forced spinup
+
+If you failed to start the motor with **pm_probe_spinup** you have an option to
+identify E in detached mode. You will have to rotate the motor manually in this
+case.
 
 	# pm_probe_detached
 
+It waits for the motor to reach at least **pm.probe_speed_detached** speed.
+
 ## Mean Peak to Peak Error (MPPE)
+
+Command **pm_probe_spinup** does many estimates after forced spinup. Look at
+this time diagram.
+
+	 | -- (speed)                                        _
+	 |                                                  / \
+	 |                                                 /   \
+	 |                    _--_-_--_-__--_-_-_--__-_--_/     \
+	 |                   /                                   \
+	 |   _--_-_-_--_-_-_/                                     \
+	 |  /                |         |            |              ~~~
+	 | /        |        |         |            |            |
+	-+----------+--------+---------+------------+------------+-------->
+	   | forced |   E    |    E    |   MPPE     |  inertial  |
+
+We estimate MPPE at constant speed condition to know the lower limit of FLUX
+observer operation. You can get BEMF values of mode switching expressed
+relative to MPPE.
+
+	# reg pm.flux_gain_TAKE_E
+	# reg pm.flux_gain_GIVE_E
+
 ## Moment of inertia
+
+Final estimate is moment of inertia **pm.const_Ja**. To do this possible a
+speed maneuver is performed. Note that this may result energy regeneration so
+your power supply must tolerate this.
+
+This constant is used to predict the speed changes from a known current.
+
 ## Hall sensors adjustment
 
 **TODO**

@@ -1165,8 +1165,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->watt_lpf_wP = 0.f;
 
 				pm->i_derated_1 = PM_MAX_F;
-				pm->i_setpoint_D = 0.f;
-				pm->i_setpoint_Q = 0.f;
 				pm->i_setpoint_torque = 0.f;
 				pm->i_track_D = 0.f;
 				pm->i_track_Q = 0.f;

@@ -33,27 +33,35 @@ int pm_wait_for_IDLE()
 
 int pm_wait_for_SPINUP()
 {
-	TickType_t		xTick = (TickType_t) 0;
-	float			wS = pm.flux_lpf_wS;
+	TickType_t		xTIME = (TickType_t) 0;
+	int			lack_N = 0;
 
 	do {
-		vTaskDelay((TickType_t) 100);
-		xTick += (TickType_t) 100;
+		vTaskDelay((TickType_t) 50);
+		xTIME += (TickType_t) 50;
 
-		if (pm.fail_reason != PM_ERROR_TIMEOUT
-				&& pm.fail_reason != PM_OK)
+		if (pm.fail_reason != PM_OK)
 			break;
 
-		if (pm.s_setpoint_speed - pm.lu_wS < 1E-1f * pm.s_setpoint_speed)
+		if (pm.s_setpoint_speed - pm.lu_wS < M_EPS_F)
 			break;
 
-		if (pm.lu_wS - wS < - M_EPS_F * pm.lu_wS
-				&& xTick > (TickType_t) 3000)
-			break;
+		if (pm.lu_mode == PM_LU_FORCED) {
 
-		wS = pm.flux_lpf_wS;
+			lack_N = (pm.vsi_DC > pm.probe_speed_maximal_pc / 100.f)
+				? lack_N + 1 : 0;
 
-		if (xTick > (TickType_t) 5000) {
+			if (lack_N >= 3) {
+
+				/* We are unable to keep such a high speed at
+				 * this DC link volate. Stop.
+				 * */
+				pm.s_setpoint_speed = pm.lu_wS;
+				break;
+			}
+		}
+
+		if (xTIME > (TickType_t) 5000) {
 
 			pm.fail_reason = PM_ERROR_TIMEOUT;
 			break;
@@ -66,26 +74,25 @@ int pm_wait_for_SPINUP()
 	return pm.fail_reason;
 }
 
-int pm_wait_for_MOTION(float ref)
+int pm_wait_for_MOTION(float s_ref)
 {
-	TickType_t		xTick = (TickType_t) 0;
+	TickType_t		xTIME = (TickType_t) 0;
 	int			revol = pm.im_revol_total;
 
 	do {
-		vTaskDelay((TickType_t) 100);
-		xTick += (TickType_t) 100;
+		vTaskDelay((TickType_t) 50);
+		xTIME += (TickType_t) 50;
 
-		if (pm.fail_reason != PM_ERROR_TIMEOUT
-				&& pm.fail_reason != PM_OK)
+		if (pm.fail_reason != PM_OK)
 			break;
 
 		if (pm.im_revol_total != revol) {
 
-			if (m_fabsf(pm.flux_lpf_wS) > ref)
+			if (m_fabsf(pm.flux_lpf_wS) > s_ref)
 				break;
 		}
 
-		if (xTick > (TickType_t) 10000) {
+		if (xTIME > (TickType_t) 10000) {
 
 			pm.fail_reason = PM_ERROR_TIMEOUT;
 			break;
@@ -94,6 +101,17 @@ int pm_wait_for_MOTION(float ref)
 	while (1);
 
 	return pm.fail_reason;
+}
+
+static void
+pm_reg_SET_SETPOINT_SPEED()
+{
+	reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+
+	if (reg_GET_F(ID_PM_S_SETPOINT_SPEED_PC) > pm.probe_speed_maximal_pc) {
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, pm.probe_speed_maximal_pc);
+	}
 }
 
 SH_DEF(pm_probe_base)
@@ -172,7 +190,7 @@ SH_DEF(pm_probe_spinup)
 
 		if (pm.const_E < M_EPS_F) {
 
-			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+			pm_reg_SET_SETPOINT_SPEED();
 
 			if (pm_wait_for_SPINUP() != PM_OK)
 				break;
@@ -185,7 +203,7 @@ SH_DEF(pm_probe_spinup)
 			reg_format(&regfile[ID_PM_CONST_E_KV]);
 		}
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+		pm_reg_SET_SETPOINT_SPEED();
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
@@ -204,8 +222,8 @@ SH_DEF(pm_probe_spinup)
 			break;
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE_RPM]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_BEMF]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_BEMF]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_U]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_U]);
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;
@@ -214,11 +232,11 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+		pm_reg_SET_SETPOINT_SPEED();
 
 		vTaskDelay((TickType_t) 300);
 
@@ -306,8 +324,8 @@ SH_DEF(pm_probe_lu_MPPE)
 			break;
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE_RPM]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_BEMF]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_BEMF]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_U]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_U]);
 	}
 	while (0);
 
@@ -321,11 +339,11 @@ SH_DEF(pm_probe_const_J)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, 0.f);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -339,7 +357,7 @@ SH_DEF(pm_probe_const_J)
 	reg_format(&regfile[ID_PM_FAIL_REASON]);
 }
 
-SH_DEF(pm_adjust_HALL)
+SH_DEF(pm_adjust_hall)
 {
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
@@ -359,7 +377,7 @@ SH_DEF(pm_adjust_HALL)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+		pm_reg_SET_SETPOINT_SPEED();
 
 		if (pm_wait_for_SPINUP() != PM_OK)
 			break;

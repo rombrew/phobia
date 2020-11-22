@@ -200,6 +200,7 @@ typedef struct {
 	float		probe_current_weak;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
+	float		probe_speed_maximal_pc;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
 	float		probe_gain_P;
@@ -383,8 +384,6 @@ typedef struct {
 	float		i_reverse;
 	float		i_derated_1;
 	float		i_derated_HFI;
-	float		i_setpoint_D;
-	float		i_setpoint_Q;
 	float		i_setpoint_torque;
 	float		i_track_D;
 	float		i_track_Q;

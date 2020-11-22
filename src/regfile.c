@@ -308,7 +308,7 @@ reg_proc_kg(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_BEMF(const reg_t *reg, float *lval, const float *rval)
+reg_proc_gain_U(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
 
@@ -1147,6 +1147,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_current_weak,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_sine,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_freq_sine_hz,,,	"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_speed_maximal_pc,,,	"%",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_hold,,,		"rad/s","%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_hold, _rpm,,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.probe_speed_hold, _pc,,	"%",	"%2f",	0, &reg_proc_rpm_pc, NULL),
@@ -1239,8 +1240,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_MPPE, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.flux_gain_TAKE,,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_GIVE,,,		"",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_gain_TAKE, _BEMF,,	"V",	"%3f",	0, &reg_proc_BEMF, NULL),
-	REG_DEF(pm.flux_gain_GIVE, _BEMF,,	"V",	"%3f",	0, &reg_proc_BEMF, NULL),
+	REG_DEF(pm.flux_gain_TAKE, _U,,		"V",	"%3f",	0, &reg_proc_gain_U, NULL),
+	REG_DEF(pm.flux_gain_GIVE, _U,,		"V",	"%3f",	0, &reg_proc_gain_U, NULL),
 	REG_DEF(pm.flux_gain_LEVE,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LP_S,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
@@ -1344,8 +1345,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_reverse_i, NULL),
 	REG_DEF(pm.i_derated_1,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_derated_HFI,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_setpoint_D,,,		"A",	"%3f",	0, NULL, NULL),
-	REG_DEF(pm.i_setpoint_Q,,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_torque,,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_torque, _pc,,	"%",	"%2f",	0, &reg_proc_torque_pc, NULL),
 	REG_DEF(pm.i_tol_Z,,,			"A",	"%2e",	REG_CONFIG, NULL, NULL),

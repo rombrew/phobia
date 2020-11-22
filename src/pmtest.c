@@ -257,9 +257,9 @@ SH_DEF(pm_FT_tvm_ramp)
 	pm.fsm_req = PM_STATE_HALT;
 }
 
-SH_DEF(hal_DBGMCU_enable)
+SH_DEF(hal_DBGMCU_mode_stop)
 {
-	hal_DBGMCU_mode_stop();
+	DBGMCU_mode_stop();
 }
 
 SH_DEF(hal_PPM_get_PERIOD)

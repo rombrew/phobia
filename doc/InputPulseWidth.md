@@ -8,7 +8,7 @@ The pulse signal is fed to PPM pin that is 5v-tolerant.
 
 	        +-----------------< +5v
 	        |   +-------------< pulse signal
-	        |   |       +-----< GND
+	        |   |       +-----< gnd
 	        |   |       |
 	+-------|---|---|---|--------------------------+
 	|      +5v PPM DIR GND                         |

@@ -109,7 +109,7 @@ flash_block_scan()
 {
 	flash_block_t		*block, *last;
 
-	block = (void *) flash_ram_map[0];
+	block = (void *) FLASH_map[0];
 	last = NULL;
 
 	do {
@@ -127,7 +127,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
 			break;
 	}
 	while (1);
@@ -301,12 +301,12 @@ flash_block_prog()
 		number = block->number + 1;
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
-			block = (void *) flash_ram_map[0];
+		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+			block = (void *) FLASH_map[0];
 	}
 	else {
 		number = 1;
-		block = (void *) flash_ram_map[0];
+		block = (void *) FLASH_map[0];
 	}
 
 	origin = block;
@@ -315,8 +315,8 @@ flash_block_prog()
 
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
-			block = (void *) flash_ram_map[0];
+		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+			block = (void *) FLASH_map[0];
 
 		if (block == origin) {
 
@@ -350,7 +350,7 @@ int flash_block_relocate()
 	int			rc = 1;
 
 	block = flash_block_scan();
-	reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 2];
+	reloc = (void *) FLASH_map[FLASH_SECTOR_RELOC];
 
 	if (block != NULL && block < reloc) {
 
@@ -358,9 +358,9 @@ int flash_block_relocate()
 
 			reloc += 1;
 
-			if ((u32_t) reloc >= flash_ram_map[FLASH_SECTOR_MAX]) {
+			if ((u32_t) reloc >= FLASH_map[FLASH_SECTOR_MAX]) {
 
-				reloc = (void *) flash_ram_map[FLASH_SECTOR_MAX - 1];
+				reloc = (void *) FLASH_map[FLASH_SECTOR_MAX - 1];
 				reloc = FLASH_erase(reloc);
 				break;
 			}
@@ -403,7 +403,7 @@ SH_DEF(flash_info_map)
 	flash_block_t			*block;
 	int				N, info_sym;
 
-	block = (void *) flash_ram_map[0];
+	block = (void *) FLASH_map[0];
 	N = 0;
 
 	do {
@@ -424,7 +424,7 @@ SH_DEF(flash_info_map)
 
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[N + 1]) {
+		if ((u32_t) block >= FLASH_map[N + 1]) {
 
 			puts(EOL);
 
@@ -448,7 +448,7 @@ SH_DEF(flash_cleanup)
 		return ;
 	}
 
-	block = (void *) flash_ram_map[0];
+	block = (void *) FLASH_map[0];
 
 	do {
 		if (flash_block_crc32(block) == block->crc32) {
@@ -458,7 +458,7 @@ SH_DEF(flash_cleanup)
 
 		block += 1;
 
-		if ((u32_t) block >= flash_ram_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
 			break;
 	}
 	while (1);

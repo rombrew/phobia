@@ -20,6 +20,8 @@ CFLAGS	+= -fno-math-errno
 CFLAGS	+= -ffinite-math-only
 CFLAGS	+= -fno-signed-zeros
 CFLAGS	+= -fno-trapping-math
+CFLAGS	+= -fno-associative-math
+CFLAGS	+= -fno-reciprocal-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
 

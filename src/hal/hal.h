@@ -145,7 +145,7 @@ void hal_fence();
 int log_bootup();
 void log_putc(int c);
 
-void hal_DBGMCU_mode_stop();
+void DBGMCU_mode_stop();
 
 extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();

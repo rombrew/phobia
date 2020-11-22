@@ -698,11 +698,11 @@ IFCAN_flash_erase()
 	void			*flash_end;
 	int			N, rc = 0;
 
-	if (local.flash_INIT_sizeof >= 1024UL) {
+	if (local.flash_INIT_sizeof >= 0UL) {
 
-		flash_end = (void *) (flash_ram_map[0] + local.flash_INIT_sizeof);
+		flash_end = (void *) (FLASH_map[0] + local.flash_INIT_sizeof);
 
-		if ((u32_t) flash_end > flash_ram_map[FLASH_SECTOR_MAX - 2]) {
+		if ((u32_t) flash_end > FLASH_map[FLASH_SECTOR_RELOC]) {
 
 			rc = 0;
 		}
@@ -715,9 +715,9 @@ IFCAN_flash_erase()
 
 				for (N = 0; N < FLASH_SECTOR_MAX - 2; ++N) {
 
-					if ((u32_t) flash_end > flash_ram_map[N]) {
+					if ((u32_t) flash_end > FLASH_map[N]) {
 
-						FLASH_erase((void *) flash_ram_map[N]);
+						FLASH_erase((void *) FLASH_map[N]);
 					}
 				}
 			}
@@ -779,7 +779,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 			if (IFCAN_flash_erase() != 0) {
 
-				local.flash_long = (u32_t *) flash_ram_map[0];
+				local.flash_long = (u32_t *) FLASH_map[0];
 				local.flash_DATA_accepted = 0;
 				local.flash_DATA_paused = 0;
 
@@ -793,7 +793,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 	else if (msg->ID == IFCAN_ID_FLASH_DATA
 			&& msg->len == 8
 			&& can.node_ID != 0
-			&& (u32_t) local.flash_long >= flash_ram_map[0]) {
+			&& (u32_t) local.flash_long >= FLASH_map[0]) {
 
 		FLASH_prog(local.flash_long, &msg->payload[0], msg->len);
 
@@ -825,7 +825,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 		if (local.flash_DATA_accepted >= local.flash_INIT_sizeof) {
 
-			if (crc32b((u32_t *) flash_ram_map[0], local.flash_INIT_sizeof)
+			if (crc32b((u32_t *) FLASH_map[0], local.flash_INIT_sizeof)
 					== local.flash_INIT_crc32) {
 
 				IFCAN_node_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
@@ -1236,6 +1236,11 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 				break;
 			}
 		}
+	}
+
+	if (flash >= flash_end) {
+
+		puts(" Done");
 	}
 
 	puts(EOL);

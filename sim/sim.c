@@ -128,8 +128,8 @@ sim_Tel(float *pTel)
 	pTel[51] = pm.watt_lpf_wP;
 	pTel[52] = pm.const_fb_U;
 
-	pTel[53] = pm.i_setpoint_D;
-	pTel[54] = pm.i_setpoint_Q;
+	pTel[53] = 0.f;
+	pTel[54] = 0.f;
 	pTel[55] = pm.i_setpoint_torque;
 
 	pTel[56] = pm.s_setpoint_speed * 30. / M_PI / m.Zp;
@@ -189,7 +189,7 @@ sim_F(FILE *fdTel, double dT)
 	}
 }
 
-#define t_prologue()		printf("\n# %s\n", __FUNCTION__);
+#define t_prologue()		printf("\n## %s\n", __FUNCTION__);
 #define t_xprintf(s)		fprintf(stderr, "** assert(%s) in %s:%i\n", s, __FILE__, __LINE__)
 #define t_assert(x)		if ((x) == 0) { t_xprintf(#x); return 0; }
 #define t_assert_ref(x,ref)	t_assert(fabs((x) - (ref)) / (ref) < 0.1)
@@ -274,7 +274,7 @@ sim_test_BASE(FILE *fdTel)
 	t_assert(pm.fail_reason == PM_OK);
 
 	pm.s_setpoint_speed = pm.probe_speed_hold;
-	sim_F(fdTel, 1.);
+	sim_F(fdTel, 3.);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_E;
 	sim_F(fdTel, 0.);
@@ -427,6 +427,9 @@ sim_test_WEAK(FILE *fdTel)
 static int
 sim_TEST(FILE *fdTel)
 {
+	blm_Enable(&m);
+	blm_Stop(&m);
+
 	/* E-scooter hub motor (250W).
          * */
 	m.R = 2.4E-1;
@@ -438,7 +441,7 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
 	m.J = 6.2E-3;
 
-	if (sim_test_BASE(fdTel) == 0)
+	if (sim_test_BASE(NULL) == 0)
 		return 0;
 
 	if (sim_test_SPEED(NULL) == 0)
@@ -453,6 +456,8 @@ sim_TEST(FILE *fdTel)
 	if (sim_test_WEAK(NULL) == 0)
 		return 0;
 
+	blm_Stop(&m);
+
 	/* Turnigy RotoMax 1.20.
          * */
 	m.R = 14E-3;
@@ -464,7 +469,7 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
 	m.J = 2.7E-4;
 
-	if (sim_test_BASE(NULL) == 0)
+	if (sim_test_BASE(fdTel) == 0)
 		return 0;
 
 	if (sim_test_SPEED(NULL) == 0)
@@ -476,6 +481,9 @@ sim_TEST(FILE *fdTel)
 static int
 sim_RUN(FILE *fdTel)
 {
+	blm_Enable(&m);
+	blm_Stop(&m);
+
 	m.R = 3.0670E-1;
 	m.Ld = 2.9530E-4;
 	m.Lq = 2.9530E-4;
@@ -513,7 +521,6 @@ int main(int argc, char *argv[])
 	FILE		*fdTel;
 
 	lib_start();
-	blm_Enable(&m);
 
 	fdTel = fopen(TEL_FILE, "wb");
 

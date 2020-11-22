@@ -41,28 +41,6 @@ void blm_Enable(blm_t *m)
 	m->sT = 1E-6;		/* Solver step */
 	m->PWM_R = 2800;	/* PWM resolution */
 
-        m->X[0] = 0.;	/* Axis D current (Ampere) */
-	m->X[1] = 0.;	/* Axis Q current (Ampere) */
-        m->X[2] = 0.;	/* Electrical Speed (Radian/Sec) */
-        m->X[3] = 0.;	/* Electrical Position (Radian) */
-        m->X[4] = 25.;	/* Temperature (Celsius) */
-	m->X[5] = 0.;	/* Energy consumption (Joule) */
-	m->X[6] = 5.;	/* DC link voltage (Volt) */
-
-	m->X[7] = 0.;	/* Current Sensor A */
-	m->X[8] = 0.;	/* Current Sensor B */
-	m->X[9] = 0.;	/* Voltage Sensor A */
-	m->X[10] = 0.;	/* Voltage Sensor B */
-	m->X[11] = 0.;	/* Voltage Sensor C */
-
-	m->X[12] = 0.;	/* QEP internals */
-	m->X[13] = 1.;	/* QEP internals */
-
-	m->VSI[0] = 0;
-	m->VSI[1] = 0;
-	m->VSI[2] = 0;
-	m->surge_I = 0;
-
 	/* Winding resistance. (Ohm)
          * */
 	m->R = 2.4E-1;
@@ -99,7 +77,7 @@ void blm_Enable(blm_t *m)
 
 	/* Decoupling capacitance. (Farad)
 	 * */
-	m->Cb = 2040E-6;
+	m->Cb = 940E-6;
 
 	/* Moment of inertia.
 	 * */
@@ -131,6 +109,31 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->EP_PPR = 2600;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;		/* Reduction ratio */
+}
+
+void blm_Stop(blm_t *m)
+{
+	m->X[0] = 0.;	/* Axis D current (Ampere) */
+	m->X[1] = 0.;	/* Axis Q current (Ampere) */
+	m->X[2] = 0.;	/* Electrical Speed (Radian/Sec) */
+	m->X[3] = 0.;	/* Electrical Position (Radian) */
+	m->X[4] = 25.;	/* Temperature (Celsius) */
+	m->X[5] = 0.;	/* Energy consumption (Joule) */
+	m->X[6] = 5.;	/* DC link voltage (Volt) */
+
+	m->X[7] = 0.;	/* Current Sensor A */
+	m->X[8] = 0.;	/* Current Sensor B */
+	m->X[9] = 0.;	/* Voltage Sensor A */
+	m->X[10] = 0.;	/* Voltage Sensor B */
+	m->X[11] = 0.;	/* Voltage Sensor C */
+
+	m->X[12] = 0.;	/* QEP internals */
+	m->X[13] = 1.;	/* QEP internals */
+
+	m->VSI[0] = 0;
+	m->VSI[1] = 0;
+	m->VSI[2] = 0;
+	m->surge_I = 0;
 }
 
 static void

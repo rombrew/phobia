@@ -150,10 +150,8 @@ label 1 "(V)"
 figure 0 48 "pm.watt_lpf_D"
 figure 0 49 "pm.watt_lpf_Q"
 
-page "pm.i_setpoint_D,[Q,torque]"
+page "pm.i_setpoint_torque"
 label 1 "(A)"
-figure 0 53 "pm.i_setpoint_D"
-figure 0 54 "pm.i_setpoint_Q"
 figure 0 55 "pm.i_setpoint_torque"
 
 page "pm.s_setpoint_speed"
