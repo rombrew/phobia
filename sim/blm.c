@@ -109,6 +109,10 @@ void blm_Enable(blm_t *m)
 	 * */
 	m->EP_PPR = 2600;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;		/* Reduction ratio */
+
+	/* External flags.
+	 * */
+	m->sync_F = 0;
 }
 
 void blm_Stop(blm_t *m)
@@ -247,7 +251,7 @@ blm_Solve(blm_t *m, double dT)
 		uC = m->VSI[2] * m->X[6];
 	}
 	else {
-		blm_DQ_AB(m->X[3], 0., - m->E * m->X[2], &uA, &uB);
+		blm_DQ_AB(m->X[3], 0., m->E * m->X[2], &uA, &uB);
 
 		uC = 0. - (uA + uB);
 

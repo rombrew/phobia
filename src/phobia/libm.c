@@ -35,12 +35,12 @@ static const float	lt_log2f[] = {
 
 static const float	lt_exp2f[] = {
 
-	1.8948823e-3f,
-	8.9472998e-3f,
-	5.5861779e-2f,
-	2.4014193e-1f,
-	6.9315410e-1f,
-	1.0000000e+0f,
+	1.8948823E-3f,
+	8.9472998E-3f,
+	5.5861779E-2f,
+	2.4014193E-1f,
+	6.9315410E-1f,
+	1.0000000E+0f,
 };
 
 int m_isfinitef(float x)

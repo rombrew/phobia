@@ -1,8 +1,7 @@
 ## Overview
 
-If you are going to port PMC to your own hardware you should be aware of
-requirements and restrictions. Also this page will be useful for understanding
-PMC internals.
+If you are going to port PMC to your own hardware you should be aware of some
+PMC internals. Also this page will be useful for understanding.
 
 ## Hardware
 
@@ -51,9 +50,9 @@ specified Dead-Time (TDT). Depending on the direction of the current flow
 during the Dead-Time the actual voltage may be different. The amount of
 uncertainty in output voltage expressed as follows:
 
-	         2 * TDT * uS
-	 dUDT = --------------
-	             dT
+	         2 * TDT * DC_link_voltage
+	 dUDT = ---------------------------
+	                    dT
 
 	           |
 	           |
@@ -83,11 +82,13 @@ uncertainty in output voltage expressed as follows:
 	          ---
 
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
-terminal voltage (uA, uB, uC). This scheme forms an exponential integrator that
-allows us to restore the pulse width by measured voltage. Additional resistor
-R3 is used to bias the operating point into the linear region. You can skip
-voltage sensing if you do not need related features.
+terminal voltage (uA, uB, uC). This RC scheme forms an exponential integrator
+that allows us to restore the pulse width by measured voltage. Additional
+resistor R3 is used to bias the operating point into the linear region. You can
+skip voltage sensing if you do not need related features.
 
+To get acceptable accuracy you need to make sure that the RC scheme time
+constant is comparable to dT.
 	          
 	                         +------< REF
 	                         |                 // Voltage measurement //
@@ -112,6 +113,7 @@ voltage sensing if you do not need related features.
 
 The current (iA, iB) is measured in phases A and B using a shunt and amplifier.
 The measurement is distorted for some time after switching the half-bridge.
+
 Note that we use in-line current measurement. To use low-side measurement you
 will need to adapt the software.
 

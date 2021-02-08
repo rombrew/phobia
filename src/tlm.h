@@ -14,17 +14,15 @@ enum {
 
 typedef struct {
 
+	int		freq_grab_hz;
+	int		freq_live_hz;
+
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 
 	reg_val_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
 
 	int		tim, i, n;
-
-	/* Default frequency.
-	 * */
-	int		def_grab_hz;
-	int		def_live_hz;
 }
 TLM_t;
 

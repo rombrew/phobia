@@ -7,7 +7,7 @@
 #include "main.h"
 #include "shell.h"
 
-/* This is mice control application.
+/* This is mice control application for two-channel servo.
  * */
 
 SH_DEF(mice)

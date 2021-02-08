@@ -354,7 +354,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 
 	x += h;
 
-	if (x < (float) (1UL << 31)) {
+	if (x < 2147483648.f) {
 
 		/* FIXME: Do not use conversion to INT.
 		 * */

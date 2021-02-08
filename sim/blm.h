@@ -84,6 +84,11 @@ typedef struct {
 	/* Encoder Pulse (OUTPUT).
 	 * */
 	int		pulse_EP;
+
+	/* This flag is used externally to throw
+	 * an error in case of sync loss.
+	 * */
+	int		sync_F;
 }
 blm_t;
 

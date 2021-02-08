@@ -10,7 +10,7 @@ RM      = rm -rf
 CFLAGS	= -std=gnu99 -pipe -Wall -Og -flto -g3
 LFLAGS	= -lm
 
-OBJS	= blm.o lib.o sim.o pm.o
+OBJS	= blm.o lib.o pm.o sim.o tsfunc.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))
 
@@ -31,7 +31,7 @@ run: $(TARGET)
 
 test: $(TARGET)
 	@ echo "  TEST	" $(notdir $<)
-	@ $< -t
+	@ $< test
 
 debug: $(TARGET)
 	@ echo "  GDB	" $(notdir $<)

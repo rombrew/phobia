@@ -141,9 +141,9 @@ SH_DEF(pm_FT_current_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.def_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
 
-	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = reg_GET_F(ID_PM_I_SETPOINT_TORQUE);
@@ -169,9 +169,9 @@ SH_DEF(pm_FT_speed_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.def_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
 
-	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
@@ -225,7 +225,7 @@ SH_DEF(pm_FT_tvm_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* Frequency 1000 Hz.
@@ -243,7 +243,7 @@ SH_DEF(pm_FT_tvm_ramp)
 		if (tlm.mode == TLM_MODE_DISABLED)
 			break;
 
-		if ((xWake - xTim0) > (TickType_t) 8000) {
+		if ((xWake - xTim0) > (TickType_t) 10000) {
 
 			pm.fail_reason = PM_ERROR_TIMEOUT;
 			break;

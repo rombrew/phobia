@@ -7,7 +7,7 @@ electrotransport.
 ## Hardware specification (rev5a)
 
 * Dimension: 82mm x 55mm x 35mm.
-* Weight: 40g (PCB) or 400g (with wires and heatsink).
+* Weight: 40g (PCB) or about 400g (with wires and heatsink).
 * Wires: 10 AWG.
 * Connector: XT90-S and bullet 5.5mm.
 * Battery voltage from 5v to 50v.
@@ -44,7 +44,7 @@ electrotransport.
 	* 5v to 3.3v linear (up to 400 mA).
 
 Look into [phobia-pcb](https://sourceforge.net/p/phobia/pcb/) repository for
-PCB design source files. Also view a photos of the assembled PCBs in
+PCB design source files. You can also view photos of the assembled PCBs in
 [doc/imgs/](doc/imgs/).
 
 ## Software features
@@ -102,12 +102,12 @@ PCB design source files. Also view a photos of the assembled PCBs in
 	* Motor voltage applied from VSI.
 	* Battery current (power) consumption and regeneration.
 	* DC link overvoltage and undervoltage.
-	* Maximal speed and acceleration (as part of speed control loop).
+	* Maximal speed and acceleration.
 
 * Control inputs:
 	* CAN bus flexible configurable data pipes.
 	* RC servo pulse width.
-	* STEP/DIR interface.
+	* STEP/DIR interface (**EXPERIMENTAL**).
 	* Analog input with brake signal.
 	* Manual control through CLI.
 	* Custom embedded application can implement any control strategy.
@@ -119,7 +119,6 @@ PCB design source files. Also view a photos of the assembled PCBs in
 
 ## TODO
 
-* Try to implement progressive initial motor spinup and identification.
 * Make a detailed documentation.
 * Consider to add flux observer saliency tracking (for SRM).
 * Add pulse output signal.

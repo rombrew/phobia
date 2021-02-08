@@ -103,7 +103,7 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_PCB > ap.heat_PCB) {
 
-				i_temp_PCB = ap.heat_PCB_derated_1;
+				i_temp_PCB = ap.heat_PCB_derated;
 			}
 			else if (ap.temp_PCB < (ap.heat_PCB - ap.heat_recovery_gap)) {
 
@@ -114,14 +114,14 @@ void task_TERM(void *pData)
 			 * */
 			if (ap.temp_EXT > ap.heat_EXT) {
 
-				i_temp_EXT = ap.heat_EXT_derated_1;
+				i_temp_EXT = ap.heat_EXT_derated;
 			}
 			else if (ap.temp_EXT < (ap.heat_EXT - ap.heat_recovery_gap)) {
 
 				i_temp_EXT = PM_MAX_F;
 			}
 
-			pm.i_derated_1 = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
+			pm.i_derated_PCB = (i_temp_PCB < i_temp_EXT) ? i_temp_PCB : i_temp_EXT;
 
 			/* Enable FAN if PCB is overheat.
 			 * */
@@ -205,7 +205,7 @@ inner_TIMEOUT()
 static void
 inner_ANALOG(float in_ANG, float in_BRK)
 {
-	float			control, range, scaled;
+	float			control, range, scaled_ANG, scaled_BRK;
 
 	if (		in_ANG < ap.analog_in_lost[0]
 			|| in_ANG > ap.analog_in_lost[1]) {
@@ -213,26 +213,26 @@ inner_ANALOG(float in_ANG, float in_BRK)
 		/* Loss of ANALOG signal.
 		 * */
 
-		scaled = - 1.f;
+		scaled_ANG = - 1.f;
 	}
 	else {
 		if (in_ANG < ap.analog_in_ANG[1]) {
 
 			range = ap.analog_in_ANG[0] - ap.analog_in_ANG[1];
-			scaled = (ap.analog_in_ANG[1] - in_ANG) / range;
+			scaled_ANG = (ap.analog_in_ANG[1] - in_ANG) / range;
 		}
 		else {
 			range = ap.analog_in_ANG[2] - ap.analog_in_ANG[1];
-			scaled = (in_ANG - ap.analog_in_ANG[1]) / range;
+			scaled_ANG = (in_ANG - ap.analog_in_ANG[1]) / range;
 		}
 
-		if (scaled < - 1.f) {
+		if (scaled_ANG < - 1.f) {
 
-			scaled = - 1.f;
+			scaled_ANG = - 1.f;
 		}
-		else if (scaled > 1.f) {
+		else if (scaled_ANG > 1.f) {
 
-			scaled = 1.f;
+			scaled_ANG = 1.f;
 		}
 		else if (	ap.analog_STARTUP == PM_ENABLED
 				&& pm.lu_mode == PM_LU_DISABLED) {
@@ -241,14 +241,14 @@ inner_ANALOG(float in_ANG, float in_BRK)
 		}
 	}
 
-	if (scaled < 0.f) {
+	if (scaled_ANG < 0.f) {
 
 		range = ap.analog_control_ANG[1] - ap.analog_control_ANG[0];
-		control = ap.analog_control_ANG[1] + range * scaled;
+		control = ap.analog_control_ANG[1] + range * scaled_ANG;
 	}
 	else {
 		range = ap.analog_control_ANG[2] - ap.analog_control_ANG[1];
-		control = ap.analog_control_ANG[1] + range * scaled;
+		control = ap.analog_control_ANG[1] + range * scaled_ANG;
 	}
 
 	if (		in_BRK < ap.analog_in_lost[0]
@@ -257,16 +257,17 @@ inner_ANALOG(float in_ANG, float in_BRK)
 		/* Loss of BRAKE signal.
 		 * */
 
-		scaled = 0.f;
+		scaled_BRK = 0.f;
 	}
 	else {
 		range = ap.analog_in_BRK[1] - ap.analog_in_BRK[0];
-		scaled = (in_BRK - ap.analog_in_BRK[0]) / range;
+		scaled_BRK = (in_BRK - ap.analog_in_BRK[0]) / range;
 
-		scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
+		scaled_BRK = (scaled_BRK < 0.f) ? 0.f
+			: (scaled_BRK > 1.f) ? 1.f : scaled_BRK;
 	}
 
-	control += (ap.analog_control_BRK - control) * scaled;
+	control += (ap.analog_control_BRK - control) * scaled_BRK;
 
 	reg_SET_F(ap.analog_reg_ID, control);
 }
@@ -347,7 +348,7 @@ app_flash_load()
 
 	hal.USART_baud_rate = 57600;
 	hal.PWM_frequency = 30000.f;
-	hal.PWM_deadtime = 190.f;
+	hal.PWM_deadtime = 170.f;
 	hal.ADC_reference_voltage = 3.3f;
 	hal.ADC_shunt_resistance = 0.5E-3f;
 	hal.ADC_amplifier_gain = 20.f;
@@ -458,7 +459,7 @@ app_flash_load()
 	ap.analog_control_BRK = - 100.f;
 
 	ap.timeout_current_tol = 2.f;
-	ap.timeout_IDLE_s = 10.f;
+	ap.timeout_IDLE_s = 5.f;
 
 	ap.ntc_PCB.r_balance = 10000.f;
 	ap.ntc_PCB.r_ntc_0 = 10000.f;
@@ -470,11 +471,11 @@ app_flash_load()
 	ap.ntc_EXT.ta_0 = 25.f;
 	ap.ntc_EXT.betta = 3380.f;
 
-	ap.heat_PCB = 95.f;
-	ap.heat_PCB_derated_1 = 30.f;
-	ap.heat_EXT = 95.f;
-	ap.heat_EXT_derated_1 = 30.f;
-	ap.heat_PCB_FAN = 70.f;
+	ap.heat_PCB = 90.f;
+	ap.heat_PCB_derated = 10.f;
+	ap.heat_EXT = 90.f;
+	ap.heat_EXT_derated = 10.f;
+	ap.heat_PCB_FAN = 50.f;
 	ap.heat_recovery_gap = 5.f;
 
 	ap.hx711_scale[0] = 0.f;

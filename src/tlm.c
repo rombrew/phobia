@@ -11,19 +11,19 @@
 
 void TLM_reg_default(TLM_t *tlm)
 {
+	tlm->freq_grab_hz = 200;
+	tlm->freq_live_hz = 20;
+
 	tlm->reg_ID[0] = ID_PM_FB_IA;
 	tlm->reg_ID[1] = ID_PM_FB_IB;
 	tlm->reg_ID[2] = ID_PM_LU_ID;
 	tlm->reg_ID[3] = ID_PM_LU_IQ;
 	tlm->reg_ID[4] = ID_PM_LU_F_G;
 	tlm->reg_ID[5] = ID_PM_LU_WS_RPM;
-	tlm->reg_ID[6] = ID_PM_S_INTEGRAL;
+	tlm->reg_ID[6] = ID_PM_LU_LPF_TORQUE;
 	tlm->reg_ID[7] = ID_PM_WATT_LPF_WP;
 	tlm->reg_ID[8] = ID_PM_CONST_FB_U;
 	tlm->reg_ID[9] = ID_AP_TEMP_PCB;
-
-	tlm->def_grab_hz = 200;
-	tlm->def_live_hz = 20;
 }
 
 void TLM_reg_grab(TLM_t *tlm)
@@ -95,7 +95,7 @@ void TLM_halt(TLM_t *tlm)
 
 SH_DEF(tlm_grab)
 {
-	int		freq = 0;
+	int		freq = tlm.freq_grab_hz;
 
 	stoi(&freq, s);
 	TLM_startup(&tlm, freq, TLM_MODE_SINGLE_GRAB);
@@ -208,7 +208,7 @@ void task_LIVE(void *pData)
 SH_DEF(tlm_live_sync)
 {
 	TaskHandle_t		xHandle;
-	int			freq = tlm.def_live_hz;
+	int			freq = tlm.freq_live_hz;
 
 	xTaskCreate(task_LIVE, "LIVE", configMINIMAL_STACK_SIZE, (void *) &tlm, 1, &xHandle);
 

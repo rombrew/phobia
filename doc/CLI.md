@@ -47,13 +47,13 @@ obvious actions during access to it.
 
 Show all raw feedback values that PMC uses in control loops.
 
-	# reg pm.fb_
+	# reg pm.fb
 
 Show all motor constants.
 
-	# reg pm.const_
+	# reg pm.const
 
-Enable analog control input.
+Enable control from analog input.
 
 	# reg ap.analog_ENABLED 1
 
@@ -62,7 +62,7 @@ Define what registers are to grab into telemetry.
 	# reg tlm.reg_ID_0 pm.tvm_A
 	# reg tlm.reg_ID_1 pm.tvm_B
 
-Look for speed setpoint register.
+Look for speed setpoint registers.
 
 	# reg pm.s_setpoint
 

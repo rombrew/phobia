@@ -14,8 +14,8 @@ int pm_wait_for_SETTLE()
 	TickType_t		xTick = (TickType_t) 0;
 
 	do {
-		vTaskDelay((TickType_t) 100);
-		xTick += (TickType_t) 100;
+		vTaskDelay((TickType_t) 50);
+		xTick += (TickType_t) 50;
 
 		if (pm.fail_reason != PM_ERROR_TIMEOUT
 				&& pm.fail_reason != PM_OK)
@@ -24,7 +24,7 @@ int pm_wait_for_SETTLE()
 		if (m_fabsf(pm.x_residual) < (pm.x_tol_Z * 3.f))
 			break;
 
-		if (xTick > (TickType_t) 5000) {
+		if (xTick > (TickType_t) 10000) {
 
 			pm.fail_reason = PM_ERROR_TIMEOUT;
 			break;
@@ -109,7 +109,7 @@ SH_DEF(servo_FT_uniform)
 	tDT = 1.f / (float) configTICK_RATE_HZ;
 	DIRF = 1;
 
-	TLM_startup(&tlm, tlm.def_grab_hz, TLM_MODE_SINGLE_GRAB);
+	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.
@@ -131,7 +131,7 @@ SH_DEF(servo_FT_uniform)
 				break;
 		}
 
-		if ((xWake - xTim0) > (TickType_t) 8000) {
+		if ((xWake - xTim0) > (TickType_t) 10000) {
 
 			pm.fail_reason = PM_ERROR_TIMEOUT;
 			break;

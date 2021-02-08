@@ -229,7 +229,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 					|| pm->self_BST[1] < pm->dc_bootstrap
 					|| pm->self_BST[2] < pm->dc_bootstrap) {
 
-				pm->fail_reason = PM_ERROR_BOOTSTRAP_FAULT;
+				pm->fail_reason = PM_ERROR_BOOTSTRAP_TIME;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -386,7 +386,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 				pm->fail_reason = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
 			else {
-				pm->fail_reason = PM_ERROR_POWER_STAGE_FAULT;
+				pm->fail_reason = PM_ERROR_POWER_STAGE_DAMAGED;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -495,7 +495,7 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			if (		pm->self_RMSi[0] > pm->fault_current_tol
 					|| pm->self_RMSi[1] > pm->fault_current_tol) {
 
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
 			}
 
 			if (		pm->self_RMSi[2] > pm->fault_voltage_tol
@@ -503,7 +503,7 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 					|| pm->self_RMSu[1] > pm->fault_voltage_tol
 					|| pm->self_RMSu[2] > pm->fault_voltage_tol) {
 
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -603,7 +603,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 				pm->tvm_ENABLED = PM_DISABLED;
 
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -624,7 +624,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 				pm->tvm_ENABLED = PM_DISABLED;
 
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -818,7 +818,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			if (m_fabsf(pm->REM[2]) > uMAX) {
 
-				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
+				pm->fail_reason = PM_ERROR_CURRENT_LOOP_IS_OPEN;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -848,7 +848,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			if (		m_fabsf(pm->ad_IA[1] - 1.f) > pm->fault_accuracy_tol
 					|| m_fabsf(pm->ad_IB[1] - 1.f) > pm->fault_accuracy_tol) {
 
-				pm->fail_reason = PM_ERROR_ACCURACY_FAULT;
+				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -915,7 +915,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 			if (m_fabsf(pm->REM[2]) > uMAX || m_fabsf(pm->REM[3]) > uMAX) {
 
-				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
+				pm->fail_reason = PM_ERROR_CURRENT_LOOP_IS_OPEN;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -1043,7 +1043,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 					|| m_fabsf(pm->REM[10]) > uMAX
 					|| m_fabsf(pm->REM[11]) > uMAX) {
 
-				pm->fail_reason = PM_ERROR_CURRENT_LOOP_FAULT;
+				pm->fail_reason = PM_ERROR_CURRENT_LOOP_IS_OPEN;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -1117,6 +1117,8 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_BZ = 0;
 				pm->vsi_CZ = 0;
 
+				pm->vsi_lpf_DC = 0.f;
+
 				pm->lu_iX = 0.f;
 				pm->lu_iY = 0.f;
 				pm->lu_iD = 0.f;
@@ -1125,6 +1127,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->lu_F[1] = 0.f;
 				pm->lu_wS = 0.f;
 				pm->lu_mode = PM_LU_DETACHED;
+
+				pm->lu_lpf_torque = 0.f;
+				pm->lu_base_wS = 0.f;
 
 				pm->forced_F[0] = 1.f;
 				pm->forced_F[1] = 0.f;
@@ -1164,19 +1169,19 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_lpf_wP = 0.f;
 
-				pm->i_derated_1 = PM_MAX_F;
+				pm->i_derated_PCB = PM_MAX_F;
+				pm->i_derated_WEAK = PM_MAX_F;
 				pm->i_setpoint_torque = 0.f;
 				pm->i_track_D = 0.f;
 				pm->i_track_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
+				pm->i_slew_dT = 0.f;
 
 				pm->weak_D = 0.f;
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
-				pm->s_integral = 0.f;
-				pm->s_base_wS = 0.f;
 				pm->s_iSP = 0.f;
 
 				pm->x_setpoint_F[0] = 1.f;
@@ -1191,7 +1196,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				if (pm->fsm_state == PM_STATE_LU_DETACHED) {
 
-					pm->flux_mode = PM_FLUX_DETACHED;
+					pm->flux_mode = PM_FLUX_LOCKED_IN_DETACH;
 				}
 
 				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
@@ -1230,7 +1235,7 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 			pm->fsm_phase = 1;
 
 		case 1:
-			pm->i_derated_1 = 0.f;
+			pm->i_derated_PCB = 0.f;
 
 			pm->tm_value++;
 
@@ -1268,7 +1273,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			pm->REM[0] = 0.f;
 
 			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, (pm->flux_mode == PM_FLUX_DETACHED)
+			pm->tm_end = PM_TSMS(pm, (pm->lu_mode == PM_LU_DETACHED)
 					? pm->tm_average_drift : pm->tm_average_probe);
 
 			pm->fail_reason = PM_OK;
@@ -1392,67 +1397,7 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_flux_mppe(pmc_t *pm)
-{
-	float			temp_MPPE;
-
-	switch (pm->fsm_phase) {
-
-		case 0:
-			pm->probe_DFT[0] = 0.f;
-			pm->probe_DFT[1] = 0.f;
-
-			pm->REM[0] = 0.f;
-			pm->REM[1] = 0.f;
-
-			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
-
-			pm->fail_reason = PM_OK;
-			pm->fsm_phase = 1;
-			break;
-
-		case 1:
-			m_rsum(&pm->probe_DFT[0], &pm->REM[0], pm->flux_wS);
-			m_rsum(&pm->probe_DFT[1], &pm->REM[1], pm->flux_wS * pm->flux_wS);
-
-			pm->tm_value++;
-
-			if (pm->tm_value >= pm->tm_end) {
-
-				pm->probe_DFT[0] /= pm->tm_end;
-				pm->probe_DFT[1] /= pm->tm_end;
-
-				pm->fsm_phase = 2;
-			}
-			break;
-
-		case 2:
-			temp_MPPE = pm->probe_DFT[0] * pm->probe_DFT[0];
-			temp_MPPE = m_sqrtf(pm->probe_DFT[1] - temp_MPPE) * 5.f;
-
-			if (m_isfinitef(temp_MPPE) != 0 && temp_MPPE > M_EPS_F) {
-
-				pm->flux_MPPE = temp_MPPE;
-
-				/* Tune speed loop.
-				 * */
-				pm->s_gain_P = 2E-0f / pm->flux_MPPE;
-				pm->s_gain_I = 1E-2f / pm->flux_MPPE;
-				pm->s_gain_D = 1E-0f / pm->flux_MPPE;
-			}
-			else {
-				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
-			}
-
-			pm->fsm_state = PM_STATE_IDLE;
-			pm->fsm_phase = 0;
-			break;
-	}
-}
-
-static void
-pm_fsm_state_adjust_hall(pmc_t *pm)
+pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 {
 	int		HS, N, min_S;
 	float		D;
@@ -1635,8 +1580,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_E:
 		case PM_STATE_PROBE_CONST_J:
-		case PM_STATE_PROBE_FLUX_MPPE:
-		case PM_STATE_ADJUST_HALL:
+		case PM_STATE_ADJUST_SENSOR_HALL:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
 				break;
@@ -1722,12 +1666,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_ja(pm);
 			break;
 
-		case PM_STATE_PROBE_FLUX_MPPE:
-			pm_fsm_state_probe_flux_mppe(pm);
-			break;
-
-		case PM_STATE_ADJUST_HALL:
-			pm_fsm_state_adjust_hall(pm);
+		case PM_STATE_ADJUST_SENSOR_HALL:
+			pm_fsm_state_adjust_sensor_hall(pm);
 			break;
 
 		case PM_STATE_LOOP_BOOST:
@@ -1748,10 +1688,10 @@ const char *pm_strerror(int n)
 
 		PM_SFI(PM_ERROR_ZERO_DRIFT_FAULT),
 		PM_SFI(PM_ERROR_NO_MOTOR_CONNECTED),
-		PM_SFI(PM_ERROR_BOOTSTRAP_FAULT),
-		PM_SFI(PM_ERROR_POWER_STAGE_FAULT),
-		PM_SFI(PM_ERROR_ACCURACY_FAULT),
-		PM_SFI(PM_ERROR_CURRENT_LOOP_FAULT),
+		PM_SFI(PM_ERROR_BOOTSTRAP_TIME),
+		PM_SFI(PM_ERROR_POWER_STAGE_DAMAGED),
+		PM_SFI(PM_ERROR_LOW_ACCURACY),
+		PM_SFI(PM_ERROR_CURRENT_LOOP_IS_OPEN),
 		PM_SFI(PM_ERROR_INLINE_OVERCURRENT),
 		PM_SFI(PM_ERROR_DC_LINK_OVERVOLTAGE),
 		PM_SFI(PM_ERROR_INVALID_OPERATION),
@@ -1759,6 +1699,8 @@ const char *pm_strerror(int n)
 		PM_SFI(PM_ERROR_SENSOR_ABI_FAULT),
 
 		PM_SFI(PM_ERROR_TIMEOUT),
+		PM_SFI(PM_ERROR_NO_FLUX_CAUGHT),
+		PM_SFI(PM_ERROR_LOSS_OF_SYNC),
 	};
 
 	const int 	lmax = sizeof(list) / sizeof(list[0]);

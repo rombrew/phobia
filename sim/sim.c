@@ -5,80 +5,63 @@
 #include <math.h>
 
 #include "blm.h"
-#include "pm.h"
 #include "lib.h"
+#include "pm.h"
+#include "tsfunc.h"
 
-#define TEL_FILE	"/tmp/TEL"
+#define TLM_FILE	"/tmp/pm-TLM"
+#define AGP_FILE	"/tmp/pm-auto.gp"
 
-static blm_t		m;
-static pmc_t		pm;
+blm_t			m;
+pmc_t			pm;
+
+FILE			*fdTlm;
+FILE			*fdGP;
 
 static void
-blmDC(int A, int B, int C)
+fmt_page_GP(int N, const char *figure, const char *label)
 {
-	m.PWM_A = A;
-	m.PWM_B = B;
-	m.PWM_C = C;
+	fprintf(fdGP, "page \"%s\"\n", figure);
+	if (label != NULL) { fprintf(fdGP, "label 1 \"(%s)\"\n", label); }
+	fprintf(fdGP, "figure 0 %i \"%s\"\n\n", N, figure);
 }
 
 static void
-blmZ(int Z)
-{
-	if (Z == 7) {
-
-		m.HI_Z = 1;
-	}
-	else {
-		m.HI_Z = 0;
-	}
-}
-
-static void
-sim_Tel(float *pTel)
+sim_Tlm(float *pTlm)
 {
 	double		A, B, E, D, Q;
+	int		gp_N;
+
+	const double	kRPM = 30. / M_PI / m.Zp;
+	const double	kDEG = 180. / M_PI;
+
+#define fmt_GP(x,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) { fmt_page_GP(gp_N, #x, l); } gp_N++; }
 
 	/* Model.
 	 * */
-	pTel[0] = m.Tsim;
-	pTel[1] = m.X[0];
-	pTel[2] = m.X[1];
-	pTel[3] = m.X[2] * 30. / M_PI / m.Zp;
-	pTel[4] = m.X[3] * 180. / M_PI;
-	pTel[5] = m.X[4];
-	pTel[6] = m.X[6];
+	pTlm[0] = m.Tsim;
+	pTlm[1] = m.X[0];
+	pTlm[2] = m.X[1];
+	pTlm[3] = m.X[2] * kRPM;
+	pTlm[4] = m.X[3] * kDEG;
+	pTlm[5] = m.X[4];
+	pTlm[6] = m.X[6];
 
 	/* Duty cycle.
 	 * */
-	pTel[7] = (double) m.PWM_A * 100. / (double) m.PWM_R;
-	pTel[8] = (double) m.PWM_B * 100. / (double) m.PWM_R;
-	pTel[9] = (double) m.PWM_C * 100. / (double) m.PWM_R;
-
-	/* Sensor pulse.
-	 * */
-	pTel[10] = m.pulse_HS;
-	pTel[11] = m.pulse_EP;
+	pTlm[7] = (double) m.PWM_A * 100. / (double) m.PWM_R;
+	pTlm[8] = (double) m.PWM_B * 100. / (double) m.PWM_R;
+	pTlm[9] = (double) m.PWM_C * 100. / (double) m.PWM_R;
 
 	/* VSI.
 	 * */
-	pTel[12] = pm.vsi_DC;
-	pTel[13] = pm.vsi_X;
-	pTel[14] = pm.vsi_Y;
-	pTel[15] = pm.vsi_SF;
-	pTel[16] = pm.vsi_UF;
-
-	/* TVM.
-	 * */
-	pTel[17] = pm.tvm_A;
-	pTel[18] = pm.tvm_B;
-	pTel[19] = pm.tvm_C;
-	pTel[20] = pm.tvm_DX;
-	pTel[21] = pm.tvm_DY;
+	pTlm[10] = pm.vsi_X;
+	pTlm[11] = pm.vsi_Y;
 
 	/* Estimated current.
 	 * */
-	pTel[22] = pm.lu_iD;
-	pTel[23] = pm.lu_iQ;
+	pTlm[12] = pm.lu_iD;
+	pTlm[13] = pm.lu_iQ;
 
 	D = cos(m.X[3]);
 	Q = sin(m.X[3]);
@@ -86,72 +69,137 @@ sim_Tel(float *pTel)
 	B = D * pm.lu_F[1] - Q * pm.lu_F[0];
 	E = atan2(B, A);
 
-	pTel[24] = E * 180. / M_PI;
+	if (m.sync_F != 0 && fabs(E) > 1.5f) {
+
+		/* Throw an error if position estimate error is too large.
+		 * */
+		pm.fail_reason = PM_ERROR_LOSS_OF_SYNC;
+	}
+
+	pTlm[14] = E * kDEG;
 
 	/* Estimated position.
 	 * */
-	pTel[25] = atan2(pm.lu_F[1], pm.lu_F[0]) * 180. / M_PI;
+	pTlm[15] = atan2(pm.lu_F[1], pm.lu_F[0]) * kDEG;
 
 	/* Estimated speed.
 	 * */
-	pTel[26] = pm.lu_wS * 30. / M_PI / m.Zp;
-	pTel[27] = pm.lu_mode;
-	pTel[28] = pm.flux_lpf_wS * 30. / M_PI / m.Zp;
-	pTel[29] = pm.flux_mode;
-	pTel[30] = pm.im_revol_1;
+	pTlm[16] = pm.lu_wS * kRPM;
 
-	pTel[31] = atan2(pm.forced_F[1], pm.forced_F[0]) * 180. / M_PI;
-	pTel[32] = pm.forced_wS * 30. / M_PI / m.Zp;
-	pTel[33] = pm.detach_TIM;
+	/* Power consumption.
+	 * */
+	pTlm[17] = m.iP;
+	pTlm[18] = pm.watt_lpf_wP;
 
-	pTel[34] = atan2(pm.flux_F[1], pm.flux_F[0]) * 180. / M_PI;
-	pTel[35] = pm.flux_wS * 30. / M_PI / m.Zp;
-	pTel[36] = pm.flux_E;
-	pTel[37] = pm.vsi_AF;
-	pTel[38] = pm.vsi_BF;
+	/* Supply voltage.
+	 * */
+	pTlm[19] = pm.const_fb_U;
 
-	pTel[39] = atan2(pm.hfi_F[1], pm.hfi_F[0]) * 180. / M_PI;
-	pTel[40] = pm.hfi_wS * 30. / M_PI / m.Zp;
-	pTel[41] = pm.hfi_const_FP;
+	/* NOTE: Individual parameters are managed with automatic generation of
+	 * GP configuration. So you only need to add one line of code for each
+	 * parameter below.
+	 * */
+	gp_N = 30;
 
-	pTel[42] = atan2(pm.hall_F[1], pm.hall_F[0]) * 180. / M_PI;
-	pTel[43] = pm.hall_wS * 30. / M_PI / m.Zp;
-	pTel[44] = 0.f;
+	fmt_GP(pm.fb_HS, NULL);
+	fmt_GP(pm.fb_EP, NULL);
 
-	pTel[45] = atan2(pm.abi_F[1], pm.abi_F[0]) * 180. / M_PI;
-	pTel[46] = pm.abi_wS * 30. / M_PI / m.Zp;
-	pTel[47] = 0.f;
+	fmt_GP(pm.vsi_DC, NULL);
+	fmt_GP(pm.vsi_lpf_DC, NULL);
+	fmt_GP(pm.vsi_AF, NULL);
+	fmt_GP(pm.vsi_BF, NULL);
+	fmt_GP(pm.vsi_SF, NULL);
+	fmt_GP(pm.vsi_UF, NULL);
 
-	pTel[48] = pm.watt_lpf_D;
-	pTel[49] = pm.watt_lpf_Q;
-	pTel[50] = m.iP;
-	pTel[51] = pm.watt_lpf_wP;
-	pTel[52] = pm.const_fb_U;
+	fmt_GP(pm.tvm_A, NULL);
+	fmt_GP(pm.tvm_B, NULL);
+	fmt_GP(pm.tvm_C, NULL);
 
-	pTel[53] = 0.f;
-	pTel[54] = 0.f;
-	pTel[55] = pm.i_setpoint_torque;
+	fmt_GP(pm.lu_mode, NULL);
+	fmt_GP(pm.lu_lpf_torque, "A");
 
-	pTel[56] = pm.s_setpoint_speed * 30. / M_PI / m.Zp;
-	pTel[57] = pm.s_track * 30. / M_PI / m.Zp;
-	pTel[58] = pm.s_integral;
-	pTel[59] = pm.s_iSP;
+	fmt_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "°");
+	fmt_GP(pm.forced_wS * kRPM, "rpm");
+	fmt_GP(pm.forced_TIM, NULL);
 
-	pTel[60] = pm.weak_D;
+	fmt_GP(pm.detach_X, "V");
+	fmt_GP(pm.detach_Y, "V");
+	fmt_GP(atan2(pm.detach_V[1], pm.detach_V[0]) * kDEG, "°");
+	fmt_GP(pm.detach_TIM, NULL);
+	fmt_GP(pm.detach_SKIP, NULL);
+
+	fmt_GP(pm.flux_X, "Wb");
+	fmt_GP(pm.flux_Y, "Wb");
+	fmt_GP(pm.flux_E, "Wb");
+	fmt_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "°");
+	fmt_GP(pm.flux_wS * kRPM, "rpm");
+	fmt_GP(pm.flux_mode, NULL);
+	fmt_GP(pm.flux_lpf_wS * kRPM, "rpm");
+
+	fmt_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "°");
+	fmt_GP(pm.hfi_wS * kRPM, "rpm");
+
+	fmt_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "°");
+	fmt_GP(pm.hall_wS * kRPM, "rpm");
+
+	fmt_GP(atan2(pm.abi_F[1], pm.abi_F[0]) * kDEG, "°");
+	fmt_GP(pm.abi_wS * kRPM, "rpm");
+
+	fmt_GP(pm.watt_lpf_D, "V");
+	fmt_GP(pm.watt_lpf_Q, "V");
+
+	fmt_GP(pm.i_derated_WEAK, "A");
+	fmt_GP(pm.i_setpoint_torque, "A");
+	fmt_GP(pm.i_track_D, "A");
+	fmt_GP(pm.i_track_Q, "A");
+
+	fmt_GP(pm.weak_D, "A");
+
+	fmt_GP(pm.s_setpoint_speed * kRPM, "rpm");
+	fmt_GP(pm.s_track * kRPM, "rpm");
+	fmt_GP(pm.s_iSP, "A");
+
+	fmt_GP(pm.im_revol_1, NULL);
+
+	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
 }
 
-static void
-sim_F(FILE *fdTel, double dT)
+void sim_TlmDrop()
 {
-	const int	szTel = 80;
-	float		Tel[szTel];
+	if (fdTlm == NULL) {
+
+		fdTlm = fopen(TLM_FILE, "wb");
+
+		if (fdTlm == NULL) {
+
+			fprintf(stderr, "fopen: %s", strerror(errno));
+			exit(1);
+		}
+
+		fdGP = fopen(AGP_FILE, "w");
+
+		if (fdGP == NULL) {
+
+			fprintf(stderr, "fopen: %s", strerror(errno));
+			exit(1);
+		}
+	}
+	else {
+		fdTlm = freopen(NULL, "wb", fdTlm);
+	}
+}
+
+void sim_Run(double dT)
+{
+	const int	szTlm = 100;
+	float		Tlm[szTlm];
 	double		Tend;
 
 	pmfb_t		fb;
 
-	Tend = m.Tsim + ((dT < m.dT) ? m.dT : dT);
+	Tend = m.Tsim + dT;
 
-	while (m.Tsim < Tend || (dT < m.dT && pm.fsm_state != PM_STATE_IDLE)) {
+	while (m.Tsim < Tend) {
 
 		/* Plant model update.
 		 * */
@@ -170,296 +218,42 @@ sim_F(FILE *fdTel, double dT)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		if (fdTel != NULL) {
+		if (fdTlm != NULL) {
 
 			/* Collect telemetry.
 			 * */
-			sim_Tel(Tel);
+			sim_Tlm(Tlm);
 
 			/* Dump telemetry array.
 			 * */
-			fwrite(Tel, sizeof(float), szTel, fdTel);
+			fwrite(Tlm, sizeof(float), szTlm, fdTlm);
 		}
 
 		if (pm.fail_reason != PM_OK) {
 
 			printf("** pm.fail_reason: %s\n", pm_strerror(pm.fail_reason));
-			return ;
+
+			fclose(fdTlm);
+			exit(1);
 		}
 	}
 }
 
-#define t_prologue()		printf("\n## %s\n", __FUNCTION__);
-#define t_xprintf(s)		fprintf(stderr, "** assert(%s) in %s:%i\n", s, __FILE__, __LINE__)
-#define t_assert(x)		if ((x) == 0) { t_xprintf(#x); return 0; }
-#define t_assert_ref(x,ref)	t_assert(fabs((x) - (ref)) / (ref) < 0.1)
-
-static int
-sim_test_BASE(FILE *fdTel)
-{
-	double		tau_A, tau_B, tau_C;
-	double		ZpE;
-
-	t_prologue();
-
-	pm.freq_hz = (float) (1. / m.dT);
-	pm.dT = 1.f / pm.freq_hz;
-	pm.dc_resolution = m.PWM_R;
-	pm.proc_set_DC = &blmDC;
-	pm.proc_set_Z = &blmZ;
-
-	pm_default(&pm);
-
-	pm.const_Zp = m.Zp;
-
-	pm.fsm_req = PM_STATE_ZERO_DRIFT;
-	sim_F(fdTel, 0.);
-
-	printf("Z[AB] %.4f %.4f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
-	sim_F(fdTel, 0.);
-
-	printf("UA %.4f %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
-	printf("UB %.4f %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
-	printf("UC %.4f %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	tau_A = pm.dT / log(pm.tvm_FIR_A[0] / - pm.tvm_FIR_A[1]);
-	tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
-	tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
-
-	printf("FIR[A] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_A[0],
-			pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A * 1000000.);
-
-	printf("FIR[B] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_B[0],
-			pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B * 1000000.);
-
-	printf("FIR[C] %.4E %.4E %.4E [%.4f] (us)\n", pm.tvm_FIR_C[0],
-			pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C * 1000000.);
-
-	t_assert_ref(tau_A, m.tau_U);
-	t_assert_ref(tau_B, m.tau_U);
-	t_assert_ref(tau_C, m.tau_U);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_R;
-	sim_F(fdTel, 0.);
-
-	pm.const_R = pm.const_im_R;
-
-	printf("R %.4E (Ohm)\n", pm.const_R);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_R, m.R);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_L;
-	sim_F(fdTel, 0.);
-
-	printf("L %.4E (H)\n", pm.const_L);
-	printf("im_L1 %.4E (H)\n", pm.const_im_L1);
-	printf("im_L2 %.4E (H)\n", pm.const_im_L2);
-	printf("im_B %.2f (g)\n", pm.const_im_B);
-	printf("im_R %.4E (Ohm)\n", pm.const_im_R);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_im_L1, m.Ld);
-	t_assert_ref(pm.const_im_L2, m.Lq);
-
-	pm.fsm_req = PM_STATE_LU_STARTUP;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.s_setpoint_speed = pm.probe_speed_hold;
-	sim_F(fdTel, 3.);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_E;
-	sim_F(fdTel, 0.);
-
-	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_E, m.E);
-
-	pm.s_setpoint_speed = pm.probe_speed_hold;
-	sim_F(fdTel, 1.);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_E;
-	sim_F(fdTel, 0.);
-
-	printf("Kv %.2f (rpm/v)\n", 5.513289f / (pm.const_E * pm.const_Zp));
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_E, m.E);
-
-	pm.fsm_req = PM_STATE_PROBE_FLUX_MPPE;
-	sim_F(fdTel, 0.);
-
-	printf("MPPE %.2f (rpm)\n", pm.flux_MPPE * 30. / M_PI / m.Zp);
-
-	sim_F(fdTel, 1.);
-
-	pm.fsm_req = PM_STATE_PROBE_CONST_J;
-	sim_F(fdTel, .1);
-
-	pm.s_setpoint_speed = pm.k_EMAX * pm.const_fb_U / pm.const_E;
-	sim_F(fdTel, .3);
-
-	pm.s_setpoint_speed = pm.probe_speed_hold;
-	sim_F(fdTel, 0.);
-
-	ZpE = 1.5f * pm.const_Zp * pm.const_Zp * pm.const_E;
-
-	printf("J %.4E (kgm2) \n", pm.const_Ja * ZpE);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.const_Ja * ZpE, m.J);
-
-	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	return 1;
-}
-
-static int
-sim_test_SPEED(FILE *fdTel)
-{
-	t_prologue();
-
-	pm.config_DRIVE = PM_DRIVE_SPEED;
-
-	pm.fsm_req = PM_STATE_LU_STARTUP;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.s_setpoint_speed = 0.f;
-	sim_F(fdTel, 1.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.s_setpoint_speed = .2f * m.U / m.E;
-	sim_F(fdTel, 3.);
-
-	printf("wSP %.2f (rpm)\n", pm.s_setpoint_speed * 30. / M_PI / m.Zp);
-	printf("lu_wS %.2f (rpm)\n", pm.lu_wS * 30. / M_PI / m.Zp);
-
-	t_assert(pm.fail_reason == PM_OK);
-	t_assert_ref(pm.lu_wS, pm.s_setpoint_speed);
-
-	pm.s_setpoint_speed = 0.f;
-	sim_F(fdTel, 1.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	return 1;
-}
-
-static int
-sim_test_HFI(FILE *fdTel)
-{
-	/* TODO */
-
-	return 1;
-}
-
-static int
-sim_test_HALL(FILE *fdTel)
-{
-	double		rot_H;
-	int		N;
-
-	t_prologue();
-
-	pm.fsm_req = PM_STATE_LU_STARTUP;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.s_setpoint_speed = pm.probe_speed_hold;
-	sim_F(fdTel, 1.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_ADJUST_HALL;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	for (N = 1; N < 7; ++N) {
-
-		rot_H = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * 180. / M_PI;
-
-		printf("hall_ST[%i] %.1f\n", N, rot_H);
-	}
-
-	pm.s_setpoint_speed = 0.f;
-	sim_F(fdTel, 1.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	sim_F(fdTel, 0.);
-
-	t_assert(pm.fail_reason == PM_OK);
-
-	return 1;
-}
-
-static int
-sim_test_WEAK(FILE *fdTel)
-{
-	/* TODO */
-
-	return 1;
-}
-
-static int
-sim_TEST(FILE *fdTel)
+void sim_START()
 {
 	blm_Enable(&m);
 	blm_Stop(&m);
+	sim_TlmDrop();
 
-	/* E-scooter hub motor (250W).
-         * */
-	m.R = 2.4E-1;
+	/*m.R = 2.4E-1;
 	m.Ld = 5.2E-4;
 	m.Lq = 6.5E-4;
 	m.U = 48.;
-	m.Rs = 0.7;
+	m.Rs = 0.5;
 	m.Zp = 15;
         m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;
+	m.J = 6.2E-3;*/
 
-	if (sim_test_BASE(NULL) == 0)
-		return 0;
-
-	if (sim_test_SPEED(NULL) == 0)
-		return 0;
-
-	if (sim_test_HFI(NULL) == 0)
-		return 0;
-
-	if (sim_test_HALL(NULL) == 0)
-		return 0;
-
-	if (sim_test_WEAK(NULL) == 0)
-		return 0;
-
-	blm_Stop(&m);
-
-	/* Turnigy RotoMax 1.20.
-         * */
 	m.R = 14E-3;
 	m.Ld = 10E-6;
 	m.Lq = 15E-6;
@@ -469,76 +263,49 @@ sim_TEST(FILE *fdTel)
         m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
 	m.J = 2.7E-4;
 
-	if (sim_test_BASE(fdTel) == 0)
-		return 0;
-
-	if (sim_test_SPEED(NULL) == 0)
-		return 0;
-
-	return 1;
-}
-
-static int
-sim_RUN(FILE *fdTel)
-{
-	blm_Enable(&m);
+	ts_BASE();
 	blm_Stop(&m);
-
-	m.R = 3.0670E-1;
-	m.Ld = 2.9530E-4;
-	m.Lq = 2.9530E-4;
-	m.U = 40.;
-	m.Rs = 0.7;
-	m.Zp = 1;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (87.4 * m.Zp);
-	m.J = 2.4E-3;
-
-	sim_test_BASE(fdTel);
-
-	sim_F(fdTel, 1.);
+	sim_TlmDrop();
 
 	pm.config_DRIVE = PM_DRIVE_CURRENT;
 
-	pm.forced_reverse = 0;
-
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	sim_F(fdTel, 0.);
+	ts_wait_for_IDLE();
 
-	pm.i_setpoint_torque = 10.f;
-	sim_F(fdTel, 1.);
+	pm.config_LIMITED = PM_ENABLED;
+
+	pm.s_maximal = 300.f * M_PI / 30. * m.Zp;
+	pm.s_accel = 1000.f;
+
+	m.M[2] = 5E-5;
+
+	pm.i_setpoint_torque = 20.f;
+	sim_Run(1.);
 
 	pm.i_setpoint_torque = -10.f;
-	sim_F(fdTel, 1.);
+	sim_Run(1.);
 
-	pm.i_setpoint_torque = 10.f;
-	sim_F(fdTel, 2.);
+	pm.i_setpoint_torque = 20.f;
+	sim_Run(.1);
 
-	return 1;
+	m.M[2] = 5E-4;
+
+	sim_Run(2.);
 }
 
 int main(int argc, char *argv[])
 {
-	FILE		*fdTel;
-
 	lib_start();
 
-	fdTel = fopen(TEL_FILE, "wb");
+	if (argc == 2 && strcmp(argv[1], "test") == 0) {
 
-	if (fdTel == NULL) {
-
-		fprintf(stderr, "fopen: %s", strerror(errno));
-		return 1;
-	}
-
-	if (argc == 2) {
-
-		sim_TEST(fdTel);
+		ts_START();
 	}
 	else {
-		sim_RUN(fdTel);
+		sim_START();
 	}
 
-	fclose(fdTel);
+	fclose(fdTlm);
 	lib_stop();
 
 	return 0;

@@ -65,9 +65,9 @@ typedef struct {
 	/* Heat control.
 	 * */
 	float			heat_PCB;
-	float			heat_PCB_derated_1;
+	float			heat_PCB_derated;
 	float			heat_EXT;
-	float			heat_EXT_derated_1;
+	float			heat_EXT_derated;
 	float			heat_PCB_FAN;
 	float			heat_recovery_gap;
 

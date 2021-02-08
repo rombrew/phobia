@@ -18,12 +18,13 @@ sometimes cross the border of quality in favor of PCB size.
 
 There are two parts of software:
 
-1. Numerical model of VSI with PMSM connected (~/sim).
-2. Firmware for MCU (~/src).
+1. Numerical model of VSI with PMSM connected (/sim).
+2. Firmware for MCU (/src).
 
 The numerical model enables us to develop control code in fast cycle without
 hardware tests. It is complete enough to take into account all of motor
-parameters.
+parameters. We also provide some set of automated tests which uses a numerical
+model.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.

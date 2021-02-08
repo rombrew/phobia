@@ -8,7 +8,7 @@
 #define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) / 1000.f)
 
 #define PM_HALL_SPAN		1.05f
-#define PM_MAX_F		7E+27f
+#define PM_MAX_F		1000000000000.f
 #define PM_SFI(s)		#s
 
 enum {
@@ -46,7 +46,7 @@ enum {
 enum {
 	PM_FLUX_UNCERTAIN			= 0,
 	PM_FLUX_HIGH,
-	PM_FLUX_DETACHED
+	PM_FLUX_LOCKED_IN_DETACH
 };
 
 enum {
@@ -74,8 +74,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
-	PM_STATE_PROBE_FLUX_MPPE,
-	PM_STATE_ADJUST_HALL,
+	PM_STATE_ADJUST_SENSOR_HALL,
 	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT,
 };
@@ -87,10 +86,10 @@ enum {
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
-	PM_ERROR_BOOTSTRAP_FAULT,
-	PM_ERROR_POWER_STAGE_FAULT,
-	PM_ERROR_ACCURACY_FAULT,
-	PM_ERROR_CURRENT_LOOP_FAULT,
+	PM_ERROR_BOOTSTRAP_TIME,
+	PM_ERROR_POWER_STAGE_DAMAGED,
+	PM_ERROR_LOW_ACCURACY,
+	PM_ERROR_CURRENT_LOOP_IS_OPEN,
 	PM_ERROR_INLINE_OVERCURRENT,
 	PM_ERROR_DC_LINK_OVERVOLTAGE,
 	PM_ERROR_INVALID_OPERATION,
@@ -100,6 +99,8 @@ enum {
 	/* External.
 	 * */
 	PM_ERROR_TIMEOUT,
+	PM_ERROR_NO_FLUX_CAUGHT,
+	PM_ERROR_LOSS_OF_SYNC,		/* BLM model only */
 };
 
 typedef struct {
@@ -156,8 +157,10 @@ typedef struct {
 	int		config_ESTIMATE;
 	int		config_HFI;
 	int		config_SENSOR;
-	int		config_WEAK;
 	int		config_DRIVE;
+	int		config_WEAK;
+	int		config_BRAKE;
+	int		config_LIMITED;
 	int		config_INFO;
 	int		config_BOOST;
 
@@ -238,6 +241,9 @@ typedef struct {
 	int		vsi_BZ;
 	int		vsi_CZ;
 
+	float		vsi_lpf_DC;
+	float		vsi_gain_LP_F;
+
 	int		tvm_ENABLED;
 	float		tvm_range_DC;
 	float		tvm_A;
@@ -256,6 +262,10 @@ typedef struct {
 	float		lu_F[2];
 	float		lu_wS;
 	int		lu_mode;
+
+	float		lu_lpf_torque;
+	float		lu_base_wS;
+	float		lu_gain_TF;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -380,42 +390,38 @@ typedef struct {
 	float		watt_gain_LP_F;
 	float		watt_gain_LP_P;
 
+	float		i_setpoint_torque;
 	float		i_maximal;
 	float		i_reverse;
-	float		i_derated_1;
+	float		i_derated_PCB;
 	float		i_derated_HFI;
-	float		i_setpoint_torque;
+	float		i_derated_WEAK;
 	float		i_track_D;
 	float		i_track_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
+	float		i_slew_rate;
+	float		i_slew_dT;
 	float		i_tol_Z;
 	float		i_gain_P;
 	float		i_gain_I;
 
-	float		inject_ratio_D;
-	float		inject_gain_AD;
-
 	float		weak_maximal;
-	float		weak_bias_U;
 	float		weak_D;
 	float		weak_gain_EU;
 
 	float		v_maximal;
 	float		v_reverse;
 
+	float		s_setpoint_speed;
 	float		s_maximal;
 	float		s_reverse;
-	float		s_setpoint_speed;
 	float		s_accel;
+	float		s_linspan;
 	float		s_track;
-	float		s_integral;
-	float		s_base_wS;
 	float		s_tol_Z;
 	float		s_gain_P;
-	float		s_gain_I;
 	float		s_gain_S;
-	float		s_gain_D;
 	float		s_iSP;
 
 	float		x_setpoint_F[2];
@@ -455,6 +461,10 @@ pmc_t;
 
 void pm_default(pmc_t *pm);
 void pm_build(pmc_t *pm);
+
+void pm_tune_MPPE(pmc_t *pm);
+void pm_tune_loop_current(pmc_t *pm);
+void pm_tune_loop_speed(pmc_t *pm);
 
 void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
