@@ -16,13 +16,13 @@ There are a lot of parameters that can affect the motor identification. But we
 believe that they will need a change only in a very complicated case.
 
 Most likely you will change **pm.probe_speed_hold** parameter. The probe speed
-should provide enough BEMF but not to exceed **pm.forced_hold_D** speed.
+should provide enough BEMF but not to exceed **pm.forced_maximal** speed.
 
 Also pay attention to the forced control parameters which are used to achieve
 initial spinup.
 
 	# reg pm.forced
- 
+
 Most likely you will change **pm.forced_accel** parameter to get reliable
 operation.
 
@@ -86,7 +86,8 @@ manually. Do not load the motor.
 	# pm_probe_const_E
 
 Also pay attention you may need to reset the previous invalid value of
-**pm.const_E** to zero before you try to use **pm_probe_spinup** command.
+**pm.const_E** to zero before you try to use **pm_probe_spinup** command
+again.
 
 ## No forced spinup
 
@@ -109,12 +110,12 @@ this time diagram.
 	 |                    _--_-_--_-_-_/     \
 	 |                   /                    \
 	 |   _--_-_-_--_-_-_/                      \
-	 |  /                                       
+	 |  /                                       \
 	 | /        |        |         |            |
 	-+----------+--------+---------+------------+------->
 	   | forced |   E    |    E    |  inertial  |
 
-We indentify E twice. On initial spinup and after switching to the closed
+We identify E twice. On initial spinup and after switching to the closed
 control loop. Then we calculate MPPE to know the lower limit of FLUX observer
 operation. There are BEMF values at which switching occurs expressed relative
 to MPPE.

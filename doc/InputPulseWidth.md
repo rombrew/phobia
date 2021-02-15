@@ -47,7 +47,7 @@ converted to this control range.
 	# reg ap.ppm_control_range_1 <x>
 	# reg ap.ppm_control_range_2 <x>
 
-Now enable motor startup-shutdown control (based on PPM signal caught status).
+Now enable motor startup/shutdown control (based on PPM signal caught status).
 
 	# reg ap.ppm_STARTUP 1
 

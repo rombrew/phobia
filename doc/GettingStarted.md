@@ -14,6 +14,10 @@ The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
 sometimes cross the border of quality in favor of PCB size.
 
+Our actual hw revision is **rev5a** designed in 8-layer stackup with 35um
+copper foil. To ensure heat distribution it is necessary to use an aluminum
+plate from bottom through thermal interface.
+
 ## Software
 
 There are two parts of software:
@@ -24,7 +28,8 @@ There are two parts of software:
 The numerical model enables us to develop control code in fast cycle without
 hardware tests. It is complete enough to take into account all of motor
 parameters. We also provide some set of automated tests which uses a numerical
-model.
+model. But keep in mind that only abstract control code (/src/phobia) is
+covered by these tests.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.
@@ -34,23 +39,28 @@ or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.
 	# make flash
 
 We use [stm32flash](https://sourceforge.net/projects/stm32flash/) to upload the
-firmware into MCU. You should have a serial port connected to the board USART
-pins and BOOT pin shorted to the +3.3v. Alternatively, you can use SWD.
+firmware into MCU. You should have a serial port connected to the board TX and
+RX pins and BOOT pin shorted to the +3.3v.
+
+You also can upload the firmware through SWD using
+[GDB](https://www.gnu.org/software/gdb/). We use
+[Black Magic Probe](https://1bitsquared.com/products/black-magic-probe).
 
 After the firmware is loaded the command line interface (CLI) will be available
 through the same USART. We use [picocom](https://github.com/npat-efault/picocom)
-terminal program. Default baudrate is 57600 with 8 bits of data and even
-parity.
+terminal program. Default baudrate is 57600 with 8-bits data 1-bit even parity
+and 1-bit stop.
 
 	# make connect
 
 ## Further reading
 
 [Command Line Interface](CLI.md)  
+[Self Test](SelfTest.md)  
 [Motor Identification](MotorIdentification.md)  
 [Motor Tuning](MotorTuning.md)  
-[Input Pulse Width](InputPulseWidth.md)  
 [Input Analog](InputAnalog.md)  
+[Input Pulse Width](InputPulseWidth.md)
 [Trouble Shooting](TroubleShooting.md)  
 
 [Internals](Internals.md)  
