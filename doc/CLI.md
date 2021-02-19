@@ -30,9 +30,13 @@ You can also export configuration registers values in plain text using a
 **config_export** command. The output of this command can be fed back into the
 CLI to restore the configuration.
 
+	# config_export
+
 To save the values of the configuration registers in the flash there is a
 **flash_prog** command. Register values from the flash are loaded automatically
 at startup.
+
+	# flash_prog
 
 Note the different types of registers. There are registers intended for saving
 as configuration. Other registers provide information to read only. Virtual

@@ -6,7 +6,7 @@ void pm_default(pmc_t *pm)
 	pm->dc_minimal = 0.25f;		/* (us) */
 	pm->dc_clearance = 5.0f;	/* (us) */
 	pm->dc_skip = 2.0f;		/* (us) */
-	pm->dc_bootstrap = 50.f;	/* (ms) */
+	pm->dc_bootstrap = 100.f;	/* (ms) */
 	pm->dc_clamped = 1.f;		/* (s)  */
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
@@ -413,7 +413,7 @@ pm_mode_FLUX(pmc_t *pm)
 	float			lev_wS, lev_E;
 	int			lev_TIM;
 
-	/* Smooth speed (passed through LPF).
+	/* Get smooth speed passed through LPF.
 	 * */
 	pm->flux_lpf_wS += (pm->flux_wS - pm->flux_lpf_wS) * pm->flux_gain_LP_S;
 
@@ -1558,18 +1558,6 @@ pm_loop_current(pmc_t *pm)
 	iMAX = pm->i_maximal;
 	iREV = - pm->i_reverse;
 
-	iMAX = (iMAX < pm->i_derated_PCB) ? iMAX : pm->i_derated_PCB;
-	iREV = (iREV > - pm->i_derated_PCB) ? iREV : - pm->i_derated_PCB;
-
-	if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
-
-		iMAX = (iMAX < pm->i_derated_HFI) ? iMAX : pm->i_derated_HFI;
-		iREV = (iREV > - pm->i_derated_HFI) ? iREV : - pm->i_derated_HFI;
-	}
-
-	track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
-	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
-
 	if (		pm->config_WEAK == PM_ENABLED
 			&& pm->weak_D < - M_EPS_F) {
 
@@ -1578,6 +1566,19 @@ pm_loop_current(pmc_t *pm)
 		track_Q = (track_Q > pm->i_derated_WEAK) ? pm->i_derated_WEAK
 			: (track_Q < - pm->i_derated_WEAK) ? - pm->i_derated_WEAK : track_Q;
 	}
+	else {
+		iMAX = (iMAX < pm->i_derated_PCB) ? iMAX : pm->i_derated_PCB;
+		iREV = (iREV > - pm->i_derated_PCB) ? iREV : - pm->i_derated_PCB;
+
+		if (pm->lu_mode == PM_LU_ESTIMATE_HFI) {
+
+			iMAX = (iMAX < pm->i_derated_HFI) ? iMAX : pm->i_derated_HFI;
+			iREV = (iREV > - pm->i_derated_HFI) ? iREV : - pm->i_derated_HFI;
+		}
+	}
+
+	track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
+	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
 
 	/* Prevent DC link OVERVOLTAGE.
 	 * */
@@ -1965,9 +1966,6 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		}
 	}
 
-	pm->tvm_DX = pm->vsi_DX;
-	pm->tvm_DY = pm->vsi_DY;
-
 	if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
 		vA = pm->tvm_FIR_A[1] * pm->fb_uA;
@@ -1984,7 +1982,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				&& pm->tvm_ENABLED == PM_ENABLED
 				&& pm->vsi_UF == 0) {
 
-			/* Extract actual terminal voltages (FIR).
+			/* Extract actual terminal voltages with FIR.
 			 * */
 
 			if (pm->vsi_AZ != 0) {
@@ -2032,6 +2030,17 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				pm->tvm_DY = vB;
 			}
 		}
+		else {
+			pm->tvm_DX = pm->vsi_DX;
+			pm->tvm_DY = pm->vsi_DY;
+		}
+	}
+	else {
+		/* This fallback makes possible the use of TVM variables in
+		 * case of no TVM configuration.
+		 * */
+		pm->tvm_DX = pm->vsi_DX;
+		pm->tvm_DY = pm->vsi_DY;
 	}
 
 	/* Get SENSOR values.

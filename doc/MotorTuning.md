@@ -12,7 +12,7 @@ to force rotor turn. You can adapt the current value and acceleration to your
 needs.
 
 	# reg pm.forced_hold_D <amp>
-	# reg pm.forced_accel_rpm <rpm/s>
+	# reg pm.forced_accel <rad/s/s>
 
 For more reliable start increase hold current and decrease acceleration. Keep
 in mind that hold current is applied constantly (like in stepper motor) so it
@@ -26,8 +26,8 @@ low speed range.
 ## Current loop
 
 You can limit phase current. It is the main tool not to burn the motor. This is
-global restriction applicable to all modes of operation. You also should set
-reverse limit for negative Q-axis current.
+global restriction applicable to all closed loop modes of operation. You also
+should set reverse limit for negative Q-axis current.
 
 	# reg pm.i_maximal <amp>
 	# reg pm.i_reverse <amp>
@@ -92,8 +92,8 @@ expressed relative to MPPE.
 	# reg pm.flux_gain_TAKE_E <volt>
 	# reg pm.flux_gain_GIVE_E <volt>
 
-Also inspect the MPPE value itself. This is approximate peak-to-peak noise in
-speed eastimate.
+Also inspect the MPPE value itself. This is approximate peak-to-peak noise of
+speed estimate.
 
 	# reg pm.flux_MPPE
 
@@ -102,8 +102,8 @@ estimate.
 
 	# reg pm.flux_gain_SF <x>
 
-Vary **IF** gain from 0 to 1 as you want to use apriori speed prediction with
-moment inertia and current applied.
+Specify **IF** gain (from 0 to 1) as much as you want to add apriori speed
+prediction that takes into account moment of inertia and current applied.
 
 	# reg pm.flux_gain_IF <x>
 

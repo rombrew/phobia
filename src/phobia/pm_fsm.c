@@ -157,8 +157,6 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 static void
 pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 {
-	float		uA, uB, uC;
-
 	switch (pm->fsm_phase) {
 
 		case 0:
@@ -176,12 +174,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			break;
 
 		case 1:
+			pm->proc_set_DC(0, 0, 0);
+			pm->proc_set_Z(6);
+
 			pm->self_BST[0] = 0.f;
 			pm->self_BST[1] = 0.f;
 			pm->self_BST[2] = 0.f;
 
-			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(0);
+			pm->vsi_SA = PM_TSMS(pm, pm->tm_transient_fast);
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
@@ -194,7 +194,9 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				pm->proc_set_DC(pm->dc_resolution, pm->dc_resolution, pm->dc_resolution);
+				pm->proc_set_DC(pm->dc_resolution, 0, 0);
+
+				pm->vsi_TIM = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -204,36 +206,133 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			break;
 
 		case 3:
-			uA = pm->fb_uA - pm->const_fb_U;
-			uB = pm->fb_uB - pm->const_fb_U;
-			uC = pm->fb_uC - pm->const_fb_U;
+			if (m_fabsf(pm->fb_uA - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-			pm->self_BST[0] += (m_fabsf(uA) < pm->fault_voltage_tol) ? 1.f : 0.f;
-			pm->self_BST[1] += (m_fabsf(uB) < pm->fault_voltage_tol) ? 1.f : 0.f;
-			pm->self_BST[2] += (m_fabsf(uC) < pm->fault_voltage_tol) ? 1.f : 0.f;
+				pm->vsi_TIM = 0;
+
+				pm->self_BST[0] += 1.f;
+			}
+			else {
+				pm->vsi_TIM++;
+
+				if (pm->vsi_TIM >= pm->vsi_SA) {
+
+					pm->tm_value = pm->tm_end;
+				}
+			}
 
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
 
 				pm->self_BST[0] *= 1000.f / pm->freq_hz;
-				pm->self_BST[1] *= 1000.f / pm->freq_hz;
-				pm->self_BST[2] *= 1000.f / pm->freq_hz;
+
+				pm->proc_set_DC(0, 0, 0);
+				pm->proc_set_Z(5);
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
 
 				pm->fsm_phase = 4;
 			}
 			break;
 
 		case 4:
-			if (		pm->self_BST[0] < pm->dc_bootstrap
-					|| pm->self_BST[1] < pm->dc_bootstrap
-					|| pm->self_BST[2] < pm->dc_bootstrap) {
+			pm->tm_value++;
 
-				pm->fail_reason = PM_ERROR_BOOTSTRAP_TIME;
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->proc_set_DC(0, pm->dc_resolution, 0);
+
+				pm->vsi_TIM = 0;
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
+
+				pm->fsm_phase = 5;
+			}
+			break;
+
+		case 5:
+			if (m_fabsf(pm->fb_uB - pm->const_fb_U) < pm->fault_voltage_tol) {
+
+				pm->vsi_TIM = 0;
+
+				pm->self_BST[1] += 1.f;
+			}
+			else {
+				pm->vsi_TIM++;
+
+				if (pm->vsi_TIM >= pm->vsi_SA) {
+
+					pm->tm_value = pm->tm_end;
+				}
 			}
 
-			pm->fsm_state = PM_STATE_HALT;
-			pm->fsm_phase = 0;
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->self_BST[1] *= 1000.f / pm->freq_hz;
+
+				pm->proc_set_DC(0, 0, 0);
+				pm->proc_set_Z(3);
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
+
+				pm->fsm_phase = 6;
+			}
+			break;
+
+		case 6:
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->proc_set_DC(0, 0, pm->dc_resolution);
+
+				pm->vsi_TIM = 0;
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
+
+				pm->fsm_phase = 7;
+			}
+			break;
+
+		case 7:
+			if (m_fabsf(pm->fb_uC - pm->const_fb_U) < pm->fault_voltage_tol) {
+
+				pm->vsi_TIM = 0;
+
+				pm->self_BST[2] += 1.f;
+			}
+			else {
+				pm->vsi_TIM++;
+
+				if (pm->vsi_TIM >= pm->vsi_SA) {
+
+					pm->tm_value = pm->tm_end;
+				}
+			}
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->self_BST[2] *= 1000.f / pm->freq_hz;
+
+				if (		pm->self_BST[0] < pm->dc_bootstrap
+						|| pm->self_BST[1] < pm->dc_bootstrap
+						|| pm->self_BST[2] < pm->dc_bootstrap) {
+
+					pm->fail_reason = PM_ERROR_BOOTSTRAP_TIME;
+				}
+
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
 			break;
 	}
 }
@@ -345,9 +444,8 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			uA = pm->probe_DFT[0];
 			uB = pm->probe_DFT[1];
 			uC = pm->probe_DFT[2];
-			bm = 0UL;
 
-			bm |= (m_fabsf(uA - pm->const_fb_U) < pm->fault_voltage_tol)
+			bm  = (m_fabsf(uA - pm->const_fb_U) < pm->fault_voltage_tol)
 				? 1UL : (m_fabsf(uA) < pm->fault_voltage_tol) ? 0UL : 16UL;
 			bm |= (m_fabsf(uB - pm->const_fb_U) < pm->fault_voltage_tol)
 				? 2UL : (m_fabsf(uB) < pm->fault_voltage_tol) ? 0UL : 32UL;
@@ -492,18 +590,28 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 			break;
 
 		case 3:
-			if (		pm->self_RMSi[0] > pm->fault_current_tol
-					|| pm->self_RMSi[1] > pm->fault_current_tol) {
+			if (		   m_isfinitef(pm->self_RMSi[0]) != 0
+					&& m_isfinitef(pm->self_RMSi[1]) != 0
+					&& m_isfinitef(pm->self_RMSi[2]) != 0
+					&& m_isfinitef(pm->self_RMSu[0]) != 0
+					&& m_isfinitef(pm->self_RMSu[1]) != 0
+					&& m_isfinitef(pm->self_RMSu[2]) != 0) {
 
-				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
+				if (		pm->self_RMSi[0] > pm->fault_current_tol
+						|| pm->self_RMSi[1] > pm->fault_current_tol) {
+
+					pm->fail_reason = PM_ERROR_LOW_ACCURACY;
+				}
+				else if (	pm->self_RMSi[2] > pm->fault_voltage_tol
+						|| pm->self_RMSu[0] > pm->fault_voltage_tol
+						|| pm->self_RMSu[1] > pm->fault_voltage_tol
+						|| pm->self_RMSu[2] > pm->fault_voltage_tol) {
+
+					pm->fail_reason = PM_ERROR_LOW_ACCURACY;
+				}
 			}
-
-			if (		pm->self_RMSi[2] > pm->fault_voltage_tol
-					|| pm->self_RMSu[0] > pm->fault_voltage_tol
-					|| pm->self_RMSu[1] > pm->fault_voltage_tol
-					|| pm->self_RMSu[2] > pm->fault_voltage_tol) {
-
-				pm->fail_reason = PM_ERROR_LOW_ACCURACY;
+			else {
+				pm->fail_reason = PM_ERROR_INVALID_OPERATION;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -538,7 +646,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			xDC = (pm->fsm_phase_2 == 0) ? 0 : pm->dc_resolution;
 
 			pm->proc_set_DC(xDC, xDC, xDC);
-			pm->proc_set_Z(0);
+			pm->proc_set_Z(pm->k_ZNUL);
 
 			pm->probe_DFT[0] = 0.f;
 			pm->probe_DFT[1] = 0.f;
@@ -1106,6 +1214,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->vsi_SA = 0;
 				pm->vsi_SB = 0;
 				pm->vsi_SC = 0;
+				pm->vsi_TIM = 0;
 				pm->vsi_AG = 0;
 				pm->vsi_BG = 0;
 				pm->vsi_CG = 0;

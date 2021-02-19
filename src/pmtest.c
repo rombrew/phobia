@@ -54,12 +54,12 @@ SH_DEF(pm_self_test)
 
 				case 0:
 					pm.proc_set_DC(0, 0, 0);
-					pm.proc_set_Z(0);
+					pm.proc_set_Z(pm.k_ZNUL);
 					break;
 
 				case 1:
 					pm.proc_set_DC(xDC, xDC, xDC);
-					pm.proc_set_Z(0);
+					pm.proc_set_Z(pm.k_ZNUL);
 					break;
 			}
 

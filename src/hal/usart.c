@@ -5,18 +5,6 @@
 #include "hal.h"
 #include "libc.h"
 
-#define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
-
-#ifdef _HW_KLEN
-
-#undef GPIO_USART3_TX
-#undef GPIO_USART3_RX
-#define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)
-
-#endif /* _HW_KLEN */
-
 typedef struct {
 
 	QueueHandle_t		queue_RX;
@@ -66,6 +54,7 @@ void USART_startup()
 	 * */
 	GPIO_set_mode_FUNCTION(GPIO_USART3_TX);
 	GPIO_set_mode_FUNCTION(GPIO_USART3_RX);
+	GPIO_set_mode_PULL_UP(GPIO_USART3_RX);
 
 	/* Alloc queues.
 	 * */

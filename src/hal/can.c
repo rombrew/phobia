@@ -4,9 +4,6 @@
 #include "hal.h"
 #include "libc.h"
 
-#define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
-#define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
-
 void irq_CAN1_TX() { }
 
 static void

@@ -64,11 +64,11 @@ typedef struct {
 
 	/* Heat control.
 	 * */
-	float			heat_PCB;
+	float			heat_PCB_halt;
+	float			heat_PCB_on_FAN;
 	float			heat_PCB_derated;
-	float			heat_EXT;
+	float			heat_EXT_halt;
 	float			heat_EXT_derated;
-	float			heat_PCB_FAN;
 	float			heat_recovery_gap;
 
 	/* Servo drive.

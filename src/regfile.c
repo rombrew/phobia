@@ -393,15 +393,14 @@ reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
 
 		if (*rval < M_EPS_F) {
 
-			halt = ADC_RESOLUTION * 95E-2f / 2.f;
+			halt = m_fabsf(hal.ADC_const.GA * ADC_RESOLUTION / 2.f);
 
 			adjust = (pm.ad_IA[1] < pm.ad_IB[1])
 				? pm.ad_IA[1] : pm.ad_IB[1];
-			adjust = (adjust == 0.f) ? 1.f : adjust;
 
-			halt *= m_fabsf(hal.ADC_const.GA * adjust);
+			halt *= adjust;
 
-			reg->link->f = (float) (int) (halt);
+			reg->link->f = (float) (int) (halt * .95f);
 		}
 		else {
 			reg->link->f = *rval;
@@ -422,7 +421,7 @@ reg_proc_maximal_i(const reg_t *reg, float *lval, const float *rval)
 
 		if (*rval < M_EPS_F) {
 
-			range = pm.fault_current_halt * 95E-2f;
+			range = pm.fault_current_halt;
 
 			if (pm.const_R > M_EPS_F) {
 
@@ -430,7 +429,7 @@ reg_proc_maximal_i(const reg_t *reg, float *lval, const float *rval)
 				range = (max_1 < range) ? max_1 : range;
 			}
 
-			reg->link->f = (float) (int) (range);
+			reg->link->f = (float) (int) (range * .95f);
 		}
 		else {
 			reg->link->f = *rval;
@@ -1121,11 +1120,11 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.temp_EXT,,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.temp_INT,,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(ap.heat_PCB,,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_PCB_halt,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_PCB_on_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_PCB_derated,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_EXT,,,			"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_EXT_halt,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_EXT_derated,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_PCB_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_recovery_gap,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.servo_SPAN_mm, _0, [0],	"mm",	"%3f",	REG_CONFIG, NULL, NULL),

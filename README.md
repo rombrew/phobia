@@ -60,7 +60,8 @@ control.
 	* Flexible configurable data pipes.
 
 * Operation at low or zero speed:
-	* Forced control that applies a current vector without feedback to force rotor turn (**DEFAULT**).
+	* Forced control that applies a current vector without feedback to
+	  force rotor turn (**pm.config_FORCED = 1**).
 	* Freewheling (**pm.config_FORCED = 0**).
 	* High frequency injection (HFI) based on magnetic saliency (**pm.config_HFI**).
 	* Discrete Hall sensors or ABI incremental encoder (**pm.config_SENSOR**).
@@ -136,9 +137,9 @@ PCB design source files. You can also view photos of the assembled PCBs in
 
 ## Current Status
 
-Now we can declare that PMC is ready to use in most applications. But there is
-still a lot of unresolved issues. It may be difficult to configure the PMC for
-a specific motor.
+Now we can declare that PMC is ready to use in most applications. But there are
+still some unresolved issues. It may be difficult to configure the PMC for a
+specific motor.
 
 There are a few videos about PMC on
 [youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
@@ -150,6 +151,6 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 * Make a detailed documentation.
 * Consider to add flux observer saliency tracking (for SRM).
 * Add pulse output signal.
-* Make a drawing of the heatsing case for rev5a.
+* Make a drawing of the heatsink case for rev5a.
 * Design the new hardware for 120v battery voltage.
 

@@ -26,7 +26,7 @@ pulse parameters.
 	# hal_PPM_get_PERIOD
 	# hal_PPM_get_PULSE
 
-Select the pulse width range in which you want to work. Write this range to a
+Select the pulse width range in which you want to work. Write the range to a
 PPM configuration. We use three point conversion from pulse width to the
 control value.
 

@@ -4,22 +4,7 @@
 #include "hal.h"
 #include "libc.h"
 
-#define CLOCK_CRYSTAL_HZ		12000000UL
 #define CLOCK_CPU_TARGET_HZ		168000000UL
-
-#ifdef _HW_REV2
-
-#undef CLOCK_CRYSTAL_HZ
-#define CLOCK_CRYSTAL_HZ		8000000UL
-
-#endif /* _HW_REV2 */
-
-#ifdef _HW_KLEN
-
-#undef CLOCK_CRYSTAL_HZ
-#define CLOCK_CRYSTAL_HZ		25000000UL
-
-#endif /* _HW_KLEN */
 
 unsigned long			clock_cpu_hz;
 
@@ -129,7 +114,7 @@ clock_startup()
 
 	if (HSE != 0) {
 
-		CLOCK = CLOCK_CRYSTAL_HZ;
+		CLOCK = HW_CLOCK_CRYSTAL_HZ;
 
 		/* From HSE.
 		 * */

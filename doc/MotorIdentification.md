@@ -24,7 +24,7 @@ initial spinup.
 	# reg pm.forced
 
 Most likely you will change **pm.forced_accel** parameter to get reliable
-operation.
+startup.
 
 ## Sensors adjustment
 
@@ -82,6 +82,7 @@ significant speed. We do a forced initial spinup to reach this condition.
 To get more accurate estimate run the motor at high speed and request E probe
 manually. Do not load the motor.
 
+	# pm_fsm_startup
 	# reg pm.s_setpoint_rpm <rpm>
 	# pm_probe_const_E
 
@@ -101,10 +102,11 @@ It waits for the motor to reach at least **pm.probe_speed_detached** speed.
 
 ## Mean Peak to Peak Error (MPPE)
 
-Command **pm_probe_spinup** does many other estimates after initial spinup. Look at
-this time diagram.
+Command **pm_probe_spinup** does many other estimates after initial spinup.
+Look at the time diagram.
 
-	 | -- (speed)                         _
+	 | -- (speed)      // spinup probe time diagram //
+	 |                                    _
 	 |                                   / \
 	 |                                  /   \
 	 |                    _--_-_--_-_-_/     \

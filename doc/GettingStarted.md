@@ -44,26 +44,33 @@ RX pins and BOOT pin shorted to the +3.3v.
 
 You also can upload the firmware through SWD using
 [GDB](https://www.gnu.org/software/gdb/). We use
-[Black Magic Probe](https://1bitsquared.com/products/black-magic-probe).
+[Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be
+careful when using hardware debugging while the motor is running. The stop of
+feedback loop can cause overcurrent accident.
 
-After the firmware is loaded the command line interface (CLI) will be available
-through the same USART. We use [picocom](https://github.com/npat-efault/picocom)
-terminal program. Default baudrate is 57600 with 8-bits data 1-bit even parity
-and 1-bit stop.
+After the firmware is loaded and ran the command line interface (CLI) will be
+available through the same USART. We use
+[picocom](https://github.com/npat-efault/picocom) terminal program. Default
+baudrate is 57600 with 8-bits data 1-bit even parity and 1-bit stop.
 
 	# make connect
 
-## Further reading
+Read the following documentation for setting up.
+
+## User documentation
 
 [Command Line Interface](CLI.md)  
-[Self Test](SelfTest.md)  
+[Input Analog](InputAnalog.md)  
+[Input Pulse Width](InputPulseWidth.md)  
 [Motor Identification](MotorIdentification.md)  
 [Motor Tuning](MotorTuning.md)  
-[Input Analog](InputAnalog.md)  
-[Input Pulse Width](InputPulseWidth.md)
+[Network CAN](NetworkCAN.md)  
+[Self Test](SelfTest.md)  
 [Trouble Shooting](TroubleShooting.md)  
 
+# Developoer documentation
+
+[High Frequency Injection](HFI.md)  
 [Internals](Internals.md)  
 [State Observer](StateObserver.md)  
-[High Frequency Injection](HFI.md)  
 

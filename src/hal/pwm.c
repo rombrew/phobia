@@ -106,13 +106,13 @@ void PWM_configure()
 
 void PWM_set_DC(int A, int B, int C)
 {
-#ifdef _HW_KLEN
+#ifdef HW_HAVE_REVERSED_PWM
 
 	TIM1->CCR1 = C;
 	TIM1->CCR2 = B;
 	TIM1->CCR3 = A;
 
-#else /* _HW_KLEN */
+#else /* HW_HAVE_REVERSED_PWM */
 
 	TIM1->CCR1 = A;
 	TIM1->CCR2 = B;
@@ -123,11 +123,11 @@ void PWM_set_DC(int A, int B, int C)
 
 void PWM_set_Z(int Z)
 {
-#ifdef _HW_KLEN
+#ifdef HW_HAVE_REVERSED_PWM
 
 	if (Z & LEG_C) {
 
-#else /* _HW_KLEN */
+#else /* HW_HAVE_REVERSED_PWM */
 
 	if (Z & LEG_A) {
 
@@ -147,11 +147,11 @@ void PWM_set_Z(int Z)
 		TIM1->CCER |= (TIM_CCER_CC2NE | TIM_CCER_CC2E);
 	}
 
-#ifdef _HW_KLEN
+#ifdef HW_HAVE_REVERSED_PWM
 
 	if (Z & LEG_A) {
 
-#else /* _HW_KLEN */
+#else /* HW_HAVE_REVERSED_PWM */
 
 	if (Z & LEG_C) {
 

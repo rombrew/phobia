@@ -12,23 +12,9 @@
 #include "usart.h"
 #include "wd.h"
 
+#include "hwdefs.h"
+
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
-#define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('C', 12)
-
-#ifdef _HW_REV2
-
-#undef GPIO_LED
-#define GPIO_LED			XGPIO_DEF2('B', 3)
-
-#endif /* _HW_REV2 */
-
-#ifdef _HW_KLEN
-
-#undef GPIO_LED
-#define GPIO_LED			XGPIO_DEF2('C', 4)
-
-#endif /* _HW_KLEN */
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)

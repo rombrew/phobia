@@ -28,8 +28,8 @@ CFLAGS  += -I.
 #CFLAGS  += -D_HW_REV2
 #CFLAGS  += -D_HW_KLEN
 #CFLAGS  += -D_HW_REV4B
-#CFLAGS  += -D_HW_REV4C
-CFLAGS  += -D_HW_REV5A
+CFLAGS  += -D_HW_REV4C
+#CFLAGS  += -D_HW_REV5A
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,-T,hal/link.ld

@@ -1,11 +1,11 @@
 ## Overview
 
-This page explains how to overcome the difficulties that can arise when deal
-with PMC.
+This page explains how to understand the cause of problems that may occur when
+deal with PMC.
 
 ## Error condition
 
-If something goes wrong we stop and give the error in **pm.fail_reason**.
+If something goes wrong PMC stops and gives the error in **pm.fail_reason**.
 
 	# reg pm.fail_reason
 
@@ -37,9 +37,9 @@ It may return the following values:
 
 These reasons come from high-level:
 
-* **PM_ERROR_TIMEOUT** - timeout has occurred because of no event occurred we
+* **PM_ERROR_TIMEOUT** - Timeout has occurred because of no event occurred we
   waiting for. Typically it cannot reach speed setpoint.
 * **PM_ERROR_NO_FLUX_CAUGHT** - FLUX observer has not caught flux for some
   reason. Maybe speed is too low or spinup was failed at all.
-* **PM_ERROR_LOSS_OF_SYNC** - position estimate is too poor (BLM model only).
+* **PM_ERROR_LOSS_OF_SYNC** - Position estimate is too poor (BLM model only).
 
