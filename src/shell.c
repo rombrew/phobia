@@ -514,7 +514,7 @@ sh_line_null(sh_t *sh)
 
 			/* Prompt with CAN node ID.
 			 * */
-			printf("(can/%i) ", can.node_ID);
+			printf("(net/%i) ", net.node_ID);
 		}
 		else {
 			/* Prompt (local).

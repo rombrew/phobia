@@ -1,9 +1,12 @@
 #ifndef _H_PM_
 #define _H_PM_
 
+#include "lse.h"
+
 #define PM_CONFIG_NOP(pm)	(pm)->config_NOP
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
+#define PM_CONFIG_DEBUG(pm)	(pm)->config_DEBUG
 
 #define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) / 1000.f)
 
@@ -19,11 +22,6 @@ enum {
 enum {
 	PM_IFB_AB_INLINE			= 0,
 	PM_IFB_AB_LOW,
-};
-
-enum {
-	PM_ESTIMATE_DISABLED			= 0,
-	PM_ESTIMATE_FLUX,
 };
 
 enum {
@@ -142,7 +140,6 @@ typedef struct {
 	int		ts_clamped;
 	float		ts_inverted;
 
-	int		fail_reason;
 	float		self_BST[3];
 	int		self_BM[8];
 	float		self_RMSi[3];
@@ -151,12 +148,15 @@ typedef struct {
 	int		config_NOP;
 	int		config_TVM;
 	int		config_IFB;
+	int		config_DEBUG;
+
 	int		config_VSI_PRECISE;
 	int		config_FORCED;
-	int		config_ABI_FORCED_ALIGN;
-	int		config_ESTIMATE;
+	int		config_FLUX;
 	int		config_HFI;
 	int		config_SENSOR;
+	int		config_ABI_REVERSED;
+	int		config_ABI_DEBOUNCE;
 	int		config_DRIVE;
 	int		config_WEAK;
 	int		config_BRAKE;
@@ -164,10 +164,14 @@ typedef struct {
 	int		config_INFO;
 	int		config_BOOST;
 
+	int		debug_locked_HFI;
+	int		debug_locked_SENSOR;
+
 	int		fsm_req;
 	int		fsm_state;
 	int		fsm_phase;
-	int		fsm_phase_2;
+	int		fsm_subi;
+	int		fsm_errno;
 
 	int		tm_value;
 	int		tm_end;
@@ -208,12 +212,8 @@ typedef struct {
 	float		probe_speed_detached;
 	float		probe_gain_P;
 	float		probe_gain_I;
-	float		probe_DFT[8];
-	float		probe_LSQ_A[9];
-	float		probe_LSQ_B[9];
-	float		probe_LSQ_C[9];
 
-	float		REM[27];
+	lse_t		probe_LS[3];
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -244,7 +244,7 @@ typedef struct {
 	float		vsi_lpf_DC;
 	float		vsi_gain_LP_F;
 
-	int		tvm_ENABLED;
+	int		tvm_ALLOWED;
 	float		tvm_range_DC;
 	float		tvm_A;
 	float		tvm_B;
@@ -266,6 +266,9 @@ typedef struct {
 	float		lu_lpf_torque;
 	float		lu_base_wS;
 	float		lu_gain_TF;
+
+	float		lu_F1;
+	int		lu_revol;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -297,7 +300,7 @@ typedef struct {
 	float		flux_gain_IF;
 
 	int		flux_mode;
-	int		flux_locked;
+	int		flux_LOCKED;
 	float		flux_lpf_wS;
 	float		flux_MPPE;
 	float		flux_gain_TAKE;
@@ -305,23 +308,24 @@ typedef struct {
 	float		flux_gain_LEVE;
 	float		flux_gain_LP_S;
 
-	int		hfi_tm_DIV;
-	int		hfi_tm_SKIP;
-	int		hfi_tm_SUM;
-	int		hfi_tm_FLUX;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_inject_sine;
 	float		hfi_maximal;
-	float		hfi_const_L1;
-	float		hfi_const_L2;
-	float		hfi_const_R;
-	float		hfi_const_FP;
 	float		hfi_wave[2];
+	float		hfi_im_L1;
+	float		hfi_im_L2;
+	float		hfi_im_R;
+	float		hfi_im_FP;
+	int		hfi_DIV;
+	int		hfi_SKIP;
+	int		hfi_SUM;
+	int		hfi_FLUX;
 	float		hfi_DFT[9];
-	float		hfi_REM[9];
+	float		hfi_REM[12];
 	int		hfi_DFT_N;
 	int		hfi_DFT_P;
+	int		hfi_TIM;
 	float		hfi_gain_SF;
 	float		hfi_gain_IF;
 
@@ -332,7 +336,7 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_ENABLED;
+	int		hall_ALLOWED;
 	int		hall_HS;
 	int		hall_DIRF;
 	float		hall_prolS;
@@ -351,7 +355,6 @@ typedef struct {
 	int		abi_prolTIM;
 	float		abi_prolS;
 	int		abi_PPR;
-	int		abi_FILTER;
 	float		abi_Zq;
 	float		abi_F[2];
 	float		abi_wS;
@@ -376,7 +379,7 @@ typedef struct {
 	float		temp_HFI_wS;
 	float		temp_HFI_HT[2];
 	int		temp_prol_T;
-	float		temp_2PZiPPR;
+	float		temp_ZiPPR;
 
 	float		watt_wP_maximal;
 	float		watt_iDC_maximal;
@@ -427,17 +430,14 @@ typedef struct {
 	float		x_setpoint_F[2];
 	float		x_setpoint_speed;
 	int		x_setpoint_revol;
-	float		x_lu_F1;
-	int		x_lu_revol;
 	float		x_residual;
 	float		x_tol_N;
 	float		x_tol_Z;
 	float		x_gain_P;
 	float		x_gain_N;
 
-	float		im_lu_F1;
-	int		im_revol_1;
-	int		im_revol_total;
+	int		im_total_revol;
+	int		im_base_revol;
 	float		im_distance;
 	float		im_consumed_Wh;
 	float		im_consumed_Ah;
@@ -463,14 +463,16 @@ void pm_default(pmc_t *pm);
 void pm_build(pmc_t *pm);
 
 void pm_tune_MPPE(pmc_t *pm);
+void pm_tune_forced(pmc_t *pm);
 void pm_tune_loop_current(pmc_t *pm);
 void pm_tune_loop_speed(pmc_t *pm);
+
+void pm_hfi_DFT(pmc_t *pm, float la[5]);
 
 void pm_voltage(pmc_t *pm, float uX, float uY);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);
-void pm_DFT_LDQ(const float DFT[8], float WF, float LDQ[5]);
 
 const char *pm_strerror(int n);
 

@@ -5,9 +5,9 @@ deal with PMC.
 
 ## Error condition
 
-If something goes wrong PMC stops and gives the error in **pm.fail_reason**.
+If something goes wrong PMC stops and gives the error in **pm.fsm_errno**.
 
-	# reg pm.fail_reason
+	# reg pm.fsm_errno
 
 It may return the following values:
 

@@ -64,7 +64,7 @@ enum {
 	/* Flash ACKs.
 	 * */
 	IFCAN_ACK_FLASH_UP_TO_DATE,
-	IFCAN_ACK_FLASH_FAILURE,
+	IFCAN_ACK_FLASH_REJECT,
 	IFCAN_ACK_FLASH_WAIT_FOR_ERASE,
 	IFCAN_ACK_FLASH_DATA_ACCEPT,
 	IFCAN_ACK_FLASH_DATA_PAUSE,
@@ -124,7 +124,7 @@ typedef struct {
 }
 ifcan_local_t;
 
-ifcan_t				can;
+ifcan_t				net;
 static ifcan_local_t		local;
 
 static void
@@ -138,7 +138,10 @@ IFCAN_pipe_INCOMING(ifcan_pipe_t *pp, const CAN_msg_t *msg)
 
 			if (msg->len == 4) {
 
-				pp->reg_DATA = * (float *) &msg->payload[0];
+				lerp = * (float *) &msg->payload[0];
+
+				pp->reg_DATA = (pp->range[1] == 0.f) ? lerp
+					: pp->range[1] * lerp + pp->range[0];
 			}
 			break;
 
@@ -147,16 +150,6 @@ IFCAN_pipe_INCOMING(ifcan_pipe_t *pp, const CAN_msg_t *msg)
 			if (msg->len == 2) {
 
 				lerp = (float) * (u16_t *) &msg->payload[0] * (1.f / 65535.f);
-
-				pp->reg_DATA = pp->range[0] + lerp * (pp->range[1] - pp->range[0]);
-			}
-			break;
-
-		case IFCAN_PAYLOAD_INT_32:
-
-			if (msg->len == 4) {
-
-				lerp = (float) * (u32_t *) &msg->payload[0] * (1.f / 4294967295.f);
 
 				pp->reg_DATA = pp->range[0] + lerp * (pp->range[1] - pp->range[0]);
 			}
@@ -189,7 +182,11 @@ IFCAN_pipe_OUTGOING(ifcan_pipe_t *pp)
 		case IFCAN_PAYLOAD_FLOAT:
 
 			msg.len = 4;
-			* (float *) &msg.payload[0] = pp->reg_DATA;
+
+			lerp = (pp->range[1] == 0.f) ? pp->reg_DATA
+				: pp->range[1] * pp->reg_DATA + pp->range[0];
+
+			* (float *) &msg.payload[0] = lerp;
 			break;
 
 		case IFCAN_PAYLOAD_INT_16:
@@ -200,16 +197,6 @@ IFCAN_pipe_OUTGOING(ifcan_pipe_t *pp)
 			lerp = (lerp < 0.f) ? 0.f : (lerp > 1.f) ? 1.f : lerp;
 
 			* (u16_t *) &msg.payload[0] = (u16_t) (lerp * 65535.f);
-			break;
-
-		case IFCAN_PAYLOAD_INT_32:
-
-			msg.len = 4;
-
-			lerp = (pp->reg_DATA - pp->range[0]) / (pp->range[1] - pp->range[0]);
-			lerp = (lerp < 0.f) ? 0.f : (lerp > 1.f) ? 1.f : lerp;
-
-			* (u32_t *) &msg.payload[0] = (u32_t) (lerp * 4294967295.f);
 			break;
 
 		default: break;
@@ -229,7 +216,7 @@ IFCAN_pipes_message_IN(const CAN_msg_t *msg)
 
 	for (N = 0; N < IFCAN_PIPES_MAX; ++N) {
 
-		pp = &can.pipe[N];
+		pp = &net.pipe[N];
 
 		if (pp->MODE == IFCAN_PIPE_INCOMING
 				&& pp->ID == msg->ID) {
@@ -261,7 +248,7 @@ void IFCAN_pipes_REGULAR()
 
 	for (N = 0; N < IFCAN_PIPES_MAX; ++N) {
 
-		pp = &can.pipe[N];
+		pp = &net.pipe[N];
 
 		if (pp->MODE == IFCAN_PIPE_INCOMING
 				&& pp->STARTUP == PM_ENABLED
@@ -269,7 +256,7 @@ void IFCAN_pipes_REGULAR()
 
 			pp->tim_N++;
 
-			if (pp->tim_N >= can.startup_LOST) {
+			if (pp->tim_N >= net.startup_LOST) {
 
 				pp->tim_N = 0;
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -313,7 +300,7 @@ void CAN_IRQ()
 	}
 
 	if (		hal.CAN_msg.ID >= IFCAN_ID_NODE_BASE
-			|| can.log_MODE == IFCAN_LOG_PROMISCUOUS) {
+			|| net.log_MODE == IFCAN_LOG_PROMISCUOUS) {
 
 		xQueueSendToBackFromISR(local.queue_IN, &hal.CAN_msg, &xWoken);
 	}
@@ -456,7 +443,7 @@ local_node_is_valid_remote(int node_ID)
 		}
 	}
 
-	rc = (node_ID == can.node_ID) ? 0 : rc;
+	rc = (node_ID == net.node_ID) ? 0 : rc;
 
 	return rc;
 }
@@ -469,7 +456,7 @@ local_node_assign_ID()
 	for (node_ID = 1; node_ID <= IFCAN_NODES_MAX; ++node_ID) {
 
 		if (local_node_is_valid_remote(node_ID) == 0
-				&& node_ID != can.node_ID) {
+				&& node_ID != net.node_ID) {
 
 			found_ID = node_ID;
 			break;
@@ -490,7 +477,7 @@ local_node_random_ID()
 	for (node_ID = 1; node_ID <= IFCAN_NODES_MAX; ++node_ID) {
 
 		if (local_node_is_valid_remote(node_ID) == 0
-				&& node_ID != can.node_ID) {
+				&& node_ID != net.node_ID) {
 
 			list_ID[N++] = node_ID;
 		}
@@ -572,7 +559,7 @@ IFCAN_send_msg(CAN_msg_t *msg)
 
 		if (rc == CAN_TX_OK) {
 
-			if (can.log_MODE != IFCAN_LOG_DISABLED) {
+			if (net.log_MODE != IFCAN_LOG_DISABLED) {
 
 				IFCAN_log_msg(msg, "TX");
 			}
@@ -606,11 +593,11 @@ void task_IFCAN_NET(void *pData)
 
 			if (node_ACK == IFCAN_ACK_NETWORK_REPLY) {
 
-				if (can.node_ID != 0) {
+				if (net.node_ID != 0) {
 
 					/* Case of assigned node ID.
 					 * */
-					node_ID = can.node_ID;
+					node_ID = net.node_ID;
 				}
 				else {
 					/* Wait for assigned nodes have replied.
@@ -634,7 +621,7 @@ void task_IFCAN_NET(void *pData)
 
 				* (u32_t *) &msg.payload[0] = local.UID;
 
-				msg.payload[4] = can.node_ID;
+				msg.payload[4] = net.node_ID;
 				msg.payload[5] = node_ACK;
 
 				IFCAN_send_msg(&msg);
@@ -656,10 +643,10 @@ IFCAN_node_ACK(int node_ACK)
 		xQueueSendToBack(local.queue_NET, &node_ACK, (TickType_t) 0);
 	}
 	else {
-		msg.ID = IFCAN_ID(can.node_ID, IFCAN_NODE_ACK);
+		msg.ID = IFCAN_ID(net.node_ID, IFCAN_NODE_ACK);
 		msg.len = 2;
 
-		msg.payload[0] = can.node_ID;
+		msg.payload[0] = net.node_ID;
 		msg.payload[1] = node_ACK;
 
 		IFCAN_send_msg(&msg);
@@ -747,7 +734,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 			/* Accept new node ID.
 			 * */
-			can.node_ID = msg->payload[4];
+			net.node_ID = msg->payload[4];
 
 			IFCAN_filter_ID();
 		}
@@ -761,18 +748,19 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 	 * */
 	else if (msg->ID == IFCAN_ID_FLASH_INIT
 			&& msg->len == 8
-			&& can.node_ID != 0) {
+			&& net.node_ID != 0) {
 
 		local.flash_INIT_sizeof = * (u32_t *) &msg->payload[0];
 		local.flash_INIT_crc32 = * (u32_t *) &msg->payload[4];
 
-		if (IFCAN_flash_is_up_to_date() != 0) {
+		if (		pm.lu_mode != PM_LU_DISABLED
+				|| net.flash_MODE == PM_DISABLED) {
+
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
+		}
+		else if (IFCAN_flash_is_up_to_date() != 0) {
 
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_UP_TO_DATE);
-		}
-		else if (pm.lu_mode != PM_LU_DISABLED) {
-
-			IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
 		}
 		else {
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_WAIT_FOR_ERASE);
@@ -786,13 +774,13 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
 			}
 			else {
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
+				IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 			}
 		}
 	}
 	else if (msg->ID == IFCAN_ID_FLASH_DATA
 			&& msg->len == 8
-			&& can.node_ID != 0
+			&& net.node_ID != 0
 			&& (u32_t) local.flash_long >= FLASH_map[0]) {
 
 		FLASH_prog(local.flash_long, &msg->payload[0], msg->len);
@@ -818,7 +806,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 		if (pm.lu_mode != PM_LU_DISABLED) {
 
-			IFCAN_node_ACK(IFCAN_ACK_FLASH_FAILURE);
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 
 			local.flash_long = NULL;
 		}
@@ -847,7 +835,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 	/* Node functions.
 	 * */
-	else if (msg->ID == IFCAN_ID(can.node_ID, IFCAN_NODE_REQ)) {
+	else if (msg->ID == IFCAN_ID(net.node_ID, IFCAN_NODE_REQ)) {
 
 		if (msg->payload[0] == IFCAN_REQ_FLOW_TX_PAUSE
 				&& msg->len == 1) {
@@ -870,7 +858,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			local_node_update_ACK(msg->payload[0], msg->payload[1]);
 		}
 	}
-	else if (msg->ID == IFCAN_ID(can.node_ID, IFCAN_NODE_RX)) {
+	else if (msg->ID == IFCAN_ID(net.node_ID, IFCAN_NODE_RX)) {
 
 		for (N = 0; N < msg->len; ++N) {
 
@@ -904,7 +892,7 @@ void task_IFCAN_IN(void *pData)
 	do {
 		while (xQueueReceive(local.queue_IN, &msg, portMAX_DELAY) == pdTRUE) {
 
-			if (can.log_MODE != IFCAN_LOG_DISABLED) {
+			if (net.log_MODE != IFCAN_LOG_DISABLED) {
 
 				IFCAN_log_msg(&msg, "IN");
 			}
@@ -935,7 +923,7 @@ void task_IFCAN_TX(void *pData)
 
 		if (msg.len > 0) {
 
-			msg.ID = IFCAN_ID(can.node_ID, IFCAN_NODE_TX);
+			msg.ID = IFCAN_ID(net.node_ID, IFCAN_NODE_TX);
 
 			IFCAN_send_msg(&msg);
 
@@ -1009,7 +997,7 @@ void IFCAN_filter_ID()
 {
 	int			N;
 
-	if (can.log_MODE == IFCAN_LOG_PROMISCUOUS) {
+	if (net.log_MODE == IFCAN_LOG_PROMISCUOUS) {
 
 		CAN_filter_ID(0, 0, 1, 0);
 	}
@@ -1017,11 +1005,11 @@ void IFCAN_filter_ID()
 		CAN_filter_ID(0, 0, IFCAN_FILTER_NETWORK, IFCAN_FILTER_NETWORK);
 	}
 
-	if (can.node_ID != 0) {
+	if (net.node_ID != 0) {
 
-		CAN_filter_ID(1, 0, IFCAN_ID(can.node_ID, IFCAN_NODE_REQ), IFCAN_FILTER_MATCH);
+		CAN_filter_ID(1, 0, IFCAN_ID(net.node_ID, IFCAN_NODE_REQ), IFCAN_FILTER_MATCH);
 		CAN_filter_ID(2, 0, IFCAN_ID(0, IFCAN_NODE_ACK), IFCAN_ID(0, 31));
-		CAN_filter_ID(3, 0, IFCAN_ID(can.node_ID, IFCAN_NODE_RX), IFCAN_FILTER_MATCH);
+		CAN_filter_ID(3, 0, IFCAN_ID(net.node_ID, IFCAN_NODE_RX), IFCAN_FILTER_MATCH);
 		CAN_filter_ID(4, 0, 0, 0);
 	}
 	else {
@@ -1033,13 +1021,13 @@ void IFCAN_filter_ID()
 
 	for (N = 0; N < IFCAN_PIPES_MAX; ++N) {
 
-		if (can.pipe[N].MODE == IFCAN_PIPE_INCOMING) {
+		if (net.pipe[N].MODE == IFCAN_PIPE_INCOMING) {
 
-			CAN_filter_ID(20 + N, 1, can.pipe[N].ID, IFCAN_FILTER_MATCH);
+			CAN_filter_ID(20 + N, 1, net.pipe[N].ID, IFCAN_FILTER_MATCH);
 		}
-		else if (can.pipe[N].MODE == IFCAN_PIPE_OUTGOING_TRIGGERED) {
+		else if (net.pipe[N].MODE == IFCAN_PIPE_OUTGOING_TRIGGERED) {
 
-			CAN_filter_ID(20 + N, 1, can.pipe[N].trigger_ID, IFCAN_FILTER_MATCH);
+			CAN_filter_ID(20 + N, 1, net.pipe[N].trigger_ID, IFCAN_FILTER_MATCH);
 		}
 		else {
 			CAN_filter_ID(20 + N, 1, 0, 0);
@@ -1047,7 +1035,7 @@ void IFCAN_filter_ID()
 	}
 }
 
-SH_DEF(can_net_survey)
+SH_DEF(net_survey)
 {
 	CAN_msg_t		msg;
 	int			N;
@@ -1090,18 +1078,18 @@ SH_DEF(can_net_survey)
 	}
 }
 
-SH_DEF(can_net_assign)
+SH_DEF(net_assign)
 {
 	CAN_msg_t		msg;
 	int			N;
 
-	if (can.node_ID == 0) {
+	if (net.node_ID == 0) {
 
-		can.node_ID = local_node_assign_ID();
+		net.node_ID = local_node_assign_ID();
 
 		IFCAN_filter_ID();
 
-		printf("local assigned to %i" EOL, can.node_ID);
+		printf("local assigned to %i" EOL, net.node_ID);
 	}
 
 	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
@@ -1128,7 +1116,7 @@ SH_DEF(can_net_assign)
 	}
 }
 
-SH_DEF(can_net_revoke)
+SH_DEF(net_revoke)
 {
 	CAN_msg_t		msg;
 	int			N, node_ID;
@@ -1193,7 +1181,7 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 			if (N >= 5) {
 
 				local_node_replace_ACK(IFCAN_ACK_FLASH_DATA_PAUSE,
-						IFCAN_ACK_FLASH_FAILURE);
+						IFCAN_ACK_FLASH_REJECT);
 				break;
 			}
 
@@ -1246,7 +1234,7 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 	puts(EOL);
 }
 
-SH_DEF(can_flash_update)
+SH_DEF(net_flash_update)
 {
 	CAN_msg_t		msg;
 	u32_t			*flash, flash_sizeof, flash_crc32;
@@ -1310,11 +1298,11 @@ SH_DEF(can_flash_update)
 			printf("%i nodes are up to date" EOL, nodes_N);
 		}
 
-		nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_FAILURE);
+		nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_REJECT);
 
 		if (nodes_N != 0) {
 
-			printf("%i nodes are failed" EOL, nodes_N);
+			printf("%i nodes are reject" EOL, nodes_N);
 		}
 
 		if (local_nodes_by_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT) != 0) {
@@ -1367,7 +1355,7 @@ void IFCAN_remote_putc(int c)
 	xQueueSendToBack(local.queue_EX, &xC, portMAX_DELAY);
 }
 
-SH_DEF(can_node_remote)
+SH_DEF(net_node_remote)
 {
 	TaskHandle_t		xHandle;
 	int			node_ID;

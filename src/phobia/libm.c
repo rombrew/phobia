@@ -221,67 +221,30 @@ float m_expf(float x)
 	return m_exp2f(x * (1.f / M_LOG2_F));
 }
 
-void m_la_EIG(const float A[3], float EV[4])
+void m_la_eig(const float b[3], float la[4])
 {
-	float		B, N, X;
+	float		u, s, t;
 
-	/* Get the eigenvalues EV of quadratic form A.
+	/* Get the eigenvalues \la of quadratic form \b.
 	 *
-	 * R * [A[0] A[1]] * R' = [EV[2] 0    ]
-	 *     [A[1] A[2]]        [0     EV[3]]
+	 * R * [b(0) b(1)] * R' = [la(2) 0    ]
+	 *     [b(1) b(2)]        [0     la(3)]
 	 *
-	 * R = [EV[0] -EV[1]]
-	 *     [EV[1]  EV[0]].
+	 * R = [la(0) -la(1)]
+	 *     [la(1)  la(0)].
 	 * */
 
-	if (m_fabsf(A[1]) > 0.f) {
+	u = (b[2] - b[0]) * .5f;
+	s = m_sqrtf(u * u + b[1] * b[1]);
+	u = (1.f + u / s) * .5f;
 
-		B = (A[2] - A[0]) * .5f;
-		N = m_sqrtf(B * B + A[1] * A[1]);
-		X = (1.f + B / N) * .5f;
+	la[0] = m_sqrtf(u);
+	la[1] = b[1] / (2.f * la[0] * s);
 
-		EV[0] = m_sqrtf(X);
-		EV[1] = A[1] / (2.f * EV[0] * N);
+	s = la[1] * la[1];
+	t = 2.f * la[0] * la[1];
 
-		B = EV[0] * EV[0];
-		N = EV[1] * EV[1];
-		X = 2.f * EV[0] * EV[1];
-
-		EV[2] = A[0] * B + A[2] * N + A[1] * X;
-		EV[3] = A[2] * B + A[0] * N - A[1] * X;
-	}
-	else {
-		EV[0] = 1.f;
-		EV[1] = 0.f;
-		EV[2] = A[0];
-		EV[3] = A[2];
-	}
-}
-
-void m_la_LSQ_3(const float LSQ[9], float X[3])
-{
-	float		LD[6], B[3];
-
-	/* The function solves the equation A*X = B by LDL' decomposition.
-	 *
-	 *     [LSQ[0] LSQ[1] LSQ[3]]      [LSQ[6]]
-	 * A = [LSQ[1] LSQ[2] LSQ[4]]  B = [LSQ[7]].
-	 *     [LSQ[3] LSQ[4] LSQ[5]]      [LSQ[8]]
-	 * */
-
-	LD[0] = LSQ[0];
-	LD[1] = LSQ[1] / LD[0];
-	LD[3] = LSQ[3] / LD[0];
-	LD[2] = LSQ[2] - LD[0] * LD[1] * LD[1];
-	LD[4] = (LSQ[4] - LD[0] * LD[3] * LD[1]) / LD[2];
-	LD[5] = LSQ[5] - (LD[0] * LD[3] * LD[3] + LD[2] * LD[4] * LD[4]);
-
-	B[0] = LSQ[6];
-	B[1] = LSQ[7] - LD[1] * B[0];
-	B[2] = LSQ[8] - (LD[3] * B[0] + LD[4] * B[1]);
-
-	X[2] = B[2] / LD[5];
-	X[1] = B[1] / LD[2] - LD[4] * X[2];
-	X[0] = B[0] / LD[0] - (LD[1] * X[1] + LD[3] * X[2]);
+	la[2] = b[0] * u + b[2] * s + b[1] * t;
+	la[3] = b[2] * u + b[0] * s - b[1] * t;
 }
 

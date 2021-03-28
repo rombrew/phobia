@@ -52,7 +52,7 @@ label 0 "(V)"
 label 1 "(V)"
 figure 10 11 "pm.vsi_X / pm.vsi_Y"
 
-page "--------------------------------------------------"
+page "------------------------------"
 
 include "/tmp/pm-auto.gp"
 

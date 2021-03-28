@@ -56,6 +56,7 @@ OBJS    = freertos/heap_4.o \
 	  hal/usart.o \
 	  hal/wd.o \
 	  phobia/libm.o \
+	  phobia/lse.o \
 	  phobia/pm.o \
 	  phobia/pm_fsm.o \
 	  flash.o \
@@ -71,7 +72,6 @@ OBJS    = freertos/heap_4.o \
 	  tlm.o
 
 OBJS	+= apps/hx711.o \
-	   apps/mice.o \
 	   apps/pushb.o
 
 LIST	= $(addprefix $(BUILD)/, $(OBJS))

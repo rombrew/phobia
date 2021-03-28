@@ -17,8 +17,7 @@ int pm_wait_for_SETTLE()
 		vTaskDelay((TickType_t) 50);
 		xTick += (TickType_t) 50;
 
-		if (pm.fail_reason != PM_ERROR_TIMEOUT
-				&& pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
 		if (m_fabsf(pm.x_residual) < (pm.x_tol_Z * 3.f))
@@ -26,7 +25,7 @@ int pm_wait_for_SETTLE()
 
 		if (xTick > (TickType_t) 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 	}
@@ -34,7 +33,7 @@ int pm_wait_for_SETTLE()
 
 	vTaskDelay((TickType_t) 100);
 
-	return pm.fail_reason;
+	return pm.fsm_errno;
 }
 
 SH_DEF(servo_probe_const_J)
@@ -42,7 +41,7 @@ SH_DEF(servo_probe_const_J)
 	if (		pm.lu_mode == PM_LU_DISABLED
 			|| pm.lu_mode == PM_LU_DETACHED
 			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_DRIVE == PM_DRIVE_SERVO
+			|| pm.config_DRIVE != PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);
@@ -57,15 +56,15 @@ SH_DEF(servo_probe_const_J)
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
-		vTaskDelay((TickType_t) 50);
+		vTaskDelay((TickType_t) 100);
 
 		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[1]);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
 
-		vTaskDelay((TickType_t) 200);
+		vTaskDelay((TickType_t) 300);
 
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
@@ -74,10 +73,10 @@ SH_DEF(servo_probe_const_J)
 	}
 	while (0);
 
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
-SH_DEF(servo_FT_uniform)
+SH_DEF(servo_test_uniform)
 {
 	TickType_t		xWake, xTim0;
 	float			xSP, wSP, tDT;
@@ -86,7 +85,7 @@ SH_DEF(servo_FT_uniform)
 	if (		pm.lu_mode == PM_LU_DISABLED
 			|| pm.lu_mode == PM_LU_DETACHED
 			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_DRIVE == PM_DRIVE_SERVO
+			|| pm.config_DRIVE != PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);
@@ -133,17 +132,17 @@ SH_DEF(servo_FT_uniform)
 
 		if ((xWake - xTim0) > (TickType_t) 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 	}
 	while (1);
 
 	reg_SET_F(ID_PM_X_SETPOINT_SPEED_MMPS, 0.f);
 
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 

@@ -3,9 +3,10 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <time.h>
 
 #include "blm.h"
-#include "lib.h"
+#include "lfg.h"
 #include "pm.h"
 #include "tsfunc.h"
 
@@ -35,7 +36,8 @@ sim_Tlm(float *pTlm)
 	const double	kRPM = 30. / M_PI / m.Zp;
 	const double	kDEG = 180. / M_PI;
 
-#define fmt_GP(x,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) { fmt_page_GP(gp_N, #x, l); } gp_N++; }
+#define sym_GP(x,s,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) { fmt_page_GP(gp_N, s, l); } gp_N++; }
+#define fmt_GP(x,l)	sym_GP(x, #x, l)
 
 	/* Model.
 	 * */
@@ -73,7 +75,7 @@ sim_Tlm(float *pTlm)
 
 		/* Throw an error if position estimate error is too large.
 		 * */
-		pm.fail_reason = PM_ERROR_LOSS_OF_SYNC;
+		pm.fsm_errno = PM_ERROR_LOSS_OF_SYNC;
 	}
 
 	pTlm[14] = E * kDEG;
@@ -118,31 +120,31 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.lu_mode, NULL);
 	fmt_GP(pm.lu_lpf_torque, "A");
 
-	fmt_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "°");
+	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
 	fmt_GP(pm.forced_wS * kRPM, "rpm");
 	fmt_GP(pm.forced_TIM, NULL);
 
 	fmt_GP(pm.detach_X, "V");
 	fmt_GP(pm.detach_Y, "V");
-	fmt_GP(atan2(pm.detach_V[1], pm.detach_V[0]) * kDEG, "°");
+	sym_GP(atan2(pm.detach_V[1], pm.detach_V[0]) * kDEG, "pm.detach_V", "°");
 	fmt_GP(pm.detach_TIM, NULL);
 	fmt_GP(pm.detach_SKIP, NULL);
 
 	fmt_GP(pm.flux_X, "Wb");
 	fmt_GP(pm.flux_Y, "Wb");
 	fmt_GP(pm.flux_E, "Wb");
-	fmt_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "°");
+	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
 	fmt_GP(pm.flux_wS * kRPM, "rpm");
 	fmt_GP(pm.flux_mode, NULL);
 	fmt_GP(pm.flux_lpf_wS * kRPM, "rpm");
 
-	fmt_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "°");
+	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
 	fmt_GP(pm.hfi_wS * kRPM, "rpm");
 
-	fmt_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "°");
+	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmt_GP(pm.hall_wS * kRPM, "rpm");
 
-	fmt_GP(atan2(pm.abi_F[1], pm.abi_F[0]) * kDEG, "°");
+	sym_GP(atan2(pm.abi_F[1], pm.abi_F[0]) * kDEG, "pm.abi_F", "°");
 	fmt_GP(pm.abi_wS * kRPM, "rpm");
 
 	fmt_GP(pm.watt_lpf_D, "V");
@@ -159,7 +161,7 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.s_track * kRPM, "rpm");
 	fmt_GP(pm.s_iSP, "A");
 
-	fmt_GP(pm.im_revol_1, NULL);
+	fmt_GP(pm.im_total_revol, NULL);
 
 	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
 }
@@ -229,9 +231,9 @@ void sim_Run(double dT)
 			fwrite(Tlm, sizeof(float), szTlm, fdTlm);
 		}
 
-		if (pm.fail_reason != PM_OK) {
+		if (pm.fsm_errno != PM_OK) {
 
-			printf("** pm.fail_reason: %s\n", pm_strerror(pm.fail_reason));
+			fprintf(stderr, "pm.fsm_errno: %s\n", pm_strerror(pm.fsm_errno));
 
 			fclose(fdTlm);
 			exit(1);
@@ -295,7 +297,7 @@ void sim_START()
 
 int main(int argc, char *argv[])
 {
-	lib_start();
+	lfg_start((int) time(NULL));
 
 	if (argc == 2 && strcmp(argv[1], "test") == 0) {
 
@@ -306,7 +308,6 @@ int main(int argc, char *argv[])
 	}
 
 	fclose(fdTlm);
-	lib_stop();
 
 	return 0;
 }

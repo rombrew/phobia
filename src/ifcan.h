@@ -1,8 +1,6 @@
 #ifndef _H_IFCAN_
 #define _H_IFCAN_
 
-#include "libc.h"
-
 enum {
 	IFCAN_LOG_DISABLED		= 0,
 	IFCAN_LOG_FILTERED,
@@ -19,7 +17,6 @@ enum {
 enum {
 	IFCAN_PAYLOAD_FLOAT		= 0,
 	IFCAN_PAYLOAD_INT_16,
-	IFCAN_PAYLOAD_INT_32,
 	IFCAN_PAYLOAD_PACKED_INT_16_0,
 	IFCAN_PAYLOAD_PACKED_INT_16_1,
 	IFCAN_PAYLOAD_PACKED_INT_16_2,
@@ -53,6 +50,7 @@ typedef struct {
 
 	int			node_ID;
 	int			log_MODE;
+	int			flash_MODE;
 
 	int			startup_LOST;
 
@@ -60,7 +58,7 @@ typedef struct {
 }
 ifcan_t;
 
-extern ifcan_t			can;
+extern ifcan_t			net;
 
 void IFCAN_pipes_REGULAR();
 

@@ -75,7 +75,6 @@ typedef struct {
 	 * */
 	float			servo_SPAN_mm[2];
 	float			servo_UNIFORM_mmps;
-	int			servo_mice_role;
 
 	/* HX711 (load cell amplifier).
 	 * */

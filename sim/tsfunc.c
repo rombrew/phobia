@@ -5,14 +5,14 @@
 #include <math.h>
 
 #include "blm.h"
-#include "lib.h"
+#include "lfg.h"
 #include "pm.h"
 #include "tsfunc.h"
 
 #define TS_TICK_RATE		1000
 #define TS_REF_TOLERANCE	0.2
 
-#define TS_xprintf(s)		fprintf(stderr, "** assert(%s) in %s:%i\n", s, __FILE__, __LINE__)
+#define TS_xprintf(s)		fprintf(stderr, "failed %s in %s:%i\n", s, __FILE__, __LINE__)
 #define TS_assert(x)		if ((x) == 0) { TS_xprintf(#x); exit(1); }
 #define TS_assert_ref(x,ref)	TS_assert(fabs((x) - (ref)) / (ref) < TS_REF_TOLERANCE)
 
@@ -29,25 +29,25 @@ int ts_wait_for_IDLE()
 
 		if (xTick > 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 	}
 	while (1);
 
-	return pm.fail_reason;
+	return pm.fsm_errno;
 }
 
 int ts_wait_for_SPINUP()
 {
-	const float		wS_tol = 5.f;
+	const float		wS_tol = 10.f;
 	int			xTIME = 0;
 
 	do {
 		sim_Run(50 / (double) TS_TICK_RATE);
 		xTIME += 50;
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
 		/* Check the target speed has reached.
@@ -67,7 +67,7 @@ int ts_wait_for_SPINUP()
 
 		if (xTIME > 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 	}
@@ -75,22 +75,22 @@ int ts_wait_for_SPINUP()
 
 	sim_Run(100 / (double) TS_TICK_RATE);
 
-	return pm.fail_reason;
+	return pm.fsm_errno;
 }
 
 int ts_wait_for_MOTION(float s_ref)
 {
 	int			xTIME = 0;
-	int			revol = pm.im_revol_total;
+	int			revol = pm.im_total_revol;
 
 	do {
 		sim_Run(50 / (double) TS_TICK_RATE);
 		xTIME += 50;
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (pm.im_revol_total != revol) {
+		if (pm.im_total_revol != revol) {
 
 			if (m_fabsf(pm.flux_lpf_wS) > s_ref)
 				break;
@@ -98,13 +98,13 @@ int ts_wait_for_MOTION(float s_ref)
 
 		if (xTIME > 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 	}
 	while (1);
 
-	return pm.fail_reason;
+	return pm.fsm_errno;
 }
 
 void ts_reg_SET_SETPOINT_SPEED()
@@ -115,7 +115,7 @@ void ts_reg_SET_SETPOINT_SPEED()
 
 	s_pc = pm.s_setpoint_speed * pm.const_E / (pm.k_EMAX / 100.f * pm.const_fb_U);
 
-	/* Check if speed percentage is higher than maximal allowed.
+	/* We check if speed percentage is higher than maximal allowed.
 	 * */
 	if (s_pc > pm.probe_speed_maximal_pc) {
 
@@ -140,7 +140,7 @@ void ts_self_adjust()
 
 		printf("Z [AB] %.3f %.3f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
@@ -165,11 +165,14 @@ void ts_self_adjust()
 			printf("FIR [C] %.4E %.4E %.4E [tau] %.2f (us)\n", pm.tvm_FIR_C[0],
 					pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C * 1000000.);
 
+			printf("RMSu %.4f %.4f %.4f (V)\n", pm.self_RMSu[0],
+					pm.self_RMSu[1], pm.self_RMSu[2]);
+
 			TS_assert_ref(tau_A, m.tau_U);
 			TS_assert_ref(tau_B, m.tau_U);
 			TS_assert_ref(tau_C, m.tau_U);
 
-			if (pm.fail_reason != PM_OK)
+			if (pm.fsm_errno != PM_OK)
 				break;
 		}
 
@@ -247,6 +250,8 @@ void ts_probe_spinup()
 			if (ts_wait_for_SPINUP() != PM_OK)
 				break;
 
+			printf("lpf_wS %.2f (rad/s)\n", pm.flux_lpf_wS);
+
 			pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
 			if (ts_wait_for_IDLE() != PM_OK)
@@ -255,12 +260,6 @@ void ts_probe_spinup()
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_E * pm.const_Zp);
 
 			printf("Kv %.2f (rpm/v)\n", Kv);
-
-			if (pm.flux_mode != PM_FLUX_HIGH) {
-
-				pm.fail_reason = PM_ERROR_NO_FLUX_CAUGHT;
-				break;
-			}
 		}
 
 		ts_reg_SET_SETPOINT_SPEED();
@@ -268,9 +267,11 @@ void ts_probe_spinup()
 		if (ts_wait_for_SPINUP() != PM_OK)
 			break;
 
+		printf("lpf_wS %.2f (rad/s)\n", pm.flux_lpf_wS);
+
 		if (pm.flux_mode != PM_FLUX_HIGH) {
 
-			pm.fail_reason = PM_ERROR_NO_FLUX_CAUGHT;
+			pm.fsm_errno = PM_ERROR_NO_FLUX_CAUGHT;
 			break;
 		}
 
@@ -282,7 +283,6 @@ void ts_probe_spinup()
 		Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_E * pm.const_Zp);
 
 		printf("Kv %.2f (rpm/v)\n", Kv);
-		printf("lpf_wS %.2f (rpm)\n", pm.flux_lpf_wS * 30. / M_PI / m.Zp);
 
 		TS_assert_ref(pm.const_E, m.E);
 
@@ -319,11 +319,14 @@ void ts_probe_spinup()
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
+		pm_tune_forced(&pm);
 		pm_tune_loop_speed(&pm);
+
+		printf("maximal %.2f (rad/s)\n", pm.forced_maximal);
+		printf("accel %.1f (rad/s2)\n", pm.forced_accel);
 
 		printf("lu_gain_TF %.2E \n", pm.lu_gain_TF);
 		printf("s_gain_P %.2E \n", pm.s_gain_P);
-
 	}
 	while (0);
 }

@@ -68,7 +68,7 @@ Read the following documentation for setting up.
 [Self Test](SelfTest.md)  
 [Trouble Shooting](TroubleShooting.md)  
 
-# Developoer documentation
+## Developer documentation
 
 [High Frequency Injection](HFI.md)  
 [Internals](Internals.md)  

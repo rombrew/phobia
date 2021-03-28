@@ -7,7 +7,7 @@ electrotransport.
 There are several typical situations where PMC can be used.
 
 * Light electric transport as scooter or bicycle. The use of current control is
-  preferred. Start with discrete hall sensors or use freewheling. Control knobs
+  preferred. Start with discrete Hall sensors or use freewheling. Control knobs
   are connected to analog inputs.
 * Aerial propeller drive for RC drones. The use of speed control is preferred.
   Start with forced control or HFI. Control through CAN network or RC servo
@@ -24,19 +24,21 @@ control.
 
 * Sensorless vector control of PMSM based on two inline current measurements.
 * Fast and robust FLUX observer with gain scheduling.
-* Two phase machine support (e.g. bipolar stepper) (**pm.config_NOP = 1**).
+* Two phase machine support (e.g. bipolar stepper).
 * Self adjust of onboard measurements along symmetrical channels.
-* Flux weakening control (**pm.config_WEAK**).
+* Flux weakening control.
 * Advanced command line interface (CLI) with autocompletion and history.
-* Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
 * Hardware abstraction layer (HAL) over STM32F4xx.
 * Flash storage for all of configurable parameters.
 
+* Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
+* Least Squares estimate using library [libLSE](https://sourceforge.net/projects/liblse/).
+
 * Advanced PWM scheme provides:
 	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
-	* Hopping to get accurate ADC measurements near PWM-edges (**pm.config_IFB**).
+	* Hopping to get accurate ADC measurements near PWM-edges.
 	* Prevents bootstrap circuit undervoltage condition.
-	* Optional reduced ripple mode (clamp to middle) for precise control (**pm.config_VSI_PRECISE**).
+	* Optional reduced ripple mode (clamp to middle) for precise control.
 
 * Terminal voltage measurements (TVM):
 	* In operation it is used to reduce the effect of Dead-Time distortion.
@@ -61,15 +63,15 @@ control.
 
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
-	  force rotor turn (**pm.config_FORCED = 1**).
-	* Freewheling (**pm.config_FORCED = 0**).
-	* High frequency injection (HFI) based on magnetic saliency (**pm.config_HFI**).
-	* Discrete Hall sensors or ABI incremental encoder (**pm.config_SENSOR**).
+	  force rotor turn.
+	* Freewheling.
+	* High frequency injection (HFI) based on magnetic saliency.
+	* Discrete Hall sensors or ABI incremental encoder.
 
 * Control loops:
-	* Current control is always enabled (**pm.config_DRIVE = 0**).
-	* Speed control loop (**pm.config_DRIVE = 1**).
-	* Servo operation (**pm.config_DRIVE = 2**).
+	* Current control is always enabled.
+	* Speed control loop.
+	* Servo operation.
 	* Boost loop (battery charger) (**TODO**).
 
 * Adjustable limits:
@@ -77,7 +79,7 @@ control.
 	* Motor voltage applied from VSI.
 	* Battery current (power) consumption and regeneration.
 	* DC link overvoltage and undervoltage.
-	* Maximal speed and acceleration (**pm.config_LIMITED**).
+	* Maximal speed and acceleration.
 
 * Control inputs:
 	* CAN bus flexible configurable data pipes.
@@ -88,7 +90,7 @@ control.
 	* Custom embedded application can implement any control strategy.
 
 * Available information:
-	* Total distance traveled (**pm.config_INFO**).
+	* Total distance traveled.
 	* Battery energy (Wh) and charge (Ah) consumed (reverted).
 	* Fuel gauge percentage.
 
@@ -132,8 +134,7 @@ control.
 	* 5v to 3.3v linear (up to 400 mA).
 
 Look into [phobia-pcb](https://sourceforge.net/p/phobia/pcb/) repository for
-PCB design source files. You can also view photos of the assembled PCBs in
-[doc/imgs/](doc/imgs/).
+PCB design source files. Also view photos of the assembled PCBs in [doc/imgs/](doc/imgs/).
 
 ## Current Status
 
@@ -141,8 +142,7 @@ Now we can declare that PMC is ready to use in most applications. But there are
 still some unresolved issues. It may be difficult to configure the PMC for a
 specific motor.
 
-There are a few videos about PMC on
-[youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
+There are a few videos about PMC on [youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
 
 Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
@@ -150,7 +150,9 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
 * Make a detailed documentation.
 * Consider to add flux observer saliency tracking (for SRM).
+* Introduce MTPA control.
 * Add pulse output signal.
 * Make a drawing of the heatsink case for rev5a.
 * Design the new hardware for 120v battery voltage.
+* Introduce another HAL implementation (STM32F7xx).
 

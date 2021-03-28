@@ -28,7 +28,7 @@ SH_DEF(pm_self_test)
 		reg_format(&regfile[ID_PM_AD_IA_0]);
 		reg_format(&regfile[ID_PM_AD_IB_0]);
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
@@ -37,13 +37,13 @@ SH_DEF(pm_self_test)
 			pm_wait_for_IDLE();
 
 			reg_format(&regfile[ID_PM_SELF_BST]);
-			reg_format(&regfile[ID_PM_FAIL_REASON]);
+			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_IDLE();
 
 			reg_format(&regfile[ID_PM_SELF_BM]);
-			reg_format(&regfile[ID_PM_FAIL_REASON]);
+			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 		}
 
 		xDC = pm.dc_resolution - pm.ts_clearance;
@@ -76,7 +76,7 @@ SH_DEF(pm_self_test)
 	}
 	while (0);
 
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
 SH_DEF(pm_self_adjust)
@@ -96,7 +96,7 @@ SH_DEF(pm_self_adjust)
 		reg_format(&regfile[ID_PM_AD_IA_0]);
 		reg_format(&regfile[ID_PM_AD_IB_0]);
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
@@ -115,7 +115,9 @@ SH_DEF(pm_self_adjust)
 			reg_format(&regfile[ID_PM_TVM_FIR_B_TAU]);
 			reg_format(&regfile[ID_PM_TVM_FIR_C_TAU]);
 
-			if (pm.fail_reason != PM_OK)
+			reg_format(&regfile[ID_PM_SELF_RMSU]);
+
+			if (pm.fsm_errno != PM_OK)
 				break;
 		}
 
@@ -127,10 +129,10 @@ SH_DEF(pm_self_adjust)
 	}
 	while (0);
 
-	reg_format(&regfile[ID_PM_FAIL_REASON]);
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
-SH_DEF(pm_FT_current_ramp)
+SH_DEF(pm_test_current_ramp)
 {
 	TickType_t		xTS1;
 	float			iSP;
@@ -147,7 +149,7 @@ SH_DEF(pm_FT_current_ramp)
 
 	do {
 		iSP = reg_GET_F(ID_PM_I_SETPOINT_TORQUE);
-		vTaskDelay(xTS1);
+		vTaskDelay(1UL * xTS1);
 
 		reg_SET_F(ID_PM_I_SETPOINT_TORQUE, pm.i_maximal);
 		vTaskDelay(5UL * xTS1);
@@ -158,7 +160,7 @@ SH_DEF(pm_FT_current_ramp)
 	while (0);
 }
 
-SH_DEF(pm_FT_speed_ramp)
+SH_DEF(pm_test_speed_ramp)
 {
 	TickType_t		xTS1;
 	float			wSP;
@@ -175,9 +177,9 @@ SH_DEF(pm_FT_speed_ramp)
 
 	do {
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
-		vTaskDelay(xTS1);
+		vTaskDelay(1UL * xTS1);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 100.f);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 		vTaskDelay(5UL * xTS1);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
@@ -186,12 +188,12 @@ SH_DEF(pm_FT_speed_ramp)
 	while (0);
 }
 
-SH_DEF(pm_FT_thrust_curve)
+SH_DEF(pm_test_thrust_curve)
 {
 	/* TODO */
 }
 
-SH_DEF(pm_FT_tvm_ramp)
+SH_DEF(pm_test_TVM_ramp)
 {
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
@@ -203,7 +205,7 @@ SH_DEF(pm_FT_tvm_ramp)
 	}
 
 	if (		PM_CONFIG_TVM(&pm) == PM_DISABLED
-			|| pm.tvm_ENABLED == PM_DISABLED) {
+			|| pm.tvm_ALLOWED == PM_DISABLED) {
 
 		printf("Enable TVM before" EOL);
 		return;
@@ -228,7 +230,7 @@ SH_DEF(pm_FT_tvm_ramp)
 	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
-		/* Frequency 1000 Hz.
+		/* 1000 Hz.
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 1);
 
@@ -245,11 +247,11 @@ SH_DEF(pm_FT_tvm_ramp)
 
 		if ((xWake - xTim0) > (TickType_t) 10000) {
 
-			pm.fail_reason = PM_ERROR_TIMEOUT;
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
 
-		if (pm.fail_reason != PM_OK)
+		if (pm.fsm_errno != PM_OK)
 			break;
 	}
 	while (1);

@@ -2,7 +2,7 @@
 #include <math.h>
 
 #include "blm.h"
-#include "lib.h"
+#include "lfg.h"
 
 void blm_AB_DQ(double R, double A, double B, double *D, double *Q)
 {
@@ -107,7 +107,7 @@ void blm_Enable(blm_t *m)
 
 	/* Incremental Encoder.
 	 * */
-	m->EP_PPR = 2600;	/* Mechanical resolution */
+	m->EP_PPR = 600;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;		/* Reduction ratio */
 
 	/* External flags.
@@ -320,7 +320,7 @@ blm_ADC(double u)
 {
 	int		ADC;
 
-	u += lib_gauss() * 5E-4;
+	u += lfg_gauss() * 5E-4;
 
 	ADC = (int) (u * 4096);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
@@ -366,7 +366,7 @@ blm_sample_EP(blm_t *m)
 	INC = atan2(B, A) / (2. * M_PI * (double) m->Zp);
 
 	m->X[12] = m->X[3];
-	m->X[13] += INC * (double) m->EP_PPR / m->EP_Zq;
+	m->X[13] += 4. * INC * (double) m->EP_PPR / m->EP_Zq;
 
 	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 65536. :
 		(m->X[13] >= 65536.) ? m->X[13] - 65536. : m->X[13];

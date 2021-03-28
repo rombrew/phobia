@@ -153,7 +153,7 @@ void task_TEMP(void *pData)
 void task_ERROR(void *pData)
 {
 	do {
-		if (pm.fail_reason != PM_OK) {
+		if (pm.fsm_errno != PM_OK) {
 
 			GPIO_set_HIGH(GPIO_LED);
 			vTaskDelay((TickType_t) 200);
@@ -190,10 +190,10 @@ inner_TIMEOUT()
 	ap.timeout_TIME += (TickType_t) 10;
 
 	do {
-		if (pm.im_revol_total != ap.timeout_revol_cached) {
+		if (pm.im_total_revol != ap.timeout_revol_cached) {
 
 			ap.timeout_TIME = 0;
-			ap.timeout_revol_cached = pm.im_revol_total;
+			ap.timeout_revol_cached = pm.im_total_revol;
 			break;
 		}
 
@@ -327,7 +327,7 @@ void task_ANALOG(void *pData)
 static void
 app_flash_load()
 {
-	float			vm_D;
+	float			vm_D, halt_I, halt_U;
 
 	hal.USART_baud_rate = 57600;
 	hal.PWM_frequency = 30000.f;
@@ -358,26 +358,27 @@ app_flash_load()
 	hal.PPM_mode = PPM_DISABLED;
 	hal.PPM_timebase = 2000000UL;
 
-	can.node_ID = 0;
-	can.log_MODE = IFCAN_LOG_DISABLED;
-	can.startup_LOST = 3000;
+	net.node_ID = 0;
+	net.log_MODE = IFCAN_LOG_DISABLED;
+	net.flash_MODE = PM_ENABLED;
+	net.startup_LOST = 3000;
 
-	can.pipe[0].ID = 10;
-	can.pipe[0].tim = 30;
-	can.pipe[1].ID = 20;
-	can.pipe[1].tim = 30;
-	can.pipe[2].ID = 30;
-	can.pipe[2].tim = 30;
-	can.pipe[3].ID = 40;
-	can.pipe[3].tim = 30;
-	can.pipe[4].ID = 50;
-	can.pipe[4].tim = 30;
-	can.pipe[5].ID = 60;
-	can.pipe[5].tim = 30;
-	can.pipe[6].ID = 70;
-	can.pipe[6].tim = 30;
-	can.pipe[7].ID = 80;
-	can.pipe[7].tim = 30;
+	net.pipe[0].ID = 10;
+	net.pipe[0].tim = 30;
+	net.pipe[1].ID = 20;
+	net.pipe[1].tim = 30;
+	net.pipe[2].ID = 30;
+	net.pipe[2].tim = 30;
+	net.pipe[3].ID = 40;
+	net.pipe[3].tim = 30;
+	net.pipe[4].ID = 50;
+	net.pipe[4].tim = 30;
+	net.pipe[5].ID = 60;
+	net.pipe[5].tim = 30;
+	net.pipe[6].ID = 70;
+	net.pipe[6].tim = 30;
+	net.pipe[7].ID = 80;
+	net.pipe[7].tim = 30;
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
 	ap.ppm_STARTUP = PM_DISABLED;
@@ -437,7 +438,6 @@ app_flash_load()
 	ap.servo_SPAN_mm[0] = - 25.f;
 	ap.servo_SPAN_mm[1] = 25.f;
 	ap.servo_UNIFORM_mmps = 20.f;
-	ap.servo_mice_role = 0;
 
 	pm.freq_hz = hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
@@ -457,8 +457,11 @@ app_flash_load()
 
 #endif /* HW_HAVE_TERMINAL_VOLTAGE */
 
-	pm.fault_current_halt = .95f * m_fabsf(hal.ADC_reference_voltage
-			/ hal.ADC_shunt_resistance / hal.ADC_amplifier_gain / 2.f);
+	halt_I = hal.ADC_reference_voltage / hal.ADC_shunt_resistance / hal.ADC_amplifier_gain / 2.f;
+	halt_U = hal.ADC_reference_voltage / hal.ADC_voltage_ratio;
+
+	pm.fault_current_halt = (float) (int) (.95f * m_fabsf(halt_I));
+	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
 
 	/* Default telemetry.
 	 * */
