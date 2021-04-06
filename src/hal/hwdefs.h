@@ -5,6 +5,11 @@
 
 #if defined(_HW_REV2)
 
+#define HW_REVISION_NAME		"rev2"
+
+#define HW_HAVE_NTC_ON_PCB
+#define HW_HAVE_TRANSCEIVER_CAN
+
 #define CLOCK_CRYSTAL_HZ		8000000UL
 
 #define HW_PWM_DEADTIME_NS		90.f		/* CSD18532 */
@@ -21,9 +26,7 @@
 #define HW_NTC_PCB_R_BALANCE		10000.f
 #define HW_NTC_PCB_R_NTC_0		10000.f
 #define HW_NTC_PCB_TA_0			25.f
-#define HW_NTC_PCB_BETTA		3380.f
-
-#define HW_HAVE_NTC_ON_PCB
+#define HW_NTC_PCB_BETTA		3435.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('C', 3, 13)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 1, 1)
@@ -43,20 +46,22 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-#define HW_HAVE_TRANSCEIVER_CAN
-
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
 #define GPIO_LED			XGPIO_DEF2('B', 3)
 
 
 #elif defined(_HW_KLEN)
 
+#define HW_REVISION_NAME		"klen"
+
+#define HW_HAVE_REVERSED_PWM
+#define HW_HAVE_TVM_CIRCUIT
+#define HW_HAVE_NTC_ON_PCB
+
 #define CLOCK_CRYSTAL_HZ		25000000UL
 
 #define HW_PWM_DEADTIME_NS		90.f		/* IRFH7185 */
 #define HW_PWM_BOOTSTRAP_TIME		20.f		/* UCC27211A  */
-
-#define HW_HAVE_REVERSED_PWM
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
 #define HW_ADC_SHUNT_RESISTANCE		5.0E-3f
@@ -66,14 +71,10 @@
 #define HW_ADC_VOLTAGE_R2		2200.f
 #define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
 
-#define HW_HAVE_TERMINAL_VOLTAGE
-
 #define HW_NTC_PCB_R_BALANCE		10000.f
 #define HW_NTC_PCB_R_NTC_0		10000.f
 #define HW_NTC_PCB_TA_0			25.f
-#define HW_NTC_PCB_BETTA		3380.f
-
-#define HW_HAVE_NTC_ON_PCB
+#define HW_NTC_PCB_BETTA		3435.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('B', 0, 8)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('C', 2, 12)
@@ -99,6 +100,13 @@
 
 #elif defined(_HW_REV4B)
 
+#define HW_REVISION_NAME		"rev4b"
+
+#define HW_HAVE_TVM_CIRCUIT
+#define HW_HAVE_ANALOG_KNOB		/* on SPI */
+#define HW_HAVE_NTC_ON_PCB
+#define HW_HAVE_TRANSCEIVER_CAN
+
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
 #define HW_PWM_DEADTIME_NS		170.f		/* IPT007N06N */
@@ -112,19 +120,13 @@
 #define HW_ADC_VOLTAGE_R2		27000.f
 #define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
 
-#define HW_HAVE_TERMINAL_VOLTAGE
-
 #define HW_ADC_ANALOG_R1		1000.f
 #define HW_ADC_ANALOG_R2		1000000000000.f
-
-#define HW_HAVE_ANALOG_INPUT		/* on SPI */
 
 #define HW_NTC_PCB_R_BALANCE		10000.f
 #define HW_NTC_PCB_R_NTC_0		10000.f
 #define HW_NTC_PCB_TA_0			25.f
-#define HW_NTC_PCB_BETTA		3380.f
-
-#define HW_HAVE_NTC_ON_PCB
+#define HW_NTC_PCB_BETTA		3435.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
@@ -144,13 +146,18 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-#define HW_HAVE_TRANSCEIVER_CAN
-
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
 #define GPIO_LED			XGPIO_DEF2('C', 12)
 
 
 #elif defined(_HW_REV4C)
+
+#define HW_REVISION_NAME		"rev4c"
+
+#define HW_HAVE_TVM_CIRCUIT
+#define HW_HAVE_ANALOG_KNOB
+#define HW_HAVE_NTC_ON_PCB
+#define HW_HAVE_TRANSCEIVER_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -165,19 +172,13 @@
 #define HW_ADC_VOLTAGE_R2		27000.f
 #define HW_ADC_VOLTAGE_BIAS_R3		470000.f
 
-#define HW_HAVE_TERMINAL_VOLTAGE
-
 #define HW_ADC_ANALOG_R1		10000.f
 #define HW_ADC_ANALOG_R2		10000.f
-
-#define HW_HAVE_ANALOG_INPUT
 
 #define HW_NTC_PCB_R_BALANCE		10000.f
 #define HW_NTC_PCB_R_NTC_0		10000.f
 #define HW_NTC_PCB_TA_0			25.f
-#define HW_NTC_PCB_BETTA		3380.f
-
-#define HW_HAVE_NTC_ON_PCB
+#define HW_NTC_PCB_BETTA		3435.f		/* EWTF05-103H3I */
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
@@ -197,13 +198,18 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-#define HW_HAVE_TRANSCEIVER_CAN
-
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
 #define GPIO_LED			XGPIO_DEF2('C', 12)
 
 
 #elif defined(_HW_REV5A)
+
+#define HW_REVISION_NAME		"rev5a"
+
+#define HW_HAVE_TVM_CIRCUIT
+#define HW_HAVE_ANALOG_KNOB
+#define HW_HAVE_NTC_ON_PCB
+#define HW_HAVE_TRANSCEIVER_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -218,19 +224,13 @@
 #define HW_ADC_VOLTAGE_R2		27000.f
 #define HW_ADC_VOLTAGE_BIAS_R3		470000.f
 
-#define HW_HAVE_TERMINAL_VOLTAGE
-
 #define HW_ADC_ANALOG_R1		10000.f
 #define HW_ADC_ANALOG_R2		10000.f
-
-#define HW_HAVE_ANALOG_INPUT
 
 #define HW_NTC_PCB_R_BALANCE		10000.f
 #define HW_NTC_PCB_R_NTC_0		10000.f
 #define HW_NTC_PCB_TA_0			25.f
-#define HW_NTC_PCB_BETTA		3380.f
-
-#define HW_HAVE_NTC_ON_PCB
+#define HW_NTC_PCB_BETTA		3435.f		/* EWTF05-103H3I */
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
@@ -250,7 +250,55 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
+#define GPIO_FAN			XGPIO_DEF2('B', 12)
+#define GPIO_LED			XGPIO_DEF2('C', 12)
+
+
+#elif defined(_HW_PESC1)
+
+#define HW_REVISION_NAME		"pesc1"
+
+#define HW_HAVE_TVM_CIRCUIT
+#define HW_HAVE_ANALOG_KNOB
+#define HW_HAVE_ATS_ON_PCB				/* LMT87 */
 #define HW_HAVE_TRANSCEIVER_CAN
+
+#define HW_CLOCK_CRYSTAL_HZ		8000000UL
+
+#define HW_PWM_DEADTIME_NS		90.f		/* IRF100P218 */
+#define HW_PWM_BOOTSTRAP_TIME		100.f		/* UCC27211A  */
+
+#define HW_ADC_REFERENCE_VOLTAGE	3.3f
+#define HW_ADC_SHUNT_RESISTANCE		8.8E-3f
+#define HW_ADC_AMPLIFIER_GAIN		1.f		/* ACS773KCB-150B */
+
+#define HW_ADC_VOLTAGE_R1		800000.f
+#define HW_ADC_VOLTAGE_R2		27000.f
+#define HW_ADC_VOLTAGE_BIAS_R3		470000.f
+
+#define HW_ADC_ANALOG_R1		5000.f
+#define HW_ADC_ANALOG_R2		10000.f
+
+#define HW_ATS_PCB_TA_0			0.8f
+#define HW_ATS_PCB_BETTA		242.7f
+
+#define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 1, 1)
+#define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
+#define GPIO_ADC_VOLTAGE_U		XGPIO_DEF3('B', 0, 8)
+#define GPIO_ADC_VOLTAGE_A		XGPIO_DEF3('C', 3, 13)
+#define GPIO_ADC_VOLTAGE_B		XGPIO_DEF3('C', 0, 10)
+#define GPIO_ADC_VOLTAGE_C		XGPIO_DEF3('C', 1, 11)
+#define GPIO_ADC_PCB_ATS		XGPIO_DEF3('C', 2, 12)
+#define GPIO_ADC_EXT_NTC		XGPIO_DEF3('A', 0, 0)
+#define GPIO_ADC_ANALOG_ANG		XGPIO_DEF3('B', 1, 9)
+#define GPIO_ADC_ANALOG_BRK		XGPIO_DEF3('C', 4, 14)
+#define GPIO_ADC_INTERNAL_TEMP		XGPIO_DEF3('J', 0, 1)
+
+#define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
+#define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
+
+#define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
+#define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
 #define GPIO_FAN			XGPIO_DEF2('B', 12)
 #define GPIO_LED			XGPIO_DEF2('C', 12)

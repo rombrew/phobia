@@ -127,7 +127,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
 			break;
 	}
 	while (1);
@@ -301,7 +301,7 @@ flash_block_prog()
 		number = block->number + 1;
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
 			block = (void *) FLASH_map[0];
 	}
 	else {
@@ -315,7 +315,7 @@ flash_block_prog()
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
 			block = (void *) FLASH_map[0];
 
 		if (block == origin) {
@@ -343,39 +343,77 @@ flash_block_prog()
 	return rc;
 }
 
-int flash_block_relocate()
+int flash_block_relocate(u32_t len)
 {
-	flash_block_t		*block, *reloc;
-	u32_t			number, crc32;
-	int			rc = 1;
+	flash_block_t		*block, *reloc, *temp;
+	int			N, erase_N, rc = 1;
 
 	block = flash_block_scan();
-	reloc = (void *) FLASH_map[FLASH_SECTOR_RELOC];
 
-	if (block != NULL && block < reloc) {
+	if (block != NULL) {
 
-		while (flash_is_block_dirty(reloc) != 0) {
+		for (erase_N = 1; erase_N < FLASH_config.s_total + 1; ++erase_N) {
 
-			reloc += 1;
-
-			if ((u32_t) reloc >= FLASH_map[FLASH_SECTOR_MAX]) {
-
-				reloc = (void *) FLASH_map[FLASH_SECTOR_MAX - 1];
-				reloc = FLASH_erase(reloc);
+			if (FLASH_map[erase_N] - FLASH_map[0] >= len)
 				break;
-			}
 		}
 
-		number = block->number + 1;
+		/* Check if we have at least one unaffected flash sector. If so
+		 * we can safely relocate the configuration block to it.
+		 * */
+		if (erase_N < FLASH_config.s_total) {
 
-		FLASH_prog(&reloc->number, &number, sizeof(u32_t));
-		FLASH_prog(&reloc->content, &block->content, sizeof(block->content));
+			reloc = (void *) FLASH_map[erase_N];
 
-		crc32 = flash_block_crc32(reloc);
+			while (flash_is_block_dirty(reloc) != 0) {
 
-		FLASH_prog(&reloc->crc32, &crc32, sizeof(u32_t));
+				reloc += 1;
 
-		rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
+				if ((u32_t) reloc >= FLASH_map[FLASH_config.s_total]) {
+
+					reloc = (void *) FLASH_map[FLASH_config.s_total - 1];
+					reloc = FLASH_erase(reloc);
+					break;
+				}
+			}
+
+			FLASH_prog(reloc, block, sizeof(flash_block_t));
+
+			rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
+
+			for (N = 0; N < erase_N; ++N)
+				FLASH_erase((void *) FLASH_map[N]);
+		}
+		else {
+			temp = pvPortMalloc(sizeof(flash_block_t));
+
+			if (temp != NULL) {
+
+				memcpy(temp, block, sizeof(flash_block_t));
+
+				/* NOTE: If power goes down on the erase before
+				 * flashprog we will loss the configuration block.
+				 * */
+
+				for (N = 0; N < erase_N; ++N)
+					FLASH_erase((void *) FLASH_map[N]);
+
+				reloc = (void *) FLASH_map[FLASH_config.s_total];
+				reloc -= 1;
+
+				FLASH_prog(reloc, temp, sizeof(flash_block_t));
+
+				rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
+
+				vPortFree(temp);
+			}
+			else {
+				/* We are failed to relocate the configuration
+				 * block in this case.
+				 * */
+				rc = 0;
+			}
+		}
 	}
 
 	return rc;
@@ -430,7 +468,7 @@ SH_DEF(flash_info_map)
 
 			N += 1;
 
-			if (N >= FLASH_SECTOR_MAX)
+			if (N >= FLASH_config.s_total)
 				break;
 		}
 	}
@@ -458,7 +496,7 @@ SH_DEF(flash_cleanup)
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_SECTOR_MAX])
+		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
 			break;
 	}
 	while (1);

@@ -1,8 +1,9 @@
 #include <stddef.h>
 
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
 #include "libc.h"
+
+#include "cmsis/stm32xx.h"
 
 void irq_CAN1_TX() { }
 

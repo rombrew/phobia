@@ -351,8 +351,8 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 		case 3:
 			v[0] = 1.f;
 			v[1] = pm->fb_uA;
-			v[2] = pm->fb_uA;
-			v[3] = pm->fb_uA;
+			v[2] = pm->fb_uB;
+			v[3] = pm->fb_uC;
 
 			lse_insert(ls, v);
 

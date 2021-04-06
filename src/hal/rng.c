@@ -1,5 +1,7 @@
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "libc.h"
+
+#include "cmsis/stm32xx.h"
 
 void RNG_startup()
 {
@@ -12,9 +14,9 @@ void RNG_startup()
 	RNG->CR |= RNG_CR_RNGEN;
 }
 
-unsigned long RNG_urand()
+u32_t RNG_urand()
 {
-	unsigned long 		urand = 0UL;
+	u32_t 			urand = 0UL;
 	int			N = 0;
 
 	do {

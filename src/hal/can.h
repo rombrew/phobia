@@ -1,6 +1,8 @@
 #ifndef _H_CAN_
 #define _H_CAN_
 
+#include "libc.h"
+
 enum {
 	CAN_MODE_STANDARD		= 0,
 	CAN_MODE_NO_AUTO_RETRANSMIT
@@ -13,8 +15,8 @@ enum {
 
 typedef struct {
 
-	unsigned short		ID;
-	unsigned short		len;
+	u16_t			ID;
+	u16_t			len;
 	char			payload[8];
 }
 CAN_msg_t;

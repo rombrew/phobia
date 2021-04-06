@@ -1,16 +1,17 @@
 #include <stddef.h>
 
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
 #include "libc.h"
 
-#define CLOCK_CPU_TARGET_HZ		168000000UL
+#include "cmsis/stm32xx.h"
 
-unsigned long			clock_cpu_hz;
+#define BOOT_SIGNATURE			0x55775577UL
+
+u32_t				clock_cpu_hz;
 
 HAL_t				hal;
 LOG_t				log		LD_NOINIT;
-volatile int			bootload_jump	LD_NOINIT;
+volatile u32_t			bootload_jump	LD_NOINIT;
 
 void irq_NMI()
 {
@@ -59,7 +60,7 @@ base_startup()
 {
 	/* Enable FPU.
 	 * */
-	SCB->CPACR |= (3UL << 20) | (3UL << 22);
+	SCB->CPACR |= (15UL << 20);
 
 	/* Vector table offset.
 	 * */
@@ -68,6 +69,13 @@ base_startup()
 	/* Configure priority grouping.
 	 * */
 	NVIC_SetPriorityGrouping(0UL);
+
+#ifdef _HW_STM32F722
+
+	SCB_EnableICache();
+	SCB_EnableDCache();
+
+#endif /* _HW_STM32F722 */
 }
 
 static void
@@ -85,6 +93,11 @@ clock_startup()
 	RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_CSSON | RCC_CR_HSEBYP | RCC_CR_HSEON);
 	RCC->CFGR = 0;
 	RCC->CIR = 0;
+
+#ifdef _HW_STM32F722
+	RCC->DCKCFGR1 = 0;
+	RCC->DCKCFGR2 = 0;
+#endif  /* _HW_STM32F722 */
 
 	/* Enable HSE.
 	 * */
@@ -106,7 +119,11 @@ clock_startup()
 
 	/* Regulator voltage scale 1 mode.
 	 * */
+#if defined(_HW_STM32F405)
 	PWR->CR |= PWR_CR_VOS;
+#elif defined(_HW_STM32F722)
+	PWR->CR1 |= PWR_CR1_VOS_1 | PWR_CR1_VOS_0;
+#endif /* _HW_STM32Fxx */
 
 	/* Set AHB/APB1/APB2 prescalers.
 	 * */
@@ -130,12 +147,18 @@ clock_startup()
 		log_TRACE("HSE failed" EOL);
 	}
 
+#if defined(_HW_STM32F405)
+	clock_cpu_hz = 168000000UL;
+#elif defined(_HW_STM32F722)
+	clock_cpu_hz = 180000000UL;
+#endif /* _HW_STM32Fxx */
+
 	PLLP = 2;
 
 	PLLM = (CLOCK + 1999999UL) / 2000000UL;
 	CLOCK /= PLLM;
 
-	PLLN = (PLLP * CLOCK_CPU_TARGET_HZ) / CLOCK;
+	PLLN = (PLLP * clock_cpu_hz) / CLOCK;
 	CLOCK *= PLLN;
 
 	PLLQ = (CLOCK + 47999999UL) / 48000000UL;
@@ -144,7 +167,7 @@ clock_startup()
 		| ((PLLP / 2UL - 1UL) << 16)
 		| (PLLN << 6) | (PLLM << 0);
 
-	/* Define clock frequency.
+	/* Update clock frequency.
 	 * */
 	clock_cpu_hz = CLOCK / PLLP;
 
@@ -161,7 +184,11 @@ clock_startup()
 
 	/* Configure Flash.
 	 * */
+#if defined(_HW_STM32F405)
 	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
+#elif defined(_HW_STM32F722)
+	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
+#endif /* _HW_STM32Fxx */
 
 	/* Select PLL.
 	 * */
@@ -178,10 +205,6 @@ clock_startup()
 static void
 periph_startup()
 {
-	/* Enable Programmable voltage detector.
-	 * */
-	PWR->CR |= PWR_CR_PLS_LEV7 | PWR_CR_PVDE;
-
 	/* Enable LSI.
 	 * */
 	RCC->CSR |= RCC_CSR_LSION;
@@ -193,7 +216,11 @@ periph_startup()
 
 	/* Check for reset reason.
 	 * */
+#if defined(_HW_STM32F405)
 	if (RCC->CSR & RCC_CSR_WDGRSTF) {
+#elif defined(_HW_STM32F722)
+	if (RCC->CSR & RCC_CSR_IWDGRSTF) {
+#endif /* _HW_STM32Fxx */
 
 		log_TRACE("RESET: WD" EOL);
 	}
@@ -203,22 +230,25 @@ periph_startup()
 
 void hal_bootload()
 {
-	if (bootload_jump == INIT_SIGNATURE) {
+	u32_t		*sysmem;
 
-		bootload_jump = 0;
+	if (bootload_jump == BOOT_SIGNATURE) {
 
-		/*SYSCFG->MEMRMP = SYSCFG_MEMRMP_MEM_MODE_0;
+		bootload_jump = 0UL;
 
-		__DSB();
-		__ISB();*/
+#if defined(_HW_STM32F405)
+		sysmem = (u32_t *) 0x1FFF0000UL;
+#elif defined(_HW_STM32F722)
+		sysmem = (u32_t *) 0x1FF00000UL;
+#endif /* _HW_STM32Fxx */
 
 		/* Load MSP.
 		 * */
-		__set_MSP(* (u32_t *) 0x1FFF0000UL);
+		__set_MSP(sysmem[0]);
 
 		/* Jump to the bootloader.
 		 * */
-		((void (*) (void)) (* (u32_t *) 0x1FFF0004UL)) ();
+		((void (*) (void)) (sysmem[1])) ();
 	}
 }
 
@@ -255,8 +285,12 @@ int hal_lock_irq()
 {
 	int		irq;
 
+	__disable_irq();
+
 	irq = __get_BASEPRI();
 	__set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
+
+	__enable_irq();
 
 	return irq;
 }
@@ -273,7 +307,7 @@ void hal_system_reset()
 
 void hal_bootload_jump()
 {
-	bootload_jump = INIT_SIGNATURE;
+	bootload_jump = BOOT_SIGNATURE;
 
 	NVIC_SystemReset();
 }
@@ -292,19 +326,19 @@ int log_bootup()
 {
 	int		rc = 0;
 
-	if (log.boot_SIGNATURE != INIT_SIGNATURE) {
+	if (log.boot_SIGNATURE != BOOT_SIGNATURE) {
 
-		log.boot_SIGNATURE = INIT_SIGNATURE;
-		log.boot_COUNT = 0;
+		log.boot_SIGNATURE = BOOT_SIGNATURE;
+		log.boot_COUNT = 0UL;
 
 		/* Initialize LOG at first usage.
 		 * */
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		log.tail = 0;
+		log.len = 0;
 	}
 	else {
-		log.boot_COUNT += 1;
+		log.boot_COUNT += 1UL;
 
 		/* Make sure LOG is null-terminated.
 		 * */
@@ -318,17 +352,16 @@ int log_bootup()
 
 void log_putc(int c)
 {
-	const int	tailmax = sizeof(log.textbuf) - 1;
+	const int	lmax = sizeof(log.textbuf) - 1;
 
-	log.tail = (log.tail >= 0 && log.tail < tailmax) ? log.tail : 0;
-	log.textbuf[log.tail] = (char) c;
+	if (log.len < 0 || log.len >= lmax) { log.len = 0; }
 
-	++log.tail;
+	log.textbuf[log.len++] = (char) c;
 }
 
 void DBGMCU_mode_stop()
 {
 	DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
-	DBGMCU->APB2FZ |= DBGMCU_APB1_FZ_DBG_TIM1_STOP;
+	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 }
 

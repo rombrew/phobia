@@ -36,6 +36,7 @@ typedef struct {
 ntc_t;
 
 float ntc_temperature(ntc_t *ntc, float u);
+float ats_temperature(ntc_t *ntc, float u);
 
 #endif /* _H_NTC_ */
 

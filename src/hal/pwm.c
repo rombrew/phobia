@@ -1,5 +1,5 @@
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "cmsis/stm32xx.h"
 
 #define GPIO_TIM1_CH1N			XGPIO_DEF4('B', 13, 0, 1)
 #define GPIO_TIM1_CH2N			XGPIO_DEF4('B', 14, 0, 1)
@@ -107,30 +107,22 @@ void PWM_configure()
 void PWM_set_DC(int A, int B, int C)
 {
 #ifdef HW_HAVE_REVERSED_PWM
-
 	TIM1->CCR1 = C;
 	TIM1->CCR2 = B;
 	TIM1->CCR3 = A;
-
 #else /* HW_HAVE_REVERSED_PWM */
-
 	TIM1->CCR1 = A;
 	TIM1->CCR2 = B;
 	TIM1->CCR3 = C;
-
 #endif
 }
 
 void PWM_set_Z(int Z)
 {
 #ifdef HW_HAVE_REVERSED_PWM
-
 	if (Z & LEG_C) {
-
 #else /* HW_HAVE_REVERSED_PWM */
-
 	if (Z & LEG_A) {
-
 #endif
 
 		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
@@ -148,13 +140,9 @@ void PWM_set_Z(int Z)
 	}
 
 #ifdef HW_HAVE_REVERSED_PWM
-
 	if (Z & LEG_A) {
-
 #else /* HW_HAVE_REVERSED_PWM */
-
 	if (Z & LEG_C) {
-
 #endif
 		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}

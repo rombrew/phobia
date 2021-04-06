@@ -1,5 +1,5 @@
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "cmsis/stm32xx.h"
 
 #define CLOCK_TIM4_HZ			(CLOCK_APB1_HZ * 2UL)
 

@@ -59,12 +59,6 @@
 #define portNVIC_PENDSVCLEAR_BIT 			( 1UL << 27UL )
 #define portNVIC_PEND_SYSTICK_CLEAR_BIT		( 1UL << 25UL )
 
-/* Constants used to detect a Cortex-M7 r0p1 core, which should use the ARM_CM7
-r0p1 port. */
-#define portCPUID							( * ( ( volatile uint32_t * ) 0xE000ed00 ) )
-#define portCORTEX_M7_r0p1_ID				( 0x410FC271UL )
-#define portCORTEX_M7_r0p0_ID				( 0x410FC270UL )
-
 #define portNVIC_PENDSV_PRI					( ( ( uint32_t ) configKERNEL_INTERRUPT_PRIORITY ) << 16UL )
 #define portNVIC_SYSTICK_PRI				( ( ( uint32_t ) configKERNEL_INTERRUPT_PRIORITY ) << 24UL )
 
@@ -143,7 +137,7 @@ static void prvTaskExitError( void );
 
 /* Each task maintains its own interrupt status in the critical nesting
 variable. */
-static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
+static UBaseType_t uxCriticalNesting;
 
 /*
  * The number of SysTick increments that make up one tick period.
@@ -242,16 +236,16 @@ volatile uint32_t ulDummy = 0;
 void vPortSVCHandler( void )
 {
 	__asm volatile (
-			"	movw	r3, #:lower16:pxCurrentTCB		\n" /* Restore the context. */
-			"	movt	r3, #:upper16:pxCurrentTCB		\n"
+			"	movw r3, #:lower16:pxCurrentTCB	\n" /* Restore the context. */
+			"	movt r3, #:upper16:pxCurrentTCB	\n"
 			"	ldr r1, [r3]					\n" /* Use pxCurrentTCBConst to get the pxCurrentTCB address. */
 			"	ldr r0, [r1]					\n" /* The first item in pxCurrentTCB is the task top of stack. */
 			"	ldmia r0!, {r4-r11, r14}		\n" /* Pop the registers that are not automatically saved on exception entry and the critical nesting count. */
 			"	msr psp, r0				\n" /* Restore the task stack pointer. */
 			"	isb						\n"
-			"	mov r0, #0 					\n"
-			"	msr	basepri, r0				\n"
-			"	bx r14						\n"
+			"	mov r0, #0 				\n"
+			"	msr basepri, r0			\n"
+			"	bx r14					\n"
 		       );
 }
 /*-----------------------------------------------------------*/
@@ -267,15 +261,15 @@ static void prvPortStartFirstTask( void )
 			"	movt r0, #0xE000 	\n"
 			"	ldr r0, [r0] 		\n"
 			"	ldr r0, [r0] 		\n"
-			"	msr msp, r0		\n" /* Set the msp back to the start of the stack. */
-			"	mov r0, #0		\n" /* Clear the bit that indicates the FPU is in use, see comment above. */
+			"	msr msp, r0			\n" /* Set the msp back to the start of the stack. */
+			"	mov r0, #0			\n" /* Clear the bit that indicates the FPU is in use, see comment above. */
 			"	msr control, r0		\n"
 			"	cpsie i			\n" /* Globally enable interrupts. */
 			"	cpsie f			\n"
-			"	dsb			\n"
-			"	isb			\n"
+			"	dsb				\n"
+			"	isb				\n"
 			"	svc 0			\n" /* System call to start first task. */
-			"	nop			\n"
+			"	nop				\n"
 		      );
 }
 /*-----------------------------------------------------------*/
@@ -288,12 +282,6 @@ BaseType_t xPortStartScheduler( void )
 	/* configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to 0.
 	See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
 	configASSERT( configMAX_SYSCALL_INTERRUPT_PRIORITY );
-
-	/* This port can be used on all revisions of the Cortex-M7 core other than
-	the r0p1 parts.  r0p1 parts should use the port from the
-	/source/portable/GCC/ARM_CM7/r0p1 directory. */
-	configASSERT( portCPUID != portCORTEX_M7_r0p1_ID );
-	configASSERT( portCPUID != portCORTEX_M7_r0p0_ID );
 
 	#if( configASSERT_DEFINED == 1 )
 	{
@@ -432,50 +420,52 @@ void xPortPendSVHandler( void )
 	/* This is a naked function. */
 
 	__asm volatile (
-			"	mrs r0, psp				\n"
-			"	isb						\n"
-			"							\n"
-			"	movw	r3, #:lower16:pxCurrentTCB		\n" /* Get the location of the current TCB. */
-			"	movt	r3, #:upper16:pxCurrentTCB		\n"
-			"	ldr	r2, [r3]				\n"
-			"							\n"
-			"	tst r14, #0x10					\n" /* Is the task using the FPU context?  If so, push high vfp registers. */
+			"	mrs r0, psp					\n"
+			"	isb							\n"
+			"								\n"
+			"	movw r3, #:lower16:pxCurrentTCB	\n" /* Get the location of the current TCB. */
+			"	movt r3, #:upper16:pxCurrentTCB	\n"
+			"	ldr r2, [r3]				\n"
+			"								\n"
+			"	tst r14, #0x10				\n" /* Is the task using the FPU context?  If so, push high vfp registers. */
 			"	it eq						\n"
-			"	vstmdbeq r0!, {s16-s31}				\n"
-			"							\n"
-			"	stmdb r0!, {r4-r11, r14}		\n" /* Save the core registers. */
+			"	vstmdbeq r0!, {s16-s31}		\n"
+			"								\n"
+			"	stmdb r0!, {r4-r11, r14}	\n" /* Save the core registers. */
 			"	str r0, [r2]				\n" /* Save the new top of stack into the first member of the TCB. */
 			"								\n"
-			"	stmdb sp!, {r0, r3}					\n"
-			"	mov r0, %0 						\n"
-			"	msr basepri, r0						\n"
+			"	stmdb sp!, {r0, r3}			\n"
+			"	mov r0, %0 					\n"
+			"	cpsid i						\n" /* Errata workaround. */
+			"	msr basepri, r0				\n"
 			"	dsb							\n"
 			"	isb							\n"
-			"	bl vTaskSwitchContext				\n"
+			"	cpsie i						\n" /* Errata workaround. */
+			"	bl vTaskSwitchContext		\n"
 			"	mov r0, #0					\n"
-			"	msr basepri, r0						\n"
-			"	ldmia sp!, {r0, r3}					\n"
+			"	msr basepri, r0				\n"
+			"	ldmia sp!, {r0, r3}			\n"
 			"								\n"
-			"	ldr r1, [r3]						\n" /* The first item in pxCurrentTCB is the task top of stack. */
-			"	ldr r0, [r1]						\n"
-			"							\n"
-			"	ldmia r0!, {r4-r11, r14}			\n" /* Pop the core registers. */
-			"							\n"
-			"	tst r14, #0x10					\n" /* Is the task using the FPU context?  If so, pop the high vfp registers too. */
+			"	ldr r1, [r3]				\n" /* The first item in pxCurrentTCB is the task top of stack. */
+			"	ldr r0, [r1]				\n"
+			"								\n"
+			"	ldmia r0!, {r4-r11, r14}	\n" /* Pop the core registers. */
+			"								\n"
+			"	tst r14, #0x10				\n" /* Is the task using the FPU context?  If so, pop the high vfp registers too. */
 			"	it eq						\n"
-			"	vldmiaeq r0!, {s16-s31}				\n"
+			"	vldmiaeq r0!, {s16-s31}		\n"
 			"								\n"
-			"	msr psp, r0						\n"
+			"	msr psp, r0					\n"
 			"	isb							\n"
 			"								\n"
 #ifdef WORKAROUND_PMU_CM001 /* XMC4000 specific errata workaround. */
 #if WORKAROUND_PMU_CM001 == 1
-			"			push { r14 }				\n"
-			"			pop { pc }				\n"
+			"			push { r14 }		\n"
+			"			pop { pc }			\n"
 #endif
 #endif
 			"								\n"
-			"	bx r14							\n"
+			"	bx r14						\n"
 			"								\n"
 			:: "i" (configMAX_SYSCALL_INTERRUPT_PRIORITY)
 			);

@@ -1,10 +1,17 @@
 #ifndef _H_FLASH_
 #define _H_FLASH_
 
-#define FLASH_SECTOR_MAX	5
-#define FLASH_SECTOR_RELOC	3
+#include "libc.h"
 
-extern const unsigned long	FLASH_map[];
+typedef struct
+{
+	int		s_first;
+	int		s_total;
+}
+FLASH_config_t;
+
+extern const FLASH_config_t	FLASH_config;
+extern const u32_t		FLASH_map[];
 
 void *FLASH_erase(void *flash);
 void *FLASH_prog(void *flash, const void *s, int n);

@@ -1,13 +1,13 @@
 /**
   ******************************************************************************
-  * @file    stm32f4xx.h
+  * @file    stm32f7xx.h
   * @author  MCD Application Team
-  * @brief   CMSIS STM32F4xx Device Peripheral Access Layer Header File.
+  * @brief   CMSIS STM32F7xx Device Peripheral Access Layer Header File.
   *
   *          The file is the unique include file that the application programmer
   *          is using in the C source code, usually in main.c. This file contains:
   *           - Configuration section that allows to select:
-  *              - The STM32F4xx device used in the target application
+  *              - The STM32F7xx device used in the target application
   *              - To use or not the peripheral’s drivers in application code(i.e.
   *                code will be based on direct access to peripheral’s registers
   *                rather than drivers API), this option is controlled by
@@ -16,7 +16,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -31,12 +31,12 @@
   * @{
   */
 
-/** @addtogroup stm32f4xx
+/** @addtogroup stm32f7xx
   * @{
   */
 
-#ifndef __STM32F4xx_H
-#define __STM32F4xx_H
+#ifndef __STM32F7xx_H
+#define __STM32F7xx_H
 
 #ifdef __cplusplus
  extern "C" {
@@ -49,21 +49,21 @@
 /**
   * @brief STM32 Family
   */
-#if !defined  (STM32F4)
-#define STM32F4
-#endif /* STM32F4 */
+#if !defined  (STM32F7)
+#define STM32F7
+#endif /* STM32F7 */
 
 /**
-  * @brief CMSIS version number V2.6.6
+  * @brief CMSIS Device version number V1.2.6
   */
-#define __STM32F4xx_CMSIS_VERSION_MAIN   (0x02U) /*!< [31:24] main version */
-#define __STM32F4xx_CMSIS_VERSION_SUB1   (0x06U) /*!< [23:16] sub1 version */
-#define __STM32F4xx_CMSIS_VERSION_SUB2   (0x06U) /*!< [15:8]  sub2 version */
-#define __STM32F4xx_CMSIS_VERSION_RC     (0x00U) /*!< [7:0]  release candidate */
-#define __STM32F4xx_CMSIS_VERSION        ((__STM32F4xx_CMSIS_VERSION_MAIN << 24)\
-                                         |(__STM32F4xx_CMSIS_VERSION_SUB1 << 16)\
-                                         |(__STM32F4xx_CMSIS_VERSION_SUB2 << 8 )\
-                                         |(__STM32F4xx_CMSIS_VERSION))
+#define __STM32F7_CMSIS_VERSION_MAIN   (0x01) /*!< [31:24] main version */
+#define __STM32F7_CMSIS_VERSION_SUB1   (0x02) /*!< [23:16] sub1 version */
+#define __STM32F7_CMSIS_VERSION_SUB2   (0x06) /*!< [15:8]  sub2 version */
+#define __STM32F7_CMSIS_VERSION_RC     (0x00) /*!< [7:0]  release candidate */
+#define __STM32F7_CMSIS_VERSION        ((__STM32F7_CMSIS_VERSION_MAIN << 24)\
+                                       |(__STM32F7_CMSIS_VERSION_SUB1 << 16)\
+                                       |(__STM32F7_CMSIS_VERSION_SUB2 << 8 )\
+                                       |(__STM32F7_CMSIS_VERSION_RC))
 /**
   * @}
   */
@@ -71,8 +71,7 @@
 /** @addtogroup Device_Included
   * @{
   */
-
-#include "stm32f405xx.h"
+#include "stm32f722xx.h"
 
 /**
   * @}
@@ -130,7 +129,7 @@ typedef enum
 }
 #endif /* __cplusplus */
 
-#endif /* __STM32F4xx_H */
+#endif /* __STM32F7xx_H */
 
 /**
   * @}

@@ -1,5 +1,5 @@
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "cmsis/stm32xx.h"
 
 static void
 TIM_mode_DRIVE_ABI()

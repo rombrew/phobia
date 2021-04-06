@@ -12,7 +12,7 @@
 #define LOAD_COUNT_DELAY		((TickType_t) 100)
 
 app_main_t			ap;
-pmc_t 				pm	LD_CCMRAM;
+pmc_t 				pm	LD_CCRAM;
 TLM_t				tlm;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
@@ -80,7 +80,12 @@ void task_TEMP(void *pData)
 	TickType_t		xWake;
 	float			i_PCB, i_EXT;
 
+#if defined(HW_HAVE_NTC_ON_PCB)
 	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_NTC);
+#elif defined(HW_HAVE_ATS_ON_PCB)
+	GPIO_set_mode_ANALOG(GPIO_ADC_PCB_ATS);
+#endif /* HW_HAVE_XX_ON_PCB */
+
 	GPIO_set_mode_ANALOG(GPIO_ADC_EXT_NTC);
 
 	xWake = xTaskGetTickCount();
@@ -95,12 +100,11 @@ void task_TEMP(void *pData)
 
 		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_INTERNAL_TEMP);
 
-#ifdef HW_HAVE_NTC_ON_PCB
-
+#if defined(HW_HAVE_NTC_ON_PCB)
 		ap.temp_PCB = ntc_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_NTC));
-
-#else /* HW_HAVE_NTC_ON_PCB */
-
+#elif defined(HW_HAVE_ATS_ON_PCB)
+		ap.temp_PCB = ats_temperature(&ap.ntc_PCB, ADC_get_VALUE(GPIO_ADC_PCB_ATS));
+#else /* HW_HAVE_XX_ON_PCB */
 		ap.temp_PCB = ap.temp_INT;
 #endif
 
@@ -344,12 +348,9 @@ app_flash_load()
 	hal.ADC_terminal_ratio = HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_BIAS_R3 / vm_D;
 	hal.ADC_terminal_bias = HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2 * hal.ADC_reference_voltage / vm_D;
 
-#ifdef HW_HAVE_ANALOG_INPUT
-
+#ifdef HW_HAVE_ANALOG_KNOB
 	hal.ADC_analog_ratio = HW_ADC_ANALOG_R2 / (HW_ADC_ANALOG_R1 + HW_ADC_ANALOG_R2);
-
-#else /* HW_HAVE_ANALOG_INPUT */
-
+#else /* HW_HAVE_ANALOG_KNOB */
 	hal.ADC_analog_ratio = 1.f;
 #endif
 
@@ -411,14 +412,15 @@ app_flash_load()
 	ap.timeout_current_tol = 2.f;
 	ap.timeout_IDLE_s = 5.f;
 
-#ifdef HW_HAVE_NTC_ON_PCB
-
+#if defined(HW_HAVE_NTC_ON_PCB)
 	ap.ntc_PCB.r_balance = HW_NTC_PCB_R_BALANCE;
 	ap.ntc_PCB.r_ntc_0 = HW_NTC_PCB_R_NTC_0;
 	ap.ntc_PCB.ta_0 = HW_NTC_PCB_TA_0;
 	ap.ntc_PCB.betta = HW_NTC_PCB_BETTA;
-
-#endif /* HW_HAVE_NTC_ON_PCB */
+#elif defined(HW_HAVE_ATS_ON_PCB)
+	ap.ntc_PCB.ta_0 = HW_ATS_PCB_TA_0;
+	ap.ntc_PCB.betta = HW_ATS_PCB_BETTA;
+#endif /* HW_HAVE_XX_ON_PCB */
 
 	ap.ntc_EXT.r_balance = 10000.f;
 	ap.ntc_EXT.r_ntc_0 = 10000.f;
@@ -451,11 +453,9 @@ app_flash_load()
 
 	pm.dc_bootstrap = HW_PWM_BOOTSTRAP_TIME;
 
-#ifndef HW_HAVE_TERMINAL_VOLTAGE
-
+#ifndef HW_HAVE_TVM_CIRCUIT
 	pm.config_TVM = PM_DISABLED;
-
-#endif /* HW_HAVE_TERMINAL_VOLTAGE */
+#endif /* HW_HAVE_TVM_CIRCUIT */
 
 	halt_I = hal.ADC_reference_voltage / hal.ADC_shunt_resistance / hal.ADC_amplifier_gain / 2.f;
 	halt_U = hal.ADC_reference_voltage / hal.ADC_voltage_ratio;
@@ -555,19 +555,15 @@ void task_INIT(void *pData)
 	USART_startup();
 
 #ifdef HW_HAVE_TRANSCEIVER_CAN
-
 	IFCAN_startup();
-
 #endif /* HW_HAVE_TRANSCEIVER_CAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-#ifdef HW_HAVE_ANALOG_INPUT
-
+#ifdef HW_HAVE_ANALOG_KNOB
 	xTaskCreate(task_ANALOG, "ANALOG", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-
-#endif /* HW_HAVE_ANALOG_INPUT */
+#endif /* HW_HAVE_ANALOG_KNOB */
 
 	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
@@ -732,6 +728,8 @@ SH_DEF(rtos_firmware)
 
 	FW_sizeof = * (flash + 8) - * (flash + 7);
 	FW_crc32 = crc32b(flash, FW_sizeof);
+
+	printf("HW_revision \"%s\"" EOL, HW_REVISION_NAME);
 
 	printf("FW_sizeof %i" EOL, FW_sizeof);
 	printf("FW_crc32 %8x" EOL, FW_crc32);
@@ -907,7 +905,7 @@ SH_DEF(rtos_log_cleanup)
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		log.tail = 0;
+		log.len = 0;
 	}
 }
 

@@ -8,7 +8,7 @@
 
 #define URAND_MAX		65535
 
-typedef unsigned long		u32_t;
+typedef unsigned int		u32_t;
 typedef unsigned short		u16_t;
 typedef unsigned char		u8_t;
 

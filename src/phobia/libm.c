@@ -47,7 +47,7 @@ int m_isfinitef(float x)
 {
 	union {
 		float		f;
-		unsigned long	i;
+		unsigned int	i;
 	}
 	u = { x };
 
@@ -165,7 +165,7 @@ float m_log2f(float x)
 {
 	union {
 		float		f;
-		unsigned long	i;
+		unsigned int	i;
 	}
 	u = { x }, m;
 
@@ -195,7 +195,7 @@ float m_exp2f(float x)
 {
 	union {
 		float		f;
-		unsigned long	i;
+		unsigned int	i;
 	}
 	u = { x }, m;
 

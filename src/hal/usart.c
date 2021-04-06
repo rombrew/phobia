@@ -1,9 +1,10 @@
 #include <stddef.h>
 
-#include "freertos/FreeRTOS.h"
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
 #include "libc.h"
+
+#include "freertos/FreeRTOS.h"
+#include "cmsis/stm32xx.h"
 
 typedef struct {
 
@@ -20,21 +21,43 @@ void irq_USART3()
 	u32_t 			SR;
 	char			xC;
 
+#if defined(_HW_STM32F405)
 	SR = USART3->SR;
+#elif defined(_HW_STM32F722)
+	SR = USART3->ISR;
+#endif /* _HW_STM32Fxx */
 
+#if defined(_HW_STM32F405)
 	if (SR & USART_SR_RXNE) {
+#elif defined(_HW_STM32F722)
+	if (SR & USART_ISR_RXNE) {
+#endif /* _HW_STM32Fxx */
 
+#if defined(_HW_STM32F405)
 		xC = USART3->DR;
+#elif defined(_HW_STM32F722)
+		xC = USART3->RDR;
+#endif /* _HW_STM32Fxx */
+
 		xQueueSendToBackFromISR(hal_USART.queue_RX, &xC, &xWoken);
 
 		IODEF_TO_USART();
 	}
 
+#if defined(_HW_STM32F405)
 	if (SR & USART_SR_TXE) {
+#elif defined(_HW_STM32F722)
+	if (SR & USART_ISR_TXE) {
+#endif /* _HW_STM32Fxx */
 
 		if (xQueueReceiveFromISR(hal_USART.queue_TX, &xC, &xWoken) == pdTRUE) {
 
+#if defined(_HW_STM32F405)
 			USART3->DR = xC;
+#elif defined(_HW_STM32F722)
+			USART3->TDR = xC;
+#endif /* _HW_STM32Fxx */
+
 		}
 		else {
 			USART3->CR1 &= ~USART_CR1_TXEIE;
@@ -64,8 +87,15 @@ void USART_startup()
 	/* Configure USART.
 	 * */
 	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baud_rate;
+
+#if defined(_HW_STM32F405)
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
+#elif defined(_HW_STM32F722)
+	USART3->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
+		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
+#endif /* _HW_STM32Fxx */
+
 	USART3->CR2 = 0;
 	USART3->CR3 = 0;
 

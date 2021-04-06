@@ -1,5 +1,5 @@
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
+#include "cmsis/stm32xx.h"
 
 #define XGPIO_DECODE(xGPIO)	\
 	GPIO_TypeDef	*GPIO = (GPIO_TypeDef *) (GPIOA_BASE + 0x0400 * XGPIO_GET_PORT(xGPIO)); \
@@ -89,14 +89,14 @@ void GPIO_set_HIGH(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 
-	GPIO->BSRRL = (1UL << N);
+	GPIO->BSRR = (1UL << N);
 }
 
 void GPIO_set_LOW(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 
-	GPIO->BSRRH = (1UL << N);
+	GPIO->BSRR = (1UL << (N + 16));
 }
 
 int GPIO_get_VALUE(int xGPIO)

@@ -1,7 +1,8 @@
 MEMORY
 {
 	FLASH (rx)	: ORIGIN = 0x08000000, LENGTH = 512K
-	RAM (rwx)	: ORIGIN = 0x20000000, LENGTH = 128K
+	RAM1 (rwx)	: ORIGIN = 0x20000000, LENGTH = 112K
+	RAM2 (rwx)	: ORIGIN = 0x2001C000, LENGTH = 16K
 	CCM (rw)	: ORIGIN = 0x10000000, LENGTH = 64K
 }
 
@@ -43,7 +44,7 @@ SECTIONS
 		. = ALIGN(4);
 		ld_end_data = . ;
 
-	} > RAM
+	} > RAM1
 
 	.bss (NOLOAD) : ALIGN(4)
 	{
@@ -56,7 +57,7 @@ SECTIONS
 		. = ALIGN(4);
 		ld_end_bss = . ;
 
-	} > RAM
+	} > RAM1
 
 	.noinit (NOLOAD) : ALIGN(4)
 	{
@@ -68,14 +69,14 @@ SECTIONS
 		. = ALIGN(4);
 		ld_end_noinit = . ;
 
-	} > RAM
+	} > RAM2
 
-	.ccmram (NOLOAD) : ALIGN(4)
+	.ccram (NOLOAD) : ALIGN(4)
 	{
 		ld_begin_ccm = . ;
 
-		*(.ccmram)
-		*(.ccmram.*)
+		*(.ccram)
+		*(.ccram.*)
 
 		. = ALIGN(4);
 		ld_end_ccm = . ;

@@ -28,7 +28,7 @@ control.
 * Self adjust of onboard measurements along symmetrical channels.
 * Flux weakening control.
 * Advanced command line interface (CLI) with autocompletion and history.
-* Hardware abstraction layer (HAL) over STM32F4xx.
+* Hardware abstraction layer (HAL) over STM32F405 and STM32F722.
 * Flash storage for all of configurable parameters.
 
 * Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
@@ -154,5 +154,4 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 * Add pulse output signal.
 * Make a drawing of the heatsink case for rev5a.
 * Design the new hardware for 120v battery voltage.
-* Introduce another HAL implementation (STM32F7xx).
 

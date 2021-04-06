@@ -1,9 +1,10 @@
 #include <stddef.h>
 
-#include "freertos/FreeRTOS.h"
-#include "cmsis/stm32f4xx.h"
 #include "hal.h"
 #include "libc.h"
+
+#include "freertos/FreeRTOS.h"
+#include "cmsis/stm32xx.h"
 
 typedef struct {
 
@@ -54,8 +55,13 @@ void irq_EXTI0()
 static void
 ADC_const_setup()
 {
+#if defined(_HW_STM32F405)
 	u16_t			*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
 	u16_t			*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
+#elif defined(_HW_STM32F722)
+	u16_t			*CAL_TEMP_30 = (void *) 0x1FF07A2C;
+	u16_t			*CAL_TEMP_110 = (void *) 0x1FF07A2E;
+#endif /* _HW_STM32Fxx */
 
 	hal.ADC_const.GA = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
 		/ hal.ADC_shunt_resistance / hal.ADC_amplifier_gain;

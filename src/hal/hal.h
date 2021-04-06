@@ -1,6 +1,8 @@
 #ifndef _H_HAL_
 #define _H_HAL_
 
+#include "libc.h"
+
 #include "adc.h"
 #include "can.h"
 #include "flash.h"
@@ -30,11 +32,9 @@
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
-#define	LD_CCMRAM			__attribute__ ((section(".ccmram")))
+#define	LD_CCRAM			__attribute__ ((section(".ccram")))
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
-
-#define INIT_SIGNATURE			0x55775577UL
 
 enum {
 	LEG_A				= 1,
@@ -102,16 +102,16 @@ HAL_t;
 
 typedef struct {
 
-	int		boot_SIGNATURE;
-	int		boot_COUNT;
+	u32_t		boot_SIGNATURE;
+	u32_t		boot_COUNT;
 
-	char		textbuf[512];
-	int		tail;
+	char		textbuf[1024];
+	int		len;
 }
 LOG_t;
 
-extern long			ld_begin_vectors;
-extern unsigned long		clock_cpu_hz;
+extern u32_t			ld_begin_vectors;
+extern u32_t			clock_cpu_hz;
 extern HAL_t			hal;
 extern LOG_t			log;
 

@@ -13,3 +13,8 @@ float ntc_temperature(ntc_t *ntc, float u)
 	return temp;
 }
 
+float ats_temperature(ntc_t *ntc, float u)
+{
+	return (ntc->ta_0 - u) * ntc->betta;
+}
+

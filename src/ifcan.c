@@ -683,31 +683,20 @@ static int
 IFCAN_flash_erase()
 {
 	void			*flash_end;
-	int			N, rc = 0;
+	int			rc = 0;
 
 	if (local.flash_INIT_sizeof >= 0UL) {
 
 		flash_end = (void *) (FLASH_map[0] + local.flash_INIT_sizeof);
 
-		if ((u32_t) flash_end > FLASH_map[FLASH_SECTOR_RELOC]) {
+		if ((u32_t) flash_end > FLASH_map[FLASH_config.s_total]) {
 
 			rc = 0;
 		}
 		else {
-			/* Relocate configuration block.
+			/* Erase flash and relocate configuration block to the end.
 			 * */
-			rc = flash_block_relocate();
-
-			if (rc != 0) {
-
-				for (N = 0; N < FLASH_SECTOR_MAX - 2; ++N) {
-
-					if ((u32_t) flash_end > FLASH_map[N]) {
-
-						FLASH_erase((void *) FLASH_map[N]);
-					}
-				}
-			}
+			rc = flash_block_relocate(local.flash_INIT_sizeof);
 		}
 	}
 
@@ -970,7 +959,11 @@ void IFCAN_startup()
 {
 	/* Produce UNIQUE ID.
 	 * */
+#if defined(_HW_STM32F405)
 	local.UID = crc32b((void *) 0x1FFF7A10, 12);
+#elif defined(_HW_STM32F722)
+	local.UID = crc32b((void *) 0x1FF07A10, 12);
+#endif /* _HW_STM32Fxx */
 
 	/* Allocate queues.
 	 * */

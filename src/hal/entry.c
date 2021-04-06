@@ -1,16 +1,18 @@
-#include "cmsis/stm32f4xx.h"
-#include "hal/hal.h"
+#include "libc.h"
 
-extern long ld_stack;
-extern long ld_begin_vectors;
-extern long ld_end_text;
-extern long ld_begin_data;
-extern long ld_end_data;
-extern long ld_begin_bss;
-extern long ld_end_bss;
-extern long ld_begin_ccm;
-extern long ld_end_ccm;
-extern long ld_end_flash;
+#include "hal.h"
+#include "cmsis/stm32xx.h"
+
+extern u32_t ld_stack;
+extern u32_t ld_begin_vectors;
+extern u32_t ld_end_text;
+extern u32_t ld_begin_data;
+extern u32_t ld_end_data;
+extern u32_t ld_begin_bss;
+extern u32_t ld_end_bss;
+extern u32_t ld_begin_ccm;
+extern u32_t ld_end_ccm;
+extern u32_t ld_end_flash;
 
 void irq_Reset();
 void irq_NMI();
@@ -138,13 +140,13 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 };
 
 static void
-init_data(const long *long_s, long *long_d, long *long_e)
+init_data(const u32_t *long_s, u32_t *long_d, u32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = *long_s++; }
 }
 
 static void
-init_bss(long *long_d, long *long_e)
+init_bss(u32_t *long_d, u32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = 0; }
 }

@@ -88,7 +88,7 @@ extern pmc_t			pm;
 extern TLM_t			tlm;
 
 extern int flash_block_regs_load();
-extern int flash_block_relocate();
+extern int flash_block_relocate(u32_t len);
 extern int pm_wait_for_IDLE();
 
 float ADC_get_analog_ANG();

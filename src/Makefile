@@ -6,13 +6,38 @@ CROSS	?= armv7m-none-eabi
 #CC	= $(CROSS)-gcc
 CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
-GDB     = $(CROSS)-gdb
+GDB	= $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
+#
+#
+
+HW_MCU	= HW_STM32F405
+#HW_REV	= HW_REV2
+#HW_REV	= HW_KLEN
+#HW_REV	= HW_REV4B
+#HW_REV	= HW_REV4C
+HW_REV	= HW_REV5A
+
+#HW_MCU	= HW_STM32F722
+#HW_REV	= HW_PESC1
+
+#
+#
+
 CFLAGS	= -Os -flto -g3 -pipe
+
+ifeq ($(HW_MCU), HW_STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
+endif
+
+ifeq ($(HW_MCU), HW_STM32F722)
+CFLAGS	+= -mcpu=cortex-m7 -mthumb
+CFLAGS	+= -mfloat-abi=hard -mfpu=fpv5-sp-d16
+endif
+
 CFLAGS	+= -Wall -Wdouble-promotion
 CFLAGS	+= -ffreestanding
 CFLAGS	+= -fno-stack-protector
@@ -24,15 +49,17 @@ CFLAGS	+= -fno-associative-math
 CFLAGS	+= -fno-reciprocal-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
-
-#CFLAGS  += -D_HW_REV2
-#CFLAGS  += -D_HW_KLEN
-#CFLAGS  += -D_HW_REV4B
-CFLAGS  += -D_HW_REV4C
-#CFLAGS  += -D_HW_REV5A
+CFLAGS	+= -D_$(HW_MCU) -D_$(HW_REV)
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= -Wl,-T,hal/link.ld
+
+ifeq ($(HW_MCU), HW_STM32F405)
+LDFLAGS	+= -Wl,-T,hal/link_f405.ld
+endif
+
+ifeq ($(HW_MCU), HW_STM32F722)
+LDFLAGS	+= -Wl,-T,hal/link_f722.ld
+endif
 
 TTY	= /dev/rfcomm0
 #TTY	= /dev/ttyUSB0
@@ -97,7 +124,7 @@ flash: $(IMAGE)
 
 zip: $(IMAGE)
 	@ echo "  ZIP   " $(notdir $<)
-	@ zip -j9 $(BUILD)/pmc-$(shell hg id -b)-$(shell hg id -n).zip $<
+	@ zip -j9 $(BUILD)/pmc-$(HW_REV)-$(shell hg id -n).zip $<
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)

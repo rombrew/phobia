@@ -59,7 +59,7 @@
 #define configUSE_TIME_SLICING			1
 
 #define configSUPPORT_DYNAMIC_ALLOCATION	1
-#define configTOTAL_HEAP_SIZE			20480
+#define configTOTAL_HEAP_SIZE			40960
 #define configAPPLICATION_ALLOCATED_HEAP	0
 
 #define configUSE_IDLE_HOOK			1
@@ -89,7 +89,7 @@
 #define xPortPendSVHandler	irq_PendSV
 #define xPortSysTickHandler	irq_SysTick
 
-extern unsigned long clock_cpu_hz;
+extern unsigned int clock_cpu_hz;
 extern void vAssertCalled(const char *file, int line);
 
 #endif /* FREERTOS_CONFIG_H */
