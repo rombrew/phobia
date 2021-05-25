@@ -123,7 +123,7 @@ int hal_lock_irq();
 void hal_unlock_irq(int irq);
 
 void hal_system_reset();
-void hal_bootload_jump();
+void hal_bootload_reset();
 
 void hal_sleep();
 void hal_fence();

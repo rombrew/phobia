@@ -32,6 +32,10 @@ extern io_ops_t		*iodef;
  * */
 extern int		iodef_ECHO;
 
+/* PRETTY mode.
+ * */
+extern int		iodef_PRETTY;
+
 /* Random SEED.
  * */
 extern u32_t		rseed;

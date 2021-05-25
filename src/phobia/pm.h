@@ -154,10 +154,12 @@ typedef struct {
 	int		config_FORCED;
 	int		config_FLUX;
 	int		config_HFI;
+	int		config_MAJOR_AXIS;
 	int		config_SENSOR;
 	int		config_ABI_REVERSED;
 	int		config_ABI_DEBOUNCE;
 	int		config_DRIVE;
+	int		config_MTPA;
 	int		config_WEAK;
 	int		config_BRAKE;
 	int		config_LIMITED;
@@ -365,7 +367,6 @@ typedef struct {
 	float		const_fb_U;
 	float		const_E;
 	float		const_R;
-	float		const_L;
 	int		const_Zp;
 	float		const_Ja;
 	float		const_im_L1;

@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 
 const FLASH_config_t	FLASH_config = { 8, 4 };
 
@@ -18,7 +18,7 @@ const u32_t FLASH_map[] = {
 	0x08100000UL
 };
 
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 
 const FLASH_config_t	FLASH_config = { 6, 2 };
 
@@ -29,7 +29,7 @@ const u32_t FLASH_map[] = {
 	0x08080000UL
 };
 
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 static void
 FLASH_unlock()
@@ -64,6 +64,9 @@ FLASH_erase_on_IWDG(int N)
 	 * */
 	__disable_irq();
 
+	__DSB();
+	__ISB();
+
 	FLASH->CR = FLASH_CR_PSIZE_1 | (N << 3)
 		| FLASH_CR_SER | FLASH_CR_STRT;
 
@@ -80,6 +83,8 @@ FLASH_erase_on_IWDG(int N)
 
 	FLASH->CR = 0;
 
+	__DSB();
+
 	__enable_irq();
 }
 
@@ -94,6 +99,9 @@ FLASH_selfupdate_on_IWDG()
 	 * occur while flash operations is in progress.
 	 * */
 	__disable_irq();
+
+	__DSB();
+	__ISB();
 
 	for (N = 0; N < FLASH_config.s_first; ++N) {
 
@@ -127,7 +135,7 @@ FLASH_selfupdate_on_IWDG()
 
 		__DSB();
 
-#ifdef _HW_STM32F722
+#ifdef STM32F7
 
 		/* D-Cache Clean and Invalidate.
 		 * */
@@ -136,7 +144,7 @@ FLASH_selfupdate_on_IWDG()
 		__DSB();
 		__ISB();
 
-#endif /* _HW_STM32F722 */
+#endif /* STM32F7 */
 
 		long_flash++;
 
@@ -153,6 +161,8 @@ FLASH_selfupdate_on_IWDG()
 
 	__DSB();
 
+	/* Request a system RESET.
+	 * */
 	SCB->AIRCR = ((0x5FAUL << SCB_AIRCR_VECTKEY_Pos)
 			| (SCB->AIRCR & SCB_AIRCR_PRIGROUP_Msk)
 			| SCB_AIRCR_SYSRESETREQ_Msk);
@@ -189,23 +199,23 @@ void *FLASH_erase(void *flash)
 
 		FLASH_lock();
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 
-		/* Reset ART D-Cache.
+		/* Reset D-Cache.
 		 * */
 		FLASH->ACR &= ~FLASH_ACR_DCEN;
 		FLASH->ACR |= FLASH_ACR_DCRST;
 		FLASH->ACR &= ~FLASH_ACR_DCRST;
 		FLASH->ACR |= FLASH_ACR_DCEN;
 
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 
 		/* Invalidate D-Cache on the erased sector.
 		 * */
 		SCB_InvalidateDCacheByAddr((void *) FLASH_map[N],
 				(int) (FLASH_map[N + 1] - FLASH_map[N]));
 
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 	}
 
 	return flash;
@@ -243,7 +253,7 @@ void *FLASH_prog(void *flash, const void *s, int n)
 
 			__DSB();
 
-#ifdef _HW_STM32F722
+#ifdef STM32F7
 
 			/* D-Cache Clean and Invalidate.
 			 * */
@@ -252,7 +262,7 @@ void *FLASH_prog(void *flash, const void *s, int n)
 			__DSB();
 			__ISB();
 
-#endif /* _HW_STM32F722 */
+#endif /* STM32F7 */
 
 			long_flash++;
 

@@ -436,11 +436,9 @@ void xPortPendSVHandler( void )
 			"								\n"
 			"	stmdb sp!, {r0, r3}			\n"
 			"	mov r0, %0 					\n"
-			"	cpsid i						\n" /* Errata workaround. */
 			"	msr basepri, r0				\n"
 			"	dsb							\n"
 			"	isb							\n"
-			"	cpsie i						\n" /* Errata workaround. */
 			"	bl vTaskSwitchContext		\n"
 			"	mov r0, #0					\n"
 			"	msr basepri, r0				\n"

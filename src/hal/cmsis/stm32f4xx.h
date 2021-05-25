@@ -72,7 +72,11 @@
   * @{
   */
 
+#if defined(_HW_STM32F405)
 #include "stm32f405xx.h"
+#elif defined(_HW_STM32F407)
+#include "stm32f407xx.h"
+#endif /* _HW_STM32F4xx */
 
 /**
   * @}

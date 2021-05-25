@@ -97,6 +97,7 @@ typedef struct {
 
 	/* FLASH update across network.
 	 * */
+	char			flash_INIT_revision[16];
 	u32_t			flash_INIT_sizeof;
 	u32_t			flash_INIT_crc32;
 	u32_t			*flash_long;
@@ -292,6 +293,8 @@ void IFCAN_pipes_REGULAR()
 
 void CAN_IRQ()
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	BaseType_t		xWoken = pdFALSE;
 
 	if (hal.CAN_msg.ID < IFCAN_ID_NODE_BASE) {
@@ -306,6 +309,8 @@ void CAN_IRQ()
 	}
 
 	portYIELD_FROM_ISR(xWoken);
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 static void
@@ -627,8 +632,6 @@ void task_IFCAN_NET(void *pData)
 				IFCAN_send_msg(&msg);
 			}
 		}
-
-		/* TODO: send heartbeat messages from here */
 	}
 	while (1);
 }
@@ -736,14 +739,38 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 	/* Flash functions.
 	 * */
 	else if (msg->ID == IFCAN_ID_FLASH_INIT
+			&& msg->len == 7
+			&& net.node_ID != 0) {
+
+		local.flash_INIT_revision[0] = msg->payload[0];
+		local.flash_INIT_revision[1] = msg->payload[1];
+		local.flash_INIT_revision[2] = msg->payload[2];
+		local.flash_INIT_revision[3] = msg->payload[3];
+		local.flash_INIT_revision[4] = msg->payload[4];
+		local.flash_INIT_revision[5] = msg->payload[5];
+		local.flash_INIT_revision[6] = msg->payload[6];
+		local.flash_INIT_revision[7] = 0;
+	}
+	else if (msg->ID == IFCAN_ID_FLASH_INIT
+			&& msg->len == 5
+			&& net.node_ID != 0) {
+
+		local.flash_INIT_revision[7] = msg->payload[0];
+		local.flash_INIT_revision[8] = msg->payload[1];
+		local.flash_INIT_revision[9] = msg->payload[2];
+		local.flash_INIT_revision[10] = msg->payload[3];
+		local.flash_INIT_revision[11] = msg->payload[4];
+		local.flash_INIT_revision[12] = 0;
+	}
+	else if (msg->ID == IFCAN_ID_FLASH_INIT
 			&& msg->len == 8
 			&& net.node_ID != 0) {
 
 		local.flash_INIT_sizeof = * (u32_t *) &msg->payload[0];
 		local.flash_INIT_crc32 = * (u32_t *) &msg->payload[4];
 
-		if (		pm.lu_mode != PM_LU_DISABLED
-				|| net.flash_MODE == PM_DISABLED) {
+		if (		pm.lu_mode != PM_LU_DISABLED || net.flash_MODE == PM_DISABLED
+				|| strcmp(local.flash_INIT_revision, _HW_REVISION) != 0) {
 
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 		}
@@ -959,11 +986,11 @@ void IFCAN_startup()
 {
 	/* Produce UNIQUE ID.
 	 * */
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	local.UID = crc32b((void *) 0x1FFF7A10, 12);
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	local.UID = crc32b((void *) 0x1FF07A10, 12);
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 	/* Allocate queues.
 	 * */
@@ -1030,6 +1057,8 @@ void IFCAN_filter_ID()
 
 SH_DEF(net_survey)
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	CAN_msg_t		msg;
 	int			N;
 
@@ -1069,10 +1098,14 @@ SH_DEF(net_survey)
 	else {
 		printf("No remote nodes found" EOL);
 	}
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 SH_DEF(net_assign)
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	CAN_msg_t		msg;
 	int			N;
 
@@ -1107,10 +1140,14 @@ SH_DEF(net_assign)
 			}
 		}
 	}
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 SH_DEF(net_revoke)
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	CAN_msg_t		msg;
 	int			N, node_ID;
 
@@ -1140,6 +1177,8 @@ SH_DEF(net_revoke)
 			}
 		}
 	}
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 static void
@@ -1229,7 +1268,10 @@ IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
 
 SH_DEF(net_flash_update)
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	CAN_msg_t		msg;
+	char			revbuf[16];
 	u32_t			*flash, flash_sizeof, flash_crc32;
 	int			N, nodes_N;
 
@@ -1253,6 +1295,40 @@ SH_DEF(net_flash_update)
 	else {
 		local_node_discard_ACK();
 
+		/* Send INIT messages (revision name).
+		 * */
+		memset(revbuf, 0, sizeof(revbuf));
+		strcpyn(revbuf, _HW_REVISION, 12);
+
+		msg.ID = IFCAN_ID_FLASH_INIT;
+		msg.len = 7;
+
+		msg.payload[0] = revbuf[0];
+		msg.payload[1] = revbuf[1];
+		msg.payload[2] = revbuf[2];
+		msg.payload[3] = revbuf[3];
+		msg.payload[4] = revbuf[4];
+		msg.payload[5] = revbuf[5];
+		msg.payload[6] = revbuf[6];
+
+		IFCAN_send_msg(&msg);
+
+		if (strlen(revbuf) > 7) {
+
+			msg.ID = IFCAN_ID_FLASH_INIT;
+			msg.len = 5;
+
+			msg.payload[0] = revbuf[7];
+			msg.payload[1] = revbuf[8];
+			msg.payload[2] = revbuf[9];
+			msg.payload[3] = revbuf[10];
+			msg.payload[4] = revbuf[11];
+
+			IFCAN_send_msg(&msg);
+		}
+
+		/* Send INIT message (sizeof and crc32).
+		 * */
 		flash = (u32_t *) &ld_begin_vectors;
 
 		flash_sizeof = * (flash + 8) - * (flash + 7);
@@ -1311,6 +1387,8 @@ SH_DEF(net_flash_update)
 			printf("%i nodes were updated" EOL, nodes_N);
 		}
 	}
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 void task_REMOTE(void *pData)
@@ -1350,6 +1428,8 @@ void IFCAN_remote_putc(int c)
 
 SH_DEF(net_node_remote)
 {
+#ifdef HW_HAVE_NETWORK_CAN
+
 	TaskHandle_t		xHandle;
 	int			node_ID;
 	char			xC;
@@ -1401,7 +1481,7 @@ SH_DEF(net_node_remote)
 
 		/* Wait for task_REMOTE to transmit the last message.
 		 * */
-		vTaskDelay((TickType_t) 20);
+		vTaskDelay((TickType_t) 50);
 
 		vTaskDelete(xHandle);
 
@@ -1409,5 +1489,7 @@ SH_DEF(net_node_remote)
 		 * */
 		puts(EOL);
 	}
+
+#endif /* HW_HAVE_NETWORK_CAN */
 }
 

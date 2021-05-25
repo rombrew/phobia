@@ -12,9 +12,6 @@
 #define K_ESC			0x1B	/* Ctrl + [ */
 #define K_DEL			0x7F
 
-#define SH_DEF(name)		void name(const char *s);
-#include "shdefs.h"
-
 #undef SH_DEF
 #define SH_DEF(name)		void name(const char *s)
 

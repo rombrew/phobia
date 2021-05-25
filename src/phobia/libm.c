@@ -51,27 +51,35 @@ int m_isfinitef(float x)
 	}
 	u = { x };
 
-	return ((0xFFUL & (u.i >> 23)) != 0xFFUL) ? 1 : 0;
+	return ((0xFFU & (u.i >> 23)) != 0xFFU) ? 1 : 0;
 }
 
-void m_rotf(float y[2], float val, const float x[2])
+void m_rotatef(float x[2], float rval)
 {
-	float           q, s, c, a, b;
+	float           q, s, c;
 
-	q = val * val;
-	s = val - q * val * (1.f / 6.f - (1.f / 120.f) * q);
-	c = 1.f - q * (.5f - (1.f / 24.f) * q);
+	q = rval * rval;
+	s = rval - q * rval * (1.6666667E-1f - 8.3333338E-3f * q);
+	c = 1.f - q * (.5f - 4.1666668E-2f * q);
 
-	a = c * x[0] - s * x[1];
-	b = s * x[0] + c * x[1];
+	q = c * x[0] - s * x[1];
+	c = s * x[0] + c * x[1];
 
-	q = (3.f - a * a - b * b) * .5f;
-
-	y[0] = a * q;
-	y[1] = b * q;
+	x[0] = q;
+	x[1] = c;
 }
 
-void m_rsum(float *sum, float *rem, float val)
+void m_normalizef(float x[2])
+{
+	float		q;
+
+	q = (3.f - x[0] * x[0] - x[1] * x[1]) * .5f;
+
+	x[0] *= q;
+	x[1] *= q;
+}
+
+void m_rsumf(float *sum, float *rem, float val)
 {
 	float		fixed, newsum;
 
@@ -181,7 +189,7 @@ float m_log2f(float x)
 	q = lt_log2f[5] + q * m.f;
 	q /= (1.f + lt_log2f[6] * m.f);
 
-	q += (float) u.i * (1.f / (float) (1UL << 23)) - 127.f;
+	q += (float) u.i * (1.f / (float) (1U << 23)) - 127.f;
 
 	return q;
 }
@@ -201,7 +209,7 @@ float m_exp2f(float x)
 
 	float		r, q;
 
-	m.i = (int) ((float) (1UL << 23) * (x + 127.f));
+	m.i = (int) ((float) (1U << 23) * (x + 127.f));
 	r = x - (int) x + (int) (u.i >> 31);
 
 	q = lt_exp2f[0];
@@ -221,30 +229,54 @@ float m_expf(float x)
 	return m_exp2f(x * (1.f / M_LOG2_F));
 }
 
-void m_la_eig(const float b[3], float la[4])
+void m_la_eigf(const float a[3], float v[4], int major)
 {
-	float		u, s, t;
+	float           b, d, la;
 
-	/* Get the eigenvalues \la of quadratic form \b.
+	/* Get the eigenvalues \v of quadratic form \a.
 	 *
-	 * R * [b(0) b(1)] * R' = [la(2) 0    ]
-	 *     [b(1) b(2)]        [0     la(3)]
+	 * R * [a(0) a(1)] * R' = [v(2) 0   ]
+	 *     [a(1) a(2)]        [0    v(3)]
 	 *
-	 * R = [la(0) -la(1)]
-	 *     [la(1)  la(0)].
+	 * R = [v(0) -v(1)]
+	 *     [v(1)  v(0)].
 	 * */
 
-	u = (b[2] - b[0]) * .5f;
-	s = m_sqrtf(u * u + b[1] * b[1]);
-	u = (1.f + u / s) * .5f;
+	b = a[0] + a[2];
+	d = a[0] * a[0] + a[2] * a[2] - 2.f * a[0] * a[2] + 4.f * a[1] * a[1];
 
-	la[0] = m_sqrtf(u);
-	la[1] = b[1] / (2.f * la[0] * s);
+	la = (d > 0.f) ? m_sqrtf(d) : 0.f;
 
-	s = la[1] * la[1];
-	t = 2.f * la[0] * la[1];
+	if (major == 0) {
 
-	la[2] = b[0] * u + b[2] * s + b[1] * t;
-	la[3] = b[2] * u + b[0] * s - b[1] * t;
+		v[2] = (b - la) * .5f;
+		v[3] = (b + la) * .5f;
+	}
+	else {
+		v[2] = (b + la) * .5f;
+		v[3] = (b - la) * .5f;
+	}
+
+	if (a[0] >= a[2]) {
+
+		la = a[0] - v[3];
+		b = m_sqrtf(la * la + a[1] * a[1]);
+
+		v[0] = la / b;
+		v[1] = - a[1] / b;
+	}
+	else {
+		la = a[2] - v[3];
+		b = m_sqrtf(la * la + a[1] * a[1]);
+
+		v[0] = a[1] / b;
+		v[1] = - la / b;
+	}
+
+	if (v[0] < 0.f) {
+
+		v[0] = - v[0];
+		v[1] = - v[1];
+	}
 }
 

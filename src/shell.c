@@ -7,10 +7,11 @@
 #define SH_CLINE_SZ			84
 #define SH_HISTORY_SZ			440
 
-#define HIST_INC(n)                 	(((n) < (SH_HISTORY_SZ - 1)) ? (n) + 1 : 0)
-#define HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_SZ - 1)
+#define SH_HIST_INC(n)                 	(((n) < (SH_HISTORY_SZ - 1)) ? (n) + 1 : 0)
+#define SH_HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_SZ - 1)
 
 static const char
+SH_ALLOWED[] = "+-_. ",
 SH_PROMPT[] = "(pmc) ",
 SH_BACKSPACE[] = "\b \b";
 
@@ -126,7 +127,7 @@ sh_cyclic_match(sh_t *sh, int xDIR)
 
 			/* Copy the command name.
 			 * */
-			strcpyn(sh->cLINE, id, (SH_CLINE_SZ - 2));
+			strcpyn(sh->cLINE, id, SH_CLINE_SZ - 2);
 
 			break;
 		}
@@ -173,14 +174,14 @@ sh_common_match(sh_t *sh)
 
 	if (sp != NULL) {
 
-		if (n > (SH_CLINE_SZ - 2))
-			n = (SH_CLINE_SZ - 2);
+		n = (n > SH_CLINE_SZ - 2) ? SH_CLINE_SZ - 2 : n;
 
 		strcpyn(sh->cLINE, sp, n);
 		sh->cEON = n;
 	}
-	else
+	else {
 		sh->cEON = 0;
+	}
 }
 
 static int
@@ -192,17 +193,17 @@ sh_history_move(sh_t *sh, int xNUM, int xDIR)
 
 			/* Get previous line.
 			 * */
-			xNUM = HIST_DEC(xNUM);
+			xNUM = SH_HIST_DEC(xNUM);
 
 			do {
-				xNUM = HIST_DEC(xNUM);
+				xNUM = SH_HIST_DEC(xNUM);
 
 				if (sh->cHIST[xNUM] == 0)
 					break;
 			}
 			while (1);
 
-			xNUM = HIST_INC(xNUM);
+			xNUM = SH_HIST_INC(xNUM);
 		}
 	}
 	else {
@@ -211,14 +212,14 @@ sh_history_move(sh_t *sh, int xNUM, int xDIR)
 			/* Get next line.
 			 * */
 			do {
-				xNUM = HIST_INC(xNUM);
+				xNUM = SH_HIST_INC(xNUM);
 
 				if (sh->cHIST[xNUM] == 0)
 					break;
 			}
 			while (1);
 
-			xNUM = HIST_INC(xNUM);
+			xNUM = SH_HIST_INC(xNUM);
 		}
 	}
 
@@ -241,7 +242,7 @@ sh_history_put(sh_t *sh, const char *s)
 			if (r || !*q)
 				break;
 
-			xNUM = HIST_INC(xNUM);
+			xNUM = SH_HIST_INC(xNUM);
 			++q;
 		}
 		while (1);
@@ -255,21 +256,21 @@ sh_history_put(sh_t *sh, const char *s)
 
 	do {
 		sh->cHIST[sh->hTAIL] = *s;
-		sh->hTAIL = HIST_INC(sh->hTAIL);
+		sh->hTAIL = SH_HIST_INC(sh->hTAIL);
 
 		if (sh->hTAIL == sh->hHEAD) {
 
 			/* Forget old lines.
 			 * */
 			do {
-				sh->hHEAD = HIST_INC(sh->hHEAD);
+				sh->hHEAD = SH_HIST_INC(sh->hHEAD);
 
 				if (sh->cHIST[sh->hHEAD] == 0)
 					break;
 			}
 			while (1);
 
-			sh->hHEAD = HIST_INC(sh->hHEAD);
+			sh->hHEAD = SH_HIST_INC(sh->hHEAD);
 		}
 
 		if (*s == 0)
@@ -379,7 +380,7 @@ sh_complete(sh_t *sh, int xDIR)
 			 * */
 			sh->cEOL = sh->cEON;
 
-			if (sh->cEOL < (SH_CLINE_SZ - 2)) {
+			if (sh->cEOL < SH_CLINE_SZ - 2) {
 
 				/* Put trailing space since completion is done.
 				 * */
@@ -452,7 +453,7 @@ sh_history(sh_t *sh, int xDIR)
 			if ((*s = sh->cHIST[xNUM]) == 0)
 				break;
 
-			xNUM = HIST_INC(xNUM);
+			xNUM = SH_HIST_INC(xNUM);
 			++s;
 		}
 		while (1);
@@ -470,17 +471,14 @@ sh_history(sh_t *sh, int xDIR)
 static void
 sh_line_putc(sh_t *sh, char c)
 {
-	if (sh->cEOL < (SH_CLINE_SZ - 2)) {
+	if (sh->cEOL < SH_CLINE_SZ - 2) {
 
 		sh->cLINE[sh->cEOL++] = c;
 		sh->cLINE[sh->cEOL] = 0;
 
-		if (iodef_ECHO != 0) {
-
-			/* Echo.
-			 * */
-			putc(c);
-		}
+		/* Echo.
+		 * */
+		putc(c);
 
 		sh->mCOMP = 0;
 		sh->mHIST = 0;
@@ -508,19 +506,16 @@ sh_line_null(sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
-	if (iodef_ECHO != 0) {
+	if (iodef == &io_CAN) {
 
-		if (iodef == &io_CAN) {
-
-			/* Prompt with CAN node ID.
-			 * */
-			printf("(net/%i) ", net.node_ID);
-		}
-		else {
-			/* Prompt (local).
-			 * */
-			puts(SH_PROMPT);
-		}
+		/* Prompt with CAN node ID.
+		 * */
+		printf("(net/%i) ", net.node_ID);
+	}
+	else {
+		/* Prompt (local).
+		 * */
+		puts(SH_PROMPT);
 	}
 
 	sh->mCOMP = 0;
@@ -541,7 +536,6 @@ static sh_t			shlocal;
 
 void task_SH(void *pData)
 {
-	const char	*allowed = "+-_. ";
 	sh_t		*sh = &shlocal;
 	int		c;
 
@@ -550,18 +544,15 @@ void task_SH(void *pData)
 
 		if (sh->xESC == 0) {
 
-			if (sh_ischar(c) || sh_isdigit(c) || strchr(allowed, c) != NULL) {
+			if (sh_ischar(c) || sh_isdigit(c) || strchr(SH_ALLOWED, c) != NULL) {
 
 				sh_line_putc(sh, c);
 			}
 			else if (c == K_CR) {
 
-				if (iodef_ECHO != 0) {
-
-					/* Return.
-					 * */
-					puts(EOL);
-				}
+				/* Return.
+				 * */
+				puts(EOL);
 
 				sh_evaluate(sh);
 				sh_line_null(sh);

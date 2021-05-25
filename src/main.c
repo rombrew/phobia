@@ -59,20 +59,28 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 float ADC_get_analog_ANG()
 {
+#ifdef HW_HAVE_ANALOG_KNOB
 	float			analog;
 
 	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_ANG);
 
 	return analog * ap.analog_const_GU;
+#else /* HW_HAVE_ANALOG_KNOB */
+	return 0.f;
+#endif
 }
 
 float ADC_get_analog_BRK()
 {
+#ifdef HW_HAVE_ANALOG_KNOB
 	float			analog;
 
 	analog = ADC_get_VALUE(GPIO_ADC_ANALOG_BRK);
 
 	return analog * ap.analog_const_GU;
+#else /* HW_HAVE_ANALOG_KNOB */
+	return 0.f;
+#endif
 }
 
 void task_TEMP(void *pData)
@@ -475,7 +483,6 @@ app_flash_load()
 void task_INIT(void *pData)
 {
 	u32_t			seed[3];
-	int			irq;
 
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_12V);
 	GPIO_set_HIGH(GPIO_BOOST_12V);
@@ -497,7 +504,9 @@ void task_INIT(void *pData)
 	/* Default to USART.
 	 * */
 	iodef = &io_USART;
+
 	iodef_ECHO = 1;
+	iodef_PRETTY = 1;
 
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
@@ -535,7 +544,7 @@ void task_INIT(void *pData)
 	 * */
 	app_flash_load();
 
-	irq = hal_lock_irq();
+	hal_lock_irq();
 
 	/* Do CORE startup.
 	 * */
@@ -547,16 +556,16 @@ void task_INIT(void *pData)
 	pm.dT = 1.f / pm.freq_hz;
 	pm.dc_resolution = hal.PWM_resolution;
 
-	hal_unlock_irq(irq);
+	hal_unlock_irq(0);
 
 	PPM_startup();
 	TIM_startup();
 
 	USART_startup();
 
-#ifdef HW_HAVE_TRANSCEIVER_CAN
+#ifdef HW_HAVE_NETWORK_CAN
 	IFCAN_startup();
-#endif /* HW_HAVE_TRANSCEIVER_CAN */
+#endif /* HW_HAVE_NETWORK_CAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
@@ -709,7 +718,10 @@ void ADC_IRQ()
 
 	pm_feedback(&pm, &fb);
 
+#ifdef HW_HAVE_NETWORK_CAN
 	IFCAN_pipes_REGULAR();
+#endif /* HW_HAVE_NETWORK_CAN */
+
 	TLM_reg_grab(&tlm);
 
 	WD_kick();
@@ -721,15 +733,16 @@ void app_MAIN()
 	vTaskStartScheduler();
 }
 
-SH_DEF(rtos_firmware)
+SH_DEF(rtos_version)
 {
 	u32_t		*flash = (u32_t *) &ld_begin_vectors;
 	u32_t		FW_sizeof, FW_crc32;
 
+	printf("HW_revision \"%s\"" EOL, _HW_REVISION);
+	printf("FW_build \"%s\"" EOL, __DATE__);
+
 	FW_sizeof = * (flash + 8) - * (flash + 7);
 	FW_crc32 = crc32b(flash, FW_sizeof);
-
-	printf("HW_revision \"%s\"" EOL, HW_REVISION_NAME);
 
 	printf("FW_sizeof %i" EOL, FW_sizeof);
 	printf("FW_crc32 %8x" EOL, FW_crc32);
@@ -761,7 +774,6 @@ void vApplicationIdleHook()
 		hal_fence();
 	}
 	else {
-
 		hal_sleep();
 	}
 }
@@ -934,6 +946,6 @@ SH_DEF(rtos_bootload)
 	GPIO_set_LOW(GPIO_BOOST_12V);
 	vTaskDelay((TickType_t) 50);
 
-	hal_bootload_jump();
+	hal_bootload_reset();
 }
 

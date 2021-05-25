@@ -264,61 +264,6 @@ SH_DEF(hal_DBGMCU_mode_stop)
 	DBGMCU_mode_stop();
 }
 
-SH_DEF(hal_PPM_get_PERIOD)
-{
-	float		period, freq;
-
-	period = PPM_get_PERIOD();
-	freq = 1000000.f / period;
-
-	printf("%3f (us) %1f (Hz)" EOL, &period, &freq);
-}
-
-SH_DEF(hal_PPM_get_PULSE)
-{
-	float		pulse;
-
-	pulse = PPM_get_PULSE();
-
-	printf("%3f (us)" EOL, &pulse);
-}
-
-SH_DEF(hal_ADC_get_analog_ANG)
-{
-	float		analog;
-
-	analog = ADC_get_analog_ANG();
-
-	printf("%3f (V)" EOL, &analog);
-}
-
-SH_DEF(hal_ADC_get_analog_BRK)
-{
-	float		analog;
-
-	analog = ADC_get_analog_BRK();
-
-	printf("%3f (V)" EOL, &analog);
-}
-
-SH_DEF(hal_GPIO_get_HALL)
-{
-	int		HS;
-
-	HS = GPIO_get_HALL();
-
-	printf("%i" EOL, HS);
-}
-
-SH_DEF(hal_TIM_get_EP)
-{
-	int		EP;
-
-	EP = TIM_get_EP();
-
-	printf("%i" EOL, EP);
-}
-
 SH_DEF(hal_PWM_set_DC)
 {
 	int			xDC;

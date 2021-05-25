@@ -12,7 +12,7 @@ LFLAGS	= -lm
 
 OBJS	= blm.o lfg.o pm.o sim.o tsfunc.o
 
-LIST	= $(addprefix $(BUILD)/, $(OBJS))
+SIM_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
 all: $(TARGET)
 
@@ -21,7 +21,7 @@ $(BUILD)/%.o: %.c
 	@ $(MK) $(dir $@)
 	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET): $(LIST)
+$(TARGET): $(SIM_OBJS)
 	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
 

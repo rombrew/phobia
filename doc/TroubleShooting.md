@@ -39,7 +39,7 @@ These reasons come from high-level:
 
 * **PM_ERROR_TIMEOUT** - Timeout has occurred because of no event occurred we
   waiting for. Typically it cannot reach speed setpoint.
-* **PM_ERROR_NO_FLUX_CAUGHT** - FLUX observer has not caught flux for some
+* **PM_ERROR_NO_FLUX_CAUGHT** - FLUX observer has not caught the flux for some
   reason. Maybe speed is too low or spinup was failed at all.
 * **PM_ERROR_LOSS_OF_SYNC** - Position estimate is too poor (BLM model only).
 

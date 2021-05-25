@@ -196,9 +196,9 @@ uint32_t ulNewBASEPRI;
 	(
 		"	mov %0, %1			\n"	\
 		"	msr basepri, %0		\n" \
+		"	dsb					\n" \
 		"	isb					\n" \
-		"	dsb				\n" \
-		:"=r" (ulNewBASEPRI) : "i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY ) : "memory"
+		: "=r" (ulNewBASEPRI) : "i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY ) : "memory"
 	);
 }
 
@@ -213,9 +213,9 @@ uint32_t ulOriginalBASEPRI, ulNewBASEPRI;
 		"	mrs %0, basepri		\n" \
 		"	mov %1, %2			\n"	\
 		"	msr basepri, %1		\n" \
+		"	dsb					\n" \
 		"	isb					\n" \
-		"	dsb				\n" \
-		:"=r" (ulOriginalBASEPRI), "=r" (ulNewBASEPRI) : "i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY ) : "memory"
+		: "=r" (ulOriginalBASEPRI), "=r" (ulNewBASEPRI) : "i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY ) : "memory"
 	);
 
 	/* This return will not be reached but is necessary to prevent compiler

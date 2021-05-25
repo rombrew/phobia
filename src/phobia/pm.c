@@ -18,10 +18,12 @@ void pm_default(pmc_t *pm)
 	pm->config_FORCED = PM_ENABLED;
 	pm->config_FLUX = PM_ENABLED;
 	pm->config_HFI = PM_DISABLED;
+	pm->config_MAJOR_AXIS = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_ABI_REVERSED = PM_DISABLED;
 	pm->config_ABI_DEBOUNCE = PM_ENABLED;
 	pm->config_DRIVE = PM_DRIVE_SPEED;
+	pm->config_MTPA = PM_ENABLED;
 	pm->config_WEAK = PM_DISABLED;
 	pm->config_BRAKE = PM_DISABLED;
 	pm->config_LIMITED = PM_DISABLED;
@@ -107,9 +109,9 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_LEVE = 2E-1f;
 	pm->flux_gain_LP_S = 2E-1f;
 
-	pm->hfi_inject_sine = 1.f;
+	pm->hfi_inject_sine = 2.f;
 	pm->hfi_maximal = 700.f;
-	pm->hfi_DIV = 12;
+	pm->hfi_DIV = 10;
 	pm->hfi_SKIP = 1;
 	pm->hfi_SUM = 5;
 	pm->hfi_FLUX = 0;
@@ -130,9 +132,10 @@ void pm_default(pmc_t *pm)
 
 	pm->const_E = 0.f;
 	pm->const_R = 0.f;
-	pm->const_L = 0.f;
 	pm->const_Zp = 1;
 	pm->const_Ja = 0.f;
+	pm->const_im_L1 = 0.f;
+	pm->const_im_L2 = 0.f;
 
 	pm->watt_wP_maximal = 4000.f;
 	pm->watt_iDC_maximal = 80.f;
@@ -252,7 +255,7 @@ void pm_tune_MPPE(pmc_t *pm)
 	rU = iSTD * pm->const_R;
 	wSTD = m_sqrtf(vSTD * vSTD + rU * rU) * pm->dT;
 
-	rU = iSTD * pm->const_L;
+	rU = iSTD * pm->const_im_L2;
 	wSTD = m_sqrtf(wSTD * wSTD + rU * rU) / pm->const_E;
 
 	wSTD *= pm->freq_hz * pm->flux_gain_SF;
@@ -273,7 +276,9 @@ void pm_tune_forced(pmc_t *pm)
 
 void pm_tune_loop_current(pmc_t *pm)
 {
-	float		Kp, Ki;
+	float		im_Lm, Kp, Ki;
+
+	im_Lm = (pm->const_im_L1 < pm->const_im_L2) ? pm->const_im_L1 : pm->const_im_L2;
 
 	/* Tune current loop based on state-space model.
 	 *
@@ -281,15 +286,15 @@ void pm_tune_loop_current(pmc_t *pm)
 	 * x(k+1) = [1                1     ] * x(k)
 	 *
 	 * */
-	Kp = 2E-1f * pm->const_L * pm->freq_hz - pm->const_R;
-	Ki = 5E-3f * pm->const_L * pm->freq_hz;
+	Kp = 2E-1f * im_Lm * pm->freq_hz - pm->const_R;
+	Ki = 5E-3f * im_Lm * pm->freq_hz;
 
 	pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 	pm->i_gain_I = Ki;
 
 	/* Get limit current slew rate.
 	 * */
-	pm->i_slew_rate = 2E-2f * pm->const_fb_U / pm->const_L;
+	pm->i_slew_rate = 2E-2f * pm->const_fb_U / im_Lm;
 }
 
 void pm_tune_loop_speed(pmc_t *pm)
@@ -332,7 +337,8 @@ pm_forced(pmc_t *pm)
 
 	/* Update DQ-frame.
 	 * */
-	m_rotf(pm->forced_F, pm->forced_wS * pm->dT, pm->forced_F);
+	m_rotatef(pm->forced_F, pm->forced_wS * pm->dT);
+	m_normalizef(pm->forced_F);
 }
 
 static void
@@ -378,7 +384,8 @@ pm_detached_FLUX(pmc_t *pm)
 
 			/* Speed estimation (PLL).
 			 * */
-			m_rotf(pm->detach_V, pm->flux_wS * pm->dT, pm->detach_V);
+			m_rotatef(pm->detach_V, pm->flux_wS * pm->dT);
+			m_normalizef(pm->detach_V);
 
 			EX = uX * pm->detach_V[0] + uY * pm->detach_V[1];
 			EY = uY * pm->detach_V[0] - uX * pm->detach_V[1];
@@ -498,8 +505,8 @@ pm_estimate_FLUX(pmc_t *pm)
 
 	/* Stator FLUX (linear model).
 	 * */
-	lX = pm->const_L * pm->lu_iX;
-	lY = pm->const_L * pm->lu_iY;
+	lX = pm->const_im_L2 * pm->lu_iX;
+	lY = pm->const_im_L2 * pm->lu_iY;
 
 	if (pm->const_E > M_EPS_F) {
 
@@ -564,7 +571,8 @@ pm_estimate_FLUX(pmc_t *pm)
 		else {
 			/* Speed estimation (PLL).
 			 * */
-			m_rotf(pm->flux_F, pm->flux_wS * pm->dT, pm->flux_F);
+			m_rotatef(pm->flux_F, pm->flux_wS * pm->dT);
+			m_normalizef(pm->flux_F);
 
 			DX = EX * pm->flux_F[0] + EY * pm->flux_F[1];
 			DY = EY * pm->flux_F[0] - EX * pm->flux_F[1];
@@ -659,7 +667,7 @@ void pm_hfi_DFT(pmc_t *pm, float la[5])
 	lz[1] = ls->b[2] * iw;
 	lz[2] = ls->b[3] * iw;
 
-	m_la_eig(lz, la);
+	m_la_eigf(lz, la, (pm->config_MAJOR_AXIS == PM_ENABLED) ? 1 : 0);
 }
 
 static void
@@ -706,21 +714,21 @@ pm_estimate_HFI(pmc_t *pm)
 
 	/* Discrete Fourier Transform (DFT).
 	 * */
-	m_rsum(&pm->hfi_DFT[0], &pm->hfi_REM[0], iD * pm->hfi_wave[0]);
-	m_rsum(&pm->hfi_DFT[1], &pm->hfi_REM[1], iD * pm->hfi_wave[1]);
-	m_rsum(&pm->hfi_DFT[2], &pm->hfi_REM[2], uD * pm->hfi_wave[0]);
-	m_rsum(&pm->hfi_DFT[3], &pm->hfi_REM[3], uD * pm->hfi_wave[1]);
-	m_rsum(&pm->hfi_DFT[4], &pm->hfi_REM[4], iQ * pm->hfi_wave[0]);
-	m_rsum(&pm->hfi_DFT[5], &pm->hfi_REM[5], iQ * pm->hfi_wave[1]);
-	m_rsum(&pm->hfi_DFT[6], &pm->hfi_REM[6], uQ * pm->hfi_wave[0]);
-	m_rsum(&pm->hfi_DFT[7], &pm->hfi_REM[7], uQ * pm->hfi_wave[1]);
+	m_rsumf(&pm->hfi_DFT[0], &pm->hfi_REM[0], iD * pm->hfi_wave[0]);
+	m_rsumf(&pm->hfi_DFT[1], &pm->hfi_REM[1], iD * pm->hfi_wave[1]);
+	m_rsumf(&pm->hfi_DFT[2], &pm->hfi_REM[2], uD * pm->hfi_wave[0]);
+	m_rsumf(&pm->hfi_DFT[3], &pm->hfi_REM[3], uD * pm->hfi_wave[1]);
+	m_rsumf(&pm->hfi_DFT[4], &pm->hfi_REM[4], iQ * pm->hfi_wave[0]);
+	m_rsumf(&pm->hfi_DFT[5], &pm->hfi_REM[5], iQ * pm->hfi_wave[1]);
+	m_rsumf(&pm->hfi_DFT[6], &pm->hfi_REM[6], uQ * pm->hfi_wave[0]);
+	m_rsumf(&pm->hfi_DFT[7], &pm->hfi_REM[7], uQ * pm->hfi_wave[1]);
 
 	if (pm->hfi_FLUX != 0) {
 
 		/* Get D-axis polarity with doubled frequency cosine wave.
 		 * */
 		E = pm->hfi_wave[0] * pm->hfi_wave[0] - pm->hfi_wave[1] * pm->hfi_wave[1];
-		m_rsum(&pm->hfi_DFT[8], &pm->hfi_REM[8], iD * E);
+		m_rsumf(&pm->hfi_DFT[8], &pm->hfi_REM[8], iD * E);
 	}
 
 	pm->hfi_REM[10] = pm->lu_iX;
@@ -796,11 +804,13 @@ pm_estimate_HFI(pmc_t *pm)
 
 	/* Extrapolate rotor position.
 	 * */
-	m_rotf(pm->hfi_F, pm->hfi_wS * pm->dT, pm->hfi_F);
+	m_rotatef(pm->hfi_F, pm->hfi_wS * pm->dT);
+	m_normalizef(pm->hfi_F);
 
 	/* HF wave synthesis.
 	 * */
-	m_rotf(pm->hfi_wave, pm->temp_HFI_wS * pm->dT, pm->hfi_wave);
+	m_rotatef(pm->hfi_wave, pm->temp_HFI_wS * pm->dT);
+	m_normalizef(pm->hfi_wave);
 }
 
 static void
@@ -825,7 +835,8 @@ pm_sensor_HALL(pmc_t *pm)
 				if (		m_fabsf(relE) > M_EPS_F
 						&& m_fabsf(pm->hall_prolS) < B) {
 
-					m_rotf(pm->hall_F, relE, pm->hall_F);
+					m_rotatef(pm->hall_F, relE);
+					m_normalizef(pm->hall_F);
 
 					pm->hall_prolS += relE;
 				}
@@ -858,7 +869,9 @@ pm_sensor_HALL(pmc_t *pm)
 			pm->hall_DIRF = (relE < 0.f) ? - 1 : 1;
 
 			relE = - pm->hall_DIRF * (PM_HALL_SPAN / 2.f);
-			m_rotf(hF, relE * pm->hall_gain_PF, hF);
+
+			m_rotatef(hF, relE * pm->hall_gain_PF);
+			m_normalizef(hF);
 
 			A = hF[0] * pm->hall_F[0] + hF[1] * pm->hall_F[1];
 			B = hF[1] * pm->hall_F[0] - hF[0] * pm->hall_F[1];
@@ -1689,6 +1702,11 @@ pm_loop_current(pmc_t *pm)
 			track_Q = pm->s_iSP;
 		}
 
+		if (pm->config_MTPA == PM_ENABLED) {
+
+			/* TODO */
+		}
+
 		if (pm->config_WEAK == PM_ENABLED) {
 
 			E = (1.f - pm->vsi_DC) * pm->const_fb_U;
@@ -1701,11 +1719,11 @@ pm_loop_current(pmc_t *pm)
 
 				E = pm->k_EMAX * pm->const_fb_U;
 
-				pm->i_derated_WEAK = E / (pm->lu_wS * pm->const_L);
+				pm->i_derated_WEAK = E / (pm->lu_wS * pm->const_im_L2);
 
 				/* Flux weakening control.
 				 * */
-				track_D = pm->weak_D;
+				track_D += pm->weak_D;
 			}
 			else {
 				pm->i_derated_WEAK = PM_MAX_F;
@@ -1898,8 +1916,8 @@ pm_loop_current(pmc_t *pm)
 
 	/* Feed forward compensation (L).
 	 * */
-	uD += - pm->lu_wS * pm->const_L * pm->i_track_Q;
-	uQ += pm->lu_wS * (pm->const_L * pm->i_track_D + pm->const_E);
+	uD += - pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
+	uQ += pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_E);
 
 	uMAX = pm->k_UMAX * pm->const_fb_U;
 
@@ -2063,12 +2081,12 @@ pm_infometer(pmc_t *pm)
 
 	if (Wh > 0.f) {
 
-		m_rsum(&pm->im_consumed_Wh, &pm->im_REM[0], Wh);
-		m_rsum(&pm->im_consumed_Ah, &pm->im_REM[1], Ah);
+		m_rsumf(&pm->im_consumed_Wh, &pm->im_REM[0], Wh);
+		m_rsumf(&pm->im_consumed_Ah, &pm->im_REM[1], Ah);
 	}
 	else {
-		m_rsum(&pm->im_reverted_Wh, &pm->im_REM[2], - Wh);
-		m_rsum(&pm->im_reverted_Ah, &pm->im_REM[3], - Ah);
+		m_rsumf(&pm->im_reverted_Wh, &pm->im_REM[2], - Wh);
+		m_rsumf(&pm->im_reverted_Ah, &pm->im_REM[3], - Ah);
 	}
 
 	/* Fuel gauge.
@@ -2089,7 +2107,8 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	if (		pm->lu_mode != PM_LU_DISABLED
 			&& (pm->vsi_AF | pm->vsi_BF) != 0) {
 
-		m_rotf(pm->lu_F, pm->lu_wS * pm->dT, pm->lu_F);
+		m_rotatef(pm->lu_F, pm->lu_wS * pm->dT);
+		m_normalizef(pm->lu_F);
 
 		pm->lu_iX = pm->lu_F[0] * pm->lu_iD - pm->lu_F[1] * pm->lu_iQ;
 		pm->lu_iY = pm->lu_F[1] * pm->lu_iD + pm->lu_F[0] * pm->lu_iQ;

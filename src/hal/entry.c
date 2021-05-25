@@ -161,6 +161,7 @@ void irq_Reset()
 
 	hal_startup();
 	app_MAIN();
+
 	hal_system_reset();
 }
 

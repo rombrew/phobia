@@ -21,42 +21,42 @@ void irq_USART3()
 	u32_t 			SR;
 	char			xC;
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	SR = USART3->SR;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	SR = USART3->ISR;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	if (SR & USART_SR_RXNE) {
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	if (SR & USART_ISR_RXNE) {
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 		xC = USART3->DR;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 		xC = USART3->RDR;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 		xQueueSendToBackFromISR(hal_USART.queue_RX, &xC, &xWoken);
 
 		IODEF_TO_USART();
 	}
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	if (SR & USART_SR_TXE) {
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	if (SR & USART_ISR_TXE) {
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 		if (xQueueReceiveFromISR(hal_USART.queue_TX, &xC, &xWoken) == pdTRUE) {
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 			USART3->DR = xC;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 			USART3->TDR = xC;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 		}
 		else {
@@ -88,13 +88,13 @@ void USART_startup()
 	 * */
 	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baud_rate;
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	USART3->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
 		| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 	USART3->CR2 = 0;
 	USART3->CR3 = 0;

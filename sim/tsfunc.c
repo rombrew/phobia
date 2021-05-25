@@ -215,7 +215,6 @@ void ts_probe_base()
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
-		printf("L %.4E (H)\n", pm.const_L);
 		printf("im_L1 %.4E (H)\n", pm.const_im_L1);
 		printf("im_L2 %.4E (H)\n", pm.const_im_L2);
 		printf("im_B %.2f (g)\n", pm.const_im_B);

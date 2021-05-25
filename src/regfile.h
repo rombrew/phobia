@@ -41,14 +41,14 @@ void reg_format(const reg_t *reg);
 const reg_t *reg_search(const char *sym);
 const reg_t *reg_search_fuzzy(const char *sym);
 
-void reg_GET(int n, void *lval);
-void reg_SET(int n, const void *rval);
+void reg_GET(int reg_ID, void *lval);
+void reg_SET(int reg_ID, const void *rval);
 
-int reg_GET_I(int n);
-float reg_GET_F(int n);
+int reg_GET_I(int reg_ID);
+float reg_GET_F(int reg_ID);
 
-void reg_SET_I(int n, int rval);
-void reg_SET_F(int n, float rval);
+void reg_SET_I(int reg_ID, int rval);
+void reg_SET_F(int reg_ID, float rval);
 
 #endif /* _H_REGFILE_ */
 

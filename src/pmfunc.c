@@ -155,7 +155,6 @@ SH_DEF(pm_probe_base)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_L]);
 		reg_format(&regfile[ID_PM_CONST_IM_L1]);
 		reg_format(&regfile[ID_PM_CONST_IM_L2]);
 		reg_format(&regfile[ID_PM_CONST_IM_B]);
@@ -399,12 +398,12 @@ SH_DEF(pm_adjust_sensor_hall)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_HALL_ST_1_G]);
-		reg_format(&regfile[ID_PM_HALL_ST_2_G]);
-		reg_format(&regfile[ID_PM_HALL_ST_3_G]);
-		reg_format(&regfile[ID_PM_HALL_ST_4_G]);
-		reg_format(&regfile[ID_PM_HALL_ST_5_G]);
-		reg_format(&regfile[ID_PM_HALL_ST_6_G]);
+		reg_format(&regfile[ID_PM_HALL_ST_1]);
+		reg_format(&regfile[ID_PM_HALL_ST_2]);
+		reg_format(&regfile[ID_PM_HALL_ST_3]);
+		reg_format(&regfile[ID_PM_HALL_ST_4]);
+		reg_format(&regfile[ID_PM_HALL_ST_5]);
+		reg_format(&regfile[ID_PM_HALL_ST_6]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 

@@ -1022,17 +1022,18 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			uX = pm->tvm_DX * pm->temp_HFI_HT[0] + pm->tvm_DY * pm->temp_HFI_HT[1];
 			uY = pm->tvm_DY * pm->temp_HFI_HT[0] - pm->tvm_DX * pm->temp_HFI_HT[1];
 
-			m_rsum(&pm->hfi_DFT[0], &pm->hfi_REM[0], iX * pm->hfi_wave[0]);
-			m_rsum(&pm->hfi_DFT[1], &pm->hfi_REM[1], iX * pm->hfi_wave[1]);
-			m_rsum(&pm->hfi_DFT[2], &pm->hfi_REM[2], uX * pm->hfi_wave[0]);
-			m_rsum(&pm->hfi_DFT[3], &pm->hfi_REM[3], uX * pm->hfi_wave[1]);
-			m_rsum(&pm->hfi_DFT[4], &pm->hfi_REM[4], iY * pm->hfi_wave[0]);
-			m_rsum(&pm->hfi_DFT[5], &pm->hfi_REM[5], iY * pm->hfi_wave[1]);
-			m_rsum(&pm->hfi_DFT[6], &pm->hfi_REM[6], uY * pm->hfi_wave[0]);
-			m_rsum(&pm->hfi_DFT[7], &pm->hfi_REM[7], uY * pm->hfi_wave[1]);
+			m_rsumf(&pm->hfi_DFT[0], &pm->hfi_REM[0], iX * pm->hfi_wave[0]);
+			m_rsumf(&pm->hfi_DFT[1], &pm->hfi_REM[1], iX * pm->hfi_wave[1]);
+			m_rsumf(&pm->hfi_DFT[2], &pm->hfi_REM[2], uX * pm->hfi_wave[0]);
+			m_rsumf(&pm->hfi_DFT[3], &pm->hfi_REM[3], uX * pm->hfi_wave[1]);
+			m_rsumf(&pm->hfi_DFT[4], &pm->hfi_REM[4], iY * pm->hfi_wave[0]);
+			m_rsumf(&pm->hfi_DFT[5], &pm->hfi_REM[5], iY * pm->hfi_wave[1]);
+			m_rsumf(&pm->hfi_DFT[6], &pm->hfi_REM[6], uY * pm->hfi_wave[0]);
+			m_rsumf(&pm->hfi_DFT[7], &pm->hfi_REM[7], uY * pm->hfi_wave[1]);
 
 		case 1:
-			m_rotf(pm->hfi_wave, pm->temp_HFI_wS * pm->dT, pm->hfi_wave);
+			m_rotatef(pm->hfi_wave, pm->temp_HFI_wS * pm->dT);
+			m_normalizef(pm->hfi_wave);
 
 			eX = pm->i_track_D - pm->lu_iX;
 			eY = pm->i_track_Q - pm->lu_iY;
@@ -1082,9 +1083,8 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 		case 3:
 			pm_hfi_DFT(pm, la);
 
-			if (m_isfinitef(la[3]) != 0 && la[3] > M_EPS_F) {
-
-				pm->const_L = la[3];
+			if (		m_isfinitef(la[2]) != 0 && la[2] > M_EPS_F
+					&& m_isfinitef(la[3]) != 0 && la[3] > M_EPS_F) {
 
 				pm->const_im_L1 = la[2];
 				pm->const_im_L2 = la[3];
@@ -1107,7 +1107,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->const_L > M_EPS_F) {
+			if (pm->const_im_L2 > M_EPS_F) {
 
 				pm->debug_locked_HFI = PM_DISABLED;
 				pm->debug_locked_SENSOR = PM_SENSOR_DISABLED;
@@ -1361,8 +1361,8 @@ pm_fsm_state_probe_const_ja(pmc_t *pm)
 			break;
 
 		case 2:
-			m_rsum(&m[0], &m[2], pm->lu_iQ);
-			m_rsum(&m[1], &m[3], 1.f);
+			m_rsumf(&m[0], &m[2], pm->lu_iQ);
+			m_rsumf(&m[1], &m[3], 1.f);
 
 			v[0] = m[0];
 			v[1] = m[1];
@@ -1439,8 +1439,8 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 			if (HS >= 1 && HS <= 6) {
 
-				m_rsum(&pm->hall_ST[HS].X, &REM[HS], pm->lu_F[0]);
-				m_rsum(&pm->hall_ST[HS].Y, &REM[HS + 8], pm->lu_F[1]);
+				m_rsumf(&pm->hall_ST[HS].X, &REM[HS], pm->lu_F[0]);
+				m_rsumf(&pm->hall_ST[HS].Y, &REM[HS + 8], pm->lu_F[1]);
 
 				NUM[HS] += 1.f;
 			}

@@ -7,7 +7,9 @@ io_ops_t		io_USART;
 io_ops_t		io_CAN;
 
 io_ops_t		*iodef;
+
 int			iodef_ECHO;
+int			iodef_PRETTY;
 
 u32_t			rseed;
 
@@ -290,7 +292,7 @@ fmt_intp(io_ops_t *_io, int x, int nleft)
 	if (x < 0) {
 
 		_io->putc('-');
-		x = -x;
+		x = - x;
 		nleft--;
 	}
 
@@ -326,7 +328,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 	}
 	u = { x };
 
-	int		i;
+	int		i, v;
 	float		h;
 
 	if (x < 0.f) {
@@ -348,41 +350,47 @@ fmt_float(io_ops_t *_io, float x, int n)
 		return ;
 	}
 
+	v = 0;
 	h = .5f;
+
 	for (i = 0; i < n; ++i)
 		h /= 10.f;
 
 	x += h;
 
-	if (x < 2147483648.f) {
+	while (x >= 10.f) {
 
-		/* FIXME: Do not use conversion to INT.
-		 * */
+		x /= 10.f;
+		v++;
+	}
+
+	i = (int) x;
+	x -= i;
+
+	_io->putc('0' + i);
+
+	while (v > 0) {
+
+		x *= 10.f;
+		v--;
 
 		i = (int) x;
 		x -= i;
 
-		fmt_intp(_io, i, 0);
-	}
-	else {
-		xputs(_io, "MAX");
-
-		return ;
+		_io->putc('0' + i);
 	}
 
-	if (x < 1.f) {
+	_io->putc('.');
 
-		_io->putc('.');
+	while (n > 0) {
 
-		while (n > 0) {
+		x *= 10.f;
+		n--;
 
-			x *= 10.f;
-			i = (int) x;
-			x -= i;
+		i = (int) x;
+		x -= i;
 
-			_io->putc('0' + i);
-			n--;
-		}
+		_io->putc('0' + i);
 	}
 }
 
@@ -395,7 +403,7 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 	}
 	u = { x };
 
-	int		i, e;
+	int		i, v;
 	float		h;
 
 	if (x < 0) {
@@ -416,27 +424,22 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 		return ;
 	}
-	else {
-		e = 0;
 
-		do {
-			if (x > 0.f && x < 1.f) {
+	v = 0;
+	h = .5f;
 
-				x *= 10.f;
-				e--;
-			}
-			else if (x >= 10.f) {
+	while (x > 0.f && x < 1.f) {
 
-				x /= 10.f;
-				e++;
-			}
-			else
-				break;
-		}
-		while (1);
+		x *= 10.f;
+		v--;
 	}
 
-	h = .5f;
+	while (x >= 10.f) {
+
+		x /= 10.f;
+		v++;
+	}
+
 	for (i = 0; i < n; ++i)
 		h /= 10.f;
 
@@ -445,7 +448,7 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 	if (x >= 10.f) {
 
 		x /= 10.f;
-		e++;
+		v++;
 	}
 
 	i = (int) x;
@@ -457,21 +460,130 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 	while (n > 0) {
 
 		x *= 10.f;
+		n--;
+
 		i = (int) x;
 		x -= i;
 
 		_io->putc('0' + i);
-		n--;
 	}
 
 	_io->putc('E');
 
-	if (e >= 0) {
+	if (v >= 0) {
 
 		_io->putc('+');
 	}
 
-	fmt_intp(_io, e, 0);
+	fmt_intp(_io, v, 0);
+}
+
+static void
+fmt_pretty(io_ops_t *_io, float x, int n)
+{
+	union {
+		float		f;
+		u32_t		i;
+	}
+	u = { x };
+
+	int		i, v;
+	float		h;
+
+	if (x < 0) {
+
+		_io->putc('-');
+		x = - x;
+	}
+
+	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
+
+		if ((u.i & 0x7FFFFFUL) != 0) {
+
+			xputs(_io, "NaN");
+		}
+		else {
+			xputs(_io, "Inf");
+		}
+
+		return ;
+	}
+
+	v = 0;
+	h = .5f;
+
+	while (x > 0.f && x < 1.f) {
+
+		x *= 10.f;
+		v--;
+	}
+
+	while (x >= 10.f) {
+
+		x /= 10.f;
+		v++;
+	}
+
+	n--;
+
+	for (i = 0; i < n; ++i)
+		h /= 10.f;
+
+	x += h;
+
+	if (x >= 10.f) {
+
+		x /= 10.f;
+		v++;
+	}
+
+	i = (int) x;
+	x -= i;
+
+	_io->putc('0' + i);
+
+	while (v % 3 != 0) {
+
+		x *= 10.f;
+		v--;
+		n--;
+
+		i = (int) x;
+		x -= i;
+
+		_io->putc('0' + i);
+	}
+
+	_io->putc('.');
+
+	while (n > 0) {
+
+		x *= 10.f;
+		n--;
+
+		i = (int) x;
+		x -= i;
+
+		_io->putc('0' + i);
+	}
+
+	if (v == - 9) _io->putc('n');
+	else if (v == - 6) _io->putc('u');
+	else if (v == - 3) _io->putc('m');
+	else if (v == 3) _io->putc('K');
+	else if (v == 6) _io->putc('M');
+	else if (v == 9) _io->putc('G');
+	else if (v != 0) {
+
+		_io->putc('E');
+
+		if (v >= 0) {
+
+			_io->putc('+');
+		}
+
+		fmt_intp(_io, v, 0);
+	}
 }
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
@@ -521,6 +633,16 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 					fmt_fexp(_io, * va_arg(ap, float *), n);
 					break;
 
+				case 'g':
+					if (iodef_PRETTY != 0) {
+
+						fmt_pretty(_io, * va_arg(ap, float *), n);
+					}
+					else {
+						fmt_fexp(_io, * va_arg(ap, float *), n);
+					}
+					break;
+
 				case 'c':
 					_io->putc(va_arg(ap, int));
 					break;
@@ -549,129 +671,123 @@ void xprintf(io_ops_t *_io, const char *fmt, ...)
 }
 
 int getc() { return iodef->getc(); }
-void putc(int c) { iodef->putc(c); }
+void putc(int c) { if (iodef_ECHO != 0) { iodef->putc(c); } }
 
 void puts(const char *s)
 {
-	xputs(iodef, s);
+	if (iodef_ECHO != 0) {
+
+		xputs(iodef, s);
+	}
 }
 
 void printf(const char *fmt, ...)
 {
         va_list		ap;
 
-        va_start(ap, fmt);
-	xvprintf(iodef, fmt, ap);
-        va_end(ap);
+	if (iodef_ECHO != 0) {
+
+		va_start(ap, fmt);
+		xvprintf(iodef, fmt, ap);
+		va_end(ap);
+	}
 }
+
+/*
+static void
+sprintf_putc(int c)
+{
+	*sprintf_arg++ = c;
+}
+
+void sprintf(char *s, const char *fmt, ...)
+{
+        va_list		ap;
+	io_ops_t	ops = {
+
+		.getc = NULL,
+		.putc = &sprintf_putc
+	};
+
+	if (iodef_ECHO != 0) {
+
+		va_start(ap, fmt);
+		xvprintf(ops, fmt, ap);
+		va_end(ap);
+	}
+}
+*/
 
 const char *stoi(int *x, const char *s)
 {
-	int		n = 1, k = 0, i = 0;
+	int		n, k, i;
 
-	if (*s == '-') {
+	if (*s == '-') { n = - 1; s++; }
+	else if (*s == '+') { n = 1; s++; }
+	else { n = 1; }
 
-		n = -1;
-		s++;
-	}
-	else if (*s == '+') {
-
-		s++;
-	}
+	k = 0;
+	i = 0;
 
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
 		k++;
 
-		if (i * n < 0) {
-
-			return NULL;
-		}
+		if (k > 9) return NULL;
 	}
 
-	if (k == 0) {
+	if (k == 0) return NULL;
 
-		return NULL;
-	}
-
-	if (*s == 0 || strchr(" ", *s) != NULL) {
-
-		*x = i;
-	}
-	else {
-		return NULL;
-	}
+	if (*s == 0 || strchr(" ", *s) != NULL) { *x = i; }
+	else return NULL;
 
 	return s;
 }
 
 const char *htoi(int *x, const char *s)
 {
-	int		i, k = 0, h = 0;
+	int		i, k, h;
 
-	if (*s == '0' && *(s + 1) == 'x') {
+	k = 0;
+	h = 0;
 
-		s += 2;
-	}
+	if (*s == '0' && *(s + 1) == 'x') { s += 2; }
 
 	do {
-		if (*s >= '0' && *s <= '9') {
-
-			i = *s++ - '0';
-		}
-		else if (*s >= 'A' && *s <= 'F') {
-
-			i = 10 + *s++ - 'A';
-		}
-		else if (*s >= 'a' && *s <= 'f') {
-
-			i = 10 + *s++ - 'a';
-		}
-		else {
-			break;
-		}
+		if (*s >= '0' && *s <= '9') { i = *s++ - '0'; }
+		else if (*s >= 'A' && *s <= 'F') { i = 10 + *s++ - 'A'; }
+		else if (*s >= 'a' && *s <= 'f') { i = 10 + *s++ - 'a'; }
+		else break;
 
 		h = 16 * h + i;
 		k++;
 
-		if (k > 8) {
-
-			return NULL;
-		}
+		if (k > 8) return NULL;
 	}
 	while (1);
 
-	if (k == 0) {
+	if (k == 0) return NULL;
 
-		return NULL;
-	}
-
-	if (*s == 0 || strchr(" ", *s) != NULL) {
-
-		*x = h;
-	}
-	else {
-		return NULL;
-	}
+	if (*s == 0 || strchr(" ", *s) != NULL) { *x = h; }
+	else return NULL;
 
 	return s;
 }
 
 const char *stof(float *x, const char *s)
 {
-	int		n = 1, k = 0, de = 0, e;
-	float		f = 0.f;
+	int		n, k, v, e;
+	float		f;
 
-	if (*s == '-') {
+	if (*s == '-') { n = - 1; s++; }
+	else if (*s == '+') { n = 1; s++; }
+	else { n = 1; }
 
-		n = -1;
-		s++;
-	}
-	else if (*s == '+') {
+	k = 0;
+	v = 0;
+	f = 0.f;
 
-		s++;
-	}
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10.f * f + (*s++ - '0') * n;
@@ -685,71 +801,34 @@ const char *stof(float *x, const char *s)
 		while (*s >= '0' && *s <= '9') {
 
 			f = 10.f * f + (*s++ - '0') * n;
-			k++; de--;
+			k++; v--;
 		}
 	}
 
-	if (k == 0) {
+	if (k == 0) return NULL;
 
-		return NULL;
-	}
-
-	if (*s == 'n') {
-
-		de += -9, s++;
-	}
-	else if (*s == 'u') {
-
-		de += -6, s++;
-	}
-	else if (*s == 'm') {
-
-		de += -3, s++;
-	}
-	else if (*s == 'K') {
-
-		de += 3, s++;
-	}
-	else if (*s == 'M') {
-
-		de += 6, s++;
-	}
-	else if (*s == 'G') {
-
-		de += 9, s++;
-	}
+	if (*s == 'n') { v += - 9; s++; }
+	else if (*s == 'u') { v += - 6; s++; }
+	else if (*s == 'm') { v += - 3; s++; }
+	else if (*s == 'K') { v += 3; s++; }
+	else if (*s == 'M') { v += 6; s++; }
+	else if (*s == 'G') { v += 9; s++; }
 	else if (*s == 'e' || *s == 'E') {
 
 		s = stoi(&e, s + 1);
 
-		if (s != NULL) {
-
-			de += e;
-		}
-		else {
-			return NULL;
-		}
+		if (s != NULL) { v += e; }
+		else return NULL;
 	}
 
 	if (*s == 0 || strchr(" ", *s) != NULL) {
 
-		while (de < 0) {
-
-			f /= 10.f;
-			de++;
-		}
-
-		while (de > 0) {
-
-			f *= 10.f;
-			de--;
-		}
+		while (v < 0) { f /= 10.f; v++; }
+		while (v > 0) { f *= 10.f; v--; }
 
 		*x = f;
 	}
-	else {
-		return NULL;
-	}
+	else return NULL;
 
 	return s;
 }

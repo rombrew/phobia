@@ -70,12 +70,12 @@ base_startup()
 	 * */
 	NVIC_SetPriorityGrouping(0UL);
 
-#ifdef _HW_STM32F722
+#ifdef STM32F7
 
 	SCB_EnableICache();
 	SCB_EnableDCache();
 
-#endif /* _HW_STM32F722 */
+#endif /* STM32F7 */
 }
 
 static void
@@ -94,10 +94,10 @@ clock_startup()
 	RCC->CFGR = 0;
 	RCC->CIR = 0;
 
-#ifdef _HW_STM32F722
+#ifdef STM32F7
 	RCC->DCKCFGR1 = 0;
 	RCC->DCKCFGR2 = 0;
-#endif  /* _HW_STM32F722 */
+#endif  /* STM32F7 */
 
 	/* Enable HSE.
 	 * */
@@ -119,11 +119,11 @@ clock_startup()
 
 	/* Regulator voltage scale 1 mode.
 	 * */
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	PWR->CR |= PWR_CR_VOS;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	PWR->CR1 |= PWR_CR1_VOS_1 | PWR_CR1_VOS_0;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 	/* Set AHB/APB1/APB2 prescalers.
 	 * */
@@ -147,11 +147,11 @@ clock_startup()
 		log_TRACE("HSE failed" EOL);
 	}
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	clock_cpu_hz = 168000000UL;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	clock_cpu_hz = 180000000UL;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 	PLLP = 2;
 
@@ -184,11 +184,11 @@ clock_startup()
 
 	/* Configure Flash.
 	 * */
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 	/* Select PLL.
 	 * */
@@ -216,11 +216,11 @@ periph_startup()
 
 	/* Check for reset reason.
 	 * */
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 	if (RCC->CSR & RCC_CSR_WDGRSTF) {
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 	if (RCC->CSR & RCC_CSR_IWDGRSTF) {
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 		log_TRACE("RESET: WD" EOL);
 	}
@@ -236,11 +236,11 @@ void hal_bootload()
 
 		bootload_jump = 0UL;
 
-#if defined(_HW_STM32F405)
+#if defined(STM32F4)
 		sysmem = (u32_t *) 0x1FFF0000UL;
-#elif defined(_HW_STM32F722)
+#elif defined(STM32F7)
 		sysmem = (u32_t *) 0x1FF00000UL;
-#endif /* _HW_STM32Fxx */
+#endif /* STM32Fx */
 
 		/* Load MSP.
 		 * */
@@ -285,12 +285,11 @@ int hal_lock_irq()
 {
 	int		irq;
 
-	__disable_irq();
-
 	irq = __get_BASEPRI();
 	__set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
 
-	__enable_irq();
+	__DSB();
+	__ISB();
 
 	return irq;
 }
@@ -302,18 +301,31 @@ void hal_unlock_irq(int irq)
 
 void hal_system_reset()
 {
+#ifdef STM32F7
+
+	SCB_CleanDCache();
+
+#endif /* STM32F7 */
+
 	NVIC_SystemReset();
 }
 
-void hal_bootload_jump()
+void hal_bootload_reset()
 {
 	bootload_jump = BOOT_SIGNATURE;
+
+#ifdef STM32F7
+
+	SCB_CleanDCache();
+
+#endif /* STM32F7 */
 
 	NVIC_SystemReset();
 }
 
 void hal_sleep()
 {
+	__DSB();
 	__WFI();
 }
 

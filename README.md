@@ -149,9 +149,10 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 ## TODO
 
 * Make a detailed documentation.
-* Consider to add flux observer saliency tracking (for SRM).
+* Consider to add SRUKF sensorless observer (for SRM).
 * Introduce MTPA control.
 * Add pulse output signal.
 * Make a drawing of the heatsink case for rev5a.
 * Design the new hardware for 120v battery voltage.
+* Add text-based user interface (TUI).
 

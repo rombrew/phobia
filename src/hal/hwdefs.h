@@ -5,12 +5,10 @@
 
 #if defined(_HW_REV2)
 
-#define HW_REVISION_NAME		"rev2"
-
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_TRANSCEIVER_CAN
+#define HW_HAVE_NETWORK_CAN
 
-#define CLOCK_CRYSTAL_HZ		8000000UL
+#define HW_CLOCK_CRYSTAL_HZ		8000000UL
 
 #define HW_PWM_DEADTIME_NS		90.f		/* CSD18532 */
 #define HW_PWM_BOOTSTRAP_TIME		50.f		/* HIP2101  */
@@ -52,13 +50,11 @@
 
 #elif defined(_HW_KLEN)
 
-#define HW_REVISION_NAME		"klen"
-
 #define HW_HAVE_REVERSED_PWM
 #define HW_HAVE_TVM_CIRCUIT
 #define HW_HAVE_NTC_ON_PCB
 
-#define CLOCK_CRYSTAL_HZ		25000000UL
+#define HW_CLOCK_CRYSTAL_HZ		25000000UL
 
 #define HW_PWM_DEADTIME_NS		90.f		/* IRFH7185 */
 #define HW_PWM_BOOTSTRAP_TIME		20.f		/* UCC27211A  */
@@ -100,12 +96,10 @@
 
 #elif defined(_HW_REV4B)
 
-#define HW_REVISION_NAME		"rev4b"
-
 #define HW_HAVE_TVM_CIRCUIT
 #define HW_HAVE_ANALOG_KNOB		/* on SPI */
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_TRANSCEIVER_CAN
+#define HW_HAVE_NETWORK_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -152,12 +146,10 @@
 
 #elif defined(_HW_REV4C)
 
-#define HW_REVISION_NAME		"rev4c"
-
 #define HW_HAVE_TVM_CIRCUIT
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_TRANSCEIVER_CAN
+#define HW_HAVE_NETWORK_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -204,12 +196,10 @@
 
 #elif defined(_HW_REV5A)
 
-#define HW_REVISION_NAME		"rev5a"
-
 #define HW_HAVE_TVM_CIRCUIT
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_TRANSCEIVER_CAN
+#define HW_HAVE_NETWORK_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -256,12 +246,10 @@
 
 #elif defined(_HW_PESC1)
 
-#define HW_REVISION_NAME		"pesc1"
-
 #define HW_HAVE_TVM_CIRCUIT
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_ATS_ON_PCB				/* LMT87 */
-#define HW_HAVE_TRANSCEIVER_CAN
+#define HW_HAVE_NETWORK_CAN
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
 

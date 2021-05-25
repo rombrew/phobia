@@ -19,7 +19,7 @@ lfg_lcgu(unsigned int rseed)
 	/* Linear Congruential generator.
 	 * */
 
-	return rseed * 17317UL + 1UL;
+	return rseed * 17317U + 1U;
 }
 
 void lfg_start(int rseed)
