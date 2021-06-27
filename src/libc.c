@@ -693,31 +693,6 @@ void printf(const char *fmt, ...)
 	}
 }
 
-/*
-static void
-sprintf_putc(int c)
-{
-	*sprintf_arg++ = c;
-}
-
-void sprintf(char *s, const char *fmt, ...)
-{
-        va_list		ap;
-	io_ops_t	ops = {
-
-		.getc = NULL,
-		.putc = &sprintf_putc
-	};
-
-	if (iodef_ECHO != 0) {
-
-		va_start(ap, fmt);
-		xvprintf(ops, fmt, ap);
-		va_end(ap);
-	}
-}
-*/
-
 const char *stoi(int *x, const char *s)
 {
 	int		n, k, i;

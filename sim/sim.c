@@ -38,6 +38,7 @@ sim_Tlm(float *pTlm)
 
 #define sym_GP(x,s,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) { fmt_page_GP(gp_N, s, l); } gp_N++; }
 #define fmt_GP(x,l)	sym_GP(x, #x, l)
+#define fmk_GP(x,k,l)	sym_GP((x) * (k), #x, l)
 
 	/* Model.
 	 * */
@@ -107,6 +108,8 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.fb_EP, NULL);
 
 	fmt_GP(pm.vsi_DC, NULL);
+	fmt_GP(pm.vsi_X, "V");
+	fmt_GP(pm.vsi_Y, "V");
 	fmt_GP(pm.vsi_lpf_DC, NULL);
 	fmt_GP(pm.vsi_AF, NULL);
 	fmt_GP(pm.vsi_BF, NULL);
@@ -121,7 +124,7 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.lu_lpf_torque, "A");
 
 	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
-	fmt_GP(pm.forced_wS * kRPM, "rpm");
+	fmk_GP(pm.forced_wS, kRPM, "rpm");
 	fmt_GP(pm.forced_TIM, NULL);
 
 	fmt_GP(pm.detach_X, "V");
@@ -134,18 +137,26 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.flux_Y, "Wb");
 	fmt_GP(pm.flux_E, "Wb");
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
-	fmt_GP(pm.flux_wS * kRPM, "rpm");
+	fmk_GP(pm.flux_wS, kRPM, "rpm");
 	fmt_GP(pm.flux_mode, NULL);
-	fmt_GP(pm.flux_lpf_wS * kRPM, "rpm");
+	fmk_GP(pm.flux_lpf_wS, kRPM, "rpm");
+
+	fmt_GP(pm.skew_KF[0], NULL);
+	fmt_GP(pm.skew_KF[1], NULL);
+	fmt_GP(pm.skew_KF[2], NULL);
+	fmt_GP(pm.skew_KF[3], NULL);
+	fmt_GP(pm.skew_KF[4], NULL);
+	fmt_GP(pm.skew_KF[5], NULL);
+	fmt_GP(pm.skew_KF[6], NULL);
 
 	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
-	fmt_GP(pm.hfi_wS * kRPM, "rpm");
+	fmk_GP(pm.hfi_wS, kRPM, "rpm");
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
-	fmt_GP(pm.hall_wS * kRPM, "rpm");
+	fmk_GP(pm.hall_wS, kRPM, "rpm");
 
 	sym_GP(atan2(pm.abi_F[1], pm.abi_F[0]) * kDEG, "pm.abi_F", "°");
-	fmt_GP(pm.abi_wS * kRPM, "rpm");
+	fmk_GP(pm.abi_wS, kRPM, "rpm");
 
 	fmt_GP(pm.watt_lpf_D, "V");
 	fmt_GP(pm.watt_lpf_Q, "V");
@@ -157,8 +168,8 @@ sim_Tlm(float *pTlm)
 
 	fmt_GP(pm.weak_D, "A");
 
-	fmt_GP(pm.s_setpoint_speed * kRPM, "rpm");
-	fmt_GP(pm.s_track * kRPM, "rpm");
+	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
+	fmk_GP(pm.s_track, kRPM, "rpm");
 	fmt_GP(pm.s_iSP, "A");
 
 	fmt_GP(pm.im_total_revol, NULL);
@@ -253,46 +264,56 @@ void sim_START()
 	m.U = 48.;
 	m.Rs = 0.5;
 	m.Zp = 15;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;*/
+	m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
+	m.J = 16.2E-3;*/
 
-	m.R = 14E-3;
-	m.Ld = 10E-6;
-	m.Lq = 15E-6;
-	m.U = 22.;
+	m.R = 110E-3;
+	m.Ld = 196E-6;
+	m.Lq = 245E-6;
+	m.U = 48.;
 	m.Rs = 0.1;
-	m.Zp = 14;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
-	m.J = 2.7E-4;
+	m.Zp = 1;
+	m.E = 60. / 2. / M_PI / sqrt(3.) / (95. * m.Zp);
+	m.J = 182E-6;
 
 	ts_BASE();
+
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	pm.config_DRIVE = PM_DRIVE_CURRENT;
+	pm.config_SKEW = PM_ENABLED;
+	pm.s_accel = 100000.f;
+
+	m.M[2] = 1E-5;
+
+	ts_SKEW();
+
+	/*pm.config_VSI_PRECISE = 1;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
 
-	pm.config_LIMITED = PM_ENABLED;
-
-	pm.s_maximal = 300.f * M_PI / 30. * m.Zp;
-	pm.s_accel = 1000.f;
-
-	m.M[2] = 5E-5;
-
-	pm.i_setpoint_torque = 20.f;
-	sim_Run(1.);
-
-	pm.i_setpoint_torque = -10.f;
-	sim_Run(1.);
-
-	pm.i_setpoint_torque = 20.f;
 	sim_Run(.1);
 
-	m.M[2] = 5E-4;
+	pm.s_setpoint_speed = 200.f;
+	sim_Run(.5);
 
-	sim_Run(2.);
+	pm.s_setpoint_speed = 400.f;
+	sim_Run(.5);
+
+	pm.s_setpoint_speed = 600.f;
+	sim_Run(.5);*/
+
+	/*pm.s_setpoint_speed = 400.f;
+	sim_Run(1.);
+
+	pm.s_setpoint_speed = 500.f;
+	sim_Run(1.);*/
+
+	//m.Rs = 100.;
+	pm.s_setpoint_speed = 0.f;
+
+	sim_Run(1.);
 }
 
 int main(int argc, char *argv[])

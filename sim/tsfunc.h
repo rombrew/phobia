@@ -12,6 +12,7 @@ int ts_wait_for_SPINUP();
 int ts_wait_for_MOTION(float s_ref);
 
 void ts_BASE();
+void ts_SKEW();
 void ts_SPEED();
 void ts_HFI();
 void ts_HALL();

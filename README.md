@@ -7,7 +7,7 @@ electrotransport.
 There are several typical situations where PMC can be used.
 
 * Light electric transport as scooter or bicycle. The use of current control is
-  preferred. Start with discrete Hall sensors or use freewheling. Control knobs
+  preferred. Start with discrete Hall sensors or use freewheeling. Control knobs
   are connected to analog inputs.
 * Aerial propeller drive for RC drones. The use of speed control is preferred.
   Start with forced control or HFI. Control through CAN network or RC servo
@@ -28,7 +28,7 @@ control.
 * Self adjust of onboard measurements along symmetrical channels.
 * Flux weakening control.
 * Advanced command line interface (CLI) with autocompletion and history.
-* Hardware abstraction layer (HAL) over STM32F405 and STM32F722.
+* Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
 * Flash storage for all of configurable parameters.
 
 * Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
@@ -64,7 +64,7 @@ control.
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
 	  force rotor turn.
-	* Freewheling.
+	* Freewheeling.
 	* High frequency injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors or ABI incremental encoder.
 
@@ -94,7 +94,7 @@ control.
 	* Battery energy (Wh) and charge (Ah) consumed (reverted).
 	* Fuel gauge percentage.
 
-## Hardware specification (**rev5a**)
+## Hardware specification (**REV5A**)
 
 * Dimension: 82mm x 55mm x 35mm.
 * Weight: 40g (PCB) or about 400g (with wires and heatsink).

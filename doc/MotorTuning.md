@@ -130,7 +130,7 @@ limits actual parameters but limit input setpoint to comply it with
 restrictions.
 
 Quite different in the case of current control. You should specify
-**pm.config_LIMITED** to apply above restrictions to actual speed and
+**pm.config_LIMIT** to apply above restrictions to actual speed and
 acceleration if you need it of course. Here trackppoint is driven by actual
 speed estimate with acceleration restriction. For system stability we have
 introduced a linear control area **pm.s_linspan**. So there may be some

@@ -14,7 +14,7 @@ The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
 sometimes cross the border of quality in favor of PCB size.
 
-Our actual hw revision is **rev5a** designed in 8-layer stackup with 35um
+Our actual hw revision is **REV5A** designed in 8-layer stackup with 35um
 copper foil. To ensure heat distribution it is necessary to use an aluminum
 plate from bottom through thermal interface.
 

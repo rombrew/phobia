@@ -65,18 +65,10 @@ void m_rotatef(float x[2], float rval)
 	q = c * x[0] - s * x[1];
 	c = s * x[0] + c * x[1];
 
-	x[0] = q;
-	x[1] = c;
-}
+	s = (3.f - q * q - c * c) * .5f;
 
-void m_normalizef(float x[2])
-{
-	float		q;
-
-	q = (3.f - x[0] * x[0] - x[1] * x[1]) * .5f;
-
-	x[0] *= q;
-	x[1] *= q;
+	x[0] = q * s;
+	x[1] = c * s;
 }
 
 void m_rsumf(float *sum, float *rem, float val)

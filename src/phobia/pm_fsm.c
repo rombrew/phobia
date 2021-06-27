@@ -1033,7 +1033,6 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 		case 1:
 			m_rotatef(pm->hfi_wave, pm->temp_HFI_wS * pm->dT);
-			m_normalizef(pm->hfi_wave);
 
 			eX = pm->i_track_D - pm->lu_iX;
 			eY = pm->i_track_Q - pm->lu_iY;
@@ -1143,6 +1142,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->lu_F1 = pm->lu_F[1];
 				pm->lu_revol = 0;
+				pm->lu_revob = 0;
 
 				pm->forced_F[0] = 1.f;
 				pm->forced_F[1] = 0.f;
@@ -1161,6 +1161,10 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_lpf_wS = 0.f;
 				pm->flux_mode = PM_FLUX_UNCERTAIN;
 				pm->flux_LOCKED = PM_FLUX_UNCERTAIN;
+
+				pm->skew_ONFLAG = 0;
+				pm->skew_TIM = 0;
+				pm->skew_END = 0;
 
 				pm->hfi_F[0] = 1.f;
 				pm->hfi_F[1] = 0.f;

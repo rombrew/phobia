@@ -5,6 +5,7 @@
 
 #include "libc.h"
 #include "main.h"
+#include "minsearch.h"
 #include "regfile.h"
 #include "shell.h"
 #include "tlm.h"
@@ -98,6 +99,45 @@ int pm_wait_for_MOTION(float s_ref)
 	while (1);
 
 	return pm.fsm_errno;
+}
+
+static float
+pm_proc_ripple_STD(void *link, const float *KF)
+{
+	pm.skew_KF[0] = KF[0];
+	pm.skew_KF[1] = KF[1];
+	pm.skew_KF[2] = KF[2];
+	pm.skew_KF[3] = KF[3];
+	pm.skew_KF[4] = KF[4];
+	pm.skew_KF[5] = KF[5];
+	pm.skew_KF[6] = KF[6];
+
+	hal_fence();
+
+	pm.skew_ONFLAG = PM_ENABLED;
+
+	do {
+		vTaskDelay((TickType_t) 5);
+	}
+	while (pm.skew_ONFLAG == PM_ENABLED);
+
+	return pm.skew_ripple_STD;
+}
+
+static void
+pm_proc_step_format(void *link)
+{
+	minproblem_t	*m = (minproblem_t *) link;
+	float		x_tol_pc = m->x_tol * 100.f;
+
+	if (pm.fsm_errno != PM_OK) {
+
+		/* Terminate the SEARCH if an error occurs.
+		 * */
+		m->n_final_step = 0;
+	}
+
+	printf("[%2i] %4f %4f" EOL, m->n_step, &x_tol_pc, &m->fval[m->n_best]);
 }
 
 static void
@@ -366,6 +406,94 @@ SH_DEF(pm_probe_const_J)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+}
+
+SH_DEF(pm_adjust_skewness)
+{
+	minproblem_t		*m;
+
+	if (pm.lu_mode != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	if (pm.config_SKEW != PM_ENABLED) {
+
+		printf("Enable SKEW function before" EOL);
+		return;
+	}
+
+	if (pm.config_DRIVE != PM_DRIVE_SPEED) {
+
+		printf("Enable SPEED control mode before" EOL);
+		return;
+	}
+
+	m = pvPortMalloc(sizeof(minproblem_t));
+
+	if (m != NULL) {
+
+		m->n_size_of_x = 7;
+		m->link = (void *) m;
+		m->x0_range = 0.02f;
+		m->x_maximal = 0.5f;
+		m->pfun = &pm_proc_ripple_STD;
+		m->pstep = &pm_proc_step_format;
+		m->n_final_step = 180;
+		m->x_final_tol = 5E-4f;
+
+		do {
+			pm.fsm_req = PM_STATE_LU_STARTUP;
+
+			if (pm_wait_for_IDLE() != PM_OK)
+				break;
+
+			pm_reg_SET_SETPOINT_SPEED();
+
+			if (pm_wait_for_SPINUP() != PM_OK)
+				break;
+
+			minsearch(m);
+
+			if (pm.fsm_errno != PM_OK) {
+
+				pm.skew_KF[0] = 0.f;
+				pm.skew_KF[1] = 0.f;
+				pm.skew_KF[2] = 0.f;
+				pm.skew_KF[3] = 0.f;
+				pm.skew_KF[4] = 0.f;
+				pm.skew_KF[5] = 0.f;
+				pm.skew_KF[6] = 0.f;
+				break;
+			}
+
+			minsolution(m, pm.skew_KF);
+
+			reg_format(&regfile[ID_PM_SKEW_KF_0]);
+			reg_format(&regfile[ID_PM_SKEW_KF_1]);
+			reg_format(&regfile[ID_PM_SKEW_KF_2]);
+			reg_format(&regfile[ID_PM_SKEW_KF_3]);
+			reg_format(&regfile[ID_PM_SKEW_KF_4]);
+			reg_format(&regfile[ID_PM_SKEW_KF_5]);
+			reg_format(&regfile[ID_PM_SKEW_KF_6]);
+
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			if (pm_wait_for_IDLE() != PM_OK)
+				break;
+		}
+		while (0);
+
+		vPortFree(m);
+
+		reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+		if (pm.lu_mode != PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_HALT;
+		}
+	}
 }
 
 SH_DEF(pm_adjust_sensor_hall)

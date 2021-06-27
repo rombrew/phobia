@@ -153,8 +153,9 @@ typedef struct {
 	int		config_VSI_PRECISE;
 	int		config_FORCED;
 	int		config_FLUX;
+	int		config_SKEW;
 	int		config_HFI;
-	int		config_MAJOR_AXIS;
+	int		config_MAJOR;
 	int		config_SENSOR;
 	int		config_ABI_REVERSED;
 	int		config_ABI_DEBOUNCE;
@@ -162,7 +163,7 @@ typedef struct {
 	int		config_MTPA;
 	int		config_WEAK;
 	int		config_BRAKE;
-	int		config_LIMITED;
+	int		config_LIMIT;
 	int		config_INFO;
 	int		config_BOOST;
 
@@ -271,6 +272,7 @@ typedef struct {
 
 	float		lu_F1;
 	int		lu_revol;
+	int		lu_revob;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -309,6 +311,12 @@ typedef struct {
 	float		flux_gain_GIVE;
 	float		flux_gain_LEVE;
 	float		flux_gain_LP_S;
+
+	int		skew_ONFLAG;
+	int		skew_TIM;
+	int		skew_END;
+	float		skew_ripple_STD;
+	float		skew_KF[7];
 
 	float		hfi_F[2];
 	float		hfi_wS;

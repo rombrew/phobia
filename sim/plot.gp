@@ -1,7 +1,7 @@
 #!/home/amaora/util/gp
 # vi: ft=conf
 
-load 0 -1 float 100 "/tmp/pm-TLM"
+load 0 0 float 100 "/tmp/pm-TLM"
 
 group 0 0
 deflabel 0 "(s)"

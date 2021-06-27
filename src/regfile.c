@@ -1023,14 +1023,15 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_VSI_PRECISE:
 		case ID_PM_CONFIG_FORCED:
 		case ID_PM_CONFIG_FLUX:
+		case ID_PM_CONFIG_SKEW:
 		case ID_PM_CONFIG_HFI:
-		case ID_PM_CONFIG_MAJOR_AXIS:
+		case ID_PM_CONFIG_MAJOR:
 		case ID_PM_CONFIG_ABI_REVERSED:
 		case ID_PM_CONFIG_ABI_DEBOUNCE:
 		case ID_PM_CONFIG_MTPA:
 		case ID_PM_CONFIG_WEAK:
 		case ID_PM_CONFIG_BRAKE:
-		case ID_PM_CONFIG_LIMITED:
+		case ID_PM_CONFIG_LIMIT:
 		case ID_PM_CONFIG_INFO:
 		case ID_PM_TVM_ALLOWED:
 		case ID_PM_HALL_ALLOWED:
@@ -1147,10 +1148,10 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.PPM_timebase,,,		"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PPM_signal_caught,,,	"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(hal, _PPM_get_PERIOD,, "us", "%2f", REG_READ_ONLY, &reg_proc_PPM_get_PERIOD, NULL),
-	REG_DEF(hal, _PPM_get_PULSE,,  "us", "%2f", REG_READ_ONLY, &reg_proc_PPM_get_PULSE, NULL),
-	REG_DEF(hal, _ADC_get_analog_ANG,, "V", "%3f", REG_READ_ONLY, &reg_proc_ADC_get_analog_ANG, NULL),
-	REG_DEF(hal, _ADC_get_analog_BRK,, "V", "%3f", REG_READ_ONLY, &reg_proc_ADC_get_analog_BRK, NULL),
+	REG_DEF(hal, .PPM_get_PERIOD,, "us", "%2f", REG_READ_ONLY, &reg_proc_PPM_get_PERIOD, NULL),
+	REG_DEF(hal, .PPM_get_PULSE,,  "us", "%2f", REG_READ_ONLY, &reg_proc_PPM_get_PULSE, NULL),
+	REG_DEF(hal, .ADC_get_analog_ANG,, "V", "%3f", REG_READ_ONLY, &reg_proc_ADC_get_analog_ANG, NULL),
+	REG_DEF(hal, .ADC_get_analog_BRK,, "V", "%3f", REG_READ_ONLY, &reg_proc_ADC_get_analog_BRK, NULL),
 
 	REG_DEF(net.node_ID,,,		"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.log_MODE,,,		"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
@@ -1281,8 +1282,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_VSI_PRECISE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_FORCED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_FLUX,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_SKEW,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_MAJOR_AXIS,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_MAJOR,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SENSOR,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_ABI_REVERSED,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_ABI_DEBOUNCE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1290,7 +1292,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_MTPA,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_WEAK,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_BRAKE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_LIMITED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_LIMIT,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_INFO,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_BOOST,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
@@ -1439,6 +1441,16 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_GIVE, _U,,		"V",	"%3f",	0, &reg_proc_gain_U, NULL),
 	REG_DEF(pm.flux_gain_LEVE,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LP_S,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.skew_ONFLAG,,,		"",	"%i",	0, NULL, NULL),
+	REG_DEF(pm.skew_ripple_STD,,,	"rad/s",	"%4f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.skew_KF, _0, [0],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _2, [2],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _3, [3],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _4, [4],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _5, [5],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.skew_KF, _6, [6],		"",	"%4e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_F_g, NULL),
 	REG_DEF(pm.hfi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),

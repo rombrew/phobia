@@ -17,16 +17,17 @@ void pm_default(pmc_t *pm)
 	pm->config_VSI_PRECISE = PM_DISABLED;
 	pm->config_FORCED = PM_ENABLED;
 	pm->config_FLUX = PM_ENABLED;
+	pm->config_SKEW = PM_DISABLED;
 	pm->config_HFI = PM_DISABLED;
-	pm->config_MAJOR_AXIS = PM_DISABLED;
+	pm->config_MAJOR = PM_DISABLED;
 	pm->config_SENSOR = PM_SENSOR_DISABLED;
 	pm->config_ABI_REVERSED = PM_DISABLED;
 	pm->config_ABI_DEBOUNCE = PM_ENABLED;
 	pm->config_DRIVE = PM_DRIVE_SPEED;
-	pm->config_MTPA = PM_ENABLED;
+	pm->config_MTPA = PM_DISABLED;
 	pm->config_WEAK = PM_DISABLED;
 	pm->config_BRAKE = PM_DISABLED;
-	pm->config_LIMITED = PM_DISABLED;
+	pm->config_LIMIT = PM_DISABLED;
 	pm->config_INFO	= PM_ENABLED;
 	pm->config_BOOST = PM_DISABLED;
 
@@ -103,6 +104,14 @@ void pm_default(pmc_t *pm)
 	pm->flux_gain_SF = 5E-2f;
 	pm->flux_gain_IF = 2E-1f;
 
+	pm->skew_KF[0] = 0.f;
+	pm->skew_KF[1] = 0.f;
+	pm->skew_KF[2] = 0.f;
+	pm->skew_KF[3] = 0.f;
+	pm->skew_KF[4] = 0.f;
+	pm->skew_KF[5] = 0.f;
+	pm->skew_KF[6] = 0.f;
+
 	pm->flux_MPPE = 50.f;
 	pm->flux_gain_TAKE = 3.f;
 	pm->flux_gain_GIVE = 2.f;
@@ -141,7 +150,7 @@ void pm_default(pmc_t *pm)
 	pm->watt_iDC_maximal = 80.f;
 	pm->watt_wP_reverse = 4000.f;
 	pm->watt_iDC_reverse = 80.f;
-	pm->watt_dclink_HI = 56.f;
+	pm->watt_dclink_HI = 52.f;
 	pm->watt_dclink_LO = 7.f;
 	pm->watt_gain_LP_F = 5E-2f;
 	pm->watt_gain_LP_P = 5E-2f;
@@ -338,7 +347,6 @@ pm_forced(pmc_t *pm)
 	/* Update DQ-frame.
 	 * */
 	m_rotatef(pm->forced_F, pm->forced_wS * pm->dT);
-	m_normalizef(pm->forced_F);
 }
 
 static void
@@ -385,7 +393,6 @@ pm_detached_FLUX(pmc_t *pm)
 			/* Speed estimation (PLL).
 			 * */
 			m_rotatef(pm->detach_V, pm->flux_wS * pm->dT);
-			m_normalizef(pm->detach_V);
 
 			EX = uX * pm->detach_V[0] + uY * pm->detach_V[1];
 			EY = uY * pm->detach_V[0] - uX * pm->detach_V[1];
@@ -490,7 +497,7 @@ pm_mode_FLUX(pmc_t *pm)
 static void
 pm_estimate_FLUX(pmc_t *pm)
 {
-	float		uX, uY, lX, lY, iEE, EX, EY, DX, DY, E, gain_F;
+	float		uX, uY, lX, lY, iEE, EX, EY, DX, DY, E, F;
 
 	/* Get the actual voltage.
 	 * */
@@ -512,12 +519,12 @@ pm_estimate_FLUX(pmc_t *pm)
 
 		iEE = pm->temp_const_iE * pm->temp_const_iE;
 
-		/* Adaptive GAIN.
+		/* Adaptive GAIN (F).
 		 * */
 		E = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_gain_AD;
 		E = (E > 1.f) ? 1.f : 0.f;
 
-		gain_F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * pm->temp_const_iE;
+		F = (pm->flux_gain_LO + E * pm->flux_gain_HI) * pm->temp_const_iE;
 
 		/* FLUX observer equations.
 		 * */
@@ -527,10 +534,10 @@ pm_estimate_FLUX(pmc_t *pm)
 		EX = pm->flux_X - lX;
 		EY = pm->flux_Y - lY;
 
-		gain_F *= 1.f - (EX * EX + EY * EY) * iEE;
+		F *= 1.f - (EX * EX + EY * EY) * iEE;
 
-		pm->flux_X += EX * gain_F;
-		pm->flux_Y += EY * gain_F;
+		pm->flux_X += EX * F;
+		pm->flux_Y += EY * F;
 	}
 	else {
 		/* Startup estimation.
@@ -541,10 +548,10 @@ pm_estimate_FLUX(pmc_t *pm)
 		EX = pm->flux_X - lX;
 		EY = pm->flux_Y - lY;
 
-		gain_F = - pm->flux_gain_IN;
+		F = - pm->flux_gain_IN;
 
-		pm->flux_X += EX * gain_F;
-		pm->flux_Y += EY * gain_F;
+		pm->flux_X += EX * F;
+		pm->flux_Y += EY * F;
 	}
 
 	/* Extract rotor FLUX linkage.
@@ -563,6 +570,28 @@ pm_estimate_FLUX(pmc_t *pm)
 		EX *= E;
 		EY *= E;
 
+		if (pm->config_SKEW == PM_ENABLED) {
+
+			float		ESX, ESY;
+
+			DX = pm->skew_KF[0] * EX;
+			DY = pm->skew_KF[1] * EX + pm->skew_KF[2] * EY;
+
+			ESX = EX * EX - EY * EY;
+			ESY = 2.f * EX * EY;
+
+			DX += pm->skew_KF[3] * ESX + pm->skew_KF[4] * ESY;
+			DY += pm->skew_KF[5] * ESX + pm->skew_KF[6] * ESY;
+
+			EX += DX;
+			EY += DY;
+
+			E = 1.f / m_sqrtf(EX * EX + EY * EY);
+
+			EX *= E;
+			EY *= E;
+		}
+
 		if (		pm->lu_mode == PM_LU_FORCED
 				&& pm->const_E < M_EPS_F) {
 
@@ -572,7 +601,6 @@ pm_estimate_FLUX(pmc_t *pm)
 			/* Speed estimation (PLL).
 			 * */
 			m_rotatef(pm->flux_F, pm->flux_wS * pm->dT);
-			m_normalizef(pm->flux_F);
 
 			DX = EX * pm->flux_F[0] + EY * pm->flux_F[1];
 			DY = EY * pm->flux_F[0] - EX * pm->flux_F[1];
@@ -667,7 +695,7 @@ void pm_hfi_DFT(pmc_t *pm, float la[5])
 	lz[1] = ls->b[2] * iw;
 	lz[2] = ls->b[3] * iw;
 
-	m_la_eigf(lz, la, (pm->config_MAJOR_AXIS == PM_ENABLED) ? 1 : 0);
+	m_la_eigf(lz, la, (pm->config_MAJOR == PM_ENABLED) ? 1 : 0);
 }
 
 static void
@@ -805,12 +833,10 @@ pm_estimate_HFI(pmc_t *pm)
 	/* Extrapolate rotor position.
 	 * */
 	m_rotatef(pm->hfi_F, pm->hfi_wS * pm->dT);
-	m_normalizef(pm->hfi_F);
 
 	/* HF wave synthesis.
 	 * */
 	m_rotatef(pm->hfi_wave, pm->temp_HFI_wS * pm->dT);
-	m_normalizef(pm->hfi_wave);
 }
 
 static void
@@ -836,7 +862,6 @@ pm_sensor_HALL(pmc_t *pm)
 						&& m_fabsf(pm->hall_prolS) < B) {
 
 					m_rotatef(pm->hall_F, relE);
-					m_normalizef(pm->hall_F);
 
 					pm->hall_prolS += relE;
 				}
@@ -871,7 +896,6 @@ pm_sensor_HALL(pmc_t *pm)
 			relE = - pm->hall_DIRF * (PM_HALL_SPAN / 2.f);
 
 			m_rotatef(hF, relE * pm->hall_gain_PF);
-			m_normalizef(hF);
 
 			A = hF[0] * pm->hall_F[0] + hF[1] * pm->hall_F[1];
 			B = hF[1] * pm->hall_F[0] - hF[0] * pm->hall_F[1];
@@ -1004,6 +1028,8 @@ pm_lu_estimate_torque(pmc_t *pm)
 static void
 pm_lu_revol_counter(pmc_t *pm)
 {
+	pm->lu_revob = pm->lu_revol;
+
 	if (pm->lu_F[0] < 0.f) {
 
 		if (pm->lu_F[1] < 0.f) {
@@ -1404,6 +1430,54 @@ pm_lu_FSM(pmc_t *pm)
 	pm_lu_revol_counter(pm);
 }
 
+static void
+pm_skew_ripple_STD(pmc_t *pm)
+{
+	lse_t			*ls = &pm->probe_LS[1];
+	lse_float_t		v[2];
+
+	if (		pm->skew_ONFLAG == PM_ENABLED
+			&& pm->lu_mode == PM_LU_ESTIMATE_FLUX) {
+
+		if (pm->skew_END == 0) {
+
+			if (pm->lu_revol != pm->lu_revob) {
+
+				lse_initiate(ls, 1, 1);
+
+				pm->skew_TIM = 0;
+				pm->skew_END = PM_TSMS(pm, pm->tm_average_probe);
+			}
+		}
+		else {
+			v[0] = 1.f;
+			v[1] = pm->lu_wS;
+
+			lse_insert(ls, v);
+
+			pm->skew_TIM++;
+
+			if (		pm->skew_TIM >= pm->skew_END
+					&& pm->lu_revol != pm->lu_revob) {
+
+				lse_finalise(ls);
+
+				if (m_isfinitef(ls->e[0]) != 0) {
+
+					pm->skew_ripple_STD = ls->e[0];
+
+					pm->skew_ONFLAG = PM_DISABLED;
+					pm->skew_END = 0;
+				}
+				else {
+					pm->fsm_errno = PM_ERROR_INVALID_OPERATION;
+					pm->fsm_state = PM_STATE_HALT;
+				}
+			}
+		}
+	}
+}
+
 void pm_voltage(pmc_t *pm, float uX, float uY)
 {
 	float		uA, uB, uC, uMIN, uMAX, uDC;
@@ -1462,7 +1536,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (pm->config_VSI_PRECISE == PM_ENABLED) {
 
-		uDC = (uMAX - uMIN < .5f) ? .5f - uMAX : 0.f - uMIN;
+		uDC = .5f - (uMAX + uMIN) * .5f;
 	}
 	else {
 		uDC = 0.f - uMIN;
@@ -1711,6 +1785,13 @@ pm_loop_current(pmc_t *pm)
 
 			E = (1.f - pm->vsi_DC) * pm->const_fb_U;
 
+			if (pm->const_fb_U > pm->watt_dclink_HI) {
+
+				/* Prevent the lack of weakening in case of overvoltage.
+				 * */
+				E = (E > 0.f) ? 0.f : E;
+			}
+
 			pm->weak_D += E * pm->weak_gain_EU;
 			pm->weak_D = (pm->weak_D < - pm->weak_maximal) ? - pm->weak_maximal :
 				(pm->weak_D > 0.f) ? 0.f : pm->weak_D;
@@ -1732,7 +1813,7 @@ pm_loop_current(pmc_t *pm)
 	}
 
 	if (		pm->config_DRIVE == PM_DRIVE_CURRENT
-			&& pm->config_LIMITED == PM_ENABLED) {
+			&& pm->config_LIMIT == PM_ENABLED) {
 
 		/* Maximal SPEED limit.
 		 * */
@@ -2108,7 +2189,6 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			&& (pm->vsi_AF | pm->vsi_BF) != 0) {
 
 		m_rotatef(pm->lu_F, pm->lu_wS * pm->dT);
-		m_normalizef(pm->lu_F);
 
 		pm->lu_iX = pm->lu_F[0] * pm->lu_iD - pm->lu_F[1] * pm->lu_iQ;
 		pm->lu_iY = pm->lu_F[1] * pm->lu_iD + pm->lu_F[0] * pm->lu_iQ;
@@ -2285,6 +2365,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			/* Current loop is always enabled.
 			 * */
 			pm_loop_current(pm);
+
+			/* Detect the ripple caused by SKEWNESS.
+			 * */
+			pm_skew_ripple_STD(pm);
 		}
 
 		if (pm->config_INFO == PM_ENABLED) {

@@ -148,12 +148,12 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* Thermal drift.
 	 * */
-	R1 = m->R  * (1. + 4E-3 * (X[4] - 25.));
-	E1 = m->E  * (1. - 1E-3 * (X[4] - 25.));
+	R1 = m->R * (1. + 4E-3 * (X[4] - 25.));
+	E1 = m->E * (1. - 1E-3 * (X[4] - 25.));
 
 	/* BEMF waveform distortion.
 	 * */
-	E1 += m->E * sin(X[3] * 3.) * 0E-2;
+	E1 += m->E * sin(X[3] * 3.) * 5E-2;
 
 	/* Voltage from VSI.
 	 * */

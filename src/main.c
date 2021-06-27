@@ -471,6 +471,8 @@ app_flash_load()
 	pm.fault_current_halt = (float) (int) (.95f * m_fabsf(halt_I));
 	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
 
+	pm.watt_dclink_HI = (float) (int) (pm.fault_voltage_halt - 5.f);
+
 	/* Default telemetry.
 	 * */
 	TLM_reg_default(&tlm);

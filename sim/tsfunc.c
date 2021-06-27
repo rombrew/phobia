@@ -107,7 +107,45 @@ int ts_wait_for_MOTION(float s_ref)
 	return pm.fsm_errno;
 }
 
-void ts_reg_SET_SETPOINT_SPEED()
+static float
+ts_proc_ripple_STD(void *link, const float *KF)
+{
+	pm.skew_KF[0] = KF[0];
+	pm.skew_KF[1] = KF[1];
+	pm.skew_KF[2] = KF[2];
+	pm.skew_KF[3] = KF[3];
+	pm.skew_KF[4] = KF[4];
+	pm.skew_KF[5] = KF[5];
+	pm.skew_KF[6] = KF[6];
+
+	pm.skew_ONFLAG = PM_ENABLED;
+
+	do {
+		sim_Run(5 / (double) TS_TICK_RATE);
+	}
+	while (pm.skew_ONFLAG == PM_ENABLED);
+
+	return pm.skew_ripple_STD;
+}
+
+static void
+ts_proc_step_format(void *link)
+{
+	minproblem_t	*m = (minproblem_t *) link;
+	float		x_tol_pc = m->x_tol * 100.f;
+
+	if (pm.fsm_errno != PM_OK) {
+
+		/* Terminate the SEARCH if an error occurs.
+		 * */
+		m->n_final_step = 0;
+	}
+
+	printf("[%2i] %.4f %.4f\n", m->n_step, x_tol_pc, m->fval[m->n_best]);
+}
+
+static void
+ts_reg_SET_SETPOINT_SPEED()
 {
 	float		s_pc;
 
@@ -330,6 +368,66 @@ void ts_probe_spinup()
 	while (0);
 }
 
+void ts_adjust_skewness()
+{
+	minproblem_t		*m;
+
+	m = malloc(sizeof(minproblem_t));
+
+	if (m != NULL) {
+
+		m->n_size_of_x = 7;
+		m->link = (void *) m;
+		m->x0_range = 0.02f;
+		m->x_maximal = 0.5f;
+		m->pfun = &ts_proc_ripple_STD;
+		m->pstep = &ts_proc_step_format;
+		m->n_final_step = 180;
+		m->x_final_tol = 5E-4f;
+
+		do {
+			pm.fsm_req = PM_STATE_LU_STARTUP;
+
+			if (ts_wait_for_IDLE() != PM_OK)
+				break;
+
+			ts_reg_SET_SETPOINT_SPEED();
+
+			if (ts_wait_for_SPINUP() != PM_OK)
+				break;
+
+			minsearch(m);
+
+			if (pm.fsm_errno != PM_OK) {
+
+				pm.skew_KF[0] = 0.f;
+				pm.skew_KF[1] = 0.f;
+				pm.skew_KF[2] = 0.f;
+				pm.skew_KF[3] = 0.f;
+				pm.skew_KF[4] = 0.f;
+				pm.skew_KF[5] = 0.f;
+				pm.skew_KF[6] = 0.f;
+				break;
+			}
+
+			minsolution(m, pm.skew_KF);
+
+			printf("skew_KF %.4E %.4E %.4E %.4E %.4E %.4E %.4E\n",
+					pm.skew_KF[0], pm.skew_KF[1], pm.skew_KF[2],
+					pm.skew_KF[3], pm.skew_KF[4],
+					pm.skew_KF[5], pm.skew_KF[6]);
+
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			if (ts_wait_for_IDLE() != PM_OK)
+				break;
+		}
+		while (0);
+
+		free(m);
+	}
+}
+
 void ts_adjust_sensor_hall()
 {
 	double		hall_g;
@@ -405,6 +503,14 @@ void ts_BASE()
 	ts_probe_spinup();
 
 	sim_Run(.1);
+}
+
+void ts_SKEW()
+{
+	pm.config_SKEW = PM_ENABLED;
+	pm.config_DRIVE = PM_DRIVE_SPEED;
+
+	ts_adjust_skewness();
 }
 
 void ts_SPEED()
@@ -547,6 +653,7 @@ void ts_START()
 	blm_Stop(&m);
 
 	ts_WEAK();
+	blm_Stop(&m);
 
 	//exit(0);
 
