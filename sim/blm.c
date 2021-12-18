@@ -137,6 +137,7 @@ void blm_Stop(blm_t *m)
 	m->VSI[0] = 0;
 	m->VSI[1] = 0;
 	m->VSI[2] = 0;
+
 	m->surge_I = 0;
 }
 
@@ -153,7 +154,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* BEMF waveform distortion.
 	 * */
-	E1 += m->E * sin(X[3] * 3.) * 5E-2;
+	E1 += m->E * sin(X[3] * 3.) * 0E-2;
 
 	/* Voltage from VSI.
 	 * */
@@ -433,7 +434,7 @@ blm_VSI_Solve(blm_t *m)
 	for (n = 0; n < 5; ++n)
 		pm[n] = n;
 
-	/* Get sorted events.
+	/* Get SORTED events.
 	 * */
 	for (n = 0; n < 5; ++n) {
 
@@ -502,7 +503,7 @@ blm_VSI_Solve(blm_t *m)
 	dT = tTIM * (m->PWM_R - Tev[pm[0]]);
 	blm_Solve_Split(m, dT);
 
-	/* Power.
+	/* Get instant POWER.
 	 * */
 	m->iP = m->X[5] / m->dT;
 	m->X[5] = 0.;

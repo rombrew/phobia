@@ -44,7 +44,7 @@ FE_prog_putc(FE_prog_t *pg, int c)
 
 		if (pg->pack_i >= 4) {
 
-			FLASH_prog(pg->flash, &pg->packed.l, sizeof(u32_t));
+			FLASH_prog(pg->flash, pg->packed.l);
 
 			pg->flash += 1;
 			pg->pack_i = 0;
@@ -327,7 +327,7 @@ flash_block_prog()
 		}
 	}
 
-	FLASH_prog(&block->number, &number, sizeof(u32_t));
+	FLASH_prog(&block->number, number);
 
 	rc = flash_regs_FE_prog(block);
 
@@ -335,85 +335,9 @@ flash_block_prog()
 
 		crc32 = flash_block_crc32(block);
 
-		FLASH_prog(&block->crc32, &crc32, sizeof(u32_t));
+		FLASH_prog(&block->crc32, crc32);
 
 		rc = (flash_block_crc32(block) == block->crc32) ? 1 : 0;
-	}
-
-	return rc;
-}
-
-int flash_block_relocate(u32_t len)
-{
-	flash_block_t		*block, *reloc, *temp;
-	int			N, erase_N, rc = 1;
-
-	block = flash_block_scan();
-
-	if (block != NULL) {
-
-		for (erase_N = 1; erase_N < FLASH_config.s_total + 1; ++erase_N) {
-
-			if (FLASH_map[erase_N] - FLASH_map[0] >= len)
-				break;
-		}
-
-		/* Check if we have at least one unaffected flash sector. If so
-		 * we can safely relocate the configuration block to it.
-		 * */
-		if (erase_N < FLASH_config.s_total) {
-
-			reloc = (void *) FLASH_map[erase_N];
-
-			while (flash_is_block_dirty(reloc) != 0) {
-
-				reloc += 1;
-
-				if ((u32_t) reloc >= FLASH_map[FLASH_config.s_total]) {
-
-					reloc = (void *) FLASH_map[FLASH_config.s_total - 1];
-					reloc = FLASH_erase(reloc);
-					break;
-				}
-			}
-
-			FLASH_prog(reloc, block, sizeof(flash_block_t));
-
-			rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
-
-			for (N = 0; N < erase_N; ++N)
-				FLASH_erase((void *) FLASH_map[N]);
-		}
-		else {
-			temp = pvPortMalloc(sizeof(flash_block_t));
-
-			if (temp != NULL) {
-
-				memcpy(temp, block, sizeof(flash_block_t));
-
-				/* NOTE: If power goes down on the erase before
-				 * flashprog we will loss the configuration block.
-				 * */
-
-				for (N = 0; N < erase_N; ++N)
-					FLASH_erase((void *) FLASH_map[N]);
-
-				reloc = (void *) FLASH_map[FLASH_config.s_total];
-				reloc -= 1;
-
-				FLASH_prog(reloc, temp, sizeof(flash_block_t));
-
-				rc = (flash_block_crc32(reloc) == reloc->crc32) ? 1 : 0;
-
-				vPortFree(temp);
-			}
-			else {
-				/* We are failed to relocate the configuration
-				 * block in this case.
-				 * */
-				rc = 0;
-			}
-		}
 	}
 
 	return rc;
@@ -491,7 +415,7 @@ SH_DEF(flash_cleanup)
 	do {
 		if (flash_block_crc32(block) == block->crc32) {
 
-			FLASH_prog(&block->crc32, &lz, sizeof(u32_t));
+			FLASH_prog(&block->crc32, lz);
 		}
 
 		block += 1;

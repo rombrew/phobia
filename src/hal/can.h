@@ -17,7 +17,7 @@ typedef struct {
 
 	u16_t			ID;
 	u16_t			len;
-	char			payload[8];
+	u8_t			payload[8];
 }
 CAN_msg_t;
 

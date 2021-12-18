@@ -5,7 +5,7 @@ static void
 pm_fsm_state_idle(pmc_t *pm)
 {
 	if (		pm->lu_mode == PM_LU_DISABLED
-			&& pm->config_BOOST == PM_ENABLED) {
+			&& pm->config_BOOST_CHARGE == PM_ENABLED) {
 
 		switch (pm->fsm_phase) {
 
@@ -1108,9 +1108,6 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 		case 0:
 			if (pm->const_im_L2 > M_EPS_F) {
 
-				pm->debug_locked_HFI = PM_DISABLED;
-				pm->debug_locked_SENSOR = PM_SENSOR_DISABLED;
-
 				pm->vsi_SA = 0;
 				pm->vsi_SB = 0;
 				pm->vsi_SC = 0;
@@ -1162,9 +1159,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_mode = PM_FLUX_UNCERTAIN;
 				pm->flux_LOCKED = PM_FLUX_UNCERTAIN;
 
-				pm->skew_ONFLAG = 0;
-				pm->skew_TIM = 0;
-				pm->skew_END = 0;
+				pm->flux_imbalance_ONFLAG = 0;
+				pm->flux_imbalance_TIM = 0;
+				pm->flux_imbalance_END = 0;
 
 				pm->hfi_F[0] = 1.f;
 				pm->hfi_F[1] = 0.f;

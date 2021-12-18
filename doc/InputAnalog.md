@@ -2,7 +2,7 @@
 
 This page describes the configuration of analog input interface.
 
-## Hardware
+## Wiring
 
 The analog signal (from 0 to 5v) is fed to ANG pin. The brake signal (from 0 to
 5v) is fed to BRK pin. Unconnected inputs are pulled to GND internally.
@@ -12,25 +12,25 @@ The analog signal (from 0 to 5v) is fed to ANG pin. The brake signal (from 0 to
 	   | |   (analog)       |
 	   | |<-------------+   |
 	   |_|              |   |
-	    |               |   |
-	    +-------+       |   |
-	            |       |   |
-	            |       |   |
-	+-----------|---|---|---|--------------------+
+	    |           +---|---|-------~
+	    +-------+   |   |   |
+	            |   |   |   |
+	            |   |   |   |
+	+-----------+---+---+---+--------------------+
 	|          GND BRK ANG +5v                   |
 
 
 ## Configuration
 
 First you need to figure out how the controller receives analog signals. Use
-HAL commands to view analog values.
+HAL registers to view analog values.
 
-	# hal_ADC_get_analog_ANG
-	# hal_ADC_get_analog_BRK
+	# reg hal.ADC_get_analog_ANG
+	# reg hal.ADC_get_analog_BRK
 
 If signals do not change when you turn the knobs then check the wiring.
 
-	               ^    // mapping of input voltage to control variable //
+	               ^    // mapping of input voltage to the control variable //
 	               |
 	 control_ANG_2 |<---------------------------------o
 	               |                                / |
@@ -75,6 +75,11 @@ percentage of maximal current. There is a variable **pm.i_setpoint_torque_pc**.
 
 	# reg ap.analog_reg_ID <reg>
 
+Note that setting the control variable does not enable appropriate control loop
+automatically. You may need to enable appropriate control mode explicitly.
+
+	# reg pm.config_DRIVE <x>
+
 Select the control variable range. So the input voltage range will be converted
 to this control range.
 
@@ -88,7 +93,7 @@ the control variable will be interpolated to this value.
 	# reg ap.analog_control_BRK <x>
 
 If you need you can change input lost range. If signal goes beyond this range
-it is considered lost and output equals to **ap.analog_control_ANG_0**.
+it is considered lost and output forced to **ap.analog_control_ANG_0**.
 
 	# reg ap.analog_in_lost_0 <volt>
 	# reg ap.analog_in_lost_1 <volt>
@@ -102,11 +107,16 @@ Now you are ready to enable the analog input interface.
 
 	# reg ap.analog_ENABLED 1
 
-# Timeout configuration
+# Timeout shutdown
 
 To stop the control we check if motor is run or phase current is high. If phase
 current is less than **ap.timeout_current_tol** and motor does not make full
 turns for **ap.timeout_TIME** seconds the shutdown is requested.
 
 	# reg ap.timeout_TIME <s>
+
+If you want to use timeout shutdown without analog input interface then just
+set the control variable to the null.
+
+	# reg ap.analog_reg_ID 0
 

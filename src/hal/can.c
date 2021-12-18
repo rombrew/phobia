@@ -10,30 +10,22 @@ void irq_CAN1_TX() { }
 static void
 irq_CAN1_RX(int mb)
 {
-	u32_t			payload;
+	u32_t			xLO, xHI;
 
-	hal.CAN_msg.ID = (unsigned short) (CAN1->sFIFOMailBox[mb].RIR >> 21);
-	hal.CAN_msg.len = (unsigned short) (CAN1->sFIFOMailBox[mb].RDTR & 0xFUL);
+	hal.CAN_msg.ID = (u16_t) (CAN1->sFIFOMailBox[mb].RIR >> 21);
+	hal.CAN_msg.len = (u16_t) (CAN1->sFIFOMailBox[mb].RDTR & 0xFUL);
 
-	if (hal.CAN_msg.len > 0) {
+	xLO = CAN1->sFIFOMailBox[mb].RDLR;
+	xHI = CAN1->sFIFOMailBox[mb].RDHR;
 
-		payload = CAN1->sFIFOMailBox[mb].RDLR;
-
-		hal.CAN_msg.payload[0] = (char) (payload & 0xFFUL);
-		hal.CAN_msg.payload[1] = (char) ((payload >> 8) & 0xFFUL);
-		hal.CAN_msg.payload[2] = (char) ((payload >> 16) & 0xFFUL);
-		hal.CAN_msg.payload[3] = (char) ((payload >> 24) & 0xFFUL);
-	}
-
-	if (hal.CAN_msg.len > 4) {
-
-		payload = CAN1->sFIFOMailBox[mb].RDHR;
-
-		hal.CAN_msg.payload[4] = (char) (payload & 0xFFUL);
-		hal.CAN_msg.payload[5] = (char) ((payload >> 8) & 0xFFUL);
-		hal.CAN_msg.payload[6] = (char) ((payload >> 16) & 0xFFUL);
-		hal.CAN_msg.payload[7] = (char) ((payload >> 24) & 0xFFUL);
-	}
+	hal.CAN_msg.payload[0] = (u8_t) (xLO & 0xFFUL);
+	hal.CAN_msg.payload[1] = (u8_t) ((xLO >> 8) & 0xFFUL);
+	hal.CAN_msg.payload[2] = (u8_t) ((xLO >> 16) & 0xFFUL);
+	hal.CAN_msg.payload[3] = (u8_t) ((xLO >> 24) & 0xFFUL);
+	hal.CAN_msg.payload[4] = (u8_t) (xHI & 0xFFUL);
+	hal.CAN_msg.payload[5] = (u8_t) ((xHI >> 8) & 0xFFUL);
+	hal.CAN_msg.payload[6] = (u8_t) ((xHI >> 16) & 0xFFUL);
+	hal.CAN_msg.payload[7] = (u8_t) ((xHI >> 24) & 0xFFUL);
 }
 
 void irq_CAN1_RX0()
@@ -192,17 +184,9 @@ int CAN_send_msg(const CAN_msg_t *msg)
 
 	xTSR = CAN1->TSR;
 
-	if (xTSR & CAN_TSR_TME0) {
+	if (xTSR & CAN_TSR_TME_Msk) {
 
-		mb = 0;
-	}
-	else if (xTSR & CAN_TSR_TME1) {
-
-		mb = 1;
-	}
-	else if (xTSR & CAN_TSR_TME2) {
-
-		mb = 2;
+		mb = (xTSR & CAN_TSR_CODE_Msk) >> CAN_TSR_CODE_Pos;
 	}
 	else {
 		hal_unlock_irq(irq);
@@ -210,26 +194,20 @@ int CAN_send_msg(const CAN_msg_t *msg)
 		return CAN_TX_FAILED;
 	}
 
-	CAN1->sTxMailBox[mb].TIR = (msg->ID << 21);
-	CAN1->sTxMailBox[mb].TDTR = msg->len;
+	CAN1->sTxMailBox[mb].TIR = (u32_t) msg->ID << 21;
+	CAN1->sTxMailBox[mb].TDTR = (u32_t) msg->len;
 
-	if (msg->len > 0) {
+	CAN1->sTxMailBox[mb].TDLR =
+		((u32_t) msg->payload[0])
+		| ((u32_t) msg->payload[1] << 8)
+		| ((u32_t) msg->payload[2] << 16)
+		| ((u32_t) msg->payload[3] << 24);
 
-		CAN1->sTxMailBox[mb].TDLR =
-			((u32_t) msg->payload[0])
-			| ((u32_t) msg->payload[1] << 8)
-			| ((u32_t) msg->payload[2] << 16)
-			| ((u32_t) msg->payload[3] << 24);
-	}
-
-	if (msg->len > 4) {
-
-		CAN1->sTxMailBox[mb].TDHR =
-			((u32_t) msg->payload[4])
-			| ((u32_t) msg->payload[5] << 8)
-			| ((u32_t) msg->payload[6] << 16)
-			| ((u32_t) msg->payload[7] << 24);
-	}
+	CAN1->sTxMailBox[mb].TDHR =
+		((u32_t) msg->payload[4])
+		| ((u32_t) msg->payload[5] << 8)
+		| ((u32_t) msg->payload[6] << 16)
+		| ((u32_t) msg->payload[7] << 24);
 
 	CAN1->sTxMailBox[mb].TIR |= CAN_TI0R_TXRQ;
 

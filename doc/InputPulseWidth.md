@@ -2,15 +2,15 @@
 
 This page describes the configuration of RC servo pulse width input interface.
 
-## Hardware
+## Wiring
 
 The pulse signal is fed to PPM pin that is 5v-tolerant.
 
-	        +-----------------< +5v
-	        |   +-------------< pulse signal
-	        |   |       +-----< gnd
+	        +-----------------> +5v
+	        |   +---------------------< (pulse signal)
+	        |   |       +-----> GND
 	        |   |       |
-	+-------|---|---|---|--------------------------+
+	+-------+---+---+---+--------------------------+
 	|      +5v PPM DIR GND                         |
 
 ## Configuration
@@ -20,11 +20,11 @@ First you need to enable the appropriate mode of the PPM interface.
 	# reg hal.PPM_mode 1
 
 Now you can see how the controller receives the control signal. If variable
-**hal.PPM_signal_caught** is 1 then pulse is caught. Use HAL commands to view
+**hal.PPM_signal_caught** is 1 then pulse is caught. Use HAL registers to view
 pulse parameters.
 
-	# hal_PPM_get_PERIOD
-	# hal_PPM_get_PULSE
+	# reg hal.PPM_get_PERIOD
+	# reg hal.PPM_get_PULSE
 
 Select the pulse width range in which you want to work. Write the range to a
 PPM configuration. We use three point conversion from pulse width to the
@@ -39,6 +39,11 @@ available for writing. By default the speed control is selected as a percentage
 of maximal no load speed. There is a variable **pm.s_setpoint_pc**.
 
 	# reg ap.ppm_reg_ID <reg>
+
+Note that setting the control variable does not enable appropriate control loop
+automatically. You may need to enable appropriate control mode explicitly.
+
+	# reg pm.config_DRIVE <x>
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.

@@ -9,69 +9,6 @@
 #include "regfile.h"
 #include "shell.h"
 
-#define IFCAN_ID(node_ID, func)		(1024U | (node_ID) << 5 | (func))
-
-#define IFCAN_GET_NODE(ID)		(((ID) >> 5) & 31U)
-#define IFCAN_GET_FUNC(ID)		((ID) & 31U)
-
-/* Network functions.
- * */
-#define IFCAN_ID_NET_SURVEY		IFCAN_ID(31U, 31U)
-#define IFCAN_ID_NET_ASSIGN		IFCAN_ID(31U, 29U)
-
-/* Flash functions.
- * */
-#define IFCAN_ID_FLASH_INIT		IFCAN_ID(31U, 27U)
-#define IFCAN_ID_FLASH_DATA		IFCAN_ID(31U, 26U)
-
-/* Lower IDs is for DATA streaming.
- * */
-#define	IFCAN_ID_NODE_BASE		IFCAN_ID(0U, 0U)
-
-#define IFCAN_FILTER_MATCH		IFCAN_ID(31U, 31U)
-#define IFCAN_FILTER_NETWORK		IFCAN_ID(31U, 0U)
-
-/* Maximal number of nodes in network.
- * */
-#define IFCAN_NODES_MAX			30
-
-enum {
-	/* Node functions (offset).
-	 * */
-	IFCAN_NODE_REQ			= 0,
-	IFCAN_NODE_ACK,
-	IFCAN_NODE_RX,
-	IFCAN_NODE_TX,
-};
-
-enum {
-	IFCAN_REQ_NOTHING		= 0,
-
-	/* Node flow control.
-	 * */
-	IFCAN_REQ_FLOW_TX_PAUSE,
-};
-
-enum {
-	IFCAN_ACK_NOTHING		= 0,
-
-	/* Network ACKs.
-	 * */
-	IFCAN_ACK_NETWORK_REPLY,
-	IFCAN_ACK_NETWORK_HEARTBEAT,
-	IFCAN_ACK_NETWORK_RESERVED1,
-
-	/* Flash ACKs.
-	 * */
-	IFCAN_ACK_FLASH_UP_TO_DATE,
-	IFCAN_ACK_FLASH_REJECT,
-	IFCAN_ACK_FLASH_WAIT_FOR_ERASE,
-	IFCAN_ACK_FLASH_DATA_ACCEPT,
-	IFCAN_ACK_FLASH_DATA_PAUSE,
-	IFCAN_ACK_FLASH_CRC32_INVALID,
-	IFCAN_ACK_FLASH_SELFUPDATE,
-};
-
 typedef struct {
 
 	u32_t			UID;
@@ -89,6 +26,7 @@ typedef struct {
 	/* Serial LOG.
 	 * */
 	QueueHandle_t		queue_LOG;
+	SemaphoreHandle_t	log_MUX;
 	int			log_skipped;
 
 	/* Network service.
@@ -97,12 +35,9 @@ typedef struct {
 
 	/* FLASH update across network.
 	 * */
-	char			flash_INIT_revision[16];
 	u32_t			flash_INIT_sizeof;
 	u32_t			flash_INIT_crc32;
-	u32_t			*flash_long;
-	u32_t			flash_DATA_accepted;
-	int			flash_DATA_paused;
+	char			flash_INIT_revision[16];
 
 	/* Remote node ID we connected to.
 	 * */
@@ -293,8 +228,6 @@ void IFCAN_pipes_REGULAR()
 
 void CAN_IRQ()
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	BaseType_t		xWoken = pdFALSE;
 
 	if (hal.CAN_msg.ID < IFCAN_ID_NODE_BASE) {
@@ -309,8 +242,6 @@ void CAN_IRQ()
 	}
 
 	portYIELD_FROM_ISR(xWoken);
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 static void
@@ -521,7 +452,7 @@ void IFCAN_log_putc(int c)
 }
 
 static void
-IFCAN_log_msg(CAN_msg_t *msg, const char *sym)
+IFCAN_log_msg(CAN_msg_t *msg, const char *label)
 {
 	int		N;
 
@@ -531,7 +462,8 @@ IFCAN_log_msg(CAN_msg_t *msg, const char *sym)
 		.putc = &IFCAN_log_putc
 	};
 
-	if (uxQueueSpacesAvailable(local.queue_LOG) >= 60) {
+	if (		uxQueueSpacesAvailable(local.queue_LOG) >= 60
+			&& xSemaphoreTake(local.log_MUX, (TickType_t) 10) == pdTRUE) {
 
 		if (local.log_skipped != 0) {
 
@@ -540,7 +472,7 @@ IFCAN_log_msg(CAN_msg_t *msg, const char *sym)
 			local.log_skipped = 0;
 		}
 
-		xprintf(&ops, "%s %i %i", sym, msg->ID, msg->len);
+		xprintf(&ops, "%s %i %i", label, msg->ID, msg->len);
 
 		for (N = 0; N < msg->len; ++N) {
 
@@ -548,6 +480,8 @@ IFCAN_log_msg(CAN_msg_t *msg, const char *sym)
 		}
 
 		xputs(&ops, EOL);
+
+		xSemaphoreGive(local.log_MUX);
 	}
 	else {
 		local.log_skipped += 1;
@@ -581,7 +515,7 @@ IFCAN_send_msg(CAN_msg_t *msg)
 
 		/* Wait until one of TX mailboxes is free.
 		 * */
-		hal_delay_ns(50000);
+		hal_futile_ns(50000);
 	}
 	while (1);
 
@@ -672,38 +606,14 @@ IFCAN_remote_node_REQ(int node_REQ)
 static int
 IFCAN_flash_is_up_to_date()
 {
-	u32_t			*flash = (u32_t *) &ld_begin_vectors;
+	u32_t			*flash = (u32_t *) fw.ld_begin;
 	u32_t			flash_sizeof;
 
-	flash_sizeof = * (flash + 8) - * (flash + 7);
+	flash_sizeof = fw.ld_end - fw.ld_begin;
 
 	return (flash_sizeof == local.flash_INIT_sizeof
 			&& crc32b(flash, flash_sizeof)
 			== local.flash_INIT_crc32) ? 1 : 0;
-}
-
-static int
-IFCAN_flash_erase()
-{
-	void			*flash_end;
-	int			rc = 0;
-
-	if (local.flash_INIT_sizeof >= 0UL) {
-
-		flash_end = (void *) (FLASH_map[0] + local.flash_INIT_sizeof);
-
-		if ((u32_t) flash_end > FLASH_map[FLASH_config.s_total]) {
-
-			rc = 0;
-		}
-		else {
-			/* Erase flash and relocate configuration block to the end.
-			 * */
-			rc = flash_block_relocate(local.flash_INIT_sizeof);
-		}
-	}
-
-	return rc;
 }
 
 static void
@@ -731,15 +641,14 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			IFCAN_filter_ID();
 		}
 		else {
-			local_node_insert(* (u32_t *) &msg->payload[0],
-					msg->payload[4]);
+			local_node_insert(* (u32_t *) &msg->payload[0], msg->payload[4]);
 		}
 	}
 
 	/* Flash functions.
 	 * */
-	else if (msg->ID == IFCAN_ID_FLASH_INIT
-			&& msg->len == 7
+	else if (msg->ID == IFCAN_ID_FLASH_REVISION1
+			&& msg->len == 8
 			&& net.node_ID != 0) {
 
 		local.flash_INIT_revision[0] = msg->payload[0];
@@ -749,18 +658,21 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 		local.flash_INIT_revision[4] = msg->payload[4];
 		local.flash_INIT_revision[5] = msg->payload[5];
 		local.flash_INIT_revision[6] = msg->payload[6];
-		local.flash_INIT_revision[7] = 0;
+		local.flash_INIT_revision[7] = msg->payload[7];
+		local.flash_INIT_revision[8] = 0;
 	}
-	else if (msg->ID == IFCAN_ID_FLASH_INIT
-			&& msg->len == 5
+	else if (msg->ID == IFCAN_ID_FLASH_REVISION2
+			&& msg->len == 8
 			&& net.node_ID != 0) {
 
-		local.flash_INIT_revision[7] = msg->payload[0];
-		local.flash_INIT_revision[8] = msg->payload[1];
-		local.flash_INIT_revision[9] = msg->payload[2];
-		local.flash_INIT_revision[10] = msg->payload[3];
-		local.flash_INIT_revision[11] = msg->payload[4];
-		local.flash_INIT_revision[12] = 0;
+		local.flash_INIT_revision[8] = msg->payload[0];
+		local.flash_INIT_revision[9] = msg->payload[1];
+		local.flash_INIT_revision[10] = msg->payload[2];
+		local.flash_INIT_revision[11] = msg->payload[3];
+		local.flash_INIT_revision[12] = msg->payload[4];
+		local.flash_INIT_revision[13] = msg->payload[5];
+		local.flash_INIT_revision[14] = msg->payload[6];
+		local.flash_INIT_revision[15] = 0;
 	}
 	else if (msg->ID == IFCAN_ID_FLASH_INIT
 			&& msg->len == 8
@@ -769,8 +681,17 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 		local.flash_INIT_sizeof = * (u32_t *) &msg->payload[0];
 		local.flash_INIT_crc32 = * (u32_t *) &msg->payload[4];
 
-		if (		pm.lu_mode != PM_LU_DISABLED || net.flash_MODE == PM_DISABLED
-				|| strcmp(local.flash_INIT_revision, _HW_REVISION) != 0) {
+		if (		pm.lu_mode != PM_LU_DISABLED
+				|| net.flash_MODE != PM_ENABLED) {
+
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
+		}
+		else if (strcmp(local.flash_INIT_revision, fw.hwrevision) != 0) {
+
+			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
+		}
+		else if (	local.flash_INIT_sizeof == 0UL
+				|| local.flash_INIT_sizeof > (FLASH_map[0] - fw.ld_begin)) {
 
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 		}
@@ -779,73 +700,14 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_UP_TO_DATE);
 		}
 		else {
-			IFCAN_node_ACK(IFCAN_ACK_FLASH_WAIT_FOR_ERASE);
+			taskDISABLE_INTERRUPTS();
 
-			if (IFCAN_flash_erase() != 0) {
+			GPIO_set_LOW(GPIO_BOOST_12V);
+			GPIO_set_HIGH(GPIO_LED);
 
-				local.flash_long = (u32_t *) FLASH_map[0];
-				local.flash_DATA_accepted = 0;
-				local.flash_DATA_paused = 0;
-
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
-			}
-			else {
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
-			}
-		}
-	}
-	else if (msg->ID == IFCAN_ID_FLASH_DATA
-			&& msg->len == 8
-			&& net.node_ID != 0
-			&& (u32_t) local.flash_long >= FLASH_map[0]) {
-
-		FLASH_prog(local.flash_long, &msg->payload[0], msg->len);
-
-		local.flash_long += 2UL;
-		local.flash_DATA_accepted += msg->len;
-
-		if (local.flash_DATA_paused == 0) {
-
-			if (uxQueueSpacesAvailable(local.queue_IN) < 5) {
-
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_PAUSE);
-				local.flash_DATA_paused = 1;
-			}
-		}
-		else {
-			if (uxQueueMessagesWaiting(local.queue_IN) < 5) {
-
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT);
-				local.flash_DATA_paused = 0;
-			}
-		}
-
-		if (pm.lu_mode != PM_LU_DISABLED) {
-
-			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
-
-			local.flash_long = NULL;
-		}
-
-		if (local.flash_DATA_accepted >= local.flash_INIT_sizeof) {
-
-			if (crc32b((u32_t *) FLASH_map[0], local.flash_INIT_sizeof)
-					== local.flash_INIT_crc32) {
-
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
-
-				GPIO_set_LOW(GPIO_BOOST_12V);
-				GPIO_set_HIGH(GPIO_LED);
-
-				/* Go into the dark.
-				 * */
-				FLASH_selfupdate();
-			}
-			else {
-				IFCAN_node_ACK(IFCAN_ACK_FLASH_CRC32_INVALID);
-			}
-
-			local.flash_long = NULL;
+			/* Go into the selfupdate routine (run from RAM).
+			 * */
+			FLASH_selfupdate_CAN(local.flash_INIT_sizeof, local.flash_INIT_crc32);
 		}
 	}
 
@@ -866,8 +728,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 		if (msg->payload[5] == IFCAN_ACK_NETWORK_REPLY
 				&& msg->len == 6) {
 
-			local_node_insert(* (u32_t *) &msg->payload[0],
-					msg->payload[4]);
+			local_node_insert(* (u32_t *) &msg->payload[0], msg->payload[4]);
 		}
 		else if (msg->len == 2) {
 
@@ -986,20 +847,20 @@ void IFCAN_startup()
 {
 	/* Produce UNIQUE ID.
 	 * */
-#if defined(STM32F4)
-	local.UID = crc32b((void *) 0x1FFF7A10, 12);
-#elif defined(STM32F7)
-	local.UID = crc32b((void *) 0x1FF07A10, 12);
-#endif /* STM32Fx */
+	local.UID = RNG_make_UID();
 
 	/* Allocate queues.
 	 * */
-	local.queue_IN = xQueueCreate(30, sizeof(CAN_msg_t));
+	local.queue_IN = xQueueCreate(10, sizeof(CAN_msg_t));
 	local.queue_RX = USART_queue_RX();
 	local.queue_TX = xQueueCreate(80, sizeof(char));
 	local.queue_EX = xQueueCreate(40, sizeof(char));
 	local.queue_NET = xQueueCreate(1, sizeof(int));
 	local.queue_LOG = xQueueCreate(400, sizeof(char));
+
+	/* Allocate log semaphore.
+	 * */
+	local.log_MUX = xSemaphoreCreateMutex();
 
 	/* Create IFCAN tasks.
 	 * */
@@ -1182,9 +1043,9 @@ SH_DEF(net_revoke)
 }
 
 static void
-IFCAN_flash_DATA(u32_t *flash, u32_t flash_sizeof)
+IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 {
-	u32_t			*flash_end;
+	const u32_t		*flash_end;
 	CAN_msg_t		msg;
 	int			rc, N, blk_N, fail_N;
 
@@ -1270,9 +1131,9 @@ SH_DEF(net_flash_update)
 {
 #ifdef HW_HAVE_NETWORK_CAN
 
+	const FW_info_t		*info;
 	CAN_msg_t		msg;
-	char			revbuf[16];
-	u32_t			*flash, flash_sizeof, flash_crc32;
+	u32_t			flash_sizeof, flash_crc32;
 	int			N, nodes_N;
 
 	local_node_discard();
@@ -1295,44 +1156,47 @@ SH_DEF(net_flash_update)
 	else {
 		local_node_discard_ACK();
 
-		/* Send INIT messages (revision name).
+		/* Get firmware information structure from the flash content.
 		 * */
-		memset(revbuf, 0, sizeof(revbuf));
-		strcpyn(revbuf, _HW_REVISION, 12);
+		info = (const FW_info_t *) * ((u32_t * ) fw.ld_begin + 7);
 
-		msg.ID = IFCAN_ID_FLASH_INIT;
-		msg.len = 7;
+		/* Send REVISION messages (hardware revision).
+		 * */
+		msg.ID = IFCAN_ID_FLASH_REVISION1;
+		msg.len = 8;
 
-		msg.payload[0] = revbuf[0];
-		msg.payload[1] = revbuf[1];
-		msg.payload[2] = revbuf[2];
-		msg.payload[3] = revbuf[3];
-		msg.payload[4] = revbuf[4];
-		msg.payload[5] = revbuf[5];
-		msg.payload[6] = revbuf[6];
+		msg.payload[0] = info->hwrevision[0];
+		msg.payload[1] = info->hwrevision[1];
+		msg.payload[2] = info->hwrevision[2];
+		msg.payload[3] = info->hwrevision[3];
+		msg.payload[4] = info->hwrevision[4];
+		msg.payload[5] = info->hwrevision[5];
+		msg.payload[6] = info->hwrevision[6];
+		msg.payload[7] = info->hwrevision[7];
 
 		IFCAN_send_msg(&msg);
 
-		if (strlen(revbuf) > 7) {
+		if (strlen(info->hwrevision) > 8) {
 
-			msg.ID = IFCAN_ID_FLASH_INIT;
-			msg.len = 5;
+			msg.ID = IFCAN_ID_FLASH_REVISION2;
+			msg.len = 8;
 
-			msg.payload[0] = revbuf[7];
-			msg.payload[1] = revbuf[8];
-			msg.payload[2] = revbuf[9];
-			msg.payload[3] = revbuf[10];
-			msg.payload[4] = revbuf[11];
+			msg.payload[0] = info->hwrevision[8];
+			msg.payload[1] = info->hwrevision[9];
+			msg.payload[2] = info->hwrevision[10];
+			msg.payload[3] = info->hwrevision[11];
+			msg.payload[4] = info->hwrevision[12];
+			msg.payload[5] = info->hwrevision[13];
+			msg.payload[6] = info->hwrevision[14];
+			msg.payload[7] = info->hwrevision[15];
 
 			IFCAN_send_msg(&msg);
 		}
 
 		/* Send INIT message (sizeof and crc32).
 		 * */
-		flash = (u32_t *) &ld_begin_vectors;
-
-		flash_sizeof = * (flash + 8) - * (flash + 7);
-		flash_crc32 = crc32b(flash, flash_sizeof);
+		flash_sizeof = info->ld_end - info->ld_begin;
+		flash_crc32 = crc32b((const void *) info->ld_begin, flash_sizeof);
 
 		msg.ID = IFCAN_ID_FLASH_INIT;
 		msg.len = 8;
@@ -1376,15 +1240,18 @@ SH_DEF(net_flash_update)
 
 		if (local_nodes_by_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT) != 0) {
 
-			IFCAN_flash_DATA(flash, flash_sizeof);
+			IFCAN_flash_DATA((const void *) info->ld_begin, flash_sizeof);
 
 			/* Wait for ACK from all nodes.
 			 * */
 			vTaskDelay((TickType_t) 50);
 
-			nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_SELFUPDATE);
+			nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_SELFUPDATE_DONE);
 
 			printf("%i nodes were updated" EOL, nodes_N);
+		}
+		else {
+			printf("No remote nodes were updated" EOL);
 		}
 	}
 

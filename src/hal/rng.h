@@ -5,6 +5,7 @@
 
 void RNG_startup();
 u32_t RNG_urand();
+u32_t RNG_make_UID();
 
 #endif /* _H_RNG_ */
 

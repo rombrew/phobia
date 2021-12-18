@@ -35,6 +35,14 @@ void irq_TIM1_UP_TIM10();
 void irq_TIM4();
 void irq_USART3();
 
+const FW_info_t		fw = {
+
+	(u32_t) &ld_begin_vectors,
+	(u32_t) &ld_end_flash,
+
+	_HW_REVISION, __DATE__
+};
+
 __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 
 	(void *) &ld_stack,
@@ -45,8 +53,8 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 	irq_MemoryFault,
 	irq_BusFault,
 	irq_UsageFault,
-	(void *) &ld_begin_vectors,
-	(void *) &ld_end_flash,
+	(void *) &fw,
+	irq_Default,
 	irq_Default,
 	irq_Default,
 	irq_SVCall,

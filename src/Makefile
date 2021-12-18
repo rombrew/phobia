@@ -1,18 +1,18 @@
 #
 #
 
-#HW_MCU	= STM32F405
+HW_MCU	= STM32F405
 #HW_REV	= REV2
 #HW_REV	= KLEN
 #HW_REV	= REV4B
 #HW_REV	= REV4C
-#HW_REV	= REV5A
+HW_REV	= REV5A
 
 #HW_MCU	= STM32F407
 #HW_REV =
 
-HW_MCU	= STM32F722
-HW_REV	= PESC1
+#HW_MCU	= STM32F722
+#HW_REV	= PESC1
 
 #
 #
@@ -93,6 +93,7 @@ OBJS    = freertos/heap_4.o \
 	  hal/ppm.o \
 	  hal/pwm.o \
 	  hal/rng.o \
+	  hal/spi.o \
 	  hal/tim.o \
 	  hal/usart.o \
 	  hal/wd.o \
@@ -104,7 +105,7 @@ OBJS    = freertos/heap_4.o \
 	  ifcan.o \
 	  libc.o \
 	  main.o \
-	  minsearch.o \
+	  min.o \
 	  ntc.o \
 	  pmfunc.o \
 	  pmtest.o \

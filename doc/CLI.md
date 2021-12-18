@@ -62,7 +62,7 @@ need to be captured.
 
 	# reg tlm.reg_ID_0 pm.tvm_A
 	# reg tlm.reg_ID_1 pm.tvm_B
-	# reg tlm.reg_ID_* ...
+	# reg tlm.reg_ID_ ...
 
 Telemetry grab (to fill the memory buffer) and flush textual dump.
 
@@ -95,7 +95,7 @@ Look for speed setpoint registers.
 
 	# reg pm.s_setpoint
 
-Access to the register by its number.
+Access the register by its number.
 
 	# reg 377 700
 
@@ -107,9 +107,9 @@ commands.
 	# rtos_uptime
 	# rtos_cpu_usage
 
-Get firmware size and crc32.
+Get firmware version info.
 
-	# rtos_firmware
+	# rtos_version
 
 Manual PWM control for testing.
 
@@ -118,10 +118,19 @@ Manual PWM control for testing.
 
 Show instant analog input values.
 
-	# hal_ADC_get_analog_ANG
-	# hal_ADC_get_analog_BRK
+	# reg hal.ADC_get_analog
 
 Start the HX711 helper application.
 
 	# hx711_startup
+
+## Key mapping
+
+* **Return** - Run the command.
+* **Backspace** or **Delete** - Erase last typed character.
+* **Tab** or (@) - Automplete function.
+* **Shift + Tab** - Automplete function reverse.
+* **Ctrl + C** or **Ctrl + D** - Drop the content of the line or abort the command.
+* **Ctrl + P** or **Up** or (\*) - History function scroll up.
+* **Ctrl + N** or **Down** or (!) - History function scroll down.
 

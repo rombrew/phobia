@@ -14,12 +14,12 @@ ENTRY(irq_Reset);
 
 SECTIONS
 {
-	.text : ALIGN(4)
+	.text : ALIGN(8)
 	{
 		ld_begin_vectors = . ;
 
 		KEEP(*(.vectors))
-		. = ALIGN(4);
+		. = ALIGN(8);
 
 		*(.text)
 		*(.text.*)
@@ -27,13 +27,13 @@ SECTIONS
 		*(.rodata)
 		*(.rodata.*)
 
-		. = ALIGN(4);
+		. = ALIGN(8);
 		ld_end_text = . ;
 		ld_end_flash = . + SIZEOF(.data) ;
 
 	} > FLASH
 
-	.data : AT (ld_end_text) ALIGN(4)
+	.data : AT (ld_end_text) ALIGN(8)
 	{
 		ld_begin_data = . ;
 
@@ -43,12 +43,12 @@ SECTIONS
 		*(.data)
 		*(.data.*)
 
-		. = ALIGN(4);
+		. = ALIGN(8);
 		ld_end_data = . ;
 
 	} > RAM1
 
-	.bss (NOLOAD) : ALIGN(4)
+	.bss (NOLOAD) : ALIGN(8)
 	{
 		ld_begin_bss = . ;
 
@@ -56,31 +56,31 @@ SECTIONS
 		*(.bss.*)
 		*(COMMON)
 
-		. = ALIGN(4);
+		. = ALIGN(8);
 		ld_end_bss = . ;
 
 	} > RAM1
 
-	.noinit (NOLOAD) : ALIGN(4)
+	.noinit (NOLOAD) : ALIGN(8)
 	{
 		ld_begin_noinit = . ;
 
 		*(.noinit)
 		*(.noinit.*)
 
-		. = ALIGN(4);
+		. = ALIGN(8);
 		ld_end_noinit = . ;
 
 	} > RAM2
 
-	.ccram (NOLOAD) : ALIGN(4)
+	.ccram (NOLOAD) : ALIGN(8)
 	{
 		ld_begin_ccm = . ;
 
 		*(.ccram)
 		*(.ccram.*)
 
-		. = ALIGN(4);
+		. = ALIGN(8);
 		ld_end_ccm = . ;
 
 	} > DTCM_RAM1

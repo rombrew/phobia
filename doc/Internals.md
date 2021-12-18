@@ -89,7 +89,7 @@ skip voltage sensing if you do not need related features.
 
 To get acceptable accuracy you need to make sure that the RC scheme time
 constant is comparable to dT.
-	          
+
 	                         +------< REF
 	                         |                 // Voltage measurement //
 	                         |
@@ -135,8 +135,8 @@ Also supply voltage (uS) is measured using a voltage divider.
 
 ## Control loop
 
-ADC is sampled at the begin of PWM period. The values obtained are processed by
-software. The new value of duty cycle is loaded to the hardware timer. This
+ADC is sampled in the middle of PWM period. The values obtained are processed
+by software. The new value of duty cycle is loaded to the hardware timer. This
 value is used at next PWM period. ADC samples are made using two ADCs in order
 shown in the diagram.
 
@@ -156,7 +156,7 @@ shown in the diagram.
 	                    p_set_DC(xA, xB, xC)
 
 We need about 3 us before ADC samples to be clean. If MOSFET switching occurs
-at this time then the result is not used.
+at this time then the result is discarded.
 
 ## Current zones
 

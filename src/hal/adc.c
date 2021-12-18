@@ -154,7 +154,7 @@ void ADC_startup()
 	 * */
 	ADC_const_setup();
 
-	/* Allocate Semaphore.
+	/* Allocate semaphore.
 	 * */
 	hal_ADC.sem_MUX = xSemaphoreCreateMutex();
 
@@ -183,13 +183,18 @@ void ADC_configure()
 
 float ADC_get_VALUE(int xGPIO)
 {
-	float			fVAL = 0.f;
+	float			fU = 0.f;
 	int			xCH, xADC;
 
 	if (xSemaphoreTake(hal_ADC.sem_MUX, (TickType_t) 10) == pdTRUE) {
 
-		xCH = (xGPIO == GPIO_ADC_INTERNAL_TEMP) ? 16
-			: XGPIO_GET_CH(xGPIO);
+		if (xGPIO == GPIO_ADC_INTERNAL_TEMP) {
+
+			xCH = 16;
+		}
+		else {
+			xCH = XGPIO_GET_CH(xGPIO);
+		}
 
 		ADC1->SQR3 = xCH;
 		ADC1->CR2 |= ADC_CR2_SWSTART;
@@ -204,16 +209,15 @@ float ADC_get_VALUE(int xGPIO)
 
 		if (xCH == 16) {
 
-			fVAL = hal.ADC_const.TEMP[1] * (float) xADC
-				+ hal.ADC_const.TEMP[0];
+			fU = hal.ADC_const.TEMP[1] * (float) xADC + hal.ADC_const.TEMP[0];
 		}
 		else {
-			fVAL = (float) xADC * hal.ADC_const.GS;
+			fU = (float) xADC * hal.ADC_const.GS;
 		}
 
 		xSemaphoreGive(hal_ADC.sem_MUX);
 	}
 
-	return fVAL;
+	return fU;
 }
 

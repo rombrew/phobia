@@ -5,25 +5,51 @@ other docs for specific issues.
 
 ## Hardware
 
-We do not assemble hardware for sales. You can get appropriate revision of PCB
-from repo and order fabrication and assembly somewhere.
+We do not assemble hardware for sales. You can get fabrication files from our
+[releases](https://sourceforge.net/projects/phobia/files/) or look into repo.
 
 	# hg clone https://hg.code.sf.net/p/phobia/pcb phobia-pcb
+
+You will have to order the fabrication and assembly yourself. You can also try
+to contact the [authors](Authors.md) to get samples.
 
 The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
 sometimes cross the border of quality in favor of PCB size.
 
-Our actual hw revision is **REV5A** designed in 8-layer stackup with 35um
-copper foil. To ensure heat distribution it is necessary to use an aluminum
+Our recent hw revision is **REV5A** designed in 8-layer stackup with 35um
+copper foil. To ensure heat distribution it is necessary to press an aluminum
 plate from bottom through thermal interface.
+
+## Basic wiring
+
+Plug PMC according to the diagram. If you need to run bootloader (in case of
+erased MCU) then short BOOT pin to +3.3v before the powerup.
+
+	 +-----------+
+	 |           |               +---------------+
+	 |  Host PC  |-------//------| USART adapter |
+	 |           |               |               |
+	 +-----------+               |  GND  RX  TX  |
+	                             +---+---+---+---+
+	                                 |   |   |
+	                                 |   |   |
+	                 +---------------+---+---+------+
+	 +---------+     |              GND  TX  RX     |           -----
+	 |         |-----|                              |----------/     \
+	 | Battery |     |    Phobia Motor Controller   |---------|   o   |
+	 |         |-----|                              |----------\     /
+	 +---------+     |       BOOT  +3.3v            |           -----
+	                 +--------+------+--------------+
+	                          |      |
+	                          +--/ --+
 
 ## Software
 
 There are two parts of software:
 
-1. Numerical model of VSI with PMSM connected (/sim).
-2. Firmware for MCU (/src).
+* Numerical model of VSI with PMSM connected (/sim).
+* Firmware for MCU (/src).
 
 The numerical model enables us to develop control code in fast cycle without
 hardware tests. It is complete enough to take into account all of motor

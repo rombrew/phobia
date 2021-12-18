@@ -4,11 +4,11 @@ PMC is an open project that aims to build the quality permanent magnet
 synchronous motor (PMSM) controller for use in a variety of scopes like RC or
 electrotransport.
 
-There are several typical situations where PMC can be used.
+There are several typical situations which PMC is designed for.
 
-* Light electric transport as scooter or bicycle. The use of current control is
-  preferred. Start with discrete Hall sensors or use freewheeling. Control knobs
-  are connected to analog inputs.
+* Light electric transport like scooter or bicycle. The use of current control
+  is preferred. Start with discrete Hall sensors or use freewheeling. Control
+  knobs are connected to analog inputs.
 * Aerial propeller drive for RC drones. The use of speed control is preferred.
   Start with forced control or HFI. Control through CAN network or RC servo
   pulse.
@@ -16,18 +16,18 @@ There are several typical situations where PMC can be used.
   ABI incremental encoder is preferred. Control through CAN network or STEP/DIR
   pulse.
 
-Of course you can make unusual configuration by combining the features of the
-PMC. Also is is possible to design custom features e.g. start-stop button
-control.
+Of course you can create unusual configurations by combining various PMC
+features. Also is is possible to design custom application e.g. start-stop
+button control.
 
 ## Software features
 
 * Sensorless vector control of PMSM based on two inline current measurements.
-* Fast and robust FLUX observer with gain scheduling.
+* Fast and robust FLUX observer with gain scheduling against speed.
 * Two phase machine support (e.g. bipolar stepper).
 * Self adjust of onboard measurements along symmetrical channels.
 * Flux weakening control.
-* Advanced command line interface (CLI) with autocompletion and history.
+* Regular command line interface (CLI) with autocompletion and history.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
 * Flash storage for all of configurable parameters.
 

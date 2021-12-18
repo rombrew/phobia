@@ -4,7 +4,6 @@
 chunk 20
 
 follow 0 10000 text "/tmp/phobia.log"
-#load 0 10000 text "/dev/rfcomm0"
 
 mkpages -1
 

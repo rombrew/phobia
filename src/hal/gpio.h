@@ -20,6 +20,7 @@ void GPIO_set_mode_PUSH_PULL(int xGPIO);
 void GPIO_set_mode_OPEN_DRAIN(int xGPIO);
 void GPIO_set_mode_SPEED_LOW(int xGPIO);
 void GPIO_set_mode_SPEED_HIGH(int xGPIO);
+void GPIO_set_mode_SPEED_FAST(int xGPIO);
 void GPIO_set_mode_PULL_NONE(int xGPIO);
 void GPIO_set_mode_PULL_UP(int xGPIO);
 void GPIO_set_mode_PULL_DOWN(int xGPIO);

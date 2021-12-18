@@ -204,8 +204,8 @@ SH_DEF(pm_test_TVM_ramp)
 		return;
 	}
 
-	if (		PM_CONFIG_TVM(&pm) == PM_DISABLED
-			|| pm.tvm_ALLOWED == PM_DISABLED) {
+	if (		PM_CONFIG_TVM(&pm) != PM_ENABLED
+			|| pm.tvm_ALLOWED != PM_ENABLED) {
 
 		printf("Enable TVM before" EOL);
 		return;
@@ -292,6 +292,89 @@ SH_DEF(hal_RNG_rseed)
 	rseed = RNG_urand();
 
 	printf("%8x " EOL, rseed);
+}
+
+SH_DEF(hal_RNG_make_UID)
+{
+	u32_t		UID;
+
+	UID = RNG_make_UID();
+
+	printf("%8x " EOL, UID);
+}
+
+SH_DEF(hal_SPI_startup)
+{
+	const char	*tmode;
+	float		freq;
+	int		hz, mode;
+
+	if (stof(&freq, s) != NULL) {
+
+		hz = (int) freq;
+		mode = SPI_MODE_LOW_RISING;
+
+		stoi(&mode, sh_next_arg(s));
+
+		SPI_startup(&hz, mode);
+
+		switch (mode) {
+
+			default:
+			case SPI_MODE_LOW_RISING:
+				tmode = "low rising";
+				break;
+
+			case SPI_MODE_HIGH_FALLING:
+				tmode = "high falling";
+				break;
+
+			case SPI_MODE_LOW_FALLING:
+				tmode = "low falling";
+				break;
+
+			case SPI_MODE_HIGH_RISING:
+				tmode = "high rising";
+				break;
+		}
+
+		freq = (float) hz;
+
+		printf("SPI %4g (Hz) mode (%s)" EOL, &freq, tmode);
+	}
+}
+
+SH_DEF(hal_SPI_halt)
+{
+	SPI_halt();
+}
+
+SH_DEF(hal_SPI_transfer)
+{
+	u8_t		txbuf[32];
+	u8_t		rxbuf[32];
+	int		b, i, len = 0;
+
+	while (htoi(&b, s) != NULL) {
+
+		txbuf[len++] = (u8_t) b;
+		s = sh_next_arg(s);
+
+		if (len >= sizeof(txbuf))
+			break;
+	}
+
+	if (len != 0) {
+
+		SPI_transfer(txbuf, rxbuf, len);
+
+		for (i = 0; i < len; ++i) {
+
+			printf("%2x ", rxbuf[i]);
+		}
+
+		puts(EOL);
+	}
 }
 
 SH_DEF(hal_GPIO_set_high_BOOST_12V)

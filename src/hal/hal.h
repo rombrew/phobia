@@ -10,31 +10,27 @@
 #include "ppm.h"
 #include "pwm.h"
 #include "rng.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "wd.h"
 
 #include "hwdefs.h"
 
+#define LD_CCRAM			__attribute__ ((section(".ccram")))
+#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
+#define LD_NOINIT			__attribute__ ((section(".noinit")))
+
+#define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
+#define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
+
 #define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
 
 #define GPIO_SWDIO			XGPIO_DEF4('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF4('A', 14)
 
-#define GPIO_SPI_NSS			XGPIO_DEF4('A', 4, 4, 5)
-#define GPIO_SPI_SCK			XGPIO_DEF4('A', 5, 5, 5)
-#define GPIO_SPI_MISO			XGPIO_DEF4('A', 6, 6, 5)
-#define GPIO_SPI_MOSI			XGPIO_DEF4('A', 7, 7, 5)
-
 #define GPIO_DAC_1			GPIO_SPI_NSS
 #define GPIO_DAC_2			GPIO_SPI_SCK
-
-#define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
-#define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
-
-#define	LD_CCRAM			__attribute__ ((section(".ccram")))
-#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
-#define LD_NOINIT			__attribute__ ((section(".noinit")))
 
 enum {
 	LEG_A				= 1,
@@ -55,6 +51,16 @@ enum {
 	PPM_OUTPULSE,
 	PPM_BACKUP_ABI,
 };
+
+typedef struct {
+
+	u32_t		ld_begin;
+	u32_t		ld_end;
+
+	const char	hwrevision[16];	/* hardware revision */
+	const char	build[16];	/* build date */
+}
+FW_info_t;
 
 typedef struct {
 
@@ -110,14 +116,17 @@ typedef struct {
 }
 LOG_t;
 
+extern const FW_info_t		fw;
+
 extern u32_t			ld_begin_vectors;
 extern u32_t			clock_cpu_hz;
+
 extern HAL_t			hal;
 extern LOG_t			log;
 
 void hal_bootload();
 void hal_startup();
-void hal_delay_ns(int ns);
+void hal_futile_ns(int ns);
 
 int hal_lock_irq();
 void hal_unlock_irq(int irq);
@@ -128,6 +137,7 @@ void hal_bootload_reset();
 void hal_sleep();
 void hal_fence();
 
+int log_status();
 int log_bootup();
 void log_putc(int c);
 

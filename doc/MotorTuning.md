@@ -21,7 +21,7 @@ causes significant heating.
 You have an option to disable forced control. The motor will be freewheeling at
 low speed range.
 
-	# reg pm.config_FORCED 0
+	# reg pm.config_LU_FORCED 0
 
 ## Current loop
 
@@ -119,7 +119,7 @@ remember about alternative units of measure by using specific register name.
 	# reg pm.s_maximal <rad/s>
 	# reg pm.s_reverse <rad/s>
 
-You can limit acceleration.
+You can limit the acceleration.
 
 	# reg pm.s_accel <rad/s/s>
 
@@ -130,7 +130,7 @@ limits actual parameters but limit input setpoint to comply it with
 restrictions.
 
 Quite different in the case of current control. You should specify
-**pm.config_LIMIT** to apply above restrictions to actual speed and
+**pm.config_SPEED_LIMITED** to apply above restrictions to actual speed and
 acceleration if you need it of course. Here trackppoint is driven by actual
 speed estimate with acceleration restriction. For system stability we have
 introduced a linear control area **pm.s_linspan**. So there may be some
@@ -147,7 +147,7 @@ Default gains tune can be done by setting to zero.
 
 ## Brake function
 
-If you need holding brake function in combination of current control then
+If you need holding brake function in combination with current control then
 enable this. It is activated when current setpoint is negative. Brake current
 is limited by absolute value of setpoint, so brake is proportional.
 

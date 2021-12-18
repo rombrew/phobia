@@ -5,7 +5,7 @@
 
 #include "libc.h"
 #include "main.h"
-#include "minsearch.h"
+#include "min.h"
 #include "regfile.h"
 #include "shell.h"
 #include "tlm.h"
@@ -104,30 +104,30 @@ int pm_wait_for_MOTION(float s_ref)
 static float
 pm_proc_ripple_STD(void *link, const float *KF)
 {
-	pm.skew_KF[0] = KF[0];
-	pm.skew_KF[1] = KF[1];
-	pm.skew_KF[2] = KF[2];
-	pm.skew_KF[3] = KF[3];
-	pm.skew_KF[4] = KF[4];
-	pm.skew_KF[5] = KF[5];
-	pm.skew_KF[6] = KF[6];
+	pm.flux_imbalance_KF[0] = KF[0];
+	pm.flux_imbalance_KF[1] = KF[1];
+	pm.flux_imbalance_KF[2] = KF[2];
+	pm.flux_imbalance_KF[3] = KF[3];
+	pm.flux_imbalance_KF[4] = KF[4];
+	pm.flux_imbalance_KF[5] = KF[5];
+	pm.flux_imbalance_KF[6] = KF[6];
 
 	hal_fence();
 
-	pm.skew_ONFLAG = PM_ENABLED;
+	pm.flux_imbalance_ONFLAG = PM_ENABLED;
 
 	do {
 		vTaskDelay((TickType_t) 5);
 	}
-	while (pm.skew_ONFLAG == PM_ENABLED);
+	while (pm.flux_imbalance_ONFLAG == PM_ENABLED);
 
-	return pm.skew_ripple_STD;
+	return pm.flux_imbalance_ripple_STD;
 }
 
 static void
 pm_proc_step_format(void *link)
 {
-	minproblem_t	*m = (minproblem_t *) link;
+	min_t		*m = (min_t *) link;
 	float		x_tol_pc = m->x_tol * 100.f;
 
 	if (pm.fsm_errno != PM_OK) {
@@ -219,7 +219,7 @@ SH_DEF(pm_probe_spinup)
 		return;
 	}
 
-	if (		pm.config_FORCED == PM_DISABLED
+	if (		pm.config_LU_FORCED != PM_ENABLED
 			|| pm.config_DRIVE != PM_DRIVE_SPEED) {
 
 		printf("Enable SPEED control mode before" EOL);
@@ -272,8 +272,9 @@ SH_DEF(pm_probe_spinup)
 		pm_tune_MPPE(&pm);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_U]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_U]);
+		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
@@ -344,8 +345,9 @@ SH_DEF(pm_probe_detached)
 		pm_tune_MPPE(&pm);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_U]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_U]);
+		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -375,8 +377,9 @@ SH_DEF(pm_probe_const_E)
 		pm_tune_MPPE(&pm);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE_U]);
-		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE_U]);
+		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
+		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 	}
 	while (0);
 
@@ -408,9 +411,9 @@ SH_DEF(pm_probe_const_J)
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
-SH_DEF(pm_adjust_skewness)
+SH_DEF(pm_adjust_imbalance)
 {
-	minproblem_t		*m;
+	min_t			*m;
 
 	if (pm.lu_mode != PM_LU_DISABLED) {
 
@@ -418,9 +421,9 @@ SH_DEF(pm_adjust_skewness)
 		return;
 	}
 
-	if (pm.config_SKEW != PM_ENABLED) {
+	if (pm.config_FLUX_IMBALANCE != PM_ENABLED) {
 
-		printf("Enable SKEW function before" EOL);
+		printf("Enable IMBALANCE function before" EOL);
 		return;
 	}
 
@@ -430,7 +433,7 @@ SH_DEF(pm_adjust_skewness)
 		return;
 	}
 
-	m = pvPortMalloc(sizeof(minproblem_t));
+	m = pvPortMalloc(sizeof(min_t));
 
 	if (m != NULL) {
 
@@ -458,25 +461,25 @@ SH_DEF(pm_adjust_skewness)
 
 			if (pm.fsm_errno != PM_OK) {
 
-				pm.skew_KF[0] = 0.f;
-				pm.skew_KF[1] = 0.f;
-				pm.skew_KF[2] = 0.f;
-				pm.skew_KF[3] = 0.f;
-				pm.skew_KF[4] = 0.f;
-				pm.skew_KF[5] = 0.f;
-				pm.skew_KF[6] = 0.f;
+				pm.flux_imbalance_KF[0] = 0.f;
+				pm.flux_imbalance_KF[1] = 0.f;
+				pm.flux_imbalance_KF[2] = 0.f;
+				pm.flux_imbalance_KF[3] = 0.f;
+				pm.flux_imbalance_KF[4] = 0.f;
+				pm.flux_imbalance_KF[5] = 0.f;
+				pm.flux_imbalance_KF[6] = 0.f;
 				break;
 			}
 
-			minsolution(m, pm.skew_KF);
+			minsolution(m, pm.flux_imbalance_KF);
 
-			reg_format(&regfile[ID_PM_SKEW_KF_0]);
-			reg_format(&regfile[ID_PM_SKEW_KF_1]);
-			reg_format(&regfile[ID_PM_SKEW_KF_2]);
-			reg_format(&regfile[ID_PM_SKEW_KF_3]);
-			reg_format(&regfile[ID_PM_SKEW_KF_4]);
-			reg_format(&regfile[ID_PM_SKEW_KF_5]);
-			reg_format(&regfile[ID_PM_SKEW_KF_6]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_0]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_1]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_2]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_3]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_4]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_5]);
+			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_6]);
 
 			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 

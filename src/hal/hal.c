@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define BOOT_SIGNATURE			0x55775577UL
+#define HAL_BOOT_SIGNATURE	0x55775577UL
 
 u32_t				clock_cpu_hz;
 
@@ -222,17 +222,40 @@ periph_startup()
 	if (RCC->CSR & RCC_CSR_IWDGRSTF) {
 #endif /* STM32Fx */
 
-		log_TRACE("RESET: WD" EOL);
+		log_TRACE("RESET on WD" EOL);
 	}
 
 	RCC->CSR |= RCC_CSR_RMVF;
+}
+
+static void
+flash_verify()
+{
+	u32_t		flash_sizeof, *flash_crc32, crc32;
+
+	flash_sizeof = fw.ld_end - fw.ld_begin;
+	flash_crc32 = (u32_t *) fw.ld_end;
+
+	if (*flash_crc32 == 0xFFFFFFFFUL) {
+
+		crc32 = crc32b((const void *) fw.ld_begin, flash_sizeof);
+
+		/* Update flash CRC32.
+		 * */
+		FLASH_prog(flash_crc32, crc32);
+	}
+
+	if (crc32b((const void *) fw.ld_begin, flash_sizeof) != *flash_crc32) {
+
+		log_TRACE("Flash CRC32 invalid" EOL);
+	}
 }
 
 void hal_bootload()
 {
 	u32_t		*sysmem;
 
-	if (bootload_jump == BOOT_SIGNATURE) {
+	if (bootload_jump == HAL_BOOT_SIGNATURE) {
 
 		bootload_jump = 0UL;
 
@@ -257,23 +280,24 @@ void hal_startup()
 	base_startup();
 	clock_startup();
 	periph_startup();
+	flash_verify();
 }
 
-void hal_delay_ns(int ns)
+void hal_futile_ns(int ns)
 {
 	u32_t			xVAL, xLOAD;
-	int			elapsed, tickval;
+	int			elapsed, hold;
 
 	xVAL = SysTick->VAL;
 	xLOAD = SysTick->LOAD + 1UL;
 
-	tickval = ns * (clock_cpu_hz / 1000000UL) / 1000UL;
+	hold = ns * (clock_cpu_hz / 1000000UL) / 1000UL;
 
 	do {
 		elapsed = (int) (xVAL - SysTick->VAL);
 		elapsed += (elapsed < 0) ? xLOAD : 0;
 
-		if (elapsed >= tickval)
+		if (elapsed >= hold)
 			break;
 
 		__NOP();
@@ -312,7 +336,7 @@ void hal_system_reset()
 
 void hal_bootload_reset()
 {
-	bootload_jump = BOOT_SIGNATURE;
+	bootload_jump = HAL_BOOT_SIGNATURE;
 
 #ifdef STM32F7
 
@@ -334,13 +358,18 @@ void hal_fence()
 	__DMB();
 }
 
+int log_status()
+{
+	return (log.textbuf[0] != 0) ? 1 : 0;
+}
+
 int log_bootup()
 {
 	int		rc = 0;
 
-	if (log.boot_SIGNATURE != BOOT_SIGNATURE) {
+	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
 
-		log.boot_SIGNATURE = BOOT_SIGNATURE;
+		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
 		log.boot_COUNT = 0UL;
 
 		/* Initialize LOG at first usage.
@@ -356,7 +385,7 @@ int log_bootup()
 		 * */
 		log.textbuf[sizeof(log.textbuf) - 1] = 0;
 
-		rc = (log.textbuf[0] != 0) ? 1 : 0;
+		rc = log_status();
 	}
 
 	return rc;

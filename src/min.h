@@ -1,9 +1,9 @@
-#ifndef _H_MINSEARCH_
-#define _H_MINSEARCH_
+#ifndef _H_MIN_
+#define _H_MIN_
 
 /* Define the maximal function argument SIZE to be allocated.
  * */
-#define MINSEARCH_MAX		8
+#define MIN_SIZE_MAX		8
 
 typedef struct {
 
@@ -33,11 +33,11 @@ typedef struct {
 
 	/* Data points of the simplex and function values.
 	 * */
-	float		xarg[MINSEARCH_MAX * (MINSEARCH_MAX + 1)];
-	float		xnul[MINSEARCH_MAX];
-	float		xref[MINSEARCH_MAX];
-	float		xcon[MINSEARCH_MAX];
-	float		fval[MINSEARCH_MAX + 1];
+	float		xarg[MIN_SIZE_MAX * (MIN_SIZE_MAX + 1)];
+	float		xnul[MIN_SIZE_MAX];
+	float		xref[MIN_SIZE_MAX];
+	float		xcon[MIN_SIZE_MAX];
+	float		fval[MIN_SIZE_MAX + 1];
 
 	/* Index of the BEST and WORST point of the simplex.
 	 * */
@@ -58,12 +58,12 @@ typedef struct {
 	int		n_final_step;
 	float		x_final_tol;
 }
-minproblem_t;
+min_t;
 
 /* The Nelder-Mead simplex algorithm (a derivative-free optimization method).
  * */
-void minsearch(minproblem_t *m);
-void minsolution(minproblem_t *m, float *xsol);
+void minsearch(min_t *m);
+void minsolution(min_t *m, float *xsol);
 
-#endif /* _H_MINSEARCH_ */
+#endif /* _H_MIN_ */
 

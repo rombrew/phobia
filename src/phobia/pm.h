@@ -150,25 +150,23 @@ typedef struct {
 	int		config_IFB;
 	int		config_DEBUG;
 
+	int		config_VSI_CIRCULAR;
 	int		config_VSI_PRECISE;
-	int		config_FORCED;
-	int		config_FLUX;
-	int		config_SKEW;
-	int		config_HFI;
-	int		config_MAJOR;
-	int		config_SENSOR;
+	int		config_LU_FORCED;
+	int		config_LU_FLUX;
+	int		config_LU_HFI;
+	int		config_LU_SENSOR;
+	int		config_FLUX_IMBALANCE;
+	int		config_IM_MAJOR;
 	int		config_ABI_REVERSED;
 	int		config_ABI_DEBOUNCE;
 	int		config_DRIVE;
+	int		config_HOLDING_BRAKE;
+	int		config_SPEED_LIMITED;
 	int		config_MTPA;
-	int		config_WEAK;
-	int		config_BRAKE;
-	int		config_LIMIT;
-	int		config_INFO;
-	int		config_BOOST;
-
-	int		debug_locked_HFI;
-	int		debug_locked_SENSOR;
+	int		config_WEAKENING;
+	int		config_MILEAGE_INFO;
+	int		config_BOOST_CHARGE;
 
 	int		fsm_req;
 	int		fsm_state;
@@ -243,7 +241,6 @@ typedef struct {
 	int		vsi_AZ;
 	int		vsi_BZ;
 	int		vsi_CZ;
-
 	float		vsi_lpf_DC;
 	float		vsi_gain_LP_F;
 
@@ -258,6 +255,9 @@ typedef struct {
 	float		tvm_DX;
 	float		tvm_DY;
 
+	float		lu_temp_F[2];
+	float		lu_temp_wS;
+
 	float		lu_iX;
 	float		lu_iY;
 	float		lu_iD;
@@ -265,11 +265,10 @@ typedef struct {
 	float		lu_F[2];
 	float		lu_wS;
 	int		lu_mode;
-
+	float		lu_transition;
 	float		lu_lpf_torque;
 	float		lu_base_wS;
 	float		lu_gain_TF;
-
 	float		lu_F1;
 	int		lu_revol;
 	int		lu_revob;
@@ -302,22 +301,23 @@ typedef struct {
 	float		flux_gain_AD;
 	float		flux_gain_SF;
 	float		flux_gain_IF;
-
 	int		flux_mode;
 	int		flux_LOCKED;
 	float		flux_lpf_wS;
 	float		flux_MPPE;
+	float		flux_MURE;
 	float		flux_gain_TAKE;
 	float		flux_gain_GIVE;
 	float		flux_gain_LEVE;
 	float		flux_gain_LP_S;
 
-	int		skew_ONFLAG;
-	int		skew_TIM;
-	int		skew_END;
-	float		skew_ripple_STD;
-	float		skew_KF[7];
+	int		flux_imbalance_ONFLAG;
+	int		flux_imbalance_TIM;
+	int		flux_imbalance_END;
+	float		flux_imbalance_ripple_STD;
+	float		flux_imbalance_KF[7];
 
+	int		hfi_INJECTED;
 	float		hfi_F[2];
 	float		hfi_wS;
 	float		hfi_inject_sine;

@@ -72,7 +72,7 @@ sim_Tlm(float *pTlm)
 	B = D * pm.lu_F[1] - Q * pm.lu_F[0];
 	E = atan2(B, A);
 
-	if (m.sync_F != 0 && fabs(E) > 1.5f) {
+	if (m.sync_F != 0 && fabs(E) > 1.1) {
 
 		/* Throw an error if position estimate error is too large.
 		 * */
@@ -141,13 +141,13 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.flux_mode, NULL);
 	fmk_GP(pm.flux_lpf_wS, kRPM, "rpm");
 
-	fmt_GP(pm.skew_KF[0], NULL);
-	fmt_GP(pm.skew_KF[1], NULL);
-	fmt_GP(pm.skew_KF[2], NULL);
-	fmt_GP(pm.skew_KF[3], NULL);
-	fmt_GP(pm.skew_KF[4], NULL);
-	fmt_GP(pm.skew_KF[5], NULL);
-	fmt_GP(pm.skew_KF[6], NULL);
+	fmt_GP(pm.flux_imbalance_KF[0], NULL);
+	fmt_GP(pm.flux_imbalance_KF[1], NULL);
+	fmt_GP(pm.flux_imbalance_KF[2], NULL);
+	fmt_GP(pm.flux_imbalance_KF[3], NULL);
+	fmt_GP(pm.flux_imbalance_KF[4], NULL);
+	fmt_GP(pm.flux_imbalance_KF[5], NULL);
+	fmt_GP(pm.flux_imbalance_KF[6], NULL);
 
 	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
 	fmk_GP(pm.hfi_wS, kRPM, "rpm");
@@ -258,61 +258,33 @@ void sim_START()
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	/*m.R = 2.4E-1;
-	m.Ld = 5.2E-4;
-	m.Lq = 6.5E-4;
-	m.U = 48.;
-	m.Rs = 0.5;
-	m.Zp = 15;
-	m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 16.2E-3;*/
-
-	m.R = 110E-3;
-	m.Ld = 196E-6;
-	m.Lq = 245E-6;
-	m.U = 48.;
-	m.Rs = 0.1;
-	m.Zp = 1;
-	m.E = 60. / 2. / M_PI / sqrt(3.) / (95. * m.Zp);
-	m.J = 182E-6;
+	m.R = 9E-3;
+	m.Ld = 6E-6;
+	m.Lq = 7E-6;
+	m.U = 40.;
+	m.Rs = 0.02;
+	m.Zp = 21;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (110./2 * m.Zp);
+	m.J = 1.28E-3;
 
 	ts_BASE();
 
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	pm.config_SKEW = PM_ENABLED;
-	pm.s_accel = 100000.f;
-
-	m.M[2] = 1E-5;
-
-	ts_SKEW();
-
-	/*pm.config_VSI_PRECISE = 1;
-
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
 
 	sim_Run(.1);
 
-	pm.s_setpoint_speed = 200.f;
-	sim_Run(.5);
+	pm.config_VSI_CIRCULAR = PM_ENABLED;
 
-	pm.s_setpoint_speed = 400.f;
-	sim_Run(.5);
+	pm.s_setpoint_speed = 1100.f / (30. / M_PI / m.Zp);
+	pm.s_accel = 150000.f;
+	pm.forced_hold_D = 80.f;
+	pm.watt_dclink_HI = 48.f;
 
-	pm.s_setpoint_speed = 600.f;
-	sim_Run(.5);*/
-
-	/*pm.s_setpoint_speed = 400.f;
-	sim_Run(1.);
-
-	pm.s_setpoint_speed = 500.f;
-	sim_Run(1.);*/
-
-	//m.Rs = 100.;
-	pm.s_setpoint_speed = 0.f;
-
+	m.M[0] = 0.;
 	sim_Run(1.);
 }
 

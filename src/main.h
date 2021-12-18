@@ -38,12 +38,14 @@ typedef struct {
 	float			analog_control_ANG[3];
 	float			analog_control_BRK;
 
-	/* Timeout control.
+	/* Idle control.
 	 * */
-	int			timeout_TIME;
-	int			timeout_revol_cached;
-	float			timeout_current_tol;
-	float			timeout_IDLE_s;
+	int			idle_ENABLED;
+	int			idle_TIME;
+	int			idle_revol_cached;
+	int			idle_reg_ID;
+	float			idle_control_tol[2];
+	float			idle_TIME_s;
 
 	/* CPU load.
 	 * */
@@ -88,7 +90,6 @@ extern pmc_t			pm;
 extern TLM_t			tlm;
 
 extern int flash_block_regs_load();
-extern int flash_block_relocate(u32_t len);
 extern int pm_wait_for_IDLE();
 
 float ADC_get_analog_ANG();

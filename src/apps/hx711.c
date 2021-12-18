@@ -46,7 +46,7 @@ void ap_HX711(void *pData)
 			for (N = 0; N < 25; ++N) {
 
 				GPIO_set_HIGH(gpio_PD_SCK);
-				hal_delay_ns(500);
+				hal_futile_ns(500);
 
 				DOUT = GPIO_get_VALUE(gpio_DOUT);
 
@@ -61,7 +61,7 @@ void ap_HX711(void *pData)
 				}
 
 				GPIO_set_LOW(gpio_PD_SCK);
-				hal_delay_ns(500);
+				hal_futile_ns(500);
 			}
 
 			/* Convert the ADC code into KG.
@@ -96,15 +96,15 @@ SH_DEF(hx711_halt)
 	}
 }
 
-SH_DEF(hx711_adjust)
+SH_DEF(hx711_adjust_null)
 {
 	float			S = 0.f;
-	int			J, N = 100;
+	int			j, N = 100;
 
-	/* Reset measure to 0.
+	/* Update MEAN value.
 	 * */
 
-	for (J = 0; J < N; ++J) {
+	for (j = 0; j < N; ++j) {
 
 		vTaskDelay((TickType_t) 10);
 

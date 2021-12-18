@@ -9,7 +9,7 @@
 #include "libc.h"
 #include "shell.h"
 
-#define LOAD_COUNT_DELAY		((TickType_t) 100)
+#define RTOS_LOAD_DELAY		((TickType_t) 100)
 
 app_main_t			ap;
 pmc_t 				pm	LD_CCRAM;
@@ -83,6 +83,39 @@ float ADC_get_analog_BRK()
 #endif
 }
 
+static void
+inner_IDLE()
+{
+	float			control;
+
+	ap.idle_TIME += 100;
+
+	do {
+		if (pm.im_total_revol != ap.idle_revol_cached) {
+
+			ap.idle_TIME = 0;
+			ap.idle_revol_cached = pm.im_total_revol;
+			break;
+		}
+
+		control = reg_GET_F(ap.idle_reg_ID);
+
+		if (		control < ap.idle_control_tol[0]
+				|| control > ap.idle_control_tol[1]) {
+
+			ap.idle_TIME = 0;
+			break;
+		}
+
+		if (ap.idle_TIME > (int) (ap.idle_TIME_s * (float) configTICK_RATE_HZ)) {
+
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+			break;
+		}
+	}
+	while (0);
+}
+
 void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
@@ -118,45 +151,48 @@ void task_TEMP(void *pData)
 
 		ap.temp_EXT = ntc_temperature(&ap.ntc_EXT, ADC_get_VALUE(GPIO_ADC_EXT_NTC));
 
-		if (pm.lu_mode != PM_LU_DISABLED) {
+		/* Derate current if PCB is overheat.
+		 * */
+		if (ap.temp_PCB > ap.heat_PCB_halt) {
 
-			/* Derate current if PCB is overheat.
+			i_PCB = ap.heat_PCB_derated;
+		}
+		else if (ap.temp_PCB < (ap.heat_PCB_halt - ap.heat_recovery_gap)) {
+
+			i_PCB = PM_MAX_F;
+		}
+
+		/* Enable FAN if PCB is warm.
+		 * */
+		if (ap.temp_PCB > ap.heat_PCB_on_FAN) {
+
+			GPIO_set_LOW(GPIO_FAN);
+		}
+		else if (ap.temp_PCB < (ap.heat_PCB_on_FAN - ap.heat_recovery_gap)) {
+
+			GPIO_set_HIGH(GPIO_FAN);
+		}
+
+		if (ap.heat_EXT_halt > M_EPS_F) {
+
+			/* Derate current if EXT is overheat.
 			 * */
-			if (ap.temp_PCB > ap.heat_PCB_halt) {
+			if (ap.temp_EXT > ap.heat_EXT_halt) {
 
-				i_PCB = ap.heat_PCB_derated;
+				i_EXT = ap.heat_EXT_derated;
 			}
-			else if (ap.temp_PCB < (ap.heat_PCB_halt - ap.heat_recovery_gap)) {
+			else if (ap.temp_EXT < (ap.heat_EXT_halt - ap.heat_recovery_gap)) {
 
-				i_PCB = PM_MAX_F;
+				i_EXT = PM_MAX_F;
 			}
+		}
 
-			/* Enable FAN if PCB is warm.
-			 * */
-			if (ap.temp_PCB > ap.heat_PCB_on_FAN) {
+		pm.i_derated_PCB = (i_PCB < i_EXT) ? i_PCB : i_EXT;
 
-				GPIO_set_LOW(GPIO_FAN);
-			}
-			else if (ap.temp_PCB < (ap.heat_PCB_on_FAN - ap.heat_recovery_gap)) {
+		if (		ap.idle_ENABLED == PM_ENABLED
+				&& ap.idle_TIME_s > M_EPS_F) {
 
-				GPIO_set_HIGH(GPIO_FAN);
-			}
-
-			if (ap.heat_EXT_halt > M_EPS_F) {
-
-				/* Derate current if EXT is overheat.
-				 * */
-				if (ap.temp_EXT > ap.heat_EXT_halt) {
-
-					i_EXT = ap.heat_EXT_derated;
-				}
-				else if (ap.temp_EXT < (ap.heat_EXT_halt - ap.heat_recovery_gap)) {
-
-					i_EXT = PM_MAX_F;
-				}
-			}
-
-			pm.i_derated_PCB = (i_PCB < i_EXT) ? i_PCB : i_EXT;
+			inner_IDLE();
 		}
 	}
 	while (1);
@@ -165,7 +201,19 @@ void task_TEMP(void *pData)
 void task_ERROR(void *pData)
 {
 	do {
-		if (pm.fsm_errno != PM_OK) {
+		if (log_status() != 0) {
+
+			GPIO_set_HIGH(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
+
+			GPIO_set_LOW(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
+
+			GPIO_set_HIGH(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
+
+			GPIO_set_LOW(GPIO_LED);
+			vTaskDelay((TickType_t) 200);
 
 			GPIO_set_HIGH(GPIO_LED);
 			vTaskDelay((TickType_t) 200);
@@ -173,13 +221,7 @@ void task_ERROR(void *pData)
 			GPIO_set_LOW(GPIO_LED);
 			vTaskDelay((TickType_t) 800);
 		}
-		else if (log.textbuf[0] != 0) {
-
-			GPIO_set_HIGH(GPIO_LED);
-			vTaskDelay((TickType_t) 200);
-
-			GPIO_set_LOW(GPIO_LED);
-			vTaskDelay((TickType_t) 300);
+		else if (pm.fsm_errno != PM_OK) {
 
 			GPIO_set_HIGH(GPIO_LED);
 			vTaskDelay((TickType_t) 200);
@@ -195,38 +237,6 @@ void task_ERROR(void *pData)
 }
 
 static void
-inner_TIMEOUT()
-{
-	float			tIDLE;
-
-	ap.timeout_TIME += (TickType_t) 10;
-
-	do {
-		if (pm.im_total_revol != ap.timeout_revol_cached) {
-
-			ap.timeout_TIME = 0;
-			ap.timeout_revol_cached = pm.im_total_revol;
-			break;
-		}
-
-		if (m_fabsf(pm.lu_iQ) > ap.timeout_current_tol) {
-
-			ap.timeout_TIME = 0;
-			break;
-		}
-
-		tIDLE = ap.timeout_TIME * (1.f / (float) configTICK_RATE_HZ);
-
-		if (tIDLE > ap.timeout_IDLE_s) {
-
-			ap.timeout_TIME = 0;
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-		}
-	}
-	while (0);
-}
-
-static void
 inner_ANALOG(float in_ANG, float in_BRK)
 {
 	float			control, range, scaled_ANG, scaled_BRK;
@@ -236,7 +246,6 @@ inner_ANALOG(float in_ANG, float in_BRK)
 
 		/* Loss of ANALOG signal.
 		 * */
-
 		scaled_ANG = - 1.f;
 	}
 	else {
@@ -280,7 +289,6 @@ inner_ANALOG(float in_ANG, float in_BRK)
 
 		/* Loss of BRAKE signal.
 		 * */
-
 		scaled_BRK = 0.f;
 	}
 	else {
@@ -321,12 +329,6 @@ void task_ANALOG(void *pData)
 			if (ap.analog_reg_ID != ID_NULL) {
 
 				inner_ANALOG(in_ANG, in_BRK);
-			}
-
-			if (		pm.lu_mode != PM_LU_DISABLED
-					&& ap.timeout_IDLE_s > M_EPS_F) {
-
-				inner_TIMEOUT();
 			}
 		}
 		else {
@@ -417,8 +419,11 @@ app_flash_load()
 	ap.analog_control_ANG[2] = 100.f;
 	ap.analog_control_BRK = - 100.f;
 
-	ap.timeout_current_tol = 2.f;
-	ap.timeout_IDLE_s = 5.f;
+	ap.idle_ENABLED = PM_DISABLED;
+	ap.idle_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
+	ap.idle_control_tol[0] = - 1.f;
+	ap.idle_control_tol[1] = 1.f;
+	ap.idle_TIME_s = 5.f;
 
 #if defined(HW_HAVE_NTC_ON_PCB)
 	ap.ntc_PCB.r_balance = HW_NTC_PCB_R_BALANCE;
@@ -513,7 +518,7 @@ void task_INIT(void *pData)
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
 
-	vTaskDelay(LOAD_COUNT_DELAY);
+	vTaskDelay(RTOS_LOAD_DELAY);
 
 	ap.lc_flag = 0;
 	ap.lc_idle = ap.lc_tick;
@@ -533,7 +538,7 @@ void task_INIT(void *pData)
 
 	/* Initial SEED.
 	 * */
-	rseed = seed[2];
+	rseed = seed[2] ^ RNG_make_UID();
 
 	if (log_bootup() != 0) {
 
@@ -607,7 +612,19 @@ inner_PULSE_WIDTH(float pulse)
 		scaled = (pulse - ap.ppm_in_range[1]) / range;
 	}
 
-	scaled = (scaled < - 1.f) ? - 1.f : (scaled > 1.f) ? 1.f : scaled;
+	if (scaled < - 1.f) {
+
+		scaled = - 1.f;
+	}
+	else if (scaled > 1.f) {
+
+		scaled = 1.f;
+	}
+	else if (	ap.ppm_STARTUP == PM_ENABLED
+			&& pm.lu_mode == PM_LU_DISABLED) {
+
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+	}
 
 	if (scaled < 0.f) {
 
@@ -638,12 +655,6 @@ in_PULSE_WIDTH()
 			if (ap.ppm_reg_ID != ID_NULL) {
 
 				inner_PULSE_WIDTH(pulse);
-
-				if (		ap.ppm_STARTUP == PM_ENABLED
-						&& pm.lu_mode == PM_LU_DISABLED) {
-
-					pm.fsm_req = PM_STATE_LU_STARTUP;
-				}
 			}
 		}
 	}
@@ -737,17 +748,19 @@ void app_MAIN()
 
 SH_DEF(rtos_version)
 {
-	u32_t		*flash = (u32_t *) &ld_begin_vectors;
-	u32_t		FW_sizeof, FW_crc32;
+	u32_t		flash_sizeof, flash_crc32;
+	int		rc;
 
-	printf("HW_revision \"%s\"" EOL, _HW_REVISION);
-	printf("FW_build \"%s\"" EOL, __DATE__);
+	printf("HW_revision \"%s\"" EOL, fw.hwrevision);
+	printf("FW_build \"%s\"" EOL, fw.build);
 
-	FW_sizeof = * (flash + 8) - * (flash + 7);
-	FW_crc32 = crc32b(flash, FW_sizeof);
+	flash_sizeof = fw.ld_end - fw.ld_begin;
+	flash_crc32 = * (u32_t *) fw.ld_end;
 
-	printf("FW_sizeof %i" EOL, FW_sizeof);
-	printf("FW_crc32 %8x" EOL, FW_crc32);
+	rc = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
+
+	printf("FW_sizeof %i" EOL, flash_sizeof);
+	printf("FW_crc32 %8x (%s)" EOL, flash_crc32, (rc) ? "verified" : "corrupted");
 }
 
 SH_DEF(rtos_uptime)
@@ -787,7 +800,7 @@ SH_DEF(rtos_cpu_usage)
 	ap.lc_flag = 1;
 	ap.lc_tick = 0;
 
-	vTaskDelay(LOAD_COUNT_DELAY);
+	vTaskDelay(RTOS_LOAD_DELAY);
 
 	ap.lc_flag = 0;
 
@@ -900,8 +913,8 @@ SH_DEF(rtos_hexdump)
 
 SH_DEF(rtos_freeheap)
 {
-	printf("FreeHeap %i" EOL, xPortGetFreeHeapSize());
-	printf("Minimum %i" EOL, xPortGetMinimumEverFreeHeapSize());
+	printf("FreeHeap %iK" EOL, xPortGetFreeHeapSize() / 1024U);
+	printf("Minimum %iK" EOL, xPortGetMinimumEverFreeHeapSize() / 1024U);
 }
 
 SH_DEF(rtos_log_flush)

@@ -1,10 +1,10 @@
 #include <stddef.h>
 
-#include "minsearch.h"
+#include "min.h"
 #include "phobia/libm.h"
 
 static float
-invoke_pfun(minproblem_t *m, const float *xarg)
+invoke_pfun(min_t *m, const float *xarg)
 {
 	float		fval;
 	int		j, flag = 0;
@@ -24,7 +24,7 @@ invoke_pfun(minproblem_t *m, const float *xarg)
 }
 
 static void
-linop(minproblem_t *m, float *y, const float *x0, const float *x1, const float *x2, float xk)
+linop(min_t *m, float *y, const float *x0, const float *x1, const float *x2, float xk)
 {
 	int		j;
 
@@ -34,7 +34,7 @@ linop(minproblem_t *m, float *y, const float *x0, const float *x1, const float *
 	}
 }
 
-void minsearch(minproblem_t *m)
+void minsearch(min_t *m)
 {
 	float		refval, conval, xtol;
 	float		*xbest, *xworst;
@@ -77,7 +77,7 @@ void minsearch(minproblem_t *m)
 			m->n_best = (m->fval[i] < m->fval[m->n_best]) ? i : m->n_best;
 			m->n_worst = (m->fval[i] > m->fval[m->n_worst]) ? i : m->n_worst;
 		}
-		
+
 		if (m->n_best == m->n_worst)
 			break;
 
@@ -220,7 +220,7 @@ void minsearch(minproblem_t *m)
 	}
 }
 
-void minsolution(minproblem_t *m, float *xsol)
+void minsolution(min_t *m, float *xsol)
 {
 	float		*xbest;
 	int		i, j;
