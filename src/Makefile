@@ -1,5 +1,4 @@
-#
-#
+############################################
 
 HW_MCU	= STM32F405
 #HW_REV	= REV2
@@ -8,14 +7,10 @@ HW_MCU	= STM32F405
 #HW_REV	= REV4C
 HW_REV	= REV5A
 
-#HW_MCU	= STM32F407
-#HW_REV =
-
 #HW_MCU	= STM32F722
 #HW_REV	= PESC1
 
-#
-#
+############################################
 
 BUILD	?= /tmp/pmc
 TARGET	= $(BUILD)/pmc
@@ -32,11 +27,6 @@ RM	= rm -rf
 CFLAGS	= -Os -flto -g3 -pipe
 
 ifeq ($(HW_MCU), STM32F405)
-CFLAGS	+= -mcpu=cortex-m4 -mthumb
-CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
-endif
-
-ifeq ($(HW_MCU), STM32F407)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
 endif
@@ -62,10 +52,6 @@ CFLAGS	+= -D_HW_$(HW_MCU) -D_HW_$(HW_REV) -D_HW_REVISION=\"$(HW_REV)\"
 LDFLAGS	= -nostdlib
 
 ifeq ($(HW_MCU), STM32F405)
-LDFLAGS	+= -Wl,-T,hal/link_f405.ld
-endif
-
-ifeq ($(HW_MCU), STM32F407)
 LDFLAGS	+= -Wl,-T,hal/link_f405.ld
 endif
 

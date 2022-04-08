@@ -110,22 +110,22 @@ int ts_wait_for_MOTION(float s_ref)
 static float
 ts_proc_ripple_STD(void *link, const float *KF)
 {
-	pm.flux_imbalance_KF[0] = KF[0];
-	pm.flux_imbalance_KF[1] = KF[1];
-	pm.flux_imbalance_KF[2] = KF[2];
-	pm.flux_imbalance_KF[3] = KF[3];
-	pm.flux_imbalance_KF[4] = KF[4];
-	pm.flux_imbalance_KF[5] = KF[5];
-	pm.flux_imbalance_KF[6] = KF[6];
+	pm.flux_imb_KF[0] = KF[0];
+	pm.flux_imb_KF[1] = KF[1];
+	pm.flux_imb_KF[2] = KF[2];
+	pm.flux_imb_KF[3] = KF[3];
+	pm.flux_imb_KF[4] = KF[4];
+	pm.flux_imb_KF[5] = KF[5];
+	pm.flux_imb_KF[6] = KF[6];
 
-	pm.flux_imbalance_ONFLAG = PM_ENABLED;
+	pm.flux_imb_ONFLAG = PM_ENABLED;
 
 	do {
 		sim_Run(5 / (double) TS_TICK_RATE);
 	}
-	while (pm.flux_imbalance_ONFLAG == PM_ENABLED);
+	while (pm.flux_imb_ONFLAG == PM_ENABLED);
 
-	return pm.flux_imbalance_ripple_STD;
+	return pm.flux_imb_ripple_STD;
 }
 
 static void
@@ -261,7 +261,7 @@ void ts_probe_base()
 		TS_assert_ref(pm.const_im_L1, m.Ld);
 		TS_assert_ref(pm.const_im_L2, m.Lq);
 
-		pm_tune_loop_current(&pm);
+		pm_tune(&pm, PM_TUNE_LOOP_CURRENT);
 
 		printf("i_gain_P %.2E \n", pm.i_gain_P);
 		printf("i_gain_I %.2E \n", pm.i_gain_I);
@@ -323,12 +323,12 @@ void ts_probe_spinup()
 
 		TS_assert_ref(pm.const_E, m.E);
 
-		pm_tune_MPPE(&pm);
+		pm_tune(&pm, PM_TUNE_FLUX_MPPE);
 
 		printf("MPPE %.2f (rad/s)\n", pm.flux_MPPE);
-		printf("MURE %.2f (rad/s)\n", pm.flux_MURE);
-		printf("TAKE %.3f (V)\n", (pm.flux_MURE + pm.flux_gain_TAKE * pm.flux_MPPE) * pm.const_E);
-		printf("GIVE %.3f (V)\n", (pm.flux_MURE + pm.flux_gain_GIVE * pm.flux_MPPE) * pm.const_E);
+		printf("URE %.2f (rad/s)\n", pm.flux_URE);
+		printf("TAKE %.3f (V)\n", (pm.flux_URE + pm.flux_gain_TAKE * pm.flux_MPPE) * pm.const_E);
+		printf("GIVE %.3f (V)\n", (pm.flux_URE + pm.flux_gain_GIVE * pm.flux_MPPE) * pm.const_E);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
@@ -357,8 +357,8 @@ void ts_probe_spinup()
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm_tune_forced(&pm);
-		pm_tune_loop_speed(&pm);
+		pm_tune(&pm, PM_TUNE_LOOP_FORCED);
+		pm_tune(&pm, PM_TUNE_LOOP_SPEED);
 
 		printf("maximal %.2f (rad/s)\n", pm.forced_maximal);
 		printf("accel %.1f (rad/s2)\n", pm.forced_accel);
@@ -401,23 +401,23 @@ void ts_adjust_imbalance()
 
 			if (pm.fsm_errno != PM_OK) {
 
-				pm.flux_imbalance_KF[0] = 0.f;
-				pm.flux_imbalance_KF[1] = 0.f;
-				pm.flux_imbalance_KF[2] = 0.f;
-				pm.flux_imbalance_KF[3] = 0.f;
-				pm.flux_imbalance_KF[4] = 0.f;
-				pm.flux_imbalance_KF[5] = 0.f;
-				pm.flux_imbalance_KF[6] = 0.f;
+				pm.flux_imb_KF[0] = 0.f;
+				pm.flux_imb_KF[1] = 0.f;
+				pm.flux_imb_KF[2] = 0.f;
+				pm.flux_imb_KF[3] = 0.f;
+				pm.flux_imb_KF[4] = 0.f;
+				pm.flux_imb_KF[5] = 0.f;
+				pm.flux_imb_KF[6] = 0.f;
 				break;
 			}
 
-			minsolution(m, pm.flux_imbalance_KF);
+			minsolution(m, pm.flux_imb_KF);
 
-			printf("flux_imbalance_KF %.4E %.4E %.4E %.4E %.4E %.4E %.4E\n",
-					pm.flux_imbalance_KF[0], pm.flux_imbalance_KF[1],
-					pm.flux_imbalance_KF[2], pm.flux_imbalance_KF[3],
-					pm.flux_imbalance_KF[4], pm.flux_imbalance_KF[5],
-					pm.flux_imbalance_KF[6]);
+			printf("flux_imb_KF %.4E %.4E %.4E %.4E %.4E %.4E %.4E\n",
+					pm.flux_imb_KF[0], pm.flux_imb_KF[1],
+					pm.flux_imb_KF[2], pm.flux_imb_KF[3],
+					pm.flux_imb_KF[4], pm.flux_imb_KF[5],
+					pm.flux_imb_KF[6]);
 
 			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -494,7 +494,7 @@ void ts_BASE()
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm_default(&pm);
+	pm_tune(&pm, PM_TUNE_DEFAULT);
 
 	pm.const_Zp = m.Zp;
 
@@ -553,7 +553,7 @@ void ts_SPEED()
 
 void ts_HFI()
 {
-	pm.config_LU_HFI = PM_ENABLED;
+	pm.config_LU_ESTIMATE_HFI = PM_ENABLED;
 	pm.config_DRIVE = PM_DRIVE_SPEED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -590,7 +590,7 @@ void ts_HALL()
 {
 	ts_adjust_sensor_hall();
 
-	pm.config_LU_SENSOR = PM_SENSOR_HALL;
+	pm.config_LU_SENSOR_HALL = PM_ENABLED;
 }
 
 void ts_WEAK()

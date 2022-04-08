@@ -17,13 +17,14 @@ typedef struct {
 	 * */
 	int		HI_Z;
 
-	/* State variabes.
+	/* State variables of BLM.
 	 * */
-	double		X[14];
+	double		X[12];
+	int		revol_N;
 	int		VSI[3];
 	int		surge_I;
 
-	/* Cycle Power.
+	/* Power per cycle.
 	 * */
 	double		iP;
 
@@ -41,7 +42,7 @@ typedef struct {
 	double		Ct;
 	double		Rt;
 
-	/* Source contants.
+	/* Voltage source contants.
 	 * */
 	double		U;
 	double		Rs;
@@ -67,6 +68,10 @@ typedef struct {
 	int		EP_PPR;
 	double		EP_Zq;
 
+	/* Resolver SIN/COS.
+	 * */
+	double		AS_Zq;
+
 	/* ADC result (OUTPUT).
 	 * */
 	float		ADC_IA;
@@ -84,6 +89,11 @@ typedef struct {
 	/* Encoder Pulse (OUTPUT).
 	 * */
 	int		pulse_EP;
+
+	/* Resolver SIN/COS (OUTPUT).
+	 * */
+	float		analog_SIN;
+	float		analog_COS;
 
 	/* This flag is used externally to throw
 	 * an error in case of sync loss.

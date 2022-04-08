@@ -462,7 +462,7 @@ app_flash_load()
 
 	/* Default PMC configuration.
 	 * */
-	pm_default(&pm);
+	pm_tune(&pm, PM_TUNE_DEFAULT);
 
 	pm.dc_bootstrap = HW_PWM_BOOTSTRAP_TIME;
 

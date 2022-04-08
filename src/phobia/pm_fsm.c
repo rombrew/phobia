@@ -1125,6 +1125,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 
 				pm->vsi_lpf_DC = 0.f;
 
+				pm->lu_mode = PM_LU_DETACHED;
 				pm->lu_iX = 0.f;
 				pm->lu_iY = 0.f;
 				pm->lu_iD = 0.f;
@@ -1132,14 +1133,15 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->lu_F[0] = 1.f;
 				pm->lu_F[1] = 0.f;
 				pm->lu_wS = 0.f;
-				pm->lu_mode = PM_LU_DETACHED;
 
 				pm->lu_lpf_torque = 0.f;
 				pm->lu_base_wS = 0.f;
 
-				pm->lu_F1 = pm->lu_F[1];
-				pm->lu_revol = 0;
-				pm->lu_revob = 0;
+				pm->fa_F[0] = pm->lu_F[0];
+				pm->fa_F[1] = pm->lu_F[1];
+				pm->fa_F[2] = pm->lu_F[1];
+				pm->fa_revol = 0;
+				pm->fa_revob = 0;
 
 				pm->forced_F[0] = 1.f;
 				pm->forced_F[1] = 0.f;
@@ -1159,9 +1161,9 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->flux_mode = PM_FLUX_UNCERTAIN;
 				pm->flux_LOCKED = PM_FLUX_UNCERTAIN;
 
-				pm->flux_imbalance_ONFLAG = 0;
-				pm->flux_imbalance_TIM = 0;
-				pm->flux_imbalance_END = 0;
+				pm->flux_imb_ONFLAG = 0;
+				pm->flux_imb_TIM = 0;
+				pm->flux_imb_END = 0;
 
 				pm->hfi_F[0] = 1.f;
 				pm->hfi_F[1] = 0.f;

@@ -77,7 +77,7 @@ static const char *
 FE_strcpyn(char *d, const char *s, int n)
 {
 	do {
-		if (n <= 0) {
+		if (n < 1) {
 
 			*d = 0;
 			break;
@@ -91,7 +91,7 @@ FE_strcpyn(char *d, const char *s, int n)
 
 		*d++ = *s++;
 
-		n--;
+		--n;
 	}
 	while (1);
 

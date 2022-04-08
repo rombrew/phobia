@@ -190,7 +190,7 @@ char *strcpy(char *d, const char *s)
 char *strcpyn(char *d, const char *s, int n)
 {
 	do {
-		if (n <= 0) {
+		if (n < 1) {
 
 			*d = 0;
 			break;
@@ -201,7 +201,7 @@ char *strcpyn(char *d, const char *s, int n)
 
 		++d;
 		++s;
-		n--;
+		--n;
 	}
 	while (1);
 
@@ -714,7 +714,7 @@ const char *stoi(int *x, const char *s)
 
 	if (k == 0) return NULL;
 
-	if (*s == 0 || strchr(" ", *s) != NULL) { *x = i; }
+	if (*s == 0 || *s == ' ') { *x = i; }
 	else return NULL;
 
 	return s;
@@ -744,7 +744,7 @@ const char *htoi(int *x, const char *s)
 
 	if (k == 0) return NULL;
 
-	if (*s == 0 || strchr(" ", *s) != NULL) { *x = h; }
+	if (*s == 0 || *s == ' ') { *x = h; }
 	else return NULL;
 
 	return s;
@@ -796,7 +796,7 @@ const char *stof(float *x, const char *s)
 		else return NULL;
 	}
 
-	if (*s == 0 || strchr(" ", *s) != NULL) {
+	if (*s == 0 || *s == ' ') {
 
 		while (v < 0) { f /= 10.f; v++; }
 		while (v > 0) { f *= 10.f; v--; }

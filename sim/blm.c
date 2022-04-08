@@ -36,6 +36,11 @@ void blm_Enable(blm_t *m)
 {
 	double		Kv;
 
+	/* WARNING: All the following parameters are given for example and
+	 * should be redefined from the outside in accordance with the task
+	 * being solved.
+	 */
+
 	m->Tsim = 0.;		/* Simulation time (Second) */
         m->dT = 1. / 30000.;	/* PWM period */
 	m->sT = 1E-6;		/* Solver step */
@@ -53,7 +58,7 @@ void blm_Enable(blm_t *m)
 	/* BEMF constant. (Weber)
          * */
 	Kv = 15.7; /* Total RPM per Volt */
-        m->E = 60. / 2. / M_PI / sqrt(3.) / (Kv * m->Zp);
+        m->E = (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -110,6 +115,10 @@ void blm_Enable(blm_t *m)
 	m->EP_PPR = 600;	/* Mechanical resolution */
 	m->EP_Zq = 1.0;		/* Reduction ratio */
 
+	/* Resolver SIN/COS.
+	 * */
+	m->AS_Zq = 1.0;		/* Reduction ratio */
+
 	/* External flags.
 	 * */
 	m->sync_F = 0;
@@ -131,8 +140,7 @@ void blm_Stop(blm_t *m)
 	m->X[10] = 0.;	/* Voltage Sensor B */
 	m->X[11] = 0.;	/* Voltage Sensor C */
 
-	m->X[12] = 0.;	/* QEP internals */
-	m->X[13] = 1.;	/* QEP internals */
+	m->revol_N = 0;
 
 	m->VSI[0] = 0;
 	m->VSI[1] = 0;
@@ -235,7 +243,7 @@ blm_Solve(blm_t *m, double dT)
 	for (j = 0; j < 7; ++j)
 		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
 
-	/* Sensor transient (fast).
+	/* Sensor transient (FAST).
 	 * */
 	KI = 1.0 - exp(- dT / m->tau_I);
 	KU = 1.0 - exp(- dT / m->tau_U);
@@ -309,10 +317,19 @@ blm_Solve_Split(blm_t *m, double dT)
 
 		blm_Solve(m, dT);
 
-		/* Wrap the angular position.
+		/* Wrap the angular position and count the full number of
+		 * electrical revolutions.
 		 * */
-		m->X[3] = (m->X[3] < - M_PI) ? m->X[3] + 2. * M_PI :
-			(m->X[3] > M_PI) ? m->X[3] - 2. * M_PI : m->X[3];
+		if (m->X[3] < - M_PI) {
+
+			m->X[3] = m->X[3] + (2. * M_PI);
+			m->revol_N += - 1;
+		}
+		else if (m->X[3] > M_PI) {
+
+			m->X[3] = m->X[3] - (2. * M_PI);
+			m->revol_N += + 1;
+		}
 	}
 }
 
@@ -338,18 +355,18 @@ blm_sample_HS(blm_t *m)
 	EX = cos(m->X[3]);
 	EY = sin(m->X[3]);
 
-	SX = cos(m->HS[0] * M_PI / 180.);
-	SY = sin(m->HS[0] * M_PI / 180.);
+	SX = cos(m->HS[0] * (M_PI / 180.));
+	SY = sin(m->HS[0] * (M_PI / 180.));
 
 	HS |= (EX * SX + EY * SY < 0.) ? 1 : 0;
 
-	SX = cos(m->HS[1] * M_PI / 180.);
-	SY = sin(m->HS[1] * M_PI / 180.);
+	SX = cos(m->HS[1] * (M_PI / 180.));
+	SY = sin(m->HS[1] * (M_PI / 180.));
 
 	HS |= (EX * SX + EY * SY < 0.) ? 2 : 0;
 
-	SX = cos(m->HS[2] * M_PI / 180.);
-	SY = sin(m->HS[2] * M_PI / 180.);
+	SX = cos(m->HS[2] * (M_PI / 180.));
+	SY = sin(m->HS[2] * (M_PI / 180.));
 
 	HS |= (EX * SX + EY * SY < 0.) ? 4 : 0;
 
@@ -359,20 +376,27 @@ blm_sample_HS(blm_t *m)
 static void
 blm_sample_EP(blm_t *m)
 {
-	double		A, B, INC;
+	double		E, R;
+	int		EP;
 
-	A = cos(m->X[12]) * cos(m->X[3]) + sin(m->X[12]) * sin(m->X[3]);
-	B = cos(m->X[12]) * sin(m->X[3]) - sin(m->X[12]) * cos(m->X[3]);
+	E = m->X[3] + (2. * M_PI) * (double) m->revol_N;
+	R = E * m->EP_Zq / m->Zp;
 
-	INC = atan2(B, A) / (2. * M_PI * (double) m->Zp);
+	EP = (int) (R * (2. / M_PI) * (double) m->EP_PPR);
 
-	m->X[12] = m->X[3];
-	m->X[13] += 4. * INC * (double) m->EP_PPR / m->EP_Zq;
+	m->pulse_EP = EP & 0xFFFFUL;
+}
 
-	m->X[13] = (m->X[13] < 0.) ? m->X[13] + 65536. :
-		(m->X[13] >= 65536.) ? m->X[13] - 65536. : m->X[13];
+static void
+blm_sample_AS(blm_t *m)
+{
+	double		E, R;
 
-	m->pulse_EP = (int) (m->X[13]);
+	E = m->X[3] + (2. * M_PI) * (double) m->revol_N;
+	R = E * m->AS_Zq / m->Zp;
+
+	m->analog_SIN = (float) (sin(R) + lfg_gauss() * 2E-4);
+	m->analog_COS = (float) (cos(R) + lfg_gauss() * 2E-4);
 }
 
 static void
@@ -409,6 +433,7 @@ blm_VSI_Sample(blm_t *m, int N)
 
 		blm_sample_HS(m);
 		blm_sample_EP(m);
+		blm_sample_AS(m);
 	}
 }
 

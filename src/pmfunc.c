@@ -104,24 +104,24 @@ int pm_wait_for_MOTION(float s_ref)
 static float
 pm_proc_ripple_STD(void *link, const float *KF)
 {
-	pm.flux_imbalance_KF[0] = KF[0];
-	pm.flux_imbalance_KF[1] = KF[1];
-	pm.flux_imbalance_KF[2] = KF[2];
-	pm.flux_imbalance_KF[3] = KF[3];
-	pm.flux_imbalance_KF[4] = KF[4];
-	pm.flux_imbalance_KF[5] = KF[5];
-	pm.flux_imbalance_KF[6] = KF[6];
+	pm.flux_imb_KF[0] = KF[0];
+	pm.flux_imb_KF[1] = KF[1];
+	pm.flux_imb_KF[2] = KF[2];
+	pm.flux_imb_KF[3] = KF[3];
+	pm.flux_imb_KF[4] = KF[4];
+	pm.flux_imb_KF[5] = KF[5];
+	pm.flux_imb_KF[6] = KF[6];
 
 	hal_fence();
 
-	pm.flux_imbalance_ONFLAG = PM_ENABLED;
+	pm.flux_imb_ONFLAG = PM_ENABLED;
 
 	do {
 		vTaskDelay((TickType_t) 5);
 	}
-	while (pm.flux_imbalance_ONFLAG == PM_ENABLED);
+	while (pm.flux_imb_ONFLAG == PM_ENABLED);
 
-	return pm.flux_imbalance_ripple_STD;
+	return pm.flux_imb_ripple_STD;
 }
 
 static void
@@ -200,7 +200,7 @@ SH_DEF(pm_probe_base)
 		reg_format(&regfile[ID_PM_CONST_IM_B]);
 		reg_format(&regfile[ID_PM_CONST_IM_R]);
 
-		pm_tune_loop_current(&pm);
+		pm_tune(&pm, PM_TUNE_LOOP_CURRENT);
 
 		reg_format(&regfile[ID_PM_I_GAIN_P]);
 		reg_format(&regfile[ID_PM_I_GAIN_I]);
@@ -269,10 +269,10 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		pm_tune_MPPE(&pm);
+		pm_tune(&pm, PM_TUNE_FLUX_MPPE);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_URE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 
@@ -298,8 +298,8 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm_tune_forced(&pm);
-		pm_tune_loop_speed(&pm);
+		pm_tune(&pm, PM_TUNE_LOOP_FORCED);
+		pm_tune(&pm, PM_TUNE_LOOP_SPEED);
 
 		reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 		reg_format(&regfile[ID_PM_FORCED_ACCEL]);
@@ -342,10 +342,10 @@ SH_DEF(pm_probe_detached)
 		reg_format(&regfile[ID_PM_FLUX_LPF_WS]);
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		pm_tune_MPPE(&pm);
+		pm_tune(&pm, PM_TUNE_FLUX_MPPE);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_URE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 
@@ -374,10 +374,10 @@ SH_DEF(pm_probe_const_E)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		pm_tune_MPPE(&pm);
+		pm_tune(&pm, PM_TUNE_FLUX_MPPE);
 
 		reg_format(&regfile[ID_PM_FLUX_MPPE]);
-		reg_format(&regfile[ID_PM_FLUX_MURE]);
+		reg_format(&regfile[ID_PM_FLUX_URE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_TAKE]);
 		reg_format(&regfile[ID_PM_FLUX_GAIN_GIVE]);
 	}
@@ -388,16 +388,19 @@ SH_DEF(pm_probe_const_E)
 
 SH_DEF(pm_probe_const_J)
 {
+	float		wSP;
+
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
 		vTaskDelay((TickType_t) 100);
 
+		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, 0.f);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -461,25 +464,25 @@ SH_DEF(pm_adjust_imbalance)
 
 			if (pm.fsm_errno != PM_OK) {
 
-				pm.flux_imbalance_KF[0] = 0.f;
-				pm.flux_imbalance_KF[1] = 0.f;
-				pm.flux_imbalance_KF[2] = 0.f;
-				pm.flux_imbalance_KF[3] = 0.f;
-				pm.flux_imbalance_KF[4] = 0.f;
-				pm.flux_imbalance_KF[5] = 0.f;
-				pm.flux_imbalance_KF[6] = 0.f;
+				pm.flux_imb_KF[0] = 0.f;
+				pm.flux_imb_KF[1] = 0.f;
+				pm.flux_imb_KF[2] = 0.f;
+				pm.flux_imb_KF[3] = 0.f;
+				pm.flux_imb_KF[4] = 0.f;
+				pm.flux_imb_KF[5] = 0.f;
+				pm.flux_imb_KF[6] = 0.f;
 				break;
 			}
 
-			minsolution(m, pm.flux_imbalance_KF);
+			minsolution(m, pm.flux_imb_KF);
 
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_0]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_1]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_2]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_3]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_4]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_5]);
-			reg_format(&regfile[ID_PM_FLUX_IMBALANCE_KF_6]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_0]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_1]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_2]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_3]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_4]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_5]);
+			reg_format(&regfile[ID_PM_FLUX_IMB_KF_6]);
 
 			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 

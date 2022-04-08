@@ -3,8 +3,6 @@
 
 #if defined(_HW_STM32F405)
 #include "stm32f4xx.h"
-#elif defined(_HW_STM32F407)
-#include "stm32f4xx.h"
 #elif defined(_HW_STM32F722)
 #include "stm32f7xx.h"
 #else

@@ -8,7 +8,7 @@
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 #define PM_CONFIG_DEBUG(pm)	(pm)->config_DEBUG
 
-#define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) / 1000.f)
+#define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) * 0.001f)
 
 #define PM_HALL_SPAN		1.05f
 #define PM_MAX_F		1000000000000.f
@@ -22,12 +22,6 @@ enum {
 enum {
 	PM_IFB_AB_INLINE			= 0,
 	PM_IFB_AB_LOW,
-};
-
-enum {
-	PM_SENSOR_DISABLED			= 0,
-	PM_SENSOR_HALL,
-	PM_SENSOR_ABI,
 };
 
 enum {
@@ -55,6 +49,13 @@ enum {
 	PM_LU_ESTIMATE_HFI,
 	PM_LU_SENSOR_HALL,
 	PM_LU_SENSOR_ABI,
+	PM_LU_SENSOR_SINCOS
+};
+
+enum {
+	PM_FA_INHERITED				= 0,
+	PM_FA_ABI,
+	PM_FA_SINCOS
 };
 
 enum {
@@ -73,8 +74,17 @@ enum {
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_SENSOR_HALL,
+	PM_STATE_ADJUST_SENSOR_SINCOS,
 	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT,
+};
+
+enum {
+	PM_TUNE_DEFAULT				= 0,
+	PM_TUNE_FLUX_MPPE,
+	PM_TUNE_LOOP_FORCED,
+	PM_TUNE_LOOP_CURRENT,
+	PM_TUNE_LOOP_SPEED,
 };
 
 enum {
@@ -93,6 +103,7 @@ enum {
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
 	PM_ERROR_SENSOR_ABI_FAULT,
+	PM_ERROR_SENSOR_SINCOS_FAULT,
 
 	/* External.
 	 * */
@@ -113,6 +124,9 @@ typedef struct {
 
 	int		pulse_HS;
 	int		pulse_EP;
+
+	float		analog_SIN;
+	float		analog_COS;
 }
 pmfb_t;
 
@@ -153,17 +167,18 @@ typedef struct {
 	int		config_VSI_CIRCULAR;
 	int		config_VSI_PRECISE;
 	int		config_LU_FORCED;
-	int		config_LU_FLUX;
-	int		config_LU_HFI;
-	int		config_LU_SENSOR;
-	int		config_FLUX_IMBALANCE;
-	int		config_IM_MAJOR;
-	int		config_ABI_REVERSED;
-	int		config_ABI_DEBOUNCE;
+	int		config_LU_ESTIMATE_FLUX;
+	int		config_LU_ESTIMATE_HFI;
+	int		config_LU_SENSOR_HALL;
+	int		config_LU_SENSOR_ABI;
+	int		config_LU_SENSOR_SINCOS;
+	int		config_FA_PRECEDENCE;
 	int		config_DRIVE;
+	int		config_FLUX_IMBALANCE;
+	int		config_HFI_MAJOR;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
-	int		config_MTPA;
+	int		config_MTPA_RELUCTANCE;
 	int		config_WEAKENING;
 	int		config_MILEAGE_INFO;
 	int		config_BOOST_CHARGE;
@@ -202,6 +217,8 @@ typedef struct {
 	float		fb_uC;
 	int		fb_HS;
 	int		fb_EP;
+	float		fb_SIN;
+	float		fb_COS;
 
 	float		probe_current_hold;
 	float		probe_hold_angle;
@@ -255,23 +272,21 @@ typedef struct {
 	float		tvm_DX;
 	float		tvm_DY;
 
-	float		lu_temp_F[2];
-	float		lu_temp_wS;
-
+	int		lu_mode;
 	float		lu_iX;
 	float		lu_iY;
 	float		lu_iD;
 	float		lu_iQ;
 	float		lu_F[2];
 	float		lu_wS;
-	int		lu_mode;
 	float		lu_transition;
 	float		lu_lpf_torque;
 	float		lu_base_wS;
 	float		lu_gain_TF;
-	float		lu_F1;
-	int		lu_revol;
-	int		lu_revob;
+
+	float		fa_F[3];
+	int		fa_revol;
+	int		fa_revob;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -301,21 +316,22 @@ typedef struct {
 	float		flux_gain_AD;
 	float		flux_gain_SF;
 	float		flux_gain_IF;
+
 	int		flux_mode;
 	int		flux_LOCKED;
 	float		flux_lpf_wS;
 	float		flux_MPPE;
-	float		flux_MURE;
+	float		flux_URE;
 	float		flux_gain_TAKE;
 	float		flux_gain_GIVE;
-	float		flux_gain_LEVE;
+	float		flux_gain_DE;
 	float		flux_gain_LP_S;
 
-	int		flux_imbalance_ONFLAG;
-	int		flux_imbalance_TIM;
-	int		flux_imbalance_END;
-	float		flux_imbalance_ripple_STD;
-	float		flux_imbalance_KF[7];
+	int		flux_imb_ONFLAG;
+	int		flux_imb_TIM;
+	int		flux_imb_END;
+	float		flux_imb_ripple_STD;
+	float		flux_imb_KF[7];
 
 	int		hfi_INJECTED;
 	float		hfi_F[2];
@@ -351,9 +367,10 @@ typedef struct {
 	int		hall_DIRF;
 	float		hall_prolS;
 	int		hall_prolTIM;
+	int		hall_failTIM;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_prol_T;
+	float		hall_prol_ms;
 	float		hall_gain_PF;
 	float		hall_gain_SF;
 	float		hall_gain_IF;
@@ -387,7 +404,6 @@ typedef struct {
 	float		temp_const_iE;
 	float		temp_HFI_wS;
 	float		temp_HFI_HT[2];
-	int		temp_prol_T;
 	float		temp_ZiPPR;
 
 	float		watt_wP_maximal;
@@ -468,13 +484,8 @@ typedef struct {
 }
 pmc_t;
 
-void pm_default(pmc_t *pm);
 void pm_build(pmc_t *pm);
-
-void pm_tune_MPPE(pmc_t *pm);
-void pm_tune_forced(pmc_t *pm);
-void pm_tune_loop_current(pmc_t *pm);
-void pm_tune_loop_speed(pmc_t *pm);
+void pm_tune(pmc_t *pm, int req);
 
 void pm_hfi_DFT(pmc_t *pm, float la[5]);
 

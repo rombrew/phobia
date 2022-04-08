@@ -81,7 +81,7 @@ void USART_startup()
 
 	/* Alloc queues.
 	 * */
-	hal_USART.queue_RX = xQueueCreate(40, sizeof(char));
+	hal_USART.queue_RX = xQueueCreate(80, sizeof(char));
 	hal_USART.queue_TX = xQueueCreate(80, sizeof(char));
 
 	/* Configure USART.

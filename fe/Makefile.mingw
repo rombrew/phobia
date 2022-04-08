@@ -1,0 +1,55 @@
+ARCH	?= x86_64
+BUILD	?= /tmp/pmcfe/$(ARCH)
+TARGET	= $(BUILD)/pmcfe.exe
+
+CROSS	= $(ARCH)-w64-mingw32
+SDLDIR	= ../mingw/$(ARCH)-w64-mingw32
+
+CC	= $(CROSS)-gcc
+LD	= $(CROSS)-gcc
+STRIP	= $(CROSS)-strip -s
+MK	= mkdir -p
+RM      = rm -rf
+
+CFLAGS  = -std=gnu99 -pipe -Wall -O3 -flto
+CFLAGS  += -I$(SDLDIR)/include -I$(SDLDIR)/include/SDL2
+CFLAGS  += -D_WINDOWS
+
+LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lfreetype -static
+LFLAGS	+= -L$(SDLDIR)/lib
+
+LFLAGS	+= -Wl,--no-undefined -ldinput8 -ldxguid \
+	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 \
+	   -lole32 -loleaut32 -lshell32 -lsetupapi \
+	   -lversion -luuid -static-libgcc
+
+OBJS	= blob_ttf.o \
+	  link.o \
+	  nksdl.o \
+	  pmcfe.o \
+	  serial.o
+
+PMCFE_OBJS = $(addprefix $(BUILD)/, $(OBJS))
+
+all: $(TARGET)
+
+$(BUILD)/%.o: %.c
+	@ echo "  CC    " $<
+	@ $(MK) $(dir $@)
+	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
+
+$(TARGET): $(PMCFE_OBJS)
+	@ echo "  LD    " $(notdir $@)
+	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
+
+zip: $(TARGET)
+	@ echo "  ZIP   " $(notdir $<)
+	@ $(STRIP) $<
+	@ zip -j9 $(BUILD)/pmcfe-$(ARCH)-$(shell hg id -b)-$(shell hg id -n).zip $<
+
+clean:
+	@ echo "  CLEAN "
+	@ $(RM) $(BUILD)
+
+include $(wildcard $(BUILD)/*.d)
+

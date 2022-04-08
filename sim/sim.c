@@ -106,6 +106,8 @@ sim_Tlm(float *pTlm)
 
 	fmt_GP(pm.fb_HS, NULL);
 	fmt_GP(pm.fb_EP, NULL);
+	fmt_GP(pm.fb_SIN, NULL);
+	fmt_GP(pm.fb_COS, NULL);
 
 	fmt_GP(pm.vsi_DC, NULL);
 	fmt_GP(pm.vsi_X, "V");
@@ -141,13 +143,13 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.flux_mode, NULL);
 	fmk_GP(pm.flux_lpf_wS, kRPM, "rpm");
 
-	fmt_GP(pm.flux_imbalance_KF[0], NULL);
-	fmt_GP(pm.flux_imbalance_KF[1], NULL);
-	fmt_GP(pm.flux_imbalance_KF[2], NULL);
-	fmt_GP(pm.flux_imbalance_KF[3], NULL);
-	fmt_GP(pm.flux_imbalance_KF[4], NULL);
-	fmt_GP(pm.flux_imbalance_KF[5], NULL);
-	fmt_GP(pm.flux_imbalance_KF[6], NULL);
+	fmt_GP(pm.flux_imb_KF[0], NULL);
+	fmt_GP(pm.flux_imb_KF[1], NULL);
+	fmt_GP(pm.flux_imb_KF[2], NULL);
+	fmt_GP(pm.flux_imb_KF[3], NULL);
+	fmt_GP(pm.flux_imb_KF[4], NULL);
+	fmt_GP(pm.flux_imb_KF[5], NULL);
+	fmt_GP(pm.flux_imb_KF[6], NULL);
 
 	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
 	fmk_GP(pm.hfi_wS, kRPM, "rpm");
@@ -226,6 +228,8 @@ void sim_Run(double dT)
 		fb.voltage_C = m.ADC_UC;
 		fb.pulse_HS = m.pulse_HS;
 		fb.pulse_EP = m.pulse_EP;
+		fb.analog_SIN = m.analog_SIN;
+		fb.analog_COS = m.analog_COS;
 
 		/* PM update.
 		 * */
@@ -277,15 +281,17 @@ void sim_START()
 
 	sim_Run(.1);
 
-	pm.config_VSI_CIRCULAR = PM_ENABLED;
+	pm.config_FLUX_IMBALANCE = PM_ENABLED;
 
 	pm.s_setpoint_speed = 1100.f / (30. / M_PI / m.Zp);
 	pm.s_accel = 150000.f;
-	pm.forced_hold_D = 80.f;
+	pm.forced_hold_D = 20.f;
 	pm.watt_dclink_HI = 48.f;
 
 	m.M[0] = 0.;
 	sim_Run(1.);
+
+	ts_IMBALANCE();
 }
 
 int main(int argc, char *argv[])
