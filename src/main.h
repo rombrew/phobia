@@ -10,11 +10,17 @@
 
 typedef struct {
 
+	/* CPU load (internals).
+	 * */
+	int			lc_flag;
+	int			lc_tick;
+	int			lc_idle;
+
 	/* PPM interface (PWM).
 	 * */
 	int			ppm_reg_ID;
 	int			ppm_STARTUP;
-	float			ppm_in_cached;
+	int			ppm_ACTIVE;
 	float			ppm_in_range[3];
 	float			ppm_control_range[3];
 
@@ -22,36 +28,29 @@ typedef struct {
 	 * */
 	int			step_reg_ID;
 	int			step_STARTUP;
+	int			step_ACTIVE;
 	int			step_baseEP;
 	int			step_accuEP;
 	float			step_const_ld_EP;
 
-	/* Analog interface.
+	/* Knob analog interface.
 	 * */
-	float			analog_const_GU;
-	int			analog_ENABLED;
-	int			analog_reg_ID;
-	int			analog_STARTUP;
-	float			analog_in_ANG[3];
-	float			analog_in_BRK[2];
-	float			analog_in_lost[2];
-	float			analog_control_ANG[3];
-	float			analog_control_BRK;
+	int			knob_ENABLED;
+	int			knob_reg_ID;
+	int			knob_STARTUP;
+	int			knob_ACTIVE;
+	float			knob_in_ANG[3];
+	float			knob_in_BRK[2];
+	float			knob_in_lost[2];
+	float			knob_control_ANG[3];
+	float			knob_control_BRK;
 
-	/* Idle control.
+	/* IDLE control.
 	 * */
-	int			idle_ENABLED;
-	int			idle_TIME;
-	int			idle_revol_cached;
-	int			idle_reg_ID;
-	float			idle_control_tol[2];
 	float			idle_TIME_s;
-
-	/* CPU load.
-	 * */
-	int			lc_flag;
-	int			lc_tick;
-	int			lc_idle;
+	int			idle_RESET;
+	int			idle_INVOKE;
+	int			idle_revol_cached;
 
 	/* NTC constants.
 	 * */
@@ -64,21 +63,21 @@ typedef struct {
 	float			temp_EXT;
 	float			temp_INT;
 
-	/* Heat control.
+	/* Thermal protection.
 	 * */
-	float			heat_PCB_halt;
-	float			heat_PCB_on_FAN;
-	float			heat_PCB_derated;
-	float			heat_EXT_halt;
-	float			heat_EXT_derated;
-	float			heat_recovery_gap;
+	float			tpro_PCB_on_halt;
+	float			tpro_PCB_on_FAN;
+	float			tpro_derated_PCB;
+	float			tpro_EXT_on_halt;
+	float			tpro_derated_EXT;
+	float			tpro_recovery;
 
 	/* Servo drive.
 	 * */
 	float			servo_SPAN_mm[2];
 	float			servo_UNIFORM_mmps;
 
-	/* HX711 (load cell amplifier).
+	/* HX711 (load cell).
 	 * */
 	float			hx711_kg;
 	float			hx711_scale[2];
@@ -92,8 +91,10 @@ extern TLM_t			tlm;
 extern int flash_block_regs_load();
 extern int pm_wait_for_IDLE();
 
-float ADC_get_analog_ANG();
-float ADC_get_analog_BRK();
+void app_halt();
+
+float ADC_get_knob_ANG();
+float ADC_get_knob_BRK();
 
 #endif /* _H_MAIN_ */
 

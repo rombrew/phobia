@@ -25,7 +25,7 @@
 #define IFCAN_FILTER_MATCH		IFCAN_ID(31U, 31U)
 #define IFCAN_FILTER_NETWORK		IFCAN_ID(31U, 0U)
 
-/* Maximal number of nodes in network.
+/* The maximal number of nodes in the network.
  * */
 #define IFCAN_NODES_MAX			30
 
@@ -63,7 +63,7 @@ enum {
 	IFCAN_ACK_FLASH_DATA_ACCEPT,
 	IFCAN_ACK_FLASH_DATA_PAUSE,
 	IFCAN_ACK_FLASH_CRC32_INVALID,
-	IFCAN_ACK_FLASH_SELFUPDATE_DONE,
+	IFCAN_ACK_FLASH_FINISHED,
 };
 
 enum {
@@ -76,7 +76,7 @@ enum {
 	IFCAN_PIPE_DISABLED		= 0,
 	IFCAN_PIPE_INCOMING,
 	IFCAN_PIPE_OUTGOING_REGULAR,
-	IFCAN_PIPE_OUTGOING_TRIGGERED
+	IFCAN_PIPE_OUTGOING_INJECTED
 };
 
 enum {
@@ -101,8 +101,9 @@ typedef struct {
 
 	int		MODE;
 	int		STARTUP;
-	int		tim;
-	int		trigger_ID;
+	int		ACTIVE;
+	int		TIM;
+	int		inject_ID;
 	int		PAYLOAD;
 	float		range[2];
 
@@ -115,7 +116,7 @@ typedef struct {
 
 	int			node_ID;
 	int			log_MODE;
-	int			flash_MODE;
+	int			upgrade_MODE;
 
 	int			startup_LOST;
 

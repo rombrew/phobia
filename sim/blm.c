@@ -18,7 +18,7 @@ void blm_AB_DQ(double R, double A, double B, double *D, double *Q)
 	*Q = rC * Y - rS * X;
 }
 
-void blm_DQ_AB(double R, double D, double Q, double *A, double *B)
+void blm_DQ_ABC(double R, double D, double Q, double *A, double *B, double *C)
 {
 	double		X, Y, rS, rC;
 
@@ -30,6 +30,7 @@ void blm_DQ_AB(double R, double D, double Q, double *A, double *B)
 
 	*A = X;
 	*B = - .5 * X + .866025403784439 * Y;
+	*C = - .5 * X - .866025403784439 * Y;
 }
 
 void blm_Enable(blm_t *m)
@@ -136,9 +137,10 @@ void blm_Stop(blm_t *m)
 
 	m->X[7] = 0.;	/* Current Sensor A */
 	m->X[8] = 0.;	/* Current Sensor B */
-	m->X[9] = 0.;	/* Voltage Sensor A */
-	m->X[10] = 0.;	/* Voltage Sensor B */
-	m->X[11] = 0.;	/* Voltage Sensor C */
+	m->X[9] = 0.;	/* Current Sensor C */
+	m->X[10] = 0.;	/* Voltage Sensor A */
+	m->X[11] = 0.;	/* Voltage Sensor B */
+	m->X[12] = 0.;	/* Voltage Sensor C */
 
 	m->revol_N = 0;
 
@@ -162,7 +164,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 
 	/* BEMF waveform distortion.
 	 * */
-	E1 += m->E * sin(X[3] * 3.) * 0E-2;
+	E1 += m->E * sin(X[3] * 3.) * 0.00;
 
 	/* Voltage from VSI.
 	 * */
@@ -220,7 +222,7 @@ static void
 blm_Solve(blm_t *m, double dT)
 {
 	double		S1[7], S2[7], X2[7];
-	double		iA, iB, uA, uB, uC;
+	double		iA, iB, iC, uA, uB, uC;
 	double		uMIN, KI, KU;
 	int		j;
 
@@ -248,10 +250,11 @@ blm_Solve(blm_t *m, double dT)
 	KI = 1.0 - exp(- dT / m->tau_I);
 	KU = 1.0 - exp(- dT / m->tau_U);
 
-	blm_DQ_AB(m->X[3], m->X[0], m->X[1], &iA, &iB);
+	blm_DQ_ABC(m->X[3], m->X[0], m->X[1], &iA, &iB, &iC);
 
 	m->X[7] += (iA - m->X[7]) * KI;
 	m->X[8] += (iB - m->X[8]) * KI;
+	m->X[9] += (iC - m->X[9]) * KI;
 
 	if (m->HI_Z == 0) {
 
@@ -260,9 +263,7 @@ blm_Solve(blm_t *m, double dT)
 		uC = m->VSI[2] * m->X[6];
 	}
 	else {
-		blm_DQ_AB(m->X[3], 0., m->E * m->X[2], &uA, &uB);
-
-		uC = 0. - (uA + uB);
+		blm_DQ_ABC(m->X[3], 0., m->E * m->X[2], &uA, &uB, &uC);
 
 		uMIN = (uA < uB) ? uA : uB;
 		uMIN = (uMIN < uC) ? uMIN : uC;
@@ -272,9 +273,9 @@ blm_Solve(blm_t *m, double dT)
 		uC += 0. - uMIN;
 	}
 
-	m->X[9]  += (uA - m->X[9])  * KU;
-	m->X[10] += (uB - m->X[10]) * KU;
-	m->X[11] += (uC - m->X[11]) * KU;
+	m->X[10] += (uA - m->X[10]) * KU;
+	m->X[11] += (uB - m->X[11]) * KU;
+	m->X[12] += (uC - m->X[12]) * KU;
 }
 
 static void
@@ -288,7 +289,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of A.
 			 * */
-			m->X[7] += 12.;
+			m->X[7] += lfg_gauss() * 8.;
 			m->surge_I = 0;
 		}
 
@@ -296,7 +297,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of B.
 			 * */
-			m->X[8] += 12.;
+			m->X[8] += lfg_gauss() * 8.;
 			m->surge_I = 0;
 		}
 
@@ -304,6 +305,7 @@ blm_Solve_Split(blm_t *m, double dT)
 
 			/* Distortion of C.
 			 * */
+			m->X[9] += lfg_gauss() * 8.;
 			m->surge_I = 0;
 		}
 
@@ -333,17 +335,17 @@ blm_Solve_Split(blm_t *m, double dT)
 	}
 }
 
-static int
-blm_ADC(double u)
+static double
+blm_ADC(double vINP, double vMIN, double vMAX)
 {
 	int		ADC;
 
-	u += lfg_gauss() * 5E-4;
+	vINP = (vINP - vMIN) / (vMAX - vMIN);
 
-	ADC = (int) (u * 4096);
+	ADC = (int) (vINP * 4096. + lfg_gauss() * 2.);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
 
-	return ADC;
+	return (double) ADC / 4096. * (vMAX - vMIN) + vMIN;
 }
 
 static void
@@ -395,8 +397,8 @@ blm_sample_AS(blm_t *m)
 	E = m->X[3] + (2. * M_PI) * (double) m->revol_N;
 	R = E * m->AS_Zq / m->Zp;
 
-	m->analog_SIN = (float) (sin(R) + lfg_gauss() * 2E-4);
-	m->analog_COS = (float) (cos(R) + lfg_gauss() * 2E-4);
+	m->analog_SIN = (float) blm_ADC(sin(R), - 3., 3.);
+	m->analog_COS = (float) blm_ADC(cos(R), - 3., 3.);
 }
 
 static void
@@ -405,31 +407,21 @@ blm_VSI_Sample(blm_t *m, int N)
 	const double	range_I = 165.;
 	const double	range_U = 60.;
 
-	int		ADC;
-
 	if (N == 0) {
 
-		ADC = blm_ADC(m->X[7] / 2. / range_I + .5);
-		m->ADC_IA = (ADC - 2047) * range_I / 2048.;
-
-		ADC = blm_ADC(m->X[8] / 2. / range_I + .5);
-		m->ADC_IB = (ADC - 2047) * range_I / 2048.;
+		m->ADC_IA = (float) blm_ADC(m->X[7], - range_I, range_I);
+		m->ADC_IB = (float) blm_ADC(m->X[8], - range_I, range_I);
+		m->ADC_IC = (float) blm_ADC(m->X[9], - range_I, range_I);
 	}
 	else if (N == 1) {
 
-		ADC = blm_ADC(m->X[6] / range_U);
-		m->ADC_US = ADC * range_U / 4096.;
-
-		ADC = blm_ADC(m->X[9] / range_U);
-		m->ADC_UA = ADC * range_U / 4096.;
+		m->ADC_US = (float) blm_ADC(m->X[6], 0., range_U);
+		m->ADC_UA = (float) blm_ADC(m->X[10], 0., range_U);
+		m->ADC_UB = (float) blm_ADC(m->X[11], 0., range_U);
 	}
 	else if (N == 2) {
 
-		ADC = blm_ADC(m->X[10] / range_U);
-		m->ADC_UB = ADC * range_U / 4096.;
-
-		ADC = blm_ADC(m->X[11] / range_U);
-		m->ADC_UC = ADC * range_U / 4096.;
+		m->ADC_UC = (float) blm_ADC(m->X[12], 0., range_U);
 
 		blm_sample_HS(m);
 		blm_sample_EP(m);

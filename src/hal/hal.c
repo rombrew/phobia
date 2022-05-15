@@ -71,10 +71,8 @@ base_startup()
 	NVIC_SetPriorityGrouping(0UL);
 
 #ifdef STM32F7
-
 	SCB_EnableICache();
 	SCB_EnableDCache();
-
 #endif /* STM32F7 */
 }
 
@@ -111,7 +109,7 @@ clock_startup()
 
 		__NOP();
 	}
-	while (HSE == 0 && N < 40000UL);
+	while (HSE == 0 && N < 70000UL);
 
 	/* Enable power interface clock.
 	 * */
@@ -283,28 +281,6 @@ void hal_startup()
 	flash_verify();
 }
 
-void hal_futile_ns(int ns)
-{
-	u32_t			xVAL, xLOAD;
-	int			elapsed, hold;
-
-	xVAL = SysTick->VAL;
-	xLOAD = SysTick->LOAD + 1UL;
-
-	hold = ns * (clock_cpu_hz / 1000000UL) / 1000UL;
-
-	do {
-		elapsed = (int) (xVAL - SysTick->VAL);
-		elapsed += (elapsed < 0) ? xLOAD : 0;
-
-		if (elapsed >= hold)
-			break;
-
-		__NOP();
-	}
-	while (1);
-}
-
 int hal_lock_irq()
 {
 	int		irq;
@@ -326,9 +302,7 @@ void hal_unlock_irq(int irq)
 void hal_system_reset()
 {
 #ifdef STM32F7
-
 	SCB_CleanDCache();
-
 #endif /* STM32F7 */
 
 	NVIC_SystemReset();
@@ -339,9 +313,7 @@ void hal_bootload_reset()
 	bootload_jump = HAL_BOOT_SIGNATURE;
 
 #ifdef STM32F7
-
 	SCB_CleanDCache();
-
 #endif /* STM32F7 */
 
 	NVIC_SystemReset();
@@ -363,17 +335,13 @@ int log_status()
 	return (log.textbuf[0] != 0) ? 1 : 0;
 }
 
-int log_bootup()
+void log_bootup()
 {
-	int		rc = 0;
-
 	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
 
 		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
 		log.boot_COUNT = 0UL;
 
-		/* Initialize LOG at first usage.
-		 * */
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
 		log.len = 0;
@@ -381,21 +349,26 @@ int log_bootup()
 	else {
 		log.boot_COUNT += 1UL;
 
-		/* Make sure LOG is null-terminated.
-		 * */
 		log.textbuf[sizeof(log.textbuf) - 1] = 0;
-
-		rc = log_status();
 	}
-
-	return rc;
 }
 
 void log_putc(int c)
 {
-	const int	lmax = sizeof(log.textbuf) - 1;
+	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
 
-	if (log.len < 0 || log.len >= lmax) { log.len = 0; }
+		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
+		log.boot_COUNT = 0UL;
+
+		memset(log.textbuf, 0, sizeof(log.textbuf));
+
+		log.len = 0;
+	}
+	else if (	   log.len < 0
+			|| log.len >= sizeof(log.textbuf) - 1U) {
+
+		log.len = 0;
+	}
 
 	log.textbuf[log.len++] = (char) c;
 }
@@ -405,4 +378,16 @@ void DBGMCU_mode_stop()
 	DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 }
+
+void OPT_startup()
+{
+#ifdef GPIO_FILTER_ON
+	if (hal.OPT & OPT_GPIO_FILTER_ON) {
+
+		GPIO_set_mode_OUTPUT(GPIO_FILTER_ON);
+		GPIO_set_HIGH(GPIO_FILTER_ON);
+	}
+#endif /* GPIO_FILTER_ON */
+}
+
 

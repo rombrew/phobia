@@ -3,8 +3,8 @@
 
 #include "libc.h"
 
-typedef struct
-{
+typedef struct {
+
 	int		s_first;
 	int		s_total;
 }

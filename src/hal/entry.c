@@ -1,7 +1,8 @@
-#include "libc.h"
-
 #include "hal.h"
 #include "cmsis/stm32xx.h"
+
+#define LD_IRQ_WEAK		__attribute__ ((weak, alias("irq_Weak")))
+#define LD_IRQ_VECTORS		__attribute__ ((section(".vectors"), used))
 
 extern u32_t ld_stack;
 extern u32_t ld_begin_vectors;
@@ -25,25 +26,28 @@ void irq_SVCall();
 void irq_PendSV();
 void irq_SysTick();
 
-void irq_EXTI0();
-void irq_ADC();
-void irq_CAN1_TX();
-void irq_CAN1_RX0();
-void irq_CAN1_RX1();
-void irq_CAN1_SCE();
-void irq_TIM1_UP_TIM10();
-void irq_TIM4();
-void irq_USART3();
+void irq_Weak() { irq_Default(); };
+
+void irq_EXTI0() LD_IRQ_WEAK;
+void irq_ADC() LD_IRQ_WEAK;
+void irq_CAN1_TX() LD_IRQ_WEAK;
+void irq_CAN1_RX0() LD_IRQ_WEAK;
+void irq_CAN1_RX1() LD_IRQ_WEAK;
+void irq_CAN1_SCE() LD_IRQ_WEAK;
+void irq_TIM1_UP_TIM10() LD_IRQ_WEAK;
+void irq_TIM4() LD_IRQ_WEAK;
+void irq_USART3() LD_IRQ_WEAK;
+void irq_TIM7() LD_IRQ_WEAK;
 
 const FW_info_t		fw = {
 
 	(u32_t) &ld_begin_vectors,
 	(u32_t) &ld_end_flash,
 
-	_HW_REVISION, __DATE__
+	_HW_REV, __DATE__
 };
 
-__attribute__ (( section(".vectors"), used )) void * vectors[] = {
+LD_IRQ_VECTORS void *VECTORS[] = {
 
 	(void *) &ld_stack,
 
@@ -118,7 +122,7 @@ __attribute__ (( section(".vectors"), used )) void * vectors[] = {
 	irq_Default,
 	irq_Default,
 	irq_Default,
-	irq_Default,
+	irq_TIM7,
 	irq_Default,
 	irq_Default,
 	irq_Default,

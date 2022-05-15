@@ -1,78 +1,85 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-static void
-TIM_mode_DRIVE_ABI()
+#define CLOCK_TIM7_HZ			(CLOCK_APB1_HZ * 2UL)
+
+typedef struct {
+
+	u32_t			tick_CNT;
+}
+priv_TIM_t;
+
+static priv_TIM_t		priv_TIM;
+
+void irq_TIM7()
 {
-	/* Enable TIM3 clock.
-	 * */
-	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM7->SR = ~TIM_SR_UIF;
 
-	TIM3->CR1 = 0;
-	TIM3->CR2 = 0;
-	TIM3->SMCR = TIM_SMCR_SMS_0 | TIM_SMCR_SMS_1;
-	TIM3->DIER = 0;
-	TIM3->CCMR1 = TIM_CCMR1_IC2F_1 | TIM_CCMR1_CC2S_0 | TIM_CCMR1_IC1F_1
-		| TIM_CCMR1_CC1S_0;
-	TIM3->CCMR2 = 0;
-	TIM3->CCER = 0;
-	TIM3->CNT = 32767;
-	TIM3->PSC = 0;
-	TIM3->ARR = 65535;
-	TIM3->CCR1 = 0;
-	TIM3->CCR2 = 0;
-	TIM3->CCR3 = 0;
-	TIM3->CCR4 = 0;
-
-	/* Start TIM3.
-	 * */
-	TIM3->CR1 |= TIM_CR1_CEN;
-
-	/* Enable TIM3 pins.
-	 * */
-	GPIO_set_mode_FUNCTION(GPIO_TIM3_CH1);
-	GPIO_set_mode_FUNCTION(GPIO_TIM3_CH2);
+	priv_TIM.tick_CNT += 1U;
 }
 
 void TIM_startup()
 {
-	if (hal.TIM_mode == TIM_DRIVE_ABI) {
+	/* Enable TIM7 clock.
+	 * */
+	RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
 
-		TIM_mode_DRIVE_ABI();
-	}
+	TIM7->CR1 = 0;
+	TIM7->CR2 = 0;
+	TIM7->DIER = TIM_DIER_UIE;
+	TIM7->CNT = 0;
+	TIM7->PSC = 0;
+	TIM7->ARR = 65535;
+
+	/* Enable IRQ.
+	 * */
+	NVIC_SetPriority(TIM7_IRQn, 15);
+	NVIC_EnableIRQ(TIM7_IRQn);
+
+	/* Start TIM3.
+	 * */
+	TIM7->CR1 |= TIM_CR1_CEN;
 }
 
-static void
-TIM_halt()
+void TIM_wait_ns(int ns)
 {
-	/* Disable TIM3 pins.
-	 * */
-	GPIO_set_mode_INPUT(GPIO_TIM3_CH1);
-	GPIO_set_mode_INPUT(GPIO_TIM3_CH2);
+	u16_t			xCNT;
+	int			elapsed, hold;
 
-	/* Disable TIM3.
-	 * */
-	TIM3->CR1 = 0;
+	xCNT = TIM7->CNT;
 
-	/* Disable TIM3 clock.
-	 * */
-	RCC->APB1ENR &= ~RCC_APB1ENR_TIM3EN;
+	hold = ns * (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
+
+	do {
+		elapsed = (int) ((u16_t) TIM7->CNT - xCNT);
+
+		if (elapsed >= hold)
+			break;
+
+		__NOP();
+		__NOP();
+	}
+	while (1);
 }
 
-void TIM_configure()
+void TIM_wait_ms(int ms)
 {
-	if (hal.TIM_mode != TIM_DISABLED) {
+	u32_t			xCNT;
+	int			elapsed, hold;
 
-		TIM_halt();
-		TIM_startup();
-	}
-	else {
-		TIM_halt();
-	}
-}
+	xCNT = priv_TIM.tick_CNT;
 
-int TIM_get_EP()
-{
-	return TIM3->CNT;
+	hold = ms * (CLOCK_TIM7_HZ / 65536UL) / 1000UL;
+
+	do {
+		__DSB();
+		__WFI();
+
+		elapsed = (int) (priv_TIM.tick_CNT - xCNT);
+
+		if (elapsed >= hold)
+			break;
+	}
+	while (1);
 }
 

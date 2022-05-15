@@ -9,14 +9,14 @@
 #include "shell.h"
 
 /* The application allows you to control the speed using two push-buttons.
- * Such control is convenient for a drill machine or grass trimmer.
+ * Such control is convenient for a drill machine or another tools.
  *
- * [A]		- START or switch the speed.
- * [B]		- STOP.
- * [B]+[A]	- START in reverse.
+ * [A]		- START or switch the speed
+ * [B]		- STOP
+ * [B] + [A]	- START in reverse
  * */
 
-void ap_PUSHB(void *pData)
+void ap_PUSH(void *pData)
 {
 	TickType_t		xWake;
 
@@ -62,7 +62,7 @@ void ap_PUSHB(void *pData)
 
 			pushed_A = 0;
 
-			if (pm.lu_mode == PM_LU_DISABLED) {
+			if (pm.lu_MODE == PM_LU_DISABLED) {
 
 				N = 0;
 				reverse = (pushed_B == 0) ? -1 : 1;
@@ -89,7 +89,7 @@ void ap_PUSHB(void *pData)
 
 			pushed_B = 0;
 
-			if (pm.lu_mode != PM_LU_DISABLED) {
+			if (pm.lu_MODE != PM_LU_DISABLED) {
 
 				reverse = 0;
 
@@ -105,23 +105,23 @@ void ap_PUSHB(void *pData)
 	while (1);
 }
 
-SH_DEF(pushb_startup)
+SH_DEF(push_startup)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("PUSHB");
+	xHandle = xTaskGetHandle("PUSH");
 
 	if (xHandle == NULL) {
 
-		xTaskCreate(ap_PUSHB, "PUSHB", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+		xTaskCreate(ap_PUSH, "PUSH", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	}
 }
 
-SH_DEF(pushb_halt)
+SH_DEF(push_halt)
 {
 	TaskHandle_t		xHandle;
 
-	xHandle = xTaskGetHandle("PUSHB");
+	xHandle = xTaskGetHandle("PUSH");
 
 	if (xHandle != NULL) {
 

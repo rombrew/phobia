@@ -28,7 +28,7 @@ typedef struct {
 	}
 	packed;
 
-	int			pack_i;
+	int			bspin;
 	int			bleft;
 }
 FE_prog_t;
@@ -40,14 +40,14 @@ FE_prog_putc(FE_prog_t *pg, int c)
 
 	if (pg->bleft > 0) {
 
-		pg->packed.b[pg->pack_i++] = (u8_t) c;
+		pg->packed.b[pg->bspin++] = (u8_t) c;
 
-		if (pg->pack_i >= 4) {
+		if (pg->bspin >= 4) {
 
 			FLASH_prog(pg->flash, pg->packed.l);
 
 			pg->flash += 1;
-			pg->pack_i = 0;
+			pg->bspin = 0;
 
 			pg->bleft -= 4;
 		}
@@ -240,7 +240,7 @@ flash_regs_FE_prog(flash_block_t *block)
 	int			rc = 0;
 
 	pg.flash = block->content;
-	pg.pack_i = 0;
+	pg.bspin = 0;
 	pg.bleft = sizeof(block->content);
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
@@ -347,7 +347,7 @@ SH_DEF(flash_prog)
 {
 	int			rc;
 
-	if (pm.lu_mode != PM_LU_DISABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return ;
@@ -360,7 +360,7 @@ SH_DEF(flash_prog)
 	printf("%s" EOL, (rc != 0) ? "Done" : "Fail");
 }
 
-SH_DEF(flash_info_map)
+SH_DEF(flash_info)
 {
 	flash_block_t			*block;
 	int				N, info_sym;
@@ -399,12 +399,12 @@ SH_DEF(flash_info_map)
 	while (1);
 }
 
-SH_DEF(flash_cleanup)
+SH_DEF(flash_wipe)
 {
 	flash_block_t			*block;
 	u32_t				lz = 0;
 
-	if (pm.lu_mode != PM_LU_DISABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return ;

@@ -20,7 +20,7 @@ int pm_wait_for_SETTLE()
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (m_fabsf(pm.x_residual) < (pm.x_tol_Z * 3.f))
+		if (m_fabsf(pm.x_discrepancy) < (pm.x_tol_Z * 3.f))
 			break;
 
 		if (xTick > (TickType_t) 10000) {
@@ -38,10 +38,10 @@ int pm_wait_for_SETTLE()
 
 SH_DEF(servo_probe_const_J)
 {
-	if (		pm.lu_mode == PM_LU_DISABLED
-			|| pm.lu_mode == PM_LU_DETACHED
-			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_DRIVE != PM_DRIVE_SERVO
+	if (		pm.lu_MODE == PM_LU_DISABLED
+			|| pm.lu_MODE == PM_LU_DETACHED
+			|| pm.lu_MODE == PM_LU_FORCED
+			|| pm.config_LU_DRIVE != PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);
@@ -49,7 +49,7 @@ SH_DEF(servo_probe_const_J)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION_MM, ap.servo_SPAN_mm[0]);
 
 		if (pm_wait_for_SETTLE() != PM_OK)
 			break;
@@ -58,11 +58,11 @@ SH_DEF(servo_probe_const_J)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[1]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION_MM, ap.servo_SPAN_mm[1]);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION_MM, ap.servo_SPAN_mm[0]);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -82,10 +82,10 @@ SH_DEF(servo_test_uniform)
 	float			xSP, wSP, tDT;
 	int			DIRF;
 
-	if (		pm.lu_mode == PM_LU_DISABLED
-			|| pm.lu_mode == PM_LU_DETACHED
-			|| pm.lu_mode == PM_LU_FORCED
-			|| pm.config_DRIVE != PM_DRIVE_SERVO
+	if (		pm.lu_MODE == PM_LU_DISABLED
+			|| pm.lu_MODE == PM_LU_DETACHED
+			|| pm.lu_MODE == PM_LU_FORCED
+			|| pm.config_LU_DRIVE != PM_DRIVE_SERVO
 			|| pm.const_ld_S < M_EPS_F) {
 
 		printf("Enable SERVO mode before" EOL);
@@ -93,7 +93,7 @@ SH_DEF(servo_test_uniform)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, ap.servo_SPAN_mm[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION_MM, ap.servo_SPAN_mm[0]);
 
 		if (pm_wait_for_SETTLE() != PM_OK)
 			break;
@@ -117,7 +117,7 @@ SH_DEF(servo_test_uniform)
 
 		xSP += wSP * tDT * DIRF;
 
-		reg_SET_F(ID_PM_X_SETPOINT_F_MM, xSP);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION_MM, xSP);
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED_MMPS, wSP * DIRF);
 
 		if (DIRF == 1) {

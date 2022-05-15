@@ -4,46 +4,36 @@ PMC is an open project that aims to build the quality permanent magnet
 synchronous motor (PMSM) controller for use in a variety of scopes like RC or
 electrotransport.
 
-There are several typical situations which PMC is designed for.
-
-* Light electric transport like scooter or bicycle. The use of current control
-  is preferred. Start with discrete Hall sensors or use freewheeling. Control
-  knobs are connected to analog inputs.
-* Aerial propeller drive for RC drones. The use of speed control is preferred.
-  Start with forced control or HFI. Control through CAN network or RC servo
-  pulse.
-* Servo drive and machine tools. Only servo control is applicable. The use of
-  ABI incremental encoder is preferred. Control through CAN network or STEP/DIR
-  pulse.
-
-Of course you can create unusual configurations by combining various PMC
-features. Also is is possible to design custom application e.g. start-stop
-button control.
-
 ## Software features
 
-* Sensorless vector control of PMSM based on two inline current measurements.
-* Fast and robust FLUX observer with gain scheduling against speed.
-* Two phase machine support (e.g. bipolar stepper).
-* Self adjust of onboard measurements along symmetrical channels.
+* Sensorless vector control of three-phase PMSM based on current measurements.
+* Robust ORTEGA observer with gain scheduling against speed.
+* Fast and accurate LUENBERGER observer with gain scheduling.
+* Two-phase machine support (e.g. bipolar stepper).
+* Self adjust of all onboard measurements along symmetrical channels.
 * Flux weakening control.
-* Regular command line interface (CLI) with autocompletion and history.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
+* Can be compiled for various controller boards (including VESC clones).
 * Flash storage for all of configurable parameters.
+* Regular command line interface (CLI) with autocompletion and history.
+* Graphical front-end software based on
+  [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) and
+  [SDL2](https://www.libsdl.org/).
+* Non time-critical tasks are managed by
+  [FreeRTOS](http://www.freertos.org/).
+* Least Squares estimate using library
+  [libLSE](https://sourceforge.net/projects/liblse/).
 
-* Non time-critical tasks are managed by [FreeRTOS](http://www.freertos.org/).
-* Least Squares estimate using library [libLSE](https://sourceforge.net/projects/liblse/).
-
-* Advanced PWM scheme provides:
+* Advanced SVPWM scheme provides:
 	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
-	* Hopping to get accurate ADC measurements near PWM-edges.
-	* Prevents bootstrap circuit undervoltage condition.
+	* Voltage hopping to get accurate ADC measurements with inline current sensors.
+	* Prevent bootstrap circuit undervoltage condition.
 	* Optional reduced ripple mode (clamp to middle) for precise control.
 
 * Terminal voltage measurements (TVM):
-	* In operation it is used to reduce the effect of Dead-Time distortion.
+	* In SVPWM operation it is used to reduce the effect of Dead-Time distortion.
 	* BEMF tracking to get smooth start when motor is already running.
-	* Self test of power stages integrity.
+	* Self test of the power stages integrity.
 	* Self test of bootstrap retention time.
 
 * Automated motor parameters identification with no additional tools:
@@ -71,7 +61,7 @@ button control.
 * Control loops:
 	* Current control is always enabled.
 	* Speed control loop.
-	* Servo operation.
+	* Servo control loop.
 	* Boost loop (battery charger) (**TODO**).
 
 * Adjustable limits:
@@ -85,8 +75,8 @@ button control.
 	* CAN bus flexible configurable data pipes.
 	* RC servo pulse width.
 	* STEP/DIR interface (**EXPERIMENTAL**).
-	* Analog input with brake signal.
-	* Manual control through CLI.
+	* Analog input knob with brake signal.
+	* Manual control through CLI or graphical front-end.
 	* Custom embedded application can implement any control strategy.
 
 * Available information:
@@ -126,12 +116,12 @@ button control.
 	* Combined port: SPI, ADC, DAC, GPIO (3.3v).
 	* BOOT pin combined with SWDIO to use embedded bootloader.
 	* SWD to get hardware debug.
-	* External FAN control (5v, 0.5A).
+	* External FAN control (5v, ~0.5A).
 
 * Power conversion:
-	* Battery voltage to 5v buck (up to 1A).
-	* 5v to 12v boost (up to 100 mA).
-	* 5v to 3.3v linear (up to 400 mA).
+	* Battery voltage to 5v buck (~1A).
+	* 5v to 12v boost (~100 mA).
+	* 5v to 3.3v linear (~400 mA).
 
 Look into [phobia-pcb](https://sourceforge.net/p/phobia/pcb/) repository for
 PCB design source files. Also view photos of the assembled PCBs in [doc/imgs/](doc/imgs/).
@@ -149,10 +139,8 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 ## TODO
 
 * Make a detailed documentation.
-* Consider to add SRUKF sensorless observer (for SRM).
 * Introduce MTPA control.
 * Add pulse output signal.
-* Make a drawing of the heatsink case for rev5a.
+* Make a drawing of the heatsink case for REV5A.
 * Design the new hardware for 120v battery voltage.
-* Add text-based user interface (TUI).
 

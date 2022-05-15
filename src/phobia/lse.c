@@ -137,10 +137,12 @@ lse_cholmerge(const lse_t *lse, lse_triu_t *triu, lse_triu_t *triv)
 	triv->n_keep = 0;
 }
 
-void lse_initiate(lse_t *lse, int n_size_of_x, int n_size_of_z)
+void lse_initiate(lse_t *lse, int n_cascades, int n_size_of_x, int n_size_of_z)
 {
 	lse_float_t	*vm = lse->vm;
 	int		i;
+
+	lse->n_cascades = n_cascades;
 
 	lse->n_size_of_x = n_size_of_x;
 	lse->n_size_of_z = n_size_of_z;
@@ -149,7 +151,7 @@ void lse_initiate(lse_t *lse, int n_size_of_x, int n_size_of_z)
 	lse->n_threshold = lse->n_full * 2;
 	lse->n_total = 0;
 
-	for (i = 0; i < LSE_CASCADE_MAX; ++i) {
+	for (i = 0; i < lse->n_cascades; ++i) {
 
 		lse->triu[i].n_keep = 0;
 		lse->triu[i].m = vm;
@@ -170,13 +172,13 @@ void lse_finalise(lse_t *lse)
 		/* The normal case of large amount of data. We merge all
 		 * cascades into the final upper-triangular matrix.
 		 * */
-		for (i = 1; i < LSE_CASCADE_MAX; ++i)
+		for (i = 1; i < lse->n_cascades; ++i)
 			lse_cholmerge(lse, &lse->triu[i], &lse->triu[i - 1]);
 
 		b = lse->triu[0].m;
 		lse->b = b;
 
-		mq = lse->triu[LSE_CASCADE_MAX - 1].m;
+		mq = lse->triu[lse->n_cascades - 1].m;
 	}
 	else {
 		/* The case of exact solution.
@@ -218,7 +220,7 @@ void lse_finalise(lse_t *lse)
 		e = lse->triu[0].m + lse->n_size_of_x * lse->n_size_of_z;
 		lse->e = e;
 
-		mq = lse->triu[LSE_CASCADE_MAX - 1].m;
+		mq = lse->triu[lse->n_cascades - 1].m;
 		mq += lse->n_size_of_x * lse->n_full
 			- lse->n_size_of_x * (lse->n_size_of_x - 1) / 2;
 
@@ -250,7 +252,7 @@ void lse_insert(lse_t *lse, lse_float_t *v)
 
 	lse_cholupdate(lse, &lse->triu[0], v);
 
-	for (i = 1; i < LSE_CASCADE_MAX; ++i) {
+	for (i = 1; i < lse->n_cascades; ++i) {
 
 		if (lse->triu[i - 1].n_keep >= lse->n_threshold) {
 
@@ -259,13 +261,14 @@ void lse_insert(lse_t *lse, lse_float_t *v)
 			 * */
 			lse_cholmerge(lse, &lse->triu[i], &lse->triu[i - 1]);
 
-			if (i == LSE_CASCADE_MAX - 1) {
+			if (i == lse->n_cascades - 1) {
 
 				/* Update the cascade threshold based on amount
 				 * of data in top cascade.
 				 * */
-				n = lse->triu[LSE_CASCADE_MAX - 1].n_keep;
-				lse->n_threshold = (n > lse->n_threshold) ? n : lse->n_threshold;
+				n = lse->triu[lse->n_cascades - 1].n_keep;
+				lse->n_threshold = (n > lse->n_threshold)
+					? n : lse->n_threshold;
 			}
 
 			break;

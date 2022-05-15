@@ -1,6 +1,0 @@
-#!/bin/sh
-# vi: ft=sh
-
-cat *.c apps/*.c | sed -n 's/^\s*\(SH_DEF\s*(.\+)\).*$/\1/p' > shdefs.h
-cat regfile.c | sed -n 's/^\s*\(REG_DEF\s*(.\+)\).*$/\U\1/p' | sed 's/REG_DEF\s*(\s*\([^\s,"]\+\)\s*,\s*\([^\s,"]*\)\s*,.\+)/ID_\1\2,/;s/\.\|\[/_/g;s/\]//g' > regdefs.h
-

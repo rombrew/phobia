@@ -1,0 +1,3 @@
+HWMCU = STM32F405
+INCLUDE_HAL_CAN = hal/can.o
+INCLUDE_IFCAN = ifcan.o

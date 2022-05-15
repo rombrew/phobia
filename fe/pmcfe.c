@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "config.h"
 #include "link.h"
 #include "serial.h"
 #include "nksdl.h"
@@ -17,12 +18,13 @@ enum {
 	POPUP_NONE			= 0,
 	POPUP_RESET_DEFAULT,
 	POPUP_FLASH_ERRNO,
-	POPUP_FLASH_CLEANUP,
+	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
 };
 
 struct public {
 
+	struct config_pmcfe	*fe;
 	struct nk_sdl		*nk;
 	struct link_pmc		*lp;
 
@@ -55,14 +57,21 @@ struct public {
 	}
 	serial;
 
+	struct {
+
+		int			started;
+		int			autoupdate;
+	}
+	telemetry;
+
 	const char		*popup_msg;
 	int			popup_enum;
 
-	char			ln[240];
+	char			lbuf[250];
 };
 
 static void
-ng_name_label(struct public *pub, const char *name, struct link_reg *reg)
+pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -70,15 +79,22 @@ ng_name_label(struct public *pub, const char *name, struct link_reg *reg)
 	struct nk_rect			bounds;
 
 	bounds = nk_widget_bounds(ctx);
-	nk_label(ctx, name, NK_TEXT_LEFT);
+
+	if (reg->mode & LINK_REG_CONFIG) {
+
+		nk_label_colored(ctx, name, NK_TEXT_LEFT, nk->table[NK_COLOR_CONFIG]);
+	}
+	else {
+		nk_label(ctx, name, NK_TEXT_LEFT);
+	}
 
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 20, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		sprintf(pub->ln, "Fetch \"%.77s\"", reg->sym);
+		sprintf(pub->lbuf, "Fetch \"%.77s\"", reg->sym);
 
-		if (nk_contextual_item_label(ctx, pub->ln, NK_TEXT_LEFT)) {
+		if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
 
 			if (reg->update == 0)
 				reg->fetched = 0;
@@ -89,19 +105,12 @@ ng_name_label(struct public *pub, const char *name, struct link_reg *reg)
 			/* TODO */
 		}
 		else {
-			sprintf(pub->ln, "Update continuously [%s]",
-					(reg->update != 0) ? "ON" : "OFF");
+			int			rc;
 
-			if (nk_contextual_item_label(ctx, pub->ln, NK_TEXT_LEFT)) {
+			rc = nk_check_label(ctx, "Update continuously",
+					(reg->update != 0) ? nk_true : nk_false);
 
-				reg->update = (reg->update == 0) ? 100 : 0;
-			}
-
-			if (nk_contextual_item_label(ctx, "Add to telemetry",
-						NK_TEXT_LEFT)) {
-
-				/* TODO */
-			}
+			reg->update = (rc != 0) ? 100 : 0;
 		}
 
 		nk_contextual_end(ctx);
@@ -109,7 +118,7 @@ ng_name_label(struct public *pub, const char *name, struct link_reg *reg)
 }
 
 static void
-ng_name_label_hidden(struct public *pub, const char *name, const char *sym)
+pub_name_label_hidden(struct public *pub, const char *name, const char *sym)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -117,21 +126,22 @@ ng_name_label_hidden(struct public *pub, const char *name, const char *sym)
 	struct nk_rect			bounds;
 
 	bounds = nk_widget_bounds(ctx);
-	nk_label(ctx, name, NK_TEXT_LEFT);
+
+	nk_label_colored(ctx, name, NK_TEXT_LEFT, nk->table[NK_COLOR_HIDDEN]);
 
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 20, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		sprintf(pub->ln, "Unknown \"%.77s\"", sym, 111);
+		sprintf(pub->lbuf, "Unknown \"%.77s\"", sym);
 
-		nk_contextual_item_label(ctx, pub->ln, NK_TEXT_LEFT);
+		nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 		nk_contextual_end(ctx);
 	}
 }
 
 static int
-ng_combo_linked(struct public *pub, struct link_reg *reg,
+pub_combo_linked(struct public *pub, struct link_reg *reg,
 		int item_height, struct nk_vec2 size)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -206,7 +216,7 @@ ng_combo_linked(struct public *pub, struct link_reg *reg,
 }
 
 static struct nk_rect
-ng_get_popup_bounds(struct public *pub)
+pub_get_popup_bounds(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -216,16 +226,64 @@ ng_get_popup_bounds(struct public *pub)
 	win = nk_window_get_content_region(ctx);
 
 	popup.w = (int) (win.w * 0.7f);
-	popup.h = (int) (win.h * 0.4f);
+	popup.h = (int) (win.h * 0.5f);
 
 	popup.x = win.w / 2 - popup.w / 2;
-	popup.y = (int) (win.h * 0.6f);
+	popup.y = (int) (win.h * 0.3f);
 
 	return popup;
 }
 
+static void
+pub_popup_message(struct public *pub, int popup, const char *title)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+
+	if (pub->popup_enum == popup) {
+
+		struct nk_rect		bounds = pub_get_popup_bounds(pub);
+
+		if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ",
+					NK_WINDOW_CLOSABLE, bounds)) {
+
+			nk_layout_row_template_begin(ctx, pub->fe_font_h * 5);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_push_variable(ctx, 1);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_end(ctx);
+
+			nk_spacer(ctx);
+			nk_label_wrap(ctx, title);
+			nk_spacer(ctx);
+
+			nk_layout_row_template_begin(ctx, 0);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_push_variable(ctx, 1);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_end(ctx);
+
+			nk_spacer(ctx);
+
+			if (nk_button_label(ctx, "OK")) {
+
+				nk_popup_close(ctx);
+
+				pub->popup_enum = 0;
+			}
+
+			nk_spacer(ctx);
+
+			nk_popup_end(ctx);
+		}
+		else {
+			pub->popup_enum = 0;
+		}
+	}
+}
+
 static int
-ng_popup_window(struct public *pub, int popup, const char *title)
+pub_popup_ok_cancel(struct public *pub, int popup, const char *title)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -234,13 +292,20 @@ ng_popup_window(struct public *pub, int popup, const char *title)
 
 	if (pub->popup_enum == popup) {
 
-		struct nk_rect		bounds = ng_get_popup_bounds(pub);
+		struct nk_rect		bounds = pub_get_popup_bounds(pub);
 
 		if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ",
 					NK_WINDOW_CLOSABLE, bounds)) {
 
-			nk_layout_row_dynamic(ctx, pub->fe_font_h * 4, 1);
+			nk_layout_row_template_begin(ctx, pub->fe_font_h * 5);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_push_variable(ctx, 1);
+			nk_layout_row_template_push_static(ctx, pub->fe_base);
+			nk_layout_row_template_end(ctx);
+
+			nk_spacer(ctx);
 			nk_label_wrap(ctx, title);
+			nk_spacer(ctx);
 
 			nk_layout_row_template_begin(ctx, 0);
 			nk_layout_row_template_push_static(ctx, pub->fe_base);
@@ -283,47 +348,6 @@ ng_popup_window(struct public *pub, int popup, const char *title)
 }
 
 static void
-ng_popup_window_info(struct public *pub, int popup, const char *title)
-{
-	struct nk_sdl			*nk = pub->nk;
-	struct nk_context		*ctx = &nk->ctx;
-
-	if (pub->popup_enum == popup) {
-
-		struct nk_rect		bounds = ng_get_popup_bounds(pub);
-
-		if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ",
-					NK_WINDOW_CLOSABLE, bounds)) {
-
-			nk_layout_row_dynamic(ctx, pub->fe_font_h * 4, 1);
-			nk_label_wrap(ctx, title);
-
-			nk_layout_row_template_begin(ctx, 0);
-			nk_layout_row_template_push_static(ctx, pub->fe_base);
-			nk_layout_row_template_push_variable(ctx, 1);
-			nk_layout_row_template_push_static(ctx, pub->fe_base);
-			nk_layout_row_template_end(ctx);
-
-			nk_spacer(ctx);
-
-			if (nk_button_label(ctx, "OK")) {
-
-				nk_popup_close(ctx);
-
-				pub->popup_enum = 0;
-			}
-
-			nk_spacer(ctx);
-
-			nk_popup_end(ctx);
-		}
-		else {
-			pub->popup_enum = 0;
-		}
-	}
-}
-
-static void
 reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -348,7 +372,7 @@ reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 
 	if (reg != NULL) {
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
 		rc = nk_select_label(ctx, reg->um, NK_TEXT_LEFT, reg->lval);
 
@@ -378,7 +402,7 @@ reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 		ctx->style.selectable.hover_active   = nk_style_item_color(hidden);
 		ctx->style.selectable.pressed_active = nk_style_item_color(hidden);
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 		nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
 
 		nk_spacer(ctx);
@@ -452,7 +476,7 @@ reg_enum_errno(struct public *pub, const char *sym, const char *name, int onaler
 			ctx->style.selectable.pressed_active = nk_style_item_color(alert);
 		}
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 		nk_select_label(ctx, reg->um, NK_TEXT_LEFT, 0);
 
 		nk_spacer(ctx);
@@ -471,7 +495,7 @@ reg_enum_errno(struct public *pub, const char *sym, const char *name, int onaler
 		ctx->style.selectable.hover_active   = nk_style_item_color(hidden);
 		ctx->style.selectable.pressed_active = nk_style_item_color(hidden);
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 		nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
 
 		nk_spacer(ctx);
@@ -522,7 +546,7 @@ reg_enum_combo(struct public *pub, const char *sym, const char *name)
 
 	if (reg != NULL) {
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
 		reg->lval = (reg->lval < reg->lmax_combo + 2
 				&& reg->lval >= 0) ? reg->lval : 0;
@@ -547,12 +571,12 @@ reg_enum_combo(struct public *pub, const char *sym, const char *name)
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -597,9 +621,9 @@ reg_text_large(struct public *pub, const char *sym, const char *name)
 			ctx->style.edit.active = nk_style_item_color(flash);
 		}
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 				reg->val, 79, nk_filter_default);
 
 		nk_spacer(ctx);
@@ -609,12 +633,12 @@ reg_text_large(struct public *pub, const char *sym, const char *name)
 		reg->shown = lp->clock;
 	}
 	else {
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -660,11 +684,11 @@ reg_float(struct public *pub, const char *sym, const char *name)
 			ctx->style.edit.active = nk_style_item_color(flash);
 		}
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
-			nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
+			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 					reg->val, 79, nk_filter_default);
 		}
 		else {
@@ -683,8 +707,8 @@ reg_float(struct public *pub, const char *sym, const char *name)
 
 		if (reg->um[0] != 0) {
 
-			sprintf(pub->ln, "(%.16s)", reg->um);
-			nk_label(ctx, pub->ln, NK_TEXT_LEFT);
+			sprintf(pub->lbuf, "(%.16s)", reg->um);
+			nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 		}
 		else {
 			nk_spacer(ctx);
@@ -697,12 +721,12 @@ reg_float(struct public *pub, const char *sym, const char *name)
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
@@ -751,11 +775,11 @@ reg_float_auto(struct public *pub, const char *sym, const char *name)
 			ctx->style.edit.active = nk_style_item_color(flash);
 		}
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
-			nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
+			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 					reg->val, 79, nk_filter_default);
 		}
 		else {
@@ -774,8 +798,8 @@ reg_float_auto(struct public *pub, const char *sym, const char *name)
 
 		if (reg->um[0] != 0) {
 
-			sprintf(pub->ln, "(%.16s)", reg->um);
-			nk_label(ctx, pub->ln, NK_TEXT_LEFT);
+			sprintf(pub->lbuf, "(%.16s)", reg->um);
+			nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 		}
 		else {
 			nk_spacer(ctx);
@@ -795,12 +819,12 @@ reg_float_auto(struct public *pub, const char *sym, const char *name)
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
@@ -862,11 +886,11 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 			ctx->style.edit.active = nk_style_item_color(flash);
 		}
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
-			nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
+			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 					reg->val, 79, nk_filter_default);
 		}
 		else {
@@ -898,12 +922,12 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
@@ -939,9 +963,9 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 
 	if (reg != NULL && (reg->mode & LINK_REG_LINKED) != 0) {
 
-		ng_name_label(pub, name, reg);
+		pub_name_label(pub, name, reg);
 
-		rc = ng_combo_linked(pub, reg, pub->fe_font_h + pub->fe_padding,
+		rc = pub_combo_linked(pub, reg, pub->fe_font_h + pub->fe_padding,
 				nk_vec2(pub->fe_base * 20, 400));
 
 		if (rc != reg->lval) {
@@ -960,12 +984,12 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ng_name_label_hidden(pub, name, sym);
+		pub_name_label_hidden(pub, name, sym);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -976,7 +1000,7 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 }
 
 static void
-reg_float_prog(struct public *pub, int reg_ID, int onactive)
+reg_float_prog(struct public *pub, int reg_ID)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -985,6 +1009,8 @@ reg_float_prog(struct public *pub, int reg_ID, int onactive)
 
 	struct nk_style_edit		edit;
 	struct nk_color			hidden;
+
+	int				pc;
 
 	edit = ctx->style.edit;
 
@@ -1016,25 +1042,27 @@ reg_float_prog(struct public *pub, int reg_ID, int onactive)
 			ctx->style.edit.active = nk_style_item_color(flash);
 		}
 
-		if (		onactive != 0
-				&& reg->fetched + 100 < reg->shown) {
+		if (reg->started != 0) {
 
-			reg->fetched = 0;
+			pc = (int) (1000.f * (reg->fval - reg->fmin)
+					/ (reg->fmax - reg->fmin));
+		}
+		else {
+			pc = 0;
 		}
 
-		nk_prog(ctx, 1, 10, nk_false);
-
+		nk_prog(ctx, pc, 1000, nk_false);
 		nk_spacer(ctx);
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 				reg->val, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 
 		if (reg->um[0] != 0) {
 
-			sprintf(pub->ln, "(%.16s)", reg->um);
-			nk_label(ctx, pub->ln, NK_TEXT_LEFT);
+			sprintf(pub->lbuf, "(%.16s)", reg->um);
+			nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 		}
 		else {
 			nk_spacer(ctx);
@@ -1042,18 +1070,19 @@ reg_float_prog(struct public *pub, int reg_ID, int onactive)
 
 		nk_spacer(ctx);
 
+		reg->update = (pub->telemetry.autoupdate != 0) ? 200 : 0;
 		reg->shown = lp->clock;
 	}
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		nk_prog(ctx, 0, 10, nk_false);
+		nk_prog(ctx, 0, 1000, nk_false);
 		nk_spacer(ctx);
 
-		pub->ln[0] = 0;
+		pub->lbuf[0] = 0;
 
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_READ_ONLY,
-				pub->ln, 79, nk_filter_default);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
@@ -1067,7 +1096,7 @@ reg_float_prog(struct public *pub, int reg_ID, int onactive)
 }
 
 static void
-page_diagnose(struct public *pub)
+page_serial(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -1078,6 +1107,13 @@ page_diagnose(struct public *pub)
 
 		"1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"
 	};
+
+	const char			*ls_windowsize[] = {
+
+		"Tiny", "Normal"
+	};
+
+	int				rc, select;
 
 	orange = ctx->style.button;
 	orange.normal = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON]);
@@ -1139,11 +1175,15 @@ page_diagnose(struct public *pub)
 		nk_label(ctx, pub->lp->devname, NK_TEXT_LEFT);
 
 		nk_spacer(ctx);
-		nk_spacer(ctx);
+
+		sprintf(pub->lbuf, "# %i", pub->lp->fetched_N);
+		nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
+
 		nk_spacer(ctx);
 
 		nk_label(ctx, "Baudrate", NK_TEXT_LEFT);
-		nk_label(ctx, pub->lp->baudrate, NK_TEXT_LEFT);
+		sprintf(pub->lbuf, "%i", pub->lp->baudrate);
+		nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 
 		nk_spacer(ctx);
 
@@ -1157,6 +1197,59 @@ page_diagnose(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_variable(ctx, 1);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 22);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
+
+	nk_label_colored(ctx, "Front-end configuration", NK_TEXT_LEFT,
+			nk->table[NK_COLOR_CONFIG]);
+
+	nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+			pub->fe->rcfile, sizeof(pub->fe->rcfile),
+			nk_filter_default);
+
+	nk_spacer(ctx);
+
+	nk_label(ctx, "Window layout", NK_TEXT_LEFT);
+
+	select = nk_combo(ctx, ls_windowsize, 2, pub->fe->windowsize, pub->fe_font_h
+			+ pub->fe_padding, nk_vec2(pub->fe_base * 22, 400));
+
+	if (select != pub->fe->windowsize) {
+
+		pub->fe->windowsize = select;
+
+		config_write(pub->fe);
+	}
+
+	nk_spacer(ctx);
+
+	nk_label(ctx, "Directory path", NK_TEXT_LEFT);
+
+	rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
+			| NK_EDIT_SIG_ENTER, pub->fe->path,
+			sizeof(pub->fe->path), nk_filter_default);
+
+	if (rc & (NK_EDIT_DEACTIVATED | NK_EDIT_COMMITED)) {
+
+		config_write(pub->fe);
+	}
+
+	nk_spacer(ctx);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+}
+
+static void
+page_diagnose(struct public *pub)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
 
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
@@ -1186,6 +1279,7 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
 	reg_float(pub, "pm.ad_IA_0", "A sensor drift");
 	reg_float(pub, "pm.ad_IB_0", "B sensor drift");
+	reg_float(pub, "pm.ad_IC_0", "C sensor drift");
 	reg_text_large(pub, "pm.self_BST", "Bootstrap retention time");
 	reg_text_large(pub, "pm.self_BM", "Self test result");
 	reg_text_large(pub, "pm.self_RMSi", "Current sensor RMS");
@@ -1196,12 +1290,14 @@ page_diagnose(struct public *pub)
 
 	reg_float(pub, "pm.ad_IA_1", "A sensor scale");
 	reg_float(pub, "pm.ad_IB_1", "B sensor scale");
+	reg_float(pub, "pm.ad_IC_1", "C sensor scale");
 	reg_float(pub, "pm.ad_UA_0", "A voltage offset");
 	reg_float(pub, "pm.ad_UA_1", "A voltage scale");
 	reg_float(pub, "pm.ad_UB_0", "B voltage offset");
 	reg_float(pub, "pm.ad_UB_1", "B voltage scale");
 	reg_float(pub, "pm.ad_UC_0", "C voltage offset");
 	reg_float(pub, "pm.ad_UC_1", "C voltage scale");
+	reg_enum_toggle(pub, "pm.tvm_INUSE", "TVM is used in operation");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
@@ -1211,11 +1307,14 @@ page_diagnose(struct public *pub)
 
 	reg_float(pub, "pm.fb_iA", "A current feedback");
 	reg_float(pub, "pm.fb_iB", "B current feedback");
+	reg_float(pub, "pm.fb_iC", "C current feedback");
 	reg_float(pub, "pm.fb_uA", "A voltage feedback");
 	reg_float(pub, "pm.fb_uB", "B voltage feedback");
-	reg_float(pub, "pm.fb_uC", "A voltage feedback");
+	reg_float(pub, "pm.fb_uC", "C voltage feedback");
 	reg_float(pub, "pm.fb_HS", "HALL sensors feedback");
 	reg_float(pub, "pm.fb_EP", "ABI encoder feedback");
+	reg_float(pub, "pm.fb_SIN", "SIN analog feedback");
+	reg_float(pub, "pm.fb_COS", "COS analog feedback");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1227,7 +1326,7 @@ page_diagnose(struct public *pub)
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
 
-	if (nk_button_label(ctx, "PWM 0%")) {
+	if (nk_button_label(ctx, "PWM  0%")) {
 
 		link_command(pub->lp,	"hal_PWM_set_Z 0" "\r\n"
 					"hal_PWM_set_DC 0");
@@ -1243,10 +1342,10 @@ page_diagnose(struct public *pub)
 		reg = link_reg_lookup(pub->lp, "pm.dc_resolution");
 		if (reg != NULL) { dc_resolution = reg->lval; }
 
-		sprintf(pub->ln,	"hal_PWM_set_Z 0" "\r\n"
+		sprintf(pub->lbuf,	"hal_PWM_set_Z 0" "\r\n"
 					"hal_PWM_set_DC %i", dc_resolution / 2);
 
-		link_command(pub->lp, pub->ln);
+		link_command(pub->lp, pub->lbuf);
 	}
 
 	nk_spacer(ctx);
@@ -1263,12 +1362,16 @@ page_probe(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	int				config_LU_DRIVE = 1;
+
 	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
 
@@ -1293,10 +1396,29 @@ page_probe(struct public *pub)
 
 	nk_spacer(ctx);
 
+	if (nk_button_label(ctx, "Default")) {
+
+		if (pub->lp->linked != 0) {
+
+			pub->popup_enum = POPUP_RESET_DEFAULT;
+		}
+	}
+
+	nk_spacer(ctx);
+
+	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
+				"Please confirm that you really"
+				" want to reset all measured parameters"
+				" related to the motor") != 0) {
+
+		link_command(pub->lp, "pm_default_probe");
+	}
+
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
+	reg_float(pub, "pm.zone_lpf_wS", "ZONE speed LPF");
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
 	reg_float_um(pub, "pm.const_E", "Motor Kv constant", 1);
 	reg_float(pub, "pm.const_R", "Motor winding resistance");
@@ -1320,117 +1442,122 @@ page_probe(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
+	if (reg != NULL) { config_LU_DRIVE = reg->lval; }
 
-	if (nk_button_label(ctx, "FSM Startup")) {
+	if (		   config_LU_DRIVE == 0
+			|| config_LU_DRIVE == 1) {
 
-		if (link_command(pub->lp, "pm_fsm_startup") != 0) {
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_mode");
-			if (reg != NULL) { reg->fetched = 0; }
+		if (nk_button_label(ctx, "Start FSM")) {
+
+			if (link_command(pub->lp, "pm_fsm_startup") != 0) {
+
+				reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+				if (reg != NULL) { reg->fetched = 0; }
+			}
 		}
-	}
 
-	nk_spacer(ctx);
+		nk_spacer(ctx);
 
-	if (nk_button_label(ctx, "FSM Shutdown")) {
+		if (nk_button_label(ctx, "Stop FSM")) {
 
-		if (link_command(pub->lp, "pm_fsm_shutdown") != 0) {
+			if (link_command(pub->lp, "pm_fsm_shutdown") != 0) {
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_mode");
-			if (reg != NULL) { reg->fetched = 0; }
+				reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+				if (reg != NULL) { reg->fetched = 0; }
+			}
 		}
-	}
 
-	nk_spacer(ctx);
+		nk_spacer(ctx);
 
-	if (nk_button_label(ctx, "Probe E")) {
+		if (nk_button_label(ctx, "Probe E")) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_mode");
+			reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
 
-		if (reg != NULL && reg->lval != 0) {
+			if (reg != NULL && reg->lval != 0) {
 
-			link_command(pub->lp, "pm_probe_const_E");
+				link_command(pub->lp, "pm_probe_const_E");
+			}
 		}
-	}
 
-	nk_spacer(ctx);
+		nk_spacer(ctx);
 
-	if (nk_button_label(ctx, "Probe J")) {
+		if (nk_button_label(ctx, "Probe J")) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_mode");
+			reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
 
-		if (reg != NULL && reg->lval != 0) {
+			if (reg != NULL && reg->lval != 0) {
 
-			link_command(pub->lp, "pm_probe_const_J");
+				link_command(pub->lp, "pm_probe_const_J");
+			}
 		}
-	}
 
-	nk_spacer(ctx);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_mode");
+		reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
 
-	if (reg != NULL) {
+		if (reg != NULL) {
 
-		int		rate;
-
-		if (reg->lval != 0) {
+			int		rate;
 
 			reg->update = 1000;
 
-			rate = 100;
+			rate = (reg->lval != 0) ? 100 : 0;
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_iD");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_iQ");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_wS");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_wS_rpm");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_wS_mmps");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_wS_kmh");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.lu_lpf_torque");
+			if (reg != NULL) { reg->update = rate; }
 		}
-		else {
-			reg->update = 0;
 
-			rate = 0;
+		reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+		reg_float(pub, "pm.lu_iD", "LU current D");
+		reg_float(pub, "pm.lu_iQ", "LU current Q");
+		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+		reg_float(pub, "pm.lu_lpf_torque", "LU torque estimate");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		if (config_LU_DRIVE == 0) {
+
+			reg_float_um(pub, "pm.i_setpoint_torque", "Torque setpoint", 0);
 		}
+		else if (config_LU_DRIVE == 1) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_iD");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_iQ");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_wS");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_wS_rpm");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_wS_mmps");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_wS_kmh");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.lu_lpf_torque");
-		if (reg != NULL) { reg->update = rate; }
+			reg_float_um(pub, "pm.s_setpoint_speed", "Speed setpoint", 1);
+		}
 	}
-
-	reg_enum_errno(pub, "pm.lu_mode", "LU operation mode", 0);
-	reg_float(pub, "pm.lu_iD", "LU current D");
-	reg_float(pub, "pm.lu_iQ", "LU current Q");
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
-	reg_float(pub, "pm.lu_lpf_torque", "LU torque estimate");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
-	reg_float_um(pub, "pm.i_setpoint_torque", "Torque setpoint", 0);
-	reg_float_um(pub, "pm.s_setpoint_speed", "Speed setpoint", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1456,9 +1583,18 @@ page_HAL(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "hal.TIM_mode", "TIM operation mode");
+	reg_enum_combo(pub, "hal.DPS_mode", "DPS operation mode");
 	reg_enum_combo(pub, "hal.PPM_mode", "PPM operation mode");
 	reg_float(pub, "hal.PPM_timebase", "PPM time base");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "hal.DRV.part", "DRV part");
+	reg_float(pub, "hal.DRV.auto_RESET", "DRV automatic reset");
+	reg_float(pub, "hal.DRV.status_raw", "DRV status raw");
+	reg_float(pub, "hal.DRV.gate_current", "DRV gate current");
+	reg_float(pub, "hal.DRV.ocp_level", "DRV OCP level");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1480,21 +1616,19 @@ page_in_STEPDIR(struct public *pub)
 }
 
 static void
-page_in_PPM(struct public *pub)
+page_in_PWM(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg = link_reg_lookup(pub->lp, "hal.PPM_signal_caught");
+	reg = link_reg_lookup(pub->lp, "hal.PPM_caught");
 
 	if (reg != NULL) {
 
 		int		rate;
 
 		reg->update = 200;
-		reg->shown = pub->lp->clock;
-
 		rate = (reg->lval != 0) ? 100 : 0;
 
 		reg = link_reg_lookup(pub->lp, "hal.PPM_get_PERIOD");
@@ -1504,9 +1638,9 @@ page_in_PPM(struct public *pub)
 		if (reg != NULL) { reg->update = rate; }
 	}
 
-	reg_float(pub, "hal.PPM_signal_caught", "PPM signal caught");
-	reg_float(pub, "hal.PPM_get_PERIOD", "PPM period received");
-	reg_float(pub, "hal.PPM_get_PULSE", "PPM pulse received");
+	reg_float(pub, "hal.PPM_caught", "PWM signal caught");
+	reg_float(pub, "hal.PPM_get_PERIOD", "PWM period received");
+	reg_float(pub, "hal.PPM_get_PULSE", "PWM pulse received");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1537,80 +1671,69 @@ page_in_PPM(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg_float(pub, "ap.idle_TIME_s", "IDLE timeout");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 }
 
 static void
-page_in_analog(struct public *pub)
+page_in_knob(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg = link_reg_lookup(pub->lp, "hal.ADC_get_analog_ANG");
+	reg = link_reg_lookup(pub->lp, "hal.ADC_get_knob_ANG");
 	if (reg != NULL) { reg->update = 100; }
 
-	reg = link_reg_lookup(pub->lp, "hal.ADC_get_analog_BRK");
+	reg = link_reg_lookup(pub->lp, "hal.ADC_get_knob_BRK");
 	if (reg != NULL) { reg->update = 100; }
 
-	reg_float(pub, "hal.ADC_get_analog_ANG", "ANG voltage");
-	reg_float(pub, "hal.ADC_get_analog_BRK", "BRK voltage");
+	reg_float(pub, "hal.ADC_get_knob_ANG", "ANG voltage");
+	reg_float(pub, "hal.ADC_get_knob_BRK", "BRK voltage");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.analog_ENABLED", "Analog mode");
-	reg_linked(pub, "ap.analog_reg_ID", "Control register ID");
-	reg_enum_toggle(pub, "ap.analog_STARTUP", "Startup if ANG is in range");
-	reg_float(pub, "ap.analog_in_ANG_0", "ANG range 0");
-	reg_float(pub, "ap.analog_in_ANG_1", "ANG range 1");
-	reg_float(pub, "ap.analog_in_ANG_2", "ANG range 2");
-	reg_float(pub, "ap.analog_in_BRK_0", "BRK range 0");
-	reg_float(pub, "ap.analog_in_BRK_1", "BRK range 1");
-	reg_float(pub, "ap.analog_in_lost_0", "Lost range 0");
-	reg_float(pub, "ap.analog_in_lost_1", "Lost range 1");
-	reg_float(pub, "ap.analog_control_ANG_0", "Control range 0");
-	reg_float(pub, "ap.analog_control_ANG_1", "Control range 1");
-	reg_float(pub, "ap.analog_control_ANG_2", "Control range 2");
-	reg_float(pub, "ap.analog_control_BRK", "BRK control");
+	reg_enum_toggle(pub, "ap.knob_ENABLED", "Knob control");
+	reg_linked(pub, "ap.knob_reg_ID", "Control register ID");
+	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup on ANG in range");
+	reg_float(pub, "ap.knob_in_ANG_0", "ANG range 0");
+	reg_float(pub, "ap.knob_in_ANG_1", "ANG range 1");
+	reg_float(pub, "ap.knob_in_ANG_2", "ANG range 2");
+	reg_float(pub, "ap.knob_in_BRK_0", "BRK range 0");
+	reg_float(pub, "ap.knob_in_BRK_1", "BRK range 1");
+	reg_float(pub, "ap.knob_in_lost_0", "Lost range 0");
+	reg_float(pub, "ap.knob_in_lost_1", "Lost range 1");
+	reg_float(pub, "ap.knob_control_ANG_0", "Control range 0");
+	reg_float(pub, "ap.knob_control_ANG_1", "Control range 1");
+	reg_float(pub, "ap.knob_control_ANG_2", "Control range 2");
+	reg_float(pub, "ap.knob_control_BRK", "BRK control");
 
-	reg = link_reg_lookup(pub->lp, "ap.analog_reg_ID");
+	reg = link_reg_lookup(pub->lp, "ap.knob_reg_ID");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "ap.analog_control_ANG_0");
+		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG_0");
 		if (reg != NULL) { reg->fetched = 0; }
 
-		reg = link_reg_lookup(pub->lp, "ap.analog_control_ANG_1");
+		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG_1");
 		if (reg != NULL) { reg->fetched = 0; }
 
-		reg = link_reg_lookup(pub->lp, "ap.analog_control_ANG_2");
+		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG_2");
 		if (reg != NULL) { reg->fetched = 0; }
 
-		reg = link_reg_lookup(pub->lp, "ap.analog_control_BRK");
+		reg = link_reg_lookup(pub->lp, "ap.knob_control_BRK");
 		if (reg != NULL) { reg->fetched = 0; }
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.idle_ENABLED", "IDLE mode");
-	reg_linked(pub, "ap.idle_reg_ID", "IDLE register ID");
-	reg_float(pub, "ap.idle_control_tol_0", "IDLE range 0");
-	reg_float(pub, "ap.idle_control_tol_1", "IDLE range 1");
 	reg_float(pub, "ap.idle_TIME_s", "IDLE timeout");
-
-	reg = link_reg_lookup(pub->lp, "ap.idle_reg_ID");
-
-	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
-
-		reg = link_reg_lookup(pub->lp, "ap.idle_control_tol_0");
-		if (reg != NULL) { reg->fetched = 0; }
-
-		reg = link_reg_lookup(pub->lp, "ap.idle_control_tol_1");
-		if (reg != NULL) { reg->fetched = 0; }
-	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1624,16 +1747,18 @@ page_thermal(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_float(pub, "ap.ntc_PCB.r_balance", "NTC balance (PCB)");
-	reg_float(pub, "ap.ntc_PCB.r_ntc_0", "NTC resistance at Ta");
+	reg_enum_combo(pub, "ap.ntc_PCB.type", "NTC type (PCB)");
+	reg_float(pub, "ap.ntc_PCB.balance", "NTC balance (PCB)");
+	reg_float(pub, "ap.ntc_PCB.ntc_0", "NTC resistance at Ta");
 	reg_float(pub, "ap.ntc_PCB.ta_0", "NTC Ta (PCB)");
 	reg_float(pub, "ap.ntc_PCB.betta", "NTC betta (PCB)");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.ntc_EXT.r_balance", "NTC balance (EXT)");
-	reg_float(pub, "ap.ntc_EXT.r_ntc_0", "NTC resistance at Ta");
+	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type (EXT)");
+	reg_float(pub, "ap.ntc_EXT.balance", "NTC balance (EXT)");
+	reg_float(pub, "ap.ntc_EXT.ntc_0", "NTC resistance at Ta");
 	reg_float(pub, "ap.ntc_EXT.ta_0", "NTC Ta (EXT)");
 	reg_float(pub, "ap.ntc_EXT.betta", "NTC betta (EXT)");
 
@@ -1651,17 +1776,17 @@ page_thermal(struct public *pub)
 
 	reg_float(pub, "ap.temp_PCB", "Temperature PCB");
 	reg_float(pub, "ap.temp_EXT", "Temperature EXT");
-	reg_float(pub, "ap.temp_INT", "Temperature Core");
+	reg_float(pub, "ap.temp_INT", "Temperature MCU");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.heat_PCB_halt", "Halt threshold (PCB)");
-	reg_float(pub, "ap.heat_PCB_on_FAN", "Fan ON threshold (PCB)");
-	reg_float(pub, "ap.heat_PCB_derated", "Derated current (PCB)");
-	reg_float(pub, "ap.heat_EXT_halt", "Halt threshold (EXT)");
-	reg_float(pub, "ap.heat_EXT_derated", "Derated current (EXT)");
-	reg_float(pub, "ap.heat_recovery_gap", "Halt recovery gap");
+	reg_float(pub, "ap.tpro_PCB_on_halt", "Halt threshold (on PCB)");
+	reg_float(pub, "ap.tpro_PCB_on_FAN", "Fan ON threshold (on PCB)");
+	reg_float(pub, "ap.tpro_derated_PCB", "Derated current (on PCB)");
+	reg_float(pub, "ap.tpro_EXT_on_halt", "Halt threshold (on EXT)");
+	reg_float(pub, "ap.tpro_derated_EXT", "Derated current (on EXT)");
+	reg_float(pub, "ap.tpro_recovery", "Thermal recovery");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1687,20 +1812,20 @@ page_config(struct public *pub)
 
 	reg_enum_combo(pub, "pm.config_NOP", "Number of motor phases");
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
-	reg_enum_combo(pub, "pm.config_IFB", "Current measurement method");
+	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_enum_toggle(pub, "pm.config_VSI_CIRCULAR", "Circular SVPWM clamping");
-	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM in middle");
+	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM (in middle)");
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
-	reg_enum_toggle(pub, "pm.config_LU_ESTIMATE_FLUX", "Sensorless FLUX");
-	reg_enum_toggle(pub, "pm.config_LU_ESTIMATE_HFI", "Sensorless HFI");
-	reg_enum_toggle(pub, "pm.config_LU_SENSOR_HALL", "Discrete HALL sensors");
-	reg_enum_toggle(pub, "pm.config_LU_SENSOR_ABI", "ABI incremental encoder");
-	reg_enum_combo(pub, "pm.config_FA_PRECEDENCE", "Servo precedence");
-	reg_enum_combo(pub, "pm.config_DRIVE", "Drive loop");
+	reg_enum_combo(pub, "pm.config_LU_ESTIMATE_FLUX", "Estimate FLUX");
+	reg_enum_toggle(pub, "pm.config_LU_ESTIMATE_HFI", "Estimate HFI");
+	reg_enum_toggle(pub, "pm.config_LU_SENSOR_HALL", "Sensor discrete HALL");
+	reg_enum_toggle(pub, "pm.config_LU_SENSOR_ABI", "Sensor ABI encoder");
+	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Location source");
+	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive loop");
 	reg_enum_toggle(pub, "pm.config_HFI_MAJOR", "HFI major axis inverse");
 	reg_enum_toggle(pub, "pm.config_HOLDING_BRAKE", "Holding brake feature");
 	reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limit feature");
@@ -1730,7 +1855,6 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_current_weak", "Probe weak current");
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
 	reg_float(pub, "pm.probe_freq_sine_hz", "Probe sine frequency");
-	reg_float(pub, "pm.probe_speed_maximal_pc", "Probe speed percentage");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
 	reg_float_um(pub, "pm.probe_speed_detached", "Probe speed (detached)", 0);
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
@@ -1742,18 +1866,23 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.fault_voltage_tol", "Voltage tolerance");
 	reg_float(pub, "pm.fault_current_tol", "Current tolerance");
 	reg_float(pub, "pm.fault_accuracy_tol", "Accuracy tolerance");
+	reg_float(pub, "pm.fault_terminal_tol", "Terminal tolerance");
 	reg_float_auto(pub, "pm.fault_current_halt", "Current halt threshold");
 	reg_float(pub, "pm.fault_voltage_halt", "Voltage halt threshold");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.lu_transition", "LU transition rate");
+	reg_float(pub, "pm.lu_transient", "LU transient rate");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
@@ -1766,11 +1895,26 @@ page_config(struct public *pub)
 		}
 	}
 
-	if (ng_popup_window(pub, POPUP_RESET_DEFAULT,
+	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
 				" want to reset PMC configuration") != 0) {
 
-		link_command(pub->lp, "pm_default");
+		link_command(pub->lp,	"pm_default_all" "\r\n"
+					"reg pm.");
+	}
+
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Save TXT")) {
+
+		/* TODO */
+	}
+
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Load TXT")) {
+
+		/* TODO */
 	}
 
 	nk_spacer(ctx);
@@ -1805,12 +1949,6 @@ page_lu_forced(struct public *pub)
 
 		if (link_command(pub->lp, "reg pm.forced_maximal 0") != 0) {
 
-			reg = link_reg_lookup(pub->lp, "pm.forced_maximal");
-			if (reg != NULL) { reg += reg->um_sel; reg->fetched = 0; }
-
-			reg = link_reg_lookup(pub->lp, "pm.forced_reverse");
-			if (reg != NULL) { reg += reg->um_sel; reg->fetched = 0; }
-
 			reg = link_reg_lookup(pub->lp, "pm.forced_accel");
 			if (reg != NULL) { reg += reg->um_sel; reg->fetched = 0; }
 		}
@@ -1829,49 +1967,60 @@ page_lu_FLUX(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_float(pub, "pm.flux_E", "FLUX linkage");
-	reg_float(pub, "pm.flux_F_g", "FLUX position estimate");
-	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
-	reg_enum_errno(pub, "pm.flux_mode", "FLUX mode", 0);
-	reg_float_um(pub, "pm.flux_lpf_wS", "FLUX speed LPF", 0);
+	reg_float(pub, "pm.flux_E", "Flux linkage");
+	reg_float_um(pub, "pm.flux_wS", "Speed estimate", 0);
+	reg_float(pub, "pm.flux_QZ", "QZ equivalent shift");
+	reg_enum_errno(pub, "pm.flux_ZONE", "Speed ZONE", 0);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.detach_take_U", "Detached take voltage");
-	reg_float(pub, "pm.detach_gain_AD", "Detached adaptive gain");
-	reg_float(pub, "pm.detach_gain_SF", "Detached speed gain");
+	reg_float(pub, "pm.detach_level_U", "Detached voltage level");
+	reg_float(pub, "pm.detach_trip_AD", "Detached trip gain");
+	reg_float(pub, "pm.detach_gain_SF", "Detached speed loop gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.flux_gain_IN", "FLUX initial gain");
-	reg_float(pub, "pm.flux_gain_LO", "FLUX low speed gain");
-	reg_float(pub, "pm.flux_gain_HI", "FLUX high speed gain");
-	reg_float(pub, "pm.flux_gain_AD", "FLUX adaptive gain");
-	reg_float(pub, "pm.flux_gain_SF", "FLUX speed loop gain");
-	reg_float(pub, "pm.flux_gain_IF", "FLUX torque gain");
+	reg_float(pub, "pm.flux_trip_AD", "Speed trip gain");
+	reg_float(pub, "pm.flux_gain_IN", "Initial gain");
+	reg_float(pub, "pm.flux_gain_LO", "Low flux gain");
+	reg_float(pub, "pm.flux_gain_HI", "High flux gain");
+	reg_float(pub, "pm.flux_gain_SF", "Speed loop gain");
+	reg_float(pub, "pm.flux_gain_IF", "Torque gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_auto(pub, "pm.flux_MPPE", "Random peak to peak noise");
-	reg_float(pub, "pm.flux_URE", "Uncertainty due to resistance");
-	reg_float(pub, "pm.flux_gain_TAKE", "Take threshold");
-	reg_float(pub, "pm.flux_gain_GIVE", "Give threshold");
+	reg_float(pub, "pm.flux_gain_DA", "D current gain");
+	reg_float(pub, "pm.flux_gain_QA", "Q current gain");
+	reg_float(pub, "pm.flux_gain_DP", "D position gain");
+	reg_float(pub, "pm.flux_gain_DS", "D speed gain");
+	reg_float(pub, "pm.flux_gain_QS", "Q speed gain");
+	reg_float(pub, "pm.flux_gain_QZ", "Q shift gain");
 
-	reg = link_reg_lookup(pub->lp, "pm.flux_MPPE");
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float_auto(pub, "pm.zone_MPPE", "Random peak to peak noise");
+	reg_float(pub, "pm.zone_MURE", "Uncertainty due to resistance");
+	reg_float(pub, "pm.zone_gain_TA", "Take threshold");
+	reg_float(pub, "pm.zone_gain_GI", "Give threshold");
+	reg_float(pub, "pm.zone_gain_ES", "Flux deviation level");
+	reg_float(pub, "pm.zone_gain_LP_S", "Speed LPF gain");
+
+	reg = link_reg_lookup(pub->lp, "pm.zone_MPPE");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_URE");
+		reg = link_reg_lookup(pub->lp, "pm.zone_MURE");
 		if (reg != NULL) { reg->fetched = 0; }
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_gain_TAKE");
+		reg = link_reg_lookup(pub->lp, "pm.zone_gain_TA");
 		if (reg != NULL) { reg->fetched = 0; }
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_gain_GIVE");
+		reg = link_reg_lookup(pub->lp, "pm.zone_gain_GI");
 		if (reg != NULL) { reg->fetched = 0; }
 	}
 
@@ -1881,10 +2030,213 @@ page_lu_FLUX(struct public *pub)
 }
 
 static void
+pub_drawing_HFI(struct public *pub, float Fa, int Zp)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
+	struct nk_rect			space;
+	enum nk_widget_layout_states	state;
+
+	float				tfm[4], arrow[12], pbuf[12];
+	float				radius, thickness;
+	int				tooth;
+
+	state = nk_widget(&space, ctx);
+	if (!state) return ;
+
+	radius = space.w / 2.f;
+	thickness = radius / 20.f;
+
+	space.x += thickness;
+	space.y += thickness;
+	space.w += - 2.f * thickness;
+	space.h += - 2.f * thickness;
+
+	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DRAWING_PEN]);
+
+	space.x += thickness;
+	space.y += thickness;
+	space.w += - 2.f * thickness;
+	space.h += - 2.f * thickness;
+
+	nk_fill_circle(canvas, space, nk->table[NK_COLOR_WINDOW]);
+
+	tfm[0] = space.x + space.w / 2.f;
+	tfm[1] = space.y + space.h / 2.f;
+
+	if (Zp > 1) {
+
+		arrow[0] = .7f * radius;
+		arrow[1] = - .5f * thickness;
+		arrow[2] = .7f * radius;
+		arrow[3] = .5f * thickness;
+		arrow[4] = radius - 1.5f * thickness;
+		arrow[5] = .5f * thickness;
+		arrow[6] = radius - 1.5f * thickness;
+		arrow[7] = 0.f;
+		arrow[8] = radius - 1.5f * thickness;
+		arrow[9] = - .5f * thickness;
+	}
+	else {
+		Zp = 0;
+	}
+
+	for (tooth = 0; tooth < Zp; ++tooth) {
+
+		float		Za = (float) tooth * (float) (2. * M_PI) / (float) Zp;
+
+		tfm[2] = cosf(Za);
+		tfm[3] = - sinf(Za);
+
+		pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
+		pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
+		pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
+		pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
+		pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
+		pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
+		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
+		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
+		pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
+		pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
+
+		nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_DRAWING_PEN]);
+	}
+
+	if (isfinite(Fa) != 0) {
+
+		tfm[2] = cosf(Fa);
+		tfm[3] = - sinf(Fa);
+
+		arrow[0] = - .5f * thickness;
+		arrow[1] = - .5f * thickness;
+		arrow[2] = - .5f * thickness;
+		arrow[3] = .5f * thickness;
+		arrow[4] = radius - 1.5f * thickness;
+		arrow[5] = .5f * thickness;
+		arrow[6] = radius - 1.2f * thickness;
+		arrow[7] = 0.f;
+		arrow[8] = radius - 1.5f * thickness;
+		arrow[9] = - .5f * thickness;
+
+		pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
+		pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
+		pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
+		pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
+		pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
+		pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
+		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
+		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
+		pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
+		pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
+
+		nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_EDIT_NUMBER]);
+	}
+}
+
+static void
 page_lu_HFI(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
+
+	int				dw_HFI = pub->fe_def_size_x / 3;
+
+	reg_float(pub, "pm.hfi_inject_sine", "Injected current");
+	reg_float_um(pub, "pm.hfi_maximal", "Maximal speed", 0);
+	reg_float(pub, "pm.hfi_INJS", "Frequency ratio");
+	reg_float(pub, "pm.hfi_SKIP", "Skipped cycles");
+	reg_float(pub, "pm.hfi_ESTI", "Position estimate cycles");
+	reg_float(pub, "pm.hfi_TORQ", "Torque production cycles");
+	reg_float(pub, "pm.hfi_POLA", "Flux polarity");
+	reg_float(pub, "pm.hfi_gain_SF", "Speed loop gain");
+	reg_float(pub, "pm.hfi_gain_IF", "Torque gain");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+
+	if (reg != NULL) {
+
+		int		rate, fast;
+
+		reg->update = 1000;
+
+		rate = (reg->lval != 0) ? 200 : 0;
+		fast = (reg->lval != 0) ? 20  : 0;
+
+		reg = link_reg_lookup(pub->lp, "pm.lu_location");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = fast; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hfi_im_L1");
+		if (reg != NULL) { reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hfi_im_L2");
+		if (reg != NULL) { reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hfi_im_R");
+		if (reg != NULL) { reg->update = rate; }
+	}
+
+	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+	reg_float_um(pub, "pm.lu_location", "LU absolute location", 1);
+	reg_float(pub, "pm.hfi_im_L1", "HF inductance L1");
+	reg_float(pub, "pm.hfi_im_L2", "HF inductance L2");
+	reg_float(pub, "pm.hfi_im_R", "HF active impedance");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, dw_HFI + 20);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+	nk_layout_row_template_push_static(ctx, dw_HFI + 20);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+
+	if (nk_group_begin(ctx, "HFI", NK_WINDOW_BORDER)) {
+
+		nk_layout_row_static(ctx, dw_HFI, dw_HFI, 1);
+
+		reg = link_reg_lookup(pub->lp, "pm.lu_location");
+
+		if (reg != NULL) {
+
+			if (reg->um_sel == 0) {
+
+				reg += reg->um_sel;
+
+				pub_drawing_HFI(pub, reg->fval, 0);
+			}
+			else if (reg->um_sel == 1) {
+
+				float		Fa;
+				int		Zp = 0;
+
+				reg += reg->um_sel;
+				Fa = reg->fval * (float) (M_PI / 180.);
+
+				reg = link_reg_lookup(pub->lp, "pm.const_Zp");
+				if (reg != NULL) { Zp = reg->lval; }
+
+				pub_drawing_HFI(pub, Fa, Zp);
+			}
+			else if (reg->um_sel == 2) {
+
+				reg += reg->um_sel;
+
+				pub_drawing_HFI(pub, reg->fval, 0);
+			}
+		}
+
+		nk_group_end(ctx);
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 }
 
 static void
@@ -1927,7 +2279,7 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_mode");
+	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
 
@@ -1942,7 +2294,7 @@ page_wattage(struct public *pub)
 		if (reg != NULL) { reg->update = rate; }
 	}
 
-	reg_float(pub, "pm.watt_lpf_wP", "Wattage");
+	reg_float(pub, "pm.watt_lpf_wP", "Wattage at now");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -1964,12 +2316,20 @@ page_current(struct public *pub)
 
 	reg_float_um(pub, "pm.i_setpoint_torque", "Torque setpoint", 0);
 	reg_float_auto(pub, "pm.i_maximal", "Maximal forward current");
-	reg_float_auto(pub, "pm.i_reverse", "Maximal reverse current");
-	reg_float(pub, "pm.i_derated_HFI", "Derated from HFI");
+	reg_float(pub, "pm.i_reverse", "Maximal reverse current");
 	reg_float(pub, "pm.i_slew_rate", "Slew rate");
 	reg_float(pub, "pm.i_tol_Z", "Dead Zone");
-	reg_float_auto(pub, "pm.i_gain_P", "Current LOOP gain P");
-	reg_float(pub, "pm.i_gain_I", "Current LOOP gain I");
+	reg_float_auto(pub, "pm.i_gain_P", "Proportional gain P");
+	reg_float(pub, "pm.i_gain_I", "Integral gain I");
+
+	reg = link_reg_lookup(pub->lp, "pm.i_maximal");
+
+	if (		reg != NULL
+			&& reg->fetched == pub->lp->clock) {
+
+		reg = link_reg_lookup(pub->lp, "pm.i_reverse");
+		if (reg != NULL) { reg->fetched = 0; }
+	}
 
 	reg = link_reg_lookup(pub->lp, "pm.i_gain_P");
 
@@ -1987,13 +2347,13 @@ page_current(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.weak_maximal", "Maximal weakening");
-	reg_float(pub, "pm.weak_gain_EU", "Weak gain");
+	reg_float(pub, "pm.weak_gain_EU", "Weak regulation gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.v_maximal", "Maximal voltage");
-	reg_float(pub, "pm.v_reverse", "Maximal reverse");
+	reg_float(pub, "pm.v_maximal", "Maximal forward voltage");
+	reg_float(pub, "pm.v_reverse", "Maximal reverse voltage");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2011,22 +2371,22 @@ page_speed(struct public *pub)
 	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 0);
 	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 0);
-	reg_float(pub, "pm.s_linspan", "Regulation span");
+	reg_float(pub, "pm.s_linspan", "Regulation span (rigidity)");
 	reg_float(pub, "pm.s_tol_Z", "Dead Zone");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_auto(pub, "pm.s_gain_P", "Speed loop gain P");
-	reg_float(pub, "pm.s_gain_S", "Speed loop gain S");
-	reg_float(pub, "pm.lu_gain_TF", "Torque estimate gain");
+	reg_float_auto(pub, "pm.s_gain_P", "Proportional gain P");
+	reg_float(pub, "pm.s_gain_H", "Boost on HFI gain H");
+	reg_float(pub, "pm.lu_gain_TQ", "Torque estimate gain");
 
 	reg = link_reg_lookup(pub->lp, "pm.s_gain_P");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_gain_TF");
+		reg = link_reg_lookup(pub->lp, "pm.lu_gain_TQ");
 		if (reg != NULL) { reg->fetched = 0; }
 	}
 
@@ -2049,7 +2409,7 @@ page_mileage(struct public *pub)
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	reg_float(pub, "pm.im_total_revol", "Total revolutions");
+	reg_float(pub, "pm.lu_total_revol", "Total revolutions");
 	reg_float_um(pub, "pm.im_distance", "Total distance traveled", 1);
 	reg_float_um(pub, "pm.im_consumed", "Consumed energy", 0);
 	reg_float_um(pub, "pm.im_reverted", "Reverted energy", 0);
@@ -2068,28 +2428,115 @@ page_telemetry(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	if (pub->telemetry.started == 0) {
+
+		pub->telemetry.started = 1;
+		pub->telemetry.autoupdate = 1;
+	}
+
 	reg_float(pub, "tlm.freq_grab_hz", "Frequency of single grab");
 	reg_float(pub, "tlm.freq_live_hz", "Live data frequency");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_linked(pub, "tlm.reg_ID_0", "Tele register ID");
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
 
-	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_0");
-	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0);
+	if (nk_button_label(ctx, "Grab")) {
 
-	reg_linked(pub, "tlm.reg_ID_1", "Tele register ID");
+		link_command(pub->lp, "tlm_grab");
+	}
 
-	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_1");
-	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0);
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Flush GP")) {
+
+		/*system("gp");*/
+	}
+
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Live GP")) {
+
+	}
+
+	nk_spacer(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_linked(pub, "tlm.reg_ID_0", "Tele register ID 0");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_0");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_1", "Tele register ID 1");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_1");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_2", "Tele register ID 2");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_2");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_3", "Tele register ID 3");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_3");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_4", "Tele register ID 4");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_4");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_5", "Tele register ID 5");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_5");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_6", "Tele register ID 6");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_6");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_7", "Tele register ID 7");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_7");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_8", "Tele register ID 8");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_8");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	reg_linked(pub, "tlm.reg_ID_9", "Tele register ID 9");
+
+	reg = link_reg_lookup(pub->lp, "tlm.reg_ID_9");
+	reg_float_prog(pub, (reg != NULL) ? reg->lval : 0);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_checkbox_label(ctx, "Update telemetry continuously",
+			&pub->telemetry.autoupdate);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 	nk_spacer(ctx);
 }
 
 static void
-page_flash_block_colored(struct nk_sdl *nk, const int sym)
+pub_drawing_brick_colored(struct nk_sdl *nk, const int sym)
 {
 	struct nk_context		*ctx = &nk->ctx;
 
@@ -2129,7 +2576,7 @@ page_flash(struct public *pub)
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
-	int				page, block, len, sym;
+	int				page, block, page_len, sym;
 
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
@@ -2138,30 +2585,21 @@ page_flash(struct public *pub)
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
 
 	if (nk_button_label(ctx, "Program")) {
 
 		link_command(pub->lp,	"flash_prog" "\r\n"
-					"flash_info_map");
+					"flash_info");
 	}
 
 	nk_spacer(ctx);
 
-	if (nk_button_label(ctx, "Info")) {
-
-		link_command(pub->lp, "flash_info_map");
-	}
-
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "Cleanup")) {
+	if (nk_button_label(ctx, "Wipe")) {
 
 		if (lp->linked != 0) {
 
-			pub->popup_enum = POPUP_FLASH_CLEANUP;
+			pub->popup_enum = POPUP_FLASH_WIPE;
 		}
 	}
 
@@ -2177,15 +2615,15 @@ page_flash(struct public *pub)
 
 	nk_spacer(ctx);
 
-	if (ng_popup_window(pub, POPUP_FLASH_CLEANUP,
+	if (pub_popup_ok_cancel(pub, POPUP_FLASH_WIPE,
 				"Please confirm that you really"
-				" want to cleanup flash storage") != 0) {
+				" want to WIPE flash storage") != 0) {
 
-		link_command(pub->lp,	"flash_cleanup" "\r\n"
-					"flash_info_map");
+		link_command(pub->lp,	"flash_wipe" "\r\n"
+					"flash_info");
 	}
 
-	if (ng_popup_window(pub, POPUP_SYSTEM_REBOOT,
+	if (pub_popup_ok_cancel(pub, POPUP_SYSTEM_REBOOT,
 				"Please confirm that you really"
 				" want to reboot PMC") != 0) {
 
@@ -2195,20 +2633,21 @@ page_flash(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, 300);
+	page_len = strlen(lp->flash_map[0]);
+
+	nk_layout_row_template_begin(ctx, pub->fe_def_size_x / 3);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_push_variable(ctx, 1);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_end(ctx);
 
 	nk_spacer(ctx);
 
-	if (nk_group_begin(ctx, "info", NK_WINDOW_BORDER | NK_WINDOW_DYNAMIC)) {
-
-		len = strlen(lp->flash_map[0]);
+	if (nk_group_begin(ctx, "INFO", NK_WINDOW_BORDER)) {
 
 		nk_layout_row_template_begin(ctx, 0);
 
-		for (block = 0; block < len; ++block) {
+		for (block = 0; block < page_len; ++block) {
 
 			nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 		}
@@ -2220,11 +2659,11 @@ page_flash(struct public *pub)
 			if (strlen(lp->flash_map[page]) == 0)
 				break;
 
-			for (block = 0; block < len; ++block) {
+			for (block = 0; block < page_len; ++block) {
 
 				sym = lp->flash_map[page][block];
 
-				page_flash_block_colored(nk, sym);
+				pub_drawing_brick_colored(nk, sym);
 			}
 		}
 
@@ -2250,11 +2689,19 @@ page_flash(struct public *pub)
 		pub->popup_enum = POPUP_FLASH_ERRNO;
 	}
 
-	ng_popup_window_info(pub, POPUP_FLASH_ERRNO, pub->popup_msg);
+	pub_popup_message(pub, POPUP_FLASH_ERRNO, pub->popup_msg);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 	nk_spacer(ctx);
+}
+
+static void
+page_upgrade(struct public *pub)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
+
 }
 
 static void
@@ -2280,7 +2727,7 @@ menu_select_button(struct public *pub, const char *title, void (* pfunc) (struct
 
 		if (pub->menu.page_current != pub->menu.page_selected) {
 
-			nk_group_set_scroll(ctx, "page", 0, 0);
+			nk_group_set_scroll(ctx, "PAGE", 0, 0);
 
 			pub->menu.page_pushed = pub->menu.page_current;
 		}
@@ -2306,19 +2753,20 @@ menu_group_layout(struct public *pub)
 	nk_layout_row_template_push_variable(ctx, 1);
 	nk_layout_row_template_end(ctx);
 
-	if (nk_group_begin(ctx, "menu", 0)) {
+	if (nk_group_begin(ctx, "MENU", 0)) {
 
 		pub->menu.page_current = 0;
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
+		menu_select_button(pub, "Serial", &page_serial);
 		menu_select_button(pub, "Diagnose", &page_diagnose);
 		menu_select_button(pub, "Probe", &page_probe);
 		menu_select_button(pub, "HAL", &page_HAL);
 		menu_select_button(pub, "in Network", &page_in_network);
 		menu_select_button(pub, "in STEP/DIR", &page_in_STEPDIR);
-		menu_select_button(pub, "in PPM", &page_in_PPM);
-		menu_select_button(pub, "in Analog", &page_in_analog);
+		menu_select_button(pub, "in PWM", &page_in_PWM);
+		menu_select_button(pub, "in Knob", &page_in_knob);
 		menu_select_button(pub, "Thermal", &page_thermal);
 		menu_select_button(pub, "Config", &page_config);
 		menu_select_button(pub, "lu Forced", &page_lu_forced);
@@ -2326,6 +2774,7 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "lu HFI", &page_lu_HFI);
 		menu_select_button(pub, "lu HALL", &page_lu_HALL);
 		menu_select_button(pub, "lu ABI", &page_lu_ABI);
+		menu_select_button(pub, "lu SIN/COS", &page_lu_SINCOS);
 		menu_select_button(pub, "Wattage", &page_wattage);
 		menu_select_button(pub, "lp Current", &page_current);
 		menu_select_button(pub, "lp Speed", &page_speed);
@@ -2333,13 +2782,14 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "Mileage", &page_mileage);
 		menu_select_button(pub, "Telemetry", &page_telemetry);
 		menu_select_button(pub, "Flash", &page_flash);
+		menu_select_button(pub, "Upgrade", &page_upgrade);
 
 		pub->menu.page_selected = pub->menu.page_pushed;
 
 		nk_group_end(ctx);
 	}
 
-	if (nk_group_begin(ctx, "page", 0)) {
+	if (nk_group_begin(ctx, "PAGE", 0)) {
 
 		(void) pub->menu.pagetab[pub->menu.page_selected] (pub);
 
@@ -2349,20 +2799,25 @@ menu_group_layout(struct public *pub)
 
 int main(int argc, char **argv)
 {
+	struct config_pmcfe	*fe;
 	struct nk_sdl		*nk;
 	struct link_pmc		*lp;
 	struct public		*pub;
 
 	setlocale(LC_NUMERIC, "C");
 
+	fe = calloc(1, sizeof(struct config_pmcfe));
 	nk = calloc(1, sizeof(struct nk_sdl));
 	lp = calloc(1, sizeof(struct link_pmc));
 	pub = calloc(1, sizeof(struct public));
 
+	pub->fe = fe;
 	pub->nk = nk;
 	pub->lp = lp;
 
-	if (0) {
+	config_open(pub->fe);
+
+	if (fe->windowsize == 0) {
 
 		pub->fe_def_size_x = 900;
 		pub->fe_def_size_y = 600;
@@ -2431,11 +2886,9 @@ int main(int argc, char **argv)
 
 			nk->idled = 0;
 		}
-
-		if (nk->updated + 100 < nk->clock) {
-
+		else {
 			nk->idled += 1;
-			nk->active = (nk->idled < 10) ? 1 : 0;
+			nk->active = (nk->idled < 100) ? 1 : 0;
 		}
 
 		if (nk->active != 0) {
@@ -2448,11 +2901,11 @@ int main(int argc, char **argv)
 				nk->ctx.style.window.header.active =
 					nk_style_item_color(nk->table[NK_COLOR_ENABLED]);
 
-				sprintf(pub->ln, " %.77s", lp->hwinfo);
+				sprintf(pub->lbuf, " %.77s", lp->hwinfo);
 
 				if (lp->network[0] != 0) {
 
-					sprintf(pub->ln + strlen(pub->ln),
+					sprintf(pub->lbuf + strlen(pub->lbuf),
 							" [%.32s]", lp->network);
 				}
 			}
@@ -2460,10 +2913,10 @@ int main(int argc, char **argv)
 				nk->ctx.style.window.header.active =
 					nk_style_item_color(nk->table[NK_COLOR_HEADER]);
 
-				pub->ln[0] = 0;
+				sprintf(pub->lbuf, " Not linked to PMC");
 			}
 
-			if (nk_begin(&nk->ctx, pub->ln, bounds, NK_WINDOW_TITLE)) {
+			if (nk_begin(&nk->ctx, pub->lbuf, bounds, NK_WINDOW_TITLE)) {
 
 				menu_group_layout(pub);
 

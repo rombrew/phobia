@@ -20,8 +20,8 @@ First you need to enable the appropriate mode of the PPM interface.
 	# reg hal.PPM_mode 1
 
 Now you can see how the controller receives the control signal. If variable
-**hal.PPM_signal_caught** is 1 then pulse is caught. Use HAL registers to view
-pulse parameters.
+**hal.PPM_caught** is 1 then pulse is caught. Use HAL registers to view pulse
+parameters.
 
 	# reg hal.PPM_get_PERIOD
 	# reg hal.PPM_get_PULSE
@@ -43,7 +43,7 @@ of maximal no load speed. There is a variable **pm.s_setpoint_pc**.
 Note that setting the control variable does not enable appropriate control loop
 automatically. You may need to enable appropriate control mode explicitly.
 
-	# reg pm.config_DRIVE <x>
+	# reg pm.config_LU_DRIVE <x>
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.

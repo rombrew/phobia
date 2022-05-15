@@ -11,6 +11,7 @@ inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 int m_isfinitef(float x);
 
 void m_rotatef(float x[2], float rval);
+float m_wrapf(float angle);
 void m_rsumf(float *sum, float *rem, float val);
 
 float m_atan2f(float y, float x);

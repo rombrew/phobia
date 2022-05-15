@@ -3,8 +3,16 @@
 
 #include "libc.h"
 
+#include "hwdefs.h"
+
 #include "adc.h"
+#ifdef HW_HAVE_NETWORK_CAN
 #include "can.h"
+#endif /* HW_HAVE_NETWORK_CAN */
+#include "dps.h"
+#ifdef HW_HAVE_PART_DRV_XX
+#include "drv.h"
+#endif /* HW_HAVE_PART_DRV_XX */
 #include "flash.h"
 #include "gpio.h"
 #include "ppm.h"
@@ -15,8 +23,6 @@
 #include "usart.h"
 #include "wd.h"
 
-#include "hwdefs.h"
-
 #define LD_CCRAM			__attribute__ ((section(".ccram")))
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
@@ -24,32 +30,37 @@
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
 
-#define GPIO_BOOST_12V			XGPIO_DEF2('B', 2)
+#define GPIO_ADC_TEMPINT		XGPIO_DEF3('H', 0, 16)
+#define GPIO_ADC_VREFINT		XGPIO_DEF3('H', 0, 17)
 
-#define GPIO_SWDIO			XGPIO_DEF4('A', 13)
-#define GPIO_SWCLK			XGPIO_DEF4('A', 14)
+#define GPIO_SWDIO			XGPIO_DEF2('A', 13)
+#define GPIO_SWCLK			XGPIO_DEF2('A', 14)
 
 #define GPIO_DAC_1			GPIO_SPI_NSS
 #define GPIO_DAC_2			GPIO_SPI_SCK
 
 enum {
-	LEG_A				= 1,
-	LEG_B				= 2,
-	LEG_C				= 4
+	LEG_A				= 1U,
+	LEG_B				= 2U,
+	LEG_C				= 4U
 };
 
 enum {
-	TIM_DISABLED			= 0,
-	TIM_DRIVE_HALL,
-	TIM_DRIVE_ABI,
+	DPS_DISABLED			= 0,
+	DPS_DRIVE_HALL,
+	DPS_DRIVE_ABI,
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
-	PPM_STEP_DIR,
 	PPM_OUTPULSE,
+	PPM_STEP_DIR,
 	PPM_BACKUP_ABI,
+};
+
+enum {
+	OPT_GPIO_FILTER_ON		= 2U,
 };
 
 typedef struct {
@@ -57,8 +68,8 @@ typedef struct {
 	u32_t		ld_begin;
 	u32_t		ld_end;
 
-	const char	hwrevision[16];	/* hardware revision */
-	const char	build[16];	/* build date */
+	const char	hwrevision[16];
+	const char	build[16];
 }
 FW_info_t;
 
@@ -76,33 +87,47 @@ typedef struct {
 	float		ADC_voltage_ratio;
 	float		ADC_terminal_ratio;
 	float		ADC_terminal_bias;
-	float		ADC_analog_ratio;
+
+#ifdef HW_HAVE_ANALOG_KNOB
+	float		ADC_knob_ratio;
+#endif /* HW_HAVE_ANALOG_KNOB */
 
 	float		ADC_current_A;
 	float		ADC_current_B;
+	float		ADC_current_C;
 	float		ADC_voltage_U;
 	float		ADC_voltage_A;
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
+
+	int		DPS_mode;
+
+#ifdef HW_HAVE_NETWORK_CAN
+	CAN_msg_t	CAN_msg;
+#endif /* HW_HAVE_NETWORK_CAN */
+
+	int		PPM_mode;
+	int		PPM_timebase;
+	int		PPM_caught;
+
+#ifdef HW_HAVE_PART_DRV_XX
+	DRV_config_t	DRV;
+#endif /* HW_HAVE_PART_DRV_XX */
+
+	int		OPT;
 
 	struct {
 
 		float		GA;
 		float		GU;
 		float		GT[2];
-		float		GS;
 		float		TEMP[2];
+		float		GS;
+#ifdef HW_HAVE_ANALOG_KNOB
+		float		GK;
+#endif /* HW_HAVE_ANALOG_KNOB */
 	}
-	ADC_const;
-
-	int		TIM_mode;
-
-	int		CAN_mode_NART;
-	CAN_msg_t	CAN_msg;
-
-	int		PPM_mode;
-	int		PPM_timebase;
-	int		PPM_signal_caught;
+	const_ADC;
 }
 HAL_t;
 
@@ -126,7 +151,9 @@ extern LOG_t			log;
 
 void hal_bootload();
 void hal_startup();
+
 void hal_futile_ns(int ns);
+void hal_futile_ms(int ms);
 
 int hal_lock_irq();
 void hal_unlock_irq(int irq);
@@ -134,14 +161,17 @@ void hal_unlock_irq(int irq);
 void hal_system_reset();
 void hal_bootload_reset();
 
+void hal_boost_knob(int ctl);
+
 void hal_sleep();
 void hal_fence();
 
 int log_status();
-int log_bootup();
+void log_bootup();
 void log_putc(int c);
 
 void DBGMCU_mode_stop();
+void OPT_startup();
 
 extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();

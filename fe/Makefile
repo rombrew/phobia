@@ -13,6 +13,7 @@ CFLAGS  += -I/usr/include/SDL2 -D_REENTRANT
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf
 
 OBJS	= blob_ttf.o \
+	  config.o \
 	  link.o \
 	  nksdl.o \
 	  pmcfe.o \

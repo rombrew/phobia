@@ -2,9 +2,9 @@
 #define _H_REGFILE_
 
 enum {
-	REG_CONFIG		= 1,
-	REG_READ_ONLY		= 2,
-	REG_LINKED		= 4
+	REG_CONFIG		= 1U,
+	REG_READ_ONLY		= 2U,
+	REG_LINKED		= 4U
 };
 
 enum {

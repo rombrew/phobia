@@ -19,7 +19,7 @@ typedef struct {
 
 	/* State variables of BLM.
 	 * */
-	double		X[12];
+	double		X[13];
 	int		revol_N;
 	int		VSI[3];
 	int		surge_I;
@@ -76,8 +76,8 @@ typedef struct {
 	 * */
 	float		ADC_IA;
 	float		ADC_IB;
+	float		ADC_IC;
 	float		ADC_US;
-
 	float		ADC_UA;
 	float		ADC_UB;
 	float		ADC_UC;

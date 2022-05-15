@@ -1,5 +1,4 @@
 #include "hal.h"
-#include "libc.h"
 
 #include "cmsis/stm32xx.h"
 

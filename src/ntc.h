@@ -1,7 +1,7 @@
 #ifndef _H_NTC_
 #define _H_NTC_
 
-/* Temperature measurement schematic
+/* NTC measurement schematic
  *
 	            +------< vREF
 	            |
@@ -26,17 +26,26 @@
 
 */
 
+enum {
+	NTC_NONE		= 0,
+	NTC_GND,
+	NTC_VCC,
+	NTC_LINEAR,
+};
+
 typedef struct {
 
-	float		r_balance;
-	float		r_ntc_0;
+	int		type;
+	int		gpio;
+
+	float		balance;
+	float		ntc_0;
 	float		ta_0;
 	float		betta;
 }
 ntc_t;
 
-float ntc_temperature(ntc_t *ntc, float u);
-float ats_temperature(ntc_t *ntc, float u);
+float ntc_read_temperature(ntc_t *ntc);
 
 #endif /* _H_NTC_ */
 

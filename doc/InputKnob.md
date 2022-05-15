@@ -1,6 +1,6 @@
 ## Overview
 
-This page describes the configuration of analog input interface.
+This page describes the configuration of analog knob interface.
 
 ## Wiring
 
@@ -25,8 +25,8 @@ The analog signal (from 0 to 5v) is fed to ANG pin. The brake signal (from 0 to
 First you need to figure out how the controller receives analog signals. Use
 HAL registers to view analog values.
 
-	# reg hal.ADC_get_analog_ANG
-	# reg hal.ADC_get_analog_BRK
+	# reg hal.ADC_get_knob_ANG
+	# reg hal.ADC_get_knob_BRK
 
 If signals do not change when you turn the knobs then check the wiring.
 
@@ -60,52 +60,52 @@ If signals do not change when you turn the knobs then check the wiring.
 Select the ANG signal range in which you want to work. We use three point
 conversion from input voltage to the control value. Look at the diagram above.
 
-	# reg ap.analog_in_ANG_0 <volt>
-	# reg ap.analog_in_ANG_1 <volt>
-	# reg ap.analog_in_ANG_2 <volt>
+	# reg ap.knob_in_ANG_0 <volt>
+	# reg ap.knob_in_ANG_1 <volt>
+	# reg ap.knob_in_ANG_2 <volt>
 
 The same for BRK signal but we use two point conversion here.
 
-	# reg ap.analog_in_BRK_0 <volt>
-	# reg ap.analog_in_BRK_1 <volt>
+	# reg ap.knob_in_BRK_0 <volt>
+	# reg ap.knob_in_BRK_1 <volt>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the current control is selected as a
 percentage of maximal current. There is a variable **pm.i_setpoint_torque_pc**.
 
-	# reg ap.analog_reg_ID <reg>
+	# reg ap.knob_reg_ID <reg>
 
 Note that setting the control variable does not enable appropriate control loop
 automatically. You may need to enable appropriate control mode explicitly.
 
-	# reg pm.config_DRIVE <x>
+	# reg pm.config_LU_DRIVE <x>
 
 Select the control variable range. So the input voltage range will be converted
 to this control range.
 
-	# reg ap.analog_control_ANG_0 <x>
-	# reg ap.analog_control_ANG_1 <x>
-	# reg ap.analog_control_ANG_2 <x>
+	# reg ap.knob_control_ANG_0 <x>
+	# reg ap.knob_control_ANG_1 <x>
+	# reg ap.knob_control_ANG_2 <x>
 
 Specify control variable value in case of full brake. As the BRK signal rises
 the control variable will be interpolated to this value.
 
-	# reg ap.analog_control_BRK <x>
+	# reg ap.knob_control_BRK <x>
 
 If you need you can change input lost range. If signal goes beyond this range
-it is considered lost and output forced to **ap.analog_control_ANG_0**.
+it is considered lost and output forced to **ap.knob_control_ANG_0**.
 
-	# reg ap.analog_in_lost_0 <volt>
-	# reg ap.analog_in_lost_1 <volt>
+	# reg ap.knob_in_lost_0 <volt>
+	# reg ap.knob_in_lost_1 <volt>
 
 Now enable motor startup/shutdown control. Each time when ANG signal is in
 range the startup is requested.
 
-	# reg ap.analog_STARTUP 1
+	# reg ap.knob_STARTUP 1
 
 Now you are ready to enable the analog input interface.
 
-	# reg ap.analog_ENABLED 1
+	# reg ap.knob_ENABLED 1
 
 # Timeout shutdown
 
@@ -118,5 +118,5 @@ turns for **ap.timeout_TIME** seconds the shutdown is requested.
 If you want to use timeout shutdown without analog input interface then just
 set the control variable to the null.
 
-	# reg ap.analog_reg_ID 0
+	# reg ap.knob_reg_ID 0
 

@@ -36,7 +36,8 @@ sim_Tlm(float *pTlm)
 	const double	kRPM = 30. / M_PI / m.Zp;
 	const double	kDEG = 180. / M_PI;
 
-#define sym_GP(x,s,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) { fmt_page_GP(gp_N, s, l); } gp_N++; }
+#define sym_GP(x,s,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) \
+			{ fmt_page_GP(gp_N, s, (const char *) l); } gp_N++; }
 #define fmt_GP(x,l)	sym_GP(x, #x, l)
 #define fmk_GP(x,k,l)	sym_GP((x) * (k), #x, l)
 
@@ -99,57 +100,49 @@ sim_Tlm(float *pTlm)
 	pTlm[19] = pm.const_fb_U;
 
 	/* NOTE: Individual parameters are managed with automatic generation of
-	 * GP configuration. So you only need to add one line of code for each
-	 * parameter below.
+	 * GP configuration. So you only need to add a one line of code for
+	 * each parameter here.
 	 * */
 	gp_N = 30;
 
-	fmt_GP(pm.fb_HS, NULL);
-	fmt_GP(pm.fb_EP, NULL);
-	fmt_GP(pm.fb_SIN, NULL);
-	fmt_GP(pm.fb_COS, NULL);
+	fmt_GP(pm.fb_HS, 0);
+	fmt_GP(pm.fb_EP, 0);
+	fmt_GP(pm.fb_SIN, 0);
+	fmt_GP(pm.fb_COS, 0);
 
-	fmt_GP(pm.vsi_DC, NULL);
+	fmt_GP(pm.vsi_DC, 0);
 	fmt_GP(pm.vsi_X, "V");
 	fmt_GP(pm.vsi_Y, "V");
-	fmt_GP(pm.vsi_lpf_DC, NULL);
-	fmt_GP(pm.vsi_AF, NULL);
-	fmt_GP(pm.vsi_BF, NULL);
-	fmt_GP(pm.vsi_SF, NULL);
-	fmt_GP(pm.vsi_UF, NULL);
+	fmt_GP(pm.vsi_lpf_DC, 0);
+	fmt_GP(pm.vsi_AF, 0);
+	fmt_GP(pm.vsi_BF, 0);
+	fmt_GP(pm.vsi_CF, 0);
+	fmt_GP(pm.vsi_SF, 0);
+	fmt_GP(pm.vsi_UF, 0);
 
-	fmt_GP(pm.tvm_A, NULL);
-	fmt_GP(pm.tvm_B, NULL);
-	fmt_GP(pm.tvm_C, NULL);
+	fmt_GP(pm.tvm_A, 0);
+	fmt_GP(pm.tvm_B, 0);
+	fmt_GP(pm.tvm_C, 0);
 
-	fmt_GP(pm.lu_mode, NULL);
+	fmt_GP(pm.lu_MODE, 0);
 	fmt_GP(pm.lu_lpf_torque, "A");
 
 	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
 	fmk_GP(pm.forced_wS, kRPM, "rpm");
-	fmt_GP(pm.forced_TIM, NULL);
+	fmt_GP(pm.forced_TIM, 0);
 
-	fmt_GP(pm.detach_X, "V");
-	fmt_GP(pm.detach_Y, "V");
-	sym_GP(atan2(pm.detach_V[1], pm.detach_V[0]) * kDEG, "pm.detach_V", "°");
-	fmt_GP(pm.detach_TIM, NULL);
-	fmt_GP(pm.detach_SKIP, NULL);
+	fmt_GP(pm.detach_LOCK, 0);
+	fmt_GP(pm.detach_TIM, 0);
 
-	fmt_GP(pm.flux_X, "Wb");
-	fmt_GP(pm.flux_Y, "Wb");
+	fmt_GP(pm.flux_ZONE, 0);
+
+	fmt_GP(pm.flux_X[0], "Wb");
+	fmt_GP(pm.flux_X[1], "Wb");
 	fmt_GP(pm.flux_E, "Wb");
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
-	fmt_GP(pm.flux_mode, NULL);
-	fmk_GP(pm.flux_lpf_wS, kRPM, "rpm");
-
-	fmt_GP(pm.flux_imb_KF[0], NULL);
-	fmt_GP(pm.flux_imb_KF[1], NULL);
-	fmt_GP(pm.flux_imb_KF[2], NULL);
-	fmt_GP(pm.flux_imb_KF[3], NULL);
-	fmt_GP(pm.flux_imb_KF[4], NULL);
-	fmt_GP(pm.flux_imb_KF[5], NULL);
-	fmt_GP(pm.flux_imb_KF[6], NULL);
+	fmt_GP(pm.flux_QZ, "V");
+	fmk_GP(pm.zone_lpf_wS, kRPM, "rpm");
 
 	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
 	fmk_GP(pm.hfi_wS, kRPM, "rpm");
@@ -173,8 +166,6 @@ sim_Tlm(float *pTlm)
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
 	fmt_GP(pm.s_iSP, "A");
-
-	fmt_GP(pm.im_total_revol, NULL);
 
 	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
 }
@@ -222,6 +213,7 @@ void sim_Run(double dT)
 
 		fb.current_A = m.ADC_IA;
 		fb.current_B = m.ADC_IB;
+		fb.current_C = m.ADC_IC;
 		fb.voltage_U = m.ADC_US;
 		fb.voltage_A = m.ADC_UA;
 		fb.voltage_B = m.ADC_UB;
@@ -262,36 +254,43 @@ void sim_START()
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	m.R = 9E-3;
-	m.Ld = 6E-6;
-	m.Lq = 7E-6;
-	m.U = 40.;
-	m.Rs = 0.02;
-	m.Zp = 21;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (110./2 * m.Zp);
-	m.J = 1.28E-3;
+	/*m.R = 2.4E-1;
+	m.Ld = 5.2E-4;
+	m.Lq = 6.5E-4;
+	m.U = 48.;
+	m.Rs = 0.5;
+	m.Zp = 15;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
+	m.J = 6.2E-3;*/
+
+	m.R = 39E-3;
+	m.Ld = 20E-6;
+	m.Lq = 32E-6;
+	m.U = 48.;
+	m.Rs = 0.1;
+	m.Zp = 8;
+        m.E = 60. / 2. / M_PI / sqrt(3.) / (880. * m.Zp);
+	m.J = 5E-6;
 
 	ts_BASE();
 
 	blm_Stop(&m);
-	sim_TlmDrop();
+	//sim_TlmDrop();
+
+	//pm.config_LU_ESTIMATE_FLUX = PM_ESTIMATE_LUENBERGER;
+	///pm.forced_hold_D = 110.f;
+	//pm.s_accel = 150000.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
 
 	sim_Run(.1);
 
-	pm.config_FLUX_IMBALANCE = PM_ENABLED;
+	pm.s_setpoint_speed = 3300.f / (30. / M_PI / m.Zp);
+	sim_Run(2.);
 
-	pm.s_setpoint_speed = 1100.f / (30. / M_PI / m.Zp);
-	pm.s_accel = 150000.f;
-	pm.forced_hold_D = 20.f;
-	pm.watt_dclink_HI = 48.f;
-
-	m.M[0] = 0.;
-	sim_Run(1.);
-
-	ts_IMBALANCE();
+	//m.M[0] = - 5.;
+	sim_Run(2.);
 }
 
 int main(int argc, char *argv[])

@@ -71,6 +71,28 @@ void m_rotatef(float x[2], float rval)
 	x[1] = c * s;
 }
 
+float m_wrapf(float angle)
+{
+	float		align = (angle < 0.f) ? - .5f : .5f;
+	int		revol;
+
+	revol = (int) (angle / (2.f * M_PI_F) + align);
+	angle += - (float) revol * (2.f * M_PI_F);
+
+	if (angle < - M_PI_F) {
+
+		angle += 2.f * M_PI_F;
+		revol += - 1;
+	}
+	else if (angle > M_PI_F) {
+
+		angle += - 2.f * M_PI_F;
+		revol += 1;
+	}
+
+	return angle;
+}
+
 void m_rsumf(float *sum, float *rem, float val)
 {
 	float		fixed, newsum;

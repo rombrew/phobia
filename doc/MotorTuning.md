@@ -40,10 +40,6 @@ to both D and Q axes.
 
 	# reg ap.heat_PCB_derated <amp>
 
-Derated current in case of HFI operation. Applicable to both D and Q axes.
-
-	# reg pm.i_derated_HFI <amp>
-
 If you are interested in transient performance try to change slew rate. But
 remember that low slew rate is useful for safe operation of the entire set of
 constraints.
@@ -124,8 +120,8 @@ You can limit the acceleration.
 	# reg pm.s_accel <rad/s/s>
 
 It should be noted that above restrictions are used differently depending on
-**pm.config_DRIVE**. In case of speed control above restrictions are applied to
-speed setpoint to get trackpoint **pm.s_track**. In other words we do not
+**pm.config_LU_DRIVE**. In case of speed control above restrictions are applied
+to speed setpoint to get trackpoint **pm.s_track**. In other words we do not
 limits actual parameters but limit input setpoint to comply it with
 restrictions.
 
@@ -139,7 +135,7 @@ backlash e.g. in case of direction change.
 Also you can tune P+FF regulator gains.
 
 	# reg pm.s_gain_P <x>
-	# reg pm.lu_gain_TF <x>
+	# reg pm.lu_gain_TQ <x>
 
 Default gains tune can be done by setting to zero.
 

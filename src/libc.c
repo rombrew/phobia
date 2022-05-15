@@ -13,40 +13,42 @@ int			iodef_PRETTY;
 
 u32_t			rseed;
 
+/*
 void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
 {
-	u32_t		*ld = (u32_t *) d;
+	u32_t		*long_d = (u32_t *) d;
 
 	while (n >= 4) {
 
-		*ld++ = 0UL;
+		*long_d++ = 0UL;
 		n += - 4;
 	}
 }
+*/
 
 void *memset(void *d, int c, int n)
 {
-	u32_t		fill, *ld = (u32_t *) d;
+	u32_t		fill, *long_d = (u32_t *) d;
 
-	if (((u32_t) ld & 3UL) == 0) {
+	if (((u32_t) long_d & 3UL) == 0) {
 
-		fill = c;
+		fill = (u8_t) c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
 		while (n >= 4) {
 
-			*ld++ = fill;
+			*long_d++ = fill;
 			n += - 4;
 		}
 	}
 
 	{
-		u8_t		*xd = (u8_t *) ld;
+		u8_t		*tail_d = (u8_t *) long_d;
 
 		while (n >= 1) {
 
-			*xd++ = c;
+			*tail_d++ = (u8_t) c;
 			n += - 1;
 		}
 	}
@@ -56,25 +58,25 @@ void *memset(void *d, int c, int n)
 
 void *memcpy(void *d, const void *s, int n)
 {
-	u32_t		*ld = (u32_t *) d;
-	const u32_t	*ls = (const u32_t *) s;
+	u32_t		*long_d = (u32_t *) d;
+	const u32_t	*long_s = (const u32_t *) s;
 
-	if (((u32_t) ld & 3UL) == 0 && ((u32_t) ls & 3UL) == 0) {
+	if (((u32_t) long_d & 3UL) == 0 && ((u32_t) long_s & 3UL) == 0) {
 
 		while (n >= 4) {
 
-			*ld++ = *ls++;
+			*long_d++ = *long_s++;
 			n += - 4;
 		}
 	}
 
 	{
-		u8_t		*xd = (u8_t *) ld;
-		const u8_t	*xs = (const u8_t *) ls;
+		u8_t		*tail_d = (u8_t *) long_d;
+		const u8_t	*tail_s = (const u8_t *) long_s;
 
 		while (n >= 1) {
 
-			*xd++ = *xs++;
+			*tail_d++ = *tail_s++;
 			n += - 1;
 		}
 	}
@@ -272,6 +274,13 @@ fmt_hexb(io_ops_t *_io, int x)
 	n = (x & 0x0FUL);
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
 	_io->putc(c);
+}
+
+static void
+fmt_hexh(io_ops_t *_io, int x)
+{
+	fmt_hexb(_io, (x & 0xFF00U) >> 8);
+	fmt_hexb(_io, (x & 0x00FFU));
 }
 
 static void
@@ -616,7 +625,12 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 
 						fmt_hexb(_io, va_arg(ap, int));
 					}
-					else {
+					else if (n == 4) {
+
+						fmt_hexh(_io, va_arg(ap, int));
+					}
+					else if (n == 8) {
+
 						fmt_hexl(_io, va_arg(ap, u32_t));
 					}
 					break;

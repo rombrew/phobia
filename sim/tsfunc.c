@@ -18,20 +18,21 @@
 
 int ts_wait_for_IDLE()
 {
-	int		xTick = 0;
+	int			xTIME = 0;
 
 	do {
 		sim_Run(10 / (double) TS_TICK_RATE);
-		xTick += 10;
 
 		if (pm.fsm_state == PM_STATE_IDLE)
 			break;
 
-		if (xTick > 10000) {
+		if (xTIME > 10000) {
 
 			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
+
+		xTIME += 10;
 	}
 	while (1);
 
@@ -40,12 +41,11 @@ int ts_wait_for_IDLE()
 
 int ts_wait_for_SPINUP()
 {
-	const float		wS_tol = 10.f;
 	int			xTIME = 0;
+	const float		wS_tol = 10.f;
 
 	do {
 		sim_Run(50 / (double) TS_TICK_RATE);
-		xTIME += 50;
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -55,12 +55,9 @@ int ts_wait_for_SPINUP()
 		if (m_fabsf(pm.lu_wS) + wS_tol > pm.s_setpoint_speed)
 			break;
 
-		if (		pm.lu_mode == PM_LU_FORCED
-				&& pm.vsi_lpf_DC > pm.probe_speed_maximal_pc / 100.f) {
+		if (		pm.lu_MODE == PM_LU_FORCED
+				&& pm.vsi_lpf_DC > pm.forced_maximal_DC) {
 
-			/* We are unable to keep such a high speed at
-			 * this DC link voltage. Stop.
-			 * */
 			pm.s_setpoint_speed = pm.lu_wS;
 			break;
 		}
@@ -70,6 +67,8 @@ int ts_wait_for_SPINUP()
 			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
+
+		xTIME += 50;
 	}
 	while (1);
 
@@ -81,18 +80,17 @@ int ts_wait_for_SPINUP()
 int ts_wait_for_MOTION(float s_ref)
 {
 	int			xTIME = 0;
-	int			revol = pm.im_total_revol;
+	int			revol = pm.lu_total_revol;
 
 	do {
 		sim_Run(50 / (double) TS_TICK_RATE);
-		xTIME += 50;
 
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (pm.im_total_revol != revol) {
+		if (pm.lu_total_revol != revol) {
 
-			if (m_fabsf(pm.flux_lpf_wS) > s_ref)
+			if (m_fabsf(pm.zone_lpf_wS) > s_ref)
 				break;
 		}
 
@@ -101,69 +99,12 @@ int ts_wait_for_MOTION(float s_ref)
 			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
+
+		xTIME += 50;
 	}
 	while (1);
 
 	return pm.fsm_errno;
-}
-
-static float
-ts_proc_ripple_STD(void *link, const float *KF)
-{
-	pm.flux_imb_KF[0] = KF[0];
-	pm.flux_imb_KF[1] = KF[1];
-	pm.flux_imb_KF[2] = KF[2];
-	pm.flux_imb_KF[3] = KF[3];
-	pm.flux_imb_KF[4] = KF[4];
-	pm.flux_imb_KF[5] = KF[5];
-	pm.flux_imb_KF[6] = KF[6];
-
-	pm.flux_imb_ONFLAG = PM_ENABLED;
-
-	do {
-		sim_Run(5 / (double) TS_TICK_RATE);
-	}
-	while (pm.flux_imb_ONFLAG == PM_ENABLED);
-
-	return pm.flux_imb_ripple_STD;
-}
-
-static void
-ts_proc_step_format(void *link)
-{
-	min_t		*m = (min_t *) link;
-	float		x_tol_pc = m->x_tol * 100.f;
-
-	if (pm.fsm_errno != PM_OK) {
-
-		/* Terminate the SEARCH if an error occurs.
-		 * */
-		m->n_final_step = 0;
-	}
-
-	printf("[%2i] %.4f %.4f\n", m->n_step, x_tol_pc, m->fval[m->n_best]);
-}
-
-static void
-ts_reg_SET_SETPOINT_SPEED()
-{
-	float		s_pc;
-
-	pm.s_setpoint_speed = pm.probe_speed_hold;
-
-	s_pc = pm.s_setpoint_speed * pm.const_E / (pm.k_EMAX / 100.f * pm.const_fb_U);
-
-	/* We check if speed percentage is higher than maximal allowed.
-	 * */
-	if (s_pc > pm.probe_speed_maximal_pc) {
-
-		if (pm.const_E > M_EPS_F) {
-
-			pm.s_setpoint_speed = pm.probe_speed_maximal_pc
-				* pm.k_EMAX / 100.f
-				* pm.const_fb_U / pm.const_E;
-		}
-	}
 }
 
 void ts_self_adjust()
@@ -176,7 +117,8 @@ void ts_self_adjust()
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		ts_wait_for_IDLE();
 
-		printf("Z [AB] %.3f %.3f (A)\n", pm.ad_IA[0], pm.ad_IB[0]);
+		printf("ZD [ABC] %.3f %.3f %.3f (A)\n", pm.ad_IA[0],
+				pm.ad_IB[0], pm.ad_IC[0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -186,22 +128,17 @@ void ts_self_adjust()
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			ts_wait_for_IDLE();
 
-			printf("UA %.4E %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
-			printf("UB %.4E %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
-			printf("UC %.4E %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
+			printf("ad_UA %.4E %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
+			printf("ad_UB %.4E %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
+			printf("ad_UC %.4E %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
 
 			tau_A = pm.dT / log(pm.tvm_FIR_A[0] / - pm.tvm_FIR_A[1]);
 			tau_B = pm.dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
 			tau_C = pm.dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
 
-			printf("FIR [A] %.4E %.4E %.4E [tau] %.2f (us)\n", pm.tvm_FIR_A[0],
-					pm.tvm_FIR_A[1], pm.tvm_FIR_A[2], tau_A * 1000000.);
-
-			printf("FIR [B] %.4E %.4E %.4E [tau] %.2f (us)\n", pm.tvm_FIR_B[0],
-					pm.tvm_FIR_B[1], pm.tvm_FIR_B[2], tau_B * 1000000.);
-
-			printf("FIR [C] %.4E %.4E %.4E [tau] %.2f (us)\n", pm.tvm_FIR_C[0],
-					pm.tvm_FIR_C[1], pm.tvm_FIR_C[2], tau_C * 1000000.);
+			printf("tau_A %.2f (us)\n", tau_A * 1000000.);
+			printf("tau_B %.2f (us)\n", tau_B * 1000000.);
+			printf("tau_C %.2f (us)\n", tau_C * 1000000.);
 
 			printf("RMSu %.4f %.4f %.4f (V)\n", pm.self_RMSu[0],
 					pm.self_RMSu[1], pm.self_RMSu[2]);
@@ -261,11 +198,13 @@ void ts_probe_base()
 		TS_assert_ref(pm.const_im_L1, m.Ld);
 		TS_assert_ref(pm.const_im_L2, m.Lq);
 
+		pm_tune(&pm, PM_TUNE_MAXIMAL_CURRENT);
 		pm_tune(&pm, PM_TUNE_LOOP_CURRENT);
 
-		printf("i_gain_P %.2E \n", pm.i_gain_P);
-		printf("i_gain_I %.2E \n", pm.i_gain_I);
-		printf("i_slew_rate %.1f (A/s)\n", pm.i_slew_rate);
+		printf("maximal %.3f (A) \n", pm.i_maximal);
+		printf("gain_P %.2E \n", pm.i_gain_P);
+		printf("gain_I %.2E \n", pm.i_gain_I);
+		printf("slew_rate %.1f (A/s)\n", pm.i_slew_rate);
 	}
 	while (0);
 }
@@ -282,12 +221,12 @@ void ts_probe_spinup()
 
 		if (pm.const_E < M_EPS_F) {
 
-			ts_reg_SET_SETPOINT_SPEED();
+			pm.s_setpoint_speed = pm.probe_speed_hold;
 
 			if (ts_wait_for_SPINUP() != PM_OK)
 				break;
 
-			printf("lpf_wS %.2f (rad/s)\n", pm.flux_lpf_wS);
+			printf("lpf_wS %.2f (rad/s)\n", pm.zone_lpf_wS);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
@@ -299,14 +238,14 @@ void ts_probe_spinup()
 			printf("Kv %.2f (rpm/v)\n", Kv);
 		}
 
-		ts_reg_SET_SETPOINT_SPEED();
+		pm.s_setpoint_speed = pm.probe_speed_hold;
 
 		if (ts_wait_for_SPINUP() != PM_OK)
 			break;
 
-		printf("lpf_wS %.2f (rad/s)\n", pm.flux_lpf_wS);
+		printf("lpf_wS %.2f (rad/s)\n", pm.zone_lpf_wS);
 
-		if (pm.flux_mode != PM_FLUX_HIGH) {
+		if (pm.flux_ZONE != PM_ZONE_HIGH) {
 
 			pm.fsm_errno = PM_ERROR_NO_FLUX_CAUGHT;
 			break;
@@ -323,12 +262,12 @@ void ts_probe_spinup()
 
 		TS_assert_ref(pm.const_E, m.E);
 
-		pm_tune(&pm, PM_TUNE_FLUX_MPPE);
+		pm_tune(&pm, PM_TUNE_ZONE_THRESHOLD);
 
-		printf("MPPE %.2f (rad/s)\n", pm.flux_MPPE);
-		printf("URE %.2f (rad/s)\n", pm.flux_URE);
-		printf("TAKE %.3f (V)\n", (pm.flux_URE + pm.flux_gain_TAKE * pm.flux_MPPE) * pm.const_E);
-		printf("GIVE %.3f (V)\n", (pm.flux_URE + pm.flux_gain_GIVE * pm.flux_MPPE) * pm.const_E);
+		printf("MPPE %.2f (rad/s)\n", pm.zone_MPPE);
+		printf("MURE %.2f (rad/s)\n", pm.zone_MURE);
+		printf("TA %.3f (V)\n", (pm.zone_MURE + pm.zone_gain_TA * pm.zone_MPPE) * pm.const_E);
+		printf("GI %.3f (V)\n", (pm.zone_MURE + pm.zone_gain_GI * pm.zone_MPPE) * pm.const_E);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
@@ -339,7 +278,7 @@ void ts_probe_spinup()
 
 		sim_Run(300 / (double) TS_TICK_RATE);
 
-		ts_reg_SET_SETPOINT_SPEED();
+		pm.s_setpoint_speed = pm.probe_speed_hold;
 
 		sim_Run(300 / (double) TS_TICK_RATE);
 
@@ -360,74 +299,11 @@ void ts_probe_spinup()
 		pm_tune(&pm, PM_TUNE_LOOP_FORCED);
 		pm_tune(&pm, PM_TUNE_LOOP_SPEED);
 
-		printf("maximal %.2f (rad/s)\n", pm.forced_maximal);
 		printf("accel %.1f (rad/s2)\n", pm.forced_accel);
-
-		printf("lu_gain_TF %.2E \n", pm.lu_gain_TF);
-		printf("s_gain_P %.2E \n", pm.s_gain_P);
+		printf("gain_TQ %.2E\n", pm.lu_gain_TQ);
+		printf("gain_P %.2E\n", pm.s_gain_P);
 	}
 	while (0);
-}
-
-void ts_adjust_imbalance()
-{
-	min_t			*m;
-
-	m = malloc(sizeof(min_t));
-
-	if (m != NULL) {
-
-		m->n_size_of_x = 7;
-		m->link = (void *) m;
-		m->x0_range = 0.02f;
-		m->x_maximal = 0.5f;
-		m->pfun = &ts_proc_ripple_STD;
-		m->pstep = &ts_proc_step_format;
-		m->n_final_step = 180;
-		m->x_final_tol = 5E-4f;
-
-		do {
-			pm.fsm_req = PM_STATE_LU_STARTUP;
-
-			if (ts_wait_for_IDLE() != PM_OK)
-				break;
-
-			ts_reg_SET_SETPOINT_SPEED();
-
-			if (ts_wait_for_SPINUP() != PM_OK)
-				break;
-
-			minsearch(m);
-
-			if (pm.fsm_errno != PM_OK) {
-
-				pm.flux_imb_KF[0] = 0.f;
-				pm.flux_imb_KF[1] = 0.f;
-				pm.flux_imb_KF[2] = 0.f;
-				pm.flux_imb_KF[3] = 0.f;
-				pm.flux_imb_KF[4] = 0.f;
-				pm.flux_imb_KF[5] = 0.f;
-				pm.flux_imb_KF[6] = 0.f;
-				break;
-			}
-
-			minsolution(m, pm.flux_imb_KF);
-
-			printf("flux_imb_KF %.4E %.4E %.4E %.4E %.4E %.4E %.4E\n",
-					pm.flux_imb_KF[0], pm.flux_imb_KF[1],
-					pm.flux_imb_KF[2], pm.flux_imb_KF[3],
-					pm.flux_imb_KF[4], pm.flux_imb_KF[5],
-					pm.flux_imb_KF[6]);
-
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-			if (ts_wait_for_IDLE() != PM_OK)
-				break;
-		}
-		while (0);
-
-		free(m);
-	}
 }
 
 void ts_adjust_sensor_hall()
@@ -441,7 +317,7 @@ void ts_adjust_sensor_hall()
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
-		ts_reg_SET_SETPOINT_SPEED();
+		pm.s_setpoint_speed = pm.probe_speed_hold;
 
 		if (ts_wait_for_SPINUP() != PM_OK)
 			break;
@@ -455,7 +331,7 @@ void ts_adjust_sensor_hall()
 
 			hall_g = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * 180. / M_PI;
 
-			printf("hall_ST[%i] %.1f (g)\n", N, hall_g);
+			printf("ST[%i] %.1f (g)\n", N, hall_g);
 		}
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -494,7 +370,7 @@ void ts_BASE()
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm_tune(&pm, PM_TUNE_DEFAULT);
+	pm_tune(&pm, PM_TUNE_ALL_DEFAULT);
 
 	pm.const_Zp = m.Zp;
 
@@ -507,17 +383,9 @@ void ts_BASE()
 	sim_Run(.1);
 }
 
-void ts_IMBALANCE()
-{
-	pm.config_FLUX_IMBALANCE = PM_ENABLED;
-	pm.config_DRIVE = PM_DRIVE_SPEED;
-
-	ts_adjust_imbalance();
-}
-
 void ts_SPEED()
 {
-	pm.config_DRIVE = PM_DRIVE_SPEED;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
@@ -554,7 +422,7 @@ void ts_SPEED()
 void ts_HFI()
 {
 	pm.config_LU_ESTIMATE_HFI = PM_ENABLED;
-	pm.config_DRIVE = PM_DRIVE_SPEED;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
@@ -596,7 +464,7 @@ void ts_HALL()
 void ts_WEAK()
 {
 	pm.config_WEAKENING = PM_ENABLED;
-	pm.config_DRIVE = PM_DRIVE_SPEED;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();

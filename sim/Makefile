@@ -1,5 +1,5 @@
-BUILD	?= /tmp/sim
-TARGET	= $(BUILD)/sim
+BUILD	?= /tmp/pmcsim
+TARGET	= $(BUILD)/pmcsim
 
 CC	= gcc
 LD	= gcc

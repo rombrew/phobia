@@ -15,17 +15,17 @@ It may return the following values:
   fault threshold. This may happen if current sensing path is damaged.
 * **PM_ERROR_NO_MOTOR_CONNECTED** - Power stages are OK but no motor detected
   at the output terminals.
-* **PM_ERROR_BOOTSTRAP_TIME** - Actual bootstrap retention time is lower that
+* **PM_ERROR_BOOTSTRAP_FAULT** - Actual bootstrap retention time is lower that
   configured.
 * **PM_ERROR_POWER_STAGE_DAMAGED** - No appropriate voltage response is
   detected at the output terminals. Power stages or terminal voltage sensors
   may be damaged.
-* **PM_ERROR_LOW_ACCURACY** - Result of adjustment shows the deviation is above
-  the fault threshold.
+* **PM_ERROR_INSUFFICIENT_ACCURACY** - Result of adjustment shows the deviation
+  is above the fault threshold.
 * **PM_ERROR_CURRENT_LOOP_IS_OPEN** - Means that we apply the full voltage but
   current setpoint is still not reached. If current sensing path is OK this may
   be caused by open circuit in motor phases or in its connection.
-* **PM_ERROR_INLINE_OVERCURRENT** - This cannot be as we think that current is
+* **PM_ERROR_INSTANT_OVERCURRENT** - This cannot be as we think that current is
   always under control. It may be current sensing is occasionally noisy. Also
   check for current regulation overshoot.
 * **PM_ERROR_INVALID_OPERATION** - Means result of operation is NaN or other

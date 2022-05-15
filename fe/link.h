@@ -5,9 +5,9 @@
 #define LINK_COMBO_MAX		40
 
 enum {
-	LINK_REG_CONFIG		= 1,
-	LINK_REG_READ_ONLY	= 2,
-	LINK_REG_LINKED		= 4,
+	LINK_REG_CONFIG		= 1U,
+	LINK_REG_READ_ONLY	= 2U,
+	LINK_REG_LINKED		= 4U,
 
 	LINK_REG_TYPE_INT	= (1UL << 8),
 	LINK_REG_TYPE_FLOAT	= (1UL << 9),
@@ -45,15 +45,19 @@ struct link_reg {
 
 struct link_pmc {
 
+	char			devname[80];
+	int			baudrate;
+
 	int			linked;
+	int			fetched_N;
 
 	int			clock;
 	int			locked;
 
-	char			devname[80];
-	char			baudrate[40];
 	char			hwinfo[80];
 	char			network[40];
+
+	const char		*tlm_file;
 
 	char			flash_map[8][20];
 	int			flash_errno;

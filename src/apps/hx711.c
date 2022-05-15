@@ -12,8 +12,8 @@
 
 void ap_HX711(void *pData)
 {
-	const int		gpio_DOUT = GPIO_SPI_MISO;
-	const int		gpio_PD_SCK = GPIO_SPI_SCK;
+	const int		gpio_DOUT = GPIO_SPI_EXT_MISO;
+	const int		gpio_PD_SCK = GPIO_SPI_EXT_SCK;
 
 	int			DOUT, ADC, N;
 
@@ -46,7 +46,7 @@ void ap_HX711(void *pData)
 			for (N = 0; N < 25; ++N) {
 
 				GPIO_set_HIGH(gpio_PD_SCK);
-				hal_futile_ns(500);
+				TIM_wait_ns(500);
 
 				DOUT = GPIO_get_VALUE(gpio_DOUT);
 
@@ -61,7 +61,7 @@ void ap_HX711(void *pData)
 				}
 
 				GPIO_set_LOW(gpio_PD_SCK);
-				hal_futile_ns(500);
+				TIM_wait_ns(500);
 			}
 
 			/* Convert the ADC code into KG.
@@ -96,22 +96,22 @@ SH_DEF(hx711_halt)
 	}
 }
 
-SH_DEF(hx711_adjust_null)
+SH_DEF(hx711_adjust_offset)
 {
-	float			S = 0.f;
-	int			j, N = 100;
+	float			avgkg = 0.f;
+	int			i, n = 10;
 
-	/* Update MEAN value.
+	/* Adjust ZERO offset.
 	 * */
 
-	for (j = 0; j < N; ++j) {
+	for (i = 0; i < n; ++i) {
 
-		vTaskDelay((TickType_t) 10);
+		vTaskDelay((TickType_t) 100);
 
-		S += ap.hx711_kg;
+		avgkg += ap.hx711_kg;
 	}
 
-	ap.hx711_scale[0] += - S / (float) N;
+	ap.hx711_scale[0] += - avgkg / (float) n;
 
 	reg_format(&regfile[ID_AP_HX711_SCALE_0]);
 }

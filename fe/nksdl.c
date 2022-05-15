@@ -188,7 +188,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 
 	nk->table[NK_COLOR_TEXT] = nk_rgba(190, 210, 210, 255);
 	nk->table[NK_COLOR_WINDOW] = nk_rgba(30, 30, 35, 255);
-	nk->table[NK_COLOR_HEADER] = nk_rgba(50, 50, 55, 255);
+	nk->table[NK_COLOR_HEADER] = nk_rgba(60, 60, 65, 255);
 	nk->table[NK_COLOR_BORDER] = nk_rgba(10, 10, 15, 255);
 	nk->table[NK_COLOR_BUTTON] = nk_rgba(35, 65, 95, 255);
 	nk->table[NK_COLOR_BUTTON_HOVER] = nk_rgba(65, 95, 125, 255);
@@ -216,13 +216,15 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	nk->table[NK_COLOR_TAB_HEADER] = nk_rgba(45, 85, 115, 255);
 
 	nk->table[NK_COLOR_HIDDEN] = nk_rgba(50, 50, 55, 255);
+	nk->table[NK_COLOR_CONFIG] = nk_rgba(190, 210, 120, 255);
 	nk->table[NK_COLOR_FLICKER_LIGHT] = nk_rgba(75, 75, 85, 255);
 	nk->table[NK_COLOR_FLICKER_ALERT] = nk_rgba(175, 45, 55, 255);
-	nk->table[NK_COLOR_ENABLED] = nk_rgba(45, 125, 55, 255);
+	nk->table[NK_COLOR_ENABLED] = nk_rgba(45, 155, 55, 255);
 	nk->table[NK_COLOR_ORANGE_BUTTON] = nk_rgba(155, 65, 35, 255);
 	nk->table[NK_COLOR_ORANGE_BUTTON_HOVER] = nk_rgba(185, 95, 65, 255);
-	nk->table[NK_COLOR_EDIT_NUMBER] = nk_rgba(210, 110, 50, 255);
+	nk->table[NK_COLOR_EDIT_NUMBER] = nk_rgba(210, 110, 55, 255);
 	nk->table[NK_COLOR_COMBO_HOVER] = nk_rgba(60, 60, 65, 255);
+	nk->table[NK_COLOR_DRAWING_PEN] = nk_rgba(90, 90, 95, 255);
 
 	nk_style_from_table(ctx, nk->table);
 

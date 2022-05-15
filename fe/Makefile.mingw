@@ -21,9 +21,10 @@ LFLAGS	+= -L$(SDLDIR)/lib
 LFLAGS	+= -Wl,--no-undefined -ldinput8 -ldxguid \
 	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 \
 	   -lole32 -loleaut32 -lshell32 -lsetupapi \
-	   -lversion -luuid -static-libgcc
+	   -lversion -luuid -static-libgcc -mwindows
 
 OBJS	= blob_ttf.o \
+	  config.o \
 	  link.o \
 	  nksdl.o \
 	  pmcfe.o \

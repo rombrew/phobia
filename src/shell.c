@@ -1,7 +1,9 @@
 #include <stddef.h>
 
 #include "shell.h"
+#ifdef HW_HAVE_NETWORK_CAN
 #include "ifcan.h"
+#endif /* HW_HAVE_NETWORK_CAN */
 #include "libc.h"
 
 #define SH_CLINE_SZ			84
@@ -37,7 +39,7 @@ typedef struct {
 	char		cHIST[SH_HISTORY_SZ];
 	int		mHIST, hHEAD, hTAIL, hNUM;
 }
-sh_t;
+priv_sh_t;
 
 #undef SH_DEF
 #define SH_DEF(name)	void name(const char *s);
@@ -78,7 +80,7 @@ sh_puts_erase(int n)
 }
 
 static void
-sh_exact_match_call(sh_t *sh)
+sh_exact_match_call(priv_sh_t *sh)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id;
@@ -106,7 +108,7 @@ sh_exact_match_call(sh_t *sh)
 }
 
 static void
-sh_cyclic_match(sh_t *sh, int xDIR)
+sh_cyclic_match(priv_sh_t *sh, int xDIR)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id;
@@ -143,7 +145,7 @@ sh_cyclic_match(sh_t *sh, int xDIR)
 }
 
 static void
-sh_common_match(sh_t *sh)
+sh_common_match(priv_sh_t *sh)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id, *sp;
@@ -185,7 +187,7 @@ sh_common_match(sh_t *sh)
 }
 
 static int
-sh_history_move(sh_t *sh, int xNUM, int xDIR)
+sh_history_move(priv_sh_t *sh, int xNUM, int xDIR)
 {
 	if (xDIR == DIR_UP) {
 
@@ -227,7 +229,7 @@ sh_history_move(sh_t *sh, int xNUM, int xDIR)
 }
 
 static void
-sh_history_put(sh_t *sh, const char *s)
+sh_history_put(priv_sh_t *sh, const char *s)
 {
 	int			xNUM, r;
 	const char		*q = s;
@@ -332,7 +334,7 @@ sh_get_args(char *s)
 }
 
 static void
-sh_evaluate(sh_t *sh)
+sh_evaluate(priv_sh_t *sh)
 {
 	char			*s;
 
@@ -355,7 +357,7 @@ sh_evaluate(sh_t *sh)
 }
 
 static void
-sh_complete(sh_t *sh, int xDIR)
+sh_complete(priv_sh_t *sh, int xDIR)
 {
 	const char		space = ' ';
 	char			*s;
@@ -419,7 +421,7 @@ sh_complete(sh_t *sh, int xDIR)
 }
 
 static void
-sh_history(sh_t *sh, int xDIR)
+sh_history(priv_sh_t *sh, int xDIR)
 {
 	int			xNUM;
 	char			*s;
@@ -469,7 +471,7 @@ sh_history(sh_t *sh, int xDIR)
 }
 
 static void
-sh_line_putc(sh_t *sh, char c)
+sh_line_putc(priv_sh_t *sh, char c)
 {
 	if (sh->cEOL < SH_CLINE_SZ - 2) {
 
@@ -486,7 +488,7 @@ sh_line_putc(sh_t *sh, char c)
 }
 
 static void
-sh_line_bs(sh_t *sh)
+sh_line_bs(priv_sh_t *sh)
 {
 	if (sh->cEOL > 0) {
 
@@ -502,17 +504,21 @@ sh_line_bs(sh_t *sh)
 }
 
 static void
-sh_line_null(sh_t *sh)
+sh_line_null(priv_sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
+#ifdef HW_HAVE_NETWORK_CAN
 	if (iodef == &io_CAN) {
 
 		/* Prompt with CAN node ID.
 		 * */
 		printf("(net/%i) ", net.node_ID);
 	}
-	else {
+	else
+#endif /* HW_HAVE_NETWORK_CAN */
+
+	{
 		/* Prompt (local).
 		 * */
 		puts(SH_PROMPT);
@@ -532,11 +538,11 @@ const char *sh_next_arg(const char *s)
 	return s;
 }
 
-static sh_t			shlocal;
+static priv_sh_t		privsh;
 
 void task_SH(void *pData)
 {
-	sh_t		*sh = &shlocal;
+	priv_sh_t	*sh = &privsh;
 	int		c;
 
 	do {

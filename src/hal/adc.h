@@ -3,8 +3,9 @@
 
 #define ADC_RESOLUTION			4096
 
+void ADC_const_build();
 void ADC_startup();
-void ADC_configure();
+
 float ADC_get_VALUE(int xGPIO);
 
 extern void ADC_IRQ();

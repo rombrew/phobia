@@ -2,7 +2,8 @@
 #include "cmsis/stm32xx.h"
 
 #define XGPIO_DECODE(xGPIO)	\
-	GPIO_TypeDef	*GPIO = (GPIO_TypeDef *) (GPIOA_BASE + 0x0400 * XGPIO_GET_PORT(xGPIO)); \
+	GPIO_TypeDef	*GPIO = (GPIO_TypeDef *) (GPIOA_BASE		\
+				+ 0x0400 * XGPIO_GET_PORT(xGPIO));	\
 	int		N = XGPIO_GET_N(xGPIO);
 
 void GPIO_set_mode_INPUT(int xGPIO)
@@ -111,19 +112,5 @@ int GPIO_get_VALUE(int xGPIO)
 	XGPIO_DECODE(xGPIO);
 
 	return (GPIO->IDR & (1UL << N)) ? 1 : 0;
-}
-
-int GPIO_get_HALL()
-{
-	GPIO_TypeDef	*GPIO = (GPIO_TypeDef *) (GPIOA_BASE + 0x0400 * XGPIO_GET_PORT(GPIO_HALL_A));
-	int		IDR, HALL;
-
-	IDR = GPIO->IDR;
-
-	HALL  = (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_A))) ? LEG_A : 0UL;
-	HALL |= (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_B))) ? LEG_B : 0UL;
-	HALL |= (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_C))) ? LEG_C : 0UL;
-
-	return HALL;
 }
 

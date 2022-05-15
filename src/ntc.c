@@ -1,20 +1,45 @@
+#include <stddef.h>
+
+#include "hal/hal.h"
+
 #include "ntc.h"
 #include "phobia/libm.h"
 
-float ntc_temperature(ntc_t *ntc, float u)
+float ntc_read_temperature(ntc_t *ntc)
 {
-	float			r_ntc, log, temp;
+	float			um, ohm, log;
+	float			temp = 0.f;
 
-	r_ntc = ntc->r_balance * u / (1.f - u);
+	switch (ntc->type) {
 
-	log = m_logf(r_ntc / ntc->r_ntc_0);
-	temp = 1.f / (1.f / (ntc->ta_0 + 273.f) + log / ntc->betta) - 273.f;
+		case NTC_GND:
+
+			um = ADC_get_VALUE(ntc->gpio);
+			ohm = um * ntc->balance / (1.f - um);
+			log = m_logf(ohm / ntc->ntc_0);
+			temp = 1.f / (1.f / (ntc->ta_0 + 273.f)
+					+ log / ntc->betta) - 273.f;
+			break;
+
+		case NTC_VCC:
+
+			um = ADC_get_VALUE(ntc->gpio);
+			ohm = (1.f - um) * ntc->balance / um;
+			log = m_logf(ohm / ntc->ntc_0);
+			temp = 1.f / (1.f / (ntc->ta_0 + 273.f)
+					+ log / ntc->betta) - 273.f;
+			break;
+
+		case NTC_LINEAR:
+
+			um = ADC_get_VALUE(ntc->gpio);
+			temp = um * ntc->betta + ntc->ta_0;
+			break;
+
+		default:
+			break;
+	}
 
 	return temp;
-}
-
-float ats_temperature(ntc_t *ntc, float u)
-{
-	return (ntc->ta_0 - u) * ntc->betta;
 }
 

@@ -61,6 +61,7 @@ typedef struct {
 ifcan_local_t;
 
 ifcan_t				net;
+
 static ifcan_local_t		local;
 
 static void
@@ -154,21 +155,22 @@ IFCAN_pipes_message_IN(const CAN_msg_t *msg)
 
 		pp = &net.pipe[N];
 
-		if (pp->MODE == IFCAN_PIPE_INCOMING
+		if (		pp->MODE == IFCAN_PIPE_INCOMING
 				&& pp->ID == msg->ID) {
 
 			pp->tim_N = 0;
 
 			if (		pp->STARTUP == PM_ENABLED
-					&& pm.lu_mode == PM_LU_DISABLED) {
+					&& pm.lu_MODE == PM_LU_DISABLED) {
 
+				pp->ACTIVE = PM_ENABLED;
 				pm.fsm_req = PM_STATE_LU_STARTUP;
 			}
 
 			IFCAN_pipe_INCOMING(pp, msg);
 		}
-		else if (pp->MODE == IFCAN_PIPE_OUTGOING_TRIGGERED
-				&& pp->trigger_ID == msg->ID) {
+		else if (	pp->MODE == IFCAN_PIPE_OUTGOING_INJECTED
+				&& pp->inject_ID == msg->ID) {
 
 			pp->flag_TX = 1;
 
@@ -186,15 +188,17 @@ void IFCAN_pipes_REGULAR()
 
 		pp = &net.pipe[N];
 
-		if (pp->MODE == IFCAN_PIPE_INCOMING
-				&& pp->STARTUP == PM_ENABLED
-				&& pm.lu_mode != PM_LU_DISABLED) {
+		if (		pp->MODE == IFCAN_PIPE_INCOMING
+				&& pp->ACTIVE == PM_ENABLED
+				&& pm.lu_MODE != PM_LU_DISABLED) {
 
 			pp->tim_N++;
 
 			if (pp->tim_N >= net.startup_LOST) {
 
+				pp->ACTIVE = PM_DISABLED;
 				pp->tim_N = 0;
+
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 			}
 		}
@@ -202,12 +206,12 @@ void IFCAN_pipes_REGULAR()
 
 			pp->tim_N++;
 
-			if (pp->tim_N >= pp->tim) {
+			if (pp->tim_N >= pp->TIM) {
 
 				pp->tim_N = 0;
 
 				if (		pp->STARTUP != PM_ENABLED
-						|| pm.lu_mode != PM_LU_DISABLED) {
+						|| pm.lu_MODE != PM_LU_DISABLED) {
 
 					pp->flag_TX = 1;
 				}
@@ -218,7 +222,7 @@ void IFCAN_pipes_REGULAR()
 				IFCAN_pipe_OUTGOING(pp);
 			}
 		}
-		else if (pp->MODE == IFCAN_PIPE_OUTGOING_TRIGGERED
+		else if (	pp->MODE == IFCAN_PIPE_OUTGOING_INJECTED
 				&& pp->flag_TX != 0) {
 
 			IFCAN_pipe_OUTGOING(pp);
@@ -338,7 +342,7 @@ local_nodes_by_ACK(int node_ACK)
 
 	for (N = 0; N < IFCAN_NODES_MAX; ++N) {
 
-		if (		local.node[N].node_ID != 0
+		if (		   local.node[N].node_ID != 0
 				&& local.node[N].node_ACK == node_ACK) {
 
 			nodes_N += 1;
@@ -515,7 +519,7 @@ IFCAN_send_msg(CAN_msg_t *msg)
 
 		/* Wait until one of TX mailboxes is free.
 		 * */
-		hal_futile_ns(50000);
+		TIM_wait_ns(50000);
 	}
 	while (1);
 
@@ -681,8 +685,8 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 		local.flash_INIT_sizeof = * (u32_t *) &msg->payload[0];
 		local.flash_INIT_crc32 = * (u32_t *) &msg->payload[4];
 
-		if (		pm.lu_mode != PM_LU_DISABLED
-				|| net.flash_MODE != PM_ENABLED) {
+		if (		pm.lu_MODE != PM_LU_DISABLED
+				|| net.upgrade_MODE != PM_ENABLED) {
 
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 		}
@@ -691,7 +695,7 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 		}
 		else if (	local.flash_INIT_sizeof == 0UL
-				|| local.flash_INIT_sizeof > (FLASH_map[0] - fw.ld_begin)) {
+				|| local.flash_INIT_sizeof > FLASH_map[0] - fw.ld_begin) {
 
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_REJECT);
 		}
@@ -700,9 +704,10 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 			IFCAN_node_ACK(IFCAN_ACK_FLASH_UP_TO_DATE);
 		}
 		else {
+			app_halt();
+
 			taskDISABLE_INTERRUPTS();
 
-			GPIO_set_LOW(GPIO_BOOST_12V);
 			GPIO_set_HIGH(GPIO_LED);
 
 			/* Go into the selfupdate routine (run from RAM).
@@ -906,9 +911,9 @@ void IFCAN_filter_ID()
 
 			CAN_filter_ID(20 + N, 1, net.pipe[N].ID, IFCAN_FILTER_MATCH);
 		}
-		else if (net.pipe[N].MODE == IFCAN_PIPE_OUTGOING_TRIGGERED) {
+		else if (net.pipe[N].MODE == IFCAN_PIPE_OUTGOING_INJECTED) {
 
-			CAN_filter_ID(20 + N, 1, net.pipe[N].trigger_ID, IFCAN_FILTER_MATCH);
+			CAN_filter_ID(20 + N, 1, net.pipe[N].inject_ID, IFCAN_FILTER_MATCH);
 		}
 		else {
 			CAN_filter_ID(20 + N, 1, 0, 0);
@@ -918,8 +923,6 @@ void IFCAN_filter_ID()
 
 SH_DEF(net_survey)
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	CAN_msg_t		msg;
 	int			N;
 
@@ -959,14 +962,10 @@ SH_DEF(net_survey)
 	else {
 		printf("No remote nodes found" EOL);
 	}
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 SH_DEF(net_assign)
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	CAN_msg_t		msg;
 	int			N;
 
@@ -1001,14 +1000,10 @@ SH_DEF(net_assign)
 			}
 		}
 	}
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 SH_DEF(net_revoke)
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	CAN_msg_t		msg;
 	int			N, node_ID;
 
@@ -1038,30 +1033,27 @@ SH_DEF(net_revoke)
 			}
 		}
 	}
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 static void
 IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 {
-	const u32_t		*flash_end;
 	CAN_msg_t		msg;
-	int			rc, N, blk_N, fail_N;
+	int			blk_N, blk_END, blk_DATA;
+	int			ack_N, fail_N;
 
 	msg.ID = IFCAN_ID_FLASH_DATA;
 	msg.len = 8;
 
-	flash_end = (u32_t *) ((u32_t) flash + flash_sizeof);
-
 	blk_N = 0;
+	blk_END = flash_sizeof / 4U;
+
 	fail_N = 0;
 
 	puts("Flash ");
 
-	while (flash < flash_end) {
-
-		N = 0;
+	do {
+		ack_N = 0;
 
 		/* Note that bandwidth is limited because of it could take a
 		 * time to program flash on remote side. So we should check if
@@ -1069,9 +1061,9 @@ IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 		 * */
 		while (local_nodes_by_ACK(IFCAN_ACK_FLASH_DATA_PAUSE) != 0) {
 
-			N++;
+			ack_N++;
 
-			if (N >= 5) {
+			if (ack_N >= 5) {
 
 				local_node_replace_ACK(IFCAN_ACK_FLASH_DATA_PAUSE,
 						IFCAN_ACK_FLASH_REJECT);
@@ -1085,23 +1077,30 @@ IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 		 * */
 		if (local_nodes_by_ACK(IFCAN_ACK_FLASH_DATA_ACCEPT) == 0) {
 
-			puts(" Fail");
+			puts(" Done");
 			break;
 		}
 
-		* (u32_t *) &msg.payload[0] = *(flash + 0);
-		* (u32_t *) &msg.payload[4] = *(flash + 1);
+		/* Check if enough data has already been transferred.
+		 * */
+		if (blk_N >= blk_END * 2U) {
 
-		rc = IFCAN_send_msg(&msg);
+			puts(" Done");
+			break;
+		}
 
-		if (rc == CAN_TX_OK) {
+		blk_DATA = blk_N % blk_END;
 
-			flash += 2UL;
-			blk_N += 8;
+		/* Fill the packet payload.
+		 * */
+		* (u32_t *) &msg.payload[0] = (u32_t) blk_DATA;
+		* (u32_t *) &msg.payload[4] = * (flash + blk_DATA);
 
-			if (blk_N >= 8192) {
+		if (IFCAN_send_msg(&msg) == CAN_TX_OK) {
 
-				blk_N = 0;
+			blk_N += 1;
+
+			if (blk_N % 2048 == 0) {
 
 				/* Display uploading progress.
 				 * */
@@ -1109,28 +1108,22 @@ IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 			}
 		}
 		else {
-			fail_N += 8;
+			fail_N += 1;
 
-			if (fail_N >= 8192) {
+			if (fail_N >= 1000) {
 
 				puts(" Fail");
 				break;
 			}
 		}
 	}
-
-	if (flash >= flash_end) {
-
-		puts(" Done");
-	}
+	while (1);
 
 	puts(EOL);
 }
 
 SH_DEF(net_flash_update)
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	const FW_info_t		*info;
 	CAN_msg_t		msg;
 	u32_t			flash_sizeof, flash_crc32;
@@ -1246,7 +1239,7 @@ SH_DEF(net_flash_update)
 			 * */
 			vTaskDelay((TickType_t) 50);
 
-			nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_SELFUPDATE_DONE);
+			nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_FINISHED);
 
 			printf("%i nodes were updated" EOL, nodes_N);
 		}
@@ -1254,8 +1247,6 @@ SH_DEF(net_flash_update)
 			printf("No remote nodes were updated" EOL);
 		}
 	}
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 
 void task_REMOTE(void *pData)
@@ -1295,8 +1286,6 @@ void IFCAN_remote_putc(int c)
 
 SH_DEF(net_node_remote)
 {
-#ifdef HW_HAVE_NETWORK_CAN
-
 	TaskHandle_t		xHandle;
 	int			node_ID;
 	char			xC;
@@ -1356,7 +1345,5 @@ SH_DEF(net_node_remote)
 		 * */
 		puts(EOL);
 	}
-
-#endif /* HW_HAVE_NETWORK_CAN */
 }
 

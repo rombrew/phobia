@@ -29,7 +29,7 @@ struct link_priv {
 	int			flash_N;
 	int			flash_info_N;
 
-	char			mb[409600];
+	char			mb[81920];
 	char			*mbflow;
 };
 
@@ -225,13 +225,13 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 		}
 	}
 
-	if (		(reg->mode & 7) == LINK_REG_CONFIG
+	if (		(reg->mode & 7U) == LINK_REG_CONFIG
 			&& strstr(reg->um, "_") != NULL
 			&& (reg->mode & LINK_REG_TYPE_INT) != 0
 			&& reg->lval >= 0 && reg->lval < LINK_COMBO_MAX
 			&& reg->combo[reg->lval] == NULL) {
 
-		if ((int) (priv->mbflow - priv->mb) < 409500) {
+		if ((int) (priv->mbflow - priv->mb) < sizeof(priv->mb) - 90U) {
 
 			sprintf(priv->mbflow, "%.77s", reg->um);
 
@@ -452,7 +452,8 @@ void link_open(struct link_pmc *lp, const char *devname, int baudrate)
 		return ;
 
 	sprintf(lp->devname, "%.77s", devname);
-	sprintf(lp->baudrate, "%i", baudrate);
+
+	lp->baudrate = baudrate;
 
 	if (lp->priv != NULL) {
 
@@ -481,7 +482,7 @@ void link_open(struct link_pmc *lp, const char *devname, int baudrate)
 	sprintf(priv->lbuf, "reg" LINK_EOL);
 	serial_async_fputs(priv->fd, priv->lbuf);
 
-	sprintf(priv->lbuf, "flash_info_map" LINK_EOL);
+	sprintf(priv->lbuf, "flash_info" LINK_EOL);
 	serial_async_fputs(priv->fd, priv->lbuf);
 }
 
@@ -507,7 +508,7 @@ void link_close(struct link_pmc *lp)
 int link_fetch(struct link_pmc *lp, int clock)
 {
 	struct link_priv	*priv = lp->priv;
-	int			fetched = 0;
+	int			N = 0;
 
 	lp->clock = clock;
 
@@ -541,7 +542,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 			priv->flash_N--;
 		}
 
-		if (strstr(priv->lbuf, "flash_info_map") != NULL) {
+		if (strstr(priv->lbuf, "flash_info") != NULL) {
 
 			priv->flash_page = 0;
 			priv->flash_info_N = 10;
@@ -553,10 +554,12 @@ int link_fetch(struct link_pmc *lp, int clock)
 			priv->flash_info_N--;
 		}
 
-		fetched++;
+		N++;
 	}
 
-	return fetched;
+	lp->fetched_N += N;
+
+	return N;
 }
 
 void link_push(struct link_pmc *lp)

@@ -1,8 +1,6 @@
 #include <stddef.h>
 
 #include "hal.h"
-#include "libc.h"
-
 #include "cmsis/stm32xx.h"
 
 void irq_CAN1_TX() { }
@@ -81,7 +79,7 @@ static int
 CAN_wait_for_MSR(u32_t xBITS, u32_t xVAL)
 {
 	u32_t		xMSR;
-	int		N = 0;
+	int		wait_N = 0;
 
 	do {
 		xMSR = CAN1->MSR & xBITS;
@@ -91,9 +89,11 @@ CAN_wait_for_MSR(u32_t xBITS, u32_t xVAL)
 			return 1;
 		}
 
-		N++; __NOP();
+		__NOP();
+
+		wait_N++;
 	}
-	while (N < 70000UL);
+	while (wait_N < 70000UL);
 
 	return 0;
 }
@@ -124,14 +124,6 @@ void CAN_configure()
 	/* Bit timing (1 Mbit/s).
 	 * */
 	CAN1->BTR = (5UL << 20) | (6UL << 16) | (2UL);
-
-	if (hal.CAN_mode_NART == CAN_MODE_NO_AUTO_RETRANSMIT) {
-
-		CAN1->MCR |= CAN_MCR_NART;
-	}
-	else {
-		CAN1->MCR &= ~CAN_MCR_NART;
-	}
 
 	CAN1->FMR |= CAN_FMR_FINIT;
 

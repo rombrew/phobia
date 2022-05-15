@@ -1,50 +1,32 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#define GPIO_TIM1_CH1N			XGPIO_DEF4('B', 13, 0, 1)
-#define GPIO_TIM1_CH2N			XGPIO_DEF4('B', 14, 0, 1)
-#define GPIO_TIM1_CH3N			XGPIO_DEF4('B', 15, 0, 1)
-#define GPIO_TIM1_CH1			XGPIO_DEF4('A', 8, 0, 1)
-#define GPIO_TIM1_CH2			XGPIO_DEF4('A', 9, 0, 1)
-#define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
-
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
-#define TIM_ADC_ADVANCE			60
+#define TIM_ADC_ADVANCE			80
 
 void irq_TIM1_UP_TIM10() { }
 
 static int
-PWM_calculate_R()
+PWM_build()
 {
-	int		R;
+	int		resolution, dtick;
 
-	R = (int) ((float) CLOCK_TIM1_HZ / 2.f / hal.PWM_frequency + .5f);
+	resolution = (int) ((float) CLOCK_TIM1_HZ / 2.f / hal.PWM_frequency + .5f);
+	dtick = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f + .5f);
+	dtick = (dtick < 127) ? dtick : 127;
 
-	hal.PWM_frequency = (float) CLOCK_TIM1_HZ / 2.f / (float) R;
-	hal.PWM_resolution = R;
+	hal.PWM_frequency = (float) CLOCK_TIM1_HZ / 2.f / (float) resolution;
+	hal.PWM_resolution = resolution;
+	hal.PWM_deadtime = (float) dtick * 1000000000.f / (float) CLOCK_TIM1_HZ;
 
-	return R;
-}
-
-static int
-PWM_calculate_D()
-{
-	int		D;
-
-	D = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f + .5f);
-	D = (D < 127) ? D : 127;
-
-	hal.PWM_deadtime = (float) D * 1000000000.f / (float) CLOCK_TIM1_HZ;
-
-	return D;
+	return dtick;
 }
 
 void PWM_startup()
 {
-	int		R, D;
+	int		dtick;
 
-	R = PWM_calculate_R();
-	D = PWM_calculate_D();
+	dtick = PWM_build();
 
 	/* Enable TIM1 clock.
 	 * */
@@ -58,18 +40,18 @@ void PWM_startup()
 	TIM1->DIER = 0;
 	TIM1->CCMR1 = TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1 | TIM_CCMR1_OC2PE
 		| TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1PE;
-	TIM1->CCMR2 = TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_0 | TIM_CCMR2_OC4PE
-		| TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3PE;
+	TIM1->CCMR2 = TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_0
+		| TIM_CCMR2_OC4PE | TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3PE;
 	TIM1->CCER = TIM_CCER_CC4E;
 	TIM1->CNT = 0;
 	TIM1->PSC = 0;
-	TIM1->ARR = R;
+	TIM1->ARR = hal.PWM_resolution;
 	TIM1->RCR = 0;
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-	TIM1->CCR4 = R - TIM_ADC_ADVANCE;
-	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | D;
+	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
+	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | dtick;
 
 	/* Start TIM1.
 	 * */
@@ -96,15 +78,14 @@ void PWM_startup()
 
 void PWM_configure()
 {
-	int		R, D;
+	int		dtick;
 
-	R = PWM_calculate_R();
-	D = PWM_calculate_D();
+	dtick = PWM_build();
 
-	TIM1->ARR = R;
-	TIM1->CCR4 = R - TIM_ADC_ADVANCE;
+	TIM1->ARR = hal.PWM_resolution;
+	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
 
-	MODIFY_REG(TIM1->BDTR, 0xFFUL, D);
+	MODIFY_REG(TIM1->BDTR, 0xFFUL, dtick);
 }
 
 void PWM_set_DC(int A, int B, int C)

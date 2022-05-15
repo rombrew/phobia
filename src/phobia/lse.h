@@ -4,12 +4,12 @@
 /* Define the maximal full size to be allocated. This is the sum of \x and \z
  * row-vector sizes.
  * */
-#define LSE_FULL_MAX		10
+#define LSE_FULL_MAX			10
 
-/* Define the number of cascades. Large value gives a more precision on large
- * datasets but consumes more memory. Reasonable values are from 2 to 5.
+/* Define the maximal number of cascades. Large value gives a more precision on
+ * large datasets but consumes more memory. Reasonable values are from 2 to 5.
  * */
-#define LSE_CASCADE_MAX		2
+#define LSE_CASCADE_MAX			2
 
 /* Define native floating-point type to use inside of LSE.
  * */
@@ -21,7 +21,7 @@ typedef struct {
 	 * */
 	int		n_keep;
 
-	/* Data of upper-triangular matrix.
+	/* Content of upper-triangular matrix.
 	 * */
 	lse_float_t	*m;
 }
@@ -29,12 +29,18 @@ lse_triu_t;
 
 typedef struct {
 
-	/* Input data sizes.
+	/* Cascades in actual use.
+	 * */
+	int		n_cascades;
+
+	/* Input DATA sizes.
 	 * */
 	int		n_size_of_x;
 	int		n_size_of_z;
 	int		n_full;
 
+	/* Processed sizes.
+	 * */
 	int		n_threshold;
 	int		n_total;
 
@@ -64,7 +70,7 @@ typedef struct {
 
 	/* LS standard deviation of \z row-vector.
 	 *
-	 * e(i) = norm(Rz(:,i)) / sqrt(n_total).
+	 * e(i) = norm(Rz(:,i)) / sqrt(n_total - 1).
 	 *
 	 * */
 	lse_float_t	*e;
@@ -77,7 +83,7 @@ lse_t;
 
 /* The function configures the instance of LSE.
  * */
-void lse_initiate(lse_t *lse, int n_size_of_x, int n_size_of_z);
+void lse_initiate(lse_t *lse, int n_cascades, int n_size_of_x, int n_size_of_z);
 
 /* The function calculates the final LS solution \b.
  *

@@ -4,8 +4,8 @@
 #include "lse.h"
 
 #define PM_CONFIG_NOP(pm)	(pm)->config_NOP
-#define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
+#define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 #define PM_CONFIG_DEBUG(pm)	(pm)->config_DEBUG
 
 #define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) * 0.001f)
@@ -15,13 +15,26 @@
 #define PM_SFI(s)		#s
 
 enum {
+	PM_Z_NUL				= 0,
+	PM_Z_A,
+	PM_Z_B,
+	PM_Z_AB,
+	PM_Z_C,
+	PM_Z_AC,
+	PM_Z_BC,
+	PM_Z_ABC
+};
+
+enum {
 	PM_NOP_THREE_PHASE			= 0,
 	PM_NOP_TWO_PHASE
 };
 
 enum {
 	PM_IFB_AB_INLINE			= 0,
-	PM_IFB_AB_LOW,
+	PM_IFB_AB_GND,
+	PM_IFB_ABC_INLINE,
+	PM_IFB_ABC_GND
 };
 
 enum {
@@ -30,15 +43,34 @@ enum {
 };
 
 enum {
-	PM_DRIVE_CURRENT			= 0,
-	PM_DRIVE_SPEED,
-	PM_DRIVE_SERVO,
+	PM_ESTIMATE_NONE			= 0,
+	PM_ESTIMATE_ORTEGA,
+	PM_ESTIMATE_LUENBERGER
 };
 
 enum {
-	PM_FLUX_UNCERTAIN			= 0,
-	PM_FLUX_HIGH,
-	PM_FLUX_LOCKED_IN_DETACH
+	PM_LOCATION_INHERITED			= 0,
+	PM_LOCATION_ABI,
+	PM_LOCATION_SINCOS
+};
+
+enum {
+	PM_SINCOS_PLAIN				= 0,
+	PM_SINCOS_ANALOG,
+	PM_SINCOS_RESOLVER,
+};
+
+enum {
+	PM_DRIVE_CURRENT			= 0,
+	PM_DRIVE_SPEED,
+	PM_DRIVE_SERVO
+};
+
+enum {
+	PM_ZONE_NONE				= 0,
+	PM_ZONE_UNCERTAIN,
+	PM_ZONE_HIGH,
+	PM_ZONE_LOCKED_IN_DETACH
 };
 
 enum {
@@ -50,12 +82,6 @@ enum {
 	PM_LU_SENSOR_HALL,
 	PM_LU_SENSOR_ABI,
 	PM_LU_SENSOR_SINCOS
-};
-
-enum {
-	PM_FA_INHERITED				= 0,
-	PM_FA_ABI,
-	PM_FA_SINCOS
 };
 
 enum {
@@ -74,17 +100,20 @@ enum {
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
 	PM_STATE_ADJUST_SENSOR_HALL,
+	PM_STATE_ADJUST_SENSOR_ABI,
 	PM_STATE_ADJUST_SENSOR_SINCOS,
 	PM_STATE_LOOP_BOOST,
-	PM_STATE_HALT,
+	PM_STATE_HALT
 };
 
 enum {
-	PM_TUNE_DEFAULT				= 0,
-	PM_TUNE_FLUX_MPPE,
-	PM_TUNE_LOOP_FORCED,
+	PM_TUNE_ALL_DEFAULT			= 0,
+	PM_TUNE_PROBE_DEFAULT,
+	PM_TUNE_MAXIMAL_CURRENT,
 	PM_TUNE_LOOP_CURRENT,
-	PM_TUNE_LOOP_SPEED,
+	PM_TUNE_ZONE_THRESHOLD,
+	PM_TUNE_LOOP_FORCED,
+	PM_TUNE_LOOP_SPEED
 };
 
 enum {
@@ -94,30 +123,34 @@ enum {
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
-	PM_ERROR_BOOTSTRAP_TIME,
+	PM_ERROR_BOOTSTRAP_FAULT,
 	PM_ERROR_POWER_STAGE_DAMAGED,
-	PM_ERROR_LOW_ACCURACY,
+	PM_ERROR_INSUFFICIENT_ACCURACY,
 	PM_ERROR_CURRENT_LOOP_IS_OPEN,
-	PM_ERROR_INLINE_OVERCURRENT,
+	PM_ERROR_INSTANT_OVERCURRENT,
 	PM_ERROR_DC_LINK_OVERVOLTAGE,
+	PM_ERROR_UNCERTAIN_RESULT,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
-	PM_ERROR_SENSOR_ABI_FAULT,
-	PM_ERROR_SENSOR_SINCOS_FAULT,
 
-	/* External.
+	/* Application level.
 	 * */
 	PM_ERROR_TIMEOUT,
 	PM_ERROR_NO_FLUX_CAUGHT,
 	PM_ERROR_LOSS_OF_SYNC,		/* BLM model only */
+
+	/* Arise by hardware.
+	 * */
+	PM_ERROR_HW_OVERCURRENT,
+	PM_ERROR_HW_STOP
 };
 
 typedef struct {
 
 	float		current_A;
 	float		current_B;
+	float		current_C;
 	float		voltage_U;
-
 	float		voltage_A;
 	float		voltage_B;
 	float		voltage_C;
@@ -145,7 +178,6 @@ typedef struct {
 	float		k_UMAX;
 	float		k_EMAX;
 	float		k_KWAT;
-	int		k_ZNUL;
 
 	int		ts_minimal;
 	int		ts_clearance;
@@ -157,11 +189,11 @@ typedef struct {
 	float		self_BST[3];
 	int		self_BM[8];
 	float		self_RMSi[3];
-	float		self_RMSu[3];
+	float		self_RMSu[4];
 
 	int		config_NOP;
-	int		config_TVM;
 	int		config_IFB;
+	int		config_TVM;
 	int		config_DEBUG;
 
 	int		config_VSI_CIRCULAR;
@@ -172,16 +204,17 @@ typedef struct {
 	int		config_LU_SENSOR_HALL;
 	int		config_LU_SENSOR_ABI;
 	int		config_LU_SENSOR_SINCOS;
-	int		config_FA_PRECEDENCE;
-	int		config_DRIVE;
-	int		config_FLUX_IMBALANCE;
-	int		config_HFI_MAJOR;
+	int		config_LU_LOCATION;
+	int		config_LU_DRIVE;
+	int		config_HFI_MAJOR_AXES;
+	int		config_ABI_ABSOLUTE;
+	int		config_SINCOS_FRONTEND;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
-	int		config_MTPA_RELUCTANCE;
+	int		config_MTPA_RELUCTANCE;		/* TODO */
 	int		config_WEAKENING;
 	int		config_MILEAGE_INFO;
-	int		config_BOOST_CHARGE;
+	int		config_BOOST_CHARGE;		/* TODO */
 
 	int		fsm_req;
 	int		fsm_state;
@@ -205,6 +238,7 @@ typedef struct {
 
 	float		ad_IA[2];
 	float		ad_IB[2];
+	float		ad_IC[2];
 	float		ad_US[2];
 	float		ad_UA[2];
 	float		ad_UB[2];
@@ -212,6 +246,7 @@ typedef struct {
 
 	float		fb_iA;
 	float		fb_iB;
+	float		fb_iC;
 	float		fb_uA;
 	float		fb_uB;
 	float		fb_uC;
@@ -225,7 +260,6 @@ typedef struct {
 	float		probe_current_weak;
 	float		probe_current_sine;
 	float		probe_freq_sine_hz;
-	float		probe_speed_maximal_pc;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
 	float		probe_gain_P;
@@ -236,6 +270,7 @@ typedef struct {
 	float		fault_voltage_tol;
 	float		fault_current_tol;
 	float		fault_accuracy_tol;
+	float		fault_terminal_tol;
 	float		fault_current_halt;
 	float		fault_voltage_halt;
 
@@ -253,6 +288,8 @@ typedef struct {
 	int		vsi_CG;
 	int		vsi_AF;
 	int		vsi_BF;
+	int		vsi_CF;
+	int		vsi_XXF;
 	int		vsi_SF;
 	int		vsi_UF;
 	int		vsi_AZ;
@@ -261,7 +298,7 @@ typedef struct {
 	float		vsi_lpf_DC;
 	float		vsi_gain_LP_F;
 
-	int		tvm_ALLOWED;
+	int		tvm_INUSE;
 	float		tvm_range_DC;
 	float		tvm_A;
 	float		tvm_B;
@@ -272,21 +309,21 @@ typedef struct {
 	float		tvm_DX;
 	float		tvm_DY;
 
-	int		lu_mode;
+	int		lu_MODE;
 	float		lu_iX;
 	float		lu_iY;
 	float		lu_iD;
 	float		lu_iQ;
-	float		lu_F[2];
+	float		lu_F[3];
 	float		lu_wS;
-	float		lu_transition;
+	float		lu_location;
+	int		lu_revol;
+	int		lu_revob;
+	int		lu_total_revol;
+	float		lu_transient;
 	float		lu_lpf_torque;
 	float		lu_base_wS;
-	float		lu_gain_TF;
-
-	float		fa_F[3];
-	int		fa_revol;
-	int		fa_revob;
+	float		lu_gain_TQ;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -294,44 +331,44 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
+	float		forced_maximal_DC;
 	int		forced_TIM;
 
-	float		detach_X;
-	float		detach_Y;
-	float		detach_V[2];
+	int		detach_LOCK;
 	int		detach_TIM;
-	int		detach_SKIP;
-	float		detach_take_U;
-	float		detach_gain_AD;
+	float		detach_level_U;
+	float		detach_trip_AD;
 	float		detach_gain_SF;
 
-	float		flux_X;
-	float		flux_Y;
+	int		flux_ESTIMATE;
+	int		flux_ZONE;
+
+	float		flux_X[2];
 	float		flux_E;
 	float		flux_F[2];
 	float		flux_wS;
+	float		flux_trip_AD;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
 	float		flux_gain_HI;
-	float		flux_gain_AD;
 	float		flux_gain_SF;
 	float		flux_gain_IF;
 
-	int		flux_mode;
-	int		flux_LOCKED;
-	float		flux_lpf_wS;
-	float		flux_MPPE;
-	float		flux_URE;
-	float		flux_gain_TAKE;
-	float		flux_gain_GIVE;
-	float		flux_gain_DE;
-	float		flux_gain_LP_S;
+	float		flux_QZ;
+	float           flux_gain_DA;
+        float           flux_gain_QA;
+        float           flux_gain_DP;
+        float           flux_gain_DS;
+        float           flux_gain_QS;
+        float           flux_gain_QZ;
 
-	int		flux_imb_ONFLAG;
-	int		flux_imb_TIM;
-	int		flux_imb_END;
-	float		flux_imb_ripple_STD;
-	float		flux_imb_KF[7];
+	float		zone_lpf_wS;
+	float		zone_MPPE;
+	float		zone_MURE;
+	float		zone_gain_TA;
+	float		zone_gain_GI;
+	float		zone_gain_ES;
+	float		zone_gain_LP_S;
 
 	int		hfi_INJECTED;
 	float		hfi_F[2];
@@ -342,15 +379,14 @@ typedef struct {
 	float		hfi_im_L1;
 	float		hfi_im_L2;
 	float		hfi_im_R;
-	float		hfi_im_FP;
-	int		hfi_DIV;
+	int		hfi_INJS;
 	int		hfi_SKIP;
-	int		hfi_SUM;
-	int		hfi_FLUX;
+	int		hfi_ESTI;
+	int		hfi_TORQ;
+	int		hfi_POLA;
 	float		hfi_DFT[9];
 	float		hfi_REM[12];
-	int		hfi_DFT_N;
-	int		hfi_DFT_P;
+	int		hfi_IN;
 	int		hfi_TIM;
 	float		hfi_gain_SF;
 	float		hfi_gain_IF;
@@ -362,12 +398,12 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_ALLOWED;
+	int		hall_INUSE;
 	int		hall_HS;
 	int		hall_DIRF;
-	float		hall_prolS;
-	int		hall_prolTIM;
-	int		hall_failTIM;
+	float		hall_prol;
+	int		hall_TIM;
+	int		hall_ERR;
 	float		hall_F[2];
 	float		hall_wS;
 	float		hall_prol_ms;
@@ -375,19 +411,36 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_IF;
 
-	int		abi_baseEP;
-	float		abi_baseF[2];
-	int		abi_lastEP;
-	int		abi_rotEP;
-	int		abi_prolTIM;
-	float		abi_prolS;
-	int		abi_PPR;
-	float		abi_Zq;
+	int		abi_INUSE;
+	int		abi_in_EP;
+	float		abi_in_F[2];
+	int		abi_revol;
+	int		abi_unwrap;
+	int		abi_rel_EP;
+	int		abi_loc_EP;
+	int		abi_TIM;
+	float		abi_prol;
+	int		abi_EPPR;
+	int		abi_gear_ZS;
+	int		abi_gear_ZQ;
 	float		abi_F[2];
 	float		abi_wS;
+	float		abi_location;
 	float		abi_gain_PF;
 	float		abi_gain_SF;
 	float		abi_gain_IF;
+
+	float		sincos_FIR[20];
+	float		sincos_SC[3];
+	int		sincos_revol;
+	int		sincos_unwrap;
+	int		sincos_gear_ZS;
+	int		sincos_gear_ZQ;
+	float		sincos_F[2];
+	float		sincos_wS;
+	float		sincos_location;
+	float		sincos_gain_SF;
+	float		sincos_gain_IF;
 
 	float		const_fb_U;
 	float		const_E;
@@ -400,11 +453,15 @@ typedef struct {
 	float		const_im_R;
 	float		const_ld_S;
 
-	float		temp_const_ifbU;
-	float		temp_const_iE;
-	float		temp_HFI_wS;
-	float		temp_HFI_HT[2];
-	float		temp_ZiPPR;
+	float		quick_iUdc;
+	float		quick_iE;
+	float		quick_iEq;
+	float		quick_iL1;
+	float		quick_iL2;
+	float		quick_hfwS;
+	float		quick_hfSC[2];
+	float		quick_ZiEP;
+	float		quick_ZiSQ;
 
 	float		watt_wP_maximal;
 	float		watt_iDC_maximal;
@@ -422,14 +479,12 @@ typedef struct {
 	float		i_maximal;
 	float		i_reverse;
 	float		i_derated_PCB;
-	float		i_derated_HFI;
 	float		i_derated_WEAK;
 	float		i_track_D;
 	float		i_track_Q;
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_slew_rate;
-	float		i_slew_dT;
 	float		i_tol_Z;
 	float		i_gain_P;
 	float		i_gain_I;
@@ -449,20 +504,17 @@ typedef struct {
 	float		s_track;
 	float		s_tol_Z;
 	float		s_gain_P;
-	float		s_gain_S;
+	float		s_gain_H;
 	float		s_iSP;
 
-	float		x_setpoint_F[2];
+	float		x_setpoint_location;
 	float		x_setpoint_speed;
-	int		x_setpoint_revol;
-	float		x_residual;
-	float		x_tol_N;
+	float		x_discrepancy;
+	float		x_tol_NEAR;
 	float		x_tol_Z;
 	float		x_gain_P;
-	float		x_gain_N;
+	float		x_gain_Z;
 
-	int		im_total_revol;
-	int		im_base_revol;
 	float		im_distance;
 	float		im_consumed_Wh;
 	float		im_consumed_Ah;
@@ -489,12 +541,14 @@ void pm_tune(pmc_t *pm, int req);
 
 void pm_hfi_DFT(pmc_t *pm, float la[5]);
 
+void pm_clearance(pmc_t *pm, int xA, int xB, int xC);
 void pm_voltage(pmc_t *pm, float uX, float uY);
+
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
 void pm_FSM(pmc_t *pm);
 
-const char *pm_strerror(int n);
+const char *pm_strerror(int errno);
 
 #endif /* _H_PM_ */
 

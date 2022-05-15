@@ -1,37 +1,28 @@
-############################################
+HWREV	?= REV5A
 
-HW_MCU	= STM32F405
-#HW_REV	= REV2
-#HW_REV	= KLEN
-#HW_REV	= REV4B
-#HW_REV	= REV4C
-HW_REV	= REV5A
+include hal/mk/$(HWREV).d
 
-#HW_MCU	= STM32F722
-#HW_REV	= PESC1
-
-############################################
-
-BUILD	?= /tmp/pmc
-TARGET	= $(BUILD)/pmc
+BUILD	?= /tmp/pmcfw-$(HWREV)
+TARGET	= $(BUILD)/pmcfw-$(HWREV)
 IMAGE	= $(TARGET).bin
 
 CROSS	?= armv7m-none-eabi
 CC	= $(CROSS)-gcc
 #CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
-GDB	= $(CROSS)-gdb
+#GDB	= $(CROSS)-gdb
+GDB	= /home/amaora/src/blackmagic/armv7m-none-eabi-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
 CFLAGS	= -Os -flto -g3 -pipe
 
-ifeq ($(HW_MCU), STM32F405)
+ifeq ($(HWMCU), STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
 CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
 endif
 
-ifeq ($(HW_MCU), STM32F722)
+ifeq ($(HWMCU), STM32F722)
 CFLAGS	+= -mcpu=cortex-m7 -mthumb
 CFLAGS	+= -mfloat-abi=hard -mfpu=fpv5-sp-d16
 endif
@@ -47,20 +38,21 @@ CFLAGS	+= -fno-associative-math
 CFLAGS	+= -fno-reciprocal-math
 CFLAGS	+= -ffp-contract=fast
 CFLAGS  += -I.
-CFLAGS	+= -D_HW_$(HW_MCU) -D_HW_$(HW_REV) -D_HW_REVISION=\"$(HW_REV)\"
+CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
+	   -D_HW_INCLUDE=\"hal/hw/$(HWREV).h\"
 
 LDFLAGS	= -nostdlib
 
-ifeq ($(HW_MCU), STM32F405)
+ifeq ($(HWMCU), STM32F405)
 LDFLAGS	+= -Wl,-T,hal/link_f405.ld
 endif
 
-ifeq ($(HW_MCU), STM32F722)
+ifeq ($(HWMCU), STM32F722)
 LDFLAGS	+= -Wl,-T,hal/link_f722.ld
 endif
 
-TTY	= /dev/rfcomm0
-#TTY	= /dev/ttyUSB0
+#TTY	= /dev/rfcomm0
+TTY	= /dev/ttyUSB0
 BAUD	= 57600
 
 LOGFILE	= /tmp/phobia.log
@@ -70,9 +62,11 @@ OBJS    = freertos/heap_4.o \
 	  freertos/port.o \
 	  freertos/queue.o \
 	  freertos/tasks.o \
-	  hal/entry.o \
 	  hal/adc.o \
-	  hal/can.o \
+	  $(INCLUDE_HAL_CAN) \
+	  hal/dps.o \
+	  $(INCLUDE_HAL_DRV) \
+	  hal/entry.o \
 	  hal/flash.o \
 	  hal/gpio.o \
 	  hal/hal.o \
@@ -88,10 +82,9 @@ OBJS    = freertos/heap_4.o \
 	  phobia/pm.o \
 	  phobia/pm_fsm.o \
 	  flash.o \
-	  ifcan.o \
+	  $(INCLUDE_IFCAN) \
 	  libc.o \
 	  main.o \
-	  min.o \
 	  ntc.o \
 	  pmfunc.o \
 	  pmtest.o \
@@ -101,7 +94,7 @@ OBJS    = freertos/heap_4.o \
 	  tlm.o
 
 OBJS	+= apps/hx711.o \
-	   apps/pushb.o
+	   apps/push.o
 
 TARGET_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
@@ -120,13 +113,17 @@ $(IMAGE): $(TARGET)
 	@ echo "  OC    " $(notdir $@)
 	@ $(OC) -j .text -j .data -O binary -S $< $@
 
-flash: $(IMAGE)
-	@ echo "  FLASH " $(notdir $<)
-	@ stm32flash -w $< -v -S 0x08000000:262144 -b $(BAUD) -R $(TTY)
-
 zip: $(IMAGE)
 	@ echo "  ZIP   " $(notdir $<)
-	@ zip -j9 $(BUILD)/pmc-$(HW_REV)-$(shell hg id -n).zip $<
+	@ zip -j9 $(BUILD)/pmcfw-$(HWREV)-$(shell hg id -n).zip $<
+
+flash: $(IMAGE)
+	@ echo "  FLASH " $(notdir $<)
+	@ stm32flash -w $< -v -S 0x08000000:131072 -b $(BAUD) -R $(TTY)
+
+stlink: $(IMAGE)
+	@ echo "  FLASH " $(notdir $<)
+	@ st-flash write $< 0x08000000
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)

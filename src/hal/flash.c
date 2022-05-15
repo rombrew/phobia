@@ -90,7 +90,6 @@ FLASH_erase_on_IWDG(int N)
 }
 
 #ifdef HW_HAVE_NETWORK_CAN
-
 #define self_INQ_SIZE		30
 
 LD_RAMFUNC static void
@@ -118,20 +117,21 @@ LD_RAMFUNC static u32_t
 self_crc32a(const void *s, int n)
 {
 	const u8_t		*bs = (const u8_t *) s;
-	u32_t			crc, mask;
+	u32_t			crc, buf;
 
 	crc = 0xFFFFFFFFUL;
 
 	while (n >= 1) {
 
-		int		j;
+		int		i;
 
-		crc = crc ^ (u32_t) (*bs++);
+		buf = (u32_t) *bs++;
+		crc ^= buf;
 
-		for (j = 0; j < 8; ++j) {
+		for (i = 0; i < 8; ++i) {
 
-			mask = - (crc & 1UL);
-			crc = (crc >> 1) ^ (0xEDB88320UL & mask);
+			buf = - (crc & 1UL);
+			crc = (crc >> 1) ^ (0xEDB88320UL & buf);
 		}
 
 		n += - 1;
@@ -141,19 +141,17 @@ self_crc32a(const void *s, int n)
 }
 
 LD_RAMFUNC static void
-self_futile_on_IWDG(int us)
+self_TIM_wait_on_IWDG(int us)
 {
-	u32_t			xVAL, xLOAD;
+	u16_t			xCNT;
 	int			elapsed, hold;
 
-	xVAL = SysTick->VAL;
-	xLOAD = SysTick->LOAD + 1UL;
+	xCNT = TIM7->CNT;
 
-	hold = us * (clock_cpu_hz / 1000000UL);
+	hold = us * ((CLOCK_APB1_HZ * 2UL) / 1000000UL);
 
 	do {
-		elapsed = (int) (xVAL - SysTick->VAL);
-		elapsed += (elapsed < 0) ? xLOAD : 0;
+		elapsed = (int) ((u16_t) TIM7->CNT - xCNT);
 
 		if (elapsed >= hold)
 			break;
@@ -162,6 +160,7 @@ self_futile_on_IWDG(int us)
 		 * */
 		IWDG->KR = 0xAAAA;
 
+		__NOP();
 		__NOP();
 	}
 	while (1);
@@ -250,7 +249,7 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 	queue_IN.wp = 0;
 	queue_IN.rp = 0;
 
-	accepted = 0UL;
+	accepted = 0U;
 	paused = 0;
 
 	FLASH->CR = FLASH_CR_PSIZE_1 | FLASH_CR_PG;
@@ -269,7 +268,8 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 			if (		msg->ID == IFCAN_ID_FLASH_DATA
 					&& msg->len == 8) {
 
-				queue_IN.wp = (queue_IN.wp < self_INQ_SIZE - 1) ? queue_IN.wp + 1 : 0;
+				queue_IN.wp = (queue_IN.wp < self_INQ_SIZE - 1)
+					? queue_IN.wp + 1 : 0;
 
 				xLO = CAN1->sFIFOMailBox[0].RDLR;
 				xHI = CAN1->sFIFOMailBox[0].RDHR;
@@ -295,15 +295,20 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 			CAN_msg_t	*msg;
 
 			msg = &queue_IN.MSG[queue_IN.rp];
-			queue_IN.rp = (queue_IN.rp < self_INQ_SIZE - 1) ? queue_IN.rp + 1 : 0;
+			queue_IN.rp = (queue_IN.rp < self_INQ_SIZE - 1)
+				? queue_IN.rp + 1 : 0;
 
-			/* Program flash memory.
-			 * */
-			self_flash_prog(flash + 0, * (u32_t *) &msg->payload[0]);
-			self_flash_prog(flash + 1, * (u32_t *) &msg->payload[4]);
+			N = * (u32_t *) &msg->payload[0];
 
-			flash += 2UL;
-			accepted += 8UL;
+			if (		N >= 0 && N < INIT_sizeof / 4U
+					&& flash[N] == 0xFFFFFFFFUL) {
+
+				/* Program flash memory.
+				 * */
+				self_flash_prog(flash + N, * (u32_t *) &msg->payload[4]);
+
+				accepted += 4U;
+			}
 		}
 
 		if (paused == 0) {
@@ -370,15 +375,15 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 
 	if (self_crc32a((const void *) &ld_begin_vectors, INIT_sizeof) == INIT_crc32) {
 
-		self_IFCAN_node_ACK(IFCAN_ACK_FLASH_SELFUPDATE_DONE);
+		self_IFCAN_node_ACK(IFCAN_ACK_FLASH_FINISHED);
 	}
 	else {
 		self_IFCAN_node_ACK(IFCAN_ACK_FLASH_CRC32_INVALID);
 	}
 
-	/* Wait until all messages are transfered.
+	/* Wait until all messages are transferred.
 	 * */
-	self_futile_on_IWDG(10);
+	self_TIM_wait_on_IWDG(200);
 
 	/* Request a system RESET.
 	 * */
@@ -390,7 +395,6 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 
 	while (1) { __NOP(); }
 }
-
 #endif /* HW_HAVE_NETWORK_CAN */
 
 void *FLASH_erase(void *flash)
@@ -433,7 +437,8 @@ void *FLASH_erase(void *flash)
 
 		/* Invalidate D-Cache on the erased sector.
 		 * */
-		SCB_InvalidateDCacheByAddr((void *) FLASH_map[N], FLASH_map[N + 1] - FLASH_map[N]);
+		SCB_InvalidateDCacheByAddr((void *) FLASH_map[N],
+				FLASH_map[N + 1] - FLASH_map[N]);
 
 #endif /* STM32Fx */
 	}

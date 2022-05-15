@@ -7,9 +7,9 @@ typedef struct {
 
 	float			us_per_tik;
 }
-HAL_PPM_t;
+priv_PPM_t;
 
-static HAL_PPM_t		hal_PPM;
+static priv_PPM_t		priv_PPM;
 
 void irq_TIM4()
 {
@@ -22,14 +22,14 @@ void irq_TIM4()
 		TIM4->SR = ~TIM_SR_CC2IF;
 		TIM4->DIER = TIM_DIER_CC4IE;
 
-		hal.PPM_signal_caught = 1;
+		hal.PPM_caught = 1;
 	}
 	else if (SR & TIM_SR_CC4IF) {
 
 		TIM4->SR = ~TIM_SR_CC4IF;
 		TIM4->DIER = TIM_DIER_CC2IE;
 
-		hal.PPM_signal_caught = 0;
+		hal.PPM_caught = 0;
 	}
 }
 
@@ -58,9 +58,9 @@ PPM_mode_PULSE_WIDTH()
 	TIM4->CCR3 = 0;
 	TIM4->CCR4 = 65535;
 
-	hal_PPM.us_per_tik = 1000000.f * (float) (TIM4->PSC + 1UL) / (float) CLOCK_TIM4_HZ;
+	priv_PPM.us_per_tik = 1000000.f * (float) (TIM4->PSC + 1UL) / (float) CLOCK_TIM4_HZ;
 	hal.PPM_timebase = CLOCK_TIM4_HZ / (TIM4->PSC + 1UL);
-	hal.PPM_signal_caught = 0;
+	hal.PPM_caught = 0;
 
 	/* Enable IRQ.
 	 * */
@@ -74,7 +74,10 @@ PPM_mode_PULSE_WIDTH()
 	/* Enable TIM4 pins.
 	 * */
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
+
+#ifndef HW_HAVE_NO_PPM_DIR
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
+#endif /* HW_HAVE_NO_PPM_DIR */
 }
 
 static void
@@ -149,18 +152,21 @@ void PPM_startup()
 
 		PPM_mode_PULSE_WIDTH();
 	}
-	else if (hal.PPM_mode == PPM_STEP_DIR) {
-
-		PPM_mode_STEP_DIR();
-	}
 	else if (hal.PPM_mode == PPM_OUTPULSE) {
 
 		/* TODO */
+	}
+
+#ifndef HW_HAVE_NO_PPM_DIR
+	else if (hal.PPM_mode == PPM_STEP_DIR) {
+
+		PPM_mode_STEP_DIR();
 	}
 	else if (hal.PPM_mode == PPM_BACKUP_ABI) {
 
 		PPM_mode_BACKUP_ABI();
 	}
+#endif /* HW_HAVE_NO_PPM_DIR */
 }
 
 static void
@@ -200,7 +206,7 @@ float PPM_get_PERIOD()
 {
 	float		us;
 
-	us = (float) TIM4->CCR1 * hal_PPM.us_per_tik;
+	us = (float) TIM4->CCR1 * priv_PPM.us_per_tik;
 
 	return us;
 }
@@ -209,7 +215,7 @@ float PPM_get_PULSE()
 {
 	float		us;
 
-	us = (float) TIM4->CCR2 * hal_PPM.us_per_tik;
+	us = (float) TIM4->CCR2 * priv_PPM.us_per_tik;
 
 	return us;
 }

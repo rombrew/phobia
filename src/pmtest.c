@@ -13,7 +13,7 @@ SH_DEF(pm_self_test)
 {
 	int			N, xDC;
 
-	if (pm.lu_mode != PM_LU_DISABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return;
@@ -27,6 +27,7 @@ SH_DEF(pm_self_test)
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
 		reg_format(&regfile[ID_PM_AD_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IC_0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -54,12 +55,12 @@ SH_DEF(pm_self_test)
 
 				case 0:
 					pm.proc_set_DC(0, 0, 0);
-					pm.proc_set_Z(pm.k_ZNUL);
+					pm.proc_set_Z(PM_Z_NUL);
 					break;
 
 				case 1:
 					pm.proc_set_DC(xDC, xDC, xDC);
-					pm.proc_set_Z(pm.k_ZNUL);
+					pm.proc_set_Z(PM_Z_NUL);
 					break;
 			}
 
@@ -81,7 +82,7 @@ SH_DEF(pm_self_test)
 
 SH_DEF(pm_self_adjust)
 {
-	if (pm.lu_mode != PM_LU_DISABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return;
@@ -95,6 +96,7 @@ SH_DEF(pm_self_adjust)
 
 		reg_format(&regfile[ID_PM_AD_IA_0]);
 		reg_format(&regfile[ID_PM_AD_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IC_0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -111,6 +113,7 @@ SH_DEF(pm_self_adjust)
 			reg_format(&regfile[ID_PM_AD_UC_0]);
 			reg_format(&regfile[ID_PM_AD_UC_1]);
 
+			reg_format(&regfile[ID_PM_TVM_INUSE]);
 			reg_format(&regfile[ID_PM_TVM_FIR_A_TAU]);
 			reg_format(&regfile[ID_PM_TVM_FIR_B_TAU]);
 			reg_format(&regfile[ID_PM_TVM_FIR_C_TAU]);
@@ -126,6 +129,7 @@ SH_DEF(pm_self_adjust)
 
 		reg_format(&regfile[ID_PM_AD_IA_1]);
 		reg_format(&regfile[ID_PM_AD_IB_1]);
+		reg_format(&regfile[ID_PM_AD_IC_1]);
 	}
 	while (0);
 
@@ -137,7 +141,7 @@ SH_DEF(pm_test_current_ramp)
 	TickType_t		xTS1;
 	float			iSP;
 
-	if (pm.lu_mode == PM_LU_DISABLED) {
+	if (pm.lu_MODE == PM_LU_DISABLED) {
 
 		printf("Unable when PM is stopped" EOL);
 		return;
@@ -165,7 +169,7 @@ SH_DEF(pm_test_speed_ramp)
 	TickType_t		xTS1;
 	float			wSP;
 
-	if (pm.lu_mode == PM_LU_DISABLED) {
+	if (pm.lu_MODE == PM_LU_DISABLED) {
 
 		printf("Unable when PM is stopped" EOL);
 		return;
@@ -198,16 +202,16 @@ SH_DEF(pm_test_TVM_ramp)
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
 
-	if (pm.lu_mode != PM_LU_DISABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return;
 	}
 
 	if (		PM_CONFIG_TVM(&pm) != PM_ENABLED
-			|| pm.tvm_ALLOWED != PM_ENABLED) {
+			|| pm.tvm_INUSE != PM_ENABLED) {
 
-		printf("Enable TVM before" EOL);
+		printf("Unable with TVM disabled" EOL);
 		return;
 	}
 
@@ -264,14 +268,52 @@ SH_DEF(hal_DBGMCU_mode_stop)
 	DBGMCU_mode_stop();
 }
 
+SH_DEF(hal_ADC_scan_CH)
+{
+	int			xCH, xGPIO;
+	float			fU;
+
+	const int gpios_stm32f405_lqfp64[16] = {
+
+		XGPIO_DEF3('A', 0, 0),
+		XGPIO_DEF3('A', 1, 1),
+		XGPIO_DEF3('A', 2, 2),
+		XGPIO_DEF3('A', 3, 3),
+		XGPIO_DEF3('A', 4, 4),
+		XGPIO_DEF3('A', 5, 5),
+		XGPIO_DEF3('A', 6, 6),
+		XGPIO_DEF3('A', 7, 7),
+		XGPIO_DEF3('B', 0, 8),
+		XGPIO_DEF3('B', 1, 9),
+		XGPIO_DEF3('C', 0, 10),
+		XGPIO_DEF3('C', 1, 11),
+		XGPIO_DEF3('C', 2, 12),
+		XGPIO_DEF3('C', 3, 13),
+		XGPIO_DEF3('C', 4, 14),
+		XGPIO_DEF3('C', 5, 15)
+	};
+
+	if (		stoi(&xCH, s) != NULL
+			&& xCH >= 0 && xCH < 16) {
+
+		xGPIO = gpios_stm32f405_lqfp64[xCH];
+
+		GPIO_set_mode_ANALOG(xGPIO);
+		fU = ADC_get_VALUE(xGPIO);
+
+		printf("P%c%i %4f" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
+				XGPIO_GET_N(xGPIO), &fU);
+	}
+}
+
 SH_DEF(hal_PWM_set_DC)
 {
-	int			xDC;
+	int			xDC, xMAX;
 
 	if (stoi(&xDC, s) != NULL) {
 
-		xDC = (xDC < 0) ? 0 : (xDC > hal.PWM_resolution)
-			? hal.PWM_resolution : xDC;
+		xMAX = hal.PWM_resolution;
+		xDC = (xDC < 0) ? 0 : (xDC > xMAX) ? xMAX : xDC;
 
 		PWM_set_DC(xDC, xDC, xDC);
 	}
@@ -305,7 +347,6 @@ SH_DEF(hal_RNG_make_UID)
 
 SH_DEF(hal_SPI_startup)
 {
-	const char	*tmode;
 	float		freq;
 	int		hz, mode;
 
@@ -316,84 +357,42 @@ SH_DEF(hal_SPI_startup)
 
 		stoi(&mode, sh_next_arg(s));
 
-		SPI_startup(&hz, mode);
-
-		switch (mode) {
-
-			default:
-			case SPI_MODE_LOW_RISING:
-				tmode = "low rising";
-				break;
-
-			case SPI_MODE_HIGH_FALLING:
-				tmode = "high falling";
-				break;
-
-			case SPI_MODE_LOW_FALLING:
-				tmode = "low falling";
-				break;
-
-			case SPI_MODE_HIGH_RISING:
-				tmode = "high rising";
-				break;
-		}
-
-		freq = (float) hz;
-
-		printf("SPI %4g (Hz) mode (%s)" EOL, &freq, tmode);
+		SPI_startup(SPI_ID_EXT, hz, mode);
 	}
 }
 
 SH_DEF(hal_SPI_halt)
 {
-	SPI_halt();
+	SPI_halt(SPI_ID_EXT);
 }
 
 SH_DEF(hal_SPI_transfer)
 {
-	u8_t		txbuf[32];
-	u8_t		rxbuf[32];
-	int		b, i, len = 0;
+	int		txbuf, rxbuf;
 
-	while (htoi(&b, s) != NULL) {
+	while (htoi(&txbuf, s) != NULL) {
 
-		txbuf[len++] = (u8_t) b;
+		rxbuf = SPI_transfer(SPI_ID_EXT, txbuf);
+
+		printf("%4x ", rxbuf);
+
 		s = sh_next_arg(s);
-
-		if (len >= sizeof(txbuf))
-			break;
 	}
 
-	if (len != 0) {
-
-		SPI_transfer(txbuf, rxbuf, len);
-
-		for (i = 0; i < len; ++i) {
-
-			printf("%2x ", rxbuf[i]);
-		}
-
-		puts(EOL);
-	}
-}
-
-SH_DEF(hal_GPIO_set_high_BOOST_12V)
-{
-	GPIO_set_HIGH(GPIO_BOOST_12V);
-}
-
-SH_DEF(hal_GPIO_set_low_BOOST_12V)
-{
-	GPIO_set_LOW(GPIO_BOOST_12V);
+	puts(EOL);
 }
 
 SH_DEF(hal_GPIO_set_high_FAN)
 {
+#ifdef GPIO_FAN
 	GPIO_set_HIGH(GPIO_FAN);
+#endif /* GPIO_FAN */
 }
 
 SH_DEF(hal_GPIO_set_low_FAN)
 {
+#ifdef GPIO_FAN
 	GPIO_set_LOW(GPIO_FAN);
+#endif /* GPIO_FAN */
 }
 
