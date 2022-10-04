@@ -140,8 +140,8 @@ void ts_self_adjust()
 			printf("tau_B %.2f (us)\n", tau_B * 1000000.);
 			printf("tau_C %.2f (us)\n", tau_C * 1000000.);
 
-			printf("RMSu %.4f %.4f %.4f (V)\n", pm.self_RMSu[0],
-					pm.self_RMSu[1], pm.self_RMSu[2]);
+			printf("RMSu %.4f %.4f %.4f (V)\n", pm.self_RMSu[1],
+					pm.self_RMSu[2], pm.self_RMSu[3]);
 
 			TS_assert_ref(tau_A, m.tau_U);
 			TS_assert_ref(tau_B, m.tau_U);
@@ -198,10 +198,10 @@ void ts_probe_base()
 		TS_assert_ref(pm.const_im_L1, m.Ld);
 		TS_assert_ref(pm.const_im_L2, m.Lq);
 
-		pm_tune(&pm, PM_TUNE_MAXIMAL_CURRENT);
-		pm_tune(&pm, PM_TUNE_LOOP_CURRENT);
+		pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
+		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
 
-		printf("maximal %.3f (A) \n", pm.i_maximal);
+		printf("maixmal %.3f (A) \n", pm.i_maximal);
 		printf("gain_P %.2E \n", pm.i_gain_P);
 		printf("gain_I %.2E \n", pm.i_gain_I);
 		printf("slew_rate %.1f (A/s)\n", pm.i_slew_rate);
@@ -211,7 +211,7 @@ void ts_probe_base()
 
 void ts_probe_spinup()
 {
-	float		Kv, Ja_kgm2;
+	float		Kv;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -236,6 +236,10 @@ void ts_probe_spinup()
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_E * pm.const_Zp);
 
 			printf("Kv %.2f (rpm/v)\n", Kv);
+
+			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+
+			printf("probe %.2f (rad/s)\n", pm.probe_speed_hold);
 		}
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
@@ -262,12 +266,18 @@ void ts_probe_spinup()
 
 		TS_assert_ref(pm.const_E, m.E);
 
-		pm_tune(&pm, PM_TUNE_ZONE_THRESHOLD);
+		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
-		printf("MPPE %.2f (rad/s)\n", pm.zone_MPPE);
-		printf("MURE %.2f (rad/s)\n", pm.zone_MURE);
-		printf("TA %.3f (V)\n", (pm.zone_MURE + pm.zone_gain_TA * pm.zone_MPPE) * pm.const_E);
-		printf("GI %.3f (V)\n", (pm.zone_MURE + pm.zone_gain_GI * pm.zone_MPPE) * pm.const_E);
+		if (ts_wait_for_IDLE() != PM_OK)
+			break;
+
+		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+
+		printf("NOISE %.2f (rad/s) %.3f (V)\n", pm.zone_threshold_NOISE,
+				pm.zone_threshold_NOISE * pm.const_E);
+
+		printf("BASE %.2f (rad/s) %.3f (V)\n", pm.zone_threshold_BASE,
+				pm.zone_threshold_BASE * pm.const_E);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
@@ -285,21 +295,19 @@ void ts_probe_spinup()
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
-		Ja_kgm2 = pm.const_Ja * 1.5 * pm.const_Zp * pm.const_Zp * pm.const_E;
+		printf("J %.4E (kgm2) \n", pm.const_Ja * pm.const_Zp * pm.const_Zp);
 
-		printf("Ja %.4E (kgm2) \n", Ja_kgm2);
-
-		TS_assert_ref(Ja_kgm2, m.J);
+		TS_assert_ref(pm.const_Ja * pm.const_Zp * pm.const_Zp, m.J);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
 		if (ts_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm_tune(&pm, PM_TUNE_LOOP_FORCED);
-		pm_tune(&pm, PM_TUNE_LOOP_SPEED);
+		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
+		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
-		printf("accel %.1f (rad/s2)\n", pm.forced_accel);
+		printf("forced %.1f (rad/s2)\n", pm.forced_accel);
 		printf("gain_TQ %.2E\n", pm.lu_gain_TQ);
 		printf("gain_P %.2E\n", pm.s_gain_P);
 	}
@@ -308,19 +316,24 @@ void ts_probe_spinup()
 
 void ts_adjust_sensor_hall()
 {
-	double		hall_g;
-	int		N;
+	int		N, ACTIVE = 0;
+	double		ST;
 
 	do {
-		pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (pm.lu_MODE == PM_LU_DISABLED) {
 
-		if (ts_wait_for_IDLE() != PM_OK)
-			break;
+			pm.fsm_req = PM_STATE_LU_STARTUP;
 
-		pm.s_setpoint_speed = pm.probe_speed_hold;
+			if (ts_wait_for_IDLE() != PM_OK)
+				break;
 
-		if (ts_wait_for_SPINUP() != PM_OK)
-			break;
+			pm.s_setpoint_speed = pm.probe_speed_hold;
+
+			if (ts_wait_for_SPINUP() != PM_OK)
+				break;
+
+			ACTIVE = 1;
+		}
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
 
@@ -329,15 +342,18 @@ void ts_adjust_sensor_hall()
 
 		for (N = 1; N < 7; ++N) {
 
-			hall_g = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * 180. / M_PI;
+			ST = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * (180. / M_PI);
 
-			printf("ST[%i] %.1f (g)\n", N, hall_g);
+			printf("ST[%i] %.1f (g)\n", N, ST);
 		}
 
-		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+		if (ACTIVE != 0) {
 
-		if (ts_wait_for_IDLE() != PM_OK)
-			break;
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			if (ts_wait_for_IDLE() != PM_OK)
+				break;
+		}
 	}
 	while (0);
 }
@@ -370,7 +386,8 @@ void ts_BASE()
 	pm.proc_set_DC = &blmDC;
 	pm.proc_set_Z = &blmZ;
 
-	pm_tune(&pm, PM_TUNE_ALL_DEFAULT);
+	pm_auto(&pm, PM_AUTO_BASIC_DEFAULT);
+	pm_auto(&pm, PM_AUTO_CONFIG_DEFAULT);
 
 	pm.const_Zp = m.Zp;
 
@@ -458,7 +475,7 @@ void ts_HALL()
 {
 	ts_adjust_sensor_hall();
 
-	pm.config_LU_SENSOR_HALL = PM_ENABLED;
+	pm.config_LU_SENSOR = PM_SENSOR_HALL;
 }
 
 void ts_WEAK()
@@ -500,9 +517,54 @@ void ts_START()
 {
 	blm_Enable(&m);
 	blm_Stop(&m);
+
+	printf("\n---- XNOVA Lightning 4530 ----\n");
+
 	sim_TlmDrop();
 
+	m.R = 7E-3;
+	m.Ld = 2E-6;
+	m.Lq = 5E-6;
+	m.U = 48.;
+	m.Rs = 0.1;
+	m.Zp = 5;
+        m.E = blm_Kv_to_E(&m, 525.);
+	m.J = 2E-4;
+
+	ts_BASE();
+	blm_Stop(&m);
+
+	ts_SPEED();
+	blm_Stop(&m);
+
+	ts_HFI();
+	blm_Stop(&m);
+
+	printf("\n---- Turnigy RotoMax 1.20 ----\n");
+
+	sim_TlmDrop();
+
+	m.R = 14E-3;
+	m.Ld = 10E-6;
+	m.Lq = 15E-6;
+	m.U = 22.;
+	m.Rs = 0.1;
+	m.Zp = 14;
+        m.E = blm_Kv_to_E(&m, 270.);
+	m.J = 3E-4;
+
+	ts_BASE();
+	blm_Stop(&m);
+
+	ts_SPEED();
+	blm_Stop(&m);
+
+	ts_HFI();
+	blm_Stop(&m);
+
 	printf("\n---- E-scooter Hub Motor (250W) ----\n");
+
+	sim_TlmDrop();
 
 	m.R = 2.4E-1;
 	m.Ld = 5.2E-4;
@@ -510,8 +572,8 @@ void ts_START()
 	m.U = 48.;
 	m.Rs = 0.5;
 	m.Zp = 15;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;
+        m.E = blm_Kv_to_E(&m, 15.7);
+	m.J = 6E-3;
 
 	ts_BASE();
 	blm_Stop(&m);
@@ -525,29 +587,23 @@ void ts_START()
 	ts_WEAK();
 	blm_Stop(&m);
 
-	//exit(0);
+	printf("\n---- HELV prototype ----\n");
 
-	blm_Stop(&m);
 	sim_TlmDrop();
 
-	printf("\n---- Turnigy RotoMax 1.20 ----\n");
-
-	m.R = 14E-3;
-	m.Ld = 10E-6;
-	m.Lq = 15E-6;
-	m.U = 22.;
+	m.R = 1.3E-1;
+	m.Ld = 95E-6;
+	m.Lq = 25E-5;
+	m.U = 42.;
 	m.Rs = 0.1;
-	m.Zp = 14;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (270. * m.Zp);
-	m.J = 2.7E-4;
+	m.Zp = 1;
+        m.E = blm_Kv_to_E(&m, 157.);
+	m.J = 2E-4;
 
 	ts_BASE();
 	blm_Stop(&m);
 
 	ts_SPEED();
-	blm_Stop(&m);
-
-	ts_HFI();
 	blm_Stop(&m);
 }
 

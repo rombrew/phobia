@@ -1,7 +1,7 @@
 #define HW_MCU_STM32F405
 
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_NETWORK_CAN
+#define HW_HAVE_NETWORK_IFCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
 
@@ -40,6 +40,6 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-#define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('B', 3)
+#define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
+#define GPIO_LED_ALERT			XGPIO_DEF2('B', 3)
 

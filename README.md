@@ -13,7 +13,7 @@ electrotransport.
 * Self adjust of all onboard measurements along symmetrical channels.
 * Flux weakening control.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
-* Can be compiled for various controller boards (including VESC clones).
+* Can be compiled for various controller boards (including some VESC clones).
 * Flash storage for all of configurable parameters.
 * Regular command line interface (CLI) with autocompletion and history.
 * Graphical front-end software based on
@@ -30,6 +30,9 @@ electrotransport.
 	* Prevent bootstrap circuit undervoltage condition.
 	* Optional reduced ripple mode (clamp to middle) for precise control.
 
+* phase current sampling schemes includes two or three sensors configuration
+  with inline or low-side placement.
+
 * Terminal voltage measurements (TVM):
 	* In SVPWM operation it is used to reduce the effect of Dead-Time distortion.
 	* BEMF tracking to get smooth start when motor is already running.
@@ -43,20 +46,14 @@ electrotransport.
 	* Moment of inertia (Ja).
 	* Discrete Hall signals recognition.
 
-* Advanced CAN networking:
-	* Up to 30 nodes in peer network.
-	* Network survey on request (no heartbeat messages).
-	* Automated node address assignment.
-	* Flash update across network.
-	* IO forwarding to get CLI of remote node.
-	* Flexible configurable data pipes.
-
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
-	  force rotor turn.
+	  force rotor hold or turn.
 	* Freewheeling.
 	* High frequency injection (HFI) based on magnetic saliency.
-	* Discrete Hall sensors or ABI incremental encoder.
+	* Discrete Hall sensors.
+	* ABI incremental encoder.
+	* SINCOS resolver (**TODO**).
 
 * Control loops:
 	* Current control is always enabled.
@@ -79,6 +76,14 @@ electrotransport.
 	* Manual control through CLI or graphical front-end.
 	* Custom embedded application can implement any control strategy.
 
+* Advanced CAN networking:
+	* Up to 30 nodes in peer network.
+	* Network survey on request (no heartbeat messages).
+	* Automated node address assignment.
+	* Flash update across network.
+	* IO forwarding to get CLI of remote node.
+	* Flexible configurable data pipes.
+
 * Available information:
 	* Total distance traveled.
 	* Battery energy (Wh) and charge (Ah) consumed (reverted).
@@ -97,7 +102,8 @@ electrotransport.
 * STM32F405RG microcontroller (Cortex-M4F at 168 MHz).
 
 * Onboard sensors:
-	* Two current shunts (0.5 mOhm) with amplifiers (AD8418) give a measuring range of 165A.
+	* Two current shunts (0.5 mOhm) with amplifiers (AD8418) give a
+	  measuring range of 165A.
 	* Battery voltage from 0 to 60v.
 	* Three terminal voltages from 0 to 60v.
 	* Temperature of PCB with NTC resistor.
@@ -132,7 +138,8 @@ Now we can declare that PMC is ready to use in most applications. But there are
 still some unresolved issues. It may be difficult to configure the PMC for a
 specific motor.
 
-There are a few videos about PMC on [youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
+There are a few videos about PMC on
+[youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
 
 Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
@@ -140,6 +147,7 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
 * Make a detailed documentation.
 * Introduce MTPA control.
+* Introduce VSI model with Dead-Time distortion.
 * Add pulse output signal.
 * Make a drawing of the heatsink case for REV5A.
 * Design the new hardware for 120v battery voltage.

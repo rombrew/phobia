@@ -14,6 +14,7 @@ LFLAGS	= -lm -lSDL2 -lSDL2_ttf
 
 OBJS	= blob_ttf.o \
 	  config.o \
+	  dirent.o \
 	  link.o \
 	  nksdl.o \
 	  pmcfe.o \

@@ -1,9 +1,9 @@
 #include <stddef.h>
 
 #include "shell.h"
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 #include "ifcan.h"
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 #include "libc.h"
 
 #define SH_CLINE_SZ			84
@@ -508,7 +508,7 @@ sh_line_null(priv_sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 	if (iodef == &io_CAN) {
 
 		/* Prompt with CAN node ID.
@@ -516,7 +516,7 @@ sh_line_null(priv_sh_t *sh)
 		printf("(net/%i) ", net.node_ID);
 	}
 	else
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	{
 		/* Prompt (local).

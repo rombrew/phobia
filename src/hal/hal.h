@@ -6,9 +6,9 @@
 #include "hwdefs.h"
 
 #include "adc.h"
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 #include "can.h"
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 #include "dps.h"
 #ifdef HW_HAVE_PART_DRV_XX
 #include "drv.h"
@@ -60,7 +60,8 @@ enum {
 };
 
 enum {
-	OPT_GPIO_FILTER_ON		= 2U,
+	OPT_GPIO_1_ON		= 1U,
+	OPT_GPIO_2_ON		= 2U,
 };
 
 typedef struct {
@@ -102,9 +103,9 @@ typedef struct {
 
 	int		DPS_mode;
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 	CAN_msg_t	CAN_msg;
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	int		PPM_mode;
 	int		PPM_timebase;
@@ -152,16 +153,11 @@ extern LOG_t			log;
 void hal_bootload();
 void hal_startup();
 
-void hal_futile_ns(int ns);
-void hal_futile_ms(int ms);
-
 int hal_lock_irq();
 void hal_unlock_irq(int irq);
 
 void hal_system_reset();
 void hal_bootload_reset();
-
-void hal_boost_knob(int ctl);
 
 void hal_sleep();
 void hal_fence();

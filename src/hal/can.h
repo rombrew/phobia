@@ -4,11 +4,6 @@
 #include "libc.h"
 
 enum {
-	CAN_MODE_STANDARD		= 0,
-	CAN_MODE_NO_AUTO_RETRANSMIT
-};
-
-enum {
 	CAN_TX_OK			= 0,
 	CAN_TX_FAILED,
 };

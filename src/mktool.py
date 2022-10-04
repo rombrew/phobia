@@ -16,7 +16,7 @@ def mkdefs(hw):
             g.write('INCLUDE_HAL_DRV = hal/drv.o\n')
         elif 'HW_HAVE_PART_DRV8305' in s:
             g.write('INCLUDE_HAL_DRV = hal/drv.o\n')
-        elif 'HW_HAVE_NETWORK_CAN' in s:
+        elif 'HW_HAVE_NETWORK_IFCAN' in s:
             g.write('INCLUDE_HAL_CAN = hal/can.o\n')
             g.write('INCLUDE_IFCAN = ifcan.o\n')
 
@@ -39,7 +39,7 @@ def shdefs(file):
     g = open('shdefs.h', 'a')
 
     if file.endswith('ifcan.c'):
-        g.write('#ifdef HW_HAVE_NETWORK_CAN\n')
+        g.write('#ifdef HW_HAVE_NETWORK_IFCAN\n')
 
     for s in f:
         if checkmacro(s, 'SH_DEF'):
@@ -48,7 +48,7 @@ def shdefs(file):
             g.write('SH_DEF(' + s + ')\n')
 
     if file.endswith('ifcan.c'):
-        g.write('#endif /* HW_HAVE_NETWORK_CAN */\n')
+        g.write('#endif /* HW_HAVE_NETWORK_IFCAN */\n')
 
     f.close()
     g.close()

@@ -42,6 +42,6 @@
 #define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)
 
-#define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('C', 4)
+#define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
+#define GPIO_LED_ALERT			XGPIO_DEF2('C', 4)
 

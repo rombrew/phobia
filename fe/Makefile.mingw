@@ -25,6 +25,7 @@ LFLAGS	+= -Wl,--no-undefined -ldinput8 -ldxguid \
 
 OBJS	= blob_ttf.o \
 	  config.o \
+	  dirent.o \
 	  link.o \
 	  nksdl.o \
 	  pmcfe.o \

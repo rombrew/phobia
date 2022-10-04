@@ -125,11 +125,11 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.tvm_C, 0);
 
 	fmt_GP(pm.lu_MODE, 0);
-	fmt_GP(pm.lu_lpf_torque, "A");
+	fmk_GP(pm.lu_load_torque, pm.const_Zp, "Nm");
 
 	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
 	fmk_GP(pm.forced_wS, kRPM, "rpm");
-	fmt_GP(pm.forced_TIM, 0);
+	fmt_GP(pm.hold_TIM, 0);
 
 	fmt_GP(pm.detach_LOCK, 0);
 	fmt_GP(pm.detach_TIM, 0);
@@ -141,11 +141,17 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.flux_E, "Wb");
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
-	fmt_GP(pm.flux_QZ, "V");
+
+	fmt_GP(pm.kalman_Z, "V");
+
 	fmk_GP(pm.zone_lpf_wS, kRPM, "rpm");
 
 	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
 	fmk_GP(pm.hfi_wS, kRPM, "rpm");
+
+	fmt_GP(pm.hfi_im_L1, "H");
+	fmt_GP(pm.hfi_im_L2, "H");
+	fmt_GP(pm.hfi_im_R, "Ohm");
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
@@ -156,8 +162,8 @@ sim_Tlm(float *pTlm)
 	fmt_GP(pm.watt_lpf_D, "V");
 	fmt_GP(pm.watt_lpf_Q, "V");
 
+	fmt_GP(pm.i_setpoint_current, "A");
 	fmt_GP(pm.i_derated_WEAK, "A");
-	fmt_GP(pm.i_setpoint_torque, "A");
 	fmt_GP(pm.i_track_D, "A");
 	fmt_GP(pm.i_track_Q, "A");
 
@@ -165,7 +171,6 @@ sim_Tlm(float *pTlm)
 
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
-	fmt_GP(pm.s_iSP, "A");
 
 	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
 }
@@ -254,43 +259,51 @@ void sim_START()
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	/*m.R = 2.4E-1;
-	m.Ld = 5.2E-4;
-	m.Lq = 6.5E-4;
-	m.U = 48.;
-	m.Rs = 0.5;
-	m.Zp = 15;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (15.7 * m.Zp);
-	m.J = 6.2E-3;*/
-
-	m.R = 39E-3;
-	m.Ld = 20E-6;
-	m.Lq = 32E-6;
+	m.R = 59E-3;
+	m.Ld = 100E-6;
+	m.Lq = 100E-6;
 	m.U = 48.;
 	m.Rs = 0.1;
-	m.Zp = 8;
-        m.E = 60. / 2. / M_PI / sqrt(3.) / (880. * m.Zp);
-	m.J = 5E-6;
+	m.Zp = 15;
+        m.E = blm_Kv_to_E(&m, 15.);
+	m.J = 5E-3;
 
 	ts_BASE();
 
 	blm_Stop(&m);
-	//sim_TlmDrop();
+	sim_TlmDrop();
 
-	//pm.config_LU_ESTIMATE_FLUX = PM_ESTIMATE_LUENBERGER;
-	///pm.forced_hold_D = 110.f;
-	//pm.s_accel = 150000.f;
+	pm.config_LU_ESTIMATE_FLUX = PM_ESTIMATE_KALMAN;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
 
 	sim_Run(.1);
 
-	pm.s_setpoint_speed = 3300.f / (30. / M_PI / m.Zp);
-	sim_Run(2.);
+	m.Ct = 10.;
+	m.Rt = 0.5;
+	m.M[2] = 7E-3;
 
-	//m.M[0] = - 5.;
-	sim_Run(2.);
+	pm.s_setpoint_speed = 300.f / (30. / M_PI / m.Zp);
+	sim_Run(1.);
+
+	pm.s_setpoint_speed = 200.f / (30. / M_PI / m.Zp);
+	sim_Run(1.);
+
+	pm.s_setpoint_speed = 700.f / (30. / M_PI / m.Zp);
+	sim_Run(4.);
+
+	pm.s_setpoint_speed = 800.f / (30. / M_PI / m.Zp);
+	sim_Run(4.);
+
+	pm.s_setpoint_speed = 900.f / (30. / M_PI / m.Zp);
+	sim_Run(4.);
+
+	pm.s_setpoint_speed = 400.f / (30. / M_PI / m.Zp);
+	sim_Run(5.);
+
+	pm.s_setpoint_speed = 200.f / (30. / M_PI / m.Zp);
+	sim_Run(5.);
 }
 
 int main(int argc, char *argv[])

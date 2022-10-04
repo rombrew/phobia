@@ -5,13 +5,31 @@
 #include "hal/hal.h"
 
 #include "main.h"
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 #include "ifcan.h"
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 #include "libc.h"
 #include "shell.h"
 
 #define RTOS_LOAD_DELAY		((TickType_t) 100)
+#define APPS_LIST_MAX		(sizeof(apps_list) / sizeof(app_task_t) - 1U)
+
+#undef APP_DEF
+#define APP_DEF(name)	void app_ ## name(void *);
+#include "apps/apdefs.h"
+
+const app_task_t		apps_list[] = {
+
+	{"APP_NONE", NULL},
+
+#undef APP_DEF
+#define APP_DEF(name)	{ "APP_" #name, &app_ ## name},
+#include "apps/apdefs.h"
+
+	{NULL, NULL}
+};
+
+int				apps_onquit[APPS_LIST_MAX];
 
 app_main_t			ap;
 pmc_t 				pm	LD_CCRAM;
@@ -95,7 +113,7 @@ elapsed_IDLE()
 
 		xNOW = xTaskGetTickCount();
 
-		/* Time RESET if the function is not called for too long.
+		/* RESET if the function is not called for too long.
 		 * */
 		if (xNOW - (TickType_t) ap.idle_INVOKE > (TickType_t) 100) {
 
@@ -104,7 +122,7 @@ elapsed_IDLE()
 
 		ap.idle_INVOKE = xNOW;
 
-		/* Time RESET if motor is still spinning.
+		/* RESET if motor is still spinning.
 		 * */
 		if (pm.lu_total_revol != ap.idle_revol_cached) {
 
@@ -123,10 +141,33 @@ elapsed_IDLE()
 	return elapsed;
 }
 
+static int
+elapsed_SAFETY()
+{
+	TickType_t		xNOW;
+	int			elapsed = 0;
+
+	xNOW = xTaskGetTickCount();
+
+	if (xNOW - (TickType_t) ap.safety_INVOKE > (TickType_t) 100) {
+
+		ap.safety_RESET = xNOW;
+	}
+
+	ap.safety_INVOKE = xNOW;
+
+	if (xNOW - (TickType_t) ap.safety_RESET > (TickType_t) 1000) {
+
+		elapsed = 1;
+	}
+
+	return elapsed;
+}
+
 void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
-	float			x_PCB, x_EXT;
+	float			x_PCB, x_EXT, t_HYS;
 
 	if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -142,6 +183,7 @@ void task_TEMP(void *pData)
 
 	x_PCB = PM_MAX_F;
 	x_EXT = PM_MAX_F;
+	t_HYS = 0.f;
 
 	do {
 		/* 10 Hz.
@@ -166,40 +208,56 @@ void task_TEMP(void *pData)
 			ap.temp_EXT = 0.f;
 		}
 
-		/* Halt to derate current in case of PCB thermal overload.
-		 * */
-		if (ap.temp_PCB > ap.tpro_PCB_on_halt) {
+		if (ap.temp_PCB > ap.tpro_PCB_temp_halt - t_HYS) {
 
-			x_PCB = ap.tpro_derated_PCB;
+			x_PCB = 0.f;
+
+			if (pm.lu_MODE != PM_LU_DISABLED) {
+
+				pm.fsm_errno = PM_ERROR_HW_OVERTEMPERATURE;
+				pm.fsm_req = PM_STATE_HALT;
+			}
+
+			t_HYS = ap.tpro_temp_recovery;
 		}
-		else if (ap.temp_PCB < ap.tpro_PCB_on_halt - ap.tpro_recovery) {
+		else {
+			if (ap.temp_PCB > ap.tpro_PCB_temp_derate) {
 
-			x_PCB = PM_MAX_F;
+				/* Derate current in case of PCB thermal overload.
+				 * */
+				x_PCB = ap.tpro_derated_PCB;
+			}
+			else if (ap.temp_PCB < ap.tpro_PCB_temp_derate - ap.tpro_temp_recovery) {
+
+				x_PCB = PM_MAX_F;
+			}
+
+			t_HYS = 0.f;
 		}
 
-#ifdef GPIO_FAN
+#ifdef GPIO_FAN_EN
 		/* Enable FAN in case of PCB is warm enough.
 		 * */
-		if (ap.temp_PCB > ap.tpro_PCB_on_FAN) {
+		if (ap.temp_PCB > ap.tpro_PCB_temp_FAN) {
 
-			GPIO_set_LOW(GPIO_FAN);
+			GPIO_set_LOW(GPIO_FAN_EN);
 		}
-		else if (ap.temp_PCB < ap.tpro_PCB_on_FAN - ap.tpro_recovery) {
+		else if (ap.temp_PCB < ap.tpro_PCB_temp_FAN - ap.tpro_temp_recovery) {
 
-			GPIO_set_HIGH(GPIO_FAN);
+			GPIO_set_HIGH(GPIO_FAN_EN);
 		}
-#endif /* GPIO_FAN */
+#endif /* GPIO_FAN_EN */
 
-		if (ap.tpro_EXT_on_halt > M_EPS_F) {
+		if (ap.tpro_EXT_temp_derate > M_EPS_F) {
 
 			/* Halt to derate current in case of external thermal
 			 * overload (motor overheat).
 			 * */
-			if (ap.temp_EXT > ap.tpro_EXT_on_halt) {
+			if (ap.temp_EXT > ap.tpro_EXT_temp_derate) {
 
 				x_EXT = ap.tpro_derated_EXT;
 			}
-			else if (ap.temp_EXT < ap.tpro_EXT_on_halt - ap.tpro_recovery) {
+			else if (ap.temp_EXT < ap.tpro_EXT_temp_derate - ap.tpro_temp_recovery) {
 
 				x_EXT = PM_MAX_F;
 			}
@@ -215,34 +273,38 @@ void task_TEMP(void *pData)
 			DRV_status();
 		}
 #endif /* HW_HAVE_PART_DRV_XX */
+
+#ifdef GPIO_LED_MODE
+		if (pm.lu_MODE != PM_LU_DISABLED) {
+
+			GPIO_set_HIGH(GPIO_LED_MODE);
+		}
+		else {
+			GPIO_set_LOW(GPIO_LED_MODE);
+		}
+#endif /* GPIO_LED_MODE */
 	}
 	while (1);
 }
 
-void task_ERROR(void *pData)
+void task_ALERT(void *pData)
 {
 	do {
-		if (log_status() != 0) {
+		if (pm.fsm_errno != PM_OK) {
 
-			GPIO_set_HIGH(GPIO_LED);
-			vTaskDelay((TickType_t) 200);
+			GPIO_set_HIGH(GPIO_LED_ALERT);
+			vTaskDelay((TickType_t) 400);
 
-			GPIO_set_LOW(GPIO_LED);
-			vTaskDelay((TickType_t) 200);
-
-			GPIO_set_HIGH(GPIO_LED);
-			vTaskDelay((TickType_t) 200);
-
-			GPIO_set_LOW(GPIO_LED);
-			vTaskDelay((TickType_t) 900);
+			GPIO_set_LOW(GPIO_LED_ALERT);
+			vTaskDelay((TickType_t) 400);
 		}
-		else if (pm.fsm_errno != PM_OK) {
+		else if (log_status() != 0) {
 
-			GPIO_set_HIGH(GPIO_LED);
-			vTaskDelay((TickType_t) 500);
+			GPIO_set_HIGH(GPIO_LED_ALERT);
+			vTaskDelay((TickType_t) 100);
 
-			GPIO_set_LOW(GPIO_LED);
-			vTaskDelay((TickType_t) 500);
+			GPIO_set_LOW(GPIO_LED_ALERT);
+			vTaskDelay((TickType_t) 700);
 		}
 		else {
 			vTaskDelay((TickType_t) 100);
@@ -264,11 +326,14 @@ inner_KNOB(float in_ANG, float in_BRK)
 		 * */
 		scaled_ANG = - 1.f;
 
-		if (		ap.knob_ACTIVE == PM_ENABLED
-				&& pm.lu_MODE != PM_LU_DISABLED) {
+		if (ap.knob_ACTIVE == PM_ENABLED) {
+
+			if (pm.lu_MODE != PM_LU_DISABLED) {
+
+				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+			}
 
 			ap.knob_ACTIVE = PM_DISABLED;
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 		}
 	}
 	else {
@@ -286,13 +351,16 @@ inner_KNOB(float in_ANG, float in_BRK)
 
 			scaled_ANG = - 1.f;
 
-			if (		ap.knob_ACTIVE == PM_ENABLED
-					&& pm.lu_MODE != PM_LU_DISABLED) {
+			if (ap.knob_ACTIVE == PM_ENABLED) {
 
 				if (elapsed_IDLE() != 0) {
 
+					if (pm.lu_MODE != PM_LU_DISABLED) {
+
+						pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+					}
+
 					ap.knob_ACTIVE = PM_DISABLED;
-					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 				}
 			}
 		}
@@ -303,10 +371,13 @@ inner_KNOB(float in_ANG, float in_BRK)
 			}
 
 			if (		ap.knob_STARTUP == PM_ENABLED
-					&& pm.lu_MODE == PM_LU_DISABLED) {
+					&& ap.knob_ACTIVE != PM_ENABLED) {
 
-				ap.knob_ACTIVE = PM_ENABLED;
-				pm.fsm_req = PM_STATE_LU_STARTUP;
+				if (pm.lu_MODE == PM_LU_DISABLED) {
+
+					ap.knob_ACTIVE = PM_ENABLED;
+					pm.fsm_req = PM_STATE_LU_STARTUP;
+				}
 			}
 		}
 	}
@@ -382,7 +453,7 @@ void task_KNOB(void *pData)
 #endif /* HW_HAVE_ANALOG_KNOB */
 
 static void
-app_flash_load()
+default_flash_load()
 {
 	float			vm_D, halt_I, halt_U;
 
@@ -420,7 +491,9 @@ app_flash_load()
 	hal.DRV.ocp_level = HW_DRV8303_OCP_LEVEL;
 #endif /* HW_HAVE_PART_DRV8303 */
 
-#ifdef HW_HAVE_NETWORK_CAN
+	hal.OPT = 0;
+
+#ifdef HW_HAVE_NETWORK_IFCAN
 	net.node_ID = 0;
 	net.log_MODE = IFCAN_LOG_DISABLED;
 	net.upgrade_MODE = PM_ENABLED;
@@ -441,10 +514,11 @@ app_flash_load()
 	net.pipe[6].TIM = net.pipe[0].TIM;
 	net.pipe[7].ID = 80;
 	net.pipe[7].TIM = net.pipe[0].TIM;
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
 	ap.ppm_STARTUP = PM_DISABLED;
+	ap.ppm_LOCKED = PM_ENABLED;
 	ap.ppm_in_range[0] = 1000.f;
 	ap.ppm_in_range[1] = 1500.f;
 	ap.ppm_in_range[2] = 2000.f;
@@ -457,7 +531,7 @@ app_flash_load()
 	ap.step_const_ld_EP = 0.f;
 
 	ap.knob_ENABLED = PM_DISABLED;
-	ap.knob_reg_ID = ID_PM_I_SETPOINT_TORQUE_PC;
+	ap.knob_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
 	ap.knob_STARTUP = PM_DISABLED;
 	ap.knob_in_ANG[0] = 1.0f;
 	ap.knob_in_ANG[1] = 2.5f;
@@ -471,7 +545,7 @@ app_flash_load()
 	ap.knob_control_ANG[2] = 100.f;
 	ap.knob_control_BRK = - 100.f;
 
-	ap.idle_TIME_s = 4.f;
+	ap.idle_TIME_s = 2.f;
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
@@ -491,15 +565,19 @@ app_flash_load()
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MOTOR */
 
-	ap.tpro_PCB_on_halt = 90.f;
-	ap.tpro_PCB_on_FAN = 50.f;
-	ap.tpro_derated_PCB = 10.f;
-	ap.tpro_EXT_on_halt = 0.f;
-	ap.tpro_derated_EXT = 10.f;
-	ap.tpro_recovery = 5.f;
+	ap.tpro_PCB_temp_halt = 110.f;
+	ap.tpro_PCB_temp_derate = 90.f;
+	ap.tpro_PCB_temp_FAN = 50.f;
+	ap.tpro_EXT_temp_derate = 0.f;
+	ap.tpro_derated_PCB = 20.f;
+	ap.tpro_derated_EXT = 20.f;
+	ap.tpro_temp_recovery = 5.f;
+
+	ap.autorun_APP[0] = 0;
+	ap.autorun_APP[1] = 0;
 
 	ap.hx711_scale[0] = 0.f;
-	ap.hx711_scale[1] = 4.6493E-6f;
+	ap.hx711_scale[1] = 4.65E-6f;
 
 	ap.servo_SPAN_mm[0] = - 25.f;
 	ap.servo_SPAN_mm[1] = 25.f;
@@ -513,7 +591,8 @@ app_flash_load()
 
 	/* Default PMC configuration.
 	 * */
-	pm_tune(&pm, PM_TUNE_ALL_DEFAULT);
+	pm_auto(&pm, PM_AUTO_BASIC_DEFAULT);
+	pm_auto(&pm, PM_AUTO_CONFIG_DEFAULT);
 
 	pm.dc_minimal = HW_PWM_MINIMAL_PULSE;
 	pm.dc_clearance = HW_PWM_CLEARANCE_ZONE;
@@ -546,6 +625,14 @@ app_flash_load()
 	pm.fault_current_halt = (float) (int) (.95f * halt_I);
 	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
 
+	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
+
+	pm.watt_iDC_maximal = (float) (int) (0.66666667f * pm.i_maximal);
+	pm.watt_iDC_reverse = pm.watt_iDC_maximal;
+
+	pm.watt_wP_maximal = (float) (int) (pm.watt_iDC_maximal * pm.fault_voltage_halt);
+	pm.watt_wP_reverse = pm.watt_wP_maximal;
+
 	pm.watt_dclink_HI = (float) (int) (pm.fault_voltage_halt - 5.f);
 
 	/* Default telemetry.
@@ -557,25 +644,17 @@ app_flash_load()
 	flash_block_regs_load();
 }
 
-void app_halt()
-{
-#ifdef GPIO_BOOST_EN
-	GPIO_set_LOW(GPIO_BOOST_EN);
-
-	vTaskDelay((TickType_t) 50);
-#endif /* GPIO_BOOST_EN */
-
-#ifdef HW_HAVE_PART_DRV_XX
-	DRV_halt();
-#endif /* HW_HAVE_PART_DRV_XX */
-}
-
 void task_INIT(void *pData)
 {
 	u32_t			seed[3];
 
-	GPIO_set_mode_OUTPUT(GPIO_LED);
-	GPIO_set_HIGH(GPIO_LED);
+	GPIO_set_mode_OUTPUT(GPIO_LED_ALERT);
+	GPIO_set_HIGH(GPIO_LED_ALERT);
+
+#ifdef GPIO_LED_MODE
+	GPIO_set_mode_OUTPUT(GPIO_LED_MODE);
+	GPIO_set_LOW(GPIO_LED_MODE);
+#endif /* GPIO_LED_MODE */
 
 	RNG_startup();
 	TIM_startup();
@@ -585,10 +664,10 @@ void task_INIT(void *pData)
 	io_USART.getc = &USART_getc;
 	io_USART.putc = &USART_putc;
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 	io_CAN.getc = &IFCAN_getc;
 	io_CAN.putc = &IFCAN_putc;
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	/* Default to USART.
 	 * */
@@ -624,7 +703,7 @@ void task_INIT(void *pData)
 
 	/* Load the configuration.
 	 * */
-	app_flash_load();
+	default_flash_load();
 
 #ifdef HW_HAVE_PART_DRV_XX
 	DRV_startup();
@@ -637,11 +716,11 @@ void task_INIT(void *pData)
 	GPIO_set_HIGH(GPIO_BOOST_EN);
 #endif /* GPIO_BOOST_EN */
 
-#ifdef GPIO_FAN
-	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN);
-	GPIO_set_mode_OUTPUT(GPIO_FAN);
-	GPIO_set_HIGH(GPIO_FAN);
-#endif /* GPIO_FAN */
+#ifdef GPIO_FAN_EN
+	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
+	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
+	GPIO_set_HIGH(GPIO_FAN_EN);
+#endif /* GPIO_FAN_EN */
 
 	hal_lock_irq();
 
@@ -662,12 +741,12 @@ void task_INIT(void *pData)
 
 	USART_startup();
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 	IFCAN_startup();
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_ERROR, "ERROR", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(task_ALERT, "ALERT", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
@@ -675,16 +754,13 @@ void task_INIT(void *pData)
 
 	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
 
-	GPIO_set_LOW(GPIO_LED);
+	GPIO_set_LOW(GPIO_LED_ALERT);
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
+	pm_wait_for_IDLE();
 
-	/* TODO: apps startup here.
-	 * */
-
-	/*
-	pushb_startup(EOL);
-	*/
+	app_startup_by_ID(ap.autorun_APP[0]);
+	app_startup_by_ID(ap.autorun_APP[1]);
 
 	vTaskDelete(NULL);
 }
@@ -708,13 +784,23 @@ inner_PULSE_WIDTH(float pulse)
 
 		scaled = - 1.f;
 
-		if (		ap.ppm_ACTIVE == PM_ENABLED
-				&& pm.lu_MODE != PM_LU_DISABLED) {
+		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
 			if (elapsed_IDLE() != 0) {
 
+				if (pm.lu_MODE != PM_LU_DISABLED) {
+
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+				}
+
 				ap.ppm_ACTIVE = PM_DISABLED;
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+			}
+		}
+		else if (ap.ppm_LOCKED == PM_ENABLED) {
+
+			if (elapsed_SAFETY() != 0) {
+
+				ap.ppm_LOCKED = PM_DISABLED;
 			}
 		}
 	}
@@ -725,10 +811,17 @@ inner_PULSE_WIDTH(float pulse)
 		}
 
 		if (		ap.ppm_STARTUP == PM_ENABLED
-				&& pm.lu_MODE == PM_LU_DISABLED) {
+				&& ap.ppm_ACTIVE != PM_ENABLED) {
 
-			ap.ppm_ACTIVE = PM_ENABLED;
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+			if (ap.ppm_LOCKED == PM_ENABLED) {
+
+				/* Safety LOCK */
+			}
+			else if (pm.lu_MODE == PM_LU_DISABLED) {
+
+				ap.ppm_ACTIVE = PM_ENABLED;
+				pm.fsm_req = PM_STATE_LU_STARTUP;
+			}
 		}
 	}
 
@@ -764,11 +857,19 @@ in_PULSE_WIDTH()
 		}
 	}
 	else {
-		if (		ap.ppm_ACTIVE == PM_ENABLED
-				&& pm.lu_MODE != PM_LU_DISABLED) {
+		if (ap.ppm_ACTIVE == PM_ENABLED) {
+
+			if (pm.lu_MODE != PM_LU_DISABLED) {
+
+				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+			}
 
 			ap.ppm_ACTIVE = PM_DISABLED;
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+		}
+
+		if (ap.ppm_LOCKED != PM_ENABLED) {
+
+			ap.ppm_LOCKED = PM_ENABLED;
 		}
 	}
 }
@@ -781,7 +882,7 @@ in_STEP_DIR()
 
 	EP = PPM_get_STEP_DIR();
 
-	relEP = (short int) (EP - ap.step_baseEP);
+	relEP = (EP - ap.step_baseEP) & 0xFFFFU;
 	ap.step_baseEP = EP;
 
 	if (relEP != 0) {
@@ -799,11 +900,14 @@ in_STEP_DIR()
 			}
 		}
 
-		if (		ap.step_STARTUP == PM_ENABLED
-				&& pm.lu_MODE == PM_LU_DISABLED) {
+		if (ap.step_STARTUP == PM_ENABLED) {
 
-			ap.step_ACTIVE = PM_ENABLED;
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+			if (		pm.lu_MODE == PM_LU_DISABLED
+					&& pm.fsm_errno == PM_OK) {
+
+				ap.step_ACTIVE = PM_ENABLED;
+				pm.fsm_req = PM_STATE_LU_STARTUP;
+			}
 		}
 	}
 }
@@ -853,9 +957,9 @@ void ADC_IRQ()
 
 	pm_feedback(&pm, &fb);
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 	IFCAN_pipes_REGULAR();
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 	TLM_reg_grab(&tlm);
 
@@ -866,6 +970,57 @@ void app_MAIN()
 {
 	xTaskCreate(task_INIT, "INIT", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
 	vTaskStartScheduler();
+}
+
+const char *app_name_by_ID(int app_ID)
+{
+	const char		*name = apps_list[0].name;
+
+	if (app_ID > 0 && app_ID < APPS_LIST_MAX) {
+
+		name = apps_list[app_ID].name;
+	}
+
+	return name;
+}
+
+void app_startup_by_ID(int app_ID)
+{
+	TaskHandle_t		xHandle;
+
+	if (app_ID > 0 && app_ID < APPS_LIST_MAX) {
+
+		xHandle = xTaskGetHandle(apps_list[app_ID].name);
+
+		if (xHandle == NULL) {
+
+			apps_onquit[app_ID] = 0;
+
+			xTaskCreate(apps_list[app_ID].ptask, apps_list[app_ID].name,
+					configMINIMAL_STACK_SIZE,
+					(void *) &apps_onquit[app_ID], 1, NULL);
+		}
+	}
+}
+
+void app_halt()
+{
+	int			N = 1;
+
+	while (apps_list[N].name != NULL) {
+
+		apps_onquit[N++] = 1;
+	}
+
+#ifdef GPIO_BOOST_EN
+	GPIO_set_LOW(GPIO_BOOST_EN);
+#endif /* GPIO_BOOST_EN */
+
+#ifdef HW_HAVE_PART_DRV_XX
+	DRV_halt();
+#endif /* HW_HAVE_PART_DRV_XX */
+
+	vTaskDelay((TickType_t) 50);
 }
 
 SH_DEF(rtos_version)
@@ -932,7 +1087,7 @@ SH_DEF(rtos_cpu_usage)
 	printf("%1f (%%)" EOL, &pc);
 }
 
-SH_DEF(rtos_task_list)
+SH_DEF(rtos_task_info)
 {
 	TaskStatus_t		*pLIST;
 	int			xSIZE, xState, N;
@@ -990,6 +1145,55 @@ SH_DEF(rtos_task_list)
 	}
 }
 
+SH_DEF(rtos_app_info)
+{
+	const char		*sRUN;
+	int			N = 1;
+
+	printf("ID Name              Stat" EOL);
+
+	while (apps_list[N].name != NULL) {
+
+		sRUN = (xTaskGetHandle(apps_list[N].name) != NULL) ? "RUN" : "   ";
+
+		printf("%2i %17s %s" EOL, N, apps_list[N].name, sRUN);
+
+		N++;
+	}
+}
+
+SH_DEF(rtos_app_start)
+{
+	int			N = 1;
+
+	while (apps_list[N].name != NULL) {
+
+		if (strcmp(s, apps_list[N].name) == 0) {
+
+			app_startup_by_ID(N);
+			break;
+		}
+
+		N++;
+	}
+}
+
+SH_DEF(rtos_app_stop)
+{
+	int			N = 1;
+
+	while (apps_list[N].name != NULL) {
+
+		if (strcmp(s, apps_list[N].name) == 0) {
+
+			apps_onquit[N] = 1;
+			break;
+		}
+
+		N++;
+	}
+}
+
 SH_DEF(rtos_hexdump)
 {
 	u8_t			*m_dump;
@@ -1033,10 +1237,10 @@ SH_DEF(rtos_hexdump)
 	}
 }
 
-SH_DEF(rtos_freeheap)
+SH_DEF(rtos_heap_info)
 {
-	printf("FreeHeap %iK" EOL, xPortGetFreeHeapSize() / 1024U);
-	printf("Minimum %iK" EOL, xPortGetMinimumEverFreeHeapSize() / 1024U);
+	printf("FreeHeap %iK %iK" EOL, xPortGetFreeHeapSize() / 1024U,
+			xPortGetMinimumEverFreeHeapSize() / 1024U);
 }
 
 SH_DEF(rtos_log_flush)

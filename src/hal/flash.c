@@ -89,7 +89,7 @@ FLASH_erase_on_IWDG(int N)
 	__enable_irq();
 }
 
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 #define self_INQ_SIZE		30
 
 LD_RAMFUNC static void
@@ -395,7 +395,7 @@ FLASH_selfupdate_on_IWDG(u32_t INIT_sizeof, u32_t INIT_crc32)
 
 	while (1) { __NOP(); }
 }
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 
 void *FLASH_erase(void *flash)
 {
@@ -482,9 +482,9 @@ void FLASH_prog(void *flash, u32_t value)
 	}
 }
 
-void FLASH_selfupdate_CAN(u32_t INIT_sizeof, u32_t INIT_crc32)
+void FLASH_selfupdate_IFCAN(u32_t INIT_sizeof, u32_t INIT_crc32)
 {
-#ifdef HW_HAVE_NETWORK_CAN
+#ifdef HW_HAVE_NETWORK_IFCAN
 
 	FLASH_unlock();
 	FLASH_wait_BSY();
@@ -493,6 +493,6 @@ void FLASH_selfupdate_CAN(u32_t INIT_sizeof, u32_t INIT_crc32)
 	 * */
 	FLASH_selfupdate_on_IWDG(INIT_sizeof, INIT_crc32);
 
-#endif /* HW_HAVE_NETWORK_CAN */
+#endif /* HW_HAVE_NETWORK_IFCAN */
 }
 

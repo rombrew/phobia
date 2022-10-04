@@ -2,12 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WINDOWS
+#include <windows.h>
+#endif /* _WINDOWS */
+
 #include "config.h"
+#include "dirent.h"
 
 #ifdef _WINDOWS
-#define RC_FILE_PMCFE		"_pmcfe"
+#define FILE_HIDDEN_CONFIG	"_" FILE_HOME_CONFIG
 #else /* _WINDOWS */
-#define RC_FILE_PMCFE		".pmcfe"
+#define FILE_HIDDEN_CONFIG	"." FILE_HOME_CONFIG
 #endif
 
 static int
@@ -16,7 +21,7 @@ config_rcfiletry(struct config_pmcfe *fe)
 	FILE			*fd;
 	int			rc = 0;
 
-	fd = fopen(fe->rcfile, "r");
+	fd = fopen_from_UTF8(fe->rcfile, "r");
 
 	if (fd != NULL) {
 
@@ -31,32 +36,40 @@ config_rcfiletry(struct config_pmcfe *fe)
 void config_read(struct config_pmcfe *fe)
 {
 	FILE		*fd;
-	char		line[1024];
+	char		line[PMCFE_PATH_MAX];
 
-	const char	*name, *str;
-	const char	*sep = " \t";
+	const char	*name, *value;
+	const char	*sep = " \t\r\n";
 
-	fd = fopen(fe->rcfile, "r");
+	fd = fopen_from_UTF8(fe->rcfile, "r");
 
 	if (fd != NULL) {
 
 		while (fgets(line, sizeof(line), fd) != NULL) {
 
 			name = strtok(line, sep);
-			str = strtok(NULL, sep);
+			value = strtok(NULL, sep);
 
 			if (		   name == NULL
-					|| str == NULL) {
+					|| value == NULL) {
 
 				/* Skip empty lines */
 			}
 			else if (strcmp(name, "windowsize") == 0) {
 
-				fe->windowsize = strtol(str, NULL, 10);
+				fe->windowsize = strtol(value, NULL, 10);
 			}
-			else if (strcmp(name, "path") == 0) {
+			else if (strcmp(name, "storage") == 0) {
 
-				strcpy(fe->path, str);
+				strcpy(fe->storage, value);
+			}
+			else if (strcmp(name, "fuzzy") == 0) {
+
+				strcpy(fe->fuzzy, value);
+			}
+			else if (strcmp(name, "gpcmd") == 0) {
+
+				strcpy(fe->gpcmd, value);
 			}
 		}
 
@@ -67,6 +80,8 @@ void config_read(struct config_pmcfe *fe)
 void config_open(struct config_pmcfe *fe)
 {
 	char		*path_HOME;
+
+	config_default(fe);
 
 #ifdef _WINDOWS
 	path_HOME = getenv("APPDATA");
@@ -79,12 +94,15 @@ void config_open(struct config_pmcfe *fe)
 		path_HOME = ".";
 	}
 
+#ifdef _WINDOWS
+	legacy_ACP_to_UTF8(fe->rcfile, path_HOME, sizeof(fe->rcfile));
+#else /* _WINDOWS */
 	strcpy(fe->rcfile, path_HOME);
-	strcat(fe->rcfile, "/" RC_FILE_PMCFE);
+#endif
+	strcat(fe->rcfile, DIRSEP FILE_HIDDEN_CONFIG);
 
 	if (config_rcfiletry(fe) == 0) {
 
-		config_default(fe);
 		config_write(fe);
 	}
 
@@ -93,11 +111,10 @@ void config_open(struct config_pmcfe *fe)
 		config_read(fe);
 	}
 	else {
-		strcpy(fe->rcfile, RC_FILE_PMCFE);
+		strcpy(fe->rcfile, FILE_HIDDEN_CONFIG);
 
 		if (config_rcfiletry(fe) == 0) {
 
-			config_default(fe);
 			config_write(fe);
 		}
 
@@ -112,12 +129,14 @@ void config_write(struct config_pmcfe *fe)
 {
 	FILE		*fd;
 
-	fd = fopen(fe->rcfile, "w");
+	fd = fopen_from_UTF8(fe->rcfile, "w");
 
 	if (fd != NULL) {
 
 		fprintf(fd, "windowsize %i\n", fe->windowsize);
-		fprintf(fd, "path %s\n", fe->path);
+		fprintf(fd, "storage %s\n", fe->storage);
+		fprintf(fd, "fuzzy %s\n", fe->fuzzy);
+		fprintf(fd, "gpcmd %s\n", fe->gpcmd);
 
 		fclose(fd);
 	}
@@ -125,12 +144,20 @@ void config_write(struct config_pmcfe *fe)
 
 void config_default(struct config_pmcfe *fe)
 {
+#ifdef _WINDOWS
+	char		lptemp[PMCFE_PATH_MAX];
+#endif /* _WINDOWS */
+
 	fe->windowsize = 1;
 
 #ifdef _WINDOWS
-	strcpy(fe->path, "./");
+	GetTempPathA(sizeof(lptemp), lptemp);
+	legacy_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
 #else /* _WINDOWS */
-	strcpy(fe->path, "/tmp");
+	strcpy(fe->storage, "/tmp");
 #endif
+
+	strcpy(fe->fuzzy, "setpoint");
+	strcpy(fe->gpcmd, "gp");
 }
 

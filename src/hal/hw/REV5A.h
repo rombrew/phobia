@@ -3,7 +3,7 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
-#define HW_HAVE_NETWORK_CAN
+#define HW_HAVE_NETWORK_IFCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -52,6 +52,6 @@
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
 #define GPIO_BOOST_EN			XGPIO_DEF2('B', 2)
-#define GPIO_FAN			XGPIO_DEF2('B', 12)
-#define GPIO_LED			XGPIO_DEF2('C', 12)
+#define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
+#define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
 

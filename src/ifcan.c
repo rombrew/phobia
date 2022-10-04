@@ -33,7 +33,7 @@ typedef struct {
 	 * */
 	QueueHandle_t		queue_NET;
 
-	/* FLASH update across network.
+	/* FLASH upgrade cross network.
 	 * */
 	u32_t			flash_INIT_sizeof;
 	u32_t			flash_INIT_crc32;
@@ -161,6 +161,7 @@ IFCAN_pipes_message_IN(const CAN_msg_t *msg)
 			pp->tim_N = 0;
 
 			if (		pp->STARTUP == PM_ENABLED
+					&& pp->ACTIVE != PM_ENABLED
 					&& pm.lu_MODE == PM_LU_DISABLED) {
 
 				pp->ACTIVE = PM_ENABLED;
@@ -708,11 +709,11 @@ IFCAN_message_IN(const CAN_msg_t *msg)
 
 			taskDISABLE_INTERRUPTS();
 
-			GPIO_set_HIGH(GPIO_LED);
+			GPIO_set_HIGH(GPIO_LED_ALERT);
 
 			/* Go into the selfupdate routine (run from RAM).
 			 * */
-			FLASH_selfupdate_CAN(local.flash_INIT_sizeof, local.flash_INIT_crc32);
+			FLASH_selfupdate_IFCAN(local.flash_INIT_sizeof, local.flash_INIT_crc32);
 		}
 	}
 
@@ -839,11 +840,11 @@ void IFCAN_putc(int c)
 {
 	char		xC = (char) c;
 
-	GPIO_set_HIGH(GPIO_LED);
+	GPIO_set_HIGH(GPIO_LED_ALERT);
 
 	xQueueSendToBack(local.queue_TX, &xC, portMAX_DELAY);
 
-	GPIO_set_LOW(GPIO_LED);
+	GPIO_set_LOW(GPIO_LED_ALERT);
 }
 
 extern QueueHandle_t USART_queue_RX();
@@ -1122,7 +1123,7 @@ IFCAN_flash_DATA(const u32_t *flash, u32_t flash_sizeof)
 	puts(EOL);
 }
 
-SH_DEF(net_flash_update)
+SH_DEF(net_flash_upgrade)
 {
 	const FW_info_t		*info;
 	CAN_msg_t		msg;
@@ -1241,10 +1242,10 @@ SH_DEF(net_flash_update)
 
 			nodes_N = local_nodes_by_ACK(IFCAN_ACK_FLASH_FINISHED);
 
-			printf("%i nodes were updated" EOL, nodes_N);
+			printf("%i nodes were upgraded" EOL, nodes_N);
 		}
 		else {
-			printf("No remote nodes were updated" EOL);
+			printf("No remote nodes were upgraded" EOL);
 		}
 	}
 }

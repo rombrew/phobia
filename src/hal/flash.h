@@ -16,7 +16,7 @@ extern const u32_t		FLASH_map[];
 void *FLASH_erase(void *flash);
 void FLASH_prog(void *flash, u32_t value);
 
-void FLASH_selfupdate_CAN(u32_t INIT_sizeof, u32_t INIT_crc32);
+void FLASH_selfupdate_IFCAN(u32_t INIT_sizeof, u32_t INIT_crc32);
 
 #endif /* _H_FLASH_ */
 

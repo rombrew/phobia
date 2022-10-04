@@ -74,10 +74,6 @@ PPM_mode_PULSE_WIDTH()
 	/* Enable TIM4 pins.
 	 * */
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
-
-#ifndef HW_HAVE_NO_PPM_DIR
-	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
-#endif /* HW_HAVE_NO_PPM_DIR */
 }
 
 static void
@@ -157,7 +153,7 @@ void PPM_startup()
 		/* TODO */
 	}
 
-#ifndef HW_HAVE_NO_PPM_DIR
+#ifndef HW_HAVE_NO_STEP_DIR
 	else if (hal.PPM_mode == PPM_STEP_DIR) {
 
 		PPM_mode_STEP_DIR();
@@ -166,7 +162,7 @@ void PPM_startup()
 
 		PPM_mode_BACKUP_ABI();
 	}
-#endif /* HW_HAVE_NO_PPM_DIR */
+#endif /* HW_HAVE_NO_STEP_DIR */
 }
 
 static void

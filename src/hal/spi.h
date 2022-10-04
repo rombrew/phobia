@@ -19,7 +19,8 @@ enum {
 	SPI_MODE_LOW_FALLING,
 	SPI_MODE_HIGH_RISING,
 
-	SPI_MODE_FRAME_16		= 4,
+	SPI_MODE_SIZE_8			= 0,
+	SPI_MODE_SIZE_16		= 4,
 };
 
 void SPI_startup(int bus_ID, int freq_hz, int mode);

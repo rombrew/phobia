@@ -41,14 +41,14 @@ extern int		iodef_PRETTY;
 extern u32_t		rseed;
 
 void *memset(void *d, int c, int n);
-void *memcpy(void *d, const void *s, int n);
+void *memcpy(void *restrict d, const void *restrict s, int n);
 
 int strcmp(const char *s, const char *p);
 int strcmpe(const char *s, const char *p);
 int strcmpn(const char *s, const char *p, int x);
 const char *strstr(const char *s, const char *p);
-char *strcpy(char *d, const char *s);
-char *strcpyn(char *d, const char *s, int n);
+char *strcpy(char *restrict d, const char *restrict s);
+char *strcpyn(char *restrict d, const char *restrict s, int n);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
 

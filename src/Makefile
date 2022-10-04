@@ -93,8 +93,9 @@ OBJS    = freertos/heap_4.o \
 	  shell.o \
 	  tlm.o
 
-OBJS	+= apps/hx711.o \
-	   apps/push.o
+OBJS	+= apps/as5047.o \
+	   apps/hx711.o \
+	   apps/push2.o
 
 TARGET_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 

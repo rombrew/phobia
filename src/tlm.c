@@ -18,7 +18,7 @@ void TLM_reg_default(TLM_t *tlm)
 	tlm->reg_ID[1] = ID_PM_LU_IQ;
 	tlm->reg_ID[2] = ID_PM_LU_F_G;
 	tlm->reg_ID[3] = ID_PM_LU_WS_RPM;
-	tlm->reg_ID[4] = ID_PM_LU_LPF_TORQUE;
+	tlm->reg_ID[4] = ID_PM_LU_LOAD_TORQUE;
 	tlm->reg_ID[5] = ID_PM_WATT_LPF_WP;
 	tlm->reg_ID[6] = ID_PM_CONST_FB_U;
 	tlm->reg_ID[7] = ID_AP_TEMP_PCB;
@@ -211,7 +211,7 @@ void task_LIVE(void *pData)
 SH_DEF(tlm_live_sync)
 {
 	TaskHandle_t		xHandle;
-	int			freq = tlm.freq_live_hz;
+	int			xC, freq = tlm.freq_live_hz;
 
 	xTaskCreate(task_LIVE, "LIVE", configMINIMAL_STACK_SIZE, (void *) &tlm, 1, &xHandle);
 
@@ -222,7 +222,13 @@ SH_DEF(tlm_live_sync)
 
 	TLM_startup(&tlm, freq, TLM_MODE_LIVE);
 
-	getc();
+	do {
+		xC = getc();
+
+		if (xC != K_LF)
+			break;
+	}
+	while (1);
 
 	TLM_halt(&tlm);
 	vTaskDelete(xHandle);

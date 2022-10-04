@@ -13,19 +13,6 @@ int			iodef_PRETTY;
 
 u32_t			rseed;
 
-/*
-void __attribute__ ((used)) __aeabi_memclr4(void *d, int n)
-{
-	u32_t		*long_d = (u32_t *) d;
-
-	while (n >= 4) {
-
-		*long_d++ = 0UL;
-		n += - 4;
-	}
-}
-*/
-
 void *memset(void *d, int c, int n)
 {
 	u32_t		fill, *long_d = (u32_t *) d;
@@ -56,10 +43,10 @@ void *memset(void *d, int c, int n)
 	return d;
 }
 
-void *memcpy(void *d, const void *s, int n)
+void *memcpy(void *restrict d, const void *restrict s, int n)
 {
-	u32_t		*long_d = (u32_t *) d;
-	const u32_t	*long_s = (const u32_t *) s;
+	u32_t		*restrict long_d = (u32_t * restrict) d;
+	const u32_t	*restrict long_s = (const u32_t * restrict) s;
 
 	if (((u32_t) long_d & 3UL) == 0 && ((u32_t) long_s & 3UL) == 0) {
 
@@ -71,8 +58,8 @@ void *memcpy(void *d, const void *s, int n)
 	}
 
 	{
-		u8_t		*tail_d = (u8_t *) long_d;
-		const u8_t	*tail_s = (const u8_t *) long_s;
+		u8_t		*restrict tail_d = (u8_t * restrict) long_d;
+		const u8_t	*restrict tail_s = (const u8_t * restrict) long_s;
 
 		while (n >= 1) {
 
@@ -175,7 +162,7 @@ const char *strstr(const char *s, const char *p)
 	return NULL;
 }
 
-char *strcpy(char *d, const char *s)
+char *strcpy(char *restrict d, const char *restrict s)
 {
 	do {
 		if ((*d = *s) == 0)
@@ -189,7 +176,7 @@ char *strcpy(char *d, const char *s)
 	return d;
 }
 
-char *strcpyn(char *d, const char *s, int n)
+char *strcpyn(char *restrict d, const char *restrict s, int n)
 {
 	do {
 		if (n < 1) {

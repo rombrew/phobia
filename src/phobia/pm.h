@@ -45,7 +45,14 @@ enum {
 enum {
 	PM_ESTIMATE_NONE			= 0,
 	PM_ESTIMATE_ORTEGA,
-	PM_ESTIMATE_LUENBERGER
+	PM_ESTIMATE_KALMAN
+};
+
+enum {
+	PM_SENSOR_DISABLED			= 0,
+	PM_SENSOR_HALL,
+	PM_SENSOR_ABI,
+	PM_SENSOR_SINCOS
 };
 
 enum {
@@ -55,15 +62,14 @@ enum {
 };
 
 enum {
-	PM_SINCOS_PLAIN				= 0,
-	PM_SINCOS_ANALOG,
-	PM_SINCOS_RESOLVER,
-};
-
-enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
 	PM_DRIVE_SERVO
+};
+
+enum {
+	PM_SINCOS_ANALOG			= 0,
+	PM_SINCOS_RESOLVER,
 };
 
 enum {
@@ -99,6 +105,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_E,
 	PM_STATE_PROBE_CONST_J,
+	PM_STATE_PROBE_NOISE_THRESHOLD,
 	PM_STATE_ADJUST_SENSOR_HALL,
 	PM_STATE_ADJUST_SENSOR_ABI,
 	PM_STATE_ADJUST_SENSOR_SINCOS,
@@ -107,18 +114,19 @@ enum {
 };
 
 enum {
-	PM_TUNE_ALL_DEFAULT			= 0,
-	PM_TUNE_PROBE_DEFAULT,
-	PM_TUNE_MAXIMAL_CURRENT,
-	PM_TUNE_LOOP_CURRENT,
-	PM_TUNE_ZONE_THRESHOLD,
-	PM_TUNE_LOOP_FORCED,
-	PM_TUNE_LOOP_SPEED
+	PM_AUTO_BASIC_DEFAULT			= 0,
+	PM_AUTO_CONFIG_DEFAULT,
+	PM_AUTO_PROBE_DEFAULT,
+	PM_AUTO_MAXIMAL_CURRENT,
+	PM_AUTO_PROBE_SPEED_HOLD,
+	PM_AUTO_ZONE_THRESHOLD,
+	PM_AUTO_FORCED_ACCEL,
+	PM_AUTO_LOOP_CURRENT,
+	PM_AUTO_LOOP_SPEED
 };
 
 enum {
 	PM_OK					= 0,
-
 	/* Internal.
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
@@ -142,7 +150,8 @@ enum {
 	/* Arise by hardware.
 	 * */
 	PM_ERROR_HW_OVERCURRENT,
-	PM_ERROR_HW_STOP
+	PM_ERROR_HW_OVERTEMPERATURE,
+	PM_ERROR_HW_EMERGENCY_STOP
 };
 
 typedef struct {
@@ -201,18 +210,16 @@ typedef struct {
 	int		config_LU_FORCED;
 	int		config_LU_ESTIMATE_FLUX;
 	int		config_LU_ESTIMATE_HFI;
-	int		config_LU_SENSOR_HALL;
-	int		config_LU_SENSOR_ABI;
-	int		config_LU_SENSOR_SINCOS;
+	int		config_LU_SENSOR;
 	int		config_LU_LOCATION;
 	int		config_LU_DRIVE;
-	int		config_HFI_MAJOR_AXES;
-	int		config_ABI_ABSOLUTE;
-	int		config_SINCOS_FRONTEND;
+	int		config_RELUCTANCE;		/* TODO */
+	int		config_WEAKENING;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
-	int		config_MTPA_RELUCTANCE;		/* TODO */
-	int		config_WEAKENING;
+	int		config_IMPEDANCE_MAJOR;
+	int		config_ABI_ABSOLUTE;
+	int		config_SINCOS_FRONTEND;
 	int		config_MILEAGE_INFO;
 	int		config_BOOST_CHARGE;		/* TODO */
 
@@ -229,6 +236,7 @@ typedef struct {
 	float		tm_transient_fast;
 	float		tm_voltage_hold;
 	float		tm_current_hold;
+	float		tm_current_ramp;
 	float		tm_instant_probe;
 	float		tm_average_probe;
 	float		tm_average_drift;
@@ -255,10 +263,13 @@ typedef struct {
 	float		fb_SIN;
 	float		fb_COS;
 
+	float		fb_STD[2];
+
 	float		probe_current_hold;
-	float		probe_hold_angle;
 	float		probe_current_weak;
+	float		probe_hold_angle;
 	float		probe_current_sine;
+	float		probe_current_bias;
 	float		probe_freq_sine_hz;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
@@ -321,7 +332,7 @@ typedef struct {
 	int		lu_revob;
 	int		lu_total_revol;
 	float		lu_transient;
-	float		lu_lpf_torque;
+	float		lu_load_torque;
 	float		lu_base_wS;
 	float		lu_gain_TQ;
 
@@ -331,8 +342,11 @@ typedef struct {
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
+	float		forced_slew_rate;
+	float		forced_track_D;
 	float		forced_maximal_DC;
-	int		forced_TIM;
+
+	int		hold_TIM;
 
 	int		detach_LOCK;
 	int		detach_TIM;
@@ -354,20 +368,19 @@ typedef struct {
 	float		flux_gain_SF;
 	float		flux_gain_IF;
 
-	float		flux_QZ;
-	float           flux_gain_DA;
-        float           flux_gain_QA;
-        float           flux_gain_DP;
-        float           flux_gain_DS;
-        float           flux_gain_QS;
-        float           flux_gain_QZ;
+	int		kalman_POSTPONED;
+
+	float		kalman_P[15];
+	float		kalman_A[10];
+	float		kalman_K[10];
+	float		kalman_Z;
+	float		kalman_gain_Q[5];
+	float		kalman_gain_R;
 
 	float		zone_lpf_wS;
-	float		zone_MPPE;
-	float		zone_MURE;
-	float		zone_gain_TA;
-	float		zone_gain_GI;
-	float		zone_gain_ES;
+	float		zone_threshold_NOISE;
+	float		zone_threshold_BASE;
+	float		zone_gain_HY;
 	float		zone_gain_LP_S;
 
 	int		hfi_INJECTED;
@@ -382,12 +395,10 @@ typedef struct {
 	int		hfi_INJS;
 	int		hfi_SKIP;
 	int		hfi_ESTI;
-	int		hfi_TORQ;
 	int		hfi_POLA;
 	float		hfi_DFT[9];
 	float		hfi_REM[12];
 	int		hfi_IN;
-	int		hfi_TIM;
 	float		hfi_gain_SF;
 	float		hfi_gain_IF;
 
@@ -406,12 +417,13 @@ typedef struct {
 	int		hall_ERR;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_prol_ms;
+	float		hall_prol_END;
 	float		hall_gain_PF;
 	float		hall_gain_SF;
 	float		hall_gain_IF;
 
 	int		abi_INUSE;
+	int		abi_ONCE;
 	int		abi_in_EP;
 	float		abi_in_F[2];
 	int		abi_revol;
@@ -430,6 +442,8 @@ typedef struct {
 	float		abi_gain_SF;
 	float		abi_gain_IF;
 
+	int		sincos_INUSE;
+	int		sincos_ONCE;
 	float		sincos_FIR[20];
 	float		sincos_SC[3];
 	int		sincos_revol;
@@ -455,9 +469,11 @@ typedef struct {
 
 	float		quick_iUdc;
 	float		quick_iE;
-	float		quick_iEq;
+	float		quick_iE2;
 	float		quick_iL1;
 	float		quick_iL2;
+	float		quick_TiL1;
+	float		quick_TiL2;
 	float		quick_hfwS;
 	float		quick_hfSC[2];
 	float		quick_ZiEP;
@@ -475,7 +491,7 @@ typedef struct {
 	float		watt_gain_LP_F;
 	float		watt_gain_LP_P;
 
-	float		i_setpoint_torque;
+	float		i_setpoint_current;
 	float		i_maximal;
 	float		i_reverse;
 	float		i_derated_PCB;
@@ -504,12 +520,11 @@ typedef struct {
 	float		s_track;
 	float		s_tol_Z;
 	float		s_gain_P;
-	float		s_gain_H;
-	float		s_iSP;
 
 	float		x_setpoint_location;
 	float		x_setpoint_speed;
 	float		x_discrepancy;
+	float		x_home_location;
 	float		x_tol_NEAR;
 	float		x_tol_Z;
 	float		x_gain_P;
@@ -537,18 +552,18 @@ typedef struct {
 pmc_t;
 
 void pm_build(pmc_t *pm);
-void pm_tune(pmc_t *pm, int req);
+void pm_auto(pmc_t *pm, int req);
 
+float pm_torque_equation(pmc_t *pm, float iD, float iQ);
 void pm_hfi_DFT(pmc_t *pm, float la[5]);
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC);
 void pm_voltage(pmc_t *pm, float uX, float uY);
 
+void pm_FSM(pmc_t *pm);
 void pm_feedback(pmc_t *pm, pmfb_t *fb);
 
-void pm_FSM(pmc_t *pm);
-
-const char *pm_strerror(int errno);
+const char *pm_strerror(int fsm_errno);
 
 #endif /* _H_PM_ */
 

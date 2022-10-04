@@ -148,8 +148,8 @@ SH_DEF(pm_probe_base)
 		reg_format(&regfile[ID_PM_CONST_IM_B]);
 		reg_format(&regfile[ID_PM_CONST_IM_R]);
 
-		pm_tune(&pm, PM_TUNE_MAXIMAL_CURRENT);
-		pm_tune(&pm, PM_TUNE_LOOP_CURRENT);
+		pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
+		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
 
 		reg_format(&regfile[ID_PM_I_MAXIMAL]);
 		reg_format(&regfile[ID_PM_I_GAIN_P]);
@@ -197,6 +197,10 @@ SH_DEF(pm_probe_spinup)
 				break;
 
 			reg_format(&regfile[ID_PM_CONST_E_KV]);
+
+			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+
+			reg_format(&regfile[ID_PM_PROBE_SPEED_HOLD]);
 		}
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
@@ -219,12 +223,15 @@ SH_DEF(pm_probe_spinup)
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		pm_tune(&pm, PM_TUNE_ZONE_THRESHOLD);
+		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
-		reg_format(&regfile[ID_PM_ZONE_MPPE]);
-		reg_format(&regfile[ID_PM_ZONE_MURE]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_TA]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_GI]);
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+
+		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
+		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_BASE]);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
 
@@ -248,8 +255,8 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		pm_tune(&pm, PM_TUNE_LOOP_FORCED);
-		pm_tune(&pm, PM_TUNE_LOOP_SPEED);
+		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
+		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 		reg_format(&regfile[ID_PM_FORCED_ACCEL]);
 		reg_format(&regfile[ID_PM_LU_GAIN_TQ]);
@@ -290,13 +297,6 @@ SH_DEF(pm_probe_detached)
 		reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
 
-		pm_tune(&pm, PM_TUNE_ZONE_THRESHOLD);
-
-		reg_format(&regfile[ID_PM_ZONE_MPPE]);
-		reg_format(&regfile[ID_PM_ZONE_MURE]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_TA]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_GI]);
-
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
 		if (pm_wait_for_IDLE() != PM_OK)
@@ -312,11 +312,86 @@ SH_DEF(pm_probe_detached)
 	}
 }
 
+SH_DEF(pm_probe_const_R)
+{
+	float		R[3];
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	do {
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
+
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
+		pm_wait_for_IDLE();
+
+		reg_format(&regfile[ID_PM_AD_IA_0]);
+		reg_format(&regfile[ID_PM_AD_IB_0]);
+		reg_format(&regfile[ID_PM_AD_IC_0]);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+
+			if (pm_wait_for_IDLE() != PM_OK)
+				break;
+		}
+
+		pm.probe_hold_angle = 0.f;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		R[0] = pm.const_im_R;
+
+		reg_format(&regfile[ID_PM_CONST_IM_R]);
+
+		pm.probe_hold_angle = 120.f;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		R[1] = pm.const_im_R;
+
+		reg_format(&regfile[ID_PM_CONST_IM_R]);
+
+		pm.probe_hold_angle = - 120.f;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		R[2] = pm.const_im_R;
+
+		reg_format(&regfile[ID_PM_CONST_IM_R]);
+
+		pm.const_R = (R[0] + R[1] + R[2]) / 3.f;
+
+		reg_format(&regfile[ID_PM_CONST_R]);
+	}
+	while (0);
+
+	pm.probe_hold_angle = 0.f;
+
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+}
+
 SH_DEF(pm_probe_const_E)
 {
 	if (pm.lu_MODE == PM_LU_DISABLED) {
 
-		printf("Unable when PM is NOT running" EOL);
+		printf("Unable when PM is stopped" EOL);
 		return;
 	}
 
@@ -333,13 +408,6 @@ SH_DEF(pm_probe_const_E)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_E_KV]);
-
-		pm_tune(&pm, PM_TUNE_ZONE_THRESHOLD);
-
-		reg_format(&regfile[ID_PM_ZONE_MPPE]);
-		reg_format(&regfile[ID_PM_ZONE_MURE]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_TA]);
-		reg_format(&regfile[ID_PM_ZONE_GAIN_GI]);
 	}
 	while (0);
 
@@ -352,7 +420,7 @@ SH_DEF(pm_probe_const_J)
 
 	if (pm.lu_MODE == PM_LU_DISABLED) {
 
-		printf("Unable when PM is NOT running" EOL);
+		printf("Unable when PM is stopped" EOL);
 		return;
 	}
 
@@ -386,6 +454,33 @@ SH_DEF(pm_probe_const_J)
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
+SH_DEF(pm_probe_noise_threshold)
+{
+	if (pm.lu_MODE == PM_LU_DISABLED) {
+
+		printf("Unable when PM is stopped" EOL);
+		return;
+	}
+
+	if (pm.flux_ZONE != PM_ZONE_HIGH) {
+
+		printf("Unable when FLUX is NOT in HIGH zone" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+}
+
 SH_DEF(pm_adjust_sensor_hall)
 {
 	int		ACTIVE = 0;
@@ -412,7 +507,7 @@ SH_DEF(pm_adjust_sensor_hall)
 			ACTIVE = 1;
 		}
 		else {
-			if (m_fabsf(pm.lu_wS) < pm.probe_speed_hold * .5f) {
+			if (m_fabsf(pm.lu_wS) < pm.probe_speed_hold) {
 
 				printf("Unable at too LOW speed" EOL);
 				return;
@@ -483,32 +578,14 @@ SH_DEF(pm_fsm_shutdown)
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
-SH_DEF(pm_default_all)
+SH_DEF(pm_default_config)
 {
-	pm_tune(&pm, PM_TUNE_ALL_DEFAULT);
+	pm_auto(&pm, PM_AUTO_CONFIG_DEFAULT);
 }
 
 SH_DEF(pm_default_probe)
 {
-	pm_tune(&pm, PM_TUNE_PROBE_DEFAULT);
-
-	reg_format(&regfile[ID_PM_FORCED_ACCEL]);
-	reg_format(&regfile[ID_PM_ZONE_MPPE]);
-	reg_format(&regfile[ID_PM_ZONE_MURE]);
-	reg_format(&regfile[ID_PM_CONST_E]);
-	reg_format(&regfile[ID_PM_CONST_E_KV]);
-	reg_format(&regfile[ID_PM_CONST_R]);
-	reg_format(&regfile[ID_PM_CONST_JA]);
-	reg_format(&regfile[ID_PM_CONST_JA_KGM2]);
-	reg_format(&regfile[ID_PM_CONST_JA_KG]);
-	reg_format(&regfile[ID_PM_CONST_IM_L1]);
-	reg_format(&regfile[ID_PM_CONST_IM_L2]);
-	reg_format(&regfile[ID_PM_I_MAXIMAL]);
-	reg_format(&regfile[ID_PM_I_REVERSE]);
-	reg_format(&regfile[ID_PM_I_SLEW_RATE]);
-	reg_format(&regfile[ID_PM_I_GAIN_P]);
-	reg_format(&regfile[ID_PM_I_GAIN_I]);
-	reg_format(&regfile[ID_PM_LU_GAIN_TQ]);
-	reg_format(&regfile[ID_PM_S_GAIN_P]);
+	pm_auto(&pm, PM_AUTO_PROBE_DEFAULT);
+	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 }
 

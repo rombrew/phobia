@@ -60,7 +60,7 @@ void SPI_startup(int bus_ID, int freq_hz, int mode)
 
 #if defined(STM32F4)
 
-	DFRAME = (mode & SPI_MODE_FRAME_16) ? SPI_CR1_DFF : 0;
+	DFRAME = (mode & SPI_MODE_SIZE_16) ? SPI_CR1_DFF : 0;
 
 	/* Configure SPI.
 	 * */
@@ -70,7 +70,7 @@ void SPI_startup(int bus_ID, int freq_hz, int mode)
 
 #elif defined(STM32F7)
 
-	DFRAME = (mode & SPI_MODE_FRAME_16) ? (15U << SPI_CR2_DS_Pos)
+	DFRAME = (mode & SPI_MODE_SIZE_16) ? (15U << SPI_CR2_DS_Pos)
 			: (7U << SPI_CR2_DS_Pos);
 
 	/* Configure SPI.

@@ -2,7 +2,7 @@
 #define _H_SERIAL_
 
 #define SERIAL_DEVICE_MAX		100
-#define SERIAL_LIST_SIZE		8192
+#define SERIAL_MEMORY_SIZE		8192
 
 #define SERIAL_DEFAULT			"8E1"
 
@@ -17,7 +17,7 @@ struct serial_list {
 	const char		*name[SERIAL_DEVICE_MAX];
 	int			dnum;
 
-	char			mb[SERIAL_LIST_SIZE];
+	char			mb[SERIAL_MEMORY_SIZE];
 	char			*mbflow;
 };
 

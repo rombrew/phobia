@@ -381,13 +381,27 @@ void DBGMCU_mode_stop()
 
 void OPT_startup()
 {
-#ifdef GPIO_FILTER_ON
-	if (hal.OPT & OPT_GPIO_FILTER_ON) {
+#ifdef GPIO_OPT_1_EN
+	if (hal.OPT & OPT_GPIO_1_ON) {
 
-		GPIO_set_mode_OUTPUT(GPIO_FILTER_ON);
-		GPIO_set_HIGH(GPIO_FILTER_ON);
+		GPIO_set_mode_OUTPUT(GPIO_OPT_1_EN);
+		GPIO_set_HIGH(GPIO_OPT_1_EN);
 	}
-#endif /* GPIO_FILTER_ON */
+	else {
+		GPIO_set_mode_INPUT(GPIO_OPT_1_EN);
+	}
+#endif /* GPIO_OPT_1_EN */
+
+#ifdef GPIO_OPT_2_EN
+	if (hal.OPT & OPT_GPIO_2_ON) {
+
+		GPIO_set_mode_OUTPUT(GPIO_OPT_2_EN);
+		GPIO_set_HIGH(GPIO_OPT_2_EN);
+	}
+	else {
+		GPIO_set_mode_INPUT(GPIO_OPT_2_EN);
+	}
+#endif /* GPIO_OPT_2_EN */
 }
 
 

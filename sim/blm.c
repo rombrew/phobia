@@ -33,10 +33,15 @@ void blm_DQ_ABC(double R, double D, double Q, double *A, double *B, double *C)
 	*C = - .5 * X - .866025403784439 * Y;
 }
 
+double blm_Kv_to_E(blm_t *m, double Kv)
+{
+	/* Convert the total motor Kv [rpm/volt] to the flux linkae [Weber].
+	 * */
+	return (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
+}
+
 void blm_Enable(blm_t *m)
 {
-	double		Kv;
-
 	/* WARNING: All the following parameters are given for example and
 	 * should be redefined from the outside in accordance with the task
 	 * being solved.
@@ -58,8 +63,7 @@ void blm_Enable(blm_t *m)
 
 	/* BEMF constant. (Weber)
          * */
-	Kv = 15.7; /* Total RPM per Volt */
-        m->E = (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
+        m->E = blm_Kv_to_E(m, 15.7);
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -160,15 +164,12 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 	/* Thermal drift.
 	 * */
 	R1 = m->R * (1. + 4E-3 * (X[4] - 25.));
-	E1 = m->E * (1. - 1E-3 * (X[4] - 25.));
+	E1 = m->E * (1. - 0*1E-3 * (X[4] - 25.));
 
-	/* BEMF waveform distortion.
-	 * */
-	E1 += m->E * sin(X[3] * 3.) * 0.00;
+	Q = (m->VSI[0] + m->VSI[1] + m->VSI[2]) / 3.;
 
 	/* Voltage from VSI.
 	 * */
-	Q = (m->VSI[0] + m->VSI[1] + m->VSI[2]) / 3.;
 	UA = (m->VSI[0] - Q) * X[6];
 	UB = (m->VSI[1] - Q) * X[6];
 
@@ -224,7 +225,6 @@ blm_Solve(blm_t *m, double dT)
 	double		S1[7], S2[7], X2[7];
 	double		iA, iB, iC, uA, uB, uC;
 	double		uMIN, KI, KU;
-	int		j;
 
 	if (m->HI_Z != 0) {
 
@@ -237,13 +237,23 @@ blm_Solve(blm_t *m, double dT)
 
 	blm_DQ_Equation(m, m->X, S1);
 
-	for (j = 0; j < 7; ++j)
-		X2[j] = m->X[j] + S1[j] * dT;
+	X2[0] = m->X[0] + S1[0] * dT;
+	X2[1] = m->X[1] + S1[1] * dT;
+	X2[2] = m->X[2] + S1[2] * dT;
+	X2[3] = m->X[3] + S1[3] * dT;
+	X2[4] = m->X[4] + S1[4] * dT;
+	X2[5] = m->X[5] + S1[5] * dT;
+	X2[6] = m->X[6] + S1[6] * dT;
 
 	blm_DQ_Equation(m, X2, S2);
 
-	for (j = 0; j < 7; ++j)
-		m->X[j] += (S1[j] + S2[j]) * dT / 2.;
+	m->X[0] += (S1[0] + S2[0]) * dT / 2.;
+	m->X[1] += (S1[1] + S2[1]) * dT / 2.;
+	m->X[2] += (S1[2] + S2[2]) * dT / 2.;
+	m->X[3] += (S1[3] + S2[3]) * dT / 2.;
+	m->X[4] += (S1[4] + S2[4]) * dT / 2.;
+	m->X[5] += (S1[5] + S2[5]) * dT / 2.;
+	m->X[6] += (S1[6] + S2[6]) * dT / 2.;
 
 	/* Sensor transient (FAST).
 	 * */

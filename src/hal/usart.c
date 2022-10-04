@@ -117,14 +117,14 @@ void USART_putc(int c)
 {
 	char		xC = (char) c;
 
-	GPIO_set_HIGH(GPIO_LED);
+	GPIO_set_HIGH(GPIO_LED_ALERT);
 
 	if (xQueueSendToBack(priv_USART.queue_TX, &xC, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
 
-	GPIO_set_LOW(GPIO_LED);
+	GPIO_set_LOW(GPIO_LED_ALERT);
 }
 
 QueueHandle_t USART_queue_RX() { return priv_USART.queue_RX; }

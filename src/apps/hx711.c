@@ -7,11 +7,13 @@
 #include "main.h"
 #include "shell.h"
 
-/* This is the helper that reads HX711 ADC.
+/* This is the helper task that reads HX711 ADC.
  * */
 
-void ap_HX711(void *pData)
+void app_HX711(void *pData)
 {
+	int			*onquit = (int *) pData;
+
 	const int		gpio_DOUT = GPIO_SPI_EXT_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI_EXT_SCK;
 
@@ -69,49 +71,30 @@ void ap_HX711(void *pData)
 			ap.hx711_kg = (float) ADC * ap.hx711_scale[1] + ap.hx711_scale[0];
 		}
 	}
-	while (1);
-}
+	while (*onquit == 0);
 
-SH_DEF(hx711_startup)
-{
-	TaskHandle_t		xHandle;
+	GPIO_set_mode_INPUT(gpio_DOUT);
+	GPIO_set_mode_INPUT(gpio_PD_SCK);
 
-	xHandle = xTaskGetHandle("HX711");
-
-	if (xHandle == NULL) {
-
-		xTaskCreate(ap_HX711, "HX711", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	}
-}
-
-SH_DEF(hx711_halt)
-{
-	TaskHandle_t		xHandle;
-
-	xHandle = xTaskGetHandle("HX711");
-
-	if (xHandle != NULL) {
-
-		vTaskDelete(xHandle);
-	}
+	vTaskDelete(NULL);
 }
 
 SH_DEF(hx711_adjust_offset)
 {
 	float			avgkg = 0.f;
-	int			i, n = 10;
+	int			N;
 
 	/* Adjust ZERO offset.
 	 * */
 
-	for (i = 0; i < n; ++i) {
+	for (N = 0; N < 10; ++N) {
 
 		vTaskDelay((TickType_t) 100);
 
 		avgkg += ap.hx711_kg;
 	}
 
-	ap.hx711_scale[0] += - avgkg / (float) n;
+	ap.hx711_scale[0] += - avgkg / (float) N;
 
 	reg_format(&regfile[ID_AP_HX711_SCALE_0]);
 }

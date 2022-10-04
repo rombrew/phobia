@@ -45,6 +45,10 @@ SH_DEF(pm_self_test)
 
 			reg_format(&regfile[ID_PM_SELF_BM]);
 			reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+			if (		pm.fsm_errno == PM_ERROR_NO_MOTOR_CONNECTED
+					|| pm.fsm_errno == PM_OK) ;
+			else break;
 		}
 
 		xDC = pm.dc_resolution - pm.ts_clearance;
@@ -152,13 +156,13 @@ SH_DEF(pm_test_current_ramp)
 	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
-		iSP = reg_GET_F(ID_PM_I_SETPOINT_TORQUE);
+		iSP = reg_GET_F(ID_PM_I_SETPOINT_CURRENT);
 		vTaskDelay(1UL * xTS1);
 
-		reg_SET_F(ID_PM_I_SETPOINT_TORQUE, pm.i_maximal);
+		reg_SET_F(ID_PM_I_SETPOINT_CURRENT, pm.i_maximal);
 		vTaskDelay(5UL * xTS1);
 
-		reg_SET_F(ID_PM_I_SETPOINT_TORQUE, iSP);
+		reg_SET_F(ID_PM_I_SETPOINT_CURRENT, iSP);
 		vTaskDelay(4UL * xTS1);
 	}
 	while (0);
@@ -382,17 +386,17 @@ SH_DEF(hal_SPI_transfer)
 	puts(EOL);
 }
 
-SH_DEF(hal_GPIO_set_high_FAN)
+SH_DEF(hal_GPIO_set_high_FAN_EN)
 {
-#ifdef GPIO_FAN
-	GPIO_set_HIGH(GPIO_FAN);
-#endif /* GPIO_FAN */
+#ifdef GPIO_FAN_EN
+	GPIO_set_HIGH(GPIO_FAN_EN);
+#endif /* GPIO_FAN_EN */
 }
 
-SH_DEF(hal_GPIO_set_low_FAN)
+SH_DEF(hal_GPIO_set_low_FAN_EN)
 {
-#ifdef GPIO_FAN
-	GPIO_set_LOW(GPIO_FAN);
-#endif /* GPIO_FAN */
+#ifdef GPIO_FAN_EN
+	GPIO_set_LOW(GPIO_FAN_EN);
+#endif /* GPIO_FAN_EN */
 }
 
