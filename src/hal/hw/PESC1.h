@@ -3,6 +3,7 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
+#define HW_HAVE_USB_OTG_FS
 #define HW_HAVE_NETWORK_EPCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
@@ -48,6 +49,9 @@
 
 #define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
+
+#define GPIO_OTG_FS_DM			XGPIO_DEF4('A', 11, 0, 10)
+#define GPIO_OTG_FS_DP			XGPIO_DEF4('A', 12, 0, 10)
 
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
