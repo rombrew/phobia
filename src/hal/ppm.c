@@ -76,6 +76,7 @@ PPM_mode_PULSE_WIDTH()
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
 }
 
+#ifndef HW_HAVE_NO_STEP_DIR
 static void
 PPM_mode_STEP_DIR()
 {
@@ -141,6 +142,7 @@ PPM_mode_BACKUP_ABI()
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
 }
+#endif /* HW_HAVE_NO_STEP_DIR */
 
 void PPM_startup()
 {

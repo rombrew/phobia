@@ -84,18 +84,18 @@ typedef struct {
 	float			servo_SPAN_mm[2];
 	float			servo_UNIFORM_mmps;
 
-	/* Application AUTORUN.
+	/* Apps AUTORUN.
 	 * */
-	int			autorun_APP[2];
+	int			auto_APP[2];
 
-	/* HX711 (load cell ADC).
+	/* ADC load cell (e.g. HX711).
 	 * */
-	float			hx711_kg;
-	float			hx711_scale[2];
+	float			adc_load_kg;
+	float			adc_load_scale[2];
 
-	/* AS5047 (magnetic rotary position sensor).
+	/* Digital position sensor (e.g. AS5047).
 	 * */
-	int			as5047_EP;
+	int			pulse_EP;
 }
 app_main_t;
 
@@ -106,9 +106,16 @@ typedef struct {
 }
 app_task_t;
 
+typedef struct {
+
+	const app_task_t	*task;
+	int			onquit;
+}
+app_run_t;
+
 extern app_main_t		ap;
 extern pmc_t			pm;
-extern TLM_t			tlm;
+extern tlm_t			tlm;
 
 extern int flash_block_regs_load();
 extern int pm_wait_for_IDLE();

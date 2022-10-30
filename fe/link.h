@@ -5,6 +5,7 @@
 #define LINK_NAME_MAX		80
 #define LINK_MESSAGE_MAX	220
 #define LINK_COMBO_MAX		40
+#define LINK_FLASH_MAX		512
 
 enum {
 	LINK_REG_CONFIG		= 1U,
@@ -16,10 +17,16 @@ enum {
 };
 
 enum {
-	GRAB_WAIT		= 0,
-	GRAB_TRANSFER,
-	GRAB_FINISHED,
-	GRAB_DEFUNCT
+	LINK_GRAB_WAIT		= 0,
+	LINK_GRAB_TRANSFER,
+	LINK_GRAB_FINISHED
+};
+
+enum {
+	LINK_PUSH_WAIT		= 0,
+	LINK_PUSH_TRANSFER,
+	LINK_PUSH_QUEUED,
+	LINK_PUSH_FINISHED
 };
 
 struct link_priv;
@@ -69,11 +76,14 @@ struct link_pmc {
 	char			hwinfo[LINK_NAME_MAX];
 	char			network[LINK_NAME_MAX];
 
-	char			flash_info_map[8][20];
+	char			flash_info_map[LINK_FLASH_MAX];
 	char			unable_warning[LINK_MESSAGE_MAX];
 
-	int			grab_status;
+	int			grab_mode;
 	int			grab_fetched_N;
+
+	int			push_mode;
+	int			push_queued_N;
 
 	struct link_priv	*priv;
 	struct link_reg		reg[LINK_REGS_MAX];
@@ -94,6 +104,7 @@ int link_reg_lookup_range(struct link_pmc *lp, const char *sym, int *min, int *m
 void link_reg_fetch_all_shown(struct link_pmc *lp);
 
 int link_grab_file(struct link_pmc *lp, const char *file);
+int link_push_file(struct link_pmc *lp, const char *file);
 int link_log_file(struct link_pmc *lp, const char *file);
 
 #endif /* _H_LINK_ */

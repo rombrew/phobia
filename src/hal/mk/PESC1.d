@@ -1,3 +1,3 @@
 HWMCU = STM32F722
 INCLUDE_HAL_CAN = hal/can.o
-INCLUDE_IFCAN = ifcan.o
+INCLUDE_EPCAN = epcan.o

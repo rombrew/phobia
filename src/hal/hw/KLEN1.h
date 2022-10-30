@@ -26,8 +26,8 @@
 
 #define HW_NTC_PCB_TYPE			NTC_GND
 #define HW_NTC_PCB_BALANCE		10000.f
-#define HW_NTC_PCB_NTC_0		10000.f
-#define HW_NTC_PCB_TA_0			25.f
+#define HW_NTC_PCB_NTC0			10000.f
+#define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3435.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('B', 0, 8)

@@ -1,5 +1,4 @@
 #include "hal.h"
-
 #include "cmsis/stm32xx.h"
 
 void RNG_startup()
@@ -13,9 +12,9 @@ void RNG_startup()
 	RNG->CR |= RNG_CR_RNGEN;
 }
 
-u32_t RNG_urand()
+uint32_t RNG_urand()
 {
-	u32_t 			urand = 0UL;
+	uint32_t 		urand = 0UL;
 	int			N = 0;
 
 	do {
@@ -44,9 +43,9 @@ u32_t RNG_urand()
 	return urand;
 }
 
-u32_t RNG_make_UID()
+uint32_t RNG_make_UID()
 {
-	u32_t		UID;
+	uint32_t		UID;
 
 #if defined(STM32F4)
 	UID = crc32b((const void *) 0x1FFF7A10, 12);

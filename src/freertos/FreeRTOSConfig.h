@@ -78,18 +78,16 @@
 
 #define configPRIO_BITS       			4        /* 15 priority levels */
 
-#define configKERNEL_INTERRUPT_PRIORITY 		(15 << (8 - configPRIO_BITS))
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY 		(5  << (8 - configPRIO_BITS))
+#define configKERNEL_INTERRUPT_PRIORITY 	(15 << (8 - configPRIO_BITS))
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY 	(5  << (8 - configPRIO_BITS))
 
-/*
-#define configASSERT(x)		if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)
-*/
+/*#define configASSERT(x)	if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)*/
 
 #define vPortSVCHandler		irq_SVCall
 #define xPortPendSVHandler	irq_PendSV
 #define xPortSysTickHandler	irq_SysTick
 
-extern unsigned int clock_cpu_hz;
+extern unsigned long clock_cpu_hz;
 extern void vAssertCalled(const char *file, int line);
 
 #endif /* FREERTOS_CONFIG_H */

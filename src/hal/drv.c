@@ -6,7 +6,7 @@
 static int
 DRV_read_reg(int addr)
 {
-	u16_t		txbuf, rxbuf;
+	uint16_t	txbuf, rxbuf;
 	int		fault, raddr, data;
 
 	txbuf = 0x8000U | ((addr & 0xFU) << 11);
@@ -30,7 +30,7 @@ DRV_read_reg(int addr)
 static int
 DRV_write_reg(int addr, int data)
 {
-	u16_t		txbuf, rxbuf;
+	uint16_t	txbuf, rxbuf;
 	int		fault;
 
 	txbuf = ((addr & 0xFU) << 11) | (data & 0x7FFU);

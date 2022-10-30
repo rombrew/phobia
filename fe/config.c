@@ -67,10 +67,6 @@ void config_read(struct config_pmcfe *fe)
 
 				strcpy(fe->fuzzy, value);
 			}
-			else if (strcmp(name, "gpcmd") == 0) {
-
-				strcpy(fe->gpcmd, value);
-			}
 		}
 
 		fclose(fd);
@@ -95,7 +91,7 @@ void config_open(struct config_pmcfe *fe)
 	}
 
 #ifdef _WINDOWS
-	legacy_ACP_to_UTF8(fe->rcfile, path_HOME, sizeof(fe->rcfile));
+	winapi_ACP_to_UTF8(fe->rcfile, path_HOME, sizeof(fe->rcfile));
 #else /* _WINDOWS */
 	strcpy(fe->rcfile, path_HOME);
 #endif
@@ -136,7 +132,6 @@ void config_write(struct config_pmcfe *fe)
 		fprintf(fd, "windowsize %i\n", fe->windowsize);
 		fprintf(fd, "storage %s\n", fe->storage);
 		fprintf(fd, "fuzzy %s\n", fe->fuzzy);
-		fprintf(fd, "gpcmd %s\n", fe->gpcmd);
 
 		fclose(fd);
 	}
@@ -152,12 +147,11 @@ void config_default(struct config_pmcfe *fe)
 
 #ifdef _WINDOWS
 	GetTempPathA(sizeof(lptemp), lptemp);
-	legacy_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
+	winapi_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
 #else /* _WINDOWS */
 	strcpy(fe->storage, "/tmp");
 #endif
 
 	strcpy(fe->fuzzy, "setpoint");
-	strcpy(fe->gpcmd, "gp");
 }
 

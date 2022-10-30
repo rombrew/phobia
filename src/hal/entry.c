@@ -4,16 +4,16 @@
 #define LD_IRQ_WEAK		__attribute__ ((weak, alias("irq_Weak")))
 #define LD_IRQ_VECTORS		__attribute__ ((section(".vectors"), used))
 
-extern u32_t ld_stack;
-extern u32_t ld_begin_vectors;
-extern u32_t ld_end_text;
-extern u32_t ld_begin_data;
-extern u32_t ld_end_data;
-extern u32_t ld_begin_bss;
-extern u32_t ld_end_bss;
-extern u32_t ld_begin_ccm;
-extern u32_t ld_end_ccm;
-extern u32_t ld_end_flash;
+extern uint32_t ld_stack;
+extern uint32_t ld_begin_vectors;
+extern uint32_t ld_end_text;
+extern uint32_t ld_begin_data;
+extern uint32_t ld_end_data;
+extern uint32_t ld_begin_bss;
+extern uint32_t ld_end_bss;
+extern uint32_t ld_begin_ccm;
+extern uint32_t ld_end_ccm;
+extern uint32_t ld_end_flash;
 
 void irq_Reset();
 void irq_NMI();
@@ -38,11 +38,12 @@ void irq_TIM1_UP_TIM10() LD_IRQ_WEAK;
 void irq_TIM4() LD_IRQ_WEAK;
 void irq_USART3() LD_IRQ_WEAK;
 void irq_TIM7() LD_IRQ_WEAK;
+void irq_OTG_FS() LD_IRQ_WEAK;
 
 const FW_info_t		fw = {
 
-	(u32_t) &ld_begin_vectors,
-	(u32_t) &ld_end_flash,
+	(uint32_t) &ld_begin_vectors,
+	(uint32_t) &ld_end_flash,
 
 	_HW_REV, __DATE__
 };
@@ -134,7 +135,7 @@ LD_IRQ_VECTORS void *VECTORS[] = {
 	irq_Default,
 	irq_Default,
 	irq_Default,
-	irq_Default,
+	irq_OTG_FS,
 	irq_Default,
 	irq_Default,
 	irq_Default,
@@ -152,13 +153,13 @@ LD_IRQ_VECTORS void *VECTORS[] = {
 };
 
 static void
-init_data(const u32_t *long_s, u32_t *long_d, u32_t *long_e)
+init_data(const uint32_t *long_s, uint32_t *long_d, uint32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = *long_s++; }
 }
 
 static void
-init_bss(u32_t *long_d, u32_t *long_e)
+init_bss(uint32_t *long_d, uint32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = 0; }
 }

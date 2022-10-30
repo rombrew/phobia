@@ -27,9 +27,9 @@ static const float		rpm_table[] = {
 	7000.f
 };
 
-void app_PUSH2(void *pData)
+void app_PUSHTWO(void *pData)
 {
-	int			*onquit = (int *) pData;
+	app_run_t		*run = (app_run_t *) pData;
 
 	TickType_t		xWake;
 
@@ -144,7 +144,7 @@ void app_PUSH2(void *pData)
 			event_B = 0;
 		}
 	}
-	while (*onquit == 0);
+	while (run->onquit == 0);
 
 	vTaskDelete(NULL);
 }

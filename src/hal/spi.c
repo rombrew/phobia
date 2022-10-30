@@ -180,10 +180,10 @@ void SPI_halt(int bus_ID)
 	}
 }
 
-u16_t SPI_transfer(int bus_ID, u16_t txbuf)
+uint16_t SPI_transfer(int bus_ID, uint16_t txbuf)
 {
 	SPI_TypeDef		*SPI;
-	u16_t			rxbuf;
+	uint16_t		rxbuf;
 	int			gpio_NSS, hold_NSS, wait_N;
 
 	switch (bus_ID) {

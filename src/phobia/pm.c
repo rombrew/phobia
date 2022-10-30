@@ -767,7 +767,7 @@ pm_kalman_equation(pmc_t *pm, float Y[2], const float X[2], const float F[2])
         R1 = pm->const_R;
         E1 = pm->const_E;
 
-	uQ += pm->kalman_Z;
+	uQ += pm->kalman_bias_Q;
 
         flux_D = pm->const_im_L1 * X[0] + E1;
         flux_Q = pm->const_im_L2 * X[1];
@@ -1036,10 +1036,10 @@ pm_flux_KALMAN(pmc_t *pm)
 
 			if (pm->flux_ZONE == PM_ZONE_HIGH) {
 
-				pm->kalman_Z += K[8] * eD + K[9] * eQ;
+				pm->kalman_bias_Q += K[8] * eD + K[9] * eQ;
 			}
 			else {
-				pm->kalman_Z = 0.f;
+				pm->kalman_bias_Q = 0.f;
 			}
 		}
 
@@ -1060,7 +1060,7 @@ pm_flux_KALMAN(pmc_t *pm)
 
 		/* Startup estimate E constant.
 		 * */
-		pm->kalman_Z += pm->flux_gain_IN * eQ;
+		pm->kalman_bias_Q += pm->flux_gain_IN * eQ;
 	}
 
 	/* Time update to the next cycle.
@@ -1169,7 +1169,7 @@ pm_estimate_FLUX(pmc_t *pm)
 			pm->kalman_P[12] = 0.f;
 			pm->kalman_P[13] = 0.f;
 			pm->kalman_P[14] = 0.f;
-			pm->kalman_Z = 0.f;
+			pm->kalman_bias_Q = 0.f;
 
 			pm->flux_ESTIMATE = PM_ESTIMATE_KALMAN;
 		}

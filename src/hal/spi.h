@@ -26,7 +26,7 @@ enum {
 void SPI_startup(int bus_ID, int freq_hz, int mode);
 void SPI_halt(int bus_ID);
 
-u16_t SPI_transfer(int bus_ID, u16_t txbuf);
+uint16_t SPI_transfer(int bus_ID, uint16_t txbuf);
 
 #endif /* _H_SPI_ */
 

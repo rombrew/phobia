@@ -1340,7 +1340,7 @@ pm_fsm_state_lu_startup(pmc_t *pm)
 				pm->kalman_P[12] = 0.f;
 				pm->kalman_P[13] = 0.f;
 				pm->kalman_P[14] = 0.f;
-				pm->kalman_Z = 0.f;
+				pm->kalman_bias_Q = 0.f;
 
 				pm->zone_lpf_wS = 0.f;
 
@@ -1497,7 +1497,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 
 				if (m_fabsf(pm->flux_wS) > M_EPS_F) {
 
-					v[1] += - pm->kalman_Z / pm->flux_wS;
+					v[1] += - pm->kalman_bias_Q / pm->flux_wS;
 				}
 			}
 			else {
@@ -1522,7 +1522,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 					&& ls->b[0] > M_EPS_F) {
 
 				pm->const_E = ls->b[0];
-				pm->kalman_Z = 0.f;
+				pm->kalman_bias_Q = 0.f;
 
 				pm_build(pm);
 			}

@@ -10,9 +10,9 @@ enum {
 
 typedef struct {
 
-	u16_t			ID;
-	u16_t			len;
-	u8_t			payload[8];
+	uint16_t		ID;
+	uint16_t		len;
+	uint8_t			payload[8];
 }
 CAN_msg_t;
 

@@ -20,19 +20,23 @@ struct link_priv {
 	int			reg_push_ID;
 
 	char			lbuf[LINK_MESSAGE_MAX];
+	char			pbuf[LINK_MESSAGE_MAX];
 
 	char			hwinfo_revision[LINK_NAME_MAX];
 	char			hwinfo_build[LINK_NAME_MAX];
 	char			hwinfo_crc32[LINK_NAME_MAX];
 
-	int			flash_info_page;
 	FILE			*fd_grab;
+	FILE			*fd_push;
+	FILE			*fd_log;
+
+	int			push_flag;
 
 	int			fetch_hwinfo;
 	int			fetch_flash_info;
 	int			fetch_unable;
 
-	FILE			*fd_log;
+	char			*flash_map;
 
 	char			mb[81920];
 	char			*mbflow;
@@ -186,7 +190,7 @@ link_fetch_network(struct link_pmc *lp)
 
 	if (strstr(lbuf, "(pmc)") == lbuf) {
 
-		sprintf(lp->network, "%.32s", "local");
+		sprintf(lp->network, "local");
 
 		rc = 1;
 	}
@@ -374,64 +378,42 @@ static void
 link_fetch_flash_info(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
-	char			*lbuf = priv->lbuf;
-	char			vbuf[40], *rsym;
-	const char		*s;
-	int			n, sm;
+	const char		*s = priv->lbuf;
+	char			*map;
+	int			N = 0;
 
-	s = lbuf;
-	rsym = vbuf;
-
-	n = 0;
-	sm = 0;
+	map = priv->flash_map;
 
 	while (*s != 0) {
 
-		if (sm == 0) {
+		if (		   *s == 'x'
+				|| *s == 'a'
+				|| *s == '.') {
 
-			if (*s != ' ') {
+			*map++ = *s;
 
-				sm = -1;
+			++N;
+
+			if (N >= 32)
 				break;
-			}
-
-			sm = 1;
 		}
-		else {
-			if (		   *s != 'x'
-					&& *s != 'a'
-					&& *s != '.') {
+		else if (*s != ' ') {
 
-				sm = -1;
-				break;
-			}
-			else {
-				*rsym++ = *s;
-				++n;
-
-				if (n > 32) {
-
-					sm = -1;
-					break;
-				}
-			}
-
-			sm = 0;
+			N = 0;
+			break;
 		}
 
 		++s;
 	}
 
-	*rsym = 0;
+	if (N > 0) {
 
-	if (n > 7 && sm != -1) {
+		*map++ = '\n';
 
-		if (priv->flash_info_page < 8) {
-
-			rsym = lp->flash_info_map[priv->flash_info_page++];
-
-			sprintf(rsym, "%.19s", vbuf);
-		}
+		priv->flash_map = map;
+	}
+	else {
+		*(priv->flash_map) = 0;
 	}
 }
 
@@ -539,7 +521,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 		rc_local = link_fetch_network(lp);
 
-		if (		lp->grab_status == GRAB_TRANSFER
+		if (		lp->grab_mode == LINK_GRAB_TRANSFER
 				&& priv->fd_grab != NULL) {
 
 			if (rc_local != 0) {
@@ -547,7 +529,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 				fclose(priv->fd_grab);
 				priv->fd_grab = NULL;
 
-				lp->grab_status = GRAB_FINISHED;
+				lp->grab_mode = LINK_GRAB_FINISHED;
 			}
 			else {
 				/* Grab the next LINE.
@@ -562,6 +544,11 @@ int link_fetch(struct link_pmc *lp, int clock)
 		else {
 			if (rc_local != 0) {
 
+				if (lp->push_mode == LINK_PUSH_QUEUED) {
+
+					lp->push_mode = LINK_PUSH_FINISHED;
+				}
+
 				if (strstr(priv->lbuf, "rtos_version") != NULL) {
 
 					priv->fetch_hwinfo = 4;
@@ -572,8 +559,8 @@ int link_fetch(struct link_pmc *lp, int clock)
 				}
 				else if (strstr(priv->lbuf, "flash_info") != NULL) {
 
-					priv->flash_info_page = 0;
 					priv->fetch_flash_info = 8;
+					priv->flash_map = lp->flash_info_map;
 				}
 				else if (strstr(priv->lbuf, "flash_prog") != NULL) {
 
@@ -615,22 +602,22 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 					priv->fetch_unable = 1;
 				}
-				else if (	lp->grab_status != GRAB_WAIT
+				else if (	lp->grab_mode != LINK_GRAB_WAIT
 						|| priv->fd_grab == NULL) {
 
 					/* Shut up here */
 				}
 				else if (strstr(priv->lbuf, "tlm_flush_sync") != NULL) {
 
-					lp->grab_status = GRAB_TRANSFER;
+					lp->grab_mode = LINK_GRAB_TRANSFER;
 				}
 				else if (strstr(priv->lbuf, "tlm_live_sync") != NULL) {
 
-					lp->grab_status = GRAB_TRANSFER;
+					lp->grab_mode = LINK_GRAB_TRANSFER;
 				}
-				else if (strstr(priv->lbuf, "config_export") != NULL) {
+				else if (strstr(priv->lbuf, "export_reg") != NULL) {
 
-					lp->grab_status = GRAB_TRANSFER;
+					lp->grab_mode = LINK_GRAB_TRANSFER;
 				}
 			}
 			else {
@@ -667,7 +654,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		fclose(priv->fd_grab);
 		priv->fd_grab = NULL;
 
-		lp->grab_status = GRAB_FINISHED;
+		lp->grab_mode = LINK_GRAB_FINISHED;
 	}
 
 	lp->fetched_N += N;
@@ -683,6 +670,60 @@ void link_push(struct link_pmc *lp)
 
 	if (lp->linked == 0)
 		return ;
+
+	if (		lp->push_mode == LINK_PUSH_TRANSFER
+			&& priv->fd_push != NULL) {
+
+		char		*eol;
+
+		do {
+			if (priv->push_flag != 0) {
+
+				if (serial_async_fputs(priv->fd, priv->pbuf) != SERIAL_OK)
+					break;
+
+				if (priv->push_flag < 0) {
+
+					fclose(priv->fd_push);
+					priv->fd_push = NULL;
+
+					lp->locked = lp->clock + 100;
+					lp->push_mode = LINK_PUSH_QUEUED;
+					break;
+				}
+
+				priv->push_flag = 0;
+			}
+
+			if (fgets(priv->pbuf, sizeof(priv->pbuf) - 2U,
+						priv->fd_push) != NULL) {
+
+				eol = strchr(priv->pbuf, '\r');
+				if (eol != NULL) *eol = 0;
+
+				eol = strchr(priv->pbuf, '\n');
+				if (eol != NULL) *eol = 0;
+
+				strcat(priv->pbuf, LINK_EOL);
+
+				lp->push_queued_N++;
+
+				if (serial_async_fputs(priv->fd, priv->pbuf) != SERIAL_OK) {
+
+					priv->push_flag = 1;
+					break;
+				}
+			}
+			else {
+				strcpy(priv->pbuf, "reg iodef_ECHO 1" LINK_EOL LINK_EOL);
+
+				priv->push_flag = -1;
+			}
+		}
+		while (1);
+
+		return ;
+	}
 
 	if (lp->locked > lp->clock)
 		return ;
@@ -864,11 +905,40 @@ int link_grab_file(struct link_pmc *lp, const char *file)
 		if (fd != NULL) {
 
 			lp->grabed = lp->clock;
-
-			lp->grab_status = GRAB_WAIT;
+			lp->grab_mode = LINK_GRAB_WAIT;
 			lp->grab_fetched_N = 0;
 
 			priv->fd_grab = fd;
+
+			rc = 1;
+		}
+	}
+
+	return rc;
+}
+
+int link_push_file(struct link_pmc *lp, const char *file)
+{
+	struct link_priv	*priv = lp->priv;
+	FILE			*fd;
+	int			rc = 0;
+
+	if (lp->linked == 0)
+		return 0;
+
+	if (priv->fd_grab == NULL) {
+
+		fd = fopen_from_UTF8(file, "r");
+
+		if (fd != NULL) {
+
+			lp->push_mode = LINK_PUSH_TRANSFER;
+			lp->push_queued_N = 0;
+
+			strcpy(priv->pbuf, "reg iodef_ECHO 0" LINK_EOL);
+
+			priv->fd_push = fd;
+			priv->push_flag = 1;
 
 			rc = 1;
 		}

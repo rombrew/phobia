@@ -11,5 +11,8 @@
 
 void app_AS5047(void *pData)
 {
+	/*app_run_t		*run = (app_run_t *) pData;*/
+
+	/* TODO */
 }
 

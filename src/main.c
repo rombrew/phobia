@@ -5,20 +5,20 @@
 #include "hal/hal.h"
 
 #include "main.h"
-#ifdef HW_HAVE_NETWORK_IFCAN
-#include "ifcan.h"
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
+#include "epcan.h"
+#endif /* HW_HAVE_NETWORK_EPCAN */
 #include "libc.h"
 #include "shell.h"
 
 #define RTOS_LOAD_DELAY		((TickType_t) 100)
-#define APPS_LIST_MAX		(sizeof(apps_list) / sizeof(app_task_t) - 1U)
+#define APP_LIST_MAX		(sizeof(ap_list) / sizeof(ap_list[0]) - 1U)
 
 #undef APP_DEF
 #define APP_DEF(name)	void app_ ## name(void *);
 #include "apps/apdefs.h"
 
-const app_task_t		apps_list[] = {
+const app_task_t		ap_list[] = {
 
 	{"APP_NONE", NULL},
 
@@ -29,11 +29,11 @@ const app_task_t		apps_list[] = {
 	{NULL, NULL}
 };
 
-int				apps_onquit[APPS_LIST_MAX];
-
 app_main_t			ap;
-pmc_t 				pm	LD_CCRAM;
-TLM_t				tlm;
+app_run_t			ap_run[APP_LIST_MAX];
+
+pmc_t 				pm LD_CCRAM;
+tlm_t				tlm;
 
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
@@ -72,7 +72,7 @@ void vApplicationMallocFailedHook()
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (u32_t) xTask);
+	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (uint32_t) xTask);
 
 	hal_system_reset();
 }
@@ -250,11 +250,11 @@ void task_TEMP(void *pData)
 
 		if (ap.tpro_EXT_temp_derate > M_EPS_F) {
 
-			/* Halt to derate current in case of external thermal
-			 * overload (motor overheat).
-			 * */
 			if (ap.temp_EXT > ap.tpro_EXT_temp_derate) {
 
+				/* Derate current in case of external thermal
+				 * overload (motor overheat).
+				 * */
 				x_EXT = ap.tpro_derated_EXT;
 			}
 			else if (ap.temp_EXT < ap.tpro_EXT_temp_derate - ap.tpro_temp_recovery) {
@@ -493,28 +493,27 @@ default_flash_load()
 
 	hal.OPT = 0;
 
-#ifdef HW_HAVE_NETWORK_IFCAN
+#ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;
-	net.log_MODE = IFCAN_LOG_DISABLED;
-	net.upgrade_MODE = PM_ENABLED;
+	net.log_MODE = EPCAN_LOG_DISABLED;
 	net.startup_LOST = 100 * hal.PWM_frequency / 1000;
-	net.pipe[0].ID = 10;
-	net.pipe[0].TIM = hal.PWM_frequency / 1000;
-	net.pipe[1].ID = 20;
-	net.pipe[1].TIM = net.pipe[0].TIM;
-	net.pipe[2].ID = 30;
-	net.pipe[2].TIM = net.pipe[0].TIM;
-	net.pipe[3].ID = 40;
-	net.pipe[3].TIM = net.pipe[0].TIM;
-	net.pipe[4].ID = 50;
-	net.pipe[4].TIM = net.pipe[0].TIM;
-	net.pipe[5].ID = 60;
-	net.pipe[5].TIM = net.pipe[0].TIM;
-	net.pipe[6].ID = 70;
-	net.pipe[6].TIM = net.pipe[0].TIM;
-	net.pipe[7].ID = 80;
-	net.pipe[7].TIM = net.pipe[0].TIM;
-#endif /* HW_HAVE_NETWORK_IFCAN */
+	net.ep[0].ID = 10;
+	net.ep[0].TIM = hal.PWM_frequency / 1000;
+	net.ep[1].ID = 20;
+	net.ep[1].TIM = net.ep[0].TIM;
+	net.ep[2].ID = 30;
+	net.ep[2].TIM = net.ep[0].TIM;
+	net.ep[3].ID = 40;
+	net.ep[3].TIM = net.ep[0].TIM;
+	net.ep[4].ID = 50;
+	net.ep[4].TIM = net.ep[0].TIM;
+	net.ep[5].ID = 60;
+	net.ep[5].TIM = net.ep[0].TIM;
+	net.ep[6].ID = 70;
+	net.ep[6].TIM = net.ep[0].TIM;
+	net.ep[7].ID = 80;
+	net.ep[7].TIM = net.ep[0].TIM;
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
 	ap.ppm_STARTUP = PM_DISABLED;
@@ -551,8 +550,8 @@ default_flash_load()
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
 	ap.ntc_PCB.gpio = GPIO_ADC_NTC_PCB;
 	ap.ntc_PCB.balance = HW_NTC_PCB_BALANCE;
-	ap.ntc_PCB.ntc_0 = HW_NTC_PCB_NTC_0;
-	ap.ntc_PCB.ta_0 = HW_NTC_PCB_TA_0;
+	ap.ntc_PCB.ntc0 = HW_NTC_PCB_NTC0;
+	ap.ntc_PCB.ta0 = HW_NTC_PCB_TA0;
 	ap.ntc_PCB.betta = HW_NTC_PCB_BETTA;
 #endif /* HW_HAVE_NTC_ON_PCB */
 
@@ -560,8 +559,8 @@ default_flash_load()
 	ap.ntc_EXT.type = NTC_GND;
 	ap.ntc_EXT.gpio = GPIO_ADC_NTC_EXT;
 	ap.ntc_EXT.balance = 10000.f;
-	ap.ntc_EXT.ntc_0 = 10000.f;
-	ap.ntc_EXT.ta_0 = 25.f;
+	ap.ntc_EXT.ntc0 = 10000.f;
+	ap.ntc_EXT.ta0 = 25.f;
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MOTOR */
 
@@ -573,11 +572,11 @@ default_flash_load()
 	ap.tpro_derated_EXT = 20.f;
 	ap.tpro_temp_recovery = 5.f;
 
-	ap.autorun_APP[0] = 0;
-	ap.autorun_APP[1] = 0;
+	ap.auto_APP[0] = 0;
+	ap.auto_APP[1] = 0;
 
-	ap.hx711_scale[0] = 0.f;
-	ap.hx711_scale[1] = 4.65E-6f;
+	ap.adc_load_scale[0] = 0.f;
+	ap.adc_load_scale[1] = 4.65E-6f;
 
 	ap.servo_SPAN_mm[0] = - 25.f;
 	ap.servo_SPAN_mm[1] = 25.f;
@@ -637,7 +636,7 @@ default_flash_load()
 
 	/* Default telemetry.
 	 * */
-	TLM_reg_default(&tlm);
+	tlm_reg_default(&tlm);
 
 	/* Try to load all above params from flash.
 	 * */
@@ -646,7 +645,7 @@ default_flash_load()
 
 void task_INIT(void *pData)
 {
-	u32_t			seed[3];
+	uint32_t		seed[3];
 
 	GPIO_set_mode_OUTPUT(GPIO_LED_ALERT);
 	GPIO_set_HIGH(GPIO_LED_ALERT);
@@ -664,10 +663,15 @@ void task_INIT(void *pData)
 	io_USART.getc = &USART_getc;
 	io_USART.putc = &USART_putc;
 
-#ifdef HW_HAVE_NETWORK_IFCAN
-	io_CAN.getc = &IFCAN_getc;
-	io_CAN.putc = &IFCAN_putc;
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#ifdef HW_HAVE_USB_OTG_FS
+	io_USB.getc = &USB_getc;
+	io_USB.putc = &USB_putc;
+#endif /* HW_HAVE_USB_OTG_FS */
+
+#ifdef HW_HAVE_NETWORK_EPCAN
+	io_CAN.getc = &EPCAN_getc;
+	io_CAN.putc = &EPCAN_putc;
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 	/* Default to USART.
 	 * */
@@ -741,9 +745,13 @@ void task_INIT(void *pData)
 
 	USART_startup();
 
-#ifdef HW_HAVE_NETWORK_IFCAN
-	IFCAN_startup();
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#ifdef HW_HAVE_USB_OTG_FS
+	USB_startup();
+#endif /* HW_HAVE_USB_OTG_FS */
+
+#ifdef HW_HAVE_NETWORK_EPCAN
+	EPCAN_startup();
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	xTaskCreate(task_ALERT, "ALERT", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
@@ -759,8 +767,8 @@ void task_INIT(void *pData)
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 	pm_wait_for_IDLE();
 
-	app_startup_by_ID(ap.autorun_APP[0]);
-	app_startup_by_ID(ap.autorun_APP[1]);
+	app_startup_by_ID(ap.auto_APP[0]);
+	app_startup_by_ID(ap.auto_APP[1]);
 
 	vTaskDelete(NULL);
 }
@@ -924,6 +932,9 @@ void ADC_IRQ()
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
 
+	fb.pulse_HS = 0;
+	fb.pulse_EP = 0;
+
 	if (hal.DPS_mode == DPS_DRIVE_HALL) {
 
 		fb.pulse_HS = DPS_get_HALL();
@@ -931,6 +942,10 @@ void ADC_IRQ()
 	else if (hal.DPS_mode == DPS_DRIVE_ABI) {
 
 		fb.pulse_EP = DPS_get_EP();
+	}
+	else if (hal.DPS_mode == DPS_DRIVE_SOFTWARE) {
+
+		fb.pulse_EP = ap.pulse_EP;
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
@@ -957,11 +972,11 @@ void ADC_IRQ()
 
 	pm_feedback(&pm, &fb);
 
-#ifdef HW_HAVE_NETWORK_IFCAN
-	IFCAN_pipes_REGULAR();
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
+	EPCAN_pipe_REGULAR();
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
-	TLM_reg_grab(&tlm);
+	tlm_reg_grab(&tlm);
 
 	WD_kick();
 }
@@ -974,11 +989,11 @@ void app_MAIN()
 
 const char *app_name_by_ID(int app_ID)
 {
-	const char		*name = apps_list[0].name;
+	const char		*name = ap_list[0].name;
 
-	if (app_ID > 0 && app_ID < APPS_LIST_MAX) {
+	if (app_ID > 0 && app_ID < APP_LIST_MAX) {
 
-		name = apps_list[app_ID].name;
+		name = ap_list[app_ID].name;
 	}
 
 	return name;
@@ -988,17 +1003,18 @@ void app_startup_by_ID(int app_ID)
 {
 	TaskHandle_t		xHandle;
 
-	if (app_ID > 0 && app_ID < APPS_LIST_MAX) {
+	if (app_ID > 0 && app_ID < APP_LIST_MAX) {
 
-		xHandle = xTaskGetHandle(apps_list[app_ID].name);
+		xHandle = xTaskGetHandle(ap_list[app_ID].name);
 
 		if (xHandle == NULL) {
 
-			apps_onquit[app_ID] = 0;
+			ap_run[app_ID].task = &ap_list[app_ID];
+			ap_run[app_ID].onquit = 0;
 
-			xTaskCreate(apps_list[app_ID].ptask, apps_list[app_ID].name,
+			xTaskCreate(ap_list[app_ID].ptask, ap_list[app_ID].name,
 					configMINIMAL_STACK_SIZE,
-					(void *) &apps_onquit[app_ID], 1, NULL);
+					(void *) &ap_run[app_ID], 1, NULL);
 		}
 	}
 }
@@ -1007,9 +1023,11 @@ void app_halt()
 {
 	int			N = 1;
 
-	while (apps_list[N].name != NULL) {
+	while (ap_list[N].name != NULL) {
 
-		apps_onquit[N++] = 1;
+		ap_run[N].onquit = 1;
+
+		N++;
 	}
 
 #ifdef GPIO_BOOST_EN
@@ -1025,14 +1043,14 @@ void app_halt()
 
 SH_DEF(rtos_version)
 {
-	u32_t		flash_sizeof, flash_crc32;
+	uint32_t	flash_sizeof, flash_crc32;
 	int		verified;
 
 	printf("HW_revision \"%s\"" EOL, fw.hwrevision);
 	printf("FW_build \"%s\"" EOL, fw.build);
 
 	flash_sizeof = fw.ld_end - fw.ld_begin;
-	flash_crc32 = * (u32_t *) fw.ld_end;
+	flash_crc32 = * (uint32_t *) fw.ld_end;
 
 	verified = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
 
@@ -1081,8 +1099,7 @@ SH_DEF(rtos_cpu_usage)
 
 	ap.lc_flag = 0;
 
-	pc = 100.f * (float) (ap.lc_idle - ap.lc_tick)
-		/ (float) ap.lc_idle;
+	pc = 100.f * (float) (ap.lc_idle - ap.lc_tick) / (float) ap.lc_idle;
 
 	printf("%1f (%%)" EOL, &pc);
 }
@@ -1132,12 +1149,12 @@ SH_DEF(rtos_task_info)
 			}
 
 			printf("%8x %2i %17s %c    %2i   %8x %i" EOL,
-					(u32_t) pLIST[N].xHandle,
+					(uint32_t) pLIST[N].xHandle,
 					(int) pLIST[N].xTaskNumber,
 					pLIST[N].pcTaskName,
 					(int) xState,
 					(int) pLIST[N].uxCurrentPriority,
-					(u32_t) pLIST[N].pxStackBase,
+					(uint32_t) pLIST[N].pxStackBase,
 					(int) pLIST[N].usStackHighWaterMark);
 		}
 
@@ -1152,11 +1169,11 @@ SH_DEF(rtos_app_info)
 
 	printf("ID Name              Stat" EOL);
 
-	while (apps_list[N].name != NULL) {
+	while (ap_list[N].name != NULL) {
 
-		sRUN = (xTaskGetHandle(apps_list[N].name) != NULL) ? "RUN" : "   ";
+		sRUN = (xTaskGetHandle(ap_list[N].name) != NULL) ? "RUN" : "   ";
 
-		printf("%2i %17s %s" EOL, N, apps_list[N].name, sRUN);
+		printf("%2i %17s %s" EOL, N, ap_list[N].name, sRUN);
 
 		N++;
 	}
@@ -1166,15 +1183,21 @@ SH_DEF(rtos_app_start)
 {
 	int			N = 1;
 
-	while (apps_list[N].name != NULL) {
+	if (stoi(&N, s) != NULL) {
 
-		if (strcmp(s, apps_list[N].name) == 0) {
+		app_startup_by_ID(N);
+	}
+	else {
+		while (ap_list[N].name != NULL) {
 
-			app_startup_by_ID(N);
-			break;
+			if (strcmp(s, ap_list[N].name) == 0) {
+
+				app_startup_by_ID(N);
+				break;
+			}
+
+			N++;
 		}
-
-		N++;
 	}
 }
 
@@ -1182,21 +1205,27 @@ SH_DEF(rtos_app_stop)
 {
 	int			N = 1;
 
-	while (apps_list[N].name != NULL) {
+	if (stoi(&N, s) != NULL) {
 
-		if (strcmp(s, apps_list[N].name) == 0) {
+		ap_run[N].onquit = 1;
+	}
+	else {
+		while (ap_list[N].name != NULL) {
 
-			apps_onquit[N] = 1;
-			break;
+			if (strcmp(s, ap_list[N].name) == 0) {
+
+				ap_run[N].onquit = 1;
+				break;
+			}
+
+			N++;
 		}
-
-		N++;
 	}
 }
 
 SH_DEF(rtos_hexdump)
 {
-	u8_t			*m_dump;
+	uint8_t			*m_dump;
 	int			l, j, b_ascii, n_lines = 4;
 
 	if (htoi((int *) &m_dump, s) != NULL) {
@@ -1205,7 +1234,7 @@ SH_DEF(rtos_hexdump)
 
 		for (l = 0; l < n_lines; ++l) {
 
-			printf("%8x  ", (u32_t) m_dump);
+			printf("%8x  ", (uint32_t) m_dump);
 
 			for (j = 0; j < 8; ++j) {
 

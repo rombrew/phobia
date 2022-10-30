@@ -46,7 +46,7 @@ DPS_mode_DRIVE_ABI()
 
 void DPS_startup()
 {
-	if (hal.DPS_mode == DPS_DRIVE_ABI) {
+	if (hal.DPS_mode == DPS_DRIVE_HALL) {
 
 		DPS_mode_DRIVE_HALL();
 	}

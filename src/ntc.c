@@ -16,8 +16,8 @@ float ntc_read_temperature(ntc_t *ntc)
 
 			um = ADC_get_VALUE(ntc->gpio);
 			ohm = um * ntc->balance / (1.f - um);
-			log = m_logf(ohm / ntc->ntc_0);
-			temp = 1.f / (1.f / (ntc->ta_0 + 273.f)
+			log = m_logf(ohm / ntc->ntc0);
+			temp = 1.f / (1.f / (ntc->ta0 + 273.f)
 					+ log / ntc->betta) - 273.f;
 			break;
 
@@ -25,15 +25,15 @@ float ntc_read_temperature(ntc_t *ntc)
 
 			um = ADC_get_VALUE(ntc->gpio);
 			ohm = (1.f - um) * ntc->balance / um;
-			log = m_logf(ohm / ntc->ntc_0);
-			temp = 1.f / (1.f / (ntc->ta_0 + 273.f)
+			log = m_logf(ohm / ntc->ntc0);
+			temp = 1.f / (1.f / (ntc->ta0 + 273.f)
 					+ log / ntc->betta) - 273.f;
 			break;
 
 		case NTC_LINEAR:
 
 			um = ADC_get_VALUE(ntc->gpio);
-			temp = um * ntc->betta + ntc->ta_0;
+			temp = um * ntc->betta + ntc->ta0;
 			break;
 
 		default:

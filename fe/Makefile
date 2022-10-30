@@ -5,12 +5,14 @@ CC	= gcc
 LD	= gcc
 GDB	= gdb
 MK	= mkdir -p
-RM      = rm -rf
+RM	= rm -rf
 
-CFLAGS  = -std=gnu99 -pipe -Wall -O3 -flto -g3
-CFLAGS  += -I/usr/include/SDL2 -D_REENTRANT
+CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto -g3
+CFLAGS	+= -fno-stack-protector
+CFLAGS	+= -I/usr/include/SDL2 -D_REENTRANT
+CFLAGS	+= -D_EMBED_GP
 
-LFLAGS	= -lm -lSDL2 -lSDL2_ttf
+LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image
 
 OBJS	= blob_ttf.o \
 	  config.o \
@@ -19,6 +21,21 @@ OBJS	= blob_ttf.o \
 	  nksdl.o \
 	  pmcfe.o \
 	  serial.o
+
+OBJS	+= gp/async.o \
+	   gp/blob_ttf.o \
+	   gp/dirent.o \
+	   gp/draw.o \
+	   gp/edit.o \
+	   gp/gp.o \
+	   gp/lang.o \
+	   gp/lse.o \
+	   gp/lz4.o \
+	   gp/menu.o \
+	   gp/plot.o \
+	   gp/read.o \
+	   gp/scheme.o \
+	   gp/svg.o
 
 PMCFE_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
@@ -45,5 +62,5 @@ clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)
 
-include $(wildcard $(BUILD)/*.d)
+include $(wildcard $(BUILD)/*.d) $(wildcard $(BUILD)/*/*.d)
 

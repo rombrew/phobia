@@ -1,16 +1,16 @@
 #ifndef _H_LIBC_
 #define _H_LIBC_
 
+#include <stddef.h>
+#include <stdint.h>
+
 #define EOL			"\r\n"
 
 #define	IODEF_TO_USART()	if (iodef != &io_USART) { iodef = &io_USART; }
+#define	IODEF_TO_USB()		if (iodef != &io_USB) { iodef = &io_USB; }
 #define	IODEF_TO_CAN()		if (iodef != &io_CAN) { iodef = &io_CAN; }
 
 #define URAND_MAX		65535
-
-typedef unsigned int		u32_t;
-typedef unsigned short		u16_t;
-typedef unsigned char		u8_t;
 
 typedef struct {
 
@@ -22,6 +22,7 @@ io_ops_t;
 /* Serial IO interfaces.
  * */
 extern io_ops_t		io_USART;
+extern io_ops_t		io_USB;
 extern io_ops_t		io_CAN;
 
 /* Currently used.
@@ -38,7 +39,7 @@ extern int		iodef_PRETTY;
 
 /* Random SEED.
  * */
-extern u32_t		rseed;
+extern uint32_t		rseed;
 
 void *memset(void *d, int c, int n);
 void *memcpy(void *restrict d, const void *restrict s, int n);
@@ -64,8 +65,8 @@ const char *stoi(int *x, const char *s);
 const char *htoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-u32_t crc32b(const void *s, int n);
-u32_t urand();
+uint32_t crc32b(const void *s, int n);
+uint32_t urand();
 
 #endif /* _H_LIBC_ */
 

@@ -373,7 +373,7 @@ typedef struct {
 	float		kalman_P[15];
 	float		kalman_A[10];
 	float		kalman_K[10];
-	float		kalman_Z;
+	float		kalman_bias_Q;
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 

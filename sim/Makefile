@@ -41,5 +41,5 @@ clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)
 
-include $(wildcard $(BUILD)/*.d)
+include $(wildcard $(BUILD)/*.d) $(wildcard $(BUILD)/*/*.d)
 

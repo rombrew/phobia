@@ -38,7 +38,7 @@ struct dirent_stat {
 };
 
 #ifdef _WINDOWS
-void legacy_ACP_to_UTF8(char *lputf, const char *lpacp, int len);
+void winapi_ACP_to_UTF8(char *lputf, const char *lpacp, int len);
 #endif /* _WINDOWS */
 
 int dirent_open(struct dirent_stat *sb, const char *path);
@@ -46,7 +46,6 @@ int dirent_read(struct dirent_stat *sb);
 void dirent_close(struct dirent_stat *sb);
 
 void file_remove(const char *file);
-void system_async(const char *cmd);
 
 FILE *fopen_from_UTF8(const char *file, const char *mode);
 

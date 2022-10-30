@@ -33,11 +33,12 @@ struct nk_sdl {
 	int				updated;
 	int				idled;
 
-	SDL_Event			event;
 	SDL_Window			*window;
 	SDL_Surface			*fb;
 	SDL_Surface			*surface;
 	TTF_Font			*ttf_font;
+
+	int				window_ID;
 
 	int				onquit;
 	int				active;

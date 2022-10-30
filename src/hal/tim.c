@@ -5,7 +5,7 @@
 
 typedef struct {
 
-	u32_t			tick_CNT;
+	uint32_t		tick_CNT;
 }
 priv_TIM_t;
 
@@ -43,7 +43,7 @@ void TIM_startup()
 
 void TIM_wait_ns(int ns)
 {
-	u16_t			xCNT;
+	uint16_t		xCNT;
 	int			elapsed, hold;
 
 	xCNT = TIM7->CNT;
@@ -51,7 +51,7 @@ void TIM_wait_ns(int ns)
 	hold = ns * (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
 
 	do {
-		elapsed = (int) ((u16_t) TIM7->CNT - xCNT);
+		elapsed = (int) ((uint16_t) TIM7->CNT - xCNT);
 
 		if (elapsed >= hold)
 			break;
@@ -64,7 +64,7 @@ void TIM_wait_ns(int ns)
 
 void TIM_wait_ms(int ms)
 {
-	u32_t			xCNT;
+	uint32_t		xCNT;
 	int			elapsed, hold;
 
 	xCNT = priv_TIM.tick_CNT;

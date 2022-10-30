@@ -73,6 +73,10 @@ NK_API void nk_sdl_input_event(struct nk_sdl *nk, SDL_Event *ev)
 							nk->fb->h, 32, SDL_PIXELFORMAT_XRGB8888);
 				}
 			}
+			else if (ev->window.event == SDL_WINDOWEVENT_CLOSE) {
+
+				nk->onquit = 1;
+			}
 			break;
 
 		case SDL_TEXTINPUT:
@@ -82,6 +86,10 @@ NK_API void nk_sdl_input_event(struct nk_sdl *nk, SDL_Event *ev)
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
 			switch (ev->key.keysym.sym) {
+
+				case SDLK_ESCAPE:
+					SDL_StopTextInput();
+					break;
 
 				case SDLK_LSHIFT:
 				case SDLK_RSHIFT:
@@ -154,6 +162,7 @@ NK_API void nk_sdl_input_event(struct nk_sdl *nk, SDL_Event *ev)
 			switch (ev->button.button) {
 
 				case SDL_BUTTON_LEFT:
+					SDL_StartTextInput();
 					button = NK_BUTTON_LEFT;
 					break;
 

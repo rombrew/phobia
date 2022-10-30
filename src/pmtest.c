@@ -25,9 +25,9 @@ SH_DEF(pm_self_test)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_AD_IA_0]);
-		reg_format(&regfile[ID_PM_AD_IB_0]);
-		reg_format(&regfile[ID_PM_AD_IC_0]);
+		reg_format(&regfile[ID_PM_AD_IA0]);
+		reg_format(&regfile[ID_PM_AD_IB0]);
+		reg_format(&regfile[ID_PM_AD_IC0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -98,9 +98,9 @@ SH_DEF(pm_self_adjust)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_AD_IA_0]);
-		reg_format(&regfile[ID_PM_AD_IB_0]);
-		reg_format(&regfile[ID_PM_AD_IC_0]);
+		reg_format(&regfile[ID_PM_AD_IA0]);
+		reg_format(&regfile[ID_PM_AD_IB0]);
+		reg_format(&regfile[ID_PM_AD_IC0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -110,12 +110,12 @@ SH_DEF(pm_self_adjust)
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			pm_wait_for_IDLE();
 
-			reg_format(&regfile[ID_PM_AD_UA_0]);
-			reg_format(&regfile[ID_PM_AD_UA_1]);
-			reg_format(&regfile[ID_PM_AD_UB_0]);
-			reg_format(&regfile[ID_PM_AD_UB_1]);
-			reg_format(&regfile[ID_PM_AD_UC_0]);
-			reg_format(&regfile[ID_PM_AD_UC_1]);
+			reg_format(&regfile[ID_PM_AD_UA0]);
+			reg_format(&regfile[ID_PM_AD_UA1]);
+			reg_format(&regfile[ID_PM_AD_UB0]);
+			reg_format(&regfile[ID_PM_AD_UB1]);
+			reg_format(&regfile[ID_PM_AD_UC0]);
+			reg_format(&regfile[ID_PM_AD_UC1]);
 
 			reg_format(&regfile[ID_PM_TVM_INUSE]);
 			reg_format(&regfile[ID_PM_TVM_FIR_A_TAU]);
@@ -131,9 +131,9 @@ SH_DEF(pm_self_adjust)
 		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_AD_IA_1]);
-		reg_format(&regfile[ID_PM_AD_IB_1]);
-		reg_format(&regfile[ID_PM_AD_IC_1]);
+		reg_format(&regfile[ID_PM_AD_IA1]);
+		reg_format(&regfile[ID_PM_AD_IB1]);
+		reg_format(&regfile[ID_PM_AD_IC1]);
 	}
 	while (0);
 
@@ -153,7 +153,7 @@ SH_DEF(pm_test_current_ramp)
 
 	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
 
-	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = reg_GET_F(ID_PM_I_SETPOINT_CURRENT);
@@ -181,7 +181,7 @@ SH_DEF(pm_test_speed_ramp)
 
 	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
 
-	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
@@ -235,7 +235,7 @@ SH_DEF(pm_test_TVM_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	TLM_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.
@@ -342,7 +342,7 @@ SH_DEF(hal_RNG_rseed)
 
 SH_DEF(hal_RNG_make_UID)
 {
-	u32_t		UID;
+	uint32_t	UID;
 
 	UID = RNG_make_UID();
 

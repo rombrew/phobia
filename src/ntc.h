@@ -39,8 +39,8 @@ typedef struct {
 	int		gpio;
 
 	float		balance;
-	float		ntc_0;
-	float		ta_0;
+	float		ntc0;
+	float		ta0;
 	float		betta;
 }
 ntc_t;

@@ -114,9 +114,9 @@ SH_DEF(pm_probe_base)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_AD_IA_0]);
-		reg_format(&regfile[ID_PM_AD_IB_0]);
-		reg_format(&regfile[ID_PM_AD_IC_0]);
+		reg_format(&regfile[ID_PM_AD_IA0]);
+		reg_format(&regfile[ID_PM_AD_IB0]);
+		reg_format(&regfile[ID_PM_AD_IC0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -328,9 +328,9 @@ SH_DEF(pm_probe_const_R)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
-		reg_format(&regfile[ID_PM_AD_IA_0]);
-		reg_format(&regfile[ID_PM_AD_IB_0]);
-		reg_format(&regfile[ID_PM_AD_IC_0]);
+		reg_format(&regfile[ID_PM_AD_IA0]);
+		reg_format(&regfile[ID_PM_AD_IB0]);
+		reg_format(&regfile[ID_PM_AD_IC0]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -519,12 +519,12 @@ SH_DEF(pm_adjust_sensor_hall)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_HALL_ST_1]);
-		reg_format(&regfile[ID_PM_HALL_ST_2]);
-		reg_format(&regfile[ID_PM_HALL_ST_3]);
-		reg_format(&regfile[ID_PM_HALL_ST_4]);
-		reg_format(&regfile[ID_PM_HALL_ST_5]);
-		reg_format(&regfile[ID_PM_HALL_ST_6]);
+		reg_format(&regfile[ID_PM_HALL_ST1]);
+		reg_format(&regfile[ID_PM_HALL_ST2]);
+		reg_format(&regfile[ID_PM_HALL_ST3]);
+		reg_format(&regfile[ID_PM_HALL_ST4]);
+		reg_format(&regfile[ID_PM_HALL_ST5]);
+		reg_format(&regfile[ID_PM_HALL_ST6]);
 
 		if (ACTIVE != 0) {
 

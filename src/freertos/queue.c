@@ -1968,6 +1968,18 @@ Queue_t * const pxQueue = xQueue;
 } /*lint !e818 Pointer cannot be declared const as xQueue is a typedef not pointer. */
 /*-----------------------------------------------------------*/
 
+UBaseType_t uxQueueSpacesAvailableFromISR( const QueueHandle_t xQueue )
+{
+UBaseType_t uxReturn;
+Queue_t * const pxQueue = xQueue;
+
+	configASSERT( pxQueue );
+	uxReturn = pxQueue->uxLength - pxQueue->uxMessagesWaiting;
+
+	return uxReturn;
+} /*lint !e818 Pointer cannot be declared const as xQueue is a typedef not pointer. */
+/*-----------------------------------------------------------*/
+
 void vQueueDelete( QueueHandle_t xQueue )
 {
 Queue_t * const pxQueue = xQueue;

@@ -8,7 +8,8 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
-#define HW_HAVE_NETWORK_IFCAN
+#define HW_HAVE_USB_OTG_FS
+#define HW_HAVE_NETWORK_EPCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
 
@@ -38,8 +39,8 @@
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f
-#define HW_NTC_PCB_NTC_0		10000.f
-#define HW_NTC_PCB_TA_0			25.f
+#define HW_NTC_PCB_NTC0			10000.f
+#define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3380.f			/* unknown part */
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('C', 0, 10)
@@ -64,6 +65,9 @@
 
 #define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)
+
+#define GPIO_OTG_FS_DM			XGPIO_DEF4('A', 11, 0, 10)
+#define GPIO_OTG_FS_DP			XGPIO_DEF4('A', 12, 0, 10)
 
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)

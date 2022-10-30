@@ -12,13 +12,26 @@ def mkdefs(hw):
             g.write('HWMCU = STM32F405\n')
         elif 'HW_MCU_STM32F722' in s:
             g.write('HWMCU = STM32F722\n')
+
         elif 'HW_HAVE_PART_DRV8303' in s:
             g.write('INCLUDE_HAL_DRV = hal/drv.o\n')
         elif 'HW_HAVE_PART_DRV8305' in s:
             g.write('INCLUDE_HAL_DRV = hal/drv.o\n')
-        elif 'HW_HAVE_NETWORK_IFCAN' in s:
+
+        elif 'HW_HAVE_USB_OTG_FS' in s:
+            g.write('INCLUDE_HAL_USB = hal/usb.o\n');
+            g.write('INCLUDE_CHERRY = cherry/usb_dc_dwc2.o \\\n');
+            g.write('                 cherry/usbd_cdc.o \\\n');
+            g.write('                 cherry/usbd_core.o\n');
+
+        elif 'HW_HAVE_NETWORK_EPCAN' in s:
             g.write('INCLUDE_HAL_CAN = hal/can.o\n')
-            g.write('INCLUDE_IFCAN = ifcan.o\n')
+            g.write('INCLUDE_EPCAN = epcan.o\n')
+
+        elif 'HW_HAVE_NETWORK_DRONECAN' in s:
+            g.write('INCLUDE_HAL_CAN = hal/can.o\n')
+            g.write('INCLUDE_LIBCANARD = libcanard/canard.o\n')
+            g.write('INCLUDE_CAN = dronecan.o\n')
 
     f.close()
     g.close()
@@ -38,8 +51,8 @@ def shdefs(file):
     f = open(file, 'r')
     g = open('shdefs.h', 'a')
 
-    if file.endswith('ifcan.c'):
-        g.write('#ifdef HW_HAVE_NETWORK_IFCAN\n')
+    if file.endswith('epcan.c'):
+        g.write('#ifdef HW_HAVE_NETWORK_EPCAN\n')
 
     for s in f:
         if checkmacro(s, 'SH_DEF'):
@@ -47,8 +60,8 @@ def shdefs(file):
             s = re.sub('[\s\(\)]', '', m);
             g.write('SH_DEF(' + s + ')\n')
 
-    if file.endswith('ifcan.c'):
-        g.write('#endif /* HW_HAVE_NETWORK_IFCAN */\n')
+    if file.endswith('epcan.c'):
+        g.write('#endif /* HW_HAVE_NETWORK_EPCAN */\n')
 
     f.close()
     g.close()
@@ -58,7 +71,7 @@ def shbuild():
     g = open('shdefs.h', 'w')
     g.close();
 
-    for path in ['./', 'apps/']:
+    for path in ['./', 'apps/', 'hal/']:
         for file in os.listdir(path):
             if file.endswith(".c"):
                 shdefs(path + file)

@@ -7,8 +7,8 @@
 
 typedef struct {
 
-	QueueHandle_t		queue_RX;
-	QueueHandle_t		queue_TX;
+	QueueHandle_t		rx_queue;
+	QueueHandle_t		tx_queue;
 }
 priv_USART_t;
 
@@ -17,8 +17,8 @@ static priv_USART_t		priv_USART;
 void irq_USART3()
 {
 	BaseType_t		xWoken = pdFALSE;
-	u32_t 			SR;
-	char			xC;
+	uint32_t		SR;
+	char			xbyte;
 
 #if defined(STM32F4)
 	SR = USART3->SR;
@@ -33,12 +33,12 @@ void irq_USART3()
 #endif /* STM32Fx */
 
 #if defined(STM32F4)
-		xC = USART3->DR;
+		xbyte = USART3->DR;
 #elif defined(STM32F7)
-		xC = USART3->RDR;
+		xbyte = USART3->RDR;
 #endif /* STM32Fx */
 
-		xQueueSendToBackFromISR(priv_USART.queue_RX, &xC, &xWoken);
+		xQueueSendToBackFromISR(priv_USART.rx_queue, &xbyte, &xWoken);
 
 		IODEF_TO_USART();
 	}
@@ -49,12 +49,12 @@ void irq_USART3()
 	if (SR & USART_ISR_TXE) {
 #endif /* STM32Fx */
 
-		if (xQueueReceiveFromISR(priv_USART.queue_TX, &xC, &xWoken) == pdTRUE) {
+		if (xQueueReceiveFromISR(priv_USART.tx_queue, &xbyte, &xWoken) == pdTRUE) {
 
 #if defined(STM32F4)
-			USART3->DR = xC;
+			USART3->DR = xbyte;
 #elif defined(STM32F7)
-			USART3->TDR = xC;
+			USART3->TDR = xbyte;
 #endif /* STM32Fx */
 
 		}
@@ -80,8 +80,8 @@ void USART_startup()
 
 	/* Alloc queues.
 	 * */
-	priv_USART.queue_RX = xQueueCreate(80, sizeof(char));
-	priv_USART.queue_TX = xQueueCreate(80, sizeof(char));
+	priv_USART.rx_queue = xQueueCreate(320, sizeof(char));
+	priv_USART.tx_queue = xQueueCreate(80, sizeof(char));
 
 	/* Configure USART.
 	 * */
@@ -106,20 +106,20 @@ void USART_startup()
 
 int USART_getc()
 {
-	char		xC;
+	char		xbyte;
 
-	xQueueReceive(priv_USART.queue_RX, &xC, portMAX_DELAY);
+	xQueueReceive(priv_USART.rx_queue, &xbyte, portMAX_DELAY);
 
-	return (int) xC;
+	return (int) xbyte;
 }
 
 void USART_putc(int c)
 {
-	char		xC = (char) c;
+	char		xbyte = (char) c;
 
 	GPIO_set_HIGH(GPIO_LED_ALERT);
 
-	if (xQueueSendToBack(priv_USART.queue_TX, &xC, portMAX_DELAY) == pdTRUE) {
+	if (xQueueSendToBack(priv_USART.tx_queue, &xbyte, portMAX_DELAY) == pdTRUE) {
 
 		USART3->CR1 |= USART_CR1_TXEIE;
 	}
@@ -127,5 +127,5 @@ void USART_putc(int c)
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }
 
-QueueHandle_t USART_queue_RX() { return priv_USART.queue_RX; }
+QueueHandle_t USART_shared_rx_queue() { return priv_USART.rx_queue; }
 

@@ -18,7 +18,7 @@ enum {
 
 typedef struct {
 
-	SemaphoreHandle_t	sem_MUX;
+	SemaphoreHandle_t	mutex_sem;
 }
 priv_ADC_t;
 
@@ -112,11 +112,11 @@ void irq_EXTI0()
 void ADC_const_build()
 {
 #if defined(STM32F4)
-	u16_t			*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
-	u16_t			*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
+	uint16_t		*CAL_TEMP_30 = (void *) 0x1FFF7A2C;
+	uint16_t		*CAL_TEMP_110 = (void *) 0x1FFF7A2E;
 #elif defined(STM32F7)
-	u16_t			*CAL_TEMP_30 = (void *) 0x1FF07A2C;
-	u16_t			*CAL_TEMP_110 = (void *) 0x1FF07A2E;
+	uint16_t		*CAL_TEMP_30 = (void *) 0x1FF07A2C;
+	uint16_t		*CAL_TEMP_110 = (void *) 0x1FF07A2E;
 #endif /* STM32Fx */
 
 	hal.const_ADC.GA = hal.ADC_reference_voltage / (float) ADC_RESOLUTION
@@ -282,7 +282,7 @@ void ADC_startup()
 
 	/* Allocate semaphore.
 	 * */
-	priv_ADC.sem_MUX = xSemaphoreCreateMutex();
+	priv_ADC.mutex_sem = xSemaphoreCreateMutex();
 
 	/* Enable ADCs.
 	 * */
@@ -307,7 +307,7 @@ float ADC_get_VALUE(int xGPIO)
 	int			xCH, xADC;
 	float			fU = 0.f;
 
-	if (xSemaphoreTake(priv_ADC.sem_MUX, (TickType_t) 10) == pdTRUE) {
+	if (xSemaphoreTake(priv_ADC.mutex_sem, (TickType_t) 10) == pdTRUE) {
 
 		xCH = XGPIO_GET_CH(xGPIO);
 
@@ -332,7 +332,7 @@ float ADC_get_VALUE(int xGPIO)
 			fU = (float) (xADC) * hal.const_ADC.GS;
 		}
 
-		xSemaphoreGive(priv_ADC.sem_MUX);
+		xSemaphoreGive(priv_ADC.mutex_sem);
 	}
 
 	return fU;

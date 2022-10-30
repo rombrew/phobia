@@ -3,7 +3,7 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
-#define HW_HAVE_NETWORK_IFCAN
+#define HW_HAVE_NETWORK_EPCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		12000000UL
 
@@ -30,8 +30,8 @@
 
 #define HW_NTC_PCB_TYPE			NTC_GND
 #define HW_NTC_PCB_BALANCE		10000.f
-#define HW_NTC_PCB_NTC_0		10000.f
-#define HW_NTC_PCB_TA_0			25.f
+#define HW_NTC_PCB_NTC0			10000.f
+#define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3435.f		/* EWTF05-103H3I */
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)

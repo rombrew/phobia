@@ -142,7 +142,7 @@ sim_Tlm(float *pTlm)
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
-	fmt_GP(pm.kalman_Z, "V");
+	fmt_GP(pm.kalman_bias_Q, "V");
 
 	fmk_GP(pm.zone_lpf_wS, kRPM, "rpm");
 

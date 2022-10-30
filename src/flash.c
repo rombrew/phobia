@@ -12,19 +12,19 @@
 
 typedef struct {
 
-	u32_t			number;
-	u32_t			content[4094];
-	u32_t			crc32;
+	uint32_t		number;
+	uint32_t		content[4094];
+	uint32_t		crc32;
 }
 flash_block_t;
 
 typedef struct {
 
-	u32_t			*flash;
+	uint32_t		*flash;
 
 	union {
-		u32_t		l;
-		u8_t		b[4];
+		uint32_t	l;
+		uint8_t		b[4];
 	}
 	packed;
 
@@ -40,7 +40,7 @@ FE_prog_putc(FE_prog_t *pg, int c)
 
 	if (pg->bleft > 0) {
 
-		pg->packed.b[pg->bspin++] = (u8_t) c;
+		pg->packed.b[pg->bspin++] = (uint8_t) c;
 
 		if (pg->bspin >= 4) {
 
@@ -59,11 +59,11 @@ FE_prog_putc(FE_prog_t *pg, int c)
 }
 
 static void
-FE_prog_long(FE_prog_t *pg, u32_t l)
+FE_prog_long(FE_prog_t *pg, uint32_t l)
 {
 	union {
-		u32_t		l;
-		u8_t		b[4];
+		uint32_t	l;
+		uint8_t		b[4];
 	}
 	packed = { l };
 
@@ -98,10 +98,10 @@ FE_strcpyn(char *d, const char *s, int n)
 	return s;
 }
 
-static u32_t
+static uint32_t
 flash_block_crc32(const flash_block_t *block)
 {
-	return crc32b(block, sizeof(flash_block_t) - sizeof(u32_t));
+	return crc32b(block, sizeof(flash_block_t) - sizeof(uint32_t));
 }
 
 static flash_block_t *
@@ -127,7 +127,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
 			break;
 	}
 	while (1);
@@ -185,7 +185,7 @@ int flash_block_regs_load()
 
 				/* Load binary VALUE.
 				 * */
-				memcpy(reg->link, lsym + 1, sizeof(u32_t));
+				memcpy(reg->link, lsym + 1, sizeof(uint32_t));
 			}
 
 			lsym += 5;
@@ -212,11 +212,11 @@ int flash_block_regs_load()
 static int
 flash_is_block_dirty(const flash_block_t *block)
 {
-	const u32_t		*lsrc, *lend;
+	const uint32_t		*lsrc, *lend;
 	int			dirty = 0;
 
-	lsrc = (const u32_t *) block;
-	lend = (const u32_t *) (block + 1);
+	lsrc = (const uint32_t *) block;
+	lend = (const uint32_t *) (block + 1);
 
 	while (lsrc < lend) {
 
@@ -291,7 +291,7 @@ static int
 flash_block_prog()
 {
 	flash_block_t		*block, *origin;
-	u32_t			number, crc32;
+	uint32_t		number, crc32;
 	int			rc = 0;
 
 	block = flash_block_scan();
@@ -301,7 +301,7 @@ flash_block_prog()
 		number = block->number + 1;
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
 			block = (void *) FLASH_map[0];
 	}
 	else {
@@ -315,7 +315,7 @@ flash_block_prog()
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
 			block = (void *) FLASH_map[0];
 
 		if (block == origin) {
@@ -386,7 +386,7 @@ SH_DEF(flash_info)
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[N + 1]) {
+		if ((uint32_t) block >= FLASH_map[N + 1]) {
 
 			puts(EOL);
 
@@ -402,7 +402,7 @@ SH_DEF(flash_info)
 SH_DEF(flash_wipe)
 {
 	flash_block_t			*block;
-	u32_t				lz = 0;
+	uint32_t			lz = 0;
 
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -420,7 +420,7 @@ SH_DEF(flash_wipe)
 
 		block += 1;
 
-		if ((u32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
 			break;
 	}
 	while (1);

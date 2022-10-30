@@ -2,8 +2,8 @@ HWREV	?= REV5A
 
 include hal/mk/$(HWREV).d
 
-BUILD	?= /tmp/pmcfw-$(HWREV)
-TARGET	= $(BUILD)/pmcfw-$(HWREV)
+BUILD	?= /tmp/pmc-$(HWREV)
+TARGET	= $(BUILD)/pmc-$(HWREV)
 IMAGE	= $(TARGET).bin
 
 CROSS	?= armv7m-none-eabi
@@ -53,6 +53,7 @@ endif
 
 #TTY	= /dev/rfcomm0
 TTY	= /dev/ttyUSB0
+#TTY	= /dev/ttyACM0
 BAUD	= 57600
 
 LOGFILE	= /tmp/phobia.log
@@ -62,6 +63,7 @@ OBJS    = freertos/heap_4.o \
 	  freertos/port.o \
 	  freertos/queue.o \
 	  freertos/tasks.o \
+	  $(INCLUDE_CHERRY) \
 	  hal/adc.o \
 	  $(INCLUDE_HAL_CAN) \
 	  hal/dps.o \
@@ -76,13 +78,14 @@ OBJS    = freertos/heap_4.o \
 	  hal/spi.o \
 	  hal/tim.o \
 	  hal/usart.o \
+	  $(INCLUDE_HAL_USB) \
 	  hal/wd.o \
 	  phobia/libm.o \
 	  phobia/lse.o \
 	  phobia/pm.o \
 	  phobia/pm_fsm.o \
+	  $(INCLUDE_EPCAN) \
 	  flash.o \
-	  $(INCLUDE_IFCAN) \
 	  libc.o \
 	  main.o \
 	  ntc.o \
@@ -95,7 +98,7 @@ OBJS    = freertos/heap_4.o \
 
 OBJS	+= apps/as5047.o \
 	   apps/hx711.o \
-	   apps/push2.o
+	   apps/pushtwo.o
 
 TARGET_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
@@ -116,7 +119,7 @@ $(IMAGE): $(TARGET)
 
 zip: $(IMAGE)
 	@ echo "  ZIP   " $(notdir $<)
-	@ zip -j9 $(BUILD)/pmcfw-$(HWREV)-$(shell hg id -n).zip $<
+	@ zip -j9 $(BUILD)/pmc-$(HWREV)-$(shell hg id -n).zip $<
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
@@ -137,5 +140,5 @@ clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)
 
-include $(wildcard $(BUILD)/*.d) $(wildcard $(BUILD)/**/*.d)
+include $(wildcard $(BUILD)/*.d) $(wildcard $(BUILD)/*/*.d)
 

@@ -5,11 +5,13 @@
 #include <stdio.h>
 
 #define FILE_HOME_CONFIG	"pmcfe"
-#define FILE_LINK_LOG		"pmcfe.log"
-#define FILE_GRAB_FORMAT	"grab_%d.csv"
-#define FILE_GRAB_SUFFIX	".csv"
+#define FILE_LINK_LOG		"pmclink.log"
+#define FILE_TELEMETRY_GRAB	"tlmgrab.csv"
+#define FILE_TELEMETRY_FLT	".csv"
+#define FILE_CONFIG_DEFAULT	"config.txt"
+#define FILE_CONFIG_FLT		".txt"
 
-#define PMCFE_PATH_MAX		270
+#define PMCFE_PATH_MAX		400
 #define PMCFE_NAME_MAX		80
 
 struct config_pmcfe {
@@ -19,7 +21,6 @@ struct config_pmcfe {
 	int			windowsize;
 	char			storage[PMCFE_PATH_MAX];
 	char			fuzzy[PMCFE_NAME_MAX];
-	char			gpcmd[PMCFE_NAME_MAX];
 };
 
 FILE *fopen_from_UTF8(const char *file, const char *mode);

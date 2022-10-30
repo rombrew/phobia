@@ -9,9 +9,9 @@
 #include "regfile.h"
 #include "shell.h"
 
-void TLM_reg_default(TLM_t *tlm)
+void tlm_reg_default(tlm_t *tlm)
 {
-	tlm->freq_grab_hz = 200;
+	tlm->freq_grab_hz = 0;
 	tlm->freq_live_hz = 20;
 
 	tlm->reg_ID[0] = ID_PM_LU_ID;
@@ -26,7 +26,7 @@ void TLM_reg_default(TLM_t *tlm)
 	tlm->reg_ID[9] = ID_NULL;
 }
 
-void TLM_reg_grab(TLM_t *tlm)
+void tlm_reg_grab(tlm_t *tlm)
 {
 	const reg_t		*reg;
 	int			N;
@@ -70,7 +70,7 @@ void TLM_reg_grab(TLM_t *tlm)
 	}
 }
 
-void TLM_startup(TLM_t *tlm, int freq, int mode)
+void tlm_startup(tlm_t *tlm, int freq, int mode)
 {
 	if (freq > 0 && freq < hal.PWM_frequency) {
 
@@ -88,11 +88,15 @@ void TLM_startup(TLM_t *tlm, int freq, int mode)
 	tlm->mode = mode;
 }
 
-void TLM_halt(TLM_t *tlm)
+void tlm_halt(tlm_t *tlm)
 {
 	tlm->mode = TLM_MODE_DISABLED;
-
 	hal_fence();
+}
+
+SH_DEF(tlm_default)
+{
+	tlm_reg_default(&tlm);
 }
 
 SH_DEF(tlm_grab)
@@ -101,15 +105,15 @@ SH_DEF(tlm_grab)
 
 	stoi(&freq, s);
 
-	TLM_startup(&tlm, freq, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, freq, TLM_MODE_SINGLE_GRAB);
 }
 
 SH_DEF(tlm_stop)
 {
-	TLM_halt(&tlm);
+	tlm_halt(&tlm);
 }
 
-void TLM_reg_labels(TLM_t *tlm)
+void tlm_reg_labels(tlm_t *tlm)
 {
 	const reg_t		*reg;
 	const char		*su;
@@ -137,7 +141,7 @@ void TLM_reg_labels(TLM_t *tlm)
 	puts(EOL);
 }
 
-void TLM_reg_flush(TLM_t *tlm)
+void tlm_reg_flush(tlm_t *tlm)
 {
 	const reg_t		*reg;
 	int			K, N;
@@ -159,7 +163,7 @@ void TLM_reg_flush(TLM_t *tlm)
 	}
 }
 
-void TLM_reg_flush_1(TLM_t *tlm, int nR)
+void tlm_reg_flush_1(tlm_t *tlm, int nR)
 {
 	const reg_t		*reg;
 	int			N;
@@ -182,24 +186,24 @@ SH_DEF(tlm_flush_sync)
 {
 	if (tlm.mode == TLM_MODE_DISABLED) {
 
-		TLM_reg_labels(&tlm);
-		TLM_reg_flush(&tlm);
+		tlm_reg_labels(&tlm);
+		tlm_reg_flush(&tlm);
 	}
 }
 
-void task_LIVE(void *pData)
+void task_tlm_LIVE(void *pData)
 {
-	TLM_t		*tlm = (TLM_t *) pData;
+	tlm_t		*tlm = (tlm_t *) pData;
 	int		nR = tlm->n;
 
-	TLM_reg_labels(tlm);
+	tlm_reg_labels(tlm);
 
 	do {
 		vTaskDelay((TickType_t) 5);
 
 		while (tlm->n != nR) {
 
-			TLM_reg_flush_1(tlm, nR);
+			tlm_reg_flush_1(tlm, nR);
 			nR = (nR < (TLM_DATA_MAX - 1)) ? nR + 1 : 0;
 
 			hal_fence();
@@ -213,14 +217,16 @@ SH_DEF(tlm_live_sync)
 	TaskHandle_t		xHandle;
 	int			xC, freq = tlm.freq_live_hz;
 
-	xTaskCreate(task_LIVE, "LIVE", configMINIMAL_STACK_SIZE, (void *) &tlm, 1, &xHandle);
+	xTaskCreate(task_tlm_LIVE, "LIVE", configMINIMAL_STACK_SIZE,
+			(void *) &tlm, 1, &xHandle);
 
 	if (stoi(&freq, s) != NULL) {
 
-		freq = (freq < 1) ? 1 : (freq > 100) ? 100 : freq;
+		freq = (freq < 1) ? 1 : (freq > tlm.freq_live_hz)
+			? tlm.freq_live_hz : freq;
 	}
 
-	TLM_startup(&tlm, freq, TLM_MODE_LIVE);
+	tlm_startup(&tlm, freq, TLM_MODE_LIVE);
 
 	do {
 		xC = getc();
@@ -230,7 +236,8 @@ SH_DEF(tlm_live_sync)
 	}
 	while (1);
 
-	TLM_halt(&tlm);
+	tlm_halt(&tlm);
+
 	vTaskDelete(xHandle);
 }
 

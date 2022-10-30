@@ -1,9 +1,9 @@
 #include <stddef.h>
 
 #include "shell.h"
-#ifdef HW_HAVE_NETWORK_IFCAN
-#include "ifcan.h"
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
+#include "epcan.h"
+#endif /* HW_HAVE_NETWORK_EPCAN */
 #include "libc.h"
 
 #define SH_CLINE_SZ			84
@@ -28,7 +28,7 @@ typedef struct {
 	 * */
 	char		cLINE[SH_CLINE_SZ];
 	int		cEOL, xESC;
-	char		*s_arg;
+	char		*pARG;
 
 	/* Completion block.
 	 * */
@@ -97,7 +97,7 @@ sh_exact_match_call(priv_sh_t *sh)
 
 			/* Call the function.
 			 * */
-			cmd->proc(sh->s_arg);
+			cmd->proc(sh->pARG);
 
 			break;
 		}
@@ -284,14 +284,14 @@ sh_history_put(priv_sh_t *sh, const char *s)
 }
 
 static char *
-sh_get_args(char *s)
+sh_markup_args(char *s)
 {
 	const char		*delim = " ";
-	char			*s_arg, *q;
-	int			n_arg, n;
+	char			*argv, *q;
+	int			argn, n;
 
-	s_arg = NULL;
-	n_arg = 1;
+	argv = NULL;
+	argn = 1;
 
 	q = s;
 	n = 1;
@@ -302,7 +302,7 @@ sh_get_args(char *s)
 
 			if (n == 2) {
 
-				s_arg = q;
+				argv = q;
 			}
 
 			*q++ = *s;
@@ -313,24 +313,21 @@ sh_get_args(char *s)
 			if (n == 0) {
 
 				*q++ = 0;
-				n_arg++;
+				argn++;
 			}
 
-			n = n_arg;
+			n = argn;
 		}
 
 		++s;
 	}
 
-	if (s_arg == NULL) {
-
-		s_arg = q;
-	}
+	if (argv == NULL) { argv = q; }
 
 	*(q + 0) = 0;
 	*(q + 1) = 0;
 
-	return s_arg;
+	return argv;
 }
 
 static void
@@ -348,7 +345,7 @@ sh_evaluate(priv_sh_t *sh)
 
 		/* Get the command line arguments.
 		 * */
-		sh->s_arg = sh_get_args(s);
+		sh->pARG = sh_markup_args(s);
 
 		/* Search for specific command to execute.
 		 * */
@@ -440,11 +437,13 @@ sh_history(priv_sh_t *sh, int xDIR)
 		sh->hTAIL = xNUM;
 	}
 
-	if (xDIR == DIR_UP)
+	if (xDIR == DIR_UP) {
 
 		xNUM = sh_history_move(sh, sh->hNUM, DIR_UP);
-	else
+	}
+	else {
 		xNUM = sh_history_move(sh, sh->hNUM, DIR_DOWN);
+	}
 
 	if (xNUM != sh->hNUM) {
 
@@ -508,7 +507,7 @@ sh_line_null(priv_sh_t *sh)
 {
 	sh->cLINE[sh->cEOL = 0] = 0;
 
-#ifdef HW_HAVE_NETWORK_IFCAN
+#ifdef HW_HAVE_NETWORK_EPCAN
 	if (iodef == &io_CAN) {
 
 		/* Prompt with CAN node ID.
@@ -516,7 +515,7 @@ sh_line_null(priv_sh_t *sh)
 		printf("(net/%i) ", net.node_ID);
 	}
 	else
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 	{
 		/* Prompt (local).

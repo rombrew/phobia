@@ -24,12 +24,12 @@ typedef struct {
 
 	int		tim, i, n;
 }
-TLM_t;
+tlm_t;
 
-void TLM_reg_default(TLM_t *tlm);
-void TLM_reg_grab(TLM_t *tlm);
-void TLM_startup(TLM_t *tlm, int freq, int mode);
-void TLM_halt(TLM_t *tlm);
+void tlm_reg_default(tlm_t *tlm);
+void tlm_reg_grab(tlm_t *tlm);
+void tlm_startup(tlm_t *tlm, int freq, int mode);
+void tlm_halt(tlm_t *tlm);
 
 #endif /* _H_TLM_ */
 

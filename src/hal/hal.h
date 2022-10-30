@@ -2,13 +2,12 @@
 #define _H_HAL_
 
 #include "libc.h"
-
 #include "hwdefs.h"
 
 #include "adc.h"
-#ifdef HW_HAVE_NETWORK_IFCAN
+#ifdef HW_HAVE_NETWORK_EPCAN
 #include "can.h"
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#endif /* HW_HAVE_NETWORK_EPCAN */
 #include "dps.h"
 #ifdef HW_HAVE_PART_DRV_XX
 #include "drv.h"
@@ -21,6 +20,9 @@
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
+#ifdef HW_HAVE_USB_OTG_FS
+#include "usb.h"
+#endif /* HW_HAVE_USB_OTG_FS */
 #include "wd.h"
 
 #define LD_CCRAM			__attribute__ ((section(".ccram")))
@@ -49,6 +51,7 @@ enum {
 	DPS_DISABLED			= 0,
 	DPS_DRIVE_HALL,
 	DPS_DRIVE_ABI,
+	DPS_DRIVE_SOFTWARE,
 };
 
 enum {
@@ -66,8 +69,8 @@ enum {
 
 typedef struct {
 
-	u32_t		ld_begin;
-	u32_t		ld_end;
+	uint32_t	ld_begin;
+	uint32_t	ld_end;
 
 	const char	hwrevision[16];
 	const char	build[16];
@@ -103,9 +106,9 @@ typedef struct {
 
 	int		DPS_mode;
 
-#ifdef HW_HAVE_NETWORK_IFCAN
+#ifdef HW_HAVE_NETWORK_EPCAN
 	CAN_msg_t	CAN_msg;
-#endif /* HW_HAVE_NETWORK_IFCAN */
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 	int		PPM_mode;
 	int		PPM_timebase;
@@ -134,8 +137,8 @@ HAL_t;
 
 typedef struct {
 
-	u32_t		boot_SIGNATURE;
-	u32_t		boot_COUNT;
+	uint32_t	boot_SIGNATURE;
+	uint32_t	boot_COUNT;
 
 	char		textbuf[1024];
 	int		len;
@@ -144,8 +147,8 @@ LOG_t;
 
 extern const FW_info_t		fw;
 
-extern u32_t			ld_begin_vectors;
-extern u32_t			clock_cpu_hz;
+extern uint32_t			ld_begin_vectors;
+extern uint32_t			clock_cpu_hz;
 
 extern HAL_t			hal;
 extern LOG_t			log;

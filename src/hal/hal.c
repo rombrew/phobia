@@ -5,13 +5,13 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_BOOT_SIGNATURE	0x55775577UL
+#define HAL_BOOT_SIGNATURE	0x557ABCDEUL
 
-u32_t				clock_cpu_hz;
+uint32_t			clock_cpu_hz;
 
 HAL_t				hal;
 LOG_t				log		LD_NOINIT;
-volatile u32_t			bootload_jump	LD_NOINIT;
+volatile uint32_t		bootload_jump	LD_NOINIT;
 
 void irq_NMI()
 {
@@ -64,7 +64,7 @@ base_startup()
 
 	/* Vector table offset.
 	 * */
-	SCB->VTOR = (u32_t) &ld_begin_vectors;
+	SCB->VTOR = (uint32_t) &ld_begin_vectors;
 
 	/* Configure priority grouping.
 	 * */
@@ -79,7 +79,7 @@ base_startup()
 static void
 clock_startup()
 {
-	u32_t		CLOCK, PLLQ, PLLP, PLLN, PLLM;
+	uint32_t	CLOCK, PLLQ, PLLP, PLLN, PLLM;
 	int		HSE, N = 0;
 
 	/* Enable HSI.
@@ -229,10 +229,10 @@ periph_startup()
 static void
 flash_verify()
 {
-	u32_t		flash_sizeof, *flash_crc32, crc32;
+	uint32_t	flash_sizeof, *flash_crc32, crc32;
 
 	flash_sizeof = fw.ld_end - fw.ld_begin;
-	flash_crc32 = (u32_t *) fw.ld_end;
+	flash_crc32 = (uint32_t *) fw.ld_end;
 
 	if (*flash_crc32 == 0xFFFFFFFFUL) {
 
@@ -251,16 +251,16 @@ flash_verify()
 
 void hal_bootload()
 {
-	u32_t		*sysmem;
+	uint32_t	*sysmem;
 
 	if (bootload_jump == HAL_BOOT_SIGNATURE) {
 
 		bootload_jump = 0UL;
 
 #if defined(STM32F4)
-		sysmem = (u32_t *) 0x1FFF0000UL;
+		sysmem = (uint32_t *) 0x1FFF0000UL;
 #elif defined(STM32F7)
-		sysmem = (u32_t *) 0x1FF00000UL;
+		sysmem = (uint32_t *) 0x1FF00000UL;
 #endif /* STM32Fx */
 
 		/* Load MSP.

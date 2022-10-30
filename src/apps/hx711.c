@@ -5,6 +5,7 @@
 
 #include "libc.h"
 #include "main.h"
+#include "regfile.h"
 #include "shell.h"
 
 /* This is the helper task that reads HX711 ADC.
@@ -12,7 +13,7 @@
 
 void app_HX711(void *pData)
 {
-	int			*onquit = (int *) pData;
+	app_run_t		*run = (app_run_t *) pData;
 
 	const int		gpio_DOUT = GPIO_SPI_EXT_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI_EXT_SCK;
@@ -68,10 +69,11 @@ void app_HX711(void *pData)
 
 			/* Convert the ADC code into KG.
 			 * */
-			ap.hx711_kg = (float) ADC * ap.hx711_scale[1] + ap.hx711_scale[0];
+			ap.adc_load_kg = (float) ADC * ap.adc_load_scale[1]
+				+ ap.adc_load_scale[0];
 		}
 	}
-	while (*onquit == 0);
+	while (run->onquit == 0);
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_INPUT(gpio_PD_SCK);
@@ -91,11 +93,11 @@ SH_DEF(hx711_adjust_offset)
 
 		vTaskDelay((TickType_t) 100);
 
-		avgkg += ap.hx711_kg;
+		avgkg += ap.adc_load_kg;
 	}
 
-	ap.hx711_scale[0] += - avgkg / (float) N;
+	ap.adc_load_scale[0] += - avgkg / (float) N;
 
-	reg_format(&regfile[ID_AP_HX711_SCALE_0]);
+	reg_format(&regfile[ID_AP_ADC_LOAD_SCALE0]);
 }
 

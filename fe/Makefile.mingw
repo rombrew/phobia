@@ -9,19 +9,19 @@ CC	= $(CROSS)-gcc
 LD	= $(CROSS)-gcc
 STRIP	= $(CROSS)-strip -s
 MK	= mkdir -p
-RM      = rm -rf
+RM	= rm -rf
 
-CFLAGS  = -std=gnu99 -pipe -Wall -O3 -flto
-CFLAGS  += -I$(SDLDIR)/include -I$(SDLDIR)/include/SDL2
-CFLAGS  += -D_WINDOWS
+CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto -g1
+CFLAGS	+= -fno-stack-protector
+CFLAGS	+= -I$(SDLDIR)/include -I$(SDLDIR)/include/SDL2
+CFLAGS	+= -D_EMBED_GP -D_WINDOWS
 
-LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lfreetype -static
+LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image -static
 LFLAGS	+= -L$(SDLDIR)/lib
 
-LFLAGS	+= -Wl,--no-undefined -ldinput8 -ldxguid \
-	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 \
-	   -lole32 -loleaut32 -lshell32 -lsetupapi \
-	   -lversion -luuid -static-libgcc -mwindows
+LFLAGS  += -Wl,--gc-sections -Wl,--no-undefined -lusp10 -ldinput8 -ldxguid \
+	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 \
+	   -lshell32 -lsetupapi -lversion -luuid -lrpcrt4 -static-libgcc
 
 OBJS	= blob_ttf.o \
 	  config.o \
@@ -30,6 +30,21 @@ OBJS	= blob_ttf.o \
 	  nksdl.o \
 	  pmcfe.o \
 	  serial.o
+
+OBJS	+= gp/async.o \
+	   gp/blob_ttf.o \
+	   gp/dirent.o \
+	   gp/draw.o \
+	   gp/edit.o \
+	   gp/gp.o \
+	   gp/lang.o \
+	   gp/lse.o \
+	   gp/lz4.o \
+	   gp/menu.o \
+	   gp/plot.o \
+	   gp/read.o \
+	   gp/scheme.o \
+	   gp/svg.o
 
 PMCFE_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
@@ -53,5 +68,5 @@ clean:
 	@ echo "  CLEAN "
 	@ $(RM) $(BUILD)
 
-include $(wildcard $(BUILD)/*.d)
+include $(wildcard $(BUILD)/*.d) $(wildcard $(BUILD)/*/*.d)
 

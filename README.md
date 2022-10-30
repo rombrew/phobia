@@ -8,7 +8,7 @@ electrotransport.
 
 * Sensorless vector control of three-phase PMSM based on current measurements.
 * Robust ORTEGA observer with gain scheduling against speed.
-* Fast and accurate LUENBERGER observer with gain scheduling.
+* Accurate KALMAN observer with bias compensation (**EXPERIMENTAL**).
 * Two-phase machine support (e.g. bipolar stepper).
 * Self adjust of all onboard measurements along symmetrical channels.
 * Flux weakening control.
@@ -21,6 +21,8 @@ electrotransport.
   [SDL2](https://www.libsdl.org/).
 * Non time-critical tasks are managed by
   [FreeRTOS](http://www.freertos.org/).
+* USB protocol stack from
+  [CherryUSB](https://github.com/sakumisu/CherryUSB).
 * Least Squares estimate using library
   [libLSE](https://sourceforge.net/projects/liblse/).
 
@@ -30,7 +32,7 @@ electrotransport.
 	* Prevent bootstrap circuit undervoltage condition.
 	* Optional reduced ripple mode (clamp to middle) for precise control.
 
-* phase current sampling schemes includes two or three sensors configuration
+* Phase current sampling schemes includes two or three sensors configuration
   with inline or low-side placement.
 
 * Terminal voltage measurements (TVM):
@@ -80,7 +82,6 @@ electrotransport.
 	* Up to 30 nodes in peer network.
 	* Network survey on request (no heartbeat messages).
 	* Automated node address assignment.
-	* Flash update across network.
 	* IO forwarding to get CLI of remote node.
 	* Flexible configurable data pipes.
 

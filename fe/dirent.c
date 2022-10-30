@@ -18,7 +18,7 @@ struct dirent_priv {
 	int			firstfile;
 };
 
-void legacy_ACP_to_UTF8(char *lputf, const char *lpacp, int len)
+void winapi_ACP_to_UTF8(char *lputf, const char *lpacp, int len)
 {
 	wchar_t			wbuf[DIRENT_PATH_MAX];
 
@@ -123,32 +123,6 @@ void file_remove(const char *file)
 	DeleteFileW(wfile);
 }
 
-void system_async(const char *cmd)
-{
-	wchar_t			wcmd[DIRENT_PATH_MAX];
-
-	STARTUPINFOW		si;
-	PROCESS_INFORMATION	pi;
-
-	BOOL			rc;
-
-	MultiByteToWideChar(CP_UTF8, 0, cmd, -1, wcmd, DIRENT_PATH_MAX);
-
-	memset(&si, 0, sizeof(si));
-	memset(&pi, 0, sizeof(pi));
-
-	si.cb = sizeof(si);
-
-	rc = CreateProcessW(NULL, wcmd, NULL, NULL, 0,
-			NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi);
-
-	if (rc != 0) {
-
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
-}
-
 #else /* _WINDOWS */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -250,23 +224,6 @@ void dirent_close(struct dirent_stat *sb)
 void file_remove(const char *file)
 {
 	remove(file);
-}
-
-void system_async(const char *cmd)
-{
-	pid_t			child;
-	int			status;
-
-	waitpid(-1, &status, WNOHANG);
-	waitpid(-1, &status, WNOHANG);
-
-	child = fork();
-
-	if (child == 0) {
-
-		execl("/bin/sh", "sh", "-c", cmd, (char *) NULL);
-		exit(0);
-	}
 }
 #endif /* _WINDOWS */
 

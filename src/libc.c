@@ -1,9 +1,11 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <stdarg.h>
 
 #include "libc.h"
 
 io_ops_t		io_USART;
+io_ops_t		io_USB;
 io_ops_t		io_CAN;
 
 io_ops_t		*iodef;
@@ -11,15 +13,15 @@ io_ops_t		*iodef;
 int			iodef_ECHO;
 int			iodef_PRETTY;
 
-u32_t			rseed;
+uint32_t		rseed;
 
 void *memset(void *d, int c, int n)
 {
-	u32_t		fill, *long_d = (u32_t *) d;
+	uint32_t	fill, *long_d = (uint32_t *) d;
 
-	if (((u32_t) long_d & 3UL) == 0) {
+	if (((uint32_t) long_d & 3UL) == 0) {
 
-		fill = (u8_t) c;
+		fill = (uint8_t) c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
@@ -31,11 +33,11 @@ void *memset(void *d, int c, int n)
 	}
 
 	{
-		u8_t		*tail_d = (u8_t *) long_d;
+		uint8_t		*tail_d = (uint8_t *) long_d;
 
 		while (n >= 1) {
 
-			*tail_d++ = (u8_t) c;
+			*tail_d++ = (uint8_t) c;
 			n += - 1;
 		}
 	}
@@ -45,10 +47,10 @@ void *memset(void *d, int c, int n)
 
 void *memcpy(void *restrict d, const void *restrict s, int n)
 {
-	u32_t		*restrict long_d = (u32_t * restrict) d;
-	const u32_t	*restrict long_s = (const u32_t * restrict) s;
+	uint32_t	*restrict long_d = (uint32_t * restrict) d;
+	const uint32_t	*restrict long_s = (const uint32_t * restrict) s;
 
-	if (((u32_t) long_d & 3UL) == 0 && ((u32_t) long_s & 3UL) == 0) {
+	if (((uint32_t) long_d & 3UL) == 0 && ((uint32_t) long_s & 3UL) == 0) {
 
 		while (n >= 4) {
 
@@ -58,8 +60,8 @@ void *memcpy(void *restrict d, const void *restrict s, int n)
 	}
 
 	{
-		u8_t		*restrict tail_d = (u8_t * restrict) long_d;
-		const u8_t	*restrict tail_s = (const u8_t * restrict) long_s;
+		uint8_t		*restrict tail_d = (uint8_t * restrict) long_d;
+		const uint8_t	*restrict tail_s = (const uint8_t * restrict) long_s;
 
 		while (n >= 1) {
 
@@ -271,7 +273,7 @@ fmt_hexh(io_ops_t *_io, int x)
 }
 
 static void
-fmt_hexl(io_ops_t *_io, u32_t x)
+fmt_hexl(io_ops_t *_io, uint32_t x)
 {
 	fmt_hexb(_io, (x & 0xFF000000UL) >> 24);
 	fmt_hexb(_io, (x & 0x00FF0000UL) >> 16);
@@ -320,7 +322,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
-		u32_t		i;
+		uint32_t	i;
 	}
 	u = { x };
 
@@ -395,7 +397,7 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
-		u32_t		i;
+		uint32_t	i;
 	}
 	u = { x };
 
@@ -479,7 +481,7 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 {
 	union {
 		float		f;
-		u32_t		i;
+		uint32_t	i;
 	}
 	u = { x };
 
@@ -618,7 +620,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 					}
 					else if (n == 8) {
 
-						fmt_hexl(_io, va_arg(ap, u32_t));
+						fmt_hexl(_io, va_arg(ap, uint32_t));
 					}
 					break;
 
@@ -809,17 +811,17 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-u32_t crc32b(const void *s, int n)
+uint32_t crc32b(const void *s, int n)
 {
-	const u32_t		*ls = (const u32_t *) s;
-	u32_t			crc, buf;
+	const uint32_t		*ls = (const uint32_t *) s;
+	uint32_t		crc, buf;
 
-	const u32_t		mask[16] = {
+	const uint32_t		mask[16] = {
 
-		0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC,
-		0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
-		0xEDB88320, 0xF00F9344, 0xD6D6A3E8, 0xCB61B38C,
-		0x9B64C2B0, 0x86D3D2D4, 0xA00AE278, 0xBDBDF21C
+		0x00000000UL, 0x1DB71064UL, 0x3B6E20C8UL, 0x26D930ACUL,
+		0x76DC4190UL, 0x6B6B51F4UL, 0x4DB26158UL, 0x5005713CUL,
+		0xEDB88320UL, 0xF00F9344UL, 0xD6D6A3E8UL, 0xCB61B38CUL,
+		0x9B64C2B0UL, 0x86D3D2D4UL, 0xA00AE278UL, 0xBDBDF21CUL
 	};
 
 	crc = 0xFFFFFFFFUL;
@@ -844,9 +846,9 @@ u32_t crc32b(const void *s, int n)
 	return crc ^ 0xFFFFFFFFUL;
 }
 
-u32_t urand()
+uint32_t urand()
 {
-	u32_t			rval;
+	uint32_t	rval;
 
 	rseed = rseed * 17317UL + 1UL;
 	rval = rseed >> 16;
