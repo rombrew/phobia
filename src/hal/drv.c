@@ -85,7 +85,7 @@ DRV8303_startup()
 
 	TIM_wait_ms(20);
 
-	SPI_startup(SPI_ID_ON_PCB, 2000000UL, SPI_MODE_LOW_FALLING | SPI_MODE_SIZE_16);
+	SPI_startup(SPI_ID_ON_PCB, 4000000UL, SPI_MODE_LOW_FALLING | SPI_MODE_SIZE_16);
 
 	DRV8303_configure();
 
@@ -135,15 +135,16 @@ void DRV_configure()
 
 void DRV_status()
 {
-	if (hal.DRV.device_ON != 0) {
+	if (hal.DRV.part == DRV_PART_DRV8303) {
 
-		hal.DRV.status_raw = DRV_read_reg(0);
+		if (hal.DRV.device_ON != 0) {
 
-		if (hal.DRV.auto_RESET != 0) {
-
-			DRV_halt();
-			DRV_startup();
+			hal.DRV.status_raw = DRV_read_reg(0);
 		}
+	}
+	else if (hal.DRV.part == DRV_PART_DRV8305) {
+
+		/* TODO */
 	}
 }
 
@@ -153,8 +154,7 @@ int DRV_fault()
 
 	if (hal.DRV.device_ON != 0) {
 
-		fault = GPIO_get_VALUE(hal.DRV.gpio_FAULT);
-		fault = (fault != 0) ? 0 : 1;
+		fault = (GPIO_get_VALUE(hal.DRV.gpio_FAULT) != 0) ? 0 : 1;
 	}
 
 	return fault;

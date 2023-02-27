@@ -6,32 +6,7 @@
 #include "usbd_core.h"
 #include "usb_dwc2_reg.h"
 
-// clang-format off
-#if   defined ( __CC_ARM )
-#ifndef   __UNALIGNED_UINT32_WRITE
-  #define __UNALIGNED_UINT32_WRITE(addr, val)    ((*((__packed uint32_t *)(addr))) = (val))
-#endif
-#ifndef   __UNALIGNED_UINT32_READ
-  #define __UNALIGNED_UINT32_READ(addr)          (*((const __packed uint32_t *)(addr)))
-#endif
-#elif defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
-#ifndef   __UNALIGNED_UINT32_WRITE
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wpacked"
-/*lint -esym(9058, T_UINT32_WRITE)*/ /* disable MISRA 2012 Rule 2.4 for T_UINT32_WRITE */
-  __PACKED_STRUCT T_UINT32_WRITE { uint32_t v; };
-  #pragma clang diagnostic pop
-  #define __UNALIGNED_UINT32_WRITE(addr, val)    (void)((((struct T_UINT32_WRITE *)(void *)(addr))->v) = (val))
-#endif
-#ifndef   __UNALIGNED_UINT32_READ
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wpacked"
-/*lint -esym(9058, T_UINT32_READ)*/ /* disable MISRA 2012 Rule 2.4 for T_UINT32_READ */
-  __PACKED_STRUCT T_UINT32_READ { uint32_t v; };
-  #pragma clang diagnostic pop
-  #define __UNALIGNED_UINT32_READ(addr)          (((const struct T_UINT32_READ *)(const void *)(addr))->v)
-#endif
-#elif defined ( __GNUC__ )
+#if defined ( __GNUC__ )
 #ifndef   __UNALIGNED_UINT32_WRITE
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wpacked"
@@ -49,7 +24,6 @@
   #define __UNALIGNED_UINT32_READ(addr)          (((const struct T_UINT32_READ *)(const void *)(addr))->v)
 #endif
 #endif
-// clang-format on
 
 #define FS_PORT 0
 #define HS_PORT 1
@@ -59,10 +33,6 @@
 #endif
 
 #if CONFIG_USB_DWC2_PORT == FS_PORT
-#ifndef USBD_IRQHandler
-#define USBD_IRQHandler OTG_FS_IRQHandler
-#endif
-
 #ifndef USB_BASE
 #ifdef STM32H7
 #define USB_BASE (0x40080000UL)
@@ -71,9 +41,10 @@
 #endif
 #endif
 
-#define USB_RAM_SIZE 1280 /* define with minimum value*/
+#define USB_RAM_SIZE 1280 /* define with minimum value */
 
-/*FIFO sizes in bytes (total available memory for FIFOs is 1.25KB )*/
+/* FIFO sizes in bytes (total available memory for FIFOs is 1.25KB)
+ * */
 #ifndef CONFIG_USB_DWC2_RX_FIFO_SIZE
 #define CONFIG_USB_DWC2_RX_FIFO_SIZE (512)
 #endif
@@ -103,28 +74,19 @@
 #endif
 
 #ifndef USB_NUM_BIDIR_ENDPOINTS
-#define USB_NUM_BIDIR_ENDPOINTS 4 /* define with minimum value*/
+#define USB_NUM_BIDIR_ENDPOINTS 4 /* define with minimum value */
 #endif
 
-#else
-
-#ifndef USBD_IRQHandler
-#define USBD_IRQHandler OTG_HS_IRQHandler
-#endif
+#else /* CONFIG_USB_DWC2_PORT */
 
 #ifndef USB_BASE
 #define USB_BASE (0x40040000UL)
 #endif
 
-#define USB_RAM_SIZE 4096 /* define with minimum value*/
+#define USB_RAM_SIZE 4096 /* define with minimum value */
 
-#ifdef CONFIG_USB_DWC2_DMA_ENABLE
-#if defined(STM32F7) || defined(STM32H7)
-#warning "if you enable dcache,please add .nocacheble section in your sct or ld or icf"
-#endif
-#endif
-
-/*FIFO sizes in bytes (total available memory for FIFOs is 4KB )*/
+/* FIFO sizes in bytes (total available memory for FIFOs is 4KB)
+ * */
 #ifndef CONFIG_USB_DWC2_RX_FIFO_SIZE
 #define CONFIG_USB_DWC2_RX_FIFO_SIZE (1024)
 #endif
@@ -154,10 +116,10 @@
 #endif
 
 #ifndef USB_NUM_BIDIR_ENDPOINTS
-#define USB_NUM_BIDIR_ENDPOINTS 6 /* define with minimum value*/
+#define USB_NUM_BIDIR_ENDPOINTS 6 /* define with minimum value */
 #endif
 
-#endif
+#endif /* CONFIG_USB_DWC2_PORT */
 
 #define USB_OTG_GLB      ((USB_OTG_GlobalTypeDef *)(USB_BASE))
 #define USB_OTG_DEV      ((USB_OTG_DeviceTypeDef *)(USB_BASE + USB_OTG_DEVICE_BASE))
@@ -344,7 +306,7 @@ void dwc2_ep_read(uint8_t *dest, uint16_t len)
     }
 }
 
-static void dwc2_tx_fifo_empty_procecss(uint8_t ep_idx)
+static void dwc2_tx_fifo_empty_process(uint8_t ep_idx)
 {
     uint32_t len;
     uint32_t len32b;
@@ -358,7 +320,8 @@ static void dwc2_tx_fifo_empty_procecss(uint8_t ep_idx)
     len32b = (len + 3U) / 4U;
 
     while (((USB_OTG_INEP(ep_idx)->DTXFSTS & USB_OTG_DTXFSTS_INEPTFSAV) >= len32b) &&
-           (g_dwc2_udc.in_ep[ep_idx].actual_xfer_len < g_dwc2_udc.in_ep[ep_idx].xfer_len) && (g_dwc2_udc.in_ep[ep_idx].xfer_len != 0U)) {
+           (g_dwc2_udc.in_ep[ep_idx].actual_xfer_len < g_dwc2_udc.in_ep[ep_idx].xfer_len)
+	   && (g_dwc2_udc.in_ep[ep_idx].xfer_len != 0U)) {
         /* Write the FIFO */
         len = g_dwc2_udc.in_ep[ep_idx].xfer_len - g_dwc2_udc.in_ep[ep_idx].actual_xfer_len;
         if (len > g_dwc2_udc.in_ep[ep_idx].ep_mps) {
@@ -401,7 +364,7 @@ static inline uint32_t dwc2_get_outeps_intstatus(void)
     tmpreg = USB_OTG_DEV->DAINT;
     tmpreg &= USB_OTG_DEV->DAINTMSK;
 
-    return ((tmpreg & 0xffff0000U) >> 16);
+    return ((tmpreg & 0xFFFF0000U) >> 16);
 }
 
 /**
@@ -748,7 +711,7 @@ int usbd_ep_start_write(const uint8_t ep, const uint8_t *data, uint32_t data_len
         return -2;
     }
 #ifdef CONFIG_USB_DWC2_DMA_ENABLE
-    if ((uint32_t)data & 0x03) {
+    if ((uint32_t)data & 3UL) {
         return -3;
     }
 #endif
@@ -815,7 +778,7 @@ int usbd_ep_start_read(const uint8_t ep, uint8_t *data, uint32_t data_len)
         return -2;
     }
 #ifdef CONFIG_USB_DWC2_DMA_ENABLE
-    if (((uint32_t)data) & 0x03) {
+    if ((uint32_t)data & 3UL) {
         return -3;
     }
 #endif
@@ -865,18 +828,15 @@ int usbd_ep_start_read(const uint8_t ep, uint8_t *data, uint32_t data_len)
 
 void USBD_IRQHandler(void)
 {
-    uint32_t gint_status, temp, ep_idx, ep_intr, epint, read_count;
+    uint32_t gint_status, temp, ep_idx, ep_intr, epint;
     gint_status = dwc2_get_glb_intstatus();
 
     if ((USB_OTG_GLB->GINTSTS & 0x1U) == USB_OTG_MODE_DEVICE) {
-        /* Avoid spurious interrupt */
-        if (gint_status == 0) {
-            return;
-        }
 
 #ifndef CONFIG_USB_DWC2_DMA_ENABLE
         /* Handle RxQLevel Interrupt */
         if (gint_status & USB_OTG_GINTSTS_RXFLVL) {
+            uint32_t read_count;
             USB_MASK_INTERRUPT(USB_OTG_GLB, USB_OTG_GINTSTS_RXFLVL);
 
             temp = USB_OTG_GLB->GRXSTSP;
@@ -960,7 +920,7 @@ void USBD_IRQHandler(void)
                         }
                     }
                     if ((epint & USB_OTG_DIEPINT_TXFE) == USB_OTG_DIEPINT_TXFE) {
-                        dwc2_tx_fifo_empty_procecss(ep_idx);
+                        dwc2_tx_fifo_empty_process(ep_idx);
                     }
                 }
                 ep_intr >>= 1U;
@@ -1002,8 +962,8 @@ void USBD_IRQHandler(void)
         }
         if (gint_status & USB_OTG_GINTSTS_ENUMDNE) {
             USB_OTG_GLB->GINTSTS |= USB_OTG_GINTSTS_ENUMDNE;
-	    USB_OTG_GLB->GUSBCFG &= ~USB_OTG_GUSBCFG_TRDT;
-	    USB_OTG_GLB->GUSBCFG |= (uint32_t)((0x6U << 10) & USB_OTG_GUSBCFG_TRDT);
+            USB_OTG_GLB->GUSBCFG &= ~USB_OTG_GUSBCFG_TRDT;
+            USB_OTG_GLB->GUSBCFG |= (uint32_t)((0x6U << 10) & USB_OTG_GUSBCFG_TRDT);
             USB_OTG_DEV->DCTL |= USB_OTG_DCTL_CGINAK;
         }
         if (gint_status & USB_OTG_GINTSTS_SOF) {

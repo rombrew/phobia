@@ -30,7 +30,7 @@ enum {
 	NTC_NONE		= 0,
 	NTC_GND,
 	NTC_VCC,
-	NTC_LINEAR,
+	NTC_CMOS,
 };
 
 typedef struct {

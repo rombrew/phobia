@@ -22,7 +22,10 @@ typedef struct {
 
 	reg_val_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
 
-	int		tim, i, n;
+	int		span;
+	int		clock;
+
+	int		S, N;
 }
 tlm_t;
 

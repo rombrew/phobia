@@ -9,9 +9,9 @@
 #include "can.h"
 #endif /* HW_HAVE_NETWORK_EPCAN */
 #include "dps.h"
-#ifdef HW_HAVE_PART_DRV_XX
+#ifdef HW_HAVE_DRV_ON_PCB
 #include "drv.h"
-#endif /* HW_HAVE_PART_DRV_XX */
+#endif /* HW_HAVE_DRV_ON_PCB */
 #include "flash.h"
 #include "gpio.h"
 #include "ppm.h"
@@ -20,9 +20,9 @@
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
-#ifdef HW_HAVE_USB_OTG_FS
+#ifdef HW_HAVE_USB_CDC_ACM
 #include "usb.h"
-#endif /* HW_HAVE_USB_OTG_FS */
+#endif /* HW_HAVE_USB_CDC_ACM */
 #include "wd.h"
 
 #define LD_CCRAM			__attribute__ ((section(".ccram")))
@@ -114,11 +114,9 @@ typedef struct {
 	int		PPM_timebase;
 	int		PPM_caught;
 
-#ifdef HW_HAVE_PART_DRV_XX
+#ifdef HW_HAVE_DRV_ON_PCB
 	DRV_config_t	DRV;
-#endif /* HW_HAVE_PART_DRV_XX */
-
-	int		OPT;
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 	struct {
 
@@ -147,7 +145,7 @@ LOG_t;
 
 extern const FW_info_t		fw;
 
-extern uint32_t			ld_begin_vectors;
+extern uint32_t			ld_begin_text;
 extern uint32_t			clock_cpu_hz;
 
 extern HAL_t			hal;
@@ -162,15 +160,14 @@ void hal_unlock_irq(int irq);
 void hal_system_reset();
 void hal_bootload_reset();
 
-void hal_sleep();
-void hal_fence();
+void hal_cpu_sleep();
+void hal_memory_fence();
 
 int log_status();
 void log_bootup();
 void log_putc(int c);
 
 void DBGMCU_mode_stop();
-void OPT_startup();
 
 extern void log_TRACE(const char *fmt, ...);
 extern void app_MAIN();

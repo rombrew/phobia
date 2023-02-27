@@ -73,21 +73,19 @@ void m_rotatef(float x[2], float rval)
 
 float m_wrapf(float angle)
 {
-	float		align = (angle < 0.f) ? - .5f : .5f;
+	float		pad = (angle < 0.f) ? - .5f : .5f;
 	int		revol;
 
-	revol = (int) (angle / (2.f * M_PI_F) + align);
+	revol = (int) (angle / (2.f * M_PI_F) + pad);
 	angle += - (float) revol * (2.f * M_PI_F);
 
 	if (angle < - M_PI_F) {
 
 		angle += 2.f * M_PI_F;
-		revol += - 1;
 	}
 	else if (angle > M_PI_F) {
 
 		angle += - 2.f * M_PI_F;
-		revol += 1;
 	}
 
 	return angle;

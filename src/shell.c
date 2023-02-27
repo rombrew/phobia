@@ -26,18 +26,18 @@ typedef struct {
 
 	/* Base SH data.
 	 * */
-	char		cLINE[SH_CLINE_SZ];
-	int		cEOL, xESC;
-	char		*pARG;
+	char		cline[SH_CLINE_SZ];
+	int		ceol, xesc;
+	char		*parg;
 
 	/* Completion block.
 	 * */
-	int		mCOMP, cEON, cNUM;
+	int		mcomp, ceon, cnum;
 
 	/* History block.
 	 * */
-	char		cHIST[SH_HISTORY_SZ];
-	int		mHIST, hHEAD, hTAIL, hNUM;
+	char		chist[SH_HISTORY_SZ];
+	int		mhist, hhead, htail, hnum;
 }
 priv_sh_t;
 
@@ -93,11 +93,11 @@ sh_exact_match_call(priv_sh_t *sh)
 		if (id == NULL)
 			break;
 
-		if (strcmp(sh->cLINE, id) == 0) {
+		if (strcmp(sh->cline, id) == 0) {
 
 			/* Call the function.
 			 * */
-			cmd->proc(sh->pARG);
+			cmd->proc(sh->parg);
 
 			break;
 		}
@@ -108,28 +108,28 @@ sh_exact_match_call(priv_sh_t *sh)
 }
 
 static void
-sh_cyclic_match(priv_sh_t *sh, int xDIR)
+sh_cyclic_match(priv_sh_t *sh, int xdir)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id;
 	int			N = 0;
 
-	cmd = cmLIST + sh->cNUM;
-	sh->cLINE[sh->cEON] = 0;
+	cmd = cmLIST + sh->cnum;
+	sh->cline[sh->ceon] = 0;
 
 	do {
-		cmd += (xDIR == DIR_UP) ? 1 : - 1;
+		cmd += (xdir == DIR_UP) ? 1 : - 1;
 
 		cmd = (cmd < cmLIST) ? cmLIST_END
 			: (cmd > cmLIST_END) ? cmLIST : cmd;
 
 		id = cmd->sym;
 
-		if (strcmpe(sh->cLINE, id) == 0) {
+		if (strcmpe(sh->cline, id) == 0) {
 
 			/* Copy the command name.
 			 * */
-			strcpyn(sh->cLINE, id, SH_CLINE_SZ - 2);
+			strcpyn(sh->cline, id, SH_CLINE_SZ - 2);
 
 			break;
 		}
@@ -141,7 +141,7 @@ sh_cyclic_match(priv_sh_t *sh, int xDIR)
 	}
 	while (1);
 
-	sh->cNUM = cmd - cmLIST;
+	sh->cnum = cmd - cmLIST;
 }
 
 static void
@@ -154,7 +154,7 @@ sh_common_match(priv_sh_t *sh)
 	sp = NULL;
 	cmd = cmLIST;
 
-	sh->cNUM = 0;
+	sh->cnum = 0;
 
 	do {
 		id = cmd->sym;
@@ -162,12 +162,12 @@ sh_common_match(priv_sh_t *sh)
 		if (id == NULL)
 			break;
 
-		if (strcmpe(sh->cLINE, id) == 0) {
+		if (strcmpe(sh->cline, id) == 0) {
 
 			n = (sp != NULL) ? strcmpn(sp, id, n) : strlen(id);
 			sp = id;
 
-			sh->cNUM++;
+			sh->cnum++;
 		}
 
 		++cmd;
@@ -178,73 +178,73 @@ sh_common_match(priv_sh_t *sh)
 
 		n = (n > SH_CLINE_SZ - 2) ? SH_CLINE_SZ - 2 : n;
 
-		strcpyn(sh->cLINE, sp, n);
-		sh->cEON = n;
+		strcpyn(sh->cline, sp, n);
+		sh->ceon = n;
 	}
 	else {
-		sh->cEON = 0;
+		sh->ceon = 0;
 	}
 }
 
 static int
-sh_history_move(priv_sh_t *sh, int xNUM, int xDIR)
+sh_history_move(priv_sh_t *sh, int xnum, int xdir)
 {
-	if (xDIR == DIR_UP) {
+	if (xdir == DIR_UP) {
 
-		if (xNUM != sh->hHEAD) {
+		if (xnum != sh->hhead) {
 
 			/* Get previous line.
 			 * */
-			xNUM = SH_HIST_DEC(xNUM);
+			xnum = SH_HIST_DEC(xnum);
 
 			do {
-				xNUM = SH_HIST_DEC(xNUM);
+				xnum = SH_HIST_DEC(xnum);
 
-				if (sh->cHIST[xNUM] == 0)
+				if (sh->chist[xnum] == 0)
 					break;
 			}
 			while (1);
 
-			xNUM = SH_HIST_INC(xNUM);
+			xnum = SH_HIST_INC(xnum);
 		}
 	}
 	else {
-		if (xNUM != sh->hTAIL) {
+		if (xnum != sh->htail) {
 
 			/* Get next line.
 			 * */
 			do {
-				xNUM = SH_HIST_INC(xNUM);
+				xnum = SH_HIST_INC(xnum);
 
-				if (sh->cHIST[xNUM] == 0)
+				if (sh->chist[xnum] == 0)
 					break;
 			}
 			while (1);
 
-			xNUM = SH_HIST_INC(xNUM);
+			xnum = SH_HIST_INC(xnum);
 		}
 	}
 
-	return xNUM;
+	return xnum;
 }
 
 static void
 sh_history_put(priv_sh_t *sh, const char *s)
 {
-	int			xNUM, r;
+	int			xnum, r;
 	const char		*q = s;
 
-	if (sh->hHEAD != sh->hTAIL) {
+	if (sh->hhead != sh->htail) {
 
-		xNUM = sh_history_move(sh, sh->hTAIL, DIR_UP);
+		xnum = sh_history_move(sh, sh->htail, DIR_UP);
 
 		do {
-			r = sh->cHIST[xNUM] - *q;
+			r = sh->chist[xnum] - *q;
 
 			if (r || !*q)
 				break;
 
-			xNUM = SH_HIST_INC(xNUM);
+			xnum = SH_HIST_INC(xnum);
 			++q;
 		}
 		while (1);
@@ -257,22 +257,22 @@ sh_history_put(priv_sh_t *sh, const char *s)
 	}
 
 	do {
-		sh->cHIST[sh->hTAIL] = *s;
-		sh->hTAIL = SH_HIST_INC(sh->hTAIL);
+		sh->chist[sh->htail] = *s;
+		sh->htail = SH_HIST_INC(sh->htail);
 
-		if (sh->hTAIL == sh->hHEAD) {
+		if (sh->htail == sh->hhead) {
 
 			/* Forget old lines.
 			 * */
 			do {
-				sh->hHEAD = SH_HIST_INC(sh->hHEAD);
+				sh->hhead = SH_HIST_INC(sh->hhead);
 
-				if (sh->cHIST[sh->hHEAD] == 0)
+				if (sh->chist[sh->hhead] == 0)
 					break;
 			}
 			while (1);
 
-			sh->hHEAD = SH_HIST_INC(sh->hHEAD);
+			sh->hhead = SH_HIST_INC(sh->hhead);
 		}
 
 		if (*s == 0)
@@ -335,7 +335,7 @@ sh_evaluate(priv_sh_t *sh)
 {
 	char			*s;
 
-	s = sh->cLINE;
+	s = sh->cline;
 
 	if (*s != 0) {
 
@@ -345,7 +345,7 @@ sh_evaluate(priv_sh_t *sh)
 
 		/* Get the command line arguments.
 		 * */
-		sh->pARG = sh_markup_args(s);
+		sh->parg = sh_markup_args(s);
 
 		/* Search for specific command to execute.
 		 * */
@@ -354,14 +354,14 @@ sh_evaluate(priv_sh_t *sh)
 }
 
 static void
-sh_complete(priv_sh_t *sh, int xDIR)
+sh_complete(priv_sh_t *sh, int xdir)
 {
 	const char		space = ' ';
 	char			*s;
 
-	if (sh->mCOMP == 0) {
+	if (sh->mcomp == 0) {
 
-		s = sh->cLINE;
+		s = sh->cline;
 
 		/* Do not complete with trailing spaces.
 		 * */
@@ -371,141 +371,141 @@ sh_complete(priv_sh_t *sh, int xDIR)
 		/* Complete to the common substring.
 		 * */
 		sh_common_match(sh);
-		puts(sh->cLINE + sh->cEOL);
+		puts(sh->cline + sh->ceol);
 
-		if (sh->cNUM == 1) {
+		if (sh->cnum == 1) {
 
 			/* Exact match.
 			 * */
-			sh->cEOL = sh->cEON;
+			sh->ceol = sh->ceon;
 
-			if (sh->cEOL < SH_CLINE_SZ - 2) {
+			if (sh->ceol < SH_CLINE_SZ - 2) {
 
 				/* Put trailing space since completion is done.
 				 * */
-				sh->cLINE[sh->cEOL++] = space;
-				sh->cLINE[sh->cEOL] = 0;
+				sh->cline[sh->ceol++] = space;
+				sh->cline[sh->ceol] = 0;
 
 				putc(space);
 			}
 		}
-		else if (sh->cEOL <= sh->cEON) {
+		else if (sh->ceol <= sh->ceon) {
 
 			/* Enter completion mode.
 			 * */
-			sh->mCOMP = 1;
-			sh->cNUM = (xDIR == DIR_UP) ? - 1 : 0;
+			sh->mcomp = 1;
+			sh->cnum = (xdir == DIR_UP) ? - 1 : 0;
 
-			if (sh->cEOL != sh->cEON)
-				sh->cEOL = sh->cEON;
+			if (sh->ceol != sh->ceon)
+				sh->ceol = sh->ceon;
 			else
-				sh_complete(sh, xDIR);
+				sh_complete(sh, xdir);
 		}
 	}
 	else {
 		/* Search for the next match.
 		 * */
-		sh_cyclic_match(sh, xDIR);
+		sh_cyclic_match(sh, xdir);
 
 		/* Update the command line.
 		 * */
-		sh_puts_erase(sh->cEOL - sh->cEON);
-		sh->cEOL = strlen(sh->cLINE);
-		puts(sh->cLINE + sh->cEON);
+		sh_puts_erase(sh->ceol - sh->ceon);
+		sh->ceol = strlen(sh->cline);
+		puts(sh->cline + sh->ceon);
 	}
 
-	sh->mHIST = 0;
+	sh->mhist = 0;
 }
 
 static void
-sh_history(priv_sh_t *sh, int xDIR)
+sh_history(priv_sh_t *sh, int xdir)
 {
-	int			xNUM;
+	int			xnum;
 	char			*s;
 
-	if (sh->mHIST == 0) {
+	if (sh->mhist == 0) {
 
 		/* Enter history mode.
 		 * */
-		sh->hNUM = sh->hTAIL;
-		sh->mHIST = 1;
-		xNUM = sh->hTAIL;
+		sh->hnum = sh->htail;
+		sh->mhist = 1;
+		xnum = sh->htail;
 
 		/* Save current line.
 		 * */
-		sh_history_put(sh, sh->cLINE);
-		sh->hTAIL = xNUM;
+		sh_history_put(sh, sh->cline);
+		sh->htail = xnum;
 	}
 
-	if (xDIR == DIR_UP) {
+	if (xdir == DIR_UP) {
 
-		xNUM = sh_history_move(sh, sh->hNUM, DIR_UP);
+		xnum = sh_history_move(sh, sh->hnum, DIR_UP);
 	}
 	else {
-		xNUM = sh_history_move(sh, sh->hNUM, DIR_DOWN);
+		xnum = sh_history_move(sh, sh->hnum, DIR_DOWN);
 	}
 
-	if (xNUM != sh->hNUM) {
+	if (xnum != sh->hnum) {
 
-		sh->hNUM = xNUM;
-		s = sh->cLINE;
+		sh->hnum = xnum;
+		s = sh->cline;
 
 		do {
-			if ((*s = sh->cHIST[xNUM]) == 0)
+			if ((*s = sh->chist[xnum]) == 0)
 				break;
 
-			xNUM = SH_HIST_INC(xNUM);
+			xnum = SH_HIST_INC(xnum);
 			++s;
 		}
 		while (1);
 
 		/* Update the command line.
 		 * */
-		sh_puts_erase(sh->cEOL);
-		sh->cEOL = strlen(sh->cLINE);
-		puts(sh->cLINE);
+		sh_puts_erase(sh->ceol);
+		sh->ceol = strlen(sh->cline);
+		puts(sh->cline);
 	}
 
-	sh->mCOMP = 0;
+	sh->mcomp = 0;
 }
 
 static void
 sh_line_putc(priv_sh_t *sh, char c)
 {
-	if (sh->cEOL < SH_CLINE_SZ - 2) {
+	if (sh->ceol < SH_CLINE_SZ - 2) {
 
-		sh->cLINE[sh->cEOL++] = c;
-		sh->cLINE[sh->cEOL] = 0;
+		sh->cline[sh->ceol++] = c;
+		sh->cline[sh->ceol] = 0;
 
 		/* Echo.
 		 * */
 		putc(c);
 
-		sh->mCOMP = 0;
-		sh->mHIST = 0;
+		sh->mcomp = 0;
+		sh->mhist = 0;
 	}
 }
 
 static void
 sh_line_bs(priv_sh_t *sh)
 {
-	if (sh->cEOL > 0) {
+	if (sh->ceol > 0) {
 
-		sh->cLINE[--sh->cEOL] = 0;
+		sh->cline[--sh->ceol] = 0;
 
 		/* Echo.
 		 * */
 		puts(SH_BACKSPACE);
 
-		sh->mCOMP = 0;
-		sh->mHIST = 0;
+		sh->mcomp = 0;
+		sh->mhist = 0;
 	}
 }
 
 static void
 sh_line_null(priv_sh_t *sh)
 {
-	sh->cLINE[sh->cEOL = 0] = 0;
+	sh->cline[sh->ceol = 0] = 0;
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	if (iodef == &io_CAN) {
@@ -523,8 +523,8 @@ sh_line_null(priv_sh_t *sh)
 		puts(SH_PROMPT);
 	}
 
-	sh->mCOMP = 0;
-	sh->mHIST = 0;
+	sh->mcomp = 0;
+	sh->mhist = 0;
 }
 
 const char *sh_next_arg(const char *s)
@@ -547,7 +547,7 @@ void task_SH(void *pData)
 	do {
 		c = getc();
 
-		if (sh->xESC == 0) {
+		if (sh->xesc == 0) {
 
 			if (sh_ischar(c) || sh_isdigit(c) || strchr(SH_ALLOWED, c) != NULL) {
 
@@ -595,20 +595,20 @@ void task_SH(void *pData)
 			}
 			else if (c == K_ESC) {
 
-				sh->xESC = 1;
+				sh->xesc = 1;
 			}
 		}
 		else {
-			switch (sh->xESC) {
+			switch (sh->xesc) {
 
 				case 1:
-					sh->xESC = (c == '[') ? 2 : 0;
+					sh->xesc = (c == '[') ? 2 : 0;
 					break;
 
 				case 2:
 					if (c == '3') {
 
-						sh->xESC = 3;
+						sh->xesc = 3;
 					}
 					else if (c == 'A') {
 
@@ -616,7 +616,7 @@ void task_SH(void *pData)
 						 * */
 						sh_history(sh, DIR_UP);
 
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					else if (c == 'B') {
 
@@ -624,7 +624,7 @@ void task_SH(void *pData)
 						 * */
 						sh_history(sh, DIR_DOWN);
 
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					else if (c == 'Z') {
 
@@ -632,10 +632,10 @@ void task_SH(void *pData)
 						 * */
 						sh_complete(sh, DIR_DOWN);
 
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					else {
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					break;
 
@@ -647,15 +647,15 @@ void task_SH(void *pData)
 						puts(EOL);
 						sh_line_null(sh);
 
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					else {
-						sh->xESC = 0;
+						sh->xesc = 0;
 					}
 					break;
 
 				default:
-					sh->xESC = 0;
+					sh->xesc = 0;
 			}
 		}
 	}

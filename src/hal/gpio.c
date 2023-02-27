@@ -69,7 +69,7 @@ void GPIO_set_mode_SPEED_FAST(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 
-	MODIFY_REG(GPIO->OSPEEDR, 3UL << (N * 2), 3UL << (N * 2));
+	MODIFY_REG(GPIO->OSPEEDR, 3UL << (N * 2), 2UL << (N * 2));
 }
 
 void GPIO_set_mode_PULL_NONE(int xGPIO)

@@ -25,7 +25,7 @@
 
 USB_NOCACHE_RAM_SECTION struct usbd_core_cfg_priv {
     /** Setup packet */
-    USB_MEM_ALIGNX struct usb_setup_packet setup;
+    USB_MEM_ALIGN struct usb_setup_packet setup;
     /** Pointer to data buffer */
     uint8_t *ep0_data_buf;
     /** Remaining bytes in buffer */
@@ -37,7 +37,7 @@ USB_NOCACHE_RAM_SECTION struct usbd_core_cfg_priv {
     /** Pointer to registered descriptors */
     const uint8_t *descriptors;
     /* Buffer used for storing standard, class and vendor request data */
-    USB_MEM_ALIGNX uint8_t req_data[CONFIG_USBDEV_REQUEST_BUFFER_LEN];
+    USB_MEM_ALIGN uint8_t req_data[CONFIG_USBDEV_REQUEST_BUFFER_LEN];
 
     usbd_endpoint_callback in_ep_cb[USB_EP_IN_NUM];
     usbd_endpoint_callback out_ep_cb[USB_EP_OUT_NUM];

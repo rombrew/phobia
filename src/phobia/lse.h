@@ -17,15 +17,31 @@ typedef float		lse_float_t;
 
 typedef struct {
 
+	/* The size of the upper-triangular matrix.
+	 * */
+	int		len;
+
 	/* The number of data rows that matrix keep.
 	 * */
-	int		n_keep;
+	int		keep;
 
-	/* Content of upper-triangular matrix.
+	/* Content of the upper-triangular matrix.
 	 * */
 	lse_float_t	*m;
 }
-lse_triu_t;
+lse_upper_t;
+
+typedef struct {
+
+	/* The length of the row-vector.
+	 * */
+	int		len;
+
+	/* Content of the row-vector.
+	 * */
+	lse_float_t	*m;
+}
+lse_row_t;
 
 typedef struct {
 
@@ -35,19 +51,16 @@ typedef struct {
 
 	/* Input DATA sizes.
 	 * */
-	int		n_size_of_x;
-	int		n_size_of_z;
-	int		n_full;
+	int		n_len_of_x;
+	int		n_len_of_z;
 
-	/* Processed sizes.
+	/* Processed DATA sizes.
 	 * */
 	int		n_threshold;
 	int		n_total;
 
 	/* \R(i) is row-major upper-triangular matrix with block structure as
-	 * shown. We aggregate input data into \R(0). After we got enough data
-	 * we merge it into \R(1) and so on. This is called the cascading
-	 * update.
+	 * shown. We store only the upper triangular elements.
 	 *
 	 *                                 [0 1 2 3]
 	 *                                 [  4 5 6]
@@ -59,50 +72,72 @@ typedef struct {
 	 * S  - rectangular matrix size of \x by \z.
 	 *
 	 * */
-	lse_triu_t	triu[LSE_CASCADE_MAX];
+	lse_upper_t	rm[LSE_CASCADE_MAX];
 
-	/* LS solution \b is a column-major matrix.
-	 *
-	 * b = Rx \ S.
-	 *
+	/* LS solution \sol is a column-major matrix.
 	 * */
-	lse_float_t	*b;
+	lse_row_t	sol;
 
 	/* LS standard deviation of \z row-vector.
-	 *
-	 * e(i) = norm(Rz(:,i)) / sqrt(n_total - 1).
-	 *
 	 * */
-	lse_float_t	*e;
+	lse_row_t	std;
+
+	/* Approximate largest and smallest singular values of \Rx.
+	 * */
+	lse_float_t	l_max;
+	lse_float_t	l_min;
 
 	/* We allocate the maximal amount of memory.
 	 * */
-	lse_float_t	vm[LSE_CASCADE_MAX * LSE_FULL_MAX * (LSE_FULL_MAX + 1) / 2];
+	lse_float_t	vm[LSE_CASCADE_MAX * LSE_FULL_MAX * (LSE_FULL_MAX + 1) / 2
+			 + LSE_FULL_MAX * LSE_FULL_MAX / 4 + LSE_FULL_MAX / 2 + 1];
 }
 lse_t;
 
-/* The function configures the instance of LSE.
+/* The function determines the size of LSE structure. So you can allocate LSE
+ * structure dynamically with size returned.
  * */
-void lse_initiate(lse_t *lse, int n_cascades, int n_size_of_x, int n_size_of_z);
+int lse_getsize(int n_cascades, int n_full);
+
+/* The function construct the instance of LSE.
+ * */
+void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z);
+
+/* The function updates \R with a new data row-vector \v which contains \x and
+ * \z concatenated. We does QR update of \R by orthogonal transformation.
+ * */
+void lse_insert(lse_t *ls, lse_float_t *v);
+
+/* The function updates \R with a new data row-vector \v which contains \x and
+ * \z concatenated. This function uses row reduction to solve full-rank system
+ * of linear equations.
+ * */
+void lse_reduce(lse_t *ls, lse_float_t *v);
+
+/* The function introduces ridge regularization with \la. Most reasonable \la
+ * value is \n_len_of_x * \l_max * \machine_epsilon.
+ * */
+void lse_ridge(lse_t *ls, lse_float_t la);
+
+/* The function scales all cascades of \R with forgetting factor \la. It is
+ * reasonable to use this function with only 1 cascade allocated.
+ * */
+void lse_forget(lse_t *ls, lse_float_t la);
 
 /* The function calculates the final LS solution \b.
- *
- * NOTE: The cascade structure is being collapsed so do it only once after all
- * data is accepted to get the best precision.
- *
- * NOTE: The memory for \b and \e is allocated in place of \R(0) in normal case
- * when total number of taken rows is greater than size of \x.
- *
  * */
-void lse_finalise(lse_t *lse);
+void lse_solve(lse_t *ls);
 
-/* The function takes a new data row-vector \v which contains \x and \z
- * concatenated.
- *
- * R(0) = cholupdate(R(0), [x z]).
- *
+/* The function calculates standard deviation of \z.
  * */
-void lse_insert(lse_t *lse, lse_float_t *v);
+void lse_std(lse_t *ls);
+
+/* The function estimates the approximate largest and smallest singular values
+ * of \Rx in \n_approx iterations. A rather computationally heavy function if
+ * \n_approx is large. You can calculate the conditional number or detect a
+ * rank deficiency based on retrieved values.
+ * */
+void lse_cond(lse_t *ls, int n_approx);
 
 #endif /* _H_LSE_ */
 

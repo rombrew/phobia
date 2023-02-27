@@ -10,7 +10,7 @@
  * 	"SC"	- SIN/COS resolver signals
  * 	"XX"	- Not used
  *
- * NOTE: AB and U samples are mandatory. Also we must sample all of phase
+ * NOTE: AB and U samples are mandatory. Also we MUST sample all of phase
  * currents at the same time point.
  *
  * */
@@ -37,11 +37,6 @@
  * selected in build options through macros.
  * */
 #include _HW_INCLUDE
-
-#if	   defined(HW_HAVE_PART_DRV8303)	\
-	|| defined(HW_HAVE_PART_DRV8305)
-#define HW_HAVE_PART_DRV_XX
-#endif /* HW_HAVE_PART_DRV_XX */
 
 #endif /* _H_HWDEFS_ */
 

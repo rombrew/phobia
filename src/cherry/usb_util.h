@@ -6,26 +6,7 @@
 #ifndef USB_UTIL_H
 #define USB_UTIL_H
 
-#if defined(__CC_ARM)
-#ifndef __USED
-#define __USED __attribute__((used))
-#endif
-#ifndef __WEAK
-#define __WEAK __attribute__((weak))
-#endif
-#ifndef __PACKED
-#define __PACKED __attribute__((packed))
-#endif
-#ifndef __PACKED_STRUCT
-#define __PACKED_STRUCT __packed struct
-#endif
-#ifndef __PACKED_UNION
-#define __PACKED_UNION __packed union
-#endif
-#ifndef __ALIGNED
-#define __ALIGNED(x) __attribute__((aligned(x)))
-#endif
-#elif defined(__GNUC__)
+#if defined(__GNUC__)
 #ifndef __USED
 #define __USED __attribute__((used))
 #endif
@@ -44,62 +25,6 @@
 #ifndef __ALIGNED
 #define __ALIGNED(x) __attribute__((aligned(x)))
 #endif
-#elif defined(__ICCARM__)
-#ifndef __USED
-#if __ICCARM_V8
-#define __USED __attribute__((used))
-#else
-#define __USED _Pragma("__root")
-#endif
-#endif
-
-#ifndef __WEAK
-#if __ICCARM_V8
-#define __WEAK __attribute__((weak))
-#else
-#define __WEAK _Pragma("__weak")
-#endif
-#endif
-
-#ifndef __PACKED
-#if __ICCARM_V8
-#define __PACKED __attribute__((packed, aligned(1)))
-#else
-/* Needs IAR language extensions */
-#define __PACKED __packed
-#endif
-#endif
-
-#ifndef __PACKED_STRUCT
-#if __ICCARM_V8
-#define __PACKED_STRUCT struct __attribute__((packed, aligned(1)))
-#else
-/* Needs IAR language extensions */
-#define __PACKED_STRUCT __packed struct
-#endif
-#endif
-
-#ifndef __PACKED_UNION
-#if __ICCARM_V8
-#define __PACKED_UNION union __attribute__((packed, aligned(1)))
-#else
-/* Needs IAR language extensions */
-#define __PACKED_UNION __packed union
-#endif
-#endif
-
-#ifndef __ALIGNED
-#if __ICCARM_V8
-#define __ALIGNED(x) __attribute__((aligned(x)))
-#elif (__VER__ >= 7080000)
-/* Needs IAR language extensions */
-#define __ALIGNED(x) __attribute__((aligned(x)))
-#else
-#warning No compiler specific solution for __ALIGNED.__ALIGNED is ignored.
-#define __ALIGNED(x)
-#endif
-#endif
-
 #endif
 
 #ifndef __ALIGN_BEGIN

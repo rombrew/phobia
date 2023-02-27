@@ -33,7 +33,6 @@ It may return the following values:
 * **PM_ERROR_SENSOR_HALL_FAULT** - Invalid value (0 or 7) of Discrete Hall
   sensors code was detected or values are inadequate (e.g. constant) during
   adjustment procedure.
-* **PM_ERROR_SENSOR_ABI_FAULT** - **TODO**
 
 These reasons come from high-level:
 
@@ -41,5 +40,6 @@ These reasons come from high-level:
   waiting for. Typically it cannot reach speed setpoint.
 * **PM_ERROR_NO_FLUX_CAUGHT** - FLUX observer has not caught the flux for some
   reason. Maybe speed is too low or spinup was failed at all.
-* **PM_ERROR_LOSS_OF_SYNC** - Position estimate is too poor (BLM model only).
+* **PM_ERROR_NO_MOTOR_SYNC** - Position synchronization is out of range (from
+  BLM model only).
 

@@ -32,10 +32,9 @@ int pm_wait_for_IDLE()
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_SPINUP()
+int pm_wait_for_SPINUP(float ref)
 {
 	TickType_t		xTIME = (TickType_t) 0;
-	const float		wS_tol = 10.f;
 
 	do {
 		vTaskDelay((TickType_t) 50);
@@ -45,13 +44,13 @@ int pm_wait_for_SPINUP()
 
 		/* Check the target speed has reached.
 		 * */
-		if (m_fabsf(pm.lu_wS) + wS_tol > pm.s_setpoint_speed)
+		if (m_fabsf(pm.lu_wS) + 10.f > ref)
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
 				&& pm.vsi_lpf_DC > pm.forced_maximal_DC) {
 
-			pm.s_setpoint_speed = pm.lu_wS;
+			ref = pm.lu_wS;
 			break;
 		}
 
@@ -70,10 +69,10 @@ int pm_wait_for_SPINUP()
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_MOTION(float s_ref)
+int pm_wait_for_MOTION(float ref)
 {
 	TickType_t		xTIME = (TickType_t) 0;
-	int			revol = pm.lu_total_revol;
+	int			revob = pm.lu_total_revol;
 
 	do {
 		vTaskDelay((TickType_t) 50);
@@ -81,9 +80,9 @@ int pm_wait_for_MOTION(float s_ref)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (pm.lu_total_revol != revol) {
+		if (pm.lu_total_revol != revob) {
 
-			if (m_fabsf(pm.zone_lpf_wS) > s_ref)
+			if (m_fabsf(pm.zone_lpf_wS) > ref)
 				break;
 		}
 
@@ -108,12 +107,13 @@ SH_DEF(pm_probe_base)
 		return;
 	}
 
-	do {
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
+	ap.probe_LOCK = PM_ENABLED;
 
+	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
@@ -159,6 +159,8 @@ SH_DEF(pm_probe_base)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_spinup)
@@ -176,6 +178,8 @@ SH_DEF(pm_probe_spinup)
 		return;
 	}
 
+	ap.probe_LOCK = PM_ENABLED;
+
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
@@ -186,7 +190,7 @@ SH_DEF(pm_probe_spinup)
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-			if (pm_wait_for_SPINUP() != PM_OK)
+			if (pm_wait_for_SPINUP(pm.probe_speed_hold) != PM_OK)
 				break;
 
 			reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
@@ -198,14 +202,18 @@ SH_DEF(pm_probe_spinup)
 
 			reg_format(&regfile[ID_PM_CONST_E_KV]);
 
+			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+			pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
 			reg_format(&regfile[ID_PM_PROBE_SPEED_HOLD]);
+			reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
+			reg_format(&regfile[ID_PM_ZONE_THRESHOLD_BASE]);
 		}
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-		if (pm_wait_for_SPINUP() != PM_OK)
+		if (pm_wait_for_SPINUP(pm.probe_speed_hold) != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
@@ -255,12 +263,15 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_IDLE() != PM_OK)
 			break;
 
+		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
+		reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 		reg_format(&regfile[ID_PM_FORCED_ACCEL]);
-		reg_format(&regfile[ID_PM_LU_GAIN_TQ]);
+		reg_format(&regfile[ID_PM_LU_GAIN_QF]);
 		reg_format(&regfile[ID_PM_S_GAIN_P]);
+		reg_format(&regfile[ID_PM_S_GAIN_I]);
 	}
 	while (0);
 
@@ -270,6 +281,8 @@ SH_DEF(pm_probe_spinup)
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_detached)
@@ -279,6 +292,8 @@ SH_DEF(pm_probe_detached)
 		printf("Unable when PM is running" EOL);
 		return;
 	}
+
+	ap.probe_LOCK = PM_ENABLED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_DETACHED;
@@ -310,6 +325,8 @@ SH_DEF(pm_probe_detached)
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_const_R)
@@ -322,12 +339,13 @@ SH_DEF(pm_probe_const_R)
 		return;
 	}
 
-	do {
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
+	ap.probe_LOCK = PM_ENABLED;
 
+	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
@@ -385,6 +403,8 @@ SH_DEF(pm_probe_const_R)
 	pm.probe_hold_angle = 0.f;
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_const_E)
@@ -401,6 +421,8 @@ SH_DEF(pm_probe_const_E)
 		return;
 	}
 
+	ap.probe_LOCK = PM_ENABLED;
+
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_E;
 
@@ -412,6 +434,8 @@ SH_DEF(pm_probe_const_E)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_const_J)
@@ -429,6 +453,8 @@ SH_DEF(pm_probe_const_J)
 		printf("Unable when SPEED loop is DISABLED" EOL);
 		return;
 	}
+
+	ap.probe_LOCK = PM_ENABLED;
 
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
@@ -452,6 +478,8 @@ SH_DEF(pm_probe_const_J)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_probe_noise_threshold)
@@ -468,6 +496,8 @@ SH_DEF(pm_probe_noise_threshold)
 		return;
 	}
 
+	ap.probe_LOCK = PM_ENABLED;
+
 	do {
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -479,20 +509,24 @@ SH_DEF(pm_probe_noise_threshold)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_adjust_sensor_hall)
 {
 	int		ACTIVE = 0;
 
+	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
+
+		printf("Unable when SPEED loop is DISABLED" EOL);
+		return;
+	}
+
+	ap.probe_LOCK = PM_ENABLED;
+
 	do {
 		if (pm.lu_MODE == PM_LU_DISABLED) {
-
-			if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
-
-				printf("Unable when SPEED loop is DISABLED" EOL);
-				return;
-			}
 
 			pm.fsm_req = PM_STATE_LU_STARTUP;
 
@@ -501,17 +535,16 @@ SH_DEF(pm_adjust_sensor_hall)
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-			if (pm_wait_for_SPINUP() != PM_OK)
+			if (pm_wait_for_SPINUP(pm.probe_speed_hold) != PM_OK)
 				break;
 
 			ACTIVE = 1;
 		}
-		else {
-			if (m_fabsf(pm.lu_wS) < pm.probe_speed_hold) {
 
-				printf("Unable at too LOW speed" EOL);
-				return;
-			}
+		if (m_fabsf(pm.zone_lpf_wS) < pm.probe_speed_detached) {
+
+			printf("Unable at too LOW speed" EOL);
+			return;
 		}
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
@@ -538,15 +571,50 @@ SH_DEF(pm_adjust_sensor_hall)
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
-	if (ACTIVE != 0 && pm.lu_MODE != PM_LU_DISABLED) {
+	if (		pm.lu_MODE != PM_LU_DISABLED
+			&& ACTIVE != 0) {
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_adjust_sensor_abi)
 {
-	/* TODO */
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
+
+		printf("Unable when SPEED loop is DISABLED" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+
+		/* TODO */
+
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+		if (pm_wait_for_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		pm.fsm_req = PM_STATE_HALT;
+	}
 }
 
 SH_DEF(pm_adjust_sensor_sincos)

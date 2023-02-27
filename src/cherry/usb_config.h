@@ -6,6 +6,8 @@
 #ifndef CHERRYUSB_CONFIG_H
 #define CHERRYUSB_CONFIG_H
 
+extern void log_TRACE(const char *fmt, ...);
+
 /* ================ USB common Configuration ================ */
 
 #ifndef CONFIG_USB_DBG_LEVEL
@@ -20,8 +22,8 @@
 #define CONFIG_USB_ALIGN_SIZE		4
 #endif
 
-#define USB_NOCACHE_RAM_SECTION
-#define USB_MEM_ALIGNX	__attribute__ ((aligned(CONFIG_USB_ALIGN_SIZE)))
+#define USB_NOCACHE_RAM_SECTION		/* TODO */
+#define USB_MEM_ALIGN			__attribute__ ((aligned(CONFIG_USB_ALIGN_SIZE)))
 
 /* ================= USB Device Stack Configuration ================ */
 
@@ -31,10 +33,14 @@
 
 /* ================ USB Device Port Configuration ================*/
 
-#define CONFIG_USB_DWC2_PORT		0	/* OTF_FS */
-/*#define CONFIG_USB_DWC2_DMA_ENABLE*/
-
+#define CONFIG_USB_DWC2_PORT		FS_PORT
 #define USBD_IRQHandler			irq_OTG_FS
+
+#include "hal/hwdefs.h"
+
+#if defined(HW_MCU_STM32F722) && !defined(STM32F7)
+#define STM32F7
+#endif /* HW_MCU_STM32F722 */
 
 #endif /* CHERRYUSB_CONFIG_H */
 

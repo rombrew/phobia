@@ -202,7 +202,7 @@ uint16_t SPI_transfer(int bus_ID, uint16_t txbuf)
 
 			SPI = SPI1;
 			gpio_NSS = GPIO_SPI_EXT_NSS;
-			hold_NSS = 500;
+			hold_NSS = 200;
 			break;
 	}
 
@@ -223,6 +223,9 @@ uint16_t SPI_transfer(int bus_ID, uint16_t txbuf)
 	}
 
 	GPIO_set_LOW(gpio_NSS);
+
+	/* Wait after NSS hold.
+	 * */
 	TIM_wait_ns(hold_NSS);
 
 	SPI->DR = txbuf;
@@ -239,9 +242,14 @@ uint16_t SPI_transfer(int bus_ID, uint16_t txbuf)
 		__NOP();
 	}
 
+	/* Wait before NSS release.
+	 * */
 	TIM_wait_ns(hold_NSS);
+
 	GPIO_set_HIGH(gpio_NSS);
 
+	/* Ensure minimal NSS pulse.
+	 * */
 	TIM_wait_ns(hold_NSS);
 
 	return rxbuf;

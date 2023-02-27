@@ -1,15 +1,14 @@
-#include "libm.h"
 #include "lse.h"
 
-#define lse_fabsf(x)		m_fabsf(x)
-#define lse_sqrtf(x)		m_sqrtf(x)
+#define lse_fabsf(x)		__builtin_fabsf(x)
+#define lse_sqrtf(x)		__builtin_sqrtf(x)
 
 static lse_float_t
 lse_hypotf(lse_float_t a, lse_float_t b)
 {
 	lse_float_t		u;
 
-	/* FIXME: We use naive implementation because it is the fastest and
+	/* NOTE: We use naive implementation because it is the fastest and
 	 * quite ulp-accurate. Beware of overflow and underflow.
 	 * */
 	u = lse_sqrtf(a * a + b * b);
@@ -17,20 +16,37 @@ lse_hypotf(lse_float_t a, lse_float_t b)
 	return u;
 }
 
-static void
-lse_cholupdate(const lse_t *lse, lse_triu_t *triu, lse_float_t *v)
+static lse_float_t
+lse_l1normf(lse_float_t a, lse_float_t b)
 {
-	lse_float_t	*m = triu->m;
+	return lse_fabsf(a) + lse_fabsf(b);
+}
+
+static void
+lse_qrupdate(lse_upper_t *rm, lse_row_t *xz)
+{
+	lse_float_t	*m = rm->m;
+	lse_float_t	*v = xz->m;
 	lse_float_t	sg, cg, t, u;
 
-	int		i, j, n;
+	int		n, lz, i, j;
 
-	n = (lse->n_full < triu->n_keep) ? lse->n_full : triu->n_keep;
+	n = (rm->len < rm->keep) ? rm->len : rm->keep;
+	lz = rm->len - xz->len;
 
-	for (i = 0; i < n; ++i) {
+	if (lz > 0) {
+
+		/* We skip leading zeros.
+		 * */
+		m += lz * rm->len - lz * (lz - 1) / 2;
+	}
+
+	for (i = lz; i < n; ++i) {
 
 		m += - i;
 
+		/* Build the orthogonal transformation.
+		 * */
 		sg = - v[i];
 		cg = m[i];
 
@@ -43,7 +59,9 @@ lse_cholupdate(const lse_t *lse, lse_triu_t *triu, lse_float_t *v)
 			sg /= u;
 			cg /= u;
 
-			for (j = i + 1; j < lse->n_full; ++j) {
+			/* Apply the transformation.
+			 * */
+			for (j = i + 1; j < rm->len; ++j) {
 
 				t = cg * m[j] - sg * v[j];
 				u = sg * m[j] + cg * v[j];
@@ -53,38 +71,45 @@ lse_cholupdate(const lse_t *lse, lse_triu_t *triu, lse_float_t *v)
 			}
 		}
 
-		m += lse->n_full;
+		m += rm->len;
 	}
 
 	m += - n;
 
-	for (i = n; i < lse->n_full; ++i)
+	/* Copy the tail.
+	 * */
+	for (i = n; i < rm->len; ++i)
 		m[i] = v[i];
 
-	triu->n_keep += 1;
+	rm->keep += 1;
 }
 
 static void
-lse_cholmerge(const lse_t *lse, lse_triu_t *triu, lse_triu_t *triv)
+lse_qrmerge(lse_upper_t *rm, lse_upper_t *em)
 {
-	lse_float_t	*m, *v = triv->m;
+	lse_float_t	*m, *v = em->m;
 	lse_float_t	sg, cg, t, u;
 
-	int		i, j, k, n;
+	int		k, n, i, j;
 
-	n = (lse->n_full < triv->n_keep) ? lse->n_full : triv->n_keep;
+	n = (rm->len < em->keep) ? rm->len : em->keep;
 
-	if (triu->n_keep != 0) {
+	if (rm->keep != 0) {
 
 		for (k = 0; k < n; ++k) {
 
-			m = triu->m + k * lse->n_full - k * (k - 1) / 2;
+			/* We extract one by one the row-vectors from \em
+			 * matrix and embed them into the \rm matrix.
+			 * */
+			m = rm->m + k * rm->len - k * (k - 1) / 2;
 			v += - k;
 
-			for (i = k; i < lse->n_full; ++i) {
+			for (i = k; i < rm->len; ++i) {
 
 				m += - i;
 
+				/* Build the orthogonal transformation.
+				 * */
 				sg = - v[i];
 				cg = m[i];
 
@@ -97,7 +122,9 @@ lse_cholmerge(const lse_t *lse, lse_triu_t *triu, lse_triu_t *triv)
 					sg /= u;
 					cg /= u;
 
-					for (j = i + 1; j < lse->n_full; ++j) {
+					/* Apply the transformation.
+					 * */
+					for (j = i + 1; j < rm->len; ++j) {
 
 						t = cg * m[j] - sg * v[j];
 						u = sg * m[j] + cg * v[j];
@@ -107,23 +134,26 @@ lse_cholmerge(const lse_t *lse, lse_triu_t *triu, lse_triu_t *triv)
 					}
 				}
 
-				m += lse->n_full;
+				m += rm->len;
 			}
 
-			v += lse->n_full;
+			v += rm->len;
 		}
 	}
 	else {
-		m = triu->m;
-		k = lse->n_full * (lse->n_full + 1) / 2;
+		/* We copy all row-vectors from \em matrix to the \rm matrix as
+		 * it does not contain any data for now.
+		 * */
+		m = rm->m;
+		k = rm->len * (rm->len + 1) / 2;
 
-		if (n == lse->n_full) {
+		if (n == rm->len) {
 
 			for (i = 0; i < k; ++i)
 				m[i] = v[i];
 		}
 		else {
-			n = n * lse->n_full - n * (n - 1) / 2;
+			n = n * rm->len - n * (n - 1) / 2;
 
 			for (i = 0; i < n; ++i)
 				m[i] = v[i];
@@ -133,148 +163,396 @@ lse_cholmerge(const lse_t *lse, lse_triu_t *triu, lse_triu_t *triv)
 		}
 	}
 
-	triu->n_keep += lse->n_full;
-	triv->n_keep = 0;
+	rm->keep += rm->len;
+	em->keep = 0;
 }
 
-void lse_initiate(lse_t *lse, int n_cascades, int n_size_of_x, int n_size_of_z)
+static void
+lse_rowreduce(lse_upper_t *rm, lse_row_t *xz)
 {
-	lse_float_t	*vm = lse->vm;
-	int		i;
+	lse_float_t	*m = rm->m;
+	lse_float_t	*v = xz->m;
+	lse_float_t	sg, cg, t, u;
 
-	lse->n_cascades = n_cascades;
+	int		n, i, j;
 
-	lse->n_size_of_x = n_size_of_x;
-	lse->n_size_of_z = n_size_of_z;
-	lse->n_full = n_size_of_x + n_size_of_z;
+	n = (rm->len < rm->keep) ? rm->len : rm->keep;
 
-	lse->n_threshold = lse->n_full * 2;
-	lse->n_total = 0;
+	for (i = 0; i < n; ++i) {
 
-	for (i = 0; i < lse->n_cascades; ++i) {
+		m += - i;
 
-		lse->triu[i].n_keep = 0;
-		lse->triu[i].m = vm;
-
-		vm += lse->n_full * (lse->n_full + 1) / 2;
-	}
-}
-
-void lse_finalise(lse_t *lse)
-{
-	lse_float_t	*b, *e, *mq, *m;
-	lse_float_t	ratio, u;
-
-	int		i, j, k;
-
-	if (lse->n_total > lse->n_size_of_x) {
-
-		/* The normal case of large amount of data. We merge all
-		 * cascades into the final upper-triangular matrix.
+		/* We build the pseudo-orthogonal l1-norm based transformation.
 		 * */
-		for (i = 1; i < lse->n_cascades; ++i)
-			lse_cholmerge(lse, &lse->triu[i], &lse->triu[i - 1]);
+		sg = - v[i];
+		cg = m[i];
 
-		b = lse->triu[0].m;
-		lse->b = b;
+		u = lse_l1normf(sg, cg);
 
-		mq = lse->triu[lse->n_cascades - 1].m;
-	}
-	else {
-		/* The case of exact solution.
-		 * */
-		b = lse->triu[1].m;
-		lse->b = b;
+		if (u > (lse_float_t) 0.) {
 
-		mq = lse->triu[0].m;
-	}
+			sg /= u;
+			cg /= u;
 
-	mq += (lse->n_size_of_x - 1) * (lse->n_full - 1)
-		- (lse->n_size_of_x - 1) * (lse->n_size_of_x - 2) / 2;
+			m[i] = cg * m[i] - sg * v[i];
 
-	/* Obtain the final LS solution \b with backward substitution.
-	 * */
-	for (k = 0; k < lse->n_size_of_z; ++k) {
-
-		m = mq;
-
-		for (i = lse->n_size_of_x - 1; i >= 0; --i) {
-
-			u = (lse_float_t) 0.;
-
-			for (j = i + 1; j < lse->n_size_of_x; ++j)
-				u += b[j] * m[j];
-
-			b[i] = (m[lse->n_size_of_x + k] - u) / m[i];
-
-			m += i - lse->n_full;
-		}
-
-		b += lse->n_size_of_x;
-	}
-
-	if (lse->n_total > lse->n_size_of_x) {
-
-		/* The normal case of large amount of data.
-		 * */
-		e = lse->triu[0].m + lse->n_size_of_x * lse->n_size_of_z;
-		lse->e = e;
-
-		mq = lse->triu[lse->n_cascades - 1].m;
-		mq += lse->n_size_of_x * lse->n_full
-			- lse->n_size_of_x * (lse->n_size_of_x - 1) / 2;
-
-		ratio = lse_sqrtf((lse_float_t) (lse->n_total - 1));
-
-		/* Obtain the standard deviation \e of the row-vector \z.
-		 * */
-		for (i = 0; i < lse->n_size_of_z; ++i) {
-
-			m = mq;
-			u = lse_fabsf(mq[0]);
-
-			for (j = i - 1; j >= 0; --j) {
-
-				m += (lse->n_size_of_x + j) - lse->n_full + 1;
-				u = lse_hypotf(u, m[0]);
-			}
-
-			e[i] = u / ratio;
-
-			mq += lse->n_full - (lse->n_size_of_x + i);
-		}
-	}
-}
-
-void lse_insert(lse_t *lse, lse_float_t *v)
-{
-	int		i, n;
-
-	lse_cholupdate(lse, &lse->triu[0], v);
-
-	for (i = 1; i < lse->n_cascades; ++i) {
-
-		if (lse->triu[i - 1].n_keep >= lse->n_threshold) {
-
-			/* If data rows is too many we merge it into higher
-			 * cascade.
+			/* Apply the transformation.
 			 * */
-			lse_cholmerge(lse, &lse->triu[i], &lse->triu[i - 1]);
+			for (j = i + 1; j < rm->len; ++j) {
 
-			if (i == lse->n_cascades - 1) {
+				t = cg * m[j] - sg * v[j];
+				u = sg * m[j] + cg * v[j];
 
-				/* Update the cascade threshold based on amount
+				v[j] = u;
+				m[j] = t;
+			}
+		}
+
+		m += rm->len;
+	}
+
+	m += - n;
+
+	/* Copy the tail.
+	 * */
+	for (i = n; i < rm->len; ++i)
+		m[i] = v[i];
+
+	rm->keep += 1;
+}
+
+int lse_getsize(int n_cascades, int n_full)
+{
+	int		n_lse_len, n_vm_len;
+
+	n_lse_len = sizeof(lse_t) - sizeof(((lse_t *) 0)->vm);
+
+	n_vm_len = n_cascades * n_full * (n_full + 1) / 2
+		+ n_full * n_full / 4 + n_full / 2 + 1;
+
+	return n_lse_len + sizeof(lse_float_t) * n_vm_len;
+}
+
+void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)
+{
+	lse_float_t	*vm = ls->vm;
+
+	int		i, n_full;
+
+	ls->n_cascades = n_cascades;
+	ls->n_len_of_x = n_len_of_x;
+	ls->n_len_of_z = n_len_of_z;
+
+	n_full = n_len_of_x + n_len_of_z;
+
+	ls->n_threshold = n_full * 2;
+	ls->n_total = 0;
+
+	for (i = 0; i < ls->n_cascades; ++i) {
+
+		ls->rm[i].len = n_full;
+		ls->rm[i].keep = 0;
+		ls->rm[i].m = vm;
+
+		vm += n_full * (n_full + 1) / 2;
+	}
+
+	ls->sol.len = ls->n_len_of_x * ls->n_len_of_z;
+	ls->sol.m = vm;
+
+	ls->std.len = ls->n_len_of_z;
+	ls->std.m = vm + ls->sol.len;
+
+	ls->l_max = (lse_float_t) 0.;
+	ls->l_min = (lse_float_t) 0.;
+}
+
+void lse_insert(lse_t *ls, lse_float_t *v)
+{
+	lse_row_t	xz = { ls->rm[0].len, v };
+
+	int		i, keep;
+
+	lse_qrupdate(&ls->rm[0], &xz);
+
+	for (i = 1; i < ls->n_cascades; ++i) {
+
+		if (ls->rm[i - 1].keep >= ls->n_threshold) {
+
+			/* If data rows is too many collected we merge it into
+			 * higher cascade.
+			 * */
+			lse_qrmerge(&ls->rm[i], &ls->rm[i - 1]);
+
+			if (i == ls->n_cascades - 1) {
+
+				/* Update the threshold value based on amount
 				 * of data in top cascade.
 				 * */
-				n = lse->triu[lse->n_cascades - 1].n_keep;
-				lse->n_threshold = (n > lse->n_threshold)
-					? n : lse->n_threshold;
+				keep = ls->rm[ls->n_cascades - 1].keep;
+				ls->n_threshold = (keep > ls->n_threshold)
+					? keep : ls->n_threshold;
 			}
 
 			break;
 		}
 	}
 
-	lse->n_total += 1;
+	ls->n_total += 1;
+}
+
+void lse_reduce(lse_t *ls, lse_float_t *v)
+{
+	lse_row_t	xz = { ls->rm[0].len, v };
+
+	lse_rowreduce(&ls->rm[0], &xz);
+
+	ls->n_total += 1;
+}
+
+void lse_ridge(lse_t *ls, lse_float_t la)
+{
+	lse_row_t	xz = { 0, ls->sol.m };
+
+	int		i, j;
+
+	/* Add bias with the unit matrix multiplied by \la.
+	 * */
+	for (i = 0; i < ls->n_len_of_x; ++i) {
+
+		xz.len = ls->rm[0].len - i;
+		xz.m[i] = la;
+
+		for (j = i + 1; j < ls->rm[0].len; ++j)
+			xz.m[j] = (lse_float_t) 0.;
+
+		lse_qrupdate(&ls->rm[0], &xz);
+	}
+}
+
+void lse_forget(lse_t *ls, lse_float_t la)
+{
+	lse_upper_t	*rm;
+
+	int		i, j, n_len;
+
+	for (i = 0; i < ls->n_cascades; ++i) {
+
+		rm = &ls->rm[i];
+
+		if (rm->keep != 0) {
+
+			n_len = rm->len * (rm->len + 1) / 2;
+
+			/* We just scale the \R matrix with factor \la.
+			 * */
+			for (j = 0; j < n_len; ++j)
+				rm->m[j] *= la;
+		}
+	}
+}
+
+static void
+lse_collapse(lse_t *ls)
+{
+	int		i;
+
+	for (i = 1; i < ls->n_cascades; ++i) {
+
+		if (ls->rm[i - 1].keep != 0) {
+
+			/* We merge all cascades into the top \R matrix.
+			 * */
+			lse_qrmerge(&ls->rm[i], &ls->rm[i - 1]);
+		}
+	}
+}
+
+void lse_solve(lse_t *ls)
+{
+	lse_upper_t	*rm;
+
+	lse_float_t	*sol = ls->sol.m;
+	lse_float_t	*mq, *m, u;
+
+	int		k, i, j;
+
+	lse_collapse(ls);
+
+	rm = &ls->rm[ls->n_cascades - 1];
+	mq = rm->m + (ls->n_len_of_x - 1) * (rm->len - 1)
+		- (ls->n_len_of_x - 1) * (ls->n_len_of_x - 2) / 2;
+
+	/* We calculate the backward substitution.
+	 * */
+	for (k = 0; k < ls->n_len_of_z; ++k) {
+
+		m = mq;
+
+		for (i = ls->n_len_of_x - 1; i >= 0; --i) {
+
+			u = (lse_float_t) 0.;
+
+			for (j = i + 1; j < ls->n_len_of_x; ++j)
+				u += sol[j] * m[j];
+
+			sol[i] = (m[ls->n_len_of_x + k] - u) / m[i];
+
+			m += i - rm->len;
+		}
+
+		sol += ls->n_len_of_x;
+	}
+}
+
+void lse_std(lse_t *ls)
+{
+	lse_upper_t	*rm;
+
+	lse_float_t	*std = ls->std.m;
+	lse_float_t	*mq, *m, ratio, u;
+
+	int		i, j;
+
+	lse_collapse(ls);
+
+	rm = &ls->rm[ls->n_cascades - 1];
+	mq = rm->m + ls->n_len_of_x * rm->len
+		- ls->n_len_of_x * (ls->n_len_of_x - 1) / 2;
+
+	ratio = lse_sqrtf((lse_float_t) (ls->n_total - 1));
+
+	/* We calculate l2 norm over \Rz columns.
+	 * */
+	for (i = 0; i < ls->n_len_of_z; ++i) {
+
+		m = mq;
+		u = lse_fabsf(m[0]);
+
+		for (j = 1; j < i + 1; ++j) {
+
+			m += rm->len - (ls->n_len_of_x + j);
+			u = lse_hypotf(u, m[0]);
+		}
+
+		std[i] = u / ratio;
+
+		mq += 1;
+	}
+}
+
+static void
+lse_qrstep(lse_upper_t *rm, lse_upper_t *em, lse_row_t *qq)
+{
+	lse_float_t	*mq = em->m;
+	lse_float_t	*qm = qq->m;
+	lse_float_t	*m;
+
+	int		i, j;
+
+	rm->keep = 0;
+
+	/* Here we transpose the \em matrix and bring it to the \rm
+	 * upper-triangular form again.
+	 * */
+	for (i = 0; i < rm->len; ++i) {
+
+		m = mq;
+
+		for (j = 0; j < i + 1; ++j) {
+
+			qm[j] = m[0];
+			m += em->len - (j + 1);
+		}
+
+		for (j = i + 1; j < rm->len; ++j)
+			qm[j] = (lse_float_t) 0.;
+
+		lse_qrupdate(rm, qq);
+
+		mq += 1;
+	}
+}
+
+void lse_cond(lse_t *ls, int n_approx)
+{
+	lse_upper_t	um, im, *rm;
+	lse_row_t	qq;
+
+	lse_float_t	*m, u;
+
+	int		i, n;
+
+	lse_collapse(ls);
+
+	if (n_approx > 0 && ls->n_cascades > 2) {
+
+		/* NOTE: We allocate two new \Rx matrices instead of \R
+		 * cascades that are empty for now.
+		 * */
+		m = ls->rm[0].m;
+
+		um.len = ls->n_len_of_x;
+		um.m = m;
+
+		m += ls->n_len_of_x * (ls->n_len_of_x + 1) / 2;
+
+		qq.len = ls->n_len_of_x;
+		qq.m = m;
+
+		m += ls->n_len_of_x;
+
+		im.len = ls->n_len_of_x;
+		im.m = m;
+
+		/* First QR step.
+		 * */
+		lse_qrstep(&um, &ls->rm[ls->n_cascades - 1], &qq);
+
+		n = 1;
+
+		while (n < n_approx) {
+
+			/* Swap the matrices content.
+			 * */
+			m = um.m; um.m = im.m; im.m = m;
+
+			/* We run the reduced form of QR algorithm. With each
+			 * iteration off-diagonal elements tend to zero, so the
+			 * diagonal approaches singular values.
+			 * */
+			lse_qrstep(&um, &im, &qq);
+
+			n++;
+		}
+
+		rm = &um;
+	}
+	else {
+		/* Take the \R matrix diagonal.
+		 * */
+		rm = &ls->rm[ls->n_cascades - 1];
+	}
+
+	m = rm->m;
+
+	/* We are looking for the largest and smallest diagonal element.
+	 * */
+	for (i = 0; i < ls->n_len_of_x; ++i) {
+
+		u = lse_fabsf(m[0]);
+
+		if (i != 0) {
+
+			ls->l_max = (ls->l_max < u) ? u : ls->l_max;
+			ls->l_min = (ls->l_min > u) ? u : ls->l_min;
+		}
+		else {
+			ls->l_max = u;
+			ls->l_min = u;
+		}
+
+		m += rm->len - i;
+	}
 }
 

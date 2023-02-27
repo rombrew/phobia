@@ -14,7 +14,6 @@ static int cdc_acm_class_interface_request_handler(struct usb_setup_packet *setu
 
     switch (setup->bRequest) {
         case CDC_REQUEST_SET_LINE_CODING:
-
             /*******************************************************************************/
             /* Line Coding Structure                                                       */
             /*-----------------------------------------------------------------------------*/
@@ -36,12 +35,12 @@ static int cdc_acm_class_interface_request_handler(struct usb_setup_packet *setu
             usbd_cdc_acm_set_line_coding(iface_num, &line_coding);
             break;
 
-        case CDC_REQUEST_SET_CONTROL_LINE_STATE: {
-            dtr = (setup->wValue & 0x0001);
-            rts = (setup->wValue & 0x0002);
-            usbd_cdc_acm_set_dtr(iface_num, dtr);
-            usbd_cdc_acm_set_rts(iface_num, rts);
-        } break;
+	case CDC_REQUEST_SET_CONTROL_LINE_STATE:
+	    dtr = (setup->wValue & 0x0001);
+	    rts = (setup->wValue & 0x0002);
+	    usbd_cdc_acm_set_dtr(iface_num, dtr);
+	    usbd_cdc_acm_set_rts(iface_num, rts);
+	    break;
 
         case CDC_REQUEST_GET_LINE_CODING:
             usbd_cdc_acm_get_line_coding(iface_num, &line_coding);

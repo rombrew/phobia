@@ -5,7 +5,7 @@
 #define LD_IRQ_VECTORS		__attribute__ ((section(".vectors"), used))
 
 extern uint32_t ld_stack;
-extern uint32_t ld_begin_vectors;
+extern uint32_t ld_begin_text;
 extern uint32_t ld_end_text;
 extern uint32_t ld_begin_data;
 extern uint32_t ld_end_data;
@@ -13,7 +13,7 @@ extern uint32_t ld_begin_bss;
 extern uint32_t ld_end_bss;
 extern uint32_t ld_begin_ccm;
 extern uint32_t ld_end_ccm;
-extern uint32_t ld_end_flash;
+extern uint32_t ld_end;
 
 void irq_Reset();
 void irq_NMI();
@@ -42,8 +42,8 @@ void irq_OTG_FS() LD_IRQ_WEAK;
 
 const FW_info_t		fw = {
 
-	(uint32_t) &ld_begin_vectors,
-	(uint32_t) &ld_end_flash,
+	(uint32_t) &ld_begin_text,
+	(uint32_t) &ld_end,
 
 	_HW_REV, __DATE__
 };

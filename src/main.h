@@ -10,18 +10,26 @@
 
 typedef struct {
 
-	/* CPU load (internals).
+	/* IRQ entrance counter.
 	 * */
-	int			lc_flag;
-	int			lc_tick;
-	int			lc_idle;
+	int			lc_irq_CNT;
+
+	/* CPU load counters.
+	 * */
+	int			lc_FLAG;
+	int			lc_TICK;
+	int			lc_IDLE;
+
+	/* INPUT lock during probe.
+	 * */
+	int			probe_LOCK;
 
 	/* PPM interface (PWM).
 	 * */
 	int			ppm_reg_ID;
 	int			ppm_STARTUP;
 	int			ppm_ACTIVE;
-	int			ppm_LOCKED;
+	int			ppm_DISARM;
 	float			ppm_in_range[3];
 	float			ppm_control_range[3];
 
@@ -53,10 +61,10 @@ typedef struct {
 	int			idle_INVOKE;
 	int			idle_revol_cached;
 
-	/* SAFETY control.
+	/* DISARM control.
 	 * */
-	int			safety_RESET;
-	int			safety_INVOKE;
+	int			disarm_RESET;
+	int			disarm_INVOKE;
 
 	/* NTC constants.
 	 * */
@@ -67,7 +75,7 @@ typedef struct {
 	 * */
 	float			temp_PCB;
 	float			temp_EXT;
-	float			temp_INT;
+	float			temp_MCU;
 
 	/* Thermal protection.
 	 * */
@@ -79,14 +87,12 @@ typedef struct {
 	float			tpro_derated_EXT;
 	float			tpro_temp_recovery;
 
-	/* Servo DRIVE.
+	/* App knobs.
 	 * */
-	float			servo_SPAN_mm[2];
-	float			servo_UNIFORM_mmps;
-
-	/* Apps AUTORUN.
-	 * */
-	int			auto_APP[2];
+	int			task_AS5047;
+	int			task_HX711;
+	int			task_MPU6050;
+	int			task_PUSHTWO;
 
 	/* ADC load cell (e.g. HX711).
 	 * */
@@ -99,20 +105,6 @@ typedef struct {
 }
 app_main_t;
 
-typedef struct {
-
-	const char		*name;
-	void			(* ptask) (void *);
-}
-app_task_t;
-
-typedef struct {
-
-	const app_task_t	*task;
-	int			onquit;
-}
-app_run_t;
-
 extern app_main_t		ap;
 extern pmc_t			pm;
 extern tlm_t			tlm;
@@ -120,8 +112,6 @@ extern tlm_t			tlm;
 extern int flash_block_regs_load();
 extern int pm_wait_for_IDLE();
 
-const char *app_name_by_ID(int app_ID);
-void app_startup_by_ID(int app_ID);
 void app_halt();
 
 float ADC_get_knob_ANG();

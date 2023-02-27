@@ -9,10 +9,11 @@
 #include "cherry/usbd_core.h"
 #include "cherry/usbd_cdc.h"
 
+#define CDC_DATA_SZ		64U
+
 #define CDC_IN_EP		0x81
 #define CDC_OUT_EP		0x02
 #define CDC_INT_EP		0x83
-#define CDC_DATA_SZ		64U
 
 #define USBD_VID		0x0483	/* STMicroelectronics */
 #define USBD_PID		0x5740	/* Virtual COM Port */
@@ -27,8 +28,8 @@ typedef struct {
 	struct usbd_interface	iface0;
 	struct usbd_interface	iface1;
 
-	uint8_t			rx_buf[CDC_DATA_SZ];
-	uint8_t			tx_buf[CDC_DATA_SZ];
+	USB_MEM_ALIGN uint8_t	rx_buf[CDC_DATA_SZ];
+	USB_MEM_ALIGN uint8_t	tx_buf[CDC_DATA_SZ];
 
 	int			rx_flag;
 	int			tx_flag;
@@ -60,13 +61,15 @@ static const uint8_t		cdc_acm_descriptor[] = {
 
 	0x12,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'5', 0, '2', 0, '1', 0, '5', 0, 'A', 0, '5', 0, '9', 0, 'F', 0,
+	'0', 0, '1', 0, '2', 0, '3', 0, '4', 0, '5', 0, '6', 0, '7', 0,
 
 	0x00
 };
 
 void usbd_configure_done_callback()
 {
+	priv_USB.rx_flag = 1;
+
 	usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
 }
 
@@ -92,7 +95,7 @@ usbd_cdc_acm_bulk_out(uint8_t ep, uint32_t nbytes)
 		usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
 	}
 	else {
-		priv_USB.rx_flag = 1;
+		priv_USB.rx_flag = 0;
 	}
 
 	portYIELD_FROM_ISR(xWoken);
@@ -125,6 +128,57 @@ usbd_cdc_acm_bulk_in(uint8_t ep, uint32_t nbytes)
 	portYIELD_FROM_ISR(xWoken);
 }
 
+static void
+task_cdc_acm_flag_poll()
+{
+	int			len;
+
+	if (priv_USB.rx_flag == 0) {
+
+		if (uxQueueSpacesAvailable(priv_USB.rx_queue) >= CDC_DATA_SZ) {
+
+			priv_USB.rx_flag = 1;
+
+			usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
+		}
+	}
+
+	if (priv_USB.tx_flag == 0) {
+
+		len = 0;
+
+		while (		len < CDC_DATA_SZ
+				&& xQueueReceive(priv_USB.tx_queue,
+					&priv_USB.tx_buf[len],
+					(TickType_t) 10) == pdTRUE) {
+			len++;
+		}
+
+		if (len > 0) {
+
+			priv_USB.tx_flag = 1;
+
+			usbd_ep_start_write(CDC_IN_EP, priv_USB.tx_buf, len);
+		}
+	}
+}
+
+void task_USB_IN(void *pData)
+{
+	do {
+		if (usb_device_is_configured()) {
+
+			task_cdc_acm_flag_poll();
+		}
+		else {
+			xQueueReset(priv_USB.tx_queue);
+		}
+
+		vTaskDelay((TickType_t) 10);
+	}
+	while (1);
+}
+
 extern QueueHandle_t USART_shared_rx_queue();
 
 void USB_startup()
@@ -150,10 +204,17 @@ void USB_startup()
 	GPIO_set_mode_FUNCTION(GPIO_OTG_FS_DM);
 	GPIO_set_mode_FUNCTION(GPIO_OTG_FS_DP);
 
+	GPIO_set_mode_SPEED_FAST(GPIO_OTG_FS_DM);
+	GPIO_set_mode_SPEED_FAST(GPIO_OTG_FS_DP);
+
 	/* Alloc queues.
 	 * */
 	priv_USB.rx_queue = USART_shared_rx_queue();
 	priv_USB.tx_queue = xQueueCreate(320, sizeof(char));
+
+	/* Create USB task.
+	 * */
+	xTaskCreate(task_USB_IN, "USB_IN", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 	/* Startup USB stack.
 	 * */
@@ -174,16 +235,6 @@ int USB_getc()
 {
 	char		xbyte;
 
-	if (priv_USB.rx_flag != 0) {
-
-		if (uxQueueSpacesAvailable(priv_USB.rx_queue) >= CDC_DATA_SZ) {
-
-			priv_USB.rx_flag = 0;
-
-			usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
-		}
-	}
-
 	xQueueReceive(priv_USB.rx_queue, &xbyte, portMAX_DELAY);
 
 	return (int) xbyte;
@@ -192,27 +243,10 @@ int USB_getc()
 void USB_putc(int c)
 {
 	char		xbyte = (char) c;
-	int		len = 0;
 
 	GPIO_set_HIGH(GPIO_LED_ALERT);
 
 	xQueueSendToBack(priv_USB.tx_queue, &xbyte, portMAX_DELAY);
-
-	if (priv_USB.tx_flag == 0) {
-
-		while (		len < CDC_DATA_SZ
-				&& xQueueReceive(priv_USB.tx_queue,
-					&priv_USB.tx_buf[len], (TickType_t) 0) == pdTRUE) {
-			len++;
-		}
-
-		if (len > 0) {
-
-			priv_USB.tx_flag = 1;
-
-			usbd_ep_start_write(CDC_IN_EP, priv_USB.tx_buf, len);
-		}
-	}
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }

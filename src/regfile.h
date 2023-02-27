@@ -50,5 +50,7 @@ float reg_GET_F(int reg_ID);
 void reg_SET_I(int reg_ID, int rval);
 void reg_SET_F(int reg_ID, float rval);
 
+void reg_TOUCH_I(int reg_ID);
+
 #endif /* _H_REGFILE_ */
 

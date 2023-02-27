@@ -3,8 +3,9 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
-#define HW_HAVE_USB_OTG_FS
+#define HW_HAVE_USB_CDC_ACM
 #define HW_HAVE_NETWORK_EPCAN
+#define HW_HAVE_FAN_CONTROL
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
 
@@ -16,7 +17,7 @@
 #define HW_PWM_SKIP_ZONE		2.0f
 #define HW_PWM_BOOTSTRAP_RETENTION	90.f		/* UCC27211A  */
 
-#define HW_ADC_SAMPLING_SCHEME		ADC_SEQUENCE__ABC_UTT_TXX
+#define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABC_UTT_TXX
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
 #define HW_ADC_SHUNT_RESISTANCE		0.0088f
@@ -29,11 +30,13 @@
 #define HW_ADC_KNOB_R1			5000.f
 #define HW_ADC_KNOB_R2			10000.f
 
-#define HW_NTC_PCB_TYPE			NTC_LINEAR	/* LMT87 */
+#define HW_NTC_PCB_TYPE			NTC_CMOS	/* LMT87 */
 #define HW_NTC_PCB_BALANCE		0.f
 #define HW_NTC_PCB_NTC0			0.f
 #define HW_NTC_PCB_TA0			194.1f
 #define HW_NTC_PCB_BETTA		- 242.7f
+
+#define HW_FAN_OPEN_DRAIN
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 1, 1)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
@@ -59,4 +62,9 @@
 #define GPIO_BOOST_EN			XGPIO_DEF2('B', 2)
 #define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
+
+#define HW_CONFIG_INLINE 	do {						\
+					pm.config_IFB = PM_IFB_AB_INLINE;	\
+										\
+				} while (0)
 

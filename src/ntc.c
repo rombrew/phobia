@@ -30,7 +30,7 @@ float ntc_read_temperature(ntc_t *ntc)
 					+ log / ntc->betta) - 273.f;
 			break;
 
-		case NTC_LINEAR:
+		case NTC_CMOS:
 
 			um = ADC_get_VALUE(ntc->gpio);
 			temp = um * ntc->betta + ntc->ta0;

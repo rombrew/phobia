@@ -29,7 +29,7 @@ static const float		rpm_table[] = {
 
 void app_PUSHTWO(void *pData)
 {
-	app_run_t		*run = (app_run_t *) pData;
+	volatile int		*enabled = (volatile int *) pData;
 
 	TickType_t		xWake;
 
@@ -144,7 +144,7 @@ void app_PUSHTWO(void *pData)
 			event_B = 0;
 		}
 	}
-	while (run->onquit == 0);
+	while (*enabled != 0);
 
 	vTaskDelete(NULL);
 }

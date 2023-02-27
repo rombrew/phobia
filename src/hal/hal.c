@@ -64,7 +64,7 @@ base_startup()
 
 	/* Vector table offset.
 	 * */
-	SCB->VTOR = (uint32_t) &ld_begin_vectors;
+	SCB->VTOR = (uint32_t) &ld_begin_text;
 
 	/* Configure priority grouping.
 	 * */
@@ -148,7 +148,7 @@ clock_startup()
 #if defined(STM32F4)
 	clock_cpu_hz = 168000000UL;
 #elif defined(STM32F7)
-	clock_cpu_hz = 180000000UL;
+	clock_cpu_hz = 216000000UL;
 #endif /* STM32Fx */
 
 	PLLP = 2;
@@ -319,13 +319,13 @@ void hal_bootload_reset()
 	NVIC_SystemReset();
 }
 
-void hal_sleep()
+void hal_cpu_sleep()
 {
 	__DSB();
 	__WFI();
 }
 
-void hal_fence()
+void hal_memory_fence()
 {
 	__DMB();
 }
@@ -378,30 +378,4 @@ void DBGMCU_mode_stop()
 	DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 }
-
-void OPT_startup()
-{
-#ifdef GPIO_OPT_1_EN
-	if (hal.OPT & OPT_GPIO_1_ON) {
-
-		GPIO_set_mode_OUTPUT(GPIO_OPT_1_EN);
-		GPIO_set_HIGH(GPIO_OPT_1_EN);
-	}
-	else {
-		GPIO_set_mode_INPUT(GPIO_OPT_1_EN);
-	}
-#endif /* GPIO_OPT_1_EN */
-
-#ifdef GPIO_OPT_2_EN
-	if (hal.OPT & OPT_GPIO_2_ON) {
-
-		GPIO_set_mode_OUTPUT(GPIO_OPT_2_EN);
-		GPIO_set_HIGH(GPIO_OPT_2_EN);
-	}
-	else {
-		GPIO_set_mode_INPUT(GPIO_OPT_2_EN);
-	}
-#endif /* GPIO_OPT_2_EN */
-}
-
 

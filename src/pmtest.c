@@ -19,12 +19,13 @@ SH_DEF(pm_self_test)
 		return;
 	}
 
-	do {
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
+	ap.probe_LOCK = PM_ENABLED;
 
+	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
@@ -82,6 +83,8 @@ SH_DEF(pm_self_test)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_self_adjust)
@@ -92,12 +95,13 @@ SH_DEF(pm_self_adjust)
 		return;
 	}
 
-	do {
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
+	ap.probe_LOCK = PM_ENABLED;
 
+	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_IDLE();
 
+		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
@@ -117,7 +121,7 @@ SH_DEF(pm_self_adjust)
 			reg_format(&regfile[ID_PM_AD_UC0]);
 			reg_format(&regfile[ID_PM_AD_UC1]);
 
-			reg_format(&regfile[ID_PM_TVM_INUSE]);
+			reg_format(&regfile[ID_PM_TVM_USEABLE]);
 			reg_format(&regfile[ID_PM_TVM_FIR_A_TAU]);
 			reg_format(&regfile[ID_PM_TVM_FIR_B_TAU]);
 			reg_format(&regfile[ID_PM_TVM_FIR_C_TAU]);
@@ -138,6 +142,8 @@ SH_DEF(pm_self_adjust)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_test_current_ramp)
@@ -213,7 +219,7 @@ SH_DEF(pm_test_TVM_ramp)
 	}
 
 	if (		PM_CONFIG_TVM(&pm) != PM_ENABLED
-			|| pm.tvm_INUSE != PM_ENABLED) {
+			|| pm.tvm_USEABLE != PM_ENABLED) {
 
 		printf("Unable with TVM disabled" EOL);
 		return;
@@ -333,22 +339,6 @@ SH_DEF(hal_PWM_set_Z)
 	}
 }
 
-SH_DEF(hal_RNG_rseed)
-{
-	rseed = RNG_urand();
-
-	printf("%8x " EOL, rseed);
-}
-
-SH_DEF(hal_RNG_make_UID)
-{
-	uint32_t	UID;
-
-	UID = RNG_make_UID();
-
-	printf("%8x " EOL, UID);
-}
-
 SH_DEF(hal_SPI_startup)
 {
 	float		freq;
@@ -388,15 +378,15 @@ SH_DEF(hal_SPI_transfer)
 
 SH_DEF(hal_GPIO_set_high_FAN_EN)
 {
-#ifdef GPIO_FAN_EN
+#ifdef HW_HAVE_FAN_CONTROL
 	GPIO_set_HIGH(GPIO_FAN_EN);
-#endif /* GPIO_FAN_EN */
+#endif /* HW_HAVE_FAN_CONTROL */
 }
 
 SH_DEF(hal_GPIO_set_low_FAN_EN)
 {
-#ifdef GPIO_FAN_EN
+#ifdef HW_HAVE_FAN_CONTROL
 	GPIO_set_LOW(GPIO_FAN_EN);
-#endif /* GPIO_FAN_EN */
+#endif /* HW_HAVE_FAN_CONTROL */
 }
 

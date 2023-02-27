@@ -11,7 +11,7 @@
 
 typedef struct {
 
-	uint32_t			UID;
+	uint32_t		UID;
 
 	/* Input CAN messages.
 	 * */
@@ -89,7 +89,8 @@ EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 		default: break;
 	}
 
-	if (ep->reg_ID != ID_NULL) {
+	if (		ep->reg_ID != ID_NULL
+			&& ap.probe_LOCK != PM_ENABLED) {
 
 		reg_SET_F(ep->reg_ID, ep->reg_DATA);
 	}
@@ -156,6 +157,7 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 
 			if (		ep->STARTUP == PM_ENABLED
 					&& ep->ACTIVE != PM_ENABLED
+					&& ap.probe_LOCK != PM_ENABLED
 					&& pm.lu_MODE == PM_LU_DISABLED) {
 
 				ep->ACTIVE = PM_ENABLED;
@@ -184,17 +186,19 @@ void EPCAN_pipe_REGULAR()
 		ep = &net.ep[N];
 
 		if (		ep->MODE == EPCAN_PIPE_INCOMING
-				&& ep->ACTIVE == PM_ENABLED
-				&& pm.lu_MODE != PM_LU_DISABLED) {
+				&& ep->ACTIVE == PM_ENABLED) {
 
 			ep->tx_N++;
 
 			if (ep->tx_N >= net.startup_LOST) {
 
+				if (pm.lu_MODE != PM_LU_DISABLED) {
+
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+				}
+
 				ep->ACTIVE = PM_DISABLED;
 				ep->tx_N = 0;
-
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 			}
 		}
 		else if (ep->MODE == EPCAN_PIPE_OUTGOING_REGULAR) {

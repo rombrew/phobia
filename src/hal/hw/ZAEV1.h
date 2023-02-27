@@ -1,6 +1,5 @@
 #define HW_MCU_STM32F405
 
-#define HW_HAVE_NO_STEP_DIR
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
 
@@ -9,12 +8,12 @@
 #define HW_PWM_FREQUENCY_HZ		30000.f
 #define HW_PWM_DEADTIME_NS		420.f		/* IRF7749 */
 
-#define HW_PWM_MINIMAL_PULSE		0.2f
+#define HW_PWM_MINIMAL_PULSE		0.5f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
 #define HW_PWM_SKIP_ZONE		2.0f
 #define HW_PWM_BOOTSTRAP_RETENTION	5.f		/* IRS21867S + 0.1uF */
 
-#define HW_ADC_SAMPLING_SCHEME		ADC_SEQUENCE__ABC_UTT_TXX
+#define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABC_UTT_TXX
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
 #define HW_ADC_SHUNT_RESISTANCE		0.0001667f
@@ -46,4 +45,10 @@
 #define GPIO_BOOST_EN			XGPIO_DEF2('A', 4)
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 7)
 #define GPIO_LED_MODE			XGPIO_DEF2('C', 12)
+
+#define HW_CONFIG_INLINE 	do {					\
+					pm.config_TVM = PM_DISABLED;	\
+					pm.fault_current_tol = 8.f;	\
+									\
+				} while (0)
 

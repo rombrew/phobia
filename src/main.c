@@ -12,26 +12,9 @@
 #include "shell.h"
 
 #define RTOS_LOAD_DELAY		((TickType_t) 100)
-#define APP_LIST_MAX		(sizeof(ap_list) / sizeof(ap_list[0]) - 1U)
-
-#undef APP_DEF
-#define APP_DEF(name)	void app_ ## name(void *);
-#include "apps/apdefs.h"
-
-const app_task_t		ap_list[] = {
-
-	{"APP_NONE", NULL},
-
-#undef APP_DEF
-#define APP_DEF(name)	{ "APP_" #name, &app_ ## name},
-#include "apps/apdefs.h"
-
-	{NULL, NULL}
-};
+#define RTOS_IRQ_UNMANAGED	10000
 
 app_main_t			ap;
-app_run_t			ap_run[APP_LIST_MAX];
-
 pmc_t 				pm LD_CCRAM;
 tlm_t				tlm;
 
@@ -142,21 +125,22 @@ elapsed_IDLE()
 }
 
 static int
-elapsed_SAFETY()
+elapsed_DISARM()
 {
-	TickType_t		xNOW;
+	TickType_t		xSAFE, xNOW;
 	int			elapsed = 0;
 
+	xSAFE = (TickType_t) (1.0f * (float) configTICK_RATE_HZ);
 	xNOW = xTaskGetTickCount();
 
-	if (xNOW - (TickType_t) ap.safety_INVOKE > (TickType_t) 100) {
+	if (xNOW - (TickType_t) ap.disarm_INVOKE > (TickType_t) 100) {
 
-		ap.safety_RESET = xNOW;
+		ap.disarm_RESET = xNOW;
 	}
 
-	ap.safety_INVOKE = xNOW;
+	ap.disarm_INVOKE = xNOW;
 
-	if (xNOW - (TickType_t) ap.safety_RESET > (TickType_t) 1000) {
+	if (xNOW - (TickType_t) ap.disarm_RESET > xSAFE) {
 
 		elapsed = 1;
 	}
@@ -190,14 +174,14 @@ void task_TEMP(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
-		ap.temp_INT = ADC_get_VALUE(GPIO_ADC_TEMPINT);
+		ap.temp_MCU = ADC_get_VALUE(GPIO_ADC_TEMPINT);
 
 		if (ap.ntc_PCB.type != NTC_NONE) {
 
 			ap.temp_PCB = ntc_read_temperature(&ap.ntc_PCB);
 		}
 		else {
-			ap.temp_PCB = ap.temp_INT;
+			ap.temp_PCB = ap.temp_MCU;
 		}
 
 		if (ap.ntc_EXT.type != NTC_NONE) {
@@ -235,18 +219,26 @@ void task_TEMP(void *pData)
 			t_HYS = 0.f;
 		}
 
-#ifdef GPIO_FAN_EN
+#ifdef HW_HAVE_FAN_CONTROL
 		/* Enable FAN in case of PCB is warm enough.
 		 * */
 		if (ap.temp_PCB > ap.tpro_PCB_temp_FAN) {
 
+#ifdef HW_FAN_OPEN_DRAIN
 			GPIO_set_LOW(GPIO_FAN_EN);
+#else /* HW_FAN_OPEN_DRAIN */
+			GPIO_set_HIGH(GPIO_FAN_EN);
+#endif
 		}
 		else if (ap.temp_PCB < ap.tpro_PCB_temp_FAN - ap.tpro_temp_recovery) {
 
+#ifdef HW_FAN_OPEN_DRAIN
 			GPIO_set_HIGH(GPIO_FAN_EN);
+#else /* HW_FAN_OPEN_DRAIN */
+			GPIO_set_LOW(GPIO_FAN_EN);
+#endif
 		}
-#endif /* GPIO_FAN_EN */
+#endif /* HW_HAVE_FAN_CONTROL */
 
 		if (ap.tpro_EXT_temp_derate > M_EPS_F) {
 
@@ -265,14 +257,14 @@ void task_TEMP(void *pData)
 
 		pm.i_derated_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
 
-#ifdef HW_HAVE_PART_DRV_XX
-		if (DRV_fault() != 0) {
+#ifdef HW_HAVE_DRV_ON_PCB
+		if (		hal.DRV.auto_RESET == PM_ENABLED
+				&& DRV_fault() != 0) {
 
-			/* Read DRV status registers.
-			 * */
-			DRV_status();
+			DRV_halt();
+			DRV_startup();
 		}
-#endif /* HW_HAVE_PART_DRV_XX */
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -371,7 +363,8 @@ inner_KNOB(float in_ANG, float in_BRK)
 			}
 
 			if (		ap.knob_STARTUP == PM_ENABLED
-					&& ap.knob_ACTIVE != PM_ENABLED) {
+					&& ap.knob_ACTIVE != PM_ENABLED
+					&& ap.probe_LOCK != PM_ENABLED) {
 
 				if (pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -409,8 +402,7 @@ inner_KNOB(float in_ANG, float in_BRK)
 		control += (ap.knob_control_BRK - control) * scaled_BRK;
 	}
 
-	if (		ap.knob_STARTUP != PM_ENABLED
-			|| ap.knob_ACTIVE == PM_ENABLED) {
+	if (ap.probe_LOCK != PM_ENABLED) {
 
 		reg_SET_F(ap.knob_reg_ID, control);
 	}
@@ -443,9 +435,6 @@ void task_KNOB(void *pData)
 
 				inner_KNOB(in_ANG, in_BRK);
 			}
-		}
-		else {
-			vTaskDelayUntil(&xWake, (TickType_t) 100);
 		}
 	}
 	while (1);
@@ -482,16 +471,14 @@ default_flash_load()
 	hal.PPM_mode = PPM_DISABLED;
 	hal.PPM_timebase = 2000000UL;
 
-#ifdef HW_HAVE_PART_DRV8303
-	hal.DRV.part = DRV_PART_DRV8303;
-	hal.DRV.auto_RESET = 0;
-	hal.DRV.gpio_GATE_EN = GPIO_DRV8303_GATE_EN;
-	hal.DRV.gpio_FAULT = GPIO_DRV8303_FAULT;
-	hal.DRV.gate_current = HW_DRV8303_GATE_CURRENT;
-	hal.DRV.ocp_level = HW_DRV8303_OCP_LEVEL;
-#endif /* HW_HAVE_PART_DRV8303 */
-
-	hal.OPT = 0;
+#ifdef HW_HAVE_DRV_ON_PCB
+	hal.DRV.part = HW_DRV_PARTNO;
+	hal.DRV.auto_RESET = PM_DISABLED;
+	hal.DRV.gpio_GATE_EN = GPIO_DRV_GATE_EN;
+	hal.DRV.gpio_FAULT = GPIO_DRV_FAULT;
+	hal.DRV.gate_current = HW_DRV_GATE_CURRENT;
+	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;
@@ -517,7 +504,7 @@ default_flash_load()
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
 	ap.ppm_STARTUP = PM_DISABLED;
-	ap.ppm_LOCKED = PM_ENABLED;
+	ap.ppm_DISARM = PM_ENABLED;
 	ap.ppm_in_range[0] = 1000.f;
 	ap.ppm_in_range[1] = 1500.f;
 	ap.ppm_in_range[2] = 2000.f;
@@ -572,15 +559,8 @@ default_flash_load()
 	ap.tpro_derated_EXT = 20.f;
 	ap.tpro_temp_recovery = 5.f;
 
-	ap.auto_APP[0] = 0;
-	ap.auto_APP[1] = 0;
-
 	ap.adc_load_scale[0] = 0.f;
 	ap.adc_load_scale[1] = 4.65E-6f;
-
-	ap.servo_SPAN_mm[0] = - 25.f;
-	ap.servo_SPAN_mm[1] = 25.f;
-	ap.servo_UNIFORM_mmps = 20.f;
 
 	pm.freq_hz = hal.PWM_frequency;
 	pm.dT = 1.f / pm.freq_hz;
@@ -598,23 +578,25 @@ default_flash_load()
 	pm.dc_skip = HW_PWM_SKIP_ZONE;
 	pm.dc_bootstrap = HW_PWM_BOOTSTRAP_RETENTION;
 
-#if ADC_HAVE_SEQUENCE__ABC(HW_ADC_SAMPLING_SCHEME)
+#if ADC_HAVE_SEQUENCE__ABC(HW_ADC_SAMPLING_SEQUENCE)
+#ifdef HW_HAVE_LOW_SIDE_SHUNT
+	pm.config_IFB = PM_IFB_ABC_GND;
+#else /* HW_HAVE_LOW_SIDE_SHUNT */
 	pm.config_IFB = PM_IFB_ABC_INLINE;
-#else /* ADC_HAVE_SEQUENCE__ABC(HW_ADC_SAMPLING_SCHEME) */
+#endif
+#else /* ADC_HAVE_SEQUENCE__ABC(HW_ADC_SAMPLING_SEQUENCE) */
+#ifdef HW_HAVE_LOW_SIDE_SHUNT
+	pm.config_IFB = PM_IFB_AB_GND;
+#else /* HW_HAVE_LOW_SIDE_SHUNT */
 	pm.config_IFB = PM_IFB_AB_INLINE;
 #endif
-
-#if ADC_HAVE_SEQUENCE__TTT(HW_ADC_SAMPLING_SCHEME)
-	pm.config_TVM = PM_ENABLED;
-#else /* ADC_HAVE_SEQUENCE__TTT(HW_ADC_SAMPLING_SCHEME) */
-	pm.config_TVM = PM_DISABLED;
 #endif
 
-#ifdef HW_HAVE_SHUNT_ON_GND
-	pm.config_IFB =   (pm.config_IFB == PM_IFB_AB_INLINE) ? PM_IFB_AB_GND
-			: (pm.config_IFB == PM_IFB_ABC_INLINE) ? PM_IFB_ABC_GND
-			:  pm.config_IFB;
-#endif /* HW_HAVE_SHUNT_ON_GND */
+#if ADC_HAVE_SEQUENCE__TTT(HW_ADC_SAMPLING_SEQUENCE)
+	pm.config_TVM = PM_ENABLED;
+#else /* ADC_HAVE_SEQUENCE__TTT(HW_ADC_SAMPLING_SEQUENCE) */
+	pm.config_TVM = PM_DISABLED;
+#endif
 
 	ADC_const_build();
 
@@ -629,10 +611,14 @@ default_flash_load()
 	pm.watt_iDC_maximal = (float) (int) (0.66666667f * pm.i_maximal);
 	pm.watt_iDC_reverse = pm.watt_iDC_maximal;
 
-	pm.watt_wP_maximal = (float) (int) (pm.watt_iDC_maximal * pm.fault_voltage_halt);
+	pm.watt_dclink_HI = (float) (int) (pm.fault_voltage_halt - 5.f);
+
+	pm.watt_wP_maximal = (float) (int) (pm.watt_iDC_maximal * pm.watt_dclink_HI);
 	pm.watt_wP_reverse = pm.watt_wP_maximal;
 
-	pm.watt_dclink_HI = (float) (int) (pm.fault_voltage_halt - 5.f);
+#ifdef HW_CONFIG_INLINE
+	HW_CONFIG_INLINE;
+#endif /* HW_CONFIG_INLINE */
 
 	/* Default telemetry.
 	 * */
@@ -663,10 +649,10 @@ void task_INIT(void *pData)
 	io_USART.getc = &USART_getc;
 	io_USART.putc = &USART_putc;
 
-#ifdef HW_HAVE_USB_OTG_FS
+#ifdef HW_HAVE_USB_CDC_ACM
 	io_USB.getc = &USB_getc;
 	io_USB.putc = &USB_putc;
-#endif /* HW_HAVE_USB_OTG_FS */
+#endif /* HW_HAVE_USB_CDC_ACM */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	io_CAN.getc = &EPCAN_getc;
@@ -680,13 +666,13 @@ void task_INIT(void *pData)
 	iodef_ECHO = 1;
 	iodef_PRETTY = 1;
 
-	ap.lc_flag = 1;
-	ap.lc_tick = 0;
+	ap.lc_FLAG = 1;
+	ap.lc_TICK = 0;
 
 	vTaskDelay(RTOS_LOAD_DELAY);
 
-	ap.lc_flag = 0;
-	ap.lc_idle = ap.lc_tick;
+	ap.lc_FLAG = 0;
+	ap.lc_IDLE = ap.lc_TICK;
 
 	seed[0] = RNG_urand();
 
@@ -709,22 +695,25 @@ void task_INIT(void *pData)
 	 * */
 	default_flash_load();
 
-#ifdef HW_HAVE_PART_DRV_XX
+#ifdef HW_HAVE_DRV_ON_PCB
 	DRV_startup();
-#endif /* HW_HAVE_PART_DRV_XX */
-
-	OPT_startup();
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef GPIO_BOOST_EN
 	GPIO_set_mode_OUTPUT(GPIO_BOOST_EN);
 	GPIO_set_HIGH(GPIO_BOOST_EN);
 #endif /* GPIO_BOOST_EN */
 
-#ifdef GPIO_FAN_EN
-	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
+#ifdef HW_HAVE_FAN_CONTROL
 	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
+#ifdef HW_FAN_OPEN_DRAIN
+	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
 	GPIO_set_HIGH(GPIO_FAN_EN);
-#endif /* GPIO_FAN_EN */
+#else /* HW_FAN_OPEN_DRAIN */
+	GPIO_set_mode_PUSH_PULL(GPIO_FAN_EN);
+	GPIO_set_LOW(GPIO_FAN_EN);
+#endif
+#endif /* HW_HAVE_FAN_CONTROL */
 
 	hal_lock_irq();
 
@@ -745,9 +734,9 @@ void task_INIT(void *pData)
 
 	USART_startup();
 
-#ifdef HW_HAVE_USB_OTG_FS
+#ifdef HW_HAVE_USB_CDC_ACM
 	USB_startup();
-#endif /* HW_HAVE_USB_OTG_FS */
+#endif /* HW_HAVE_USB_CDC_ACM */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	EPCAN_startup();
@@ -760,15 +749,16 @@ void task_INIT(void *pData)
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	xTaskCreate(task_SH, "SH", 400, NULL, 1, NULL);
+	xTaskCreate(task_SH, "SH", 320, NULL, 1, NULL);
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 	pm_wait_for_IDLE();
 
-	app_startup_by_ID(ap.auto_APP[0]);
-	app_startup_by_ID(ap.auto_APP[1]);
+#undef APP_DEF
+#define APP_DEF(name)		reg_TOUCH_I(ID_AP_TASK_ ## name);
+#include "app/apdefs.h"
 
 	vTaskDelete(NULL);
 }
@@ -804,11 +794,11 @@ inner_PULSE_WIDTH(float pulse)
 				ap.ppm_ACTIVE = PM_DISABLED;
 			}
 		}
-		else if (ap.ppm_LOCKED == PM_ENABLED) {
+		else if (ap.ppm_DISARM == PM_ENABLED) {
 
-			if (elapsed_SAFETY() != 0) {
+			if (elapsed_DISARM() != 0) {
 
-				ap.ppm_LOCKED = PM_DISABLED;
+				ap.ppm_DISARM = PM_DISABLED;
 			}
 		}
 	}
@@ -819,11 +809,12 @@ inner_PULSE_WIDTH(float pulse)
 		}
 
 		if (		ap.ppm_STARTUP == PM_ENABLED
-				&& ap.ppm_ACTIVE != PM_ENABLED) {
+				&& ap.ppm_ACTIVE != PM_ENABLED
+				&& ap.probe_LOCK != PM_ENABLED) {
 
-			if (ap.ppm_LOCKED == PM_ENABLED) {
+			if (ap.ppm_DISARM == PM_ENABLED) {
 
-				/* Safety LOCK */
+				/* DISARMED */
 			}
 			else if (pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -843,8 +834,7 @@ inner_PULSE_WIDTH(float pulse)
 		control = ap.ppm_control_range[1] + range * scaled;
 	}
 
-	if (		ap.ppm_STARTUP != PM_ENABLED
-			|| ap.ppm_ACTIVE == PM_ENABLED) {
+	if (ap.probe_LOCK != PM_ENABLED) {
 
 		reg_SET_F(ap.ppm_reg_ID, control);
 	}
@@ -875,9 +865,9 @@ in_PULSE_WIDTH()
 			ap.ppm_ACTIVE = PM_DISABLED;
 		}
 
-		if (ap.ppm_LOCKED != PM_ENABLED) {
+		if (ap.ppm_DISARM != PM_ENABLED) {
 
-			ap.ppm_LOCKED = PM_ENABLED;
+			ap.ppm_DISARM = PM_ENABLED;
 		}
 	}
 }
@@ -893,6 +883,8 @@ in_STEP_DIR()
 	relEP = (EP - ap.step_baseEP) & 0xFFFFU;
 	ap.step_baseEP = EP;
 
+	/* TODO */
+
 	if (relEP != 0) {
 
 		ap.step_accuEP += relEP;
@@ -901,8 +893,7 @@ in_STEP_DIR()
 
 			xSP = ap.step_accuEP * ap.step_const_ld_EP;
 
-			if (		ap.step_STARTUP != PM_ENABLED
-					|| ap.step_ACTIVE == PM_ENABLED) {
+			if (ap.probe_LOCK != PM_ENABLED) {
 
 				reg_SET_F(ap.step_reg_ID, xSP);
 			}
@@ -961,14 +952,22 @@ void ADC_IRQ()
 		fb.pulse_EP = PPM_get_backup_EP();
 	}
 
-#ifdef HW_HAVE_PART_DRV_XX
+	if (ap.lc_irq_CNT > RTOS_IRQ_UNMANAGED) {
+
+		pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
+		pm.fsm_req = PM_STATE_HALT;
+	}
+
+	ap.lc_irq_CNT++;
+
+#ifdef HW_HAVE_DRV_ON_PCB
 	if (		pm.lu_MODE != PM_LU_DISABLED
 			&& DRV_fault() != 0) {
 
 		pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
 		pm.fsm_req = PM_STATE_HALT;
 	}
-#endif /* HW_HAVE_PART_DRV_XX */
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 	pm_feedback(&pm, &fb);
 
@@ -987,56 +986,31 @@ void app_MAIN()
 	vTaskStartScheduler();
 }
 
-const char *app_name_by_ID(int app_ID)
-{
-	const char		*name = ap_list[0].name;
-
-	if (app_ID > 0 && app_ID < APP_LIST_MAX) {
-
-		name = ap_list[app_ID].name;
-	}
-
-	return name;
-}
-
-void app_startup_by_ID(int app_ID)
+void app_control(const reg_t *reg, void (* pvTask) (void *), const char *pcName)
 {
 	TaskHandle_t		xHandle;
 
-	if (app_ID > 0 && app_ID < APP_LIST_MAX) {
+	if (reg->link->i == PM_ENABLED) {
 
-		xHandle = xTaskGetHandle(ap_list[app_ID].name);
+		xHandle = xTaskGetHandle(pcName);
 
 		if (xHandle == NULL) {
 
-			ap_run[app_ID].task = &ap_list[app_ID];
-			ap_run[app_ID].onquit = 0;
-
-			xTaskCreate(ap_list[app_ID].ptask, ap_list[app_ID].name,
-					configMINIMAL_STACK_SIZE,
-					(void *) &ap_run[app_ID], 1, NULL);
+			xTaskCreate(pvTask, pcName, configMINIMAL_STACK_SIZE,
+					(void *) &reg->link->i, 1, NULL);
 		}
 	}
 }
 
 void app_halt()
 {
-	int			N = 1;
-
-	while (ap_list[N].name != NULL) {
-
-		ap_run[N].onquit = 1;
-
-		N++;
-	}
-
 #ifdef GPIO_BOOST_EN
 	GPIO_set_LOW(GPIO_BOOST_EN);
 #endif /* GPIO_BOOST_EN */
 
-#ifdef HW_HAVE_PART_DRV_XX
+#ifdef HW_HAVE_DRV_ON_PCB
 	DRV_halt();
-#endif /* HW_HAVE_PART_DRV_XX */
+#endif /* HW_HAVE_DRV_ON_PCB */
 
 	vTaskDelay((TickType_t) 50);
 }
@@ -1078,13 +1052,16 @@ SH_DEF(rtos_uptime)
 
 void vApplicationIdleHook()
 {
-	if (ap.lc_flag != 0) {
+	ap.lc_irq_CNT = 0;
 
-		ap.lc_tick++;
-		hal_fence();
+	if (ap.lc_FLAG != 0) {
+
+		ap.lc_TICK++;
+
+		hal_memory_fence();
 	}
 	else {
-		hal_sleep();
+		hal_cpu_sleep();
 	}
 }
 
@@ -1092,14 +1069,14 @@ SH_DEF(rtos_cpu_usage)
 {
 	float		pc;
 
-	ap.lc_flag = 1;
-	ap.lc_tick = 0;
+	ap.lc_FLAG = 1;
+	ap.lc_TICK = 0;
 
 	vTaskDelay(RTOS_LOAD_DELAY);
 
-	ap.lc_flag = 0;
+	ap.lc_FLAG = 0;
 
-	pc = 100.f * (float) (ap.lc_idle - ap.lc_tick) / (float) ap.lc_idle;
+	pc = 100.f * (float) (ap.lc_IDLE - ap.lc_TICK) / (float) ap.lc_IDLE;
 
 	printf("%1f (%%)" EOL, &pc);
 }
@@ -1162,67 +1139,6 @@ SH_DEF(rtos_task_info)
 	}
 }
 
-SH_DEF(rtos_app_info)
-{
-	const char		*sRUN;
-	int			N = 1;
-
-	printf("ID Name              Stat" EOL);
-
-	while (ap_list[N].name != NULL) {
-
-		sRUN = (xTaskGetHandle(ap_list[N].name) != NULL) ? "RUN" : "   ";
-
-		printf("%2i %17s %s" EOL, N, ap_list[N].name, sRUN);
-
-		N++;
-	}
-}
-
-SH_DEF(rtos_app_start)
-{
-	int			N = 1;
-
-	if (stoi(&N, s) != NULL) {
-
-		app_startup_by_ID(N);
-	}
-	else {
-		while (ap_list[N].name != NULL) {
-
-			if (strcmp(s, ap_list[N].name) == 0) {
-
-				app_startup_by_ID(N);
-				break;
-			}
-
-			N++;
-		}
-	}
-}
-
-SH_DEF(rtos_app_stop)
-{
-	int			N = 1;
-
-	if (stoi(&N, s) != NULL) {
-
-		ap_run[N].onquit = 1;
-	}
-	else {
-		while (ap_list[N].name != NULL) {
-
-			if (strcmp(s, ap_list[N].name) == 0) {
-
-				ap_run[N].onquit = 1;
-				break;
-			}
-
-			N++;
-		}
-	}
-}
-
 SH_DEF(rtos_hexdump)
 {
 	uint8_t			*m_dump;
@@ -1268,7 +1184,9 @@ SH_DEF(rtos_hexdump)
 
 SH_DEF(rtos_heap_info)
 {
-	printf("FreeHeap %iK %iK" EOL, xPortGetFreeHeapSize() / 1024U,
+	printf("Total %iK Free %iK / %iK" EOL,
+			configTOTAL_HEAP_SIZE / 1024U,
+			xPortGetFreeHeapSize() / 1024U,
 			xPortGetMinimumEverFreeHeapSize() / 1024U);
 }
 
@@ -1281,7 +1199,7 @@ SH_DEF(rtos_log_flush)
 	}
 }
 
-SH_DEF(rtos_log_cleanup)
+SH_DEF(rtos_log_clean)
 {
 	if (log.textbuf[0] != 0) {
 

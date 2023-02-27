@@ -16,7 +16,7 @@ SECTIONS
 {
 	.text : ALIGN(8)
 	{
-		ld_begin_vectors = . ;
+		ld_begin_text = . ;
 
 		KEEP(*(.vectors))
 		. = ALIGN(8);
@@ -29,7 +29,7 @@ SECTIONS
 
 		. = ALIGN(8);
 		ld_end_text = . ;
-		ld_end_flash = . + SIZEOF(.data) ;
+		ld_end = ld_end_text + SIZEOF(.data) ;
 
 	} > FLASH
 

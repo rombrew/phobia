@@ -87,7 +87,7 @@
 #define xPortPendSVHandler	irq_PendSV
 #define xPortSysTickHandler	irq_SysTick
 
-extern unsigned long clock_cpu_hz;
+extern uint32_t clock_cpu_hz;
 extern void vAssertCalled(const char *file, int line);
 
 #endif /* FREERTOS_CONFIG_H */

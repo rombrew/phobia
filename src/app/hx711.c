@@ -13,7 +13,7 @@
 
 void app_HX711(void *pData)
 {
-	app_run_t		*run = (app_run_t *) pData;
+	volatile int		*enabled = (volatile int *) pData;
 
 	const int		gpio_DOUT = GPIO_SPI_EXT_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI_EXT_SCK;
@@ -73,7 +73,7 @@ void app_HX711(void *pData)
 				+ ap.adc_load_scale[0];
 		}
 	}
-	while (run->onquit == 0);
+	while (*enabled != 0);
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_INPUT(gpio_PD_SCK);

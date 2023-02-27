@@ -32,7 +32,7 @@ If signals do not change when you turn the knobs then check the wiring.
 
 	               ^    // mapping of input voltage to the control variable //
 	               |
-	 control_ANG_2 |<---------------------------------o
+	 control_ANG2  |<---------------------------------o
 	               |                                / |
 	               |                              /   |
 	               |                            /     |
@@ -42,7 +42,7 @@ If signals do not change when you turn the knobs then check the wiring.
 	               |                    /             |
 	               |                  /               |
 	               |                /                 |
-	 control_ANG_1 |<--------------o                  |
+	 control_ANG1  |<--------------o                  |
 	               |              /|                  |
 	               |             / |                  |
 	               |            /  |                  |
@@ -52,22 +52,22 @@ If signals do not change when you turn the knobs then check the wiring.
 	               |        /      |                  |
 	               |       /       |                  |
 	               |      /        |                  |
-	 control_ANG_0 |<----o         |                  |
+	 control_ANG0  |<----o         |                  |
 	               |     |         |                  |      (volt)
 	               +-----+---------+------------------+--------------->
-	                  in_ANG_0  in_ANG_1           in_ANG_2
+	                  in_ANG0   in_ANG1            in_ANG2
 
 Select the ANG signal range in which you want to work. We use three point
 conversion from input voltage to the control value. Look at the diagram above.
 
-	# reg ap.knob_in_ANG_0 <volt>
-	# reg ap.knob_in_ANG_1 <volt>
-	# reg ap.knob_in_ANG_2 <volt>
+	# reg ap.knob_in_ANG0 <volt>
+	# reg ap.knob_in_ANG1 <volt>
+	# reg ap.knob_in_ANG2 <volt>
 
 The same for BRK signal but we use two point conversion here.
 
-	# reg ap.knob_in_BRK_0 <volt>
-	# reg ap.knob_in_BRK_1 <volt>
+	# reg ap.knob_in_BRK0 <volt>
+	# reg ap.knob_in_BRK1 <volt>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the current control is selected as a
@@ -83,9 +83,9 @@ automatically. You may need to enable appropriate control mode explicitly.
 Select the control variable range. So the input voltage range will be converted
 to this control range.
 
-	# reg ap.knob_control_ANG_0 <x>
-	# reg ap.knob_control_ANG_1 <x>
-	# reg ap.knob_control_ANG_2 <x>
+	# reg ap.knob_control_ANG0 <x>
+	# reg ap.knob_control_ANG1 <x>
+	# reg ap.knob_control_ANG2 <x>
 
 Specify control variable value in case of full brake. As the BRK signal rises
 the control variable will be interpolated to this value.
@@ -95,8 +95,8 @@ the control variable will be interpolated to this value.
 If you need you can change input lost range. If signal goes beyond this range
 it is considered lost and output forced to **ap.knob_control_ANG_0**.
 
-	# reg ap.knob_in_lost_0 <volt>
-	# reg ap.knob_in_lost_1 <volt>
+	# reg ap.knob_in_lost0 <volt>
+	# reg ap.knob_in_lost1 <volt>
 
 Now enable motor startup/shutdown control. Each time when ANG signal is in
 range the startup is requested.
@@ -109,14 +109,9 @@ Now you are ready to enable the analog input interface.
 
 # Timeout shutdown
 
-To stop the control we check if motor is run or phase current is high. If phase
-current is less than **ap.timeout_current_tol** and motor does not make full
-turns for **ap.timeout_TIME** seconds the shutdown is requested.
+To stop the control we check if motor is run or setpoint is high. If setpoint
+is out of input range and motor does not make full turns for **ap.idle_TIME_s**
+seconds the shutdown is requested.
 
-	# reg ap.timeout_TIME <s>
-
-If you want to use timeout shutdown without analog input interface then just
-set the control variable to the null.
-
-	# reg ap.knob_reg_ID 0
+	# reg ap.idle_TIME_s <s>
 

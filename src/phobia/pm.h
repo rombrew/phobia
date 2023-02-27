@@ -10,7 +10,6 @@
 
 #define PM_TSMS(pm, ms)		(int) (pm->freq_hz * (ms) * 0.001f)
 
-#define PM_HALL_SPAN		1.05f
 #define PM_MAX_F		1000000000000.f
 #define PM_SFI(s)		#s
 
@@ -43,9 +42,15 @@ enum {
 };
 
 enum {
-	PM_ESTIMATE_NONE			= 0,
-	PM_ESTIMATE_ORTEGA,
-	PM_ESTIMATE_KALMAN
+	PM_FLUX_NONE				= 0,
+	PM_FLUX_ORTEGA,
+	PM_FLUX_KALMAN
+};
+
+enum {
+	PM_HFI_NONE				= 0,
+	PM_HFI_EIGEN,
+	PM_HFI_ON_KALMAN
 };
 
 enum {
@@ -65,6 +70,11 @@ enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
 	PM_DRIVE_SERVO
+};
+
+enum {
+	PM_ABI_INCREMENTAL			= 0,
+	PM_ABI_ABSOLUTE
 };
 
 enum {
@@ -120,6 +130,7 @@ enum {
 	PM_AUTO_MAXIMAL_CURRENT,
 	PM_AUTO_PROBE_SPEED_HOLD,
 	PM_AUTO_ZONE_THRESHOLD,
+	PM_AUTO_FORCED_MAXIMAL,
 	PM_AUTO_FORCED_ACCEL,
 	PM_AUTO_LOOP_CURRENT,
 	PM_AUTO_LOOP_SPEED
@@ -127,6 +138,7 @@ enum {
 
 enum {
 	PM_OK					= 0,
+
 	/* Internal.
 	 * */
 	PM_ERROR_ZERO_DRIFT_FAULT,
@@ -145,10 +157,11 @@ enum {
 	 * */
 	PM_ERROR_TIMEOUT,
 	PM_ERROR_NO_FLUX_CAUGHT,
-	PM_ERROR_LOSS_OF_SYNC,		/* BLM model only */
+	PM_ERROR_NO_MOTOR_SYNC,			/* from BLM model only */
 
 	/* Arise by hardware.
 	 * */
+	PM_ERROR_HW_UNMANAGED_IRQ,
 	PM_ERROR_HW_OVERCURRENT,
 	PM_ERROR_HW_OVERTEMPERATURE,
 	PM_ERROR_HW_EMERGENCY_STOP
@@ -164,11 +177,11 @@ typedef struct {
 	float		voltage_B;
 	float		voltage_C;
 
-	int		pulse_HS;
-	int		pulse_EP;
-
 	float		analog_SIN;
 	float		analog_COS;
+
+	int		pulse_HS;
+	int		pulse_EP;
 }
 pmfb_t;
 
@@ -215,10 +228,11 @@ typedef struct {
 	int		config_LU_DRIVE;
 	int		config_RELUCTANCE;		/* TODO */
 	int		config_WEAKENING;
+	int		config_HFI_IMPEDANCE;
+	int		config_HFI_POLARITY;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
-	int		config_IMPEDANCE_MAJOR;
-	int		config_ABI_ABSOLUTE;
+	int		config_ABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
 	int		config_MILEAGE_INFO;
 	int		config_BOOST_CHARGE;		/* TODO */
@@ -258,12 +272,11 @@ typedef struct {
 	float		fb_uA;
 	float		fb_uB;
 	float		fb_uC;
-	int		fb_HS;
-	int		fb_EP;
 	float		fb_SIN;
 	float		fb_COS;
-
-	float		fb_STD[2];
+	int		fb_HS;
+	int		fb_EP;
+	int		fb_ABI;
 
 	float		probe_current_hold;
 	float		probe_current_weak;
@@ -286,10 +299,13 @@ typedef struct {
 	float		fault_voltage_halt;
 
 	float		vsi_DC;
+	float		vsi_lpf_DC;
 	float		vsi_X;
 	float		vsi_Y;
 	float		vsi_DX;
 	float		vsi_DY;
+	float		vsi_gain_LP;
+
 	int		vsi_SA;
 	int		vsi_SB;
 	int		vsi_SC;
@@ -300,16 +316,14 @@ typedef struct {
 	int		vsi_AF;
 	int		vsi_BF;
 	int		vsi_CF;
-	int		vsi_XXF;
+	int		vsi_IF;
 	int		vsi_SF;
 	int		vsi_UF;
 	int		vsi_AZ;
 	int		vsi_BZ;
 	int		vsi_CZ;
-	float		vsi_lpf_DC;
-	float		vsi_gain_LP_F;
 
-	int		tvm_INUSE;
+	int		tvm_USEABLE;
 	float		tvm_range_DC;
 	float		tvm_A;
 	float		tvm_B;
@@ -321,6 +335,7 @@ typedef struct {
 	float		tvm_DY;
 
 	int		lu_MODE;
+
 	float		lu_iX;
 	float		lu_iY;
 	float		lu_iD;
@@ -334,7 +349,10 @@ typedef struct {
 	float		lu_transient;
 	float		lu_load_torque;
 	float		lu_base_wS;
-	float		lu_gain_TQ;
+	float		lu_gain_QF;
+
+	int		base_TIM;
+	int		hold_TIM;
 
 	float		forced_F[2];
 	float		forced_wS;
@@ -346,15 +364,12 @@ typedef struct {
 	float		forced_track_D;
 	float		forced_maximal_DC;
 
-	int		hold_TIM;
-
-	int		detach_LOCK;
 	int		detach_TIM;
-	float		detach_level_U;
+	float		detach_threshold_BASE;
 	float		detach_trip_AD;
 	float		detach_gain_SF;
 
-	int		flux_ESTIMATE;
+	int		flux_TYPE;
 	int		flux_ZONE;
 
 	float		flux_X[2];
@@ -374,19 +389,22 @@ typedef struct {
 	float		kalman_A[10];
 	float		kalman_K[10];
 	float		kalman_bias_Q;
+	float		kalman_lpf_wS;
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 
 	float		zone_lpf_wS;
 	float		zone_threshold_NOISE;
 	float		zone_threshold_BASE;
-	float		zone_gain_HY;
-	float		zone_gain_LP_S;
+	float		zone_gain_TH;
+	float		zone_gain_LP;
 
-	int		hfi_INJECTED;
+	int		hfi_TYPE;
+	int		hfi_INJECT;
+
 	float		hfi_F[2];
 	float		hfi_wS;
-	float		hfi_inject_sine;
+	float		hfi_sine;
 	float		hfi_maximal;
 	float		hfi_wave[2];
 	float		hfi_im_L1;
@@ -395,10 +413,10 @@ typedef struct {
 	int		hfi_INJS;
 	int		hfi_SKIP;
 	int		hfi_ESTI;
-	int		hfi_POLA;
 	float		hfi_DFT[9];
 	float		hfi_REM[12];
 	int		hfi_IN;
+	float		hfi_gain_FP;
 	float		hfi_gain_SF;
 	float		hfi_gain_IF;
 
@@ -409,32 +427,34 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_INUSE;
-	int		hall_HS;
-	int		hall_DIRF;
+	int		hall_OPERATE;
+	int		hall_USEABLE;
+
+	int		hall_base_HS;
+	int		hall_rel;
 	float		hall_prol;
 	int		hall_TIM;
-	int		hall_ERR;
+	int		hall_ERN;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_prol_END;
+	float		hall_time_prol;
 	float		hall_gain_PF;
 	float		hall_gain_SF;
 	float		hall_gain_IF;
 
-	int		abi_INUSE;
-	int		abi_ONCE;
-	int		abi_in_EP;
-	float		abi_in_F[2];
-	int		abi_revol;
+	int		abi_OPERATE;
+	int		abi_USEABLE;
+
+	int		abi_base_EP;
 	int		abi_unwrap;
 	int		abi_rel_EP;
 	int		abi_loc_EP;
+	float		abi_loc_F[2];
 	int		abi_TIM;
 	float		abi_prol;
 	int		abi_EPPR;
-	int		abi_gear_ZS;
-	int		abi_gear_ZQ;
+	int		abi_gear_Zs;
+	int		abi_gear_Zq;
 	float		abi_F[2];
 	float		abi_wS;
 	float		abi_location;
@@ -442,14 +462,15 @@ typedef struct {
 	float		abi_gain_SF;
 	float		abi_gain_IF;
 
-	int		sincos_INUSE;
-	int		sincos_ONCE;
+	int		sincos_OPERATE;
+	int		sincos_USEABLE;
+
 	float		sincos_FIR[20];
 	float		sincos_SC[3];
 	int		sincos_revol;
 	int		sincos_unwrap;
-	int		sincos_gear_ZS;
-	int		sincos_gear_ZQ;
+	int		sincos_gear_Zs;
+	int		sincos_gear_Zq;
 	float		sincos_F[2];
 	float		sincos_wS;
 	float		sincos_location;
@@ -488,14 +509,14 @@ typedef struct {
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_lpf_wP;
-	float		watt_gain_LP_F;
-	float		watt_gain_LP_P;
+	float		watt_gain_LP;
 
 	float		i_setpoint_current;
 	float		i_maximal;
 	float		i_reverse;
 	float		i_derated_PCB;
 	float		i_derated_WEAK;
+	float		i_derated_HFI;
 	float		i_track_D;
 	float		i_track_Q;
 	float		i_integral_D;
@@ -520,15 +541,18 @@ typedef struct {
 	float		s_track;
 	float		s_tol_Z;
 	float		s_gain_P;
+	float		s_gain_I;
+
+	float		x_location_range[2];
+	float		x_location_home;
 
 	float		x_setpoint_location;
 	float		x_setpoint_speed;
 	float		x_discrepancy;
-	float		x_home_location;
 	float		x_tol_NEAR;
 	float		x_tol_Z;
 	float		x_gain_P;
-	float		x_gain_Z;
+	float		x_gain_N;
 
 	float		im_distance;
 	float		im_consumed_Wh;
@@ -539,10 +563,6 @@ typedef struct {
 	float		im_fuel_pc;
 	float		im_REM[4];
 
-	float		boost_iIN_HI;
-	float		boost_uIN_LO;
-	float		boost_iDC_HI;
-	float		boost_uDC_HI;
 	float		boost_gain_P;
 	float		boost_gain_I;
 
@@ -551,7 +571,7 @@ typedef struct {
 }
 pmc_t;
 
-void pm_build(pmc_t *pm);
+void pm_quick_build(pmc_t *pm);
 void pm_auto(pmc_t *pm, int req);
 
 float pm_torque_equation(pmc_t *pm, float iD, float iQ);

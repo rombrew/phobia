@@ -24,7 +24,7 @@ plate from bottom through thermal interface.
 ## Basic wiring
 
 Plug PMC according to the diagram. If you need to run bootloader (in case of
-erased MCU) then short BOOT pin to +3.3v before the powerup.
+erased MCU) then short BOOT pin to +3.3v before the power up.
 
 	 +-----------+
 	 |           |               +---------------+
@@ -46,16 +46,18 @@ erased MCU) then short BOOT pin to +3.3v before the powerup.
 
 ## Software
 
-There are two parts of software:
+There are a few parts of software:
 
-* Numerical model of VSI with PMSM connected (/sim).
-* Firmware for MCU (/src).
-
-The numerical model enables us to develop control code in fast cycle without
-hardware tests. It is complete enough to take into account all of motor
-parameters. We also provide some set of automated tests which uses a numerical
-model. But keep in mind that only abstract control code (/src/phobia) is
-covered by these tests.
+* Workbench includes numerical model of VSI with PMSM connected. The numerical
+  model enables us to develop control code in fast cycle without hardware
+  tests. It is complete enough to take into account all of motor parameters. We
+  also provide some set of automated tests which uses a numerical model. But
+  keep in mind that only abstract control code (/src/phobia) is covered by
+  these tests.
+* Phobia graphical frontend application. It is a user tool to configure and
+  diagnose PMC in visual way. This frontend communicates with PMC using the CLI
+  via serial port.
+* Firmware for onboard MCU.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/)
 or [Clang](https://clang.llvm.org/) toolchain for Cortex-M4F target.

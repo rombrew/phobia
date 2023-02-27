@@ -2,12 +2,11 @@
 
 /* Tested on FLIPSKY 75100 V202 ESC */
 
-#define HW_HAVE_SHUNT_ON_GND
-#define HW_HAVE_NO_STEP_DIR
+#define HW_HAVE_LOW_SIDE_SHUNT
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
-#define HW_HAVE_USB_OTG_FS
+#define HW_HAVE_USB_CDC_ACM
 #define HW_HAVE_NETWORK_EPCAN
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000UL
@@ -20,7 +19,7 @@
 #define HW_PWM_SKIP_ZONE		2.0f
 #define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* EG3112 */
 
-#define HW_ADC_SAMPLING_SCHEME		ADC_SEQUENCE__ABC_UTT_TXX
+#define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABC_UTT_TXX
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
 #define HW_ADC_SHUNT_RESISTANCE		0.0001667f
@@ -31,7 +30,7 @@
 #define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
-#define HW_ADC_KNOB_R2			100.f
+#define HW_ADC_KNOB_R2			1.f
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f
@@ -62,7 +61,4 @@
 
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 7)
 #define GPIO_LED_MODE			XGPIO_DEF2('B', 5)
-
-#define GPIO_OPT_1_EN			XGPIO_DEF2('C', 9)	/* voltage RC */
-#define GPIO_OPT_2_EN			XGPIO_DEF2('D', 2)	/* current RC */
 

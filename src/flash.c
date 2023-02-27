@@ -31,10 +31,10 @@ typedef struct {
 	int			bspin;
 	int			bleft;
 }
-FE_prog_t;
+flash_prog_t;
 
 static int
-FE_prog_putc(FE_prog_t *pg, int c)
+flash_prog_putc(flash_prog_t *pg, int c)
 {
 	int			rc = 0;
 
@@ -59,7 +59,7 @@ FE_prog_putc(FE_prog_t *pg, int c)
 }
 
 static void
-FE_prog_long(FE_prog_t *pg, uint32_t l)
+flash_prog_long(flash_prog_t *pg, uint32_t l)
 {
 	union {
 		uint32_t	l;
@@ -67,14 +67,14 @@ FE_prog_long(FE_prog_t *pg, uint32_t l)
 	}
 	packed = { l };
 
-	FE_prog_putc(pg, packed.b[0]);
-	FE_prog_putc(pg, packed.b[1]);
-	FE_prog_putc(pg, packed.b[2]);
-	FE_prog_putc(pg, packed.b[3]);
+	flash_prog_putc(pg, packed.b[0]);
+	flash_prog_putc(pg, packed.b[1]);
+	flash_prog_putc(pg, packed.b[2]);
+	flash_prog_putc(pg, packed.b[3]);
 }
 
 static const char *
-FE_strcpyn(char *d, const char *s, int n)
+flash_strcpyn(char *d, const char *s, int n)
 {
 	do {
 		if (n < 1) {
@@ -142,7 +142,7 @@ int flash_block_regs_load()
 	const char		*lsym;
 
 	char			*temp_s;
-	int			FE_fail = 0;
+	int			flash_fail = 0;
 
 	block = flash_block_scan();
 
@@ -150,7 +150,7 @@ int flash_block_regs_load()
 
 		/* No valid configuration block found.
 		 * */
-		return FE_fail;
+		return flash_fail;
 	}
 
 	temp_s = pvPortMalloc(REGS_SYM_MAX + 1);
@@ -158,7 +158,7 @@ int flash_block_regs_load()
 
 	while (*lsym != 0xFF) {
 
-		lsym = FE_strcpyn(temp_s, lsym, REGS_SYM_MAX);
+		lsym = flash_strcpyn(temp_s, lsym, REGS_SYM_MAX);
 
 		/* Search for an exact match of symbolic NAME.
 		 * */
@@ -166,7 +166,7 @@ int flash_block_regs_load()
 
 		if (*lsym == 0xFE) {
 
-			lsym = FE_strcpyn(temp_s, lsym + 1, REGS_SYM_MAX);
+			lsym = flash_strcpyn(temp_s, lsym + 1, REGS_SYM_MAX);
 
 			if (reg != NULL && reg->mode & REG_CONFIG
 					&& reg->mode & REG_LINKED) {
@@ -191,13 +191,13 @@ int flash_block_regs_load()
 			lsym += 5;
 		}
 		else {
-			FE_fail = 1;
+			flash_fail = 1;
 			break;
 		}
 
 		if (*lsym != 0xFF) {
 
-			FE_fail = 1;
+			flash_fail = 1;
 			break;
 		}
 
@@ -206,7 +206,7 @@ int flash_block_regs_load()
 
 	vPortFree(temp_s);
 
-	return FE_fail;
+	return flash_fail;
 }
 
 static int
@@ -231,12 +231,12 @@ flash_is_block_dirty(const flash_block_t *block)
 }
 
 static int
-flash_regs_FE_prog(flash_block_t *block)
+flash_prog_config_regs(flash_block_t *block)
 {
 	const reg_t		*reg;
 	const char		*lsym;
 
-	FE_prog_t		pg;
+	flash_prog_t		pg;
 	int			rc = 0;
 
 	pg.flash = block->content;
@@ -251,24 +251,24 @@ flash_regs_FE_prog(flash_block_t *block)
 
 			/* Store symbolic NAME of register.
 			 * */
-			while (*lsym != 0) { FE_prog_putc(&pg, *lsym++); }
+			while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
 
 			if (reg->mode & REG_LINKED) {
 
 				lsym = regfile[reg->link->i].sym;
 
-				FE_prog_putc(&pg, 0xFE);
+				flash_prog_putc(&pg, 0xFE);
 
-				while (*lsym != 0) { FE_prog_putc(&pg, *lsym++); }
+				while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
 			}
 			else {
 				/* Store binary VALUE.
 				 * */
-				FE_prog_putc(&pg, 0xFF);
-				FE_prog_long(&pg, reg->link->i);
+				flash_prog_putc(&pg, 0xFF);
+				flash_prog_long(&pg, reg->link->i);
 			}
 
-			rc = FE_prog_putc(&pg, 0xFF);
+			rc = flash_prog_putc(&pg, 0xFF);
 
 			if (rc == 0) {
 
@@ -281,7 +281,7 @@ flash_regs_FE_prog(flash_block_t *block)
 
 		/* Fill the tail.
 		 * */
-		while (FE_prog_putc(&pg, 0xFF) != 0) ;
+		while (flash_prog_putc(&pg, 0xFF) != 0) ;
 	}
 
 	return rc;
@@ -329,7 +329,7 @@ flash_block_prog()
 
 	FLASH_prog(&block->number, number);
 
-	rc = flash_regs_FE_prog(block);
+	rc = flash_prog_config_regs(block);
 
 	if (rc != 0) {
 

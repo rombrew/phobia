@@ -135,7 +135,7 @@ backlash e.g. in case of direction change.
 Also you can tune P+FF regulator gains.
 
 	# reg pm.s_gain_P <x>
-	# reg pm.lu_gain_TQ <x>
+	# reg pm.lu_gain_QF <x>
 
 Default gains tune can be done by setting to zero.
 

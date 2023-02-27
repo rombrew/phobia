@@ -8,12 +8,12 @@ electrotransport.
 
 * Sensorless vector control of three-phase PMSM based on current measurements.
 * Robust ORTEGA observer with gain scheduling against speed.
-* Accurate KALMAN observer with bias compensation (**EXPERIMENTAL**).
+* Accurate KALMAN observer with bias compensation.
 * Two-phase machine support (e.g. bipolar stepper).
 * Self adjust of all onboard measurements along symmetrical channels.
 * Flux weakening control.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
-* Can be compiled for various controller boards (including some VESC clones).
+* Can be compiled for various controller boards (including VESC clones).
 * Flash storage for all of configurable parameters.
 * Regular command line interface (CLI) with autocompletion and history.
 * Graphical front-end software based on
@@ -36,7 +36,7 @@ electrotransport.
   with inline or low-side placement.
 
 * Terminal voltage measurements (TVM):
-	* In SVPWM operation it is used to reduce the effect of Dead-Time distortion.
+	* Compensation of the voltage distortion caused by Dead-Time insertion.
 	* BEMF tracking to get smooth start when motor is already running.
 	* Self test of the power stages integrity.
 	* Self test of bootstrap retention time.
@@ -55,7 +55,7 @@ electrotransport.
 	* High frequency injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
 	* ABI incremental encoder.
-	* SINCOS resolver (**TODO**).
+	* SINCOS analog resolver (**TODO**).
 
 * Control loops:
 	* Current control is always enabled.
@@ -140,7 +140,7 @@ still some unresolved issues. It may be difficult to configure the PMC for a
 specific motor.
 
 There are a few videos about PMC on
-[youtube](https://www.youtube.com/channel/UCuSexDRnJVpbnZxfqPS3Eew).
+[youtube](https://www.youtube.com/@romblv).
 
 Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
