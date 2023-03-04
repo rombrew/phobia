@@ -9,8 +9,8 @@ We do not assemble hardware for sales. You can get fabrication files from our
 [releases](https://sourceforge.net/projects/phobia/files/) or look into the PCB
 repos. You will have to order the fabrication and assembly yourself.
 
-	# hg clone https://hg.code.sf.net/p/phobia/pcb phobia-pcb
-	# git clone https://github.com/rombrew/phobia-pcb.git
+	$ hg clone https://hg.code.sf.net/p/phobia/pcb phobia-pcb
+	$ git clone https://github.com/rombrew/phobia-pcb.git phobia-pcb
 
 The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
@@ -66,10 +66,10 @@ There are a few parts of software:
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
 [Clang](https://clang.llvm.org/) toolchain.
 
-	# hg clone https://hg.code.sf.net/p/phobia/code phobia
-	# git clone https://github.com/rombrew/phobia.git
-	# cd phobia/src
-	# make CROSS=arm-none-eabi HWREV=REV5A zip
+	$ hg clone https://hg.code.sf.net/p/phobia/code phobia
+	$ git clone https://github.com/rombrew/phobia.git phobia
+	$ cd phobia/src
+	$ make CROSS=arm-none-eabi HWREV=REV5A zip
 
 So using the above commands we have built the firmware and zipped it. Next
 there are a few ways to load the firmware into the MCU:
@@ -79,34 +79,34 @@ there are a few ways to load the firmware into the MCU:
    careful when using hardware debugging while the motor is running. The sudden
    stop of feedback loop can cause overcurrent accident.
 
-	# make HWREV=REV5A gdb
+	$ make HWREV=REV5A gdb
 	(gdb) load
 
 2. SWD interface with [STLINK](https://github.com/stlink-org/stlink). You can
    use GDB as in previous case but we are only concerned with using
    **st-flash** util.
 
-	# make HWREV=REV5A stlink
+	$ make HWREV=REV5A stlink
 
 3. USART interface with ST embedded bootloader using
    [stm32flash](https://sourceforge.net/projects/stm32flash/). You should have
    a serial port connected to the board TX and RX pins and BOOT pin shorted to
    the +3.3v.
 
-	# make HWREV=REV5A flash
+	$ make HWREV=REV5A flash
 
 4. USB interface with ST embedded bootloader using
    [DFU](http://dfu-util.sourceforge.net/). You should have an USB port
    connected to the board and BOOT pin shorted to the +3.3v.
 
-	# make HWREV=REV5A dfu
+	$ make HWREV=REV5A dfu
 
 After MCU is flashed the Command Line Interface (CLI) will be presented on
 USART, USB and CAN interfaces. We use
 [picocom](https://github.com/npat-efault/picocom) terminal program. Default
 baudrate is 57600 with 8-bits data 1-bit even parity and 1-bit stop.
 
-	# make TTY=/dev/ttyUSB0 connect
+	$ make TTY=/dev/ttyUSB0 connect
 
 If MCU was already flashed with PMC firmware you are able to activate ST
 embedded bootloader without BOOT pin. Just run the command in PMC CLI.
