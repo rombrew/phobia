@@ -1,5 +1,7 @@
 #include <stddef.h>
 
+#include "hal/hal.h"
+
 #include "shell.h"
 #ifdef HW_HAVE_NETWORK_EPCAN
 #include "epcan.h"

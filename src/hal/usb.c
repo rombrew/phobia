@@ -61,7 +61,7 @@ static const uint8_t		cdc_acm_descriptor[] = {
 
 	0x12,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'0', 0, '1', 0, '2', 0, '3', 0, '4', 0, '5', 0, '6', 0, '7', 0,
+	'9', 0, 'C', 0, '9', 0, '6', 0, '2', 0, '9', 0, 'C', 0, '6', 0,
 
 	0x00
 };

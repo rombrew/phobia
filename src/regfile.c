@@ -1056,10 +1056,7 @@ reg_format_enum(const reg_t *reg)
 
 				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
 				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
-				PM_SFI_CASE(EPCAN_PAYLOAD_PACKED_INT_16_0);
-				PM_SFI_CASE(EPCAN_PAYLOAD_PACKED_INT_16_1);
-				PM_SFI_CASE(EPCAN_PAYLOAD_PACKED_INT_16_2);
-				PM_SFI_CASE(EPCAN_PAYLOAD_PACKED_INT_16_3);
+				PM_SFI_CASE(EPCAN_PAYLOAD_PACKED);
 
 				default: break;
 			}
@@ -1340,48 +1337,48 @@ const reg_t		regfile[] = {
 #ifdef HW_HAVE_NETWORK_EPCAN
 	REG_DEF(net.node_ID,,,		"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.log_MODE,,,		"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
-	REG_DEF(net.startup_LOST, _ms,,	"",	"%1f",	REG_CONFIG, &reg_proc_net_LOST_ms, NULL),
+	REG_DEF(net.timeout_EP,,,	"ms",	"%1f",	REG_CONFIG, &reg_proc_net_LOST_ms, NULL),
 
+	REG_DEF(net.ep, 0_MODE, [0].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 0_ID, [0].ID,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 0_clock_ID, [0].clock_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.ep, 0_reg_DATA, [0].reg_DATA,"",	"%4e",	0, NULL, NULL),
 	REG_DEF(net.ep, 0_reg_ID, [0].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 0_MODE, [0].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 0_STARTUP, [0].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 0_TIM_hz, [0].TIM,	"Hz",	"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
-	REG_DEF(net.ep, 0_inject_ID, [0].inject_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 0_TIM, [0].TIM, "Hz",		"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
 	REG_DEF(net.ep, 0_PAYLOAD, [0].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 0_range0, [0].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(net.ep, 0_range1, [0].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(net.ep, 1_MODE, [1].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 1_ID, [1].ID,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 1_clock_ID, [1].clock_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.ep, 1_reg_DATA, [1].reg_DATA,"",	"%4e",	0, NULL, NULL),
 	REG_DEF(net.ep, 1_reg_ID, [1].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 1_MODE, [1].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 1_STARTUP, [1].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 1_TIM_hz, [1].TIM,	"Hz",	"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
-	REG_DEF(net.ep, 1_inject_ID, [1].inject_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 1_TIM, [1].TIM, "Hz",		"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
 	REG_DEF(net.ep, 1_PAYLOAD, [1].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 1_range0, [1].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(net.ep, 1_range1, [1].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(net.ep, 2_MODE, [2].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 2_ID, [2].ID,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 2_clock_ID, [2].clock_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.ep, 2_reg_DATA, [2].reg_DATA,"",	"%4e",	0, NULL, NULL),
 	REG_DEF(net.ep, 2_reg_ID, [2].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 2_MODE, [2].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 2_STARTUP, [2].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 2_TIM_hz, [2].TIM,	"Hz",	"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
-	REG_DEF(net.ep, 2_inject_ID, [2].inject_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 2_TIM, [2].TIM, "Hz",		"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
 	REG_DEF(net.ep, 2_PAYLOAD, [2].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 2_range0, [2].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(net.ep, 2_range1, [2].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(net.ep, 3_MODE, [3].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 3_ID, [3].ID,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 3_clock_ID, [3].clock_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
 	REG_DEF(net.ep, 3_reg_DATA, [3].reg_DATA,"",	"%4e",	0, NULL, NULL),
 	REG_DEF(net.ep, 3_reg_ID, [3].reg_ID,"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 3_MODE, [3].MODE,"",		"%i",	REG_CONFIG, &reg_proc_net_IDs, &reg_format_enum),
 	REG_DEF(net.ep, 3_STARTUP, [3].STARTUP,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 3_TIM_hz, [3].TIM,	"Hz",	"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
-	REG_DEF(net.ep, 3_inject_ID, [3].inject_ID,"",	"%i",	REG_CONFIG, &reg_proc_net_IDs, NULL),
+	REG_DEF(net.ep, 3_TIM, [3].TIM, "Hz",		"%1f",	REG_CONFIG, &reg_proc_net_TIM, NULL),
 	REG_DEF(net.ep, 3_PAYLOAD, [3].PAYLOAD,"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 3_range0, [3].range[0],"",	"%4e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(net.ep, 3_range1, [3].range[1],"",	"%4e",	REG_CONFIG, NULL, NULL),

@@ -15,10 +15,11 @@
 #define LINK_EXTRA			"])"
 
 enum {
-	LINK_MODE_IDLE,
+	LINK_MODE_IDLE			= 0,
 	LINK_MODE_DATA_GRAB,
 	LINK_MODE_DATA_PUSH,
 	LINK_MODE_HWINFO,
+	LINK_MODE_EPCAN_MAP,
 	LINK_MODE_FLASH_MAP,
 	LINK_MODE_UNABLE_WARNING,
 };
@@ -42,7 +43,6 @@ struct link_priv {
 	char			hw_build[LINK_NAME_MAX];
 	char			hw_crc32[LINK_NAME_MAX];
 
-	char			*flash_eol;
 	int			tlm_clock;
 
 	char			mb[81920];
@@ -341,10 +341,8 @@ static void
 link_fetch_hwinfo(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
-	char			ldup[sizeof(priv->lbuf)], *sp = ldup;
+	char			*sp = priv->lbuf;
 	const char		*tok;
-
-	strcpy(ldup, priv->lbuf);
 
 	tok = lk_token(&sp);
 
@@ -366,48 +364,78 @@ link_fetch_hwinfo(struct link_pmc *lp)
 }
 
 static void
+link_fetch_epcan_map(struct link_pmc *lp)
+{
+	struct link_priv	*priv = lp->priv;
+	char			*sp = priv->lbuf;
+	const char		*tok, *eol;
+	int			N;
+
+	tok = lk_token(&sp);
+	eol = tok;
+
+	while (*eol != 0) {
+
+		if (*eol >= '0' && *eol <= '9') ;
+		else if (*eol >= 'A' && *eol <= 'F') ;
+		else if (*eol >= 'a' && *eol <= 'f') ;
+		else break;
+
+		++eol;
+	}
+
+	if (*eol == 0) {
+
+		for (N = 0; N < LINK_EPCAN_MAX; ++N) {
+
+			if (lp->epcan[N].UID[0] == 0)
+				break;
+		}
+
+		if (lp->epcan[N].UID[0] != 0)
+			return ;
+
+		sprintf(lp->epcan[N].UID, "%.15s", tok);
+
+		tok = lk_token(&sp);
+
+		sprintf(lp->epcan[N].node_ID, "%.23s", tok);
+	}
+}
+
+static void
 link_fetch_flash_map(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
-	const char		*s = priv->lbuf;
-	char			*eol;
-	int			N = 0;
+	const char		*sp = priv->lbuf;
+	int			N, bN;
 
-	if ((int) (priv->flash_eol - lp->flash_info_map) > LINK_FLASH_MAX - 40U)
+	for (N = 0; N < LINK_FLASH_MAX; ++N) {
+
+		if (lp->flash[N].block[0] == 0)
+			break;
+	}
+
+	if (lp->flash[N].block[0] != 0)
 		return ;
 
-	eol = priv->flash_eol;
+	bN = 0;
 
-	while (*s != 0) {
+	while (*sp != 0) {
 
-		if (		   *s == 'x'
-				|| *s == 'a'
-				|| *s == '.') {
+		if (		   *sp == 'x'
+				|| *sp == 'a'
+				|| *sp == '.') {
 
-			*eol++ = *s;
+			lp->flash[N].block[bN++] = *sp;
 
-			++N;
-
-			if (N >= 32)
-				break;
+			if (bN >= sizeof(lp->flash[0].block)) 
+				break ;
 		}
-		else if (*s != ' ') {
-
-			N = 0;
+		else if (*sp != ' ')
 			break;
-		}
 
-		++s;
-	}
-
-	if (N > 0) {
-
-		*eol++ = '\n';
-
-		priv->flash_eol = eol;
-	}
-	else {
-		*(priv->flash_eol) = 0;
+		++sp;
 	}
 }
 
@@ -447,26 +475,14 @@ void link_open(struct link_pmc *lp, struct config_phobia *fe,
 	}
 
 	priv = lp->priv;
-	priv->mbflow = priv->mb;
-
 	priv->fd = serial_open(devname, baudrate, mode);
 
 	if (priv->fd == NULL)
 		return ;
 
-	serial_fputs(priv->fd, LINK_EOL);
-
-	sprintf(priv->lbuf, "rtos_version" LINK_EOL);
-	serial_fputs(priv->fd, priv->lbuf);
-
-	sprintf(priv->lbuf, "reg" LINK_EOL);
-	serial_fputs(priv->fd, priv->lbuf);
-
-	sprintf(priv->lbuf, "flash_info" LINK_EOL);
-	serial_fputs(priv->fd, priv->lbuf);
-
 	lp->linked = 1;
-	lp->locked = lp->clock + 1000;
+
+	link_remote(lp);
 }
 
 void link_close(struct link_pmc *lp)
@@ -478,7 +494,10 @@ void link_close(struct link_pmc *lp)
 
 	if (priv != NULL) {
 
-		serial_close(priv->fd);
+		if (priv->fd != NULL) {
+
+			serial_close(priv->fd);
+		}
 
 		if (priv->fd_log != NULL) {
 
@@ -506,6 +525,54 @@ void link_close(struct link_pmc *lp)
 	memset(lp, 0, sizeof(struct link_pmc));
 
 	lp->priv = priv;
+}
+
+void link_remote(struct link_pmc *lp)
+{
+	struct link_priv	*priv = lp->priv;
+
+	if (lp->linked == 0)
+		return ;
+
+	priv->link_mode = LINK_MODE_IDLE;
+	priv->reg_push_ID = 0;
+	priv->mbflow = priv->mb;
+
+	if (priv->fd_tlm != NULL) {
+
+		fclose(priv->fd_tlm);
+		priv->fd_tlm = NULL;
+	}
+
+	if (priv->fd_grab != NULL) {
+
+		fclose(priv->fd_grab);
+		priv->fd_grab = NULL;
+	}
+
+	if (priv->fd_push != NULL) {
+
+		fclose(priv->fd_push);
+		priv->fd_push = NULL;
+	}
+
+	lp->grab_N = 0;
+	lp->tlm_N = 0;
+
+	memset(lp->reg, 0, sizeof(lp->reg));
+
+	serial_fputs(priv->fd, LINK_EOL);
+
+	sprintf(priv->lbuf, "rtos_version" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	sprintf(priv->lbuf, "flash_info" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	sprintf(priv->lbuf, "reg" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	lp->locked = lp->clock + 1000;
 }
 
 static void
@@ -608,6 +675,9 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "pm_probe_noise_threshold",	LINK_MODE_UNABLE_WARNING },
 		{ "tlm_flush_sync",		LINK_MODE_DATA_GRAB },
 		{ "tlm_live_sync",		LINK_MODE_DATA_GRAB },
+		{ "net_survey",			LINK_MODE_EPCAN_MAP },
+		{ "net_assign",			LINK_MODE_UNABLE_WARNING },
+		{ "net_revoke",			LINK_MODE_UNABLE_WARNING },
 		{ "export_reg",			LINK_MODE_DATA_GRAB },
 
 		{ NULL, 0 }	/* END */
@@ -679,7 +749,9 @@ int link_fetch(struct link_pmc *lp, int clock)
 				}
 
 				if (priv->link_mode == LINK_MODE_FLASH_MAP)
-					priv->flash_eol = lp->flash_info_map;
+					memset(lp->flash, 0, sizeof(lp->flash));
+				else if (priv->link_mode == LINK_MODE_EPCAN_MAP)
+					memset(lp->epcan, 0, sizeof(lp->epcan));
 
 				break;
 
@@ -699,6 +771,10 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 			case LINK_MODE_HWINFO:
 				link_fetch_hwinfo(lp);
+				break;
+
+			case LINK_MODE_EPCAN_MAP:
+				link_fetch_epcan_map(lp);
 				break;
 
 			case LINK_MODE_FLASH_MAP:
@@ -803,14 +879,6 @@ void link_push(struct link_pmc *lp)
 	reg_ID = priv->reg_push_ID;
 
 	do {
-		reg_ID++;
-
-		if (reg_ID >= LINK_REGS_MAX)
-			reg_ID = 0;
-
-		if (lp->reg[reg_ID].sym[0] == 0)
-			reg_ID = 0;
-
 		reg = lp->reg + reg_ID;
 
 		if (reg->queued == 0) {
@@ -869,6 +937,14 @@ void link_push(struct link_pmc *lp)
 			if (reg->queued + 500 < lp->clock)
 				reg->queued = 0;
 		}
+
+		reg_ID++;
+
+		if (reg_ID >= LINK_REGS_MAX)
+			reg_ID = 0;
+
+		if (lp->reg[reg_ID].sym[0] == 0)
+			reg_ID = 0;
 
 		if (reg_ID == priv->reg_push_ID)
 			break;

@@ -703,11 +703,9 @@ struct serial_fd *serial_open(const char *devname, int baudrate, const char *mod
 	return fd;
 }
 
-void serial_close(struct serial_fd *fd)
+static int
+serial_thread_garbage(struct serial_fd *fd)
 {
-	SDL_AtomicSet(&fd->rxq->terminate, 1);
-	SDL_AtomicSet(&fd->txq->terminate, 1);
-
 #ifdef _WINDOWS
 	CloseHandle(fd->hFile);
 #else
@@ -718,6 +716,21 @@ void serial_close(struct serial_fd *fd)
 	SDL_WaitThread(fd->thread_txq, NULL);
 
 	free(fd);
+
+	return 0;
+}
+
+void serial_close(struct serial_fd *fd)
+{
+	SDL_Thread	*thread;
+
+	SDL_AtomicSet(&fd->rxq->terminate, 1);
+	SDL_AtomicSet(&fd->txq->terminate, 1);
+
+	thread = SDL_CreateThread((int (*) (void *)) &serial_thread_garbage,
+			"serial_thread_garbage", fd);
+
+	SDL_DetachThread(thread);
 }
 
 int serial_fputs(struct serial_fd *fd, const char *s)

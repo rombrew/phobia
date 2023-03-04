@@ -65,10 +65,7 @@ enum {
 enum {
 	EPCAN_PAYLOAD_FLOAT		= 0,
 	EPCAN_PAYLOAD_INT_16,
-	EPCAN_PAYLOAD_PACKED_INT_16_0,
-	EPCAN_PAYLOAD_PACKED_INT_16_1,
-	EPCAN_PAYLOAD_PACKED_INT_16_2,
-	EPCAN_PAYLOAD_PACKED_INT_16_3,
+	EPCAN_PAYLOAD_PACKED
 };
 
 enum {
@@ -77,18 +74,18 @@ enum {
 
 typedef struct {
 
+	int		MODE;		/* type of EP */
 	int		ID;		/* CAN ID of the endpoint (EP) */
+	int		clock_ID;	/* CAN ID used as clock */
 
 	float		reg_DATA;	/* current DATA */
 	int		reg_ID;		/* linked register ID */
 
-	int		MODE;		/* type of EP */
 	int		STARTUP;	/* motor startup behaviour */
 	int		ACTIVE;
-	int		TIM;		/* transfer rate (on PWM) */
-	int		inject_ID;	/* CAN ID used as clock */
+	int		TIM;		/* transfer rate (on PWM clock) */
 	int		PAYLOAD;	/* packet payload type */
-	float		range[2];	/* natural data range (conversion) */
+	float		range[2];	/* natural data range */
 
 	int		tx_N;
 	int		tx_flag;
@@ -99,7 +96,7 @@ typedef struct {
 
 	int			node_ID;	/* EPCAN node ID */
 	int			log_MODE;
-	int			startup_LOST;
+	int			timeout_EP;
 
 	epcan_pipe_t		ep[EPCAN_PIPE_MAX];
 }

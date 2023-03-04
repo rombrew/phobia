@@ -155,7 +155,7 @@ stlink: $(IMAGE)
 
 dfu: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ dfu-util -S STM32FxSTM32 -a0 --dfuse-address 0x08000000 -D $<
+	@ dfu-util -d 0483:df11 -a0 --dfuse-address 0x08000000 -D $<
 
 connect:
 	@ picocom -l -b $(BAUD) -ye $(TTY) -g $(LOG)

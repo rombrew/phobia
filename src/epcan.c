@@ -167,7 +167,7 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 			EPCAN_pipe_INCOMING(ep, msg);
 		}
 		else if (	ep->MODE == EPCAN_PIPE_OUTGOING_INJECTED
-				&& ep->inject_ID == msg->ID) {
+				&& ep->clock_ID == msg->ID) {
 
 			ep->tx_flag = 1;
 
@@ -190,7 +190,7 @@ void EPCAN_pipe_REGULAR()
 
 			ep->tx_N++;
 
-			if (ep->tx_N >= net.startup_LOST) {
+			if (ep->tx_N >= net.timeout_EP) {
 
 				if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -774,7 +774,7 @@ void EPCAN_filter_ID()
 		}
 		else if (net.ep[N].MODE == EPCAN_PIPE_OUTGOING_INJECTED) {
 
-			CAN_filter_ID(20 + N, 1, net.ep[N].inject_ID, EPCAN_FILTER_MATCH);
+			CAN_filter_ID(20 + N, 1, net.ep[N].clock_ID, EPCAN_FILTER_MATCH);
 		}
 		else {
 			CAN_filter_ID(20 + N, 1, 0, 0);
@@ -810,7 +810,7 @@ SH_DEF(net_survey)
 
 				if (local.node[N].node_ID != 0) {
 
-					printf("%4i    ", local.node[N].node_ID);
+					printf("%i", local.node[N].node_ID);
 				}
 				else {
 					printf("(not assigned)");

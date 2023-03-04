@@ -483,9 +483,9 @@ default_flash_load()
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;
 	net.log_MODE = EPCAN_LOG_DISABLED;
-	net.startup_LOST = 100 * hal.PWM_frequency / 1000;
+	net.timeout_EP = 100 * HW_PWM_FREQUENCY_HZ / 1000;
 	net.ep[0].ID = 10;
-	net.ep[0].TIM = hal.PWM_frequency / 1000;
+	net.ep[0].TIM = HW_PWM_FREQUENCY_HZ / 1000;
 	net.ep[1].ID = 20;
 	net.ep[1].TIM = net.ep[0].TIM;
 	net.ep[2].ID = 30;

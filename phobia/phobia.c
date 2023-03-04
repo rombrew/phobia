@@ -18,6 +18,7 @@
 #undef main
 
 #define PHOBIA_FILE_MAX				200
+#define PHOBIA_NODE_MAX				32
 #define PHOBIA_TAB_MAX				40
 
 SDL_RWops *TTF_RW_droid_sans_normal();
@@ -61,10 +62,17 @@ struct public {
 		int			started;
 
 		struct serial_list	list;
+
 		int			selected;
 		int			baudrate;
 	}
 	serial;
+
+	struct {
+
+		int			selected;
+	}
+	network;
 
 	struct {
 
@@ -808,8 +816,7 @@ pub_popup_config_export(struct public *pub, int popup, const char *title)
 	struct nk_rect			bounds;
 	struct nk_style_button		disabled;
 
-	int				height;
-	int				N, sel, newsel;
+	int				N, height, sel, newsel;
 
 	if (pub->popup_enum != popup)
 		return ;
@@ -2284,9 +2291,257 @@ static void
 page_in_network(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
-	/* TODO */
+	struct nk_style_button		orange, disabled;
+
+	int				N, height, sel, newsel;
+
+	orange = ctx->style.button;
+	orange.normal = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON]);
+	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON_HOVER]);
+
+	reg_float(pub, "net.node_ID", "Node network ID");
+	reg_enum_combo(pub, "net.log_MODE", "Messages logging");
+	reg_float(pub, "net.timeout_EP", "EP timeout");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Survey")) {
+
+		link_command(pub->lp, "net_survey");
+
+		pub->network.selected = -1;
+	}
+
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "Assign")) {
+
+		link_command(pub->lp,	"net_assign" "\r\n"
+					"net_survey");
+
+		reg = link_reg_lookup(pub->lp, "net.node_ID");
+		if (reg != NULL) { reg->onefetch = 1; }
+
+		pub->network.selected = -1;
+	}
+
+	nk_spacer(ctx);
+
+	N = pub->network.selected;
+
+	if (		N >= 0 && N < LINK_EPCAN_MAX
+			&& lp->epcan[N].UID[0] != 0) {
+
+		if (nk_button_label(ctx, "Revoke")) {
+
+			sprintf(pub->lbuf,	"net_revoke %.7s" "\r\n"
+						"net_survey", lp->epcan[N].node_ID);
+
+			link_command(pub->lp, pub->lbuf);
+
+			pub->network.selected = -1;
+		}
+
+		nk_spacer(ctx);
+
+		if (strstr(lp->network, "remote") == NULL) {
+
+			if (nk_button_label_styled(ctx, &orange, "Connect")) {
+
+				sprintf(pub->lbuf, "net_node_remote %.7s",
+						lp->epcan[N].node_ID);
+
+				link_command(pub->lp, pub->lbuf);
+				link_remote(pub->lp);
+
+				pub->network.selected = -1;
+			}
+		}
+		else {
+			if (nk_button_label_styled(ctx, &orange, "Drop")) {
+
+				link_command(pub->lp, "\x04");
+				link_remote(pub->lp);
+
+				pub->network.selected = -1;
+			}
+		}
+	}
+	else {
+		disabled = ctx->style.button;
+
+		disabled.normal = disabled.active;
+		disabled.hover = disabled.active;
+		disabled.text_normal = disabled.text_active;
+		disabled.text_hover = disabled.text_active;
+
+		nk_button_label_styled(ctx, &disabled, "Revoke");
+
+		nk_spacer(ctx);
+
+		if (strstr(lp->network, "remote") == NULL) {
+
+			nk_button_label_styled(ctx, &disabled, "Connect");
+		}
+		else {
+			if (nk_button_label_styled(ctx, &orange, "Drop")) {
+
+				link_command(pub->lp, "\x04");
+				link_remote(pub->lp);
+
+				pub->network.selected = -1;
+			}
+		}
+	}
+
+	nk_spacer(ctx);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	height = ctx->current->layout->row.height * 5;
+
+	nk_layout_row_template_begin(ctx, height);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_variable(ctx, 1);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+
+	if (nk_group_begin(ctx, "NETWORK", NK_WINDOW_BORDER)) {
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
+		nk_layout_row_template_end(ctx);
+
+		for (N = 0; N < LINK_EPCAN_MAX; ++N) {
+
+			if (lp->epcan[N].UID[0] == 0)
+				break;
+
+			sel = (N == pub->network.selected) ? 1 : 0;
+
+			newsel = nk_select_label(ctx, lp->epcan[N].UID,
+					NK_TEXT_LEFT, sel);
+
+			newsel |= nk_select_label(ctx, lp->epcan[N].node_ID,
+					NK_TEXT_LEFT, sel);
+
+			if (newsel != sel && newsel != 0) {
+
+				pub->network.selected = N;
+			}
+		}
+
+		nk_group_end(ctx);
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode");
+
+	reg = link_reg_lookup(pub->lp, "net.ep0_MODE");
+
+	if (reg != NULL && reg->lval != 0) {
+
+		reg_float(pub, "net.ep0_ID", "EP 0 network ID");
+		reg_float(pub, "net.ep0_clock_ID", "EP 0 clock ID");
+		reg_float(pub, "net.ep0_reg_DATA", "EP 0 data");
+		reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
+		reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
+		reg_float(pub, "net.ep0_TIM", "EP 0 frequency");
+		reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type");
+		reg_float(pub, "net.ep0_range0", "EP 0 range LOW");
+		reg_float(pub, "net.ep0_range1", "EP 0 range HIGH");
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode");
+
+	reg = link_reg_lookup(pub->lp, "net.ep1_MODE");
+
+	if (reg != NULL && reg->lval != 0) {
+
+		reg_float(pub, "net.ep1_ID", "EP 1 network ID");
+		reg_float(pub, "net.ep1_clock_ID", "EP 1 clock ID");
+		reg_float(pub, "net.ep1_reg_DATA", "EP 1 data");
+		reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
+		reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
+		reg_float(pub, "net.ep1_TIM", "EP 1 frequency");
+		reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type");
+		reg_float(pub, "net.ep1_range0", "EP 1 range LOW");
+		reg_float(pub, "net.ep1_range1", "EP 1 range HIGH");
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode");
+
+	reg = link_reg_lookup(pub->lp, "net.ep2_MODE");
+
+	if (reg != NULL && reg->lval != 0) {
+
+		reg_float(pub, "net.ep2_ID", "EP 2 network ID");
+		reg_float(pub, "net.ep2_clock_ID", "EP 2 clock ID");
+		reg_float(pub, "net.ep2_reg_DATA", "EP 2 data");
+		reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
+		reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
+		reg_float(pub, "net.ep2_TIM", "EP 2 frequency");
+		reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type");
+		reg_float(pub, "net.ep2_range0", "EP 2 range LOW");
+		reg_float(pub, "net.ep2_range1", "EP 2 range HIGH");
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode");
+
+	reg = link_reg_lookup(pub->lp, "net.ep3_MODE");
+
+	if (reg != NULL && reg->lval != 0) {
+
+		reg_float(pub, "net.ep3_ID", "EP 3 network ID");
+		reg_float(pub, "net.ep3_clock_ID", "EP 3 clock ID");
+		reg_float(pub, "net.ep3_reg_DATA", "EP 3 data");
+		reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
+		reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
+		reg_float(pub, "net.ep3_TIM", "EP 3 frequency");
+		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type");
+		reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
+		reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
+	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 }
 
 static void
@@ -2330,7 +2585,7 @@ page_in_PWM(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_linked(pub, "ap.ppm_reg_ID", "Control register ID");
-	reg_enum_toggle(pub, "ap.ppm_STARTUP", "Startup on signal caught");
+	reg_enum_toggle(pub, "ap.ppm_STARTUP", "Startup control");
 	reg_float(pub, "ap.ppm_in_range0", "Input range LOW");
 	reg_float(pub, "ap.ppm_in_range1", "Input range MID");
 	reg_float(pub, "ap.ppm_in_range2", "Input range HIGH");
@@ -2383,7 +2638,7 @@ page_in_knob(struct public *pub)
 
 	reg_enum_toggle(pub, "ap.knob_ENABLED", "Knob control");
 	reg_linked(pub, "ap.knob_reg_ID", "Control register ID");
-	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup on signal caught");
+	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup control");
 	reg_float(pub, "ap.knob_in_ANG0", "ANG range LOW");
 	reg_float(pub, "ap.knob_in_ANG1", "ANG range MID");
 	reg_float(pub, "ap.knob_in_ANG2", "ANG range HIGH");
@@ -2740,20 +2995,19 @@ page_lu_FLUX(struct public *pub)
 }
 
 static void
-pub_drawing_HFI(struct public *pub, float Fa, int Zp)
+pub_drawing_motor_teeth(struct public *pub, float Fa, int Zp)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
 	struct nk_rect			space;
-	enum nk_widget_layout_states	state;
 
 	float				tfm[4], arrow[12], pbuf[12];
 	float				radius, thickness;
 	int				tooth;
 
-	state = nk_widget(&space, ctx);
-	if (!state) return ;
+	if (nk_widget(&space, ctx) == NK_WIDGET_INVALID)
+		return ;
 
 	radius = space.w / 2.f;
 	thickness = radius / 20.f;
@@ -2851,7 +3105,7 @@ page_lu_HFI(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	int				dw_HFI = pub->fe_def_size_x / 3;
+	int				m_size = pub->fe_def_size_x / 3;
 
 	reg_float(pub, "pm.hfi_sine", "Injected current");
 	reg_float_um(pub, "pm.hfi_maximal", "Maximal speed", 0);
@@ -2898,16 +3152,16 @@ page_lu_HFI(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, dw_HFI + 20);
+	nk_layout_row_template_begin(ctx, m_size + 20);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
-	nk_layout_row_template_push_static(ctx, dw_HFI + 20);
+	nk_layout_row_template_push_static(ctx, m_size + 20);
 	nk_layout_row_template_end(ctx);
 
 	nk_spacer(ctx);
 
-	if (nk_group_begin(ctx, "HFI", NK_WINDOW_BORDER)) {
+	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
 
-		nk_layout_row_static(ctx, dw_HFI, dw_HFI, 1);
+		nk_layout_row_static(ctx, m_size, m_size, 1);
 
 		reg = link_reg_lookup(pub->lp, "pm.lu_location");
 
@@ -2917,7 +3171,7 @@ page_lu_HFI(struct public *pub)
 
 				reg += reg->um_sel;
 
-				pub_drawing_HFI(pub, reg->fval, 0);
+				pub_drawing_motor_teeth(pub, reg->fval, 0);
 			}
 			else if (reg->um_sel == 1) {
 
@@ -2930,13 +3184,13 @@ page_lu_HFI(struct public *pub)
 				reg = link_reg_lookup(pub->lp, "pm.const_Zp");
 				if (reg != NULL) { Zp = reg->lval; }
 
-				pub_drawing_HFI(pub, Fa, Zp);
+				pub_drawing_motor_teeth(pub, Fa, Zp);
 			}
 			else if (reg->um_sel == 2) {
 
 				reg += reg->um_sel;
 
-				pub_drawing_HFI(pub, reg->fval, 0);
+				pub_drawing_motor_teeth(pub, reg->fval, 0);
 			}
 		}
 
@@ -3140,8 +3394,6 @@ page_mileage(struct public *pub)
 	nk_spacer(ctx);
 	nk_spacer(ctx);
 }
-
-
 
 static void
 page_telemetry(struct public *pub)
@@ -3377,7 +3629,7 @@ page_flash(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, pub->fe_def_size_x / 3);
+	nk_layout_row_template_begin(ctx, pub->fe_def_size_y / 3);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_push_variable(ctx, 1);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
@@ -3390,28 +3642,31 @@ page_flash(struct public *pub)
 		const char		*map;
 		int			sym;
 
+		int			N, bN;
+
 		nk_layout_row_template_begin(ctx, 0);
 
-		map = lp->flash_info_map;
+		for (bN = 0; bN < LINK_FLASH_MAX; ++bN) {
 
-		while (*map != 0 && *map != '\n') {
+			if (lp->flash[0].block[bN] == 0)
+				break;
 
 			nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
-
-			++map;
 		}
 
 		nk_layout_row_template_end(ctx);
 
-		map = lp->flash_info_map;
+		for (N = 0; N < LINK_FLASH_MAX; ++N) {
 
-		while (*map != 0) {
+			if (lp->flash[N].block[0] == 0)
+				break;
 
-			sym = *map++;
+			for (bN = 0; bN < sizeof(lp->flash[0].block); ++bN) {
 
-			if (		   sym == 'a'
-					|| sym == 'x'
-					|| sym == '.') {
+				sym = lp->flash[N].block[bN];
+
+				if (sym == 0)
+					break;
 
 				pub_drawing_brick_colored(nk, sym);
 			}

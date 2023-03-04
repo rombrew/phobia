@@ -6,8 +6,9 @@
 #define LINK_REGS_MAX		900
 #define LINK_NAME_MAX		80
 #define LINK_MESSAGE_MAX	220
-#define LINK_COMBO_MAX		32
-#define LINK_FLASH_MAX		500
+#define LINK_COMBO_MAX		40
+#define LINK_EPCAN_MAX		32
+#define LINK_FLASH_MAX		10
 
 enum {
 	LINK_REG_CONFIG		= 1U,
@@ -69,7 +70,19 @@ struct link_pmc {
 	char			hwinfo[LINK_NAME_MAX];
 	char			network[LINK_NAME_MAX];
 
-	char			flash_info_map[LINK_FLASH_MAX];
+	struct {
+
+		char		UID[16];
+		char		node_ID[24];
+	}
+	epcan[LINK_EPCAN_MAX];
+
+	struct {
+
+		char		block[32];
+	}
+	flash[LINK_FLASH_MAX];
+
 	char			unable_warning[LINK_MESSAGE_MAX];
 
 	int			grab_N;
@@ -84,6 +97,7 @@ const char *lk_stod(double *x, const char *s);
 void link_open(struct link_pmc *lp, struct config_phobia *fe,
 		const char *devname, int baudrate, const char *mode);
 void link_close(struct link_pmc *lp);
+void link_remote(struct link_pmc *lp);
 
 int link_fetch(struct link_pmc *lp, int clock);
 void link_push(struct link_pmc *lp);

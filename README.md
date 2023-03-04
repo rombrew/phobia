@@ -24,7 +24,7 @@ electrotransport.
 * USB protocol stack from
   [CherryUSB](https://github.com/sakumisu/CherryUSB).
 * Least Squares estimate using library
-  [libLSE](https://sourceforge.net/projects/liblse/).
+  [LSE](https://github.com/rombrew/lse).
 
 * Advanced SVPWM scheme provides:
 	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
