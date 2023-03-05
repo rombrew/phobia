@@ -130,17 +130,12 @@ electrotransport.
 	* 5v to 12v boost (~100 mA).
 	* 5v to 3.3v linear (~400 mA).
 
-Look into [phobia-pcb](https://sourceforge.net/p/phobia/pcb/) repository for
-PCB design source files. Also view photos of the assembled PCBs in [doc/imgs/](doc/imgs/).
-
 ## Current Status
 
-Now we can declare that PMC is ready to use in most applications. But there are
-still some unresolved issues. It may be difficult to configure the PMC for a
-specific motor.
+Now we can declare that PMC is ready to use in most applications. But it may be
+difficult to configure the PMC for some types of motors.
 
-There are a few videos about PMC on
-[youtube](https://www.youtube.com/@romblv).
+There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 Read further in [doc/GettingStarted](doc/GettingStarted.md).
 

@@ -3,6 +3,18 @@
 This page introduces you to the Command Line Interface (CLI). We have a regular
 CLI with autocompletion and command history.
 
+## Key mapping
+
+These are the basic special keys that is used in CLI:
+
+* **Return** - Run the command.
+* **Backspace** or **Delete** - Erase last typed character.
+* **Tab** or (@) - Automplete function.
+* **Shift + Tab** - Automplete function reverse.
+* **Ctrl + C** or **Ctrl + D** - Drop the content of the line or abort the command.
+* **Ctrl + P** or **Up** or (\*) - History function scroll up.
+* **Ctrl + N** or **Down** or (!) - History function scroll down.
+
 ## Register file concept
 
 Register is a scalar variable known by its name and having associated
@@ -21,8 +33,8 @@ call this command:
 
 Something like that:
 
-	# reg <pattern> <value>
-	# reg <ID> <value>
+	(pmc) reg <pattern> <value>
+	(pmc) reg <ID> <value>
 
 Almost all of the configuration process is to change the value of the
 registers.
@@ -31,13 +43,13 @@ You can also export all of configuration registers in plain text using a
 **export_reg** command. The output of this command can be fed back into the CLI
 to restore the configuration.
 
-	# export_reg
+	(pmc) export_reg
 
 To save the values of the configuration registers in the flash storage there is
 a **flash_prog** command. Register values from the flash are loaded
 automatically at startup.
 
-	# flash_prog
+	(pmc) flash_prog
 
 Note the different types of registers. There are registers intended for saving
 as configuration. Other registers provide information to read only. Virtual
@@ -61,18 +73,18 @@ choose what to control current in Amperes or percentage from full scale.
 There are telemetry module with 10 link registers. Choose any registers you
 need to be captured.
 
-	# reg tlm.reg_ID_0 pm.tvm_A
-	# reg tlm.reg_ID_1 pm.tvm_B
-	# reg tlm.reg_ID_ ...
+	(pmc) reg tlm.reg_ID0 pm.tvm_A
+	(pmc) reg tlm.reg_ID1 pm.tvm_B
+	(pmc) reg tlm.reg_ID_ ...
 
 Telemetry grab (to fill the memory buffer) and flush textual dump.
 
-	# tlm_grab <freq>
-	# tlm_flush_sync
+	(pmc) tlm_grab <freq>
+	(pmc) tlm_flush_sync
 
 Or live telemetry printout.
 
-	# tlm_live_sync <freq>
+	(pmc) tlm_live_sync <freq>
 
 Using CAN data pipes you are able to link register across CAN network. You can
 easily control many motors from single input. Build a traction control by
@@ -82,56 +94,46 @@ exchange the speed signals across motors.
 
 Show all raw feedback values that PMC uses in control loops.
 
-	# reg pm.fb
+	(pmc) reg pm.fb
 
 Show all motor constants.
 
-	# reg pm.const
+	(pmc) reg pm.const
 
 Enable control from analog input.
 
-	# reg ap.knob_ENABLED 1
+	(pmc) reg ap.knob_ENABLED 1
 
 Look for speed setpoint registers.
 
-	# reg pm.s_setpoint
+	(pmc) reg pm.s_setpoint
 
 Access the register by its number.
 
-	# reg 377 700
+	(pmc) reg 377 700
 
 ## Basic commands
 
 There are some commands that you can use to get started. Basic informational
 commands.
 
-	# rtos_uptime
-	# rtos_cpu_usage
+	(pmc) rtos_uptime
+	(pmc) rtos_cpu_usage
 
 Get firmware version info.
 
-	# rtos_version
+    (pmc) rtos_version
 
 Manual PWM control for testing.
 
-	# hal_PWM_set_DC <DC>
-	# hal_PWM_set_Z <Z>
+	(pmc) hal_PWM_set_DC <DC>
+	(pmc) hal_PWM_set_Z <Z>
 
 Show instant analog input values.
 
-	# reg hal.ADC_get_knob_ANG
+	(pmc) reg hal.ADC_get_knob_ANG
 
 Enable the HX711 helper application.
 
-	# reg ap.task_HX711 1
-
-## Key mapping
-
-* **Return** - Run the command.
-* **Backspace** or **Delete** - Erase last typed character.
-* **Tab** or (@) - Automplete function.
-* **Shift + Tab** - Automplete function reverse.
-* **Ctrl + C** or **Ctrl + D** - Drop the content of the line or abort the command.
-* **Ctrl + P** or **Up** or (\*) - History function scroll up.
-* **Ctrl + N** or **Down** or (!) - History function scroll down.
+	(pmc) reg ap.task_HX711 1
 

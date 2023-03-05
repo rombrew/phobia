@@ -7,8 +7,8 @@ PMC internals. Also this page will be useful for understanding.
 
 We have a three-phase voltage source inverter (VSI) which consists of six
 field-effect transistors (FET). The voltage at each of the output terminals is
-measured. Phase current A and B is measured. The output terminals are connected
-to the motor.
+measured. Phase current A and B (optionally C) is measured. The output
+terminals are connected to the motor.
 
 	  (+)   >---+--------+---------+---------+
 	            |        |         |         |
@@ -46,11 +46,11 @@ PWM scheme as shown in the diagram.
 	                // Output voltage waveform //
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
-specified Dead-Time (TDT). Depending on the direction of the current flow
-during the Dead-Time the actual voltage may be different. The amount of
-uncertainty in output voltage expressed as follows:
+specified Dead-Time (DET). Depending on the direction of the current flow
+during the Dead-Time the actual voltage on half-bridge may be different. The
+amount of uncertainty in the output voltage expressed as follows:
 
-	         2 * TDT * DC_link_voltage
+	         2 * DET * DC_link_voltage
 	 dUDT = ---------------------------
 	                    dT
 
@@ -64,7 +64,7 @@ uncertainty in output voltage expressed as follows:
 	       ||  |     ---             |                 |
 	        |--+      |           |                       |
 	           |      |              |                 |
-	           +------+       --->|   <--- TDT            |
+	           +------+       --->|   <--- DET            |
 	           |                     |                 |
 	           +---< Terminal     |                       |
 	           |                     |                 |
@@ -84,11 +84,12 @@ uncertainty in output voltage expressed as follows:
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC). This RC scheme forms an exponential integrator
 that allows us to restore the pulse width by measured voltage. Additional
-resistor R3 is used to bias the operating point into the linear region. You can
-skip voltage sensing if you do not need related features.
+resistor R3 is used to bias the operating point into the linear region. You
+can skip voltage sensing if you do not need related features.
 
 To get acceptable accuracy you need to make sure that the RC scheme time
-constant is comparable to dT.
+constant is comparable to dT. Also make sure that your capacitors are stable
+over whole temperature and voltage range.
 
 	                         +------< REF
 	                         |                 // Voltage measurement //
@@ -111,11 +112,12 @@ constant is comparable to dT.
 	                        ---
 	                        \ /  AGND
 
-The current (iA, iB) is measured in phases A and B using a shunt and amplifier.
-The measurement is distorted for some time after switching the half-bridge.
+The current (iA, iB, iC) is measured in phases A and B (optionally C) using a
+shunt and amplifier. The measurement is distorted for some time after a
+switching of the MOSFETs.
 
-Note that we use in-line current measurement. To use low-side measurement you
-will need to adapt the software.
+Note that we prefer to use in-line current measurement. To use low-side
+measurement you will need to configure the software appropriately.
 
 	                   // Current measurement //
 	  >-----+
@@ -137,8 +139,8 @@ Also supply voltage (uS) is measured using a voltage divider.
 
 ADC is sampled in the middle of PWM period. The values obtained are processed
 by software. The new value of duty cycle is loaded to the hardware timer. This
-value is used at next PWM period. ADC samples are made using two ADCs in order
-shown in the diagram.
+value is used at next PWM period. ADC samples are made using three ADCs in
+order shown on the diagram.
 
 	                // Control loop diagram //
 	
@@ -149,14 +151,15 @@ shown in the diagram.
 	     |/                |    |   |    |                 |
 	  ---*--*--*-----------------------------+-------------*---
 	     |  |  |                             |             |
-	     iA uS uB         preload DC         |
-	     iB uA uC          to hw timer -->  TIM
+	     iA uS uC         preload DC         |
+	     iB uA uX          to hw timer -->  TIM
+         iC uB uX
 	             \                          /
 	              pm_feedback()            /
-	                    p_set_DC(xA, xB, xC)
+	                proc_set_DC(xA, xB, xC)
 
-We need about 3 us before ADC samples to be clean. If MOSFET switching occurs
-at this time then the result is discarded.
+We typically need about 3us before ADC samples to be clean. If MOSFETs
+switching occur at this time then the result is discarded.
 
 ## Current zones
 

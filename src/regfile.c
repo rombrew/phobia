@@ -623,6 +623,19 @@ reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
+reg_proc_percent(const reg_t *reg, float *lval, const float *rval)
+{
+	if (lval != NULL) {
+
+		*lval = reg->link->f * 100.f;
+	}
+	else if (rval != NULL) {
+
+		reg->link->f = *rval / 100.f;
+	}
+}
+
+static void
 reg_proc_wattage(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
@@ -1549,7 +1562,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.fault_voltage_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_tol,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.fault_accuracy_tol,,,	"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.fault_accuracy_tol,,,	"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.fault_terminal_tol,,,	"V",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_halt,,,	"A",	"%3f",	REG_CONFIG, &reg_proc_halt, NULL),
 	REG_DEF(pm.fault_voltage_halt,,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1569,7 +1582,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.vsi_UF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.tvm_USEABLE,,,		"",	"%i",	REG_CONFIG, &reg_proc_USEABLE, &reg_format_enum),
-	REG_DEF(pm.tvm_range_DC,,,		"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tvm_range_pc,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.tvm_A,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_B,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_C,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1633,7 +1646,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_HI,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.flux_gain_IF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.kalman_bias_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
@@ -1649,7 +1662,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.zone_threshold_NOISE, _bemf,, "V",	"%3f",	REG_CONFIG, &reg_proc_bemf, NULL),
 	REG_DEF(pm.zone_threshold_BASE,,, "rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_threshold, NULL),
 	REG_DEF(pm.zone_threshold_BASE, _bemf,, "V",	"%3f",	REG_CONFIG, &reg_proc_bemf, NULL),
-	REG_DEF(pm.zone_gain_TH,,,		"",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
@@ -1666,7 +1679,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_ESTI,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_FP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_gain_IF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.hall_ST, 1_X, [1].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.hall_ST, 1_Y, [1].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
@@ -1694,9 +1707,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.hall_wS, _kmh,,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
 	REG_DEF(pm.hall_time_prol,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hall_gain_PF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hall_gain_PF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.hall_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hall_gain_IF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hall_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.abi_USEABLE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.abi_EPPR,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
@@ -1706,9 +1719,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.abi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.abi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.abi_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
-	REG_DEF(pm.abi_gain_PF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.abi_gain_PF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.abi_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gain_IF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.abi_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.const_fb_U,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_E,,,			"Wb",	"%4g",	REG_CONFIG, NULL, NULL),

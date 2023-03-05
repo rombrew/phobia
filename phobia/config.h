@@ -20,11 +20,13 @@ struct config_phobia {
 	char			rcfile[PHOBIA_PATH_MAX];
 	int			local;
 
+	char			serialport[PHOBIA_NAME_MAX];
 	int			windowsize;
 	char			storage[PHOBIA_PATH_MAX];
 	char			fuzzy[PHOBIA_NAME_MAX];
 	int			tlmrate;
 	char			tlmrate_lbuf[PHOBIA_NAME_MAX];
+	int			regmaxn;
 };
 
 FILE *fopen_from_UTF8(const char *file, const char *mode);

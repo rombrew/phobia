@@ -333,6 +333,9 @@ link_fetch_reg_format(struct link_pmc *lp)
 
 			reg->fetched = lp->clock;
 			reg->queued = 0;
+
+			lp->reg_MAX_N = (reg_ID + 1 > lp->reg_MAX_N)
+				? reg_ID + 1 : lp->reg_MAX_N;
 		}
 	}
 }
@@ -556,10 +559,17 @@ void link_remote(struct link_pmc *lp)
 		priv->fd_push = NULL;
 	}
 
+	lp->fetched_N = 0;
+
+	lp->locked = lp->clock + 1000;
+	lp->active = lp->clock;
+
 	lp->grab_N = 0;
 	lp->tlm_N = 0;
 
 	memset(lp->reg, 0, sizeof(lp->reg));
+
+	lp->reg_MAX_N = 0;
 
 	serial_fputs(priv->fd, LINK_EOL);
 
@@ -571,8 +581,6 @@ void link_remote(struct link_pmc *lp)
 
 	sprintf(priv->lbuf, "reg" LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
-
-	lp->locked = lp->clock + 1000;
 }
 
 static void
@@ -594,7 +602,7 @@ link_tlm_label(struct link_pmc *lp)
 		reg = link_reg_lookup(lp, sym);
 		reg_ID = (reg != NULL) ? reg->lval : 0;
 
-		if (reg_ID > 0 && reg_ID < LINK_REGS_MAX) {
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
 
 			reg = &lp->reg[reg_ID];
 
@@ -633,7 +641,7 @@ link_tlm_flush(struct link_pmc *lp)
 		reg = link_reg_lookup(lp, sym);
 		reg_ID = (reg != NULL) ? reg->lval : 0;
 
-		if (reg_ID > 0 && reg_ID < LINK_REGS_MAX) {
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
 
 			reg = &lp->reg[reg_ID];
 
@@ -673,6 +681,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "pm_probe_const_E",		LINK_MODE_UNABLE_WARNING },
 		{ "pm_probe_const_J",		LINK_MODE_UNABLE_WARNING },
 		{ "pm_probe_noise_threshold",	LINK_MODE_UNABLE_WARNING },
+		{ "pm_adjust_sensor_hall",	LINK_MODE_UNABLE_WARNING },
 		{ "tlm_flush_sync",		LINK_MODE_DATA_GRAB },
 		{ "tlm_live_sync",		LINK_MODE_DATA_GRAB },
 		{ "net_survey",			LINK_MODE_EPCAN_MAP },
@@ -790,7 +799,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 	}
 
 	if (		priv->link_mode == LINK_MODE_DATA_GRAB
-			&& lp->active + 1000 < lp->clock) {
+			&& lp->active + 500 < lp->clock) {
 
 		link_grab_file_close(lp);
 	}
@@ -940,10 +949,7 @@ void link_push(struct link_pmc *lp)
 
 		reg_ID++;
 
-		if (reg_ID >= LINK_REGS_MAX)
-			reg_ID = 0;
-
-		if (lp->reg[reg_ID].sym[0] == 0)
+		if (reg_ID >= lp->reg_MAX_N)
 			reg_ID = 0;
 
 		if (reg_ID == priv->reg_push_ID)
@@ -982,15 +988,15 @@ struct link_reg *link_reg_lookup(struct link_pmc *lp, const char *sym)
 	struct link_reg			*reg = NULL;
 	int				reg_ID;
 
-	for (reg_ID = 0; reg_ID < LINK_REGS_MAX; ++reg_ID) {
+	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
-		if (lp->reg[reg_ID].sym[0] == 0)
-			break;
+		if (lp->reg[reg_ID].sym[0] != 0) {
 
-		if (strcmp(lp->reg[reg_ID].sym, sym) == 0) {
+			if (strcmp(lp->reg[reg_ID].sym, sym) == 0) {
 
-			reg = &lp->reg[reg_ID];
-			break;
+				reg = &lp->reg[reg_ID];
+				break;
+			}
 		}
 	}
 
@@ -1004,23 +1010,23 @@ int link_reg_lookup_range(struct link_pmc *lp, const char *sym, int *min, int *m
 	n = strlen(sym);
 	rc = 0;
 
-	for (reg_ID = 0; reg_ID < LINK_REGS_MAX; ++reg_ID) {
+	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
-		if (lp->reg[reg_ID].sym[0] == 0)
-			break;
+		if (lp->reg[reg_ID].sym[0] != 0) {
 
-		if (strncmp(lp->reg[reg_ID].sym, sym, n) == 0) {
+			if (strncmp(lp->reg[reg_ID].sym, sym, n) == 0) {
 
-			if (rc == 0) {
+				if (rc == 0) {
 
-				*min = reg_ID;
-				rc = 1;
+					*min = reg_ID;
+					rc = 1;
+				}
+
+				*max = reg_ID;
 			}
-
-			*max = reg_ID;
+			else if (rc != 0)
+				break;
 		}
-		else if (rc != 0)
-			break;
 	}
 
 	return rc;
@@ -1031,17 +1037,17 @@ void link_reg_fetch_all_shown(struct link_pmc *lp)
 	struct link_reg			*reg = NULL;
 	int				reg_ID;
 
-	for (reg_ID = 0; reg_ID < LINK_REGS_MAX; ++reg_ID) {
+	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
-		if (lp->reg[reg_ID].sym[0] == 0)
-			break;
+		if (lp->reg[reg_ID].sym[0] != 0) {
 
-		reg = &lp->reg[reg_ID];
+			reg = &lp->reg[reg_ID];
 
-		reg->shown = 0;
-		reg->update = 0;
+			reg->shown = 0;
+			reg->update = 0;
 
-		reg->onefetch = 1;
+			reg->onefetch = 1;
+		}
 	}
 }
 
@@ -1050,14 +1056,14 @@ void link_reg_clean_all_always(struct link_pmc *lp)
 	struct link_reg			*reg = NULL;
 	int				reg_ID;
 
-	for (reg_ID = 0; reg_ID < LINK_REGS_MAX; ++reg_ID) {
+	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
-		if (lp->reg[reg_ID].sym[0] == 0)
-			break;
+		if (lp->reg[reg_ID].sym[0] != 0) {
 
-		reg = &lp->reg[reg_ID];
+			reg = &lp->reg[reg_ID];
 
-		reg->always = 0;
+			reg->always = 0;
+		}
 	}
 }
 

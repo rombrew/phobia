@@ -74,30 +74,29 @@ The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
 So using the above commands we have built the firmware and zipped it. Next
 there are a few ways to load the firmware into the MCU:
 
-1. SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
-   [Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be
-   careful when using hardware debugging while the motor is running. The sudden
-   stop of feedback loop can cause overcurrent accident.
+SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
+[Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be
+careful when using hardware debugging while the motor is running. The sudden
+stop of feedback loop can cause overcurrent accident.
 
 	$ make HWREV=REV5A gdb
 	(gdb) load
 
-2. SWD interface with [STLINK](https://github.com/stlink-org/stlink). You can
-   use GDB as in previous case but we are only concerned with using
-   **st-flash** util.
+SWD interface with [STLINK](https://github.com/stlink-org/stlink). You can use
+GDB as in previous case but we are only concerned with using **st-flash** util.
 
 	$ make HWREV=REV5A stlink
 
-3. USART interface with ST embedded bootloader using
-   [stm32flash](https://sourceforge.net/projects/stm32flash/). You should have
-   a serial port connected to the board TX and RX pins and BOOT pin shorted to
-   the +3.3v.
+USART interface with ST embedded bootloader using
+[stm32flash](https://sourceforge.net/projects/stm32flash/). You should have a
+serial port connected to the board TX and RX pins and BOOT pin shorted to the
++3.3v.
 
 	$ make HWREV=REV5A flash
 
-4. USB interface with ST embedded bootloader using
-   [DFU](http://dfu-util.sourceforge.net/). You should have an USB port
-   connected to the board and BOOT pin shorted to the +3.3v.
+USB interface with ST embedded bootloader using
+[DFU](http://dfu-util.sourceforge.net/). You should have an USB port connected
+to the board and BOOT pin shorted to the +3.3v.
 
 	$ make HWREV=REV5A dfu
 

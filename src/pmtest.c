@@ -226,7 +226,7 @@ SH_DEF(pm_test_TVM_ramp)
 	}
 
 	xMIN = pm.ts_minimal;
-	xMAX = (int) (pm.dc_resolution * pm.tvm_range_DC);
+	xMAX = (int) (pm.dc_resolution * pm.tvm_range_pc);
 
 	xDC = xMIN;
 

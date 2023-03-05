@@ -5,18 +5,23 @@ position estimate even if speed is zero.
 
 ## Basics
 
-The main parameters of the HFI is a frequency and swing. It is usually
-sufficient that swing is greater than the noise of the current sensors. Large
-injection swing will probably need to estimate flux polarity.
+The main parameters of injection is a frequency and amplitude. It is usually
+important that amplitude is much higher than the noise of the current sensors.
+Also a large injection amplitude will probably be need to estimate flux
+polarity.
 
-	# reg pm.hfi_freq_hz <hz>
-	# reg pm.hfi_swing_D <amp>
+	(pmc) reg pm.hfi_sine <amp>
 
-In complicated cases you will need to tune observer gains.
+The HFI frequency is specified by divider of the main PWM frequency. Reasonable
+values are from 6 to 16.
 
-	# reg pm.hfi_gain_EP <x>
-	# reg pm.hfi_gain_SF <x>
-	# reg pm.hfi_gain_FP <x>
+	(pmc) reg pm.hfi_INJS <x>
+
+These numbers are specified how much injection cycles will be skipped and
+grabbed to calculate position estimate.
+
+	(pmc) reg pm.hfi_SKIP <x>
+	(pmc) reg pm.hfi_ESTI <x>
 
 ## Flux polarity detection
 

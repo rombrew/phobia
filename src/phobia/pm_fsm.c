@@ -662,7 +662,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 		case 6:
 			xMIN = pm->ts_minimal;
-			xMAX = (int) (pm->dc_resolution * pm->tvm_range_DC);
+			xMAX = (int) (pm->dc_resolution * pm->tvm_range_pc);
 
 			switch (pm->fsm_subi) {
 
@@ -811,10 +811,9 @@ static void
 pm_fsm_state_adjust_current(pmc_t *pm)
 {
 	lse_t			*ls = &pm->probe_LS[0];
-	lse_float_t		v[4];
+	lse_float_t		v[3];
 
-	float			iZ, eZ, uZ, REF;
-	float			uMAX;
+	float			eA, uA, uMAX, REF;
 
 	switch (pm->fsm_phase) {
 
@@ -867,7 +866,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			if (pm->fsm_subi < 3) {
 
-				lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+				lse_construct(ls, LSE_CASCADE_MAX, 1, 2);
 
 				pm->i_integral_D = 0.f;
 
@@ -883,10 +882,24 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			break;
 
 		case 4:
-			v[0] = 1.f;
-			v[1] = (pm->vsi_AF == 0) ? pm->fb_iA : 0.f;
-			v[2] = (pm->vsi_BF == 0) ? pm->fb_iB : 0.f;
-			v[3] = (pm->vsi_CF == 0) ? pm->fb_iC : 0.f;
+			if (pm->fsm_subi == 0) {
+
+				v[0] = 1.f;
+				v[1] = pm->fb_iA;
+				v[2] = pm->fb_iB;
+			}
+			else if (pm->fsm_subi == 1) {
+
+				v[0] = 1.f;
+				v[1] = pm->fb_iA;
+				v[2] = pm->fb_iC;
+			}
+			else if (pm->fsm_subi == 2) {
+
+				v[0] = 1.f;
+				v[1] = pm->fb_iB;
+				v[2] = pm->fb_iC;
+			}
 
 			lse_insert(ls, v);
 
@@ -898,14 +911,14 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 					* pm->probe_current_hold / (float) pm->tm_end;
 			}
 
-			iZ =	  (pm->fsm_subi == 0) ? pm->fb_iA
+			REF =	  (pm->fsm_subi == 0) ? pm->fb_iA
 				: (pm->fsm_subi == 1) ? pm->fb_iA
 				: (pm->fsm_subi == 2) ? pm->fb_iB : 0.f;
 
-			eZ = pm->probe_current_hold - iZ;
+			eA = pm->probe_current_hold - REF;
 
-			pm->i_integral_D += pm->probe_gain_I * eZ;
-			uZ = pm->probe_gain_P * eZ + pm->i_integral_D;
+			pm->i_integral_D += pm->probe_gain_I * eA;
+			uA = pm->probe_gain_P * eA + pm->i_integral_D;
 
 			uMAX = pm->k_UMAX * pm->const_fb_U;
 
@@ -917,9 +930,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				break;
 			}
 
-			if      (pm->fsm_subi == 0) { pm_voltage(pm, uZ, 0.f); }
-			else if (pm->fsm_subi == 1) { pm_voltage(pm, uZ, 0.f); }
-			else if (pm->fsm_subi == 2) { pm_voltage(pm, 0.f, uZ); }
+			if      (pm->fsm_subi == 0) { pm_voltage(pm, uA, 0.f); }
+			else if (pm->fsm_subi == 1) { pm_voltage(pm, uA, 0.f); }
+			else if (pm->fsm_subi == 2) { pm_voltage(pm, 0.f, uA); }
 
 			pm->tm_value++;
 
@@ -951,17 +964,17 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			}
 			else if (pm->fsm_subi == 1) {
 
-				REF = (ls->sol.m[0] - ls->sol.m[2]) / 2.f;
+				REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
 
 				pm->ad_IA[1] *= REF / ls->sol.m[0];
-				pm->ad_IC[1] *= - REF / ls->sol.m[2];
+				pm->ad_IC[1] *= - REF / ls->sol.m[1];
 			}
 			else if (pm->fsm_subi == 2) {
 
-				REF = (ls->sol.m[1] - ls->sol.m[2]) / 2.f;
+				REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
 
-				pm->ad_IB[1] *= REF / ls->sol.m[1];
-				pm->ad_IC[1] *= - REF / ls->sol.m[2];
+				pm->ad_IB[1] *= REF / ls->sol.m[0];
+				pm->ad_IC[1] *= - REF / ls->sol.m[1];
 			}
 
 			if (		   m_fabsf(pm->ad_IA[1] - 1.f) > pm->fault_accuracy_tol

@@ -10,13 +10,14 @@ You may need to adjust some parameters in accordance with the capabilities of
 the motor to not burn it. Default is acceptable for most RC motors but be
 aware. These parameters are used to probe the motor.
 
-	# reg pm.probe
+	(pmc) reg pm.probe
 
 There are a lot of parameters that can affect the motor identification. But we
 believe that they will need a change only in a very complicated case.
 
-Most likely you will change **pm.probe_speed_hold** parameter. The probe speed
-should provide enough BEMF but not to exceed **pm.forced_maximal** speed.
+Most likely you will need to change **pm.probe_speed_hold** parameter. The
+probe speed should provide enough BEMF but not to exceed **pm.forced_maximal**
+speed.
 
 Also pay attention to the forced control parameters which are used to achieve
 initial spinup.

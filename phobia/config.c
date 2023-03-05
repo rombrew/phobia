@@ -55,6 +55,10 @@ void config_read(struct config_phobia *fe)
 
 				/* Skip empty lines */
 			}
+			else if (strcmp(name, "serialport") == 0) {
+
+				strcpy(fe->serialport, value);
+			}
 			else if (strcmp(name, "windowsize") == 0) {
 
 				fe->windowsize = strtol(value, NULL, 10);
@@ -71,6 +75,10 @@ void config_read(struct config_phobia *fe)
 
 				fe->tlmrate = strtol(value, NULL, 10);
 				sprintf(fe->tlmrate_lbuf, "%i", fe->tlmrate);
+			}
+			else if (strcmp(name, "regmaxn") == 0) {
+
+				fe->regmaxn = strtol(value, NULL, 10);
 			}
 		}
 
@@ -144,10 +152,12 @@ void config_write(struct config_phobia *fe)
 
 	if (fd != NULL) {
 
+		fprintf(fd, "serialport %s\n", fe->serialport);
 		fprintf(fd, "windowsize %i\n", fe->windowsize);
 		fprintf(fd, "storage %s\n", fe->storage);
 		fprintf(fd, "fuzzy %s\n", fe->fuzzy);
 		fprintf(fd, "tlmrate %i\n", fe->tlmrate);
+		fprintf(fd, "regmaxn %i\n", fe->regmaxn);
 
 		fclose(fd);
 	}
@@ -159,6 +169,7 @@ void config_default(struct config_phobia *fe)
 	char		lptemp[PHOBIA_PATH_MAX];
 #endif /* _WINDOWS */
 
+	fe->serialport[0] = 0;
 	fe->windowsize = 1;
 
 #ifdef _WINDOWS
@@ -177,5 +188,6 @@ void config_default(struct config_phobia *fe)
 	strcpy(fe->fuzzy, "setpoint");
 
 	fe->tlmrate = 1000;
+	fe->regmaxn = 463;
 }
 

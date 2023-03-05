@@ -324,7 +324,7 @@ typedef struct {
 	int		vsi_CZ;
 
 	int		tvm_USEABLE;
-	float		tvm_range_DC;
+	float		tvm_range_pc;
 	float		tvm_A;
 	float		tvm_B;
 	float		tvm_C;

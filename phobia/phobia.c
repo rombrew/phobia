@@ -25,12 +25,19 @@ SDL_RWops *TTF_RW_droid_sans_normal();
 
 enum {
 	POPUP_NONE			= 0,
+	POPUP_LINK_PROGRESS,
 	POPUP_RESET_DEFAULT,
 	POPUP_UNABLE_WARNING,
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
 	POPUP_TELEMETRY_FLUSH,
 	POPUP_CONFIG_EXPORT,
+};
+
+enum {
+	DRAWING_EMPTY			= 0,
+	DRAWING_WITH_TOOTH,
+	DRAWING_WITH_HALL
 };
 
 struct public {
@@ -275,10 +282,8 @@ pub_combo_linked(struct public *pub, struct link_reg *reg,
 	max_height += (int) spacing.y * 2 + (int) padding.y * 2;
 	size.y = NK_MIN(size.y, (float) max_height);
 
-	select_ID = reg->lval;
-
-	select_ID = (select_ID >= LINK_REGS_MAX) ? 0
-		: (select_ID < 0) ? 0 : select_ID;
+	select_ID = (reg->lval >= lp->reg_MAX_N) ? 0
+		: (reg->lval < 0) ? 0 : reg->lval;
 
 	if (nk_combo_begin_label(ctx, lp->reg[select_ID].sym, size)) {
 
@@ -303,20 +308,20 @@ pub_combo_linked(struct public *pub, struct link_reg *reg,
 
 		nk_layout_row_dynamic(ctx, (float) item_height, 1);
 
-		for (reg_ID = 0; reg_ID < LINK_REGS_MAX; ++reg_ID) {
+		for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
-			if (lp->reg[reg_ID].sym[0] == 0)
-				break;
+			if (lp->reg[reg_ID].sym[0] != 0) {
 
-			if (strstr(lp->reg[reg_ID].sym, pub->fe->fuzzy) != NULL) {
+				if (strstr(lp->reg[reg_ID].sym, pub->fe->fuzzy) != NULL) {
 
-				if (nk_combo_item_label(ctx, lp->reg[reg_ID].sym,
-							NK_TEXT_LEFT)) {
+					if (nk_combo_item_label(ctx, lp->reg[reg_ID].sym,
+								NK_TEXT_LEFT)) {
 
-					select_ID = reg_ID;
+						select_ID = reg_ID;
+					}
+
+					pub->fuzzy_count++;
 				}
-
-				pub->fuzzy_count++;
 			}
 		}
 
@@ -342,7 +347,7 @@ pub_get_popup_bounds_tiny(struct public *pub)
 	popup.h = win.h * 0.5f;
 
 	popup.x = win.w / 2.f - popup.w / 2.f;
-	popup.y = win.h * 0.3f;
+	popup.y = win.h * 0.4f;
 
 	return popup;
 }
@@ -409,6 +414,47 @@ pub_popup_message(struct public *pub, int popup, const char *title)
 		}
 
 		nk_spacer(ctx);
+
+		nk_popup_end(ctx);
+	}
+	else {
+		pub->popup_enum = 0;
+	}
+}
+
+static void
+pub_popup_progress(struct public *pub, int popup, const char *title, int pce)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			bounds;
+
+	if (pub->popup_enum != popup)
+		return ;
+
+	bounds = pub_get_popup_bounds_tiny(pub);
+
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, title,
+				NK_WINDOW_CLOSABLE
+				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+		nk_prog(ctx, pce, 1000, nk_false);
+		nk_spacer(ctx);
+
+		if (pce >= 1000) {
+
+			nk_popup_close(ctx);
+
+			pub->popup_enum = 0;
+		}
 
 		nk_popup_end(ctx);
 	}
@@ -1012,6 +1058,191 @@ pub_popup_config_export(struct public *pub, int popup, const char *title)
 }
 
 static void
+pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
+	struct nk_rect			space;
+
+	float				tfm[4], arrow[10], pbuf[10];
+	float				radius, thickness;
+	int				N, Zp = 0;
+
+	if (nk_widget(&space, ctx) == NK_WIDGET_INVALID)
+		return ;
+
+	radius = space.w / 2.f;
+	thickness = radius / 10.f;
+
+	space.x += thickness;
+	space.y += thickness;
+	space.w += - 2.f * thickness;
+	space.h += - 2.f * thickness;
+
+	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DRAWING_PEN]);
+
+	space.x += thickness;
+	space.y += thickness;
+	space.w += - 2.f * thickness;
+	space.h += - 2.f * thickness;
+
+	nk_fill_circle(canvas, space, nk->table[NK_COLOR_WINDOW]);
+
+	tfm[0] = space.x + space.w / 2.f;
+	tfm[1] = space.y + space.h / 2.f;
+
+	if (dtype == DRAWING_WITH_TOOTH) {
+
+		struct link_reg		*reg;
+
+		reg = link_reg_lookup(pub->lp, "pm.const_Zp");
+		if (reg != NULL) { Zp = reg->lval; }
+
+		if (Zp != 0) {
+
+			arrow[0] = radius - 3.f * thickness;
+			arrow[1] = - .5f * thickness;
+			arrow[2] = radius - 3.f * thickness;
+			arrow[3] = .5f * thickness;
+			arrow[4] = radius - 1.5f * thickness;
+			arrow[5] = .5f * thickness;
+			arrow[6] = radius - 1.5f * thickness;
+			arrow[7] = - .5f * thickness;
+		}
+	}
+
+	for (N = 0; N < Zp; ++N) {
+
+		float		Za = (float) N * (float) (2. * M_PI) / (float) Zp;
+
+		tfm[2] = cosf(Za);
+		tfm[3] = - sinf(Za);
+
+		pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
+		pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
+		pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
+		pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
+		pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
+		pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
+		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
+		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
+
+		nk_fill_polygon(canvas, pbuf, 4, nk->table[NK_COLOR_DRAWING_PEN]);
+	}
+
+	if (dtype == DRAWING_WITH_HALL) {
+
+		struct nk_color		col;
+		struct link_reg		*reg;
+		int			HS = -1;
+
+		reg = link_reg_lookup(pub->lp, "pm.fb_HS");
+		if (reg != NULL) { HS = reg->lval; }
+
+		arrow[0] = radius - 2.f * thickness;
+		arrow[1] = - thickness;
+		arrow[2] = radius - 2.f * thickness;
+		arrow[3] = thickness;
+		arrow[4] = radius;
+		arrow[5] = thickness;
+		arrow[6] = radius;
+		arrow[7] = - thickness;
+
+		for (N = 1; N <= 6; ++N) {
+
+			sprintf(pub->lbuf, "pm.hall_ST%i", N);
+
+			reg = link_reg_lookup(pub->lp, pub->lbuf);
+
+			if (reg == NULL)
+				break;
+
+			if ((reg->mode & LINK_REG_TYPE_FLOAT) == 0)
+				break;
+
+			tfm[2] = cosf(reg->fval * (float) (M_PI / 180.));
+			tfm[3] = - sinf(reg->fval * (float) (M_PI / 180.));
+
+			pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
+			pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
+			pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
+			pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
+			pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
+			pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
+			pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
+			pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
+
+			col = (N == HS) ? nk->table[NK_COLOR_ENABLED]
+					: nk->table[NK_COLOR_HIDDEN];
+
+			nk_fill_polygon(canvas, pbuf, 4, col);
+		}
+	}
+
+	tfm[2] = cosf(Fg * (float) (M_PI / 180.));
+	tfm[3] = - sinf(Fg * (float) (M_PI / 180.));
+
+	arrow[0] = - .5f * thickness;
+	arrow[1] = - .5f * thickness;
+	arrow[2] = - .5f * thickness;
+	arrow[3] = .5f * thickness;
+	arrow[4] = radius - 3.f * thickness;
+	arrow[5] = .5f * thickness;
+	arrow[6] = radius - 2.f * thickness;
+	arrow[7] = 0.f;
+	arrow[8] = radius - 3.f * thickness;
+	arrow[9] = - .5f * thickness;
+
+	pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
+	pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
+	pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
+	pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
+	pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
+	pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
+	pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
+	pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
+	pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
+	pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
+
+	nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_EDIT_NUMBER]);
+}
+
+static void
+pub_drawing_brick_colored(struct nk_sdl *nk, const int sym)
+{
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_style_selectable	select;
+	struct nk_color			colored;
+
+	select = ctx->style.selectable;
+
+	if (sym == 'a') {
+
+		colored = nk->table[NK_COLOR_ENABLED];
+	}
+	else if (sym == 'x') {
+
+		colored = nk->table[NK_COLOR_FLICKER_LIGHT];
+	}
+	else {
+		colored = nk->table[NK_COLOR_HIDDEN];
+	}
+
+	ctx->style.selectable.normal  = nk_style_item_color(colored);
+	ctx->style.selectable.hover   = nk_style_item_color(colored);
+	ctx->style.selectable.pressed = nk_style_item_color(colored);
+	ctx->style.selectable.normal_active  = nk_style_item_color(colored);
+	ctx->style.selectable.hover_active   = nk_style_item_color(colored);
+	ctx->style.selectable.pressed_active = nk_style_item_color(colored);
+
+	nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
+
+	ctx->style.selectable = select;
+}
+
+static void
 reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -1576,7 +1807,7 @@ reg_float_prog(struct public *pub, int reg_ID)
 	struct nk_style_edit		edit;
 	struct nk_color			hidden;
 
-	int				pc;
+	int				pce;
 
 	edit = ctx->style.edit;
 
@@ -1589,7 +1820,7 @@ reg_float_prog(struct public *pub, int reg_ID)
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_end(ctx);
 
-	if (reg_ID > 0 && reg_ID < LINK_REGS_MAX) {
+	if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
 
 		reg = &lp->reg[reg_ID];
 	}
@@ -1610,14 +1841,14 @@ reg_float_prog(struct public *pub, int reg_ID)
 
 		if (reg->started != 0) {
 
-			pc = (int) (1000.f * (reg->fval - reg->fmin)
+			pce = (int) (1000.f * (reg->fval - reg->fmin)
 					/ (reg->fmax - reg->fmin));
 		}
 		else {
-			pc = 0;
+			pce = 0;
 		}
 
-		nk_prog(ctx, pc, 1000, nk_false);
+		nk_prog(ctx, pce, 1000, nk_false);
 		nk_spacer(ctx);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
@@ -1700,10 +1931,24 @@ page_serial(struct public *pub)
 
 		if (pub->serial.started == 0) {
 
+			const char		*portname;
+			int			N;
+
 			serial_enumerate(&pub->serial.list);
 
 			pub->serial.started = 1;
 			pub->serial.baudrate = 2;
+
+			for (N = 0; N < pub->serial.list.dnum; ++N) {
+
+				portname = pub->serial.list.name[N];
+
+				if (strcmp(portname, fe->serialport) == 0) {
+
+					pub->serial.selected = N;
+					break;
+				}
+			}
 		}
 
 		nk_label(ctx, "Serial port", NK_TEXT_LEFT);
@@ -1738,11 +1983,19 @@ page_serial(struct public *pub)
 
 			link_open(pub->lp, pub->fe, portname, baudrate, SERIAL_DEFAULT);
 
-			strcpy(pub->lbuf, fe->storage);
-			strcat(pub->lbuf, DIRSEP);
-			strcat(pub->lbuf, FILE_LINK_LOG);
+			if (pub->lp->linked != 0) {
 
-			link_log_file_open(pub->lp, pub->lbuf);
+				strcpy(pub->lbuf, fe->storage);
+				strcat(pub->lbuf, DIRSEP);
+				strcat(pub->lbuf, FILE_LINK_LOG);
+
+				link_log_file_open(pub->lp, pub->lbuf);
+
+				strcpy(fe->serialport, portname);
+				config_write(pub->fe);
+
+				pub->popup_enum = POPUP_LINK_PROGRESS;
+			}
 		}
 
 		nk_spacer(ctx);
@@ -1773,6 +2026,14 @@ page_serial(struct public *pub)
 		nk_spacer(ctx);
 
 		if (nk_button_label_styled(ctx, &orange, "Drop")) {
+
+			if (		lp->reg_MAX_N > 300
+					&& lp->reg_MAX_N < LINK_REGS_MAX) {
+
+				fe->regmaxn = lp->reg_MAX_N;
+			}
+
+			config_write(pub->fe);
 
 			link_close(pub->lp);
 		}
@@ -1885,6 +2146,29 @@ page_serial(struct public *pub)
 		config_write(pub->fe);
 
 		pub_font_layout(pub);
+	}
+
+	if (pub->popup_enum == POPUP_LINK_PROGRESS) {
+
+		int 		link_pce;
+
+		link_pce = (int) (1000.f * lp->fetched_N / (fe->regmaxn + 5));
+
+		if (lp->active + 500 < lp->clock) {
+
+			link_pce = 1000;
+
+			if (		lp->reg_MAX_N > 300
+					&& lp->reg_MAX_N < LINK_REGS_MAX) {
+
+				fe->regmaxn = lp->reg_MAX_N;
+			}
+
+			config_write(pub->fe);
+		}
+
+		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
+				"Loading register list", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2290,6 +2574,7 @@ page_HAL(struct public *pub)
 static void
 page_in_network(struct public *pub)
 {
+	struct config_phobia		*fe = pub->fe;
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
@@ -2374,6 +2659,7 @@ page_in_network(struct public *pub)
 				link_remote(pub->lp);
 
 				pub->network.selected = -1;
+				pub->popup_enum = POPUP_LINK_PROGRESS;
 			}
 		}
 		else {
@@ -2383,6 +2669,7 @@ page_in_network(struct public *pub)
 				link_remote(pub->lp);
 
 				pub->network.selected = -1;
+				pub->popup_enum = POPUP_LINK_PROGRESS;
 			}
 		}
 	}
@@ -2409,6 +2696,7 @@ page_in_network(struct public *pub)
 				link_remote(pub->lp);
 
 				pub->network.selected = -1;
+				pub->popup_enum = POPUP_LINK_PROGRESS;
 			}
 		}
 	}
@@ -2535,6 +2823,29 @@ page_in_network(struct public *pub)
 		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type");
 		reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
 		reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
+	}
+
+	if (pub->popup_enum == POPUP_LINK_PROGRESS) {
+
+		int 		link_pce;
+
+		link_pce = (int) (1000.f * lp->fetched_N / (fe->regmaxn + 5));
+
+		if (lp->active + 500 < lp->clock) {
+
+			link_pce = 1000;
+
+			if (		lp->reg_MAX_N > 300
+					&& lp->reg_MAX_N < LINK_REGS_MAX) {
+
+				fe->regmaxn = lp->reg_MAX_N;
+			}
+
+			config_write(pub->fe);
+		}
+
+		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
+				"Loading registers list", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2915,48 +3226,6 @@ page_lu_FLUX(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
-
-	if (reg != NULL) {
-
-		int		rate;
-
-		reg->update = 1000;
-
-		rate = (reg->lval != 0) ? 200 : 0;
-
-		reg = link_reg_lookup(pub->lp, "pm.flux_ZONE");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE_FLUX");
-
-		if (		reg != NULL
-				&& reg->lval == 1) {
-
-			reg = link_reg_lookup(pub->lp, "pm.flux_E");
-			if (reg != NULL) {  reg->update = rate; }
-		}
-
-		if (		reg != NULL
-				&& reg->lval == 2) {
-
-			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
-			if (reg != NULL) { reg->update = rate; }
-		}
-	}
-
-	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_enum_errno(pub, "pm.flux_ZONE", "Speed ZONE", 0);
-	reg_float_um(pub, "pm.flux_wS", "Speed estimate", 0);
-	reg_float(pub, "pm.flux_E", "Flux linkage");
-	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
 	reg_float(pub, "pm.detach_threshold_BASE", "Detached voltage threshold");
 	reg_float(pub, "pm.detach_trip_AD", "Detached trip gain");
 	reg_float(pub, "pm.detach_gain_SF", "Detached loop gain");
@@ -2991,111 +3260,49 @@ page_lu_FLUX(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+
+	if (reg != NULL) {
+
+		int		rate;
+
+		reg->update = 1000;
+
+		rate = (reg->lval != 0) ? 200 : 0;
+
+		reg = link_reg_lookup(pub->lp, "pm.flux_ZONE");
+		if (reg != NULL) { reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE_FLUX");
+
+		if (		reg != NULL
+				&& reg->lval == 1) {
+
+			reg = link_reg_lookup(pub->lp, "pm.flux_E");
+			if (reg != NULL) {  reg->update = rate; }
+		}
+
+		if (		reg != NULL
+				&& reg->lval == 2) {
+
+			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
+			if (reg != NULL) { reg->update = rate; }
+		}
+	}
+
+	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
+	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
+	reg_float(pub, "pm.flux_E", "Flux linkage");
+	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
-}
-
-static void
-pub_drawing_motor_teeth(struct public *pub, float Fa, int Zp)
-{
-	struct nk_sdl			*nk = pub->nk;
-	struct nk_context		*ctx = &nk->ctx;
-	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
-	struct nk_rect			space;
-
-	float				tfm[4], arrow[12], pbuf[12];
-	float				radius, thickness;
-	int				tooth;
-
-	if (nk_widget(&space, ctx) == NK_WIDGET_INVALID)
-		return ;
-
-	radius = space.w / 2.f;
-	thickness = radius / 20.f;
-
-	space.x += thickness;
-	space.y += thickness;
-	space.w += - 2.f * thickness;
-	space.h += - 2.f * thickness;
-
-	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DRAWING_PEN]);
-
-	space.x += thickness;
-	space.y += thickness;
-	space.w += - 2.f * thickness;
-	space.h += - 2.f * thickness;
-
-	nk_fill_circle(canvas, space, nk->table[NK_COLOR_WINDOW]);
-
-	tfm[0] = space.x + space.w / 2.f;
-	tfm[1] = space.y + space.h / 2.f;
-
-	if (Zp > 1) {
-
-		arrow[0] = .7f * radius;
-		arrow[1] = - .5f * thickness;
-		arrow[2] = .7f * radius;
-		arrow[3] = .5f * thickness;
-		arrow[4] = radius - 1.5f * thickness;
-		arrow[5] = .5f * thickness;
-		arrow[6] = radius - 1.5f * thickness;
-		arrow[7] = 0.f;
-		arrow[8] = radius - 1.5f * thickness;
-		arrow[9] = - .5f * thickness;
-	}
-	else {
-		Zp = 0;
-	}
-
-	for (tooth = 0; tooth < Zp; ++tooth) {
-
-		float		Za = (float) tooth * (float) (2. * M_PI) / (float) Zp;
-
-		tfm[2] = cosf(Za);
-		tfm[3] = - sinf(Za);
-
-		pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
-		pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
-		pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
-		pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
-		pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
-		pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
-		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
-		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
-		pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
-		pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
-
-		nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_DRAWING_PEN]);
-	}
-
-	if (isfinite(Fa) != 0) {
-
-		tfm[2] = cosf(Fa);
-		tfm[3] = - sinf(Fa);
-
-		arrow[0] = - .5f * thickness;
-		arrow[1] = - .5f * thickness;
-		arrow[2] = - .5f * thickness;
-		arrow[3] = .5f * thickness;
-		arrow[4] = radius - 1.5f * thickness;
-		arrow[5] = .5f * thickness;
-		arrow[6] = radius - 1.2f * thickness;
-		arrow[7] = 0.f;
-		arrow[8] = radius - 1.5f * thickness;
-		arrow[9] = - .5f * thickness;
-
-		pbuf[0] = tfm[0] + (tfm[2] * arrow[0] - tfm[3] * arrow[1]);
-		pbuf[1] = tfm[1] + (tfm[3] * arrow[0] + tfm[2] * arrow[1]);
-		pbuf[2] = tfm[0] + (tfm[2] * arrow[2] - tfm[3] * arrow[3]);
-		pbuf[3] = tfm[1] + (tfm[3] * arrow[2] + tfm[2] * arrow[3]);
-		pbuf[4] = tfm[0] + (tfm[2] * arrow[4] - tfm[3] * arrow[5]);
-		pbuf[5] = tfm[1] + (tfm[3] * arrow[4] + tfm[2] * arrow[5]);
-		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
-		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
-		pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
-		pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
-
-		nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_EDIT_NUMBER]);
-	}
+	nk_spacer(ctx);
 }
 
 static void
@@ -3105,7 +3312,7 @@ page_lu_HFI(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	int				m_size = pub->fe_def_size_x / 3;
+	int				m_drawing = pub->fe_def_size_x / 4;
 
 	reg_float(pub, "pm.hfi_sine", "Injected current");
 	reg_float_um(pub, "pm.hfi_maximal", "Maximal speed", 0);
@@ -3130,8 +3337,11 @@ page_lu_HFI(struct public *pub)
 		rate = (reg->lval != 0) ? 400 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_location");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = fast; }
+		reg = link_reg_lookup(pub->lp, "pm.hfi_F_g");
+		if (reg != NULL) { reg->update = fast; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hfi_wS");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		reg = link_reg_lookup(pub->lp, "pm.hfi_im_L1");
 		if (reg != NULL) { reg->update = rate; }
@@ -3144,54 +3354,32 @@ page_lu_HFI(struct public *pub)
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_float_um(pub, "pm.lu_location", "LU absolute location", 1);
-	reg_float(pub, "pm.hfi_im_L1", "HF inductance L1");
-	reg_float(pub, "pm.hfi_im_L2", "HF inductance L2");
+	reg_float(pub, "pm.hfi_F_g", "HFI position");
+	reg_float_um(pub, "pm.hfi_wS", "HFI speed estimate", 1);
+	reg_float(pub, "pm.hfi_im_L1", "HF inductance D");
+	reg_float(pub, "pm.hfi_im_L2", "HF inductance Q");
 	reg_float(pub, "pm.hfi_im_R", "HF active impedance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, m_size + 20);
+	nk_layout_row_template_begin(ctx, m_drawing + 20);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
-	nk_layout_row_template_push_static(ctx, m_size + 20);
+	nk_layout_row_template_push_static(ctx, m_drawing + 20);
 	nk_layout_row_template_end(ctx);
 
 	nk_spacer(ctx);
 
 	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
 
-		nk_layout_row_static(ctx, m_size, m_size, 1);
+		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_location");
+		reg = link_reg_lookup(pub->lp, "pm.hfi_F_g");
 
-		if (reg != NULL) {
+		if (		reg != NULL
+				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
 
-			if (reg->um_sel == 0) {
-
-				reg += reg->um_sel;
-
-				pub_drawing_motor_teeth(pub, reg->fval, 0);
-			}
-			else if (reg->um_sel == 1) {
-
-				float		Fa;
-				int		Zp = 0;
-
-				reg += reg->um_sel;
-				Fa = reg->fval * (float) (M_PI / 180.);
-
-				reg = link_reg_lookup(pub->lp, "pm.const_Zp");
-				if (reg != NULL) { Zp = reg->lval; }
-
-				pub_drawing_motor_teeth(pub, Fa, Zp);
-			}
-			else if (reg->um_sel == 2) {
-
-				reg += reg->um_sel;
-
-				pub_drawing_motor_teeth(pub, reg->fval, 0);
-			}
+			pub_drawing_motor_position(pub, reg->fval, DRAWING_EMPTY);
 		}
 
 		nk_group_end(ctx);
@@ -3206,9 +3394,112 @@ static void
 page_lu_HALL(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
-	/* TODO */
+	int				m_drawing = pub->fe_def_size_x / 4;
+
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
+
+	if (nk_button_label(ctx, "Adjust HALL")) {
+
+		link_command(pub->lp, "pm_adjust_sensor_hall");
+	}
+
+	nk_spacer(ctx);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "pm.hall_ST1", "Hall ST 1");
+	reg_float(pub, "pm.hall_ST2", "Hall ST 2");
+	reg_float(pub, "pm.hall_ST3", "Hall ST 3");
+	reg_float(pub, "pm.hall_ST4", "Hall ST 4");
+	reg_float(pub, "pm.hall_ST5", "Hall ST 5");
+	reg_float(pub, "pm.hall_ST6", "Hall ST 6");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_toggle(pub, "pm.hall_USEABLE", "HALL is adjusted");
+	reg_float(pub, "pm.hall_time_prol", "Transition time");
+	reg_float(pub, "pm.hall_gain_PF", "Prolongation gain");
+	reg_float(pub, "pm.hall_gain_SF", "Speed loop gain");
+	reg_float(pub, "pm.hall_gain_IF", "Torque accel gain");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+
+	if (reg != NULL) {
+
+		int		rate, fast;
+
+		reg->update = 1000;
+
+		rate = (reg->lval != 0) ? 400 : 0;
+		fast = (reg->lval != 0) ? 20  : 0;
+
+		reg = link_reg_lookup(pub->lp, "pm.hall_F_g");
+		if (reg != NULL) { reg->update = fast; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hall_wS");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		rate = (reg->lval != 0) ? 400 : 1000;
+
+		reg = link_reg_lookup(pub->lp, "pm.fb_HS");
+		if (reg != NULL) { reg->update = rate; }
+	}
+
+	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+	reg_float(pub, "pm.hall_F_g", "HALL position");
+	reg_float_um(pub, "pm.hall_wS", "HALL speed estimate", 1);
+	reg_float(pub, "pm.fb_HS", "HALL feedback");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, m_drawing + 20);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+	nk_layout_row_template_push_static(ctx, m_drawing + 20);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+
+	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
+
+		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
+
+		reg = link_reg_lookup(pub->lp, "pm.hall_F_g");
+
+		if (		reg != NULL
+				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
+
+			pub_drawing_motor_position(pub, reg->fval, DRAWING_WITH_HALL);
+		}
+
+		nk_group_end(ctx);
+	}
+
+	if (lp->unable_warning[0] != 0) {
+
+		strcpy(pub->popup_msg, lp->unable_warning);
+		pub->popup_enum = POPUP_UNABLE_WARNING;
+
+		lp->unable_warning[0] = 0;
+	}
+
+	pub_popup_message(pub, POPUP_UNABLE_WARNING, pub->popup_msg);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 }
 
 static void
@@ -3534,40 +3825,6 @@ page_telemetry(struct public *pub)
 }
 
 static void
-pub_drawing_brick_colored(struct nk_sdl *nk, const int sym)
-{
-	struct nk_context		*ctx = &nk->ctx;
-
-	struct nk_style_selectable	select;
-	struct nk_color			colored;
-
-	select = ctx->style.selectable;
-
-	if (sym == 'a') {
-
-		colored = nk->table[NK_COLOR_ENABLED];
-	}
-	else if (sym == 'x') {
-
-		colored = nk->table[NK_COLOR_FLICKER_LIGHT];
-	}
-	else {
-		colored = nk->table[NK_COLOR_HIDDEN];
-	}
-
-	ctx->style.selectable.normal  = nk_style_item_color(colored);
-	ctx->style.selectable.hover   = nk_style_item_color(colored);
-	ctx->style.selectable.pressed = nk_style_item_color(colored);
-	ctx->style.selectable.normal_active  = nk_style_item_color(colored);
-	ctx->style.selectable.hover_active   = nk_style_item_color(colored);
-	ctx->style.selectable.pressed_active = nk_style_item_color(colored);
-
-	nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
-
-	ctx->style.selectable = select;
-}
-
-static void
 page_flash(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -3639,10 +3896,7 @@ page_flash(struct public *pub)
 
 	if (nk_group_begin(ctx, "INFO", NK_WINDOW_BORDER)) {
 
-		const char		*map;
-		int			sym;
-
-		int			N, bN;
+		int			N, bN, sym;
 
 		nk_layout_row_template_begin(ctx, 0);
 

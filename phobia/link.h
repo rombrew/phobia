@@ -89,6 +89,8 @@ struct link_pmc {
 	int			tlm_N;
 
 	struct link_reg		reg[LINK_REGS_MAX];
+
+	int			reg_MAX_N;
 };
 
 const char *lk_stoi(int *x, const char *s);

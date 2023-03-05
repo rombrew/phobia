@@ -72,7 +72,7 @@ pm_auto_basic_default(pmc_t *pm)
 
 	pm->fault_voltage_tol = 4.f;		/* (V) */
 	pm->fault_current_tol = 4.f;		/* (A) */
-	pm->fault_accuracy_tol = .1f;
+	pm->fault_accuracy_tol = .11f;
 	pm->fault_terminal_tol = 0.090f;	/* (V) */
 	pm->fault_current_halt = 156.f;		/* (A) */
 	pm->fault_voltage_halt = 57.f;		/* (V) */
@@ -157,7 +157,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->vsi_gain_LP = 5E-3f;
 
 	pm->tvm_USEABLE = PM_DISABLED;
-	pm->tvm_range_DC = 0.1f;
+	pm->tvm_range_pc = .11f;
 	pm->tvm_FIR_A[0] = 0.f;
 	pm->tvm_FIR_A[1] = 0.f;
 	pm->tvm_FIR_A[2] = 0.f;
@@ -187,7 +187,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->flux_gain_LO = 2E-6f;
 	pm->flux_gain_HI = 5E-5f;
 	pm->flux_gain_SF = 5E-2f;
-	pm->flux_gain_IF = 5E-1f;
+	pm->flux_gain_IF = .5f;
 
 	pm->kalman_gain_Q[0] = 5E-5f;
 	pm->kalman_gain_Q[1] = 5E-5f;
@@ -198,7 +198,7 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->zone_threshold_NOISE = 50.f;
 	pm->zone_threshold_BASE = 80.f;
-	pm->zone_gain_TH = 0.7f;
+	pm->zone_gain_TH = .7f;
 	pm->zone_gain_LP = 5E-3f;
 
 	pm->hfi_sine = 5.f;
@@ -206,23 +206,23 @@ pm_auto_config_default(pmc_t *pm)
 	pm->hfi_INJS = 6;
 	pm->hfi_SKIP = 1;
 	pm->hfi_ESTI = 5;
-	pm->hfi_gain_FP = 1E-0f;
+	pm->hfi_gain_FP = 1E+1f;
 	pm->hfi_gain_SF = 5E-3f;
-	pm->hfi_gain_IF = 1E-0f;
+	pm->hfi_gain_IF = 1.f;
 
 	pm->hall_USEABLE = PM_DISABLED;
 	pm->hall_time_prol = 100.f;		/* (ms) */
-	pm->hall_gain_PF = 1E-0f;
+	pm->hall_gain_PF = 1.f;
 	pm->hall_gain_SF = 5E-3f;
-	pm->hall_gain_IF = 1E-0f;
+	pm->hall_gain_IF = 1.f;
 
 	pm->abi_USEABLE = PM_DISABLED;
 	pm->abi_EPPR = 2400;
 	pm->abi_gear_Zs = 1;
 	pm->abi_gear_Zq = 1;
-	pm->abi_gain_PF = 1E-0f;
+	pm->abi_gain_PF = 1.f;
 	pm->abi_gain_SF = 5E-2f;
-	pm->abi_gain_IF = 1E-0f;
+	pm->abi_gain_IF = 1.f;
 
 	pm->sincos_USEABLE = PM_DISABLED;
 	pm->sincos_gear_Zs = 1;
@@ -234,6 +234,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->const_Ja = 0.f;
 	pm->const_im_L1 = 0.f;
 	pm->const_im_L2 = 0.f;
+	pm->const_im_B = 0.f;
+	pm->const_im_R = 0.f;
 
 	pm->watt_gain_LP = 5E-2f;
 
@@ -289,6 +291,8 @@ pm_auto_probe_default(pmc_t *pm)
 	pm->const_Ja = 0.f;
 	pm->const_im_L1 = 0.f;
 	pm->const_im_L2 = 0.f;
+	pm->const_im_B = 0.f;
+	pm->const_im_R = 0.f;
 
 	pm->i_slew_rate = 7000.f;
 	pm->i_gain_P = 2E-1f;
@@ -2550,7 +2554,7 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	if (		PM_CONFIG_TVM(pm) == PM_ENABLED
 			&& pm->tvm_USEABLE == PM_ENABLED) {
 
-		xMIN = (int) (pm->dc_resolution * (1.f - pm->tvm_range_DC));
+		xMIN = (int) (pm->dc_resolution * (1.f - pm->tvm_range_pc));
 
 		/* Check if terminal voltages were sampled within acceptable
 		 * zone. The VOLTAGE measurement will be used or rejected based
