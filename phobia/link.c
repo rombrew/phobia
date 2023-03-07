@@ -804,6 +804,20 @@ int link_fetch(struct link_pmc *lp, int clock)
 		link_grab_file_close(lp);
 	}
 
+	if (		lp->active + 1000 < lp->clock
+			&& lp->keep + 500 < lp->clock) {
+
+		lp->keep = lp->clock;
+
+		if (lp->active + 2000 > lp->clock) {
+
+			serial_fputs(priv->fd, LINK_EOL);
+		}
+		else {
+			link_close(lp);
+		}
+	}
+
 	if (		priv->fd_tlm != NULL
 			&& priv->tlm_clock < lp->clock) {
 

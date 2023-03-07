@@ -117,6 +117,7 @@ SH_DEF(pm_probe_base)
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -349,6 +350,7 @@ SH_DEF(pm_probe_const_R)
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;

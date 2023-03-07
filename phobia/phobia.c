@@ -624,7 +624,7 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
@@ -641,7 +641,7 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Grab")) {
+		if (nk_button_label(ctx, "Grab into RAM")) {
 
 			link_command(lp, "tlm_grab");
 		}
@@ -1584,7 +1584,7 @@ reg_float(struct public *pub, const char *sym, const char *name)
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
 			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-					reg->val, 79, nk_filter_default);
+	reg->val, 79, nk_filter_default);
 		}
 		else {
 			int			rc;
@@ -2214,6 +2214,7 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.ad_IC0", "C sensor drift");
 	reg_text_large(pub, "pm.self_BST", "Bootstrap retention time");
 	reg_text_large(pub, "pm.self_BM", "Self test result");
+	reg_text_large(pub, "pm.self_STDi", "Current noise STD");
 	reg_text_large(pub, "pm.self_RMSi", "Current sensor RMS");
 	reg_text_large(pub, "pm.self_RMSu", "Voltage sensor RMS");
 
@@ -2229,7 +2230,11 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.ad_UB1", "B voltage scale");
 	reg_float(pub, "pm.ad_UC0", "C voltage offset");
 	reg_float(pub, "pm.ad_UC1", "C voltage scale");
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "DT compensation");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is in service");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
@@ -2515,7 +2520,7 @@ page_probe(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		reg_float(pub, "pm.zone_threshold_NOISE", "NOISE threshold");
+		reg_float_um(pub, "pm.zone_threshold_NOISE", "NOISE threshold", 0);
 	}
 
 	if (lp->unable_warning[0] != 0) {
@@ -2845,7 +2850,7 @@ page_in_network(struct public *pub)
 		}
 
 		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Loading registers list", link_pce);
+				"Loading register list", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3163,7 +3168,7 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_hold_angle", "Probe hold angle");
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
 	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
-	reg_float(pub, "pm.probe_freq_sine_hz", "Probe sine frequency");
+	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
 	reg_float_um(pub, "pm.probe_speed_detached", "Probe speed (detached)", 0);
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
@@ -3182,7 +3187,20 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.vsi_gain_LP", "VSI LPF gain");
+	reg_enum_combo(pub, "pm.vsi_mask_XF", "VSI channel mask");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is in service");
+	reg_float(pub, "pm.tvm_clean_zone", "TVM clean zone");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "pm.lu_transient", "LU transient rate");
+	reg_float(pub, "pm.lu_gain_QF", "LU torque gain QF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3425,10 +3443,10 @@ page_lu_HALL(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.hall_USEABLE", "HALL is adjusted");
+	reg_enum_toggle(pub, "pm.hall_USEABLE", "HALL is in service");
 	reg_float(pub, "pm.hall_time_prol", "Transition time");
-	reg_float(pub, "pm.hall_gain_PF", "Prolongation gain");
 	reg_float(pub, "pm.hall_gain_SF", "Speed loop gain");
+	reg_float(pub, "pm.hall_gain_PF", "Transition gain");
 	reg_float(pub, "pm.hall_gain_IF", "Torque accel gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3576,7 +3594,8 @@ page_lp_current(struct public *pub)
 	reg_float(pub, "pm.i_reverse", "Maximal reverse current");
 	reg_float(pub, "pm.i_derated_HFI", "Derated on HFI");
 	reg_float(pub, "pm.i_slew_rate", "Slew rate");
-	reg_float(pub, "pm.i_tol_Z", "Dead Zone");
+	reg_float(pub, "pm.i_tolerance", "Tolerance");
+	reg_float(pub, "pm.i_damping", "Damping ratio");
 	reg_float(pub, "pm.i_gain_P", "Proportional gain P");
 	reg_float(pub, "pm.i_gain_I", "Integral gain I");
 
@@ -3633,12 +3652,12 @@ page_lp_speed(struct public *pub)
 	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 0);
 	reg_float(pub, "pm.s_linspan", "Regulation span (CC)");
-	reg_float(pub, "pm.s_tol_Z", "Dead Zone");
+	reg_float(pub, "pm.s_tolerance", "Tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.lu_gain_QF", "Torque gain QF");
+	reg_float(pub, "pm.lu_gain_QF", "LU torque gain QF");
 	reg_float(pub, "pm.s_gain_P", "Proportional gain P");
 	reg_float(pub, "pm.s_gain_I", "Forward gain I");
 
@@ -3746,8 +3765,8 @@ page_telemetry(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "tlm.freq_grab_hz", "Grab frequency");
-	reg_float(pub, "tlm.freq_live_hz", "Live frequency");
+	reg_float(pub, "tlm.grabfreq", "Grab into RAM frequency");
+	reg_float(pub, "tlm.livefreq", "Live frequency");
 
 	link_reg_clean_all_always(pub->lp);
 

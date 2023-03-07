@@ -84,6 +84,27 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 				pm->fsm_errno = PM_ERROR_ZERO_DRIFT_FAULT;
 			}
 
+			lse_std(ls);
+
+			pm->self_STDi[0] = (pm->vsi_AF == 0) ? ls->std.m[0] : 0.f;
+			pm->self_STDi[1] = (pm->vsi_BF == 0) ? ls->std.m[1] : 0.f;
+			pm->self_STDi[2] = (pm->vsi_CF == 0) ? ls->std.m[2] : 0.f;
+
+			if (		   m_isfinitef(pm->self_STDi[0]) != 0
+					&& m_isfinitef(pm->self_STDi[1]) != 0
+					&& m_isfinitef(pm->self_STDi[2]) != 0) {
+
+				if (		   pm->self_STDi[0] > pm->fault_current_tol
+						|| pm->self_STDi[1] > pm->fault_current_tol
+						|| pm->self_STDi[2] > pm->fault_current_tol) {
+
+					pm->fsm_errno = PM_ERROR_INSUFFICIENT_ACCURACY;
+				}
+			}
+			else {
+				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+			}
+
 			pm->fsm_state = PM_STATE_HALT;
 			pm->fsm_phase = 0;
 			break;
@@ -562,7 +583,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			xDC = (pm->fsm_subi == 0) ? 0 : pm->dc_resolution;
 
 			pm->proc_set_DC(xDC, xDC, xDC);
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 
 			lse_construct(ls, LSE_CASCADE_MAX, 1, 4);
 
@@ -662,7 +683,7 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 		case 6:
 			xMIN = pm->ts_minimal;
-			xMAX = (int) (pm->dc_resolution * pm->tvm_range_pc);
+			xMAX = (int) (pm->dc_resolution * pm->tvm_clean_zone);
 
 			switch (pm->fsm_subi) {
 
@@ -771,6 +792,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm->tvm_FIR_C[1] = pm->probe_LS[2].sol.m[1];
 			pm->tvm_FIR_C[2] = pm->probe_LS[2].sol.m[2];
 
+			lse_std(&pm->probe_LS[0]);
+			lse_std(&pm->probe_LS[1]);
+			lse_std(&pm->probe_LS[2]);
+
 			pm->self_RMSu[1] = pm->probe_LS[0].std.m[0];
 			pm->self_RMSu[2] = pm->probe_LS[1].std.m[0];
 			pm->self_RMSu[3] = pm->probe_LS[2].std.m[0];
@@ -811,7 +836,8 @@ static void
 pm_fsm_state_adjust_current(pmc_t *pm)
 {
 	lse_t			*ls = &pm->probe_LS[0];
-	lse_float_t		v[3];
+	lse_t			*lb = &pm->probe_LS[1];
+	lse_float_t		v[4];
 
 	float			eA, uA, uMAX, REF;
 
@@ -821,6 +847,18 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			pm->proc_set_DC(0, 0, 0);
 			pm->proc_set_Z(PM_Z_ABC);
 
+			lse_construct(lb, LSE_CASCADE_MAX, 3, 1);
+
+			pm_clearance(pm, 0, 0, 0);
+			pm_clearance(pm, 0, 0, 0);
+
+			v[0] = (pm->vsi_AF == 0) ? 1.f : 0.f;
+			v[1] = (pm->vsi_BF == 0) ? 1.f : 0.f;
+			v[2] = (pm->vsi_CF == 0) ? 1.f : 0.f;
+			v[3] = v[0] + v[1] + v[2];
+
+			lse_insert(lb, v);
+
 			pm->fsm_subi = 0;
 
 			pm->fsm_errno = PM_OK;
@@ -828,17 +866,22 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			break;
 
 		case 1:
-			pm_clearance(pm, 0, 0, 0);
-			pm_clearance(pm, 0, 0, 0);
-
-			while (pm->fsm_subi < 3) {
-
+			do {
 				if (pm->fsm_subi == 0) {
 
 					if (		   pm->vsi_AF == 0
 							&& pm->vsi_BF == 0) {
 
 						pm->proc_set_Z(PM_Z_C);
+
+						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+
+						pm->i_integral_D = 0.f;
+
+						pm->tm_value = 0;
+						pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
+
+						pm->fsm_phase = 2;
 						break;
 					}
 				}
@@ -848,6 +891,15 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 							&& pm->vsi_CF == 0) {
 
 						pm->proc_set_Z(PM_Z_B);
+
+						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+
+						pm->i_integral_D = 0.f;
+
+						pm->tm_value = 0;
+						pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
+
+						pm->fsm_phase = 2;
 						break;
 					}
 				}
@@ -857,28 +909,26 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 							&& pm->vsi_CF == 0) {
 
 						pm->proc_set_Z(PM_Z_A);
+
+						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+
+						pm->i_integral_D = 0.f;
+
+						pm->tm_value = 0;
+						pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
+
+						pm->fsm_phase = 2;
 						break;
 					}
+				}
+				else {
+					pm->fsm_phase = 6;
+					break;
 				}
 
 				pm->fsm_subi++;
 			}
-
-			if (pm->fsm_subi < 3) {
-
-				lse_construct(ls, LSE_CASCADE_MAX, 1, 2);
-
-				pm->i_integral_D = 0.f;
-
-				pm->tm_value = 0;
-				pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
-
-				pm->fsm_phase = 2;
-			}
-			else {
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-			}
+			while (1);
 			break;
 
 		case 4:
@@ -887,18 +937,21 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				v[0] = 1.f;
 				v[1] = pm->fb_iA;
 				v[2] = pm->fb_iB;
+				v[3] = (pm->vsi_CF == 0) ? pm->fb_iC : 0.f;
 			}
 			else if (pm->fsm_subi == 1) {
 
 				v[0] = 1.f;
 				v[1] = pm->fb_iA;
 				v[2] = pm->fb_iC;
+				v[3] = (pm->vsi_BF == 0) ? pm->fb_iB : 0.f;
 			}
 			else if (pm->fsm_subi == 2) {
 
 				v[0] = 1.f;
 				v[1] = pm->fb_iB;
 				v[2] = pm->fb_iC;
+				v[3] = (pm->vsi_AF == 0) ? pm->fb_iA : 0.f;
 			}
 
 			lse_insert(ls, v);
@@ -915,7 +968,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				: (pm->fsm_subi == 1) ? pm->fb_iA
 				: (pm->fsm_subi == 2) ? pm->fb_iB : 0.f;
 
-			eA = pm->probe_current_hold - REF;
+			eA = pm->i_track_D - REF;
 
 			pm->i_integral_D += pm->probe_gain_I * eA;
 			uA = pm->probe_gain_P * eA + pm->i_integral_D;
@@ -955,26 +1008,93 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 		case 5:
 			lse_solve(ls);
 
+			REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
+
 			if (pm->fsm_subi == 0) {
 
-				REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
+				if (pm->vsi_CF == 0) {
 
-				pm->ad_IA[1] *= REF / ls->sol.m[0];
-				pm->ad_IB[1] *= - REF / ls->sol.m[1];
+					pm->self_RMSi[0] = ls->sol.m[2];
+				}
+
+				v[0] = REF / ls->sol.m[0];
+				v[1] = REF / ls->sol.m[1];
+				v[2] = 0.f;
+				v[3] = 0.f;
+
+				lse_insert(lb, v);
 			}
 			else if (pm->fsm_subi == 1) {
 
-				REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
+				if (pm->vsi_BF == 0) {
 
-				pm->ad_IA[1] *= REF / ls->sol.m[0];
-				pm->ad_IC[1] *= - REF / ls->sol.m[1];
+					pm->self_RMSi[1] = ls->sol.m[2];
+				}
+
+				v[0] = REF / ls->sol.m[0];
+				v[1] = 0.f;
+				v[2] = REF / ls->sol.m[1];
+				v[3] = 0.f;
+
+				lse_insert(lb, v);
 			}
 			else if (pm->fsm_subi == 2) {
 
-				REF = (ls->sol.m[0] - ls->sol.m[1]) / 2.f;
+				if (pm->vsi_AF == 0) {
 
-				pm->ad_IB[1] *= REF / ls->sol.m[0];
-				pm->ad_IC[1] *= - REF / ls->sol.m[1];
+					pm->self_RMSi[2] = ls->sol.m[2];
+				}
+
+				v[0] = 0.f;
+				v[1] = REF / ls->sol.m[0];
+				v[2] = REF / ls->sol.m[1];
+				v[3] = 0.f;
+
+				lse_insert(lb, v);
+			}
+
+			pm->fsm_subi++;
+			pm->fsm_phase = (pm->fsm_subi < 3) ? 1 : 6;
+			break;
+
+		case 6:
+			REF = .01f;
+
+			v[0] = REF;
+			v[1] = 0.f;
+			v[2] = 0.f;
+			v[3] = REF;
+
+			lse_insert(lb, v);
+
+			v[0] = 0.f;
+			v[1] = REF;
+			v[2] = 0.f;
+			v[3] = REF;
+
+			lse_insert(lb, v);
+
+			v[0] = 0.f;
+			v[1] = 0.f;
+			v[2] = REF;
+			v[3] = REF;
+
+			lse_insert(lb, v);
+			lse_solve(lb);
+
+			if (		   m_isfinitef(lb->sol.m[0]) != 0
+					&& m_isfinitef(lb->sol.m[1]) != 0
+					&& m_isfinitef(lb->sol.m[2]) != 0
+					&& lb->sol.m[0] > M_EPS_F
+					&& lb->sol.m[1] > M_EPS_F
+					&& lb->sol.m[2] > M_EPS_F) {
+
+				pm->ad_IA[1] /= lb->sol.m[0];
+				pm->ad_IB[1] /= lb->sol.m[1];
+				pm->ad_IC[1] /= lb->sol.m[2];
+			}
+			else {
+				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
 			}
 
 			if (		   m_fabsf(pm->ad_IA[1] - 1.f) > pm->fault_accuracy_tol
@@ -984,8 +1104,8 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 				pm->fsm_errno = PM_ERROR_INSUFFICIENT_ACCURACY;
 			}
 
-			pm->fsm_subi++;
-			pm->fsm_phase = 1;
+			pm->fsm_state = PM_STATE_HALT;
+			pm->fsm_phase = 0;
 			break;
 	}
 }
@@ -1049,7 +1169,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 
 		case 0:
 			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 
 			lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
 
@@ -1076,8 +1196,8 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 			break;
 
 		case 1:
-			ramp_A = (float) (pm->tm_value + 1) * pm->probe_current_hold
-				/ (float) pm->tm_end;
+			ramp_A = (float) (pm->tm_value + 1)
+				* pm->probe_current_hold / (float) pm->tm_end;
 
 			pm->i_track_D = pm->hfi_REM[0] * ramp_A;
 			pm->i_track_Q = pm->hfi_REM[1] * ramp_A;
@@ -1164,7 +1284,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 
 		case 0:
 			pm->proc_set_DC(0, 0, 0);
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 
 			pm->lu_F[0] = 1.f;
 			pm->lu_F[1] = 0.f;
@@ -1190,7 +1310,7 @@ pm_fsm_state_probe_const_l(pmc_t *pm)
 			pm->hfi_REM[8] = 0.f;
 			pm->hfi_REM[9] = 0.f;
 
-			pm->quick_hfwS = 2.f * M_PI_F * pm->probe_freq_sine_hz;
+			pm->quick_hfwS = 2.f * M_PI_F * pm->probe_freq_sine;
 			pm->quick_hfSC[0] = m_cosf(pm->quick_hfwS * pm->dT * .5f);
 			pm->quick_hfSC[1] = m_sinf(pm->quick_hfwS * pm->dT * .5f);
 
@@ -1411,7 +1531,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 					pm->lu_MODE = PM_LU_ESTIMATE_FLUX;
 
 					pm->proc_set_DC(0, 0, 0);
-					pm->proc_set_Z(PM_Z_NUL);
+					pm->proc_set_Z(PM_Z_NONE);
 				}
 
 				pm->fsm_state = PM_STATE_IDLE;

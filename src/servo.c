@@ -20,7 +20,7 @@ int pm_wait_for_SETTLE()
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (m_fabsf(pm.x_discrepancy) < (pm.x_tol_Z * 3.f))
+		if (m_fabsf(pm.x_discrepancy) < (pm.x_tolerance * 3.f))
 			break;
 
 		if (xTick > (TickType_t) 10000) {

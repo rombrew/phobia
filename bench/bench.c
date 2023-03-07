@@ -272,26 +272,12 @@ void sim_START_bench()
 	ts_BASE();
 
 	blm_Stop(&m);
-	sim_TlmDrop();
-
-	//pm.config_TVM = PM_DISABLED;
-	//pm.config_VSI_PRECISE = PM_ENABLED;
-	pm.config_LU_ESTIMATE_FLUX = PM_FLUX_KALMAN;
-	pm.config_LU_ESTIMATE_HFI = PM_HFI_EIGEN;
-	pm.s_accel = 500000.f;
-
-	m.X[3] = 1.;
+	//sim_TlmDrop();
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_IDLE();
 
 	sim_Run(.1);
-
-	pm.s_setpoint_speed = 10.f / (30. / M_PI / m.Zp);
-	sim_Run(1.);
-
-	pm.s_setpoint_speed = 20.f / (30. / M_PI / m.Zp);
-	sim_Run(1.);
 
 	pm.s_setpoint_speed = 2000.f / (30. / M_PI / m.Zp);
 	sim_Run(1.);

@@ -11,8 +11,8 @@
 
 void tlm_reg_default(tlm_t *tlm)
 {
-	tlm->freq_grab_hz = 0;
-	tlm->freq_live_hz = 20;
+	tlm->grabfreq = 0;
+	tlm->livefreq = 20;
 
 	tlm->reg_ID[0] = ID_PM_LU_ID;
 	tlm->reg_ID[1] = ID_PM_LU_IQ;
@@ -105,7 +105,7 @@ SH_DEF(tlm_default)
 
 SH_DEF(tlm_grab)
 {
-	int		freq = tlm.freq_grab_hz;
+	int		freq = tlm.grabfreq;
 
 	stoi(&freq, s);
 
@@ -223,15 +223,15 @@ void task_tlm_FLUSH(void *pData)
 SH_DEF(tlm_live_sync)
 {
 	TaskHandle_t		xHandle;
-	int			xC, freq = tlm.freq_live_hz;
+	int			xC, freq = tlm.livefreq;
 
 	xTaskCreate(task_tlm_FLUSH, "FLUSH", configMINIMAL_STACK_SIZE,
 			(void *) &tlm, 1, &xHandle);
 
 	if (stoi(&freq, s) != NULL) {
 
-		freq = (freq < 1) ? 1 : (freq > tlm.freq_live_hz)
-			? tlm.freq_live_hz : freq;
+		freq = (freq < 1) ? 1 : (freq > tlm.livefreq)
+			? tlm.livefreq : freq;
 	}
 
 	tlm_startup(&tlm, freq, TLM_MODE_LIVE);

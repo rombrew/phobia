@@ -14,7 +14,7 @@
 #define PM_SFI(s)		#s
 
 enum {
-	PM_Z_NUL				= 0,
+	PM_Z_NONE				= 0,
 	PM_Z_A,
 	PM_Z_B,
 	PM_Z_AB,
@@ -22,6 +22,13 @@ enum {
 	PM_Z_AC,
 	PM_Z_BC,
 	PM_Z_ABC
+};
+
+enum {
+	PM_MASK_NONE				= 0,
+	PM_MASK_A,
+	PM_MASK_B,
+	PM_MASK_C,
 };
 
 enum {
@@ -210,6 +217,7 @@ typedef struct {
 
 	float		self_BST[3];
 	int		self_BM[8];
+	float		self_STDi[3];
 	float		self_RMSi[3];
 	float		self_RMSu[4];
 
@@ -283,7 +291,7 @@ typedef struct {
 	float		probe_hold_angle;
 	float		probe_current_sine;
 	float		probe_current_bias;
-	float		probe_freq_sine_hz;
+	float		probe_freq_sine;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
 	float		probe_gain_P;
@@ -305,6 +313,7 @@ typedef struct {
 	float		vsi_DX;
 	float		vsi_DY;
 	float		vsi_gain_LP;
+	int		vsi_mask_XF;
 
 	int		vsi_SA;
 	int		vsi_SB;
@@ -324,7 +333,7 @@ typedef struct {
 	int		vsi_CZ;
 
 	int		tvm_USEABLE;
-	float		tvm_range_pc;
+	float		tvm_clean_zone;
 	float		tvm_A;
 	float		tvm_B;
 	float		tvm_C;
@@ -438,8 +447,8 @@ typedef struct {
 	float		hall_F[2];
 	float		hall_wS;
 	float		hall_time_prol;
-	float		hall_gain_PF;
 	float		hall_gain_SF;
+	float		hall_gain_PF;
 	float		hall_gain_IF;
 
 	int		abi_OPERATE;
@@ -458,8 +467,8 @@ typedef struct {
 	float		abi_F[2];
 	float		abi_wS;
 	float		abi_location;
-	float		abi_gain_PF;
 	float		abi_gain_SF;
+	float		abi_gain_PF;
 	float		abi_gain_IF;
 
 	int		sincos_OPERATE;
@@ -522,7 +531,8 @@ typedef struct {
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_slew_rate;
-	float		i_tol_Z;
+	float		i_tolerance;
+	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
 
@@ -539,7 +549,7 @@ typedef struct {
 	float		s_accel;
 	float		s_linspan;
 	float		s_track;
-	float		s_tol_Z;
+	float		s_tolerance;
 	float		s_gain_P;
 	float		s_gain_I;
 
@@ -549,8 +559,8 @@ typedef struct {
 	float		x_setpoint_location;
 	float		x_setpoint_speed;
 	float		x_discrepancy;
-	float		x_tol_NEAR;
-	float		x_tol_Z;
+	float		x_weak_zone;
+	float		x_tolerance;
 	float		x_gain_P;
 	float		x_gain_N;
 

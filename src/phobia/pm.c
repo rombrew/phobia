@@ -72,7 +72,7 @@ pm_auto_basic_default(pmc_t *pm)
 
 	pm->fault_voltage_tol = 4.f;		/* (V) */
 	pm->fault_current_tol = 4.f;		/* (A) */
-	pm->fault_accuracy_tol = .11f;
+	pm->fault_accuracy_tol = .10f;		/*     */
 	pm->fault_terminal_tol = 0.090f;	/* (V) */
 	pm->fault_current_halt = 156.f;		/* (A) */
 	pm->fault_voltage_halt = 57.f;		/* (V) */
@@ -148,16 +148,17 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 5.f;
 	pm->probe_current_bias = 0.f;
-	pm->probe_freq_sine_hz = 1100.f;
+	pm->probe_freq_sine = 1100.f;
 	pm->probe_speed_hold = 900.f;
 	pm->probe_speed_detached = 50.f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
 	pm->vsi_gain_LP = 5E-3f;
+	pm->vsi_mask_XF = PM_MASK_NONE;
 
 	pm->tvm_USEABLE = PM_DISABLED;
-	pm->tvm_range_pc = .11f;
+	pm->tvm_clean_zone = .10f;
 	pm->tvm_FIR_A[0] = 0.f;
 	pm->tvm_FIR_A[1] = 0.f;
 	pm->tvm_FIR_A[2] = 0.f;
@@ -212,16 +213,16 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->hall_USEABLE = PM_DISABLED;
 	pm->hall_time_prol = 100.f;		/* (ms) */
-	pm->hall_gain_PF = 1.f;
 	pm->hall_gain_SF = 5E-3f;
+	pm->hall_gain_PF = 1.f;
 	pm->hall_gain_IF = 1.f;
 
 	pm->abi_USEABLE = PM_DISABLED;
 	pm->abi_EPPR = 2400;
 	pm->abi_gear_Zs = 1;
 	pm->abi_gear_Zq = 1;
-	pm->abi_gain_PF = 1.f;
 	pm->abi_gain_SF = 5E-2f;
+	pm->abi_gain_PF = 1.f;
 	pm->abi_gain_IF = 1.f;
 
 	pm->sincos_USEABLE = PM_DISABLED;
@@ -241,7 +242,8 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->i_derated_HFI = 30.f;
 	pm->i_slew_rate = 7000.f;
-	pm->i_tol_Z = 0.f;
+	pm->i_tolerance = 0.f;
+	pm->i_damping = 1.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
@@ -255,7 +257,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_reverse = pm->s_maximal;
 	pm->s_accel = 7000.f;
 	pm->s_linspan = 100.f;
-	pm->s_tol_Z = 0.f;
+	pm->s_tolerance = 0.f;
 	pm->s_gain_P = 1E-1f;
 	pm->s_gain_I = 1.f;
 
@@ -263,8 +265,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->x_location_range[1] = 10.f;
 	pm->x_location_home = 0.f;
 
-	pm->x_tol_NEAR = 1.f;
-	pm->x_tol_Z = 0.f;
+	pm->x_weak_zone = 1.f;
+	pm->x_tolerance = 0.f;
 	pm->x_gain_P = 35.f;
 	pm->x_gain_N = 5.f;
 
@@ -457,7 +459,7 @@ pm_auto_forced_accel(pmc_t *pm)
 static void
 pm_auto_loop_current(pmc_t *pm)
 {
-	float		Lm, Kp, Ki;
+	float		Lm, Df, Kp, Ki;
 
 	if (		   pm->const_im_L1 > M_EPS_F
 			&& pm->const_im_L1 > M_EPS_F) {
@@ -465,14 +467,16 @@ pm_auto_loop_current(pmc_t *pm)
 		Lm = (pm->const_im_L1 < pm->const_im_L2)
 			? pm->const_im_L1 : pm->const_im_L2;
 
-		/* Tune current loop based on state-space model.
+		Df = pm->i_damping;
+
+		/* Tune the current loop (based on state-space model).
 		 *
 		 *          [1-R*T/L-Kp*T/L  -Ki*T/L]
 		 * x(k+1) = [1                1     ] * x(k)
 		 *
 		 * */
-		Kp = 0.5f * Lm * pm->freq_hz - pm->const_R;
-		Ki = 0.02f * Lm * pm->freq_hz;
+		Kp = 0.5f * Df * Lm * pm->freq_hz - pm->const_R;
+		Ki = 0.02f * Df * Lm * pm->freq_hz;
 
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
@@ -486,6 +490,8 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_loop_speed(pmc_t *pm)
 {
+	float		Df = pm->i_damping;
+
 	if (pm->zone_threshold_NOISE > M_EPS_F) {
 
 		/* Tune load torque estimate.
@@ -493,13 +499,13 @@ pm_auto_loop_speed(pmc_t *pm)
 		if (		pm->const_E > M_EPS_F
 				&& pm->const_Ja > M_EPS_F) {
 
-			pm->lu_gain_QF = 10.f * pm->const_E * pm->dT
+			pm->lu_gain_QF = 10.f * Df * pm->const_E * pm->dT
 				/ pm->const_Ja / pm->zone_threshold_NOISE;
 		}
 
 		/* Tune speed loop based on threshold NOISE value.
 		 * */
-		pm->s_gain_P = 2.f / pm->zone_threshold_NOISE;
+		pm->s_gain_P = 2.f * Df / pm->zone_threshold_NOISE;
 		pm->s_gain_I = 1.f;
 	}
 }
@@ -2147,7 +2153,7 @@ pm_lu_FSM(pmc_t *pm)
 
 			pm->lu_MODE = PM_LU_ESTIMATE_FLUX;
 
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 		}
 		else if (pm->base_TIM < lev_SKIP) {
 
@@ -2161,7 +2167,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_MODE = PM_LU_SENSOR_HALL;
 			pm->hall_OPERATE = PM_DISABLED;
 
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 		}
 		else if (	pm->config_LU_SENSOR == PM_SENSOR_ABI
 				&& pm->config_ABI_FRONTEND == PM_ABI_ABSOLUTE
@@ -2170,7 +2176,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_MODE = PM_LU_SENSOR_ABI;
 			pm->abi_OPERATE = PM_DISABLED;
 
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 		}
 		else if (	pm->config_LU_ESTIMATE_HFI != PM_HFI_NONE
 				&& pm->config_HFI_POLARITY == PM_ENABLED) {
@@ -2178,7 +2184,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->lu_MODE = PM_LU_ESTIMATE_HFI;
 			pm->hfi_TYPE = PM_HFI_NONE;
 
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 		}
 		else if (pm->config_LU_FORCED == PM_ENABLED) {
 
@@ -2190,7 +2196,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->forced_F[1] = pm->lu_F[1];
 			pm->forced_wS = pm->lu_wS;
 
-			pm->proc_set_Z(PM_Z_NUL);
+			pm->proc_set_Z(PM_Z_NONE);
 		}
 	}
 	else if (pm->lu_MODE == PM_LU_FORCED) {
@@ -2536,6 +2542,12 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 		pm->vsi_CF = (pm->vsi_CG >= pm->ts_clearance && xC > pm->ts_skip) ? 0 : 1;
 	}
 
+	/* You can mask a specific channel for some reasons.
+	 * */
+	pm->vsi_AF = (pm->vsi_mask_XF == PM_MASK_A) ? 1 : pm->vsi_AF;
+	pm->vsi_BF = (pm->vsi_mask_XF == PM_MASK_B) ? 1 : pm->vsi_BF;
+	pm->vsi_CF = (pm->vsi_mask_XF == PM_MASK_C) ? 1 : pm->vsi_CF;
+
 	/* Chech if at least TWO samples are clean so they can be used in
 	 * control loops.
 	 * */
@@ -2554,7 +2566,7 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	if (		PM_CONFIG_TVM(pm) == PM_ENABLED
 			&& pm->tvm_USEABLE == PM_ENABLED) {
 
-		xMIN = (int) (pm->dc_resolution * (1.f - pm->tvm_range_pc));
+		xMIN = (int) (pm->dc_resolution * (1.f - pm->tvm_clean_zone));
 
 		/* Check if terminal voltages were sampled within acceptable
 		 * zone. The VOLTAGE measurement will be used or rejected based
@@ -2852,9 +2864,9 @@ pm_form_iSP(pmc_t *pm, float eS)
 {
 	float		iSP;
 
-	/* There is a DEAD zone.
+	/* There is a tolerance.
 	 * */
-	eS = (m_fabsf(eS) > pm->s_tol_Z) ? eS : 0.f;
+	eS = (m_fabsf(eS) > pm->s_tolerance) ? eS : 0.f;
 
 	/* Basic proportional regulator.
 	 * */
@@ -3121,10 +3133,10 @@ pm_loop_current(pmc_t *pm)
 	eD = pm->i_track_D - pm->lu_iD;
 	eQ = pm->i_track_Q - pm->lu_iQ;
 
-	/* There is a DEAD zone.
+	/* There is a tolerance.
 	 * */
-	eD = (m_fabsf(eD) > pm->i_tol_Z) ? eD : 0.f;
-	eQ = (m_fabsf(eQ) > pm->i_tol_Z) ? eQ : 0.f;
+	eD = (m_fabsf(eD) > pm->i_tolerance) ? eD : 0.f;
+	eQ = (m_fabsf(eQ) > pm->i_tolerance) ? eQ : 0.f;
 
 	uD = pm->i_gain_P * eD;
 	uQ = pm->i_gain_P * eQ;
@@ -3251,13 +3263,13 @@ pm_loop_servo(pmc_t *pm)
 	xER_abs = m_fabsf(xER);
 	xER = (xER < 0.f) ? - m_sqrtf(xER_abs) : m_sqrtf(xER_abs);
 
-	/* There is a DEAD zone.
+	/* There is a tolerance.
 	 * */
-	xER = (xER_abs > pm->x_tol_Z) ? xER : 0.f;
+	xER = (xER_abs > pm->x_tolerance) ? xER : 0.f;
 
 	/* Slow down in NEAR zone.
 	 * */
-	lerp = (xER_abs < pm->x_tol_NEAR) ? xER_abs / pm->x_tol_NEAR : 1.f;
+	lerp = (xER_abs < pm->x_weak_zone) ? xER_abs / pm->x_weak_zone : 1.f;
 	gain_S = pm->x_gain_P * lerp + pm->x_gain_N * (1.f - lerp);
 
 	wSP = xER * gain_S + pm->x_setpoint_speed;

@@ -121,6 +121,9 @@ void ts_self_adjust()
 		printf("ad_IABC0 %.3f %.3f %.3f (A)\n", pm.ad_IA[0],
 				pm.ad_IB[0], pm.ad_IC[0]);
 
+		printf("self_STDi %.3f %.3f %.3f (A)\n", pm.self_STDi[0],
+				pm.self_STDi[1], pm.self_STDi[2]);
+
 		if (pm.fsm_errno != PM_OK)
 			break;
 

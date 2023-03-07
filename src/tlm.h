@@ -14,8 +14,8 @@ enum {
 
 typedef struct {
 
-	int		freq_grab_hz;
-	int		freq_live_hz;
+	int		grabfreq;
+	int		livefreq;
 
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];

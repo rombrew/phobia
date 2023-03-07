@@ -29,6 +29,7 @@ SH_DEF(pm_self_test)
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -60,12 +61,12 @@ SH_DEF(pm_self_test)
 
 				case 0:
 					pm.proc_set_DC(0, 0, 0);
-					pm.proc_set_Z(PM_Z_NUL);
+					pm.proc_set_Z(PM_Z_NONE);
 					break;
 
 				case 1:
 					pm.proc_set_DC(xDC, xDC, xDC);
-					pm.proc_set_Z(PM_Z_NUL);
+					pm.proc_set_Z(PM_Z_NONE);
 					break;
 			}
 
@@ -105,6 +106,7 @@ SH_DEF(pm_self_adjust)
 		reg_format(&regfile[ID_PM_AD_IA0]);
 		reg_format(&regfile[ID_PM_AD_IB0]);
 		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -138,6 +140,7 @@ SH_DEF(pm_self_adjust)
 		reg_format(&regfile[ID_PM_AD_IA1]);
 		reg_format(&regfile[ID_PM_AD_IB1]);
 		reg_format(&regfile[ID_PM_AD_IC1]);
+		reg_format(&regfile[ID_PM_SELF_RMSI]);
 	}
 	while (0);
 
@@ -157,9 +160,9 @@ SH_DEF(pm_test_current_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.grabfreq);
 
-	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		iSP = reg_GET_F(ID_PM_I_SETPOINT_CURRENT);
@@ -185,9 +188,9 @@ SH_DEF(pm_test_speed_ramp)
 		return;
 	}
 
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.freq_grab_hz);
+	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.grabfreq);
 
-	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
@@ -226,7 +229,7 @@ SH_DEF(pm_test_TVM_ramp)
 	}
 
 	xMIN = pm.ts_minimal;
-	xMAX = (int) (pm.dc_resolution * pm.tvm_range_pc);
+	xMAX = (int) (pm.dc_resolution * pm.tvm_clean_zone);
 
 	xDC = xMIN;
 
@@ -241,7 +244,7 @@ SH_DEF(pm_test_TVM_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	tlm_startup(&tlm, tlm.freq_grab_hz, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
 
 	do {
 		/* 1000 Hz.

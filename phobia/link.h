@@ -66,6 +66,7 @@ struct link_pmc {
 	int			clock;
 	int			locked;
 	int			active;
+	int			keep;
 
 	char			hwinfo[LINK_NAME_MAX];
 	char			network[LINK_NAME_MAX];
