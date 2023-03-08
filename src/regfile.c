@@ -1561,6 +1561,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fb_SIN,,,			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_COS,,,			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 
+	REG_DEF(pm.noise_DI,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
+	REG_DEF(pm.noise_DS,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
+
 	REG_DEF(pm.probe_current_hold,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_weak,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_hold_angle,,,		"g",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -1774,7 +1777,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_track_Q,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_tolerance,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_damping,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
 

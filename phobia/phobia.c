@@ -1584,7 +1584,7 @@ reg_float(struct public *pub, const char *sym, const char *name)
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
 			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-	reg->val, 79, nk_filter_default);
+					reg->val, 79, nk_filter_default);
 		}
 		else {
 			int			rc;
@@ -3078,6 +3078,7 @@ page_config(struct public *pub)
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
@@ -3128,19 +3129,26 @@ page_config(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_toggle(pub, "pm.config_VSI_CIRCULAR", "Circular SVPWM clamping");
-	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM (in middle)");
+	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM in middle");
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
 	reg_enum_combo(pub, "pm.config_LU_ESTIMATE_FLUX", "Estimate FLUX");
 	reg_enum_combo(pub, "pm.config_LU_ESTIMATE_HFI", "Estimate HFI");
 	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position SENSOR");
 	reg_enum_combo(pub, "pm.config_LU_LOCATION", "LOCATION source");
-	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive loop");
+	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop");
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance motor");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening");
 	reg_enum_toggle(pub, "pm.config_HFI_IMPEDANCE", "Impedance axes reverse");
 	reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "Flux polarity detection");
-	reg_enum_toggle(pub, "pm.config_HOLDING_BRAKE", "Holding brake (CC)");
-	reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limit (CC)");
+
+	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
+
+	if (reg != NULL && reg->lval == 0) {
+
+		reg_enum_toggle(pub, "pm.config_HOLDING_BRAKE", "Holding brake");
+		reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limited");
+	}
+
 	reg_enum_combo(pub, "pm.config_ABI_FRONTEND", "ABI frontend");
 	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend");
 	reg_enum_toggle(pub, "pm.config_MILEAGE_INFO", "Mileage info");
@@ -3159,6 +3167,12 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.tm_average_inertia", "Average inertia time");
 	reg_float(pub, "pm.tm_startup", "Startup time");
 	reg_float(pub, "pm.tm_halt_pause", "Halt pause");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "pm.noise_DI", "Noise ratio in current");
+	reg_float(pub, "pm.noise_DS", "Noise ratio in speed");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3595,7 +3609,6 @@ page_lp_current(struct public *pub)
 	reg_float(pub, "pm.i_derated_HFI", "Derated on HFI");
 	reg_float(pub, "pm.i_slew_rate", "Slew rate");
 	reg_float(pub, "pm.i_tolerance", "Tolerance");
-	reg_float(pub, "pm.i_damping", "Damping ratio");
 	reg_float(pub, "pm.i_gain_P", "Proportional gain P");
 	reg_float(pub, "pm.i_gain_I", "Integral gain I");
 

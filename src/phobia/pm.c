@@ -143,6 +143,9 @@ pm_auto_config_default(pmc_t *pm)
 	pm->ad_UC[0] = 0.f;
 	pm->ad_UC[1] = 1.f;
 
+	pm->noise_DI = 1.f;
+	pm->noise_DS = 1.f;
+
 	pm->probe_current_hold = 20.f;
 	pm->probe_current_weak = 10.f;
 	pm->probe_hold_angle = 0.f;
@@ -243,7 +246,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->i_derated_HFI = 30.f;
 	pm->i_slew_rate = 7000.f;
 	pm->i_tolerance = 0.f;
-	pm->i_damping = 1.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
@@ -459,7 +461,7 @@ pm_auto_forced_accel(pmc_t *pm)
 static void
 pm_auto_loop_current(pmc_t *pm)
 {
-	float		Lm, Df, Kp, Ki;
+	float		Lm, Di, Kp, Ki;
 
 	if (		   pm->const_im_L1 > M_EPS_F
 			&& pm->const_im_L1 > M_EPS_F) {
@@ -467,16 +469,16 @@ pm_auto_loop_current(pmc_t *pm)
 		Lm = (pm->const_im_L1 < pm->const_im_L2)
 			? pm->const_im_L1 : pm->const_im_L2;
 
-		Df = pm->i_damping;
+		Di = pm->noise_DI;
 
-		/* Tune the current loop (based on state-space model).
+		/* Tune the current loop based on state-space model.
 		 *
 		 *          [1-R*T/L-Kp*T/L  -Ki*T/L]
 		 * x(k+1) = [1                1     ] * x(k)
 		 *
 		 * */
-		Kp = 0.5f * Df * Lm * pm->freq_hz - pm->const_R;
-		Ki = 0.02f * Df * Lm * pm->freq_hz;
+		Kp = 0.5f * Lm * Di * pm->freq_hz - pm->const_R;
+		Ki = 0.02f * Lm * Di * pm->freq_hz;
 
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
@@ -490,7 +492,7 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_loop_speed(pmc_t *pm)
 {
-	float		Df = pm->i_damping;
+	float		Ds = pm->noise_DS;
 
 	if (pm->zone_threshold_NOISE > M_EPS_F) {
 
@@ -499,13 +501,13 @@ pm_auto_loop_speed(pmc_t *pm)
 		if (		pm->const_E > M_EPS_F
 				&& pm->const_Ja > M_EPS_F) {
 
-			pm->lu_gain_QF = 10.f * Df * pm->const_E * pm->dT
+			pm->lu_gain_QF = 10.f * Ds * pm->const_E * pm->dT
 				/ pm->const_Ja / pm->zone_threshold_NOISE;
 		}
 
 		/* Tune speed loop based on threshold NOISE value.
 		 * */
-		pm->s_gain_P = 2.f * Df / pm->zone_threshold_NOISE;
+		pm->s_gain_P = 2.f * Ds / pm->zone_threshold_NOISE;
 		pm->s_gain_I = 1.f;
 	}
 }
@@ -936,118 +938,6 @@ pm_kalman_jacobian(pmc_t *pm, const float X[2], const float F[2], float wS)
 	A[9] = pm->dT;
 }
 
-/*
-static void
-pm_kalman_predict(pmc_t *pm)
-{
-	float		*P = pm->kalman_P;
-	const float	*A = pm->kalman_A;
-	const float	*Q = pm->kalman_gain_Q;
-
-	float		AA[5][5], PP[5][5];
-
-	memset(AA, 0, sizeof(AA));
-	memset(PP, 0, sizeof(PP));
-
-	AA[0][0] = A[0];
-	AA[0][1] = A[1];
-	AA[0][2] = A[2];
-	AA[0][3] = A[3];
-	AA[1][0] = A[4];
-	AA[1][1] = A[5];
-	AA[1][2] = A[6];
-	AA[1][3] = A[7];
-	AA[1][4] = A[8];
-	AA[2][3] = A[9];
-	AA[2][2] = 1.f;
-	AA[3][3] = 1.f;
-	AA[4][4] = 1.f;
-
-	PP[0][0] = P[0];
-	PP[0][1] = P[1];
-	PP[0][2] = P[3];
-	PP[0][3] = P[6];
-	PP[0][4] = P[10];
-	PP[1][0] = P[1];
-	PP[1][1] = P[2];
-	PP[1][2] = P[4];
-	PP[1][3] = P[7];
-	PP[1][4] = P[11];
-	PP[2][0] = P[3];
-	PP[2][1] = P[4];
-	PP[2][2] = P[5];
-	PP[2][3] = P[8];
-	PP[2][4] = P[12];
-	PP[3][0] = P[6];
-	PP[3][1] = P[7];
-	PP[3][2] = P[8];
-	PP[3][3] = P[9];
-	PP[3][4] = P[13];
-	PP[4][0] = P[10];
-	PP[4][1] = P[11];
-	PP[4][2] = P[12];
-	PP[4][3] = P[13];
-	PP[4][4] = P[14];
-
-	{
-		float		AP[5][5], S;
-		int		i, j, k;
-
-		for (i = 0; i < 5; ++i) {
-			for (j = 0; j < 5; ++j) {
-
-				S = 0.f;
-
-				for (k = 0; k < 5; ++k)
-					S += AA[i][k] * PP[k][j];
-
-				AP[i][j] = S;
-			}
-		}
-
-		for (i = 0; i < 5; ++i) {
-			for (j = 0; j < 5; ++j) {
-
-				S = 0.f;
-
-				for (k = 0; k < 5; ++k)
-					S += AP[i][k] * AA[j][k];
-
-				PP[i][j] = S;
-			}
-		}
-	}
-
-	P[0] = PP[0][0] + Q[0];
-	P[1] = PP[1][0];
-	P[2] = PP[1][1] + Q[1];
-	P[3] = PP[2][0];
-	P[4] = PP[2][1];
-	P[5] = PP[2][2] + Q[2];
-	P[6] = PP[3][0];
-	P[7] = PP[3][1];
-	P[8] = PP[3][2];
-	P[9] = PP[3][3] + Q[3];
-	P[10] = PP[4][0];
-	P[11] = PP[4][1];
-	P[12] = PP[4][2];
-	P[13] = PP[4][3];
-	P[14] = PP[4][4];
-
-	if (pm->flux_ZONE == PM_ZONE_HIGH) {
-
-		P[14] += Q[4];
-	}
-	else {
-		P[10] = 0.f;
-		P[11] = 0.f;
-		P[12] = 0.f;
-		P[13] = 0.f;
-		P[14] = 0.f;
-	}
-}
-*/
-
 static void
 pm_kalman_predict(pmc_t *pm)
 {
@@ -1466,22 +1356,22 @@ void pm_hfi_DFT(pmc_t *pm, float la[5])
 	lse_float_t	v[5];
 
 	float		*DFT = pm->hfi_DFT;
-	float		lz[3], iW;
+	float		Z[3], iW;
 
 	/* The primary impedance equation is \Z * \I = \U,
 	 *
-	 * [R - j*lz(0)      j*lz(1)] * [IX] = [UX]
-	 * [    j*lz(1)  R - j*lz(2)]   [IY]   [UY], where
+	 * [R - jZ(0)      jZ(1)] * [IX] = [UX]
+	 * [    jZ(1)  R - jZ(2)]   [IY]   [UY], where
 	 *
-	 * IX = [DFT(0) + j*DFT(1)],  UX = [DFT(2) + j*DFT(3)],
-	 * IY = [DFT(4) + j*DFT(5)],  UY = [DFT(6) + j*DFT(7)].
+	 * IX = [DFT(0) + jDFT(1)],  UX = [DFT(2) + jDFT(3)],
+	 * IY = [DFT(4) + jDFT(5)],  UY = [DFT(6) + jDFT(7)].
 	 *
 	 * We rewrite it with respect to the impedance components.
 	 *
-	 * [DFT(0)  DFT(1) -DFT(5)  0     ]   [R    ]   [DFT(2)]
-	 * [DFT(1) -DFT(0)  DFT(4)  0     ] * [lz(0)] = [DFT(3)]
-	 * [DFT(4)  0      -DFT(1)  DFT(5)]   [lz(1)]   [DFT(6)].
-	 * [DFT(5)  0       DFT(0) -DFT(4)]   [lz(2)]   [DFT(7)]
+	 * [DFT(0)  DFT(1) -DFT(5)  0     ]   [R   ]   [DFT(2)]
+	 * [DFT(1) -DFT(0)  DFT(4)  0     ] * [Z(0)] = [DFT(3)]
+	 * [DFT(4)  0      -DFT(1)  DFT(5)]   [Z(1)]   [DFT(6)].
+	 * [DFT(5)  0       DFT(0) -DFT(4)]   [Z(2)]   [DFT(7)]
 	 *
 	 * */
 
@@ -1523,11 +1413,12 @@ void pm_hfi_DFT(pmc_t *pm, float la[5])
 	iW = 1.f / pm->quick_hfwS;
 
 	la[4] = ls->sol.m[0];
-	lz[0] = ls->sol.m[1] * iW;
-	lz[1] = ls->sol.m[2] * iW;
-	lz[2] = ls->sol.m[3] * iW;
 
-	m_la_eigf(lz, la, (pm->config_HFI_IMPEDANCE == PM_ENABLED) ? 1 : 0);
+	Z[0] = ls->sol.m[1] * iW;
+	Z[1] = ls->sol.m[2] * iW;
+	Z[2] = ls->sol.m[3] * iW;
+
+	m_la_eigf(Z, la, (pm->config_HFI_IMPEDANCE == PM_ENABLED) ? 1 : 0);
 }
 
 static void

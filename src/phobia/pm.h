@@ -286,6 +286,9 @@ typedef struct {
 	int		fb_EP;
 	int		fb_ABI;
 
+	float		noise_DI;
+	float		noise_DS;
+
 	float		probe_current_hold;
 	float		probe_current_weak;
 	float		probe_hold_angle;
@@ -532,7 +535,6 @@ typedef struct {
 	float		i_integral_Q;
 	float		i_slew_rate;
 	float		i_tolerance;
-	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
 
