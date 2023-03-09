@@ -105,6 +105,10 @@ sim_TlmGrab(float *pTlm)
 	 * */
 	gp_N = 30;
 
+	fmt_GP(pm.fb_uA, 0);
+	fmt_GP(pm.fb_uB, 0);
+	fmt_GP(pm.fb_uC, 0);
+
 	fmt_GP(pm.fb_HS, 0);
 	fmt_GP(pm.fb_EP, 0);
 	fmt_GP(pm.fb_SIN, 0);
@@ -260,13 +264,13 @@ void sim_START_bench()
 	blm_Stop(&m);
 	sim_TlmDrop();
 
-	m.R = 7E-3;
-	m.Ld = 2E-6;
-	m.Lq = 4E-6;
+	m.R = 105E-3;
+	m.Ld = 47E-6;
+	m.Lq = 62E-6;
 	m.U = 13.;
 	m.Rs = 0.1;
-	m.Zp = 5;
-        m.E = blm_Kv_to_E(&m, 525.);
+	m.Zp = 12;
+        m.E = blm_Kv_to_E(&m, 160.);
 	m.J = 2E-4;
 
 	ts_BASE();

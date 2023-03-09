@@ -804,12 +804,12 @@ int link_fetch(struct link_pmc *lp, int clock)
 		link_grab_file_close(lp);
 	}
 
-	if (		lp->active + 1000 < lp->clock
-			&& lp->keep + 500 < lp->clock) {
+	if (		lp->active + 2000 < lp->clock
+			&& lp->keep + 1000 < lp->clock) {
 
 		lp->keep = lp->clock;
 
-		if (lp->active + 2000 > lp->clock) {
+		if (lp->active + 10000 > lp->clock) {
 
 			serial_fputs(priv->fd, LINK_EOL);
 		}

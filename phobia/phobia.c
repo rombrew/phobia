@@ -3171,8 +3171,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.noise_DI", "Noise ratio in current");
-	reg_float(pub, "pm.noise_DS", "Noise ratio in speed");
+	reg_float(pub, "pm.noise_DI", "Noise damping in current");
+	reg_float(pub, "pm.noise_DS", "Noise damping in speed");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3664,7 +3664,7 @@ page_lp_speed(struct public *pub)
 	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 0);
 	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 0);
-	reg_float(pub, "pm.s_linspan", "Regulation span (CC)");
+	reg_float(pub, "pm.s_linspan", "Regulation span");
 	reg_float(pub, "pm.s_tolerance", "Tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
