@@ -23,7 +23,7 @@ SH_DEF(pm_self_test)
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_for_IDLE();
+		pm_wait_for_idle();
 
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
@@ -37,13 +37,13 @@ SH_DEF(pm_self_test)
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
-			pm_wait_for_IDLE();
+			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_BST]);
 			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
-			pm_wait_for_IDLE();
+			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_BM]);
 			reg_format(&regfile[ID_PM_FSM_ERRNO]);
@@ -71,7 +71,7 @@ SH_DEF(pm_self_test)
 			}
 
 			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
-			pm_wait_for_IDLE();
+			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_RMSI]);
 
@@ -100,7 +100,7 @@ SH_DEF(pm_self_adjust)
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_for_IDLE();
+		pm_wait_for_idle();
 
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_AD_IA0]);
@@ -114,7 +114,7 @@ SH_DEF(pm_self_adjust)
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
-			pm_wait_for_IDLE();
+			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_AD_UA0]);
 			reg_format(&regfile[ID_PM_AD_UA1]);
@@ -135,7 +135,7 @@ SH_DEF(pm_self_adjust)
 		}
 
 		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
-		pm_wait_for_IDLE();
+		pm_wait_for_idle();
 
 		reg_format(&regfile[ID_PM_AD_IA1]);
 		reg_format(&regfile[ID_PM_AD_IB1]);

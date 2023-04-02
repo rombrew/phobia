@@ -1,22 +1,22 @@
-#ifndef _H_TS_
-#define _H_TS_
+#ifndef _H_TSFUNC_
+#define _H_TSFUNC_
 
 extern blm_t			m;
 extern pmc_t			pm;
 
-extern void sim_TlmDrop();
-extern void sim_Run(double dT);
+extern void sim_tlmdrop();
+extern void sim_runtime(double dT);
 
-int ts_wait_for_IDLE();
-int ts_wait_for_SPINUP(float ref);
-int ts_wait_for_MOTION(float ref);
+int ts_wait_for_idle();
+int ts_wait_for_spinup(float ref);
+int ts_wait_for_motion(float ref);
 
-void ts_BASE();
-void ts_SPEED();
-void ts_HFI();
-void ts_HALL();
-void ts_WEAK();
-void ts_START_all();
+void ts_script_base();
+void ts_script_speed();
+void ts_script_hfi();
+void ts_script_hall();
+void ts_script_weakening();
+void ts_script_all();
 
-#endif /* _H_TS_ */
+#endif /* _H_TSFUNC_ */
 

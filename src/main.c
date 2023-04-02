@@ -151,7 +151,7 @@ elapsed_DISARM()
 void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
-	float			x_PCB, x_EXT, t_HYS;
+	float			x_PCB, x_EXT, lock_PCB;
 
 	if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -167,7 +167,7 @@ void task_TEMP(void *pData)
 
 	x_PCB = PM_MAX_F;
 	x_EXT = PM_MAX_F;
-	t_HYS = 0.f;
+	lock_PCB = 0.f;
 
 	do {
 		/* 10 Hz.
@@ -192,7 +192,7 @@ void task_TEMP(void *pData)
 			ap.temp_EXT = 0.f;
 		}
 
-		if (ap.temp_PCB > ap.tpro_PCB_temp_halt - t_HYS) {
+		if (ap.temp_PCB > ap.tpro_PCB_temp_halt - lock_PCB) {
 
 			x_PCB = 0.f;
 
@@ -202,7 +202,7 @@ void task_TEMP(void *pData)
 				pm.fsm_req = PM_STATE_HALT;
 			}
 
-			t_HYS = ap.tpro_temp_recovery;
+			lock_PCB = ap.tpro_temp_recovery;
 		}
 		else {
 			if (ap.temp_PCB > ap.tpro_PCB_temp_derate) {
@@ -216,7 +216,7 @@ void task_TEMP(void *pData)
 				x_PCB = PM_MAX_F;
 			}
 
-			t_HYS = 0.f;
+			lock_PCB = 0.f;
 		}
 
 #ifdef HW_HAVE_FAN_CONTROL
@@ -255,7 +255,7 @@ void task_TEMP(void *pData)
 			}
 		}
 
-		pm.i_derated_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
+		pm.i_derate_on_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESET == PM_ENABLED
@@ -562,8 +562,8 @@ default_flash_load()
 	ap.adc_load_scale[0] = 0.f;
 	ap.adc_load_scale[1] = 4.65E-6f;
 
-	pm.freq_hz = hal.PWM_frequency;
-	pm.dT = 1.f / pm.freq_hz;
+	pm.m_freq = hal.PWM_frequency;
+	pm.m_dT = 1.f / pm.m_freq;
 	pm.dc_resolution = hal.PWM_resolution;
 	pm.proc_set_DC = &PWM_set_DC;
 	pm.proc_set_Z = &PWM_set_Z;
@@ -608,12 +608,12 @@ default_flash_load()
 
 	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 
-	pm.watt_iDC_maximal = (float) (int) (0.66666667f * pm.i_maximal);
-	pm.watt_iDC_reverse = pm.watt_iDC_maximal;
+	pm.watt_wA_maximal = (float) (int) (0.66666667f * pm.i_maximal);
+	pm.watt_wA_reverse = pm.watt_wA_maximal;
 
-	pm.watt_dclink_HI = (float) (int) (pm.fault_voltage_halt - 5.f);
+	pm.watt_uDC_maximal = (float) (int) (pm.fault_voltage_halt - 5.f);
 
-	pm.watt_wP_maximal = (float) (int) (pm.watt_iDC_maximal * pm.watt_dclink_HI);
+	pm.watt_wP_maximal = (float) (int) (pm.watt_wA_maximal * pm.watt_uDC_maximal);
 	pm.watt_wP_reverse = pm.watt_wP_maximal;
 
 #ifdef HW_CONFIG_INLINE
@@ -723,8 +723,8 @@ void task_INIT(void *pData)
 	PWM_startup();
 	WD_startup();
 
-	pm.freq_hz = hal.PWM_frequency;
-	pm.dT = 1.f / pm.freq_hz;
+	pm.m_freq = hal.PWM_frequency;
+	pm.m_dT = 1.f / pm.m_freq;
 	pm.dc_resolution = hal.PWM_resolution;
 
 	hal_unlock_irq(0);
@@ -754,7 +754,7 @@ void task_INIT(void *pData)
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
-	pm_wait_for_IDLE();
+	pm_wait_for_idle();
 
 #undef APP_DEF
 #define APP_DEF(name)		reg_TOUCH_I(ID_AP_TASK_ ## name);

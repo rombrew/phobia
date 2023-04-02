@@ -40,7 +40,7 @@ double blm_Kv_to_E(blm_t *m, double Kv)
 	return (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
 }
 
-void blm_Enable(blm_t *m)
+void blm_enable(blm_t *m)
 {
 	/* WARNING: All the following parameters are given for example and
 	 * should be redefined from the outside in accordance with the task
@@ -129,7 +129,7 @@ void blm_Enable(blm_t *m)
 	m->sync_F = 0;
 }
 
-void blm_Stop(blm_t *m)
+void blm_stop(blm_t *m)
 {
 	m->X[0] = 0.;	/* Axis D current (Ampere) */
 	m->X[1] = 0.;	/* Axis Q current (Ampere) */
@@ -156,7 +156,7 @@ void blm_Stop(blm_t *m)
 }
 
 static void
-blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
+blm_DQ_equation(const blm_t *m, const double X[7], double D[7])
 {
 	double		UA, UB, UD, UQ, Q;
 	double		R1, E1, MT, ML, wS;
@@ -220,7 +220,7 @@ blm_DQ_Equation(const blm_t *m, const double X[7], double D[7])
 }
 
 static void
-blm_Solve(blm_t *m, double dT)
+blm_solve(blm_t *m, double dT)
 {
 	double		S1[7], S2[7], X2[7];
 	double		iA, iB, iC, uA, uB, uC;
@@ -235,7 +235,7 @@ blm_Solve(blm_t *m, double dT)
 	/* Second-order ODE solver.
 	 * */
 
-	blm_DQ_Equation(m, m->X, S1);
+	blm_DQ_equation(m, m->X, S1);
 
 	X2[0] = m->X[0] + S1[0] * dT;
 	X2[1] = m->X[1] + S1[1] * dT;
@@ -245,7 +245,7 @@ blm_Solve(blm_t *m, double dT)
 	X2[5] = m->X[5] + S1[5] * dT;
 	X2[6] = m->X[6] + S1[6] * dT;
 
-	blm_DQ_Equation(m, X2, S2);
+	blm_DQ_equation(m, X2, S2);
 
 	m->X[0] += (S1[0] + S2[0]) * dT / 2.;
 	m->X[1] += (S1[1] + S2[1]) * dT / 2.;
@@ -289,7 +289,7 @@ blm_Solve(blm_t *m, double dT)
 }
 
 static void
-blm_Solve_Split(blm_t *m, double dT)
+blm_solve_split(blm_t *m, double dT)
 {
 	double		sT = m->sT;
 
@@ -323,11 +323,11 @@ blm_Solve_Split(blm_t *m, double dT)
 		 * */
 		while (dT > sT) {
 
-			blm_Solve(m, sT);
+			blm_solve(m, sT);
 			dT -= sT;
 		}
 
-		blm_Solve(m, dT);
+		blm_solve(m, dT);
 
 		/* Wrap the angular position and count the full number of
 		 * electrical revolutions.
@@ -413,7 +413,7 @@ blm_sample_SC(blm_t *m)
 }
 
 static void
-blm_VSI_Sample(blm_t *m, int N)
+blm_VSI_sample(blm_t *m, int N)
 {
 	const double	range_I = 165.;
 	const double	range_U = 60.;
@@ -441,7 +441,7 @@ blm_VSI_Sample(blm_t *m, int N)
 }
 
 static void
-blm_VSI_Solve(blm_t *m)
+blm_VSI_solve(blm_t *m)
 {
 	int		Tev[5], pm[5], n, k, tmp;
 	double		tTIM, dT;
@@ -479,18 +479,18 @@ blm_VSI_Solve(blm_t *m)
 
 	/* Count Up.
 	 * */
-	blm_VSI_Sample(m, 0);
+	blm_VSI_sample(m, 0);
 
 	tmp = m->PWM_R;
 
 	for (n = 0; n < 5; ++n) {
 
 		dT = tTIM * (tmp - Tev[pm[n]]);
-		blm_Solve_Split(m, dT);
+		blm_solve_split(m, dT);
 
 		if (pm[n] < 2) {
 
-			blm_VSI_Sample(m, pm[n] + 1);
+			blm_VSI_sample(m, pm[n] + 1);
 		}
 		else {
 			m->VSI[pm[n] - 2] = 1;
@@ -501,7 +501,7 @@ blm_VSI_Solve(blm_t *m)
 	}
 
 	dT = tTIM * (Tev[pm[4]]);
-	blm_Solve_Split(m, dT);
+	blm_solve_split(m, dT);
 
 	/* Keep only three of them.
 	 * */
@@ -520,7 +520,7 @@ blm_VSI_Solve(blm_t *m)
 	for (n = 2, tmp = 0; n >= 0; --n) {
 
 		dT = tTIM * (Tev[pm[n]] - tmp);
-		blm_Solve_Split(m, dT);
+		blm_solve_split(m, dT);
 
 		m->VSI[pm[n] - 2] = 0;
 		m->surge_I = pm[n];
@@ -529,7 +529,7 @@ blm_VSI_Solve(blm_t *m)
 	}
 
 	dT = tTIM * (m->PWM_R - Tev[pm[0]]);
-	blm_Solve_Split(m, dT);
+	blm_solve_split(m, dT);
 
 	/* Get instant POWER.
 	 * */
@@ -537,9 +537,9 @@ blm_VSI_Solve(blm_t *m)
 	m->X[5] = 0.;
 }
 
-void blm_Update(blm_t *m)
+void blm_update(blm_t *m)
 {
-	blm_VSI_Solve(m);
+	blm_VSI_solve(m);
 
 	m->Tsim += m->dT;
 }

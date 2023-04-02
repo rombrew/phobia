@@ -110,7 +110,7 @@ extern pmc_t			pm;
 extern tlm_t			tlm;
 
 extern int flash_block_regs_load();
-extern int pm_wait_for_IDLE();
+extern int pm_wait_for_idle();
 
 void app_halt();
 

@@ -49,8 +49,8 @@ constraints.
 You can limit consumption or regeneration battery current. Set the limit
 according to the power supply capabilities.
 
-	# reg pm.watt_iDC_maximal <amp>
-	# reg pm.watt_iDC_reverse <amp>
+	# reg pm.watt_wA_maximal <amp>
+	# reg pm.watt_wA_reverse <amp>
 
 Alternatively you can specify power limits. Note that the lowest of all
 constraints is used.
@@ -61,12 +61,12 @@ constraints is used.
 You can limit DC link voltage at regenerative operation. This will derate
 regeneration power in case of overvoltage.
 
-	# reg pm.watt_dclink_HI <volt>
+	# reg pm.watt_uDC_maximal <volt>
 
 You can specify low limit of DC link voltage. This will prevent from source
 overload.
 
-	# reg pm.watt_dclink_LO <volt>
+	# reg pm.watt_uDC_minimal <volt>
 
 Also you can tune PI regulator gains. But usually this is not required as
 default tune is good enough.
@@ -135,7 +135,7 @@ backlash e.g. in case of direction change.
 Also you can tune P+FF regulator gains.
 
 	# reg pm.s_gain_P <x>
-	# reg pm.lu_gain_QF <x>
+	# reg pm.lu_gain_mq_LP <x>
 
 Default gains tune can be done by setting to zero.
 

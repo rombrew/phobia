@@ -95,7 +95,7 @@ void app_PUSHTWO(void *pData)
 				direction = (pushed_B == 0) ? -1 : 1;
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
-				pm_wait_for_IDLE();
+				pm_wait_for_idle();
 			}
 			else {
 				rpm_N = (rpm_N < PUSH_RPM_TABLE_MAX) ? rpm_N + 1 : 0;
@@ -138,7 +138,7 @@ void app_PUSHTWO(void *pData)
 				direction = 0;
 
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-				pm_wait_for_IDLE();
+				pm_wait_for_idle();
 			}
 
 			event_B = 0;

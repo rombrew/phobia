@@ -804,7 +804,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		link_grab_file_close(lp);
 	}
 
-	if (		lp->active + 2000 < lp->clock
+	if (		lp->active + 1000 < lp->clock
 			&& lp->keep + 1000 < lp->clock) {
 
 		lp->keep = lp->clock;

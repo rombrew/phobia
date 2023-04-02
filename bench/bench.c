@@ -28,7 +28,7 @@ fmt_page_GP(int N, const char *figure, const char *label)
 }
 
 static void
-sim_TlmGrab(float *pTlm)
+sim_tlmgrab(float *pTlm)
 {
 	double		A, B, E, D, Q;
 	int		gp_N;
@@ -93,7 +93,7 @@ sim_TlmGrab(float *pTlm)
 	/* Power consumption.
 	 * */
 	pTlm[17] = m.iP;
-	pTlm[18] = pm.watt_lpf_wP;
+	pTlm[18] = pm.watt_consumption_wP;
 
 	/* Supply voltage.
 	 * */
@@ -129,7 +129,7 @@ sim_TlmGrab(float *pTlm)
 	fmt_GP(pm.tvm_C, 0);
 
 	fmt_GP(pm.lu_MODE, 0);
-	fmk_GP(pm.lu_load_torque, pm.const_Zp, "Nm");
+	fmk_GP(pm.lu_mq_load, pm.const_Zp, "Nm");
 
 	fmt_GP(pm.base_TIM, 0);
 	fmt_GP(pm.hold_TIM, 0);
@@ -149,12 +149,8 @@ sim_TlmGrab(float *pTlm)
 
 	fmk_GP(pm.zone_lpf_wS, kRPM, "rpm");
 
-	sym_GP(atan2(pm.hfi_F[1], pm.hfi_F[0]) * kDEG, "pm.hfi_F", "°");
-	fmk_GP(pm.hfi_wS, kRPM, "rpm");
-
-	fmt_GP(pm.hfi_im_L1, "H");
-	fmt_GP(pm.hfi_im_L2, "H");
-	fmt_GP(pm.hfi_im_R, "Ohm");
+	fmt_GP(pm.hfi_wave[0], 0);
+	fmt_GP(pm.hfi_pole, 0);
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
@@ -165,8 +161,8 @@ sim_TlmGrab(float *pTlm)
 	fmt_GP(pm.watt_lpf_D, "V");
 	fmt_GP(pm.watt_lpf_Q, "V");
 
+	fmt_GP(pm.i_derate_on_weakening, "A");
 	fmt_GP(pm.i_setpoint_current, "A");
-	fmt_GP(pm.i_derated_WEAK, "A");
 	fmt_GP(pm.i_track_D, "A");
 	fmt_GP(pm.i_track_Q, "A");
 
@@ -178,7 +174,7 @@ sim_TlmGrab(float *pTlm)
 	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
 }
 
-void sim_TlmDrop()
+void sim_tlmdrop()
 {
 	if (fdTlm == NULL) {
 
@@ -187,7 +183,7 @@ void sim_TlmDrop()
 		if (fdTlm == NULL) {
 
 			fprintf(stderr, "fopen: %s", strerror(errno));
-			exit(1);
+			exit(-1);
 		}
 
 		fdGP = fopen(AGP_FILE, "w");
@@ -195,7 +191,7 @@ void sim_TlmDrop()
 		if (fdGP == NULL) {
 
 			fprintf(stderr, "fopen: %s", strerror(errno));
-			exit(1);
+			exit(-1);
 		}
 	}
 	else {
@@ -203,7 +199,7 @@ void sim_TlmDrop()
 	}
 }
 
-void sim_Run(double dT)
+void sim_runtime(double dT)
 {
 	const int	szTlm = 100;
 	float		Tlm[szTlm];
@@ -217,7 +213,7 @@ void sim_Run(double dT)
 
 		/* Plant model update.
 		 * */
-		blm_Update(&m);
+		blm_update(&m);
 
 		fb.current_A = m.ADC_IA;
 		fb.current_B = m.ADC_IB;
@@ -241,7 +237,7 @@ void sim_Run(double dT)
 
 			/* Collect telemetry.
 			 * */
-			sim_TlmGrab(Tlm);
+			sim_tlmgrab(Tlm);
 
 			/* Dump telemetry array.
 			 * */
@@ -253,38 +249,53 @@ void sim_Run(double dT)
 			fprintf(stderr, "pm.fsm_errno: %s\n", pm_strerror(pm.fsm_errno));
 
 			fclose(fdTlm);
-			exit(1);
+			exit(-1);
 		}
 	}
 }
 
-void sim_START_bench()
+void sim_script_bench()
 {
-	blm_Enable(&m);
-	blm_Stop(&m);
-	sim_TlmDrop();
+	blm_enable(&m);
+	blm_stop(&m);
+	sim_tlmdrop();
 
-	m.R = 105E-3;
-	m.Ld = 47E-6;
-	m.Lq = 62E-6;
-	m.U = 13.;
+	m.R = 14E-3;
+	m.Ld = 22E-6;
+	m.Lq = 35E-6;
+	m.U = 22.;
 	m.Rs = 0.1;
-	m.Zp = 12;
-        m.E = blm_Kv_to_E(&m, 160.);
-	m.J = 2E-4;
+	m.Zp = 14;
+	m.E = blm_Kv_to_E(&m, 270.);
+	m.J = 3E-4;
 
-	ts_BASE();
+	ts_script_base();
 
-	blm_Stop(&m);
-	//sim_TlmDrop();
+	blm_stop(&m);
+	sim_tlmdrop();
+
+	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+	pm.config_HFI_WAVETYPE = PM_HFI_RANDOM;
+	pm.config_HFI_POLARITY = PM_ENABLED;
+
+	pm.s_accel = 70000.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_IDLE();
+	ts_wait_for_idle();
 
-	sim_Run(.1);
+	sim_runtime(.1);
+
+	pm.s_setpoint_speed = 300.f / (30. / M_PI / m.Zp);
+	sim_runtime(1.);
+
+	pm.s_setpoint_speed = 100.f / (30. / M_PI / m.Zp);
+	sim_runtime(1.);
+
+	pm.s_setpoint_speed = -100.f / (30. / M_PI / m.Zp);
+	sim_runtime(1.);
 
 	pm.s_setpoint_speed = 2000.f / (30. / M_PI / m.Zp);
-	sim_Run(1.);
+	sim_runtime(1.);
 }
 
 int main(int argc, char *argv[])
@@ -298,11 +309,11 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "test") == 0) {
 
-		ts_START_all();
+		ts_script_all();
 	}
 	else if (strcmp(argv[1], "bench") == 0) {
 
-		sim_START_bench();
+		sim_script_bench();
 	}
 
 	fclose(fdTlm);

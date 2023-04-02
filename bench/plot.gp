@@ -39,7 +39,7 @@ figure 0 19 "pm.const_fb_U"
 page "Power Consumption"
 label 1 "(W)"
 figure 0 17 "m.iP"
-figure 0 18 "pm.watt_lpf_wP"
+figure 0 18 "pm.watt_consumption_wP"
 
 page "m.PWM_[ABC]"
 label 1 "(%)"

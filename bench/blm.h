@@ -104,9 +104,9 @@ blm_t;
 
 double blm_Kv_to_E(blm_t *m, double Kv);
 
-void blm_Enable(blm_t *m);
-void blm_Stop(blm_t *m);
-void blm_Update(blm_t *m);
+void blm_enable(blm_t *m);
+void blm_stop(blm_t *m);
+void blm_update(blm_t *m);
 
 #endif /* _H_BLM_ */
 

@@ -1,48 +1,5 @@
 #include "libm.h"
 
-static const float	lt_atanf[] = {
-
-	-8.9550074E-3f,
-	 4.5295657E-2f,
-	-1.0939535E-1f,
-	 1.9063993E-1f,
-	-3.3214334E-1f,
-	 9.9995555E-1f,
-};
-
-static const float	lt_sincosf[] = {
-
-	-1.3772950E-4f,
-	-2.0450985E-4f,
-	 8.6392885E-3f,
-	-2.4328724E-4f,
-	-1.6656229E-1f,
-	-2.2378746E-5f,
-	 1.0000019E+0f,
-	-3.5525078E-8f,
-};
-
-static const float	lt_log2f[] = {
-
-	-1.1632429E-2f,
-	 1.4237092E-1f,
-	-8.2841748E-1f,
-	 4.0229212E-2f,
-	 3.9032760E+0f,
-	-3.2458262E+0f,
-	 3.5400000E+0f,
-};
-
-static const float	lt_exp2f[] = {
-
-	1.8948823E-3f,
-	8.9472998E-3f,
-	5.5861779E-2f,
-	2.4014193E-1f,
-	6.9315410E-1f,
-	1.0000000E+0f,
-};
-
 int m_isfinitef(float x)
 {
 	union {
@@ -56,27 +13,30 @@ int m_isfinitef(float x)
 
 void m_rotatef(float x[2], float rval)
 {
-	float           q, s, c;
+	float           q, s, c, y[2];
 
 	q = rval * rval;
 	s = rval - q * rval * (1.6666667E-1f - 8.3333338E-3f * q);
 	c = 1.f - q * (.5f - 4.1666668E-2f * q);
 
-	q = c * x[0] - s * x[1];
-	c = s * x[0] + c * x[1];
+	y[0] = c * x[0] - s * x[1];
+	y[1] = s * x[0] + c * x[1];
 
-	s = (3.f - q * q - c * c) * .5f;
+	q = y[0] * y[0] + y[1] * y[1];
 
-	x[0] = q * s;
-	x[1] = c * s;
+	s =	  (q < 2.f) ? (3.f - q) * .5f
+		: (q > 0.f) ? 1.f / m_sqrtf(q) : 1.f;
+
+	x[0] = y[0] * s;
+	x[1] = y[1] * s;
 }
 
 float m_wrapf(float angle)
 {
-	float		pad = (angle < 0.f) ? - .5f : .5f;
+	float		half = (angle < 0.f) ? - .5f : .5f;
 	int		revol;
 
-	revol = (int) (angle / (2.f * M_PI_F) + pad);
+	revol = (int) (angle / (2.f * M_PI_F) + half);
 	angle += - (float) revol * (2.f * M_PI_F);
 
 	if (angle < - M_PI_F) {
@@ -108,6 +68,16 @@ void m_rsumf(float *sum, float *rem, float val)
 static float
 m_atanf(float x)
 {
+	static const float	lt_atanf[] = {
+
+		-8.9550074E-3f,
+		 4.5295657E-2f,
+		-1.0939535E-1f,
+		 1.9063993E-1f,
+		-3.3214334E-1f,
+		 9.9995555E-1f,
+	};
+
 	float		u, x2;
 
 	x2 = x * x;
@@ -142,6 +112,18 @@ float m_atan2f(float y, float x)
 static float
 m_sincosf(float x)
 {
+	static const float	lt_sincosf[] = {
+
+		-1.3772950E-4f,
+		-2.0450985E-4f,
+		 8.6392885E-3f,
+		-2.4328724E-4f,
+		-1.6656229E-1f,
+		-2.2378746E-5f,
+		 1.0000019E+0f,
+		-3.5525078E-8f,
+	};
+
 	float		u;
 
 	u = lt_sincosf[0];
@@ -189,6 +171,17 @@ float m_log2f(float x)
 	}
 	u = { x }, m;
 
+	static const float	lt_log2f[] = {
+
+		-1.1632429E-2f,
+		 1.4237092E-1f,
+		-8.2841748E-1f,
+		 4.0229212E-2f,
+		 3.9032760E+0f,
+		-3.2458262E+0f,
+		 3.5400000E+0f,
+	};
+
 	float		q;
 
 	m.i = (u.i & 0x7FFFFF) | (0x7F << 23);
@@ -219,6 +212,16 @@ float m_exp2f(float x)
 	}
 	u = { x }, m;
 
+	static const float	lt_exp2f[] = {
+
+		1.8948823E-3f,
+		8.9472998E-3f,
+		5.5861779E-2f,
+		2.4014193E-1f,
+		6.9315410E-1f,
+		1.0000000E+0f,
+	};
+
 	float		r, q;
 
 	m.i = (int) ((float) (1U << 23) * (x + 127.f));
@@ -238,10 +241,10 @@ float m_exp2f(float x)
 
 float m_expf(float x)
 {
-	return m_exp2f(x * (1.f / M_LOG2_F));
+	return m_exp2f(x / M_LOG2_F);
 }
 
-void m_la_eigf(const float a[3], float v[4], int major)
+void m_la_eigf(const float a[3], float v[4], int sort)
 {
 	float           b, d, la;
 
@@ -259,7 +262,7 @@ void m_la_eigf(const float a[3], float v[4], int major)
 
 	la = (d > 0.f) ? m_sqrtf(d) : 0.f;
 
-	if (major == 0) {
+	if (sort == 0) {
 
 		v[2] = (b - la) * .5f;
 		v[3] = (b + la) * .5f;
@@ -290,5 +293,36 @@ void m_la_eigf(const float a[3], float v[4], int major)
 		v[0] = - v[0];
 		v[1] = - v[1];
 	}
+}
+
+void m_lf_initial(lf_seed_t *lf)
+{
+	lf->seed[0] = 0.1234567f;
+	lf->seed[1] = 0.8901234f;
+	lf->seed[2] = 0.5678901f;
+	lf->seed[3] = 0.2345678f;
+	lf->nb = 0;
+}
+
+float m_lf_randf(lf_seed_t *lf)
+{
+	float		y, a, b;
+	int		n, k;
+
+	/* Lagged Fibonacci generator.
+	 * */
+
+	n = lf->nb;
+	k = (n < 3) ? n + 1 : 0;
+
+	a = lf->seed[k];
+	b = lf->seed[n];
+
+	y = (a < b) ? a - b + 1.f : a - b - 1.f;
+
+	lf->seed[k] = y;
+	lf->nb = k;
+
+	return y;
 }
 

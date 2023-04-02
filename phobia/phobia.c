@@ -1416,7 +1416,7 @@ reg_enum_get_item(void *userdata, int n, const char **item)
 }
 
 static void
-reg_enum_combo(struct public *pub, const char *sym, const char *name)
+reg_enum_combo(struct public *pub, const char *sym, const char *name, int onlight)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -1445,6 +1445,22 @@ reg_enum_combo(struct public *pub, const char *sym, const char *name)
 
 		reg->lval = (reg->lval < reg->lmax_combo + 2
 				&& reg->lval >= 0) ? reg->lval : 0;
+
+		if (		onlight != 0
+				&& reg->lval != 0) {
+
+			struct nk_color		normal, hover;
+
+			normal = nk->table[NK_COLOR_SELECT_ACTIVE];
+			hover  = nk->table[NK_COLOR_ACTIVE_HOVER];
+
+			ctx->style.combo.normal = nk_style_item_color(normal);
+			ctx->style.combo.hover  = nk_style_item_color(hover);
+			ctx->style.combo.active = nk_style_item_color(normal);
+			ctx->style.combo.button.normal = ctx->style.combo.normal;
+			ctx->style.combo.button.hover  = ctx->style.combo.hover;
+			ctx->style.combo.button.active = ctx->style.combo.active;
+		}
 
 		rc = nk_combo_callback(ctx, &reg_enum_get_item, reg,
 				reg->lval, reg->lmax_combo + 2, pub->fe_font_h
@@ -2152,7 +2168,7 @@ page_serial(struct public *pub)
 
 		int 		link_pce;
 
-		link_pce = (int) (1000.f * lp->fetched_N / (fe->regmaxn + 5));
+		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regmaxn);
 
 		if (lp->active + 500 < lp->clock) {
 
@@ -2208,7 +2224,7 @@ page_diagnose(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
-	reg_float(pub, "pm.const_fb_U", "DC link voltage");
+	reg_float(pub, "pm.const_fb_U", "Battery voltage");
 	reg_float(pub, "pm.ad_IA0", "A sensor drift");
 	reg_float(pub, "pm.ad_IB0", "B sensor drift");
 	reg_float(pub, "pm.ad_IC0", "C sensor drift");
@@ -2367,7 +2383,7 @@ page_probe(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
-	reg_float(pub, "pm.const_fb_U", "DC link voltage");
+	reg_float(pub, "pm.const_fb_U", "Battery voltage");
 	reg_float_um(pub, "pm.const_E", "Kv constant", 1);
 	reg_float(pub, "pm.const_R", "Winding resistance");
 	reg_float(pub, "pm.const_Zp", "Rotor pole pairs number");
@@ -2463,14 +2479,14 @@ page_probe(struct public *pub)
 			reg = link_reg_lookup(pub->lp, "pm.lu_wS");
 			if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_load_torque");
+			reg = link_reg_lookup(pub->lp, "pm.lu_mq_load");
 			if (reg != NULL) { reg->update = rate; }
 		}
 
 		reg_float(pub, "pm.lu_iD", "LU current D");
 		reg_float(pub, "pm.lu_iQ", "LU current Q");
 		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
-		reg_float(pub, "pm.lu_load_torque", "LU torque estimate");
+		reg_float(pub, "pm.lu_mq_load", "LU torque estimate");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -2539,7 +2555,7 @@ page_probe(struct public *pub)
 }
 
 static void
-page_HAL(struct public *pub)
+page_hal(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -2550,22 +2566,22 @@ page_HAL(struct public *pub)
 	reg_float(pub, "hal.ADC_reference_voltage", "ADC reference voltage");
 	reg_float(pub, "hal.ADC_shunt_resistance", "Current shunt resistance");
 	reg_float(pub, "hal.ADC_amplifier_gain", "Current amplifier gain");
-	reg_float(pub, "hal.ADC_voltage_ratio", "DC link voltage divider ratio");
-	reg_float(pub, "hal.ADC_terminal_ratio", "Terminal voltage divider ratio");
+	reg_float(pub, "hal.ADC_voltage_ratio", "Battery voltage ratio");
+	reg_float(pub, "hal.ADC_terminal_ratio", "Terminal voltage ratio");
 	reg_float(pub, "hal.ADC_terminal_bias", "Terminal voltage bias");
-	reg_float(pub, "hal.ADC_knob_ratio", "Knob voltage divider ratio");
+	reg_float(pub, "hal.ADC_knob_ratio", "Knob voltage ratio");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "hal.DPS_mode", "DPS operation mode");
-	reg_enum_combo(pub, "hal.PPM_mode", "PPM operation mode");
+	reg_enum_combo(pub, "hal.DPS_mode", "DPS operation mode", 0);
+	reg_enum_combo(pub, "hal.PPM_mode", "PPM operation mode", 0);
 	reg_float(pub, "hal.PPM_timebase", "PPM time base");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "hal.DRV.part", "DRV part");
+	reg_enum_combo(pub, "hal.DRV.part", "DRV part", 1);
 	reg_enum_toggle(pub, "hal.DRV.auto_RESET", "DRV automatic reset");
 	reg_float(pub, "hal.DRV.status_raw", "DRV status raw");
 	reg_float(pub, "hal.DRV.gate_current", "DRV gate current");
@@ -2594,7 +2610,7 @@ page_in_network(struct public *pub)
 	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON_HOVER]);
 
 	reg_float(pub, "net.node_ID", "Node network ID");
-	reg_enum_combo(pub, "net.log_MODE", "Messages logging");
+	reg_enum_combo(pub, "net.log_MODE", "Messages logging", 1);
 	reg_float(pub, "net.timeout_EP", "EP timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2753,7 +2769,7 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode");
+	reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode", 1);
 
 	reg = link_reg_lookup(pub->lp, "net.ep0_MODE");
 
@@ -2765,7 +2781,7 @@ page_in_network(struct public *pub)
 		reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
 		reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
 		reg_float(pub, "net.ep0_TIM", "EP 0 frequency");
-		reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type");
+		reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type", 0);
 		reg_float(pub, "net.ep0_range0", "EP 0 range LOW");
 		reg_float(pub, "net.ep0_range1", "EP 0 range HIGH");
 	}
@@ -2773,7 +2789,7 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode");
+	reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode", 1);
 
 	reg = link_reg_lookup(pub->lp, "net.ep1_MODE");
 
@@ -2785,7 +2801,7 @@ page_in_network(struct public *pub)
 		reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
 		reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
 		reg_float(pub, "net.ep1_TIM", "EP 1 frequency");
-		reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type");
+		reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type", 0);
 		reg_float(pub, "net.ep1_range0", "EP 1 range LOW");
 		reg_float(pub, "net.ep1_range1", "EP 1 range HIGH");
 	}
@@ -2793,7 +2809,7 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode");
+	reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode", 1);
 
 	reg = link_reg_lookup(pub->lp, "net.ep2_MODE");
 
@@ -2805,7 +2821,7 @@ page_in_network(struct public *pub)
 		reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
 		reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
 		reg_float(pub, "net.ep2_TIM", "EP 2 frequency");
-		reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type");
+		reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type", 0);
 		reg_float(pub, "net.ep2_range0", "EP 2 range LOW");
 		reg_float(pub, "net.ep2_range1", "EP 2 range HIGH");
 	}
@@ -2813,7 +2829,7 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode");
+	reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode", 1);
 
 	reg = link_reg_lookup(pub->lp, "net.ep3_MODE");
 
@@ -2825,7 +2841,7 @@ page_in_network(struct public *pub)
 		reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
 		reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
 		reg_float(pub, "net.ep3_TIM", "EP 3 frequency");
-		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type");
+		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type", 0);
 		reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
 		reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
 	}
@@ -2834,7 +2850,7 @@ page_in_network(struct public *pub)
 
 		int 		link_pce;
 
-		link_pce = (int) (1000.f * lp->fetched_N / (fe->regmaxn + 5));
+		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regmaxn);
 
 		if (lp->active + 500 < lp->clock) {
 
@@ -2861,7 +2877,7 @@ page_in_network(struct public *pub)
 }
 
 static void
-page_in_STEPDIR(struct public *pub)
+page_in_stepdir(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -2870,7 +2886,7 @@ page_in_STEPDIR(struct public *pub)
 }
 
 static void
-page_in_PWM(struct public *pub)
+page_in_pwm(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -3025,7 +3041,7 @@ page_thermal(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_enum_combo(pub, "ap.ntc_PCB.type", "NTC type (PCB)");
+	reg_enum_combo(pub, "ap.ntc_PCB.type", "NTC type (PCB)", 1);
 	reg_float(pub, "ap.ntc_PCB.balance", "NTC balance (PCB)");
 	reg_float(pub, "ap.ntc_PCB.ntc0", "NTC resistance at Ta");
 	reg_float(pub, "ap.ntc_PCB.ta0", "NTC Ta (PCB)");
@@ -3034,7 +3050,7 @@ page_thermal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type (EXT)");
+	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type (EXT)", 1);
 	reg_float(pub, "ap.ntc_EXT.balance", "NTC balance (EXT)");
 	reg_float(pub, "ap.ntc_EXT.ntc0", "NTC resistance at Ta");
 	reg_float(pub, "ap.ntc_EXT.ta0", "NTC Ta (EXT)");
@@ -3121,8 +3137,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "pm.config_NOP", "Number of motor phases");
-	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme");
+	reg_enum_combo(pub, "pm.config_NOP", "Number of motor phases", 0);
+	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3131,15 +3147,15 @@ page_config(struct public *pub)
 	reg_enum_toggle(pub, "pm.config_VSI_CIRCULAR", "Circular SVPWM clamping");
 	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM in middle");
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
-	reg_enum_combo(pub, "pm.config_LU_ESTIMATE_FLUX", "Estimate FLUX");
-	reg_enum_combo(pub, "pm.config_LU_ESTIMATE_HFI", "Estimate HFI");
-	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position SENSOR");
-	reg_enum_combo(pub, "pm.config_LU_LOCATION", "LOCATION source");
-	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop");
-	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance motor");
-	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening");
-	reg_enum_toggle(pub, "pm.config_HFI_IMPEDANCE", "Impedance axes reverse");
+	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "Sensorless estimate", 1);
+	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Rotor position SENSOR", 1);
+	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
+	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop", 0);
+	reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HF injection waveform", 1);
 	reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "Flux polarity detection");
+	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
+	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
+	reg_enum_toggle(pub, "pm.config_SALIENCY_UNUSUAL", "Saliency reverse");
 
 	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
 
@@ -3149,8 +3165,8 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limited");
 	}
 
-	reg_enum_combo(pub, "pm.config_ABI_FRONTEND", "ABI frontend");
-	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend");
+	reg_enum_combo(pub, "pm.config_ABI_FRONTEND", "ABI frontend", 0);
+	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
 	reg_enum_toggle(pub, "pm.config_MILEAGE_INFO", "Mileage info");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3171,8 +3187,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.noise_DI", "Noise damping in current");
-	reg_float(pub, "pm.noise_DS", "Noise damping in speed");
+	reg_float(pub, "pm.damping_DI", "Damping on current loop");
+	reg_float(pub, "pm.damping_DS", "Damping on speed loop");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3201,8 +3217,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.vsi_gain_LP", "VSI LPF gain");
-	reg_enum_combo(pub, "pm.vsi_mask_XF", "VSI channel mask");
+	reg_float(pub, "pm.vsi_gain_LP", "VSI gain LP");
+	reg_enum_combo(pub, "pm.vsi_mask_XF", "VSI channel mask", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3213,8 +3229,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.lu_transient", "LU transient rate");
-	reg_float(pub, "pm.lu_gain_QF", "LU torque gain QF");
+	reg_float(pub, "pm.lu_rate", "LU transient rate");
+	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3252,43 +3268,43 @@ page_lu_forced(struct public *pub)
 }
 
 static void
-page_lu_FLUX(struct public *pub)
+page_lu_flux(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_float(pub, "pm.detach_threshold_BASE", "Detached voltage threshold");
-	reg_float(pub, "pm.detach_trip_AD", "Detached trip gain");
-	reg_float(pub, "pm.detach_gain_SF", "Detached loop gain");
+	reg_float(pub, "pm.detach_threshold_BASE", "Detached threshold");
+	reg_float(pub, "pm.detach_trip_AP", "Detached trip point");
+	reg_float(pub, "pm.detach_gain_SF", "Detached speed loop gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.flux_trip_AD", "Ortega speed trip gain");
+	reg_float(pub, "pm.flux_trip_AP", "Ortega speed trip point");
 	reg_float(pub, "pm.flux_gain_IN", "Ortega initial gain");
-	reg_float(pub, "pm.flux_gain_LO", "Ortega low flux gain");
-	reg_float(pub, "pm.flux_gain_HI", "Ortega high flux gain");
+	reg_float(pub, "pm.flux_gain_LO", "Ortega flux gain LO");
+	reg_float(pub, "pm.flux_gain_HI", "Ortega flux gain HI");
 	reg_float(pub, "pm.flux_gain_SF", "Ortega speed loop gain");
-	reg_float(pub, "pm.flux_gain_IF", "Torque accel gain");
+	reg_float(pub, "pm.flux_gain_IF", "Torque acceleration");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.kalman_gain_Q0", "Kalman Q on iD");
 	reg_float(pub, "pm.kalman_gain_Q1", "Kalman Q on iQ");
-	reg_float(pub, "pm.kalman_gain_Q2", "Kalman Q on xF");
-	reg_float(pub, "pm.kalman_gain_Q3", "Kalman Q on wS");
+	reg_float(pub, "pm.kalman_gain_Q2", "Kalman Q on position");
+	reg_float(pub, "pm.kalman_gain_Q3", "Kalman Q on speed");
 	reg_float(pub, "pm.kalman_gain_Q4", "Kalman Q on bias");
 	reg_float(pub, "pm.kalman_gain_R", "Kalman R gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_threshold_NOISE", "NOISE threshold", 0);
-	reg_float_um(pub, "pm.zone_threshold_BASE", "BASE threshold", 0);
+	reg_float_um(pub, "pm.zone_threshold_NOISE", "NOISE zone threshold", 0);
+	reg_float_um(pub, "pm.zone_threshold_BASE", "BASE zone threshold", 0);
 	reg_float(pub, "pm.zone_gain_TH", "Zone hysteresis");
-	reg_float(pub, "pm.zone_gain_LP", "Zone LPF gain");
+	reg_float(pub, "pm.zone_gain_LP", "Zone gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3309,7 +3325,7 @@ page_lu_FLUX(struct public *pub)
 		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE_FLUX");
+		reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE");
 
 		if (		reg != NULL
 				&& reg->lval == 1) {
@@ -3329,7 +3345,7 @@ page_lu_FLUX(struct public *pub)
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
 	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
-	reg_float(pub, "pm.flux_E", "Flux linkage");
+	reg_float(pub, "pm.flux_E", "Flux linkage estimate");
 	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3338,7 +3354,7 @@ page_lu_FLUX(struct public *pub)
 }
 
 static void
-page_lu_HFI(struct public *pub)
+page_lu_hfi(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -3346,14 +3362,9 @@ page_lu_HFI(struct public *pub)
 
 	int				m_drawing = pub->fe_def_size_x / 4;
 
-	reg_float(pub, "pm.hfi_sine", "Injected current");
-	reg_float_um(pub, "pm.hfi_maximal", "Maximal speed", 0);
-	reg_float(pub, "pm.hfi_INJS", "Frequency ratio");
-	reg_float(pub, "pm.hfi_SKIP", "Skipped cycles");
-	reg_float(pub, "pm.hfi_ESTI", "Estimate cycles");
-	reg_float(pub, "pm.hfi_gain_FP", "Flux polarity gain");
-	reg_float(pub, "pm.hfi_gain_SF", "Speed loop gain");
-	reg_float(pub, "pm.hfi_gain_IF", "Torque accel gain");
+	reg_float(pub, "pm.hfi_freq", "HF injection frequency");
+	reg_float(pub, "pm.hfi_sine", "HF injection current");
+	reg_float(pub, "pm.hfi_gain_DP", "Flux polarity gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3369,28 +3380,17 @@ page_lu_HFI(struct public *pub)
 		rate = (reg->lval != 0) ? 400 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.hfi_F_g");
+		reg = link_reg_lookup(pub->lp, "pm.flux_F_g");
 		if (reg != NULL) { reg->update = fast; }
 
-		reg = link_reg_lookup(pub->lp, "pm.hfi_wS");
+		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.hfi_im_L1");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.hfi_im_L2");
-		if (reg != NULL) { reg->update = rate; }
-
-		reg = link_reg_lookup(pub->lp, "pm.hfi_im_R");
-		if (reg != NULL) { reg->update = rate; }
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_float(pub, "pm.hfi_F_g", "HFI position");
-	reg_float_um(pub, "pm.hfi_wS", "HFI speed estimate", 1);
-	reg_float(pub, "pm.hfi_im_L1", "HF inductance D");
-	reg_float(pub, "pm.hfi_im_L2", "HF inductance Q");
-	reg_float(pub, "pm.hfi_im_R", "HF active impedance");
+	reg_float(pub, "pm.flux_F_g", "FLUX position");
+	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 1);
+	reg_float(pub, "pm.hfi_pole", "HFI flux polarity");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3406,7 +3406,7 @@ page_lu_HFI(struct public *pub)
 
 		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(pub->lp, "pm.hfi_F_g");
+		reg = link_reg_lookup(pub->lp, "pm.flux_F_g");
 
 		if (		reg != NULL
 				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
@@ -3423,7 +3423,7 @@ page_lu_HFI(struct public *pub)
 }
 
 static void
-page_lu_HALL(struct public *pub)
+page_lu_hall(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -3437,7 +3437,7 @@ page_lu_HALL(struct public *pub)
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
 
-	if (nk_button_label(ctx, "Adjust HALL")) {
+	if (nk_button_label(ctx, "Adjust Hall")) {
 
 		link_command(pub->lp, "pm_adjust_sensor_hall");
 	}
@@ -3457,11 +3457,11 @@ page_lu_HALL(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.hall_USEABLE", "HALL is in service");
-	reg_float(pub, "pm.hall_time_prol", "Transition time");
-	reg_float(pub, "pm.hall_gain_SF", "Speed loop gain");
-	reg_float(pub, "pm.hall_gain_PF", "Transition gain");
-	reg_float(pub, "pm.hall_gain_IF", "Torque accel gain");
+	reg_enum_toggle(pub, "pm.hall_USEABLE", "Hall is in service");
+	reg_float(pub, "pm.hall_trip_AP", "Hall speed trip point");
+	reg_float(pub, "pm.hall_gain_LO", "Hall speed gain LO");
+	reg_float(pub, "pm.hall_gain_SF", "Hall speed loop gain");
+	reg_float(pub, "pm.hall_gain_IF", "Torque acceleration");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3490,9 +3490,9 @@ page_lu_HALL(struct public *pub)
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_float(pub, "pm.hall_F_g", "HALL position");
-	reg_float_um(pub, "pm.hall_wS", "HALL speed estimate", 1);
-	reg_float(pub, "pm.fb_HS", "HALL feedback");
+	reg_float(pub, "pm.hall_F_g", "Hall position");
+	reg_float_um(pub, "pm.hall_wS", "Hall speed estimate", 1);
+	reg_float(pub, "pm.fb_HS", "Hall feedback");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3535,7 +3535,7 @@ page_lu_HALL(struct public *pub)
 }
 
 static void
-page_lu_ABI(struct public *pub)
+page_lu_abi(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -3544,7 +3544,7 @@ page_lu_ABI(struct public *pub)
 }
 
 static void
-page_lu_SINCOS(struct public *pub)
+page_lu_sincos(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -3560,11 +3560,12 @@ page_wattage(struct public *pub)
 	struct link_reg			*reg;
 
 	reg_float(pub, "pm.watt_wP_maximal", "Maximal consumption");
-	reg_float(pub, "pm.watt_iDC_maximal", "Maximal battery current");
+	reg_float(pub, "pm.watt_wA_maximal", "Maximal battery current");
 	reg_float(pub, "pm.watt_wP_reverse", "Maximal regeneration");
-	reg_float(pub, "pm.watt_iDC_reverse", "Maximal battery reverse");
-	reg_float(pub, "pm.watt_dclink_HI", "DC link voltage high");
-	reg_float(pub, "pm.watt_dclink_LO", "DC link voltage low");
+	reg_float(pub, "pm.watt_wA_reverse", "Maximal battery reverse");
+	reg_float(pub, "pm.watt_uDC_maximal", "High battery voltage");
+	reg_float(pub, "pm.watt_uDC_minimal", "Low battery voltage");
+	reg_float(pub, "pm.watt_gain_LP", "Wattage gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3573,23 +3574,48 @@ page_wattage(struct public *pub)
 
 	if (reg != NULL) {
 
-		int		rate;
+		int		rate, slow;
 
 		reg->update = 1000;
 		reg->shown = pub->lp->clock;
 
 		rate = (reg->lval != 0) ? 100 : 0;
+		slow = (reg->lval != 0) ? 900 : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.watt_lpf_wP");
+		reg = link_reg_lookup(pub->lp, "pm.const_fb_U");
 		if (reg != NULL) { reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.watt_consumption_wP");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.lu_total_revol");
+		if (reg != NULL) { reg->update = slow; }
+
+		reg = link_reg_lookup(pub->lp, "pm.mi_traveled");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+
+		reg = link_reg_lookup(pub->lp, "pm.mi_consumed_Wh");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+
+		reg = link_reg_lookup(pub->lp, "pm.mi_reverted_Wh");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+
+		reg = link_reg_lookup(pub->lp, "pm.mi_fuel_gauge");
+		if (reg != NULL) { reg->update = slow; }
 	}
 
-	reg_float_um(pub, "pm.watt_lpf_wP", "Wattage at now", 0);
+	reg_float(pub, "pm.const_fb_U", "Battery voltage");
+	reg_float_um(pub, "pm.watt_consumption", "Battery consumption", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.watt_gain_LP", "Wattage LPF gain");
+	reg_float(pub, "pm.lu_total_revol", "Total electrical revolutions");
+	reg_float_um(pub, "pm.mi_traveled", "Total distance traveled", 1);
+	reg_float_um(pub, "pm.mi_consumed", "Total consumed energy", 0);
+	reg_float_um(pub, "pm.mi_reverted", "Total reverted energy", 0);
+	reg_float(pub, "pm.mi_capacity_Ah", "Battery full capacity");
+	reg_float(pub, "pm.mi_fuel_gauge", "Fuel gauge");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3603,14 +3629,18 @@ page_lp_current(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	reg_float(pub, "pm.i_derate_on_HFI", "Derate on HFI");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float_um(pub, "pm.i_setpoint_current", "Current setpoint", 0);
 	reg_float(pub, "pm.i_maximal", "Maximal forward current");
 	reg_float(pub, "pm.i_reverse", "Maximal reverse current");
-	reg_float(pub, "pm.i_derated_HFI", "Derated on HFI");
 	reg_float(pub, "pm.i_slew_rate", "Slew rate");
 	reg_float(pub, "pm.i_tolerance", "Tolerance");
-	reg_float(pub, "pm.i_gain_P", "Proportional gain P");
-	reg_float(pub, "pm.i_gain_I", "Integral gain I");
+	reg_float(pub, "pm.i_gain_P", "Proportional loop gain");
+	reg_float(pub, "pm.i_gain_I", "Integral loop gain");
 
 	reg = link_reg_lookup(pub->lp, "pm.i_maximal");
 
@@ -3670,16 +3700,16 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.lu_gain_QF", "LU torque gain QF");
-	reg_float(pub, "pm.s_gain_P", "Proportional gain P");
-	reg_float(pub, "pm.s_gain_I", "Forward gain I");
+	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
+	reg_float(pub, "pm.s_gain_P", "Proportional loop gain");
+	reg_float(pub, "pm.s_gain_I", "Forward loop gain");
 
 	reg = link_reg_lookup(pub->lp, "pm.s_gain_P");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_gain_QF");
+		reg = link_reg_lookup(pub->lp, "pm.lu_gain_mq_LP");
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(pub->lp, "pm.s_gain_I");
@@ -3698,24 +3728,6 @@ page_lp_servo(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	/* TODO */
-}
-
-static void
-page_mileage(struct public *pub)
-{
-	struct nk_sdl			*nk = pub->nk;
-	struct nk_context		*ctx = &nk->ctx;
-
-	reg_float(pub, "pm.lu_total_revol", "Total revolutions");
-	reg_float_um(pub, "pm.im_distance", "Total distance traveled", 1);
-	reg_float_um(pub, "pm.im_consumed", "Consumed energy", 0);
-	reg_float_um(pub, "pm.im_reverted", "Reverted energy", 0);
-	reg_float(pub, "pm.im_capacity_Ah", "Battery capacity");
-	reg_float(pub, "pm.im_fuel_pc", "Fuel gauge");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-	nk_spacer(ctx);
 }
 
 static void
@@ -4048,25 +4060,24 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "Serial", &page_serial);
 		menu_select_button(pub, "Diagnose", &page_diagnose);
 		menu_select_button(pub, "Probe", &page_probe);
-		menu_select_button(pub, "HAL", &page_HAL);
+		menu_select_button(pub, "HAL", &page_hal);
 		menu_select_button(pub, "in Network", &page_in_network);
-		menu_select_button(pub, "in STEP/DIR", &page_in_STEPDIR);
-		menu_select_button(pub, "in PWM", &page_in_PWM);
+		menu_select_button(pub, "in STEP/DIR", &page_in_stepdir);
+		menu_select_button(pub, "in PWM", &page_in_pwm);
 		menu_select_button(pub, "in Knob", &page_in_knob);
 		menu_select_button(pub, "Apps", &page_apps);
 		menu_select_button(pub, "Thermal", &page_thermal);
 		menu_select_button(pub, "Config", &page_config);
 		menu_select_button(pub, "lu Forced", &page_lu_forced);
-		menu_select_button(pub, "lu FLUX", &page_lu_FLUX);
-		menu_select_button(pub, "lu HFI", &page_lu_HFI);
-		menu_select_button(pub, "lu HALL", &page_lu_HALL);
-		menu_select_button(pub, "lu ABI", &page_lu_ABI);
-		menu_select_button(pub, "lu SIN/COS", &page_lu_SINCOS);
+		menu_select_button(pub, "lu FLUX", &page_lu_flux);
+		menu_select_button(pub, "lu HFI", &page_lu_hfi);
+		menu_select_button(pub, "lu Hall", &page_lu_hall);
+		menu_select_button(pub, "lu ABI", &page_lu_abi);
+		menu_select_button(pub, "lu SIN/COS", &page_lu_sincos);
 		menu_select_button(pub, "Wattage", &page_wattage);
 		menu_select_button(pub, "lp Current", &page_lp_current);
 		menu_select_button(pub, "lp Speed", &page_lp_speed);
 		menu_select_button(pub, "lp Servo", &page_lp_servo);
-		menu_select_button(pub, "Mileage", &page_mileage);
 		menu_select_button(pub, "Telemetry", &page_telemetry);
 		menu_select_button(pub, "Flash", &page_flash);
 		menu_select_button(pub, "Upgrade", &page_upgrade);

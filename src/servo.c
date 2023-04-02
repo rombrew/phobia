@@ -9,7 +9,7 @@
 #include "shell.h"
 #include "tlm.h"
 
-int pm_wait_for_SETTLE()
+int pm_wait_for_settle()
 {
 	TickType_t		xTick = (TickType_t) 0;
 
@@ -48,7 +48,7 @@ SH_DEF(servo_probe_const_J)
 	do {
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
 
-		if (pm_wait_for_SETTLE() != PM_OK)
+		if (pm_wait_for_settle() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_J;
@@ -63,7 +63,7 @@ SH_DEF(servo_probe_const_J)
 
 		vTaskDelay((TickType_t) 300);
 
-		if (pm_wait_for_IDLE() != PM_OK)
+		if (pm_wait_for_idle() != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_CONST_JA_KG]);
@@ -87,7 +87,7 @@ SH_DEF(servo_test_uniform)
 	do {
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
 
-		if (pm_wait_for_SETTLE() != PM_OK)
+		if (pm_wait_for_settle() != PM_OK)
 			break;
 
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, wSP);

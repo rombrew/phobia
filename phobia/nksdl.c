@@ -238,7 +238,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	nk->table[NK_COLOR_BUTTON_HOVER] = nk_rgba(65, 95, 125, 255);
 	nk->table[NK_COLOR_BUTTON_ACTIVE] = nk_rgba(40, 40, 45, 255);
 	nk->table[NK_COLOR_TOGGLE] = nk_rgba(50, 50, 55, 255);
-	nk->table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(55, 55, 65, 255);
+	nk->table[NK_COLOR_TOGGLE_HOVER] = nk_rgba(60, 60, 65, 255);
 	nk->table[NK_COLOR_TOGGLE_CURSOR] = nk_rgba(210, 120, 60, 255);
 	nk->table[NK_COLOR_SELECT] = nk_rgba(50, 50, 55, 255);
 	nk->table[NK_COLOR_SELECT_ACTIVE] = nk_rgba(45, 125, 55, 255);
@@ -268,6 +268,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	nk->table[NK_COLOR_ORANGE_BUTTON_HOVER] = nk_rgba(185, 95, 65, 255);
 	nk->table[NK_COLOR_EDIT_NUMBER] = nk_rgba(210, 110, 55, 255);
 	nk->table[NK_COLOR_COMBO_HOVER] = nk_rgba(60, 60, 65, 255);
+	nk->table[NK_COLOR_ACTIVE_HOVER] = nk_rgba(55, 135, 65, 255);
 	nk->table[NK_COLOR_DRAWING_PEN] = nk_rgba(90, 90, 95, 255);
 
 	nk_style_from_table(ctx, nk->table);
@@ -278,6 +279,8 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	style->button.padding = nk_vec2(padding, padding);
 	style->button.rounding = 4.0f;
 
+	style->selectable.hover = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
+	style->selectable.hover_active = nk_style_item_color(nk->table[NK_COLOR_ACTIVE_HOVER]);
 	style->selectable.padding = nk_vec2(padding, padding);
 	style->selectable.rounding = 2.0f;
 
