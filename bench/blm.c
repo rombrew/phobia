@@ -1,41 +1,41 @@
-#include <stdlib.h>
+#include <stddef.h>
 #include <math.h>
 
 #include "blm.h"
 #include "lfg.h"
 
-void blm_AB_DQ(double R, double A, double B, double *D, double *Q)
+void blm_AB_DQ(double theta, double A, double B, double *D, double *Q)
 {
-	double		X, Y, rS, rC;
+	double		X, Y, tS, tC;
 
 	X = A;
 	Y = .577350269189626 * A + 1.15470053837925 * B;
 
-	rS = sin(R);
-	rC = cos(R);
+	tS = sin(theta);
+	tC = cos(theta);
 
-	*D = rC * X + rS * Y;
-	*Q = rC * Y - rS * X;
+	*D = tC * X + tS * Y;
+	*Q = tC * Y - tS * X;
 }
 
-void blm_DQ_ABC(double R, double D, double Q, double *A, double *B, double *C)
+void blm_DQ_ABC(double theta, double D, double Q, double *A, double *B, double *C)
 {
-	double		X, Y, rS, rC;
+	double		X, Y, tS, tC;
 
-	rS = sin(R);
-	rC = cos(R);
+	tS = sin(theta);
+	tC = cos(theta);
 
-	X = rC * D - rS * Q;
-	Y = rS * D + rC * Q;
+	X = tC * D - tS * Q;
+	Y = tS * D + tC * Q;
 
 	*A = X;
 	*B = - .5 * X + .866025403784439 * Y;
 	*C = - .5 * X - .866025403784439 * Y;
 }
 
-double blm_Kv_to_E(blm_t *m, double Kv)
+double blm_Kv_lambda(blm_t *m, double Kv)
 {
-	/* Convert the total motor Kv [rpm/volt] to the flux linkae [Weber].
+	/* Convert the total motor Kv (rpm/Volt) to the flux linkage (Weber)
 	 * */
 	return (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
 }
@@ -47,500 +47,621 @@ void blm_enable(blm_t *m)
 	 * being solved.
 	 */
 
-	m->Tsim = 0.;		/* Simulation time (Second) */
-        m->dT = 1. / 30000.;	/* PWM period */
-	m->sT = 1E-6;		/* Solver step */
-	m->PWM_R = 2800;	/* PWM resolution */
+	m->time = 0.;		/* Simulation TIME (Second) */
+	m->sol_dT = 5.E-6;	/* ODE solver step (Second) */
 
-	/* Winding resistance. (Ohm)
-         * */
-	m->R = 2.4E-1;
+	m->pwm_dT = 1. / 30000.;	/* PWM period (Second)   */
+	m->pwm_deadtime = 170.E-9;	/* PWM deadtime (Second) */
+	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
+	m->pwm_resolution = 2800;	/* PWM resolution        */
 
-	/* Winding inductance. (Henry)
-         * */
-	m->Ld = 5.2E-4;
-	m->Lq = 6.5E-4;
+	/* Threshold about deadtime (Ampere).
+	 * */
+	m->Dtol = 0.1;
 
-	/* BEMF constant. (Weber)
+	/* Winding resistance (Ohm).
          * */
-        m->E = blm_Kv_to_E(m, 15.7);
+	m->Rs = 0.007;
+
+	/* Winding inductance (Henry).
+         * */
+	m->Ld = 11.E-6;
+	m->Lq = 16.E-6;
+
+	/* Flux linkage constant (Weber).
+         * */
+        m->lambda = blm_Kv_lambda(m, 270.);
 
 	/* Number of the rotor pole pairs.
 	 * */
-	m->Zp = 15;
+	m->Zp = 14;
 
-	/* Thermal capacity. (Joule/K)
+	/* Ambient temperature (Celsius).
+	 * */
+	m->Ta = 25.;
+
+	/* Thermal capacity (Joule/Kelvin).
 	 * */
 	m->Ct = 30.;
 
-	/* Thermal resistance. (K/Watt)
+	/* Thermal resistance (Kelvin/Watt).
 	 * */
 	m->Rt = 0.5;
 
-	/* Source voltage. (Volt)
+	/* DC link voltage (Volt).
 	 * */
-	m->U = 48.;
+	m->Udc = 48.;
 
-	/* Source internal resistance. (Ohm)
+	/* DC link internal resistance (Ohm).
 	 * */
-	m->Rs = 0.2;
+	m->Rdc = 0.2;
 
-	/* Decoupling capacitance. (Farad)
+	/* Decoupling capacitance (Farad).
 	 * */
-	m->Cb = 940E-6;
+	m->Cdc = 940.E-6;
 
 	/* Moment of inertia.
 	 * */
-	m->J = 5E-3;
+	m->Jm = 5.E-3;
 
 	/* Load torque constants.
 	 * */
-	m->M[0] = 0E-3;
-	m->M[1] = 5E-5;
-	m->M[2] = 5E-7;
-	m->M[3] = 2E-2;
+	m->Mq[0] = 0.E-3;
+	m->Mq[1] = 5.E-5;
+	m->Mq[2] = 5.E-7;
+	m->Mq[3] = 5.E-2;
 
-	/* ADC conversion time (s).
+	/* ADC conversion time (Second).
 	 * */
-	m->T_ADC = 0.643E-6;
+	m->adc_Tconv = 0.643E-6;
 
-	/* Sensor time constant (s).
+	/* Sensor time constant (Second).
 	 * */
-	m->tau_I = 0.636E-6;
-	m->tau_U = 25.53E-6;
+	m->tau_A = 0.636E-6;
+	m->tau_B = 25.53E-6;
+
+	/* Sensor measurement range.
+	 * */
+	m->range_A = 165.;	/* (Ampere) */
+	m->range_B = 60.;	/* (Volt)   */
 
 	/* Hall sensor angles.
 	 * */
-	m->HS[0] = + 31.;
-	m->HS[1] = + 151.;
-	m->HS[2] = - 90.;
+	m->hall[0] = 30.7;
+	m->hall[1] = 150.1;
+	m->hall[2] = 270.5;
 
-	/* Incremental Encoder.
+	/* AB Incremental encoder.
 	 * */
-	m->EP_PPR = 2400;	/* Mechanical resolution */
-	m->EP_Zq = 1.0;		/* Reduction ratio */
+	m->eabi_EPPR = 2400;	/* Mechanical resolution  */
+	m->eabi_Zq = 1.0;	/* Reduction ratio        */
 
 	/* Resolver SIN/COS.
 	 * */
-	m->SC_Zq = 1.0;		/* Reduction ratio */
-
-	/* External flags.
-	 * */
-	m->sync_F = 0;
+	m->analog_Zq = 1.0;	/* Reduction ratio        */
 }
 
-void blm_stop(blm_t *m)
+void blm_restart(blm_t *m)
 {
-	m->X[0] = 0.;	/* Axis D current (Ampere) */
-	m->X[1] = 0.;	/* Axis Q current (Ampere) */
-	m->X[2] = 0.;	/* Electrical Speed (Radian/Sec) */
-	m->X[3] = 0.;	/* Electrical Position (Radian) */
-	m->X[4] = 25.;	/* Temperature (Celsius) */
-	m->X[5] = 0.;	/* Energy consumption (Joule) */
-	m->X[6] = 5.;	/* DC link voltage (Volt) */
+	m->unsync_flag = 0;
 
-	m->X[7] = 0.;	/* Current Sensor A */
-	m->X[8] = 0.;	/* Current Sensor B */
-	m->X[9] = 0.;	/* Current Sensor C */
-	m->X[10] = 0.;	/* Voltage Sensor A */
-	m->X[11] = 0.;	/* Voltage Sensor B */
-	m->X[12] = 0.;	/* Voltage Sensor C */
+	m->state[0] = 0.;	/* Axis D current (Ampere) */
+	m->state[1] = 0.;	/* Axis Q current (Ampere) */
+	m->state[2] = 0.;	/* Electrical Speed (Radian/Sec) */
+	m->state[3] = 0.;	/* Electrical Position (Radian) */
+	m->state[4] = m->Ta;	/* Temperature (Celsius) */
+	m->state[5] = 0.;	/* Energy consumption (Joule) */
+	m->state[6] = m->Udc;	/* DC link voltage (Volt) */
 
-	m->revol_N = 0;
+	m->state[7] = 0.;	/* Current Sensor iA */
+	m->state[8] = 0.;	/* Current Sensor iB */
+	m->state[9] = 0.;	/* Current Sensor iC */
+	m->state[10] = 0.;	/* Voltage Sensor uS */
+	m->state[11] = 0.;	/* Voltage Sensor uS */
+	m->state[12] = 0.;	/* Voltage Sensor uA */
+	m->state[13] = 0.;	/* Voltage Sensor uB */
+	m->state[14] = 0.;	/* Voltage Sensor uC */
 
-	m->VSI[0] = 0;
-	m->VSI[1] = 0;
-	m->VSI[2] = 0;
+	m->vsi[0] = 0;
+	m->vsi[1] = 0;
+	m->vsi[2] = 0;
+	m->vsi[3] = 0;
+	m->vsi[4] = 0;
+	m->vsi[5] = 0;
 
-	m->surge_I = 0;
+	m->event[0].ev = 1;
+	m->event[1].ev = 2;
+	m->event[2].ev = 3;
+	m->event[3].ev = 4;
+	m->event[4].ev = 5;
+	m->event[5].ev = 6;
+	m->event[6].ev = 7;
+	m->event[7].ev = 8;
+
+	m->revol = 0;
 }
 
 static void
-blm_DQ_equation(const blm_t *m, const double X[7], double D[7])
+blm_equation(const blm_t *m, const double state[7], double y[7])
 {
-	double		UA, UB, UD, UQ, Q;
-	double		R1, E1, MT, ML, wS;
+	double		uA, uB, uD, uQ, Rs, lambda, mP, mQ, mS;
 
 	/* Thermal drift.
 	 * */
-	R1 = m->R * (1. + 4E-3 * (X[4] - 25.));
-	E1 = m->E * (1. - 1E-3 * (X[4] - 25.));
-
-	Q = (m->VSI[0] + m->VSI[1] + m->VSI[2]) / 3.;
+	Rs = m->Rs * (1. + 4E-3 * (state[4] - m->Ta));
+	lambda = m->lambda * (1. - 1E-3 * (state[4] - m->Ta));
 
 	/* Voltage from VSI.
 	 * */
-	UA = (m->VSI[0] - Q) * X[6];
-	UB = (m->VSI[1] - Q) * X[6];
+	uQ = (m->vsi[0] + m->vsi[1] + m->vsi[2]) / 3.;
+	uA = (m->vsi[0] - uQ) * state[6];
+	uB = (m->vsi[1] - uQ) * state[6];
 
-	blm_AB_DQ(X[3], UA, UB, &UD, &UQ);
+	blm_AB_DQ(state[3], uA, uB, &uD, &uQ);
 
 	/* Energy consumption equation.
 	 * */
-	D[5] = 1.5 * (X[0] * UD + X[1] * UQ);
+	y[5] = 1.5 * (state[0] * uD + state[1] * uQ);
 
 	/* DC link voltage equation.
 	 * */
-	D[6] = ((m->U - X[6]) / m->Rs - D[5] / X[6]) / m->Cb;
+	y[6] = ((m->Udc - state[6]) / m->Rdc - y[5] / state[6]) / m->Cdc;
 
-	/* Electrical equations.
+	/* Electrical equations of PMSM.
 	 * */
-	UD += - R1 * X[0] + m->Lq * X[2] * X[1];
-	UQ += - R1 * X[1] - m->Ld * X[2] * X[0] - E1 * X[2];
+	uD += - Rs * state[0] + m->Lq * state[2] * state[1];
+	uQ += - Rs * state[1] - m->Ld * state[2] * state[0] - lambda * state[2];
 
-	if (m->HI_Z == 0) {
-
-		D[0] = UD / m->Ld;
-		D[1] = UQ / m->Lq;
-	}
-	else {
-		D[0] = 0.;
-		D[1] = 0.;
-	}
+	y[0] = uD / m->Ld;
+	y[1] = uQ / m->Lq;
 
 	/* Torque production.
 	 * */
-	MT = 1.5 * m->Zp * (E1 - (m->Lq - m->Ld) * X[0]) * X[1];
+	mP = 1.5 * m->Zp * (lambda - (m->Lq - m->Ld) * state[0]) * state[1];
 
-	/* Load.
+	/* Mechanical load torque.
 	 * */
-	wS = X[2] / m->Zp;
-	ML = m->M[0] - wS * (m->M[1] + fabs(wS) * m->M[2]);
-	ML += (wS < 0.) ? m->M[3] : - m->M[3];
+	mS = state[2] / m->Zp;
+	mQ = m->Mq[0] - mS * (m->Mq[1] + fabs(mS) * m->Mq[2]);
+	mQ += (mS < 0.) ? m->Mq[3] : - m->Mq[3];
 
 	/* Mechanical equations.
 	 * */
-	D[2] = m->Zp * (MT + ML) / m->J;
-	D[3] = X[2];
+	y[2] = m->Zp * (mP + mQ) / m->Jm;
+	y[3] = state[2];
 
 	/* Thermal equation.
 	 * */
-	D[4] = (1.5f * R1 * (X[0] * X[0] + X[1] * X[1])
-			+ (25. - X[4]) / m->Rt) / m->Ct;
+	y[4] = (1.5f * Rs * (state[0] * state[0] + state[1] * state[1])
+			+ (m->Ta - state[4]) / m->Rt) / m->Ct;
 }
 
 static void
-blm_solve(blm_t *m, double dT)
+blm_ode_step(blm_t *m, double dT)
 {
-	double		S1[7], S2[7], X2[7];
-	double		iA, iB, iC, uA, uB, uC;
-	double		uMIN, KI, KU;
+	double		x2[7], y1[7], y2[7];
+	double		iA, iB, iC, uA, uB, uC, kA, kB, uMIN;
 
-	if (m->HI_Z != 0) {
+	if (m->pwm_Z == BLM_Z_DETACHED) {
 
-		m->X[0] = 0.;
-		m->X[1] = 0.;
+		m->state[0] = 0.;
+		m->state[1] = 0.;
 	}
 
 	/* Second-order ODE solver.
 	 * */
 
-	blm_DQ_equation(m, m->X, S1);
+	blm_equation(m, m->state, y1);
 
-	X2[0] = m->X[0] + S1[0] * dT;
-	X2[1] = m->X[1] + S1[1] * dT;
-	X2[2] = m->X[2] + S1[2] * dT;
-	X2[3] = m->X[3] + S1[3] * dT;
-	X2[4] = m->X[4] + S1[4] * dT;
-	X2[5] = m->X[5] + S1[5] * dT;
-	X2[6] = m->X[6] + S1[6] * dT;
+	if (m->pwm_Z != BLM_Z_DETACHED) {
 
-	blm_DQ_equation(m, X2, S2);
+		x2[0] = m->state[0] + y1[0] * dT;
+		x2[1] = m->state[1] + y1[1] * dT;
+	}
 
-	m->X[0] += (S1[0] + S2[0]) * dT / 2.;
-	m->X[1] += (S1[1] + S2[1]) * dT / 2.;
-	m->X[2] += (S1[2] + S2[2]) * dT / 2.;
-	m->X[3] += (S1[3] + S2[3]) * dT / 2.;
-	m->X[4] += (S1[4] + S2[4]) * dT / 2.;
-	m->X[5] += (S1[5] + S2[5]) * dT / 2.;
-	m->X[6] += (S1[6] + S2[6]) * dT / 2.;
+	x2[2] = m->state[2] + y1[2] * dT;
+	x2[3] = m->state[3] + y1[3] * dT;
+	x2[4] = m->state[4] + y1[4] * dT;
+	x2[5] = m->state[5] + y1[5] * dT;
+	x2[6] = m->state[6] + y1[6] * dT;
+
+	blm_equation(m, x2, y2);
+
+	if (m->pwm_Z != BLM_Z_DETACHED) {
+
+		m->state[0] += (y1[0] + y2[0]) * dT / 2.;
+		m->state[1] += (y1[1] + y2[1]) * dT / 2.;
+	}
+
+	m->state[2] += (y1[2] + y2[2]) * dT / 2.;
+	m->state[3] += (y1[3] + y2[3]) * dT / 2.;
+	m->state[4] += (y1[4] + y2[4]) * dT / 2.;
+	m->state[5] += (y1[5] + y2[5]) * dT / 2.;
+	m->state[6] += (y1[6] + y2[6]) * dT / 2.;
 
 	/* Sensor transient (FAST).
 	 * */
-	KI = 1.0 - exp(- dT / m->tau_I);
-	KU = 1.0 - exp(- dT / m->tau_U);
+	kA = 1.0 - exp(- dT / m->tau_A);
+	kB = 1.0 - exp(- dT / m->tau_B);
 
-	blm_DQ_ABC(m->X[3], m->X[0], m->X[1], &iA, &iB, &iC);
+	blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
 
-	m->X[7] += (iA - m->X[7]) * KI;
-	m->X[8] += (iB - m->X[8]) * KI;
-	m->X[9] += (iC - m->X[9]) * KI;
+	m->state[7] += (iA - m->state[7]) * kA;
+	m->state[8] += (iB - m->state[8]) * kA;
+	m->state[9] += (iC - m->state[9]) * kA;
 
-	if (m->HI_Z == 0) {
+	if (m->pwm_Z != BLM_Z_DETACHED) {
 
-		uA = m->VSI[0] * m->X[6];
-		uB = m->VSI[1] * m->X[6];
-		uC = m->VSI[2] * m->X[6];
+		uA = m->vsi[0] * m->state[6];
+		uB = m->vsi[1] * m->state[6];
+		uC = m->vsi[2] * m->state[6];
 	}
 	else {
-		blm_DQ_ABC(m->X[3], 0., m->E * m->X[2], &uA, &uB, &uC);
+		blm_DQ_ABC(m->state[3], 0., m->lambda * m->state[2], &uA, &uB, &uC);
 
 		uMIN = (uA < uB) ? uA : uB;
 		uMIN = (uMIN < uC) ? uMIN : uC;
 
-		uA += 0. - uMIN;
-		uB += 0. - uMIN;
-		uC += 0. - uMIN;
+		uA += - uMIN;
+		uB += - uMIN;
+		uC += - uMIN;
 	}
 
-	m->X[10] += (uA - m->X[10]) * KU;
-	m->X[11] += (uB - m->X[11]) * KU;
-	m->X[12] += (uC - m->X[12]) * KU;
+	m->state[10] += (m->state[6]  - m->state[10]) * kA;
+	m->state[11] += (m->state[10] - m->state[11]) * kB;
+	m->state[12] += (uA - m->state[12]) * kB;
+	m->state[13] += (uB - m->state[13]) * kB;
+	m->state[14] += (uC - m->state[14]) * kB;
+
+	if (m->proc_step != NULL) {
+
+		m->proc_step(dT);
+	}
 }
 
 static void
-blm_solve_split(blm_t *m, double dT)
+blm_solve(blm_t *m, double dT)
 {
-	double		sT = m->sT;
+	if (m->vsi[0] != m->vsi[3]) {
 
-	if (dT > 0.) {
-
-		if (m->surge_I == 2) {
-
-			/* Distortion of A.
-			 * */
-			m->X[7] += lfg_gauss() * 8.;
-			m->surge_I = 0;
-		}
-
-		if (m->surge_I == 3) {
-
-			/* Distortion of B.
-			 * */
-			m->X[8] += lfg_gauss() * 8.;
-			m->surge_I = 0;
-		}
-
-		if (m->surge_I == 4) {
-
-			/* Distortion of C.
-			 * */
-			m->X[9] += lfg_gauss() * 8.;
-			m->surge_I = 0;
-		}
-
-		/* Split the long interval.
+		/* Surge on A.
 		 * */
-		while (dT > sT) {
-
-			blm_solve(m, sT);
-			dT -= sT;
-		}
-
-		blm_solve(m, dT);
-
-		/* Wrap the angular position and count the full number of
-		 * electrical revolutions.
-		 * */
-		if (m->X[3] < - M_PI) {
-
-			m->X[3] = m->X[3] + (2. * M_PI);
-			m->revol_N += - 1;
-		}
-		else if (m->X[3] > M_PI) {
-
-			m->X[3] = m->X[3] - (2. * M_PI);
-			m->revol_N += + 1;
-		}
+		m->state[7]  += lfg_gauss() * 5.;
+		m->state[10] += lfg_gauss() * 2.;
 	}
+
+	if (m->vsi[1] != m->vsi[4]) {
+
+		/* Surge on B.
+		 * */
+		m->state[8]  += lfg_gauss() * 5.;
+		m->state[10] += lfg_gauss() * 2.;
+	}
+
+	if (m->vsi[2] != m->vsi[5]) {
+
+		/* Surge on C.
+		 * */
+		m->state[9]  += lfg_gauss() * 5.;
+		m->state[10] += lfg_gauss() * 2.;
+	}
+
+	/* Divide the long interval.
+	 * */
+	while (dT > m->sol_dT) {
+
+		blm_ode_step(m, m->sol_dT);
+		dT -= m->sol_dT;
+	}
+
+	blm_ode_step(m, dT);
+
+	if (m->state[3] < - M_PI) {
+
+		m->state[3] += 2. * M_PI;
+		m->revol -= 1;
+	}
+	else if (m->state[3] > M_PI) {
+
+		m->state[3] -= 2. * M_PI;
+		m->revol += 1;
+	}
+
+	/* Keep the previous VSI state.
+	 * */
+	m->vsi[3] = m->vsi[0];
+	m->vsi[4] = m->vsi[1];
+	m->vsi[5] = m->vsi[2];
 }
 
 static double
-blm_ADC(double vINP, double vMIN, double vMAX)
+blm_ADC(double vinp, double vmin, double vmax)
 {
 	int		ADC;
 
-	vINP = (vINP - vMIN) / (vMAX - vMIN);
+	vinp = (vinp - vmin) / (vmax - vmin);
 
-	ADC = (int) (vINP * 4096. + lfg_gauss() * 2.);
+	ADC = (int) (vinp * 4096. + lfg_gauss() * 2.);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
 
-	return (double) ADC / 4096. * (vMAX - vMIN) + vMIN;
+	return (double) ADC / 4096. * (vmax - vmin) + vmin;
 }
 
 static void
-blm_sample_HS(blm_t *m)
+blm_sample_hall(blm_t *m)
 {
-	double			EX, EY, SX, SY;
-	int			HS = 0;
+	double		mX, mY, hX, hY;
+	int		HS = 0;
 
-	EX = cos(m->X[3]);
-	EY = sin(m->X[3]);
+	mX = cos(m->state[3]);
+	mY = sin(m->state[3]);
 
-	SX = cos(m->HS[0] * (M_PI / 180.));
-	SY = sin(m->HS[0] * (M_PI / 180.));
+	hX = cos(m->hall[0] * (M_PI / 180.));
+	hY = sin(m->hall[0] * (M_PI / 180.));
 
-	HS |= (EX * SX + EY * SY < 0.) ? 1 : 0;
+	HS |= (mX * hX + mY * hY < 0.) ? 1 : 0;
 
-	SX = cos(m->HS[1] * (M_PI / 180.));
-	SY = sin(m->HS[1] * (M_PI / 180.));
+	hX = cos(m->hall[1] * (M_PI / 180.));
+	hY = sin(m->hall[1] * (M_PI / 180.));
 
-	HS |= (EX * SX + EY * SY < 0.) ? 2 : 0;
+	HS |= (mX * hX + mY * hY < 0.) ? 2 : 0;
 
-	SX = cos(m->HS[2] * (M_PI / 180.));
-	SY = sin(m->HS[2] * (M_PI / 180.));
+	hX = cos(m->hall[2] * (M_PI / 180.));
+	hY = sin(m->hall[2] * (M_PI / 180.));
 
-	HS |= (EX * SX + EY * SY < 0.) ? 4 : 0;
+	HS |= (mX * hX + mY * hY < 0.) ? 4 : 0;
 
 	m->pulse_HS = HS;
 }
 
 static void
-blm_sample_EP(blm_t *m)
+blm_sample_eabi(blm_t *m)
 {
-	double		E, R;
+	double		location, angle;
 	int		EP;
 
-	E = m->X[3] + (2. * M_PI) * (double) m->revol_N;
-	R = E * m->EP_Zq / m->Zp;
+	location = m->state[3] + (2. * M_PI) * (double) m->revol;
+	angle = location * m->eabi_Zq / m->Zp;
 
-	EP = (int) (R / (2. * M_PI) * (double) m->EP_PPR);
+	EP = (int) (angle / (2. * M_PI) * (double) m->eabi_EPPR);
 
 	m->pulse_EP = EP & 0xFFFFU;
-	/*m->pulse_EP = EP % m->EP_PPR;*/
 }
 
 static void
-blm_sample_SC(blm_t *m)
+blm_sample_analog(blm_t *m)
 {
-	double		E, R;
+	double		location, angle;
 
-	E = m->X[3] + (2. * M_PI) * (double) m->revol_N;
-	R = E * m->SC_Zq / m->Zp;
+	location = m->state[3] + (2. * M_PI) * (double) m->revol;
+	angle = location * m->analog_Zq / m->Zp;
 
-	m->analog_SIN = (float) blm_ADC(sin(R), - 3., 3.);
-	m->analog_COS = (float) blm_ADC(cos(R), - 3., 3.);
+	m->analog_SIN = (float) blm_ADC(sin(angle), - 3., 3.);
+	m->analog_COS = (float) blm_ADC(cos(angle), - 3., 3.);
 }
 
 static void
-blm_VSI_sample(blm_t *m, int N)
+blm_pwm_bsort(blm_t *m)
 {
-	const double	range_I = 165.;
-	const double	range_U = 60.;
+	blm_event_t	event;
+	int		i;
 
-	if (N == 0) {
+	do {
+		event.ev = 0;
 
-		m->ADC_IA = (float) blm_ADC(m->X[7], - range_I, range_I);
-		m->ADC_IB = (float) blm_ADC(m->X[8], - range_I, range_I);
-		m->ADC_IC = (float) blm_ADC(m->X[9], - range_I, range_I);
-	}
-	else if (N == 1) {
+		/* Bubble SORT.
+		 * */
+		for (i = 1; i < 8; ++i) {
 
-		m->ADC_US = (float) blm_ADC(m->X[6],  0., range_U);
-		m->ADC_UA = (float) blm_ADC(m->X[10], 0., range_U);
-		m->ADC_UB = (float) blm_ADC(m->X[11], 0., range_U);
-	}
-	else if (N == 2) {
+			if (m->event[i - 1].comp < m->event[i].comp) {
 
-		m->ADC_UC = (float) blm_ADC(m->X[12], 0., range_U);
-
-		blm_sample_HS(m);
-		blm_sample_EP(m);
-		blm_sample_SC(m);
-	}
-}
-
-static void
-blm_VSI_solve(blm_t *m)
-{
-	int		Tev[5], pm[5], n, k, tmp;
-	double		tTIM, dT;
-
-	tTIM = m->dT / m->PWM_R / 2.;
-
-	/* ADC sampling.
-	 * */
-	Tev[0] = m->PWM_R - (int) (m->T_ADC / tTIM);
-	Tev[1] = m->PWM_R - (int) (2. * m->T_ADC / tTIM);
-
-	/* FETs switching.
-	 * */
-	Tev[2] = (m->PWM_A < 0) ? 0 : (m->PWM_A > m->PWM_R) ? m->PWM_R : m->PWM_A;
-	Tev[3] = (m->PWM_B < 0) ? 0 : (m->PWM_B > m->PWM_R) ? m->PWM_R : m->PWM_B;
-	Tev[4] = (m->PWM_C < 0) ? 0 : (m->PWM_C > m->PWM_R) ? m->PWM_R : m->PWM_C;
-
-	for (n = 0; n < 5; ++n)
-		pm[n] = n;
-
-	/* Get SORTED events.
-	 * */
-	for (n = 0; n < 5; ++n) {
-
-		for (k = n + 1; k < 5; ++k) {
-
-			if (Tev[pm[n]] < Tev[pm[k]]) {
-
-				tmp = pm[n];
-				pm[n] = pm[k];
-				pm[k] = tmp;
+				event = m->event[i];
+				m->event[i] = m->event[i - 1];
+				m->event[i - 1] = event;
 			}
 		}
 	}
+	while (event.ev != 0);
+}
 
-	/* Count Up.
-	 * */
-	blm_VSI_sample(m, 0);
+static void
+blm_pwm_up_event(blm_t *m, int ev)
+{
+	double		iA, iB, iC;
 
-	tmp = m->PWM_R;
+	switch (ev) {
 
-	for (n = 0; n < 5; ++n) {
+		case 0:
+			m->analog_iA = (float) blm_ADC(m->state[7], - m->range_A, m->range_A);
+			m->analog_iB = (float) blm_ADC(m->state[8], - m->range_A, m->range_A);
+			m->analog_iC = (float) blm_ADC(m->state[9], - m->range_A, m->range_A);
+			break;
 
-		dT = tTIM * (tmp - Tev[pm[n]]);
-		blm_solve_split(m, dT);
+		case 1:
+			m->analog_uS = (float) blm_ADC(m->state[11], 0., m->range_B);
+			m->analog_uA = (float) blm_ADC(m->state[12], 0., m->range_B);
+			m->analog_uB = (float) blm_ADC(m->state[13], 0., m->range_B);
+			break;
 
-		if (pm[n] < 2) {
+		case 2:
+			m->analog_uC = (float) blm_ADC(m->state[14], 0., m->range_B);
+			blm_sample_analog(m);
+			blm_sample_hall(m);
+			blm_sample_eabi(m);
+			break;
 
-			blm_VSI_sample(m, pm[n] + 1);
-		}
-		else {
-			m->VSI[pm[n] - 2] = 1;
-			m->surge_I = pm[n];
-		}
+		case 3:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : 0;
+			break;
 
-		tmp = Tev[pm[n]];
+		case 4:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : 0;
+			break;
+
+		case 5:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : 0;
+			break;
+
+		case 6:
+			m->vsi[0] = 1;
+			break;
+
+		case 7:
+			m->vsi[1] = 1;
+			break;
+
+		case 8:
+			m->vsi[2] = 1;
+			break;
+
+		default:
+			break;
+	}
+}
+
+static void
+blm_pwm_down_event(blm_t *m, int ev)
+{
+	double		iA, iB, iC;
+
+	switch (ev) {
+
+		case 3:
+			m->vsi[0] = 0;
+			break;
+
+		case 4:
+			m->vsi[1] = 0;
+			break;
+
+		case 5:
+			m->vsi[2] = 0;
+			break;
+
+		case 6:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : 0;
+			break;
+
+		case 7:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : 0;
+			break;
+
+		case 8:
+			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+			m->vsi[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : 0;
+			break;
+
+		default:
+			break;
+	}
+}
+
+static void
+blm_pwm_solve(blm_t *m)
+{
+	double		dTu, dTq;
+	int		rev[9], level, xA, xB, xC, xMIN, xMAX, i;
+
+	for (i = 0; i < 8; ++i) {
+
+		level = m->event[i].ev;
+		rev[level] = i;
 	}
 
-	dT = tTIM * (Tev[pm[4]]);
-	blm_solve_split(m, dT);
+	dTu = m->pwm_dT / (double) m->pwm_resolution;
+	dTq = dTu / 2.;
 
-	/* Keep only three of them.
+	xMIN = (int) (m->pwm_minimal * (double) m->pwm_resolution / m->pwm_dT);
+	xMAX = m->pwm_resolution;
+
+	/* ADC sampling.
 	 * */
-	for (n = 0, k = 0; n < 5; ++n) {
+	m->event[rev[1]].comp = xMAX - (int) (m->adc_Tconv / dTu);
+	m->event[rev[2]].comp = xMAX - (int) (2. * m->adc_Tconv / dTu);
 
-		tmp = pm[n];
+	xA = (m->pwm_A < xMIN) ? 0 : m->pwm_A + (int) (m->pwm_deadtime / dTu);
+	xB = (m->pwm_B < xMIN) ? 0 : m->pwm_B + (int) (m->pwm_deadtime / dTu);
+	xC = (m->pwm_C < xMIN) ? 0 : m->pwm_C + (int) (m->pwm_deadtime / dTu);
 
-		if (tmp != 0 && tmp != 1) {
+	/* FET low side.
+	 * */
+	m->event[rev[3]].comp = (xA < xMIN) ? 0 : (xA > xMAX - xMIN) ? xMAX : xA;
+	m->event[rev[4]].comp = (xB < xMIN) ? 0 : (xB > xMAX - xMIN) ? xMAX : xB;
+	m->event[rev[5]].comp = (xC < xMIN) ? 0 : (xC > xMAX - xMIN) ? xMAX : xC;
 
-			pm[k++] = tmp;
+	xA = m->pwm_A;
+	xB = m->pwm_B;
+	xC = m->pwm_C;
+
+	/* FET high side.
+	 * */
+	m->event[rev[6]].comp = (xA < xMIN) ? 0 : (xA > xMAX - xMIN) ? xMAX : xA;
+	m->event[rev[7]].comp = (xB < xMIN) ? 0 : (xB > xMAX - xMIN) ? xMAX : xB;
+	m->event[rev[8]].comp = (xC < xMIN) ? 0 : (xC > xMAX - xMIN) ? xMAX : xC;
+
+	/* Get SORTED events.
+	 * */
+	blm_pwm_bsort(m);
+
+	/* PWM count up.
+	 * */
+	blm_pwm_up_event(m, 0);
+
+	level = xMAX;
+
+	for (i = 0; i < 8; ++i) {
+
+		if (level != m->event[i].comp) {
+
+			blm_solve(m, dTq * (level - m->event[i].comp));
+
+			level = m->event[i].comp;
 		}
+
+		blm_pwm_up_event(m, m->event[i].ev);
 	}
 
-	/* Count Down.
-	 * */
-	for (n = 2, tmp = 0; n >= 0; --n) {
+	if (m->event[7].comp != 0) {
 
-		dT = tTIM * (Tev[pm[n]] - tmp);
-		blm_solve_split(m, dT);
-
-		m->VSI[pm[n] - 2] = 0;
-		m->surge_I = pm[n];
-
-		tmp = Tev[pm[n]];
+		blm_solve(m, dTq * m->event[7].comp);
 	}
 
-	dT = tTIM * (m->PWM_R - Tev[pm[0]]);
-	blm_solve_split(m, dT);
+	level = 0;
 
-	/* Get instant POWER.
+	/* PWM count down.
 	 * */
-	m->iP = m->X[5] / m->dT;
-	m->X[5] = 0.;
+	for (i = 7; i >= 0; --i) {
+
+		if (level != m->event[i].comp) {
+
+			blm_solve(m, dTq * (m->event[i].comp - level));
+
+			level = m->event[i].comp;
+		}
+
+		blm_pwm_down_event(m, m->event[i].ev);
+	}
+
+	if (level != xMAX) {
+
+		blm_solve(m, dTq * (xMAX - level));
+	}
+
+	/* Get average POWER on PWM cycle.
+	 * */
+	m->wP = m->state[5] / m->pwm_dT;
+	m->state[5] = 0.;
 }
 
 void blm_update(blm_t *m)
 {
-	blm_VSI_solve(m);
+	blm_pwm_solve(m);
 
-	m->Tsim += m->dT;
+	m->time += m->pwm_dT;
 }
 

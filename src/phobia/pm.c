@@ -25,7 +25,7 @@ void pm_quick_build(pmc_t *pm)
 	pm->ts_clamped = (int) (pm->m_freq * pm->dc_clamped);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
-	pm->quick_iE = (pm->const_E > M_EPS_F) ? 1.f / pm->const_E : 0.f;
+	pm->quick_iE = (pm->const_lambda > M_EPS_F) ? 1.f / pm->const_lambda : 0.f;
 	pm->quick_iEq = pm->quick_iE * pm->quick_iE;
 	pm->quick_iL1 = (pm->const_im_L1 > M_EPS_F) ? 1.f / pm->const_im_L1 : 0.f;
 	pm->quick_iL2 = (pm->const_im_L2 > M_EPS_F) ? 1.f / pm->const_im_L2 : 0.f;
@@ -58,7 +58,6 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_IFB = PM_IFB_ABC_INLINE;
 	pm->config_TVM = PM_ENABLED;
-	pm->config_DEBUG = PM_DISABLED;
 
 	pm->fault_voltage_tol = 4.f;		/* (V) */
 	pm->fault_current_tol = 4.f;		/* (A) */
@@ -83,12 +82,14 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->i_maximal = 120.f;			/* (A) */
 	pm->i_reverse = pm->i_maximal;
 
-	m_lf_initial(&pm->hfi_seed);		/* NOTE: lfg initial random seed. */
+	m_lf_randseed(&pm->hfi_seed, 24);	/* NOTE: lfg initial random seed. */
 }
 
 static void
 pm_auto_config_default(pmc_t *pm)
 {
+	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
+
 	pm->config_VSI_CIRCULAR = PM_DISABLED;
 	pm->config_VSI_PRECISE = PM_DISABLED;
 	pm->config_LU_FORCED = PM_ENABLED;
@@ -100,7 +101,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_HFI_POLARITY = PM_DISABLED;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
-	pm->config_SALIENCY_UNUSUAL = PM_DISABLED;
 	pm->config_HOLDING_BRAKE = PM_DISABLED;
 	pm->config_SPEED_LIMITED = PM_ENABLED;
 	pm->config_ABI_FRONTEND = PM_ABI_INCREMENTAL;
@@ -135,9 +135,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->ad_UC[0] = 0.f;
 	pm->ad_UC[1] = 1.f;
 
-	pm->damping_DI = 1.f;
-	pm->damping_DS = 1.f;
-
 	pm->probe_current_hold = 20.f;
 	pm->probe_current_weak = 5.f;
 	pm->probe_hold_angle = 0.f;
@@ -146,6 +143,10 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_freq_sine = 1100.f;
 	pm->probe_speed_hold = 900.f;
 	pm->probe_speed_detached = 50.f;
+	pm->probe_damping_current = 1.f;
+	pm->probe_damping_speed = 2.f;
+	pm->probe_speed_tol = 10.f;
+	pm->probe_location_tol = .1f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
@@ -164,14 +165,14 @@ pm_auto_config_default(pmc_t *pm)
 	pm->tvm_FIR_C[1] = 0.f;
 	pm->tvm_FIR_C[2] = 0.f;
 
-	pm->lu_rate = 800.f;
+	pm->lu_rate = 900.f;
 	pm->lu_gain_mq_LP = 4E-3f;
 
 	pm->forced_hold_D = 20.f;
 	pm->forced_maximal = 900.f;
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;
-	pm->forced_slew_rate = 800.f;
+	pm->forced_slew_rate = 900.f;
 	pm->forced_maximal_DC = 0.7f;
 
 	pm->detach_threshold_BASE = 1.f;
@@ -197,7 +198,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->zone_gain_TH = .7f;
 	pm->zone_gain_LP = 5E-3f;
 
-	pm->hfi_freq = 1100.f;
+	pm->hfi_freq = 2100.f;
 	pm->hfi_sine = 5.f;
 	pm->hfi_gain_DP = 4E-3f;
 
@@ -220,8 +221,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->sincos_gear_Zs = 1;
 	pm->sincos_gear_Zq = 1;
 
-	pm->const_E = 0.f;
-	pm->const_R = 0.f;
+	pm->const_lambda = 0.f;
+	pm->const_Rs = 0.f;
 	pm->const_Zp = 1;
 	pm->const_Ja = 0.f;
 	pm->const_im_L1 = 0.f;
@@ -248,11 +249,11 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_accel = 7000.f;
 	pm->s_linspan = 100.f;
 	pm->s_tolerance = 0.f;
-	pm->s_gain_P = 1E-1f;
-	pm->s_gain_I = 1.f;
+	pm->s_gain_P = 4E-2f;
+	pm->s_gain_Q = 5E-1f;
 
-	pm->x_location_range[0] = -10.f;
-	pm->x_location_range[1] = 10.f;
+	pm->x_location_range[0] = - 600.f;
+	pm->x_location_range[1] = 600.f;
 	pm->x_location_home = 0.f;
 
 	pm->x_weak_zone = 1.f;
@@ -267,6 +268,8 @@ pm_auto_config_default(pmc_t *pm)
 static void
 pm_auto_probe_default(pmc_t *pm)
 {
+	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
+
 	pm->probe_speed_hold = 900.f;
 
 	pm->lu_gain_mq_LP = 4E-3f;
@@ -278,8 +281,8 @@ pm_auto_probe_default(pmc_t *pm)
 	pm->zone_threshold_NOISE = 50.f;
 	pm->zone_threshold_BASE = 80.f;
 
-	pm->const_E = 0.f;
-	pm->const_R = 0.f;
+	pm->const_lambda = 0.f;
+	pm->const_Rs = 0.f;
 	pm->const_Ja = 0.f;
 	pm->const_im_L1 = 0.f;
 	pm->const_im_L2 = 0.f;
@@ -290,8 +293,8 @@ pm_auto_probe_default(pmc_t *pm)
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
-	pm->s_gain_P = 1E-1f;
-	pm->s_gain_I = 1.f;
+	pm->s_gain_P = 4E-2f;
+	pm->s_gain_Q = 5E-1f;
 }
 
 static void
@@ -303,16 +306,16 @@ pm_auto_maximal_current(pmc_t *pm)
 	 * */
 	maximal_A = pm->fault_current_halt * 0.8f;
 
-	if (pm->const_R > M_EPS_F) {
+	if (pm->const_Rs > M_EPS_F) {
 
 		/* Based on DC link voltage.
 		 * */
-		new_A = pm->k_UMAX * pm->const_fb_U / pm->const_R;
+		new_A = pm->k_UMAX * pm->const_fb_U / pm->const_Rs;
 		maximal_A = (new_A < maximal_A) ? new_A : maximal_A;
 
 		/* Based on resistive LOSSES.
 		 * */
-		new_A = m_sqrtf(400.f / pm->const_R);
+		new_A = m_sqrtf(400.f / pm->const_Rs);
 		maximal_A = (new_A < maximal_A) ? new_A : maximal_A;
 
 		if (maximal_A < pm->i_maximal) {
@@ -332,9 +335,9 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 {
 	float			probe_MAX, probe_MIN;
 
-	if (pm->const_E > M_EPS_F) {
+	if (pm->const_lambda > M_EPS_F) {
 
-		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_E;
+		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 		probe_MIN = 1.4f * (pm->zone_threshold_BASE + pm->zone_threshold_NOISE);
 
 		if (pm->probe_speed_hold > probe_MAX) {
@@ -355,23 +358,23 @@ pm_auto_zone_threshold(pmc_t *pm)
 	float			threshold_MAX, byvoltage_MAX, threshold_MIN;
 	float			threshold_IRU, threshold_DTU;
 
-	if (		   pm->const_R > M_EPS_F
-			&& pm->const_E > M_EPS_F) {
+	if (		   pm->const_Rs > M_EPS_F
+			&& pm->const_lambda > M_EPS_F) {
 
 		/* Suppress the NOISE threshold if it is WRONGLY large.
 		 * */
 		threshold_MAX = 0.4f * pm->forced_maximal;
-		byvoltage_MAX = 10.f / pm->const_E;
+		byvoltage_MAX = 10.f / pm->const_lambda;
 
 		threshold_MAX = (byvoltage_MAX < threshold_MAX)
-			? byvoltage_MAX : threshold_MAX;
+				? byvoltage_MAX : threshold_MAX;
+
+		threshold_MIN = 10.f;
 
 		if (pm->zone_threshold_NOISE > threshold_MAX) {
 
 			pm->zone_threshold_NOISE = threshold_MAX;
 		}
-
-		threshold_MIN = 10.f;
 
 		if (pm->zone_threshold_NOISE < threshold_MIN) {
 
@@ -380,7 +383,7 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 		/* Based on uncertainty due to RESISTANCE thermal drift.
 		 * */
-		threshold_IRU = 0.2f * pm->i_maximal * pm->const_R;
+		threshold_IRU = 0.2f * pm->i_maximal * pm->const_Rs;
 
 		if (pm->tvm_USEABLE == PM_ENABLED) {
 
@@ -395,7 +398,7 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 		/* The BASE threshold.
 		 * */
-		pm->zone_threshold_BASE = (threshold_IRU + threshold_DTU) / pm->const_E;
+		pm->zone_threshold_BASE = (threshold_IRU + threshold_DTU) / pm->const_lambda;
 
 		threshold_MAX = 0.7f * pm->forced_maximal - pm->zone_threshold_NOISE;
 
@@ -416,7 +419,7 @@ pm_auto_forced_maximal(pmc_t *pm)
 {
 	float		forced_MAX, forced_MIN;
 
-	forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_E;
+	forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 	forced_MIN = pm->probe_speed_hold;
 
 	if (pm->forced_maximal > forced_MAX) {
@@ -449,7 +452,7 @@ pm_auto_forced_accel(pmc_t *pm)
 static void
 pm_auto_loop_current(pmc_t *pm)
 {
-	float		Lm, Di, Kp, Ki;
+	float		Lm, Df, Kp, Ki;
 
 	if (		   pm->const_im_L1 > M_EPS_F
 			&& pm->const_im_L1 > M_EPS_F) {
@@ -457,7 +460,7 @@ pm_auto_loop_current(pmc_t *pm)
 		Lm = (pm->const_im_L1 < pm->const_im_L2)
 			? pm->const_im_L1 : pm->const_im_L2;
 
-		Di = pm->damping_DI;
+		Df = pm->probe_damping_current;
 
 		/* Tune the current loop based on state-space model.
 		 *
@@ -465,8 +468,8 @@ pm_auto_loop_current(pmc_t *pm)
 		 * x(k+1) = [1                1     ] * x(k)
 		 *
 		 * */
-		Kp = 0.5f * Lm * Di * pm->m_freq - pm->const_R;
-		Ki = 0.02f * Lm * Di * pm->m_freq;
+		Kp = 0.5f * Lm * Df * pm->m_freq - pm->const_Rs;
+		Ki = 0.02f * Lm * Df * pm->m_freq;
 
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
@@ -480,23 +483,22 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_loop_speed(pmc_t *pm)
 {
-	float		Ds = pm->damping_DS;
+	float		Df = pm->probe_damping_speed;
 
 	if (pm->zone_threshold_NOISE > M_EPS_F) {
 
 		/* Tune load torque estimate.
 		 * */
-		if (		pm->const_E > M_EPS_F
+		if (		pm->const_lambda > M_EPS_F
 				&& pm->const_Ja > M_EPS_F) {
 
-			pm->lu_gain_mq_LP = 2.f * Ds * pm->const_E * pm->m_dT
+			pm->lu_gain_mq_LP = Df * pm->const_lambda * pm->m_dT
 				/ pm->const_Ja / pm->zone_threshold_NOISE;
 		}
 
 		/* Tune speed loop based on threshold NOISE value.
 		 * */
-		pm->s_gain_P = 2.f * Ds / pm->zone_threshold_NOISE;
-		pm->s_gain_I = 1.f;
+		pm->s_gain_P = Df / pm->zone_threshold_NOISE;
 	}
 }
 
@@ -558,7 +560,7 @@ float pm_torque_equation(pmc_t *pm, float iD, float iQ)
 		E_rel = (pm->const_im_L1 - pm->const_im_L2) * iD;
 	}
 
-	mQ = pm->k_KWAT * (pm->const_E + E_rel) * iQ;
+	mQ = pm->k_KWAT * (pm->const_lambda + E_rel) * iQ;
 
 	return mQ;
 }
@@ -584,7 +586,7 @@ pm_torque_do_MTPA(pmc_t *pm, float iQ)
 
 	if (m_fabsf(iQ) > M_EPS_F) {
 
-		E1 = pm->const_E;
+		E1 = pm->const_lambda;
 		Q_rel = 4.f * (pm->const_im_L2 - pm->const_im_L1) * iQ;
 
 		/* Sine of MTPA angle.
@@ -605,9 +607,9 @@ pm_torque_approx(pmc_t *pm, float mQ)
 		/* TODO */
 	}
 	else {
-		if (pm->const_E > M_EPS_F) {
+		if (pm->const_lambda > M_EPS_F) {
 
-			iQ = mQ / (pm->k_KWAT * pm->const_E);
+			iQ = mQ / (pm->k_KWAT * pm->const_lambda);
 		}
 	}
 
@@ -739,8 +741,8 @@ pm_flux_ortega(pmc_t *pm)
 
 	/* Get the actual voltage.
 	 * */
-	uX = pm->vsi_X - pm->const_R * pm->lu_iX;
-	uY = pm->vsi_Y - pm->const_R * pm->lu_iY;
+	uX = pm->vsi_X - pm->const_Rs * pm->lu_iX;
+	uY = pm->vsi_Y - pm->const_Rs * pm->lu_iY;
 
 	if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
@@ -753,7 +755,7 @@ pm_flux_ortega(pmc_t *pm)
 	lX = pm->const_im_L2 * pm->lu_iX;
 	lY = pm->const_im_L2 * pm->lu_iY;
 
-	if (pm->const_E > M_EPS_F) {
+	if (pm->const_lambda > M_EPS_F) {
 
 		/* FLUX equations.
 		 * */
@@ -763,7 +765,7 @@ pm_flux_ortega(pmc_t *pm)
 		EX = pm->flux_X[0] - lX;
 		EY = pm->flux_X[1] - lY;
 
-		A = m_fabsf(pm->flux_wS * pm->const_E) * pm->flux_trip_AP;
+		A = m_fabsf(pm->flux_wS * pm->const_lambda) * pm->flux_trip_AP;
 		A = (A > 1.f) ? 1.f : A;
 
 		/* Get the flux RESIDUE.
@@ -809,7 +811,7 @@ pm_flux_ortega(pmc_t *pm)
 		EX *= A;
 		EY *= A;
 
-		if (pm->const_E > M_EPS_F) {
+		if (pm->const_lambda > M_EPS_F) {
 
 			/* Speed estimation (PLL).
 			 * */
@@ -848,8 +850,8 @@ pm_kalman_equation(pmc_t *pm, float Y[2], const float X[2], const float F[2])
         uD = F[0] * pm->vsi_X + F[1] * pm->vsi_Y;
         uQ = F[0] * pm->vsi_Y - F[1] * pm->vsi_X;
 
-        R1 = pm->const_R;
-        E1 = pm->const_E;
+        R1 = pm->const_Rs;
+        E1 = pm->const_lambda;
 
 	uQ += pm->kalman_bias_Q;
 
@@ -912,15 +914,15 @@ pm_kalman_jacobian(pmc_t *pm, const float X[2], const float F[2], float wS)
 	 *     [ 0    0    0    0    1    ]
 	 * */
 
-	A[0] = 1.f - pm->const_R * pm->quick_TiL1;
+	A[0] = 1.f - pm->const_Rs * pm->quick_TiL1;
 	A[1] = wS * pm->const_im_L2 * pm->quick_TiL1;
 	A[2] = (F[0] * pm->vsi_Y - F[1] * pm->vsi_X) * pm->quick_TiL1;
 	A[3] = X[1] * pm->const_im_L2 * pm->quick_TiL1;
 
 	A[4] = - wS * pm->const_im_L1 * pm->quick_TiL2;
-	A[5] = 1.f - pm->const_R * pm->quick_TiL2;
+	A[5] = 1.f - pm->const_Rs * pm->quick_TiL2;
 	A[6] = (- F[0] * pm->vsi_X - F[1] * pm->vsi_Y) * pm->quick_TiL2;
-	A[7] = (- pm->const_E - X[0] * pm->const_im_L1) * pm->quick_TiL2;
+	A[7] = (- pm->const_lambda - X[0] * pm->const_im_L1) * pm->quick_TiL2;
 	A[8] = pm->quick_TiL2;
 	A[9] = pm->m_dT;
 }
@@ -1143,7 +1145,7 @@ pm_flux_kalman(pmc_t *pm)
 	eD = bF[0] * pm->lu_iX + bF[1] * pm->lu_iY - pm->flux_X[0];
 	eQ = bF[0] * pm->lu_iY - bF[1] * pm->lu_iX - pm->flux_X[1];
 
-	if (pm->const_E > M_EPS_F) {
+	if (pm->const_lambda > M_EPS_F) {
 
 		if (pm->vsi_IF == 0) {
 
@@ -1269,7 +1271,7 @@ pm_estimate(pmc_t *pm)
 
 			float			E1, L2;
 
-			E1 = pm->const_E;
+			E1 = pm->const_lambda;
 			L2 = pm->const_im_L2;
 
 			pm->flux_X[0] = E1 * pm->flux_F[0] + L2 * pm->lu_iX;
@@ -1389,12 +1391,19 @@ pm_hfi_on_kalman(pmc_t *pm)
 
 			pm->hfi_wave[0] = (m_lf_randf(&pm->hfi_seed)
 					 + m_lf_randf(&pm->hfi_seed)
-					 + m_lf_randf(&pm->hfi_seed)) / 3.f;
+					 + m_lf_randf(&pm->hfi_seed)) * .3f;
 
 			pm->hfi_wave[1] += - M_PI_F;
 		}
 
 		pm->hfi_wave[1] += pm->quick_HFwS * pm->m_dT;
+	}
+	else if (pm->config_HFI_WAVETYPE == PM_HFI_SILENT) {
+
+		/* No HF wave injection.
+		 * */
+		pm->hfi_wave[0] = 0.f;
+		pm->hfi_wave[1] = 1.f;
 	}
 
 	/* Enable to inject HF wave inside the current loop.
@@ -1792,7 +1801,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_mq_load = pm_torque_equation(pm, hold_D, hold_D);
 
 		if (		pm->flux_ZONE == PM_ZONE_HIGH
-				&& pm->const_E > M_EPS_F) {
+				&& pm->const_lambda > M_EPS_F) {
 
 			pm->lu_MODE = PM_LU_ESTIMATE;
 			pm->hold_TIM = 0;
@@ -2422,7 +2431,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 static float
 pm_form_iSP(pmc_t *pm, float eS)
 {
-	float		iSP;
+	float		iSP, iQ;
 
 	/* There is a tolerance.
 	 * */
@@ -2435,7 +2444,12 @@ pm_form_iSP(pmc_t *pm, float eS)
 	/* The speed regulator uses an load torque estimate as feed forward
 	 * component that replaces the integral component.
 	 * */
-	iSP += pm->s_gain_I * pm_torque_approx(pm, pm->lu_mq_load);
+	iQ = pm_torque_approx(pm, pm->lu_mq_load);
+
+	/* Forward LPF.
+	 * */
+	pm->s_forward += (iQ - pm->s_forward) * pm->s_gain_Q;
+	iSP += pm->s_forward;
 
 	return iSP;
 }
@@ -2706,13 +2720,13 @@ pm_loop_current(pmc_t *pm)
 
 	/* Feed forward compensation (R).
 	 * */
-	uD += pm->const_R * pm->i_track_D;
-	uQ += pm->const_R * pm->i_track_Q;
+	uD += pm->const_Rs * pm->i_track_D;
+	uQ += pm->const_Rs * pm->i_track_Q;
 
 	/* Feed forward compensation (L).
 	 * */
 	uD += - pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
-	uQ += pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_E);
+	uQ += pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_lambda);
 
 	uMAX = pm->k_UMAX * pm->const_fb_U;
 
@@ -2801,7 +2815,7 @@ pm_loop_speed(pmc_t *pm)
 }
 
 static void
-pm_loop_servo(pmc_t *pm)
+pm_loop_location(pmc_t *pm)
 {
 	float		xSP, xER, xER_abs, wSP, lerp, gain_S;
 
@@ -2818,7 +2832,6 @@ pm_loop_servo(pmc_t *pm)
 	/* Get location discrepancy.
 	 * */
 	xER = xSP - pm->lu_location;
-	pm->x_discrepancy = xER;
 
 	/* Servo is based on constant acceleration formula.
 	 * */
@@ -3105,9 +3118,9 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 				pm_loop_speed(pm);
 			}
-			else if (pm->config_LU_DRIVE == PM_DRIVE_SERVO) {
+			else if (pm->config_LU_DRIVE == PM_DRIVE_LOCATION) {
 
-				pm_loop_servo(pm);
+				pm_loop_location(pm);
 				pm_loop_speed(pm);
 			}
 

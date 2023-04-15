@@ -90,7 +90,7 @@ elapsed_IDLE()
 	TickType_t		xIDLE, xNOW;
 	int			elapsed = 0;
 
-	xIDLE = (TickType_t) (ap.idle_TIME_s * (float) configTICK_RATE_HZ);
+	xIDLE = (TickType_t) (ap.idle_TIME * (float) configTICK_RATE_HZ);
 
 	if (xIDLE > 0) {
 
@@ -469,7 +469,7 @@ default_flash_load()
 
 	hal.DPS_mode = DPS_DISABLED;
 	hal.PPM_mode = PPM_DISABLED;
-	hal.PPM_timebase = 2000000UL;
+	hal.PPM_timebase = 2000000U;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	hal.DRV.part = HW_DRV_PARTNO;
@@ -531,7 +531,7 @@ default_flash_load()
 	ap.knob_control_ANG[2] = 100.f;
 	ap.knob_control_BRK = - 100.f;
 
-	ap.idle_TIME_s = 2.f;
+	ap.idle_TIME = 2.f;
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
@@ -662,9 +662,7 @@ void task_INIT(void *pData)
 	/* Default to USART.
 	 * */
 	iodef = &io_USART;
-
 	iodef_ECHO = 1;
-	iodef_PRETTY = 1;
 
 	ap.lc_FLAG = 1;
 	ap.lc_TICK = 0;

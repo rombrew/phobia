@@ -5,7 +5,7 @@ CLI with autocompletion and command history.
 
 ## Key mapping
 
-These are the basic special keys that is used in CLI:
+These are the basic special keys that are used in the CLI:
 
 * **Return** - Run the command.
 * **Backspace** or **Delete** - Erase last typed character.
@@ -28,7 +28,7 @@ call this command:
   be any part of the register name.
 * If only one register matches the specified pattern the second parameter
   specifies its new value.
-* You can specify a reqister number instead of its name to refer the exactly
+* You can specify a register number instead of its name to refer the exactly
   one register.
 
 Something like that:
@@ -54,11 +54,11 @@ automatically at startup.
 Note the different types of registers. There are registers intended for saving
 as configuration. Other registers provide information to read only. Virtual
 registers provide a different way to access other registers (usually this is
-taking a value in different units of measurement). There are also link
-registers that are required to configure data transfer between subsystems.
+taking a value in different unit of measurement). There are also link registers
+that are required to configure data transfer between different subsystems.
 
-Each register can have its own write and read handler that can do a complex non
-obvious actions during access to it.
+Keep in mind each register can have its own write and read handler that can do
+a complex non-obvious actions during access to it.
 
 ## Linkage concept
 
@@ -68,14 +68,15 @@ module writes the control signal to register **ap.knob_reg_ID** but the value
 falls into **pm.i_setpoint_current_pc**. You can configure **ap.knob_reg_ID**
 to link it to another register if you want control another parameter. We
 provide many registers in different units of measurement. You are free to
-choose what to control current in Amperes or percentage from full scale.
+choose what to control current in Amperes or percentage from full scale or
+something else.
 
 There are telemetry module with 10 link registers. Choose any registers you
 need to be captured.
 
 	(pmc) reg tlm.reg_ID0 pm.tvm_A
 	(pmc) reg tlm.reg_ID1 pm.tvm_B
-	(pmc) reg tlm.reg_ID_ ...
+	(pmc) reg tlm.reg_ID2 ...
 
 Telemetry grab (to fill the memory buffer) and flush textual dump.
 
@@ -108,7 +109,7 @@ Look for speed setpoint registers.
 
 	(pmc) reg pm.s_setpoint
 
-Access the register by its number.
+Assign the value of 700 to the register with ID 377.
 
 	(pmc) reg 377 700
 
@@ -124,7 +125,7 @@ Get firmware version info.
 
     (pmc) rtos_version
 
-Manual PWM control for testing.
+Manual PWM DC control for testing.
 
 	(pmc) hal_PWM_set_DC <DC>
 	(pmc) hal_PWM_set_Z <Z>

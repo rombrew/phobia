@@ -11,14 +11,16 @@ IMAGE	= $(TARGET).bin
 TTY	?= /dev/ttyUSB0
 BAUD	?= 57600
 
-CROSS	?= armv7m-none-eabi
+CROSS	?= arm-none-eabi
 CC	= $(CROSS)-gcc
-#CC	= clang -target $(CROSS)
 OC	= $(CROSS)-objcopy
-#GDB	= $(CROSS)-gdb
-GDB	= /home/amaora/src/blackmagic/armv7m-none-eabi-gdb
+GDB	= $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
+
+#CC	= clang -target $(CROSS)
+#GDB	= /home/amaora/src/blackmagic/armv7m-none-eabi-gdb
+#CROSS	= armv7m-none-eabi
 
 CFLAGS	= -Os -flto=auto -g3 -pipe
 
@@ -116,7 +118,6 @@ OBJS	+= flash.o \
 	   pmfunc.o \
 	   pmtest.o \
 	   regfile.o \
-	   servo.o \
 	   shell.o \
 	   tlm.o
 

@@ -7,7 +7,7 @@ GDB	= gdb
 MK	= mkdir -p
 RM      = rm -rf
 
-CFLAGS	= -std=gnu99 -pipe -Wall -O3 -flto=auto -g3
+CFLAGS	= -std=gnu99 -pipe -Wall -Og -flto=auto -g3
 LFLAGS	= -lm
 
 OBJS	= blm.o lfg.o pm.o bench.o tsfunc.o

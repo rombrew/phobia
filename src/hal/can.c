@@ -11,19 +11,19 @@ irq_CAN1_RX(int mb)
 	uint32_t			xLO, xHI;
 
 	hal.CAN_msg.ID = (uint16_t) (CAN1->sFIFOMailBox[mb].RIR >> 21);
-	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & 0xFUL);
+	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & 0xFU);
 
 	xLO = CAN1->sFIFOMailBox[mb].RDLR;
 	xHI = CAN1->sFIFOMailBox[mb].RDHR;
 
-	hal.CAN_msg.payload[0] = (uint8_t) (xLO & 0xFFUL);
-	hal.CAN_msg.payload[1] = (uint8_t) ((xLO >> 8) & 0xFFUL);
-	hal.CAN_msg.payload[2] = (uint8_t) ((xLO >> 16) & 0xFFUL);
-	hal.CAN_msg.payload[3] = (uint8_t) ((xLO >> 24) & 0xFFUL);
-	hal.CAN_msg.payload[4] = (uint8_t) (xHI & 0xFFUL);
-	hal.CAN_msg.payload[5] = (uint8_t) ((xHI >> 8) & 0xFFUL);
-	hal.CAN_msg.payload[6] = (uint8_t) ((xHI >> 16) & 0xFFUL);
-	hal.CAN_msg.payload[7] = (uint8_t) ((xHI >> 24) & 0xFFUL);
+	hal.CAN_msg.payload[0] = (uint8_t) (xLO & 0xFFU);
+	hal.CAN_msg.payload[1] = (uint8_t) ((xLO >> 8) & 0xFFU);
+	hal.CAN_msg.payload[2] = (uint8_t) ((xLO >> 16) & 0xFFU);
+	hal.CAN_msg.payload[3] = (uint8_t) ((xLO >> 24) & 0xFFU);
+	hal.CAN_msg.payload[4] = (uint8_t) (xHI & 0xFFU);
+	hal.CAN_msg.payload[5] = (uint8_t) ((xHI >> 8) & 0xFFU);
+	hal.CAN_msg.payload[6] = (uint8_t) ((xHI >> 16) & 0xFFU);
+	hal.CAN_msg.payload[7] = (uint8_t) ((xHI >> 24) & 0xFFU);
 }
 
 void irq_CAN1_RX0()
@@ -93,7 +93,7 @@ CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
 
 		wait_N++;
 	}
-	while (wait_N < 70000UL);
+	while (wait_N < 70000U);
 
 	return 0;
 }
@@ -123,13 +123,13 @@ void CAN_configure()
 
 	/* Bit timing (1 Mbit/s).
 	 * */
-	CAN1->BTR = (5UL << 20) | (6UL << 16) | (2UL);
+	CAN1->BTR = (5U << 20) | (6U << 16) | (2U);
 
 	CAN1->FMR |= CAN_FMR_FINIT;
 
 	/* Enable all 28 filters to CAN1.
 	 * */
-	MODIFY_REG(CAN1->FMR, 0x3F00UL, 28UL << 8);
+	MODIFY_REG(CAN1->FMR, 0x3F00U, 28U << 8);
 
 	CAN1->FMR &= ~CAN_FMR_FINIT;
 
@@ -145,7 +145,7 @@ void CAN_configure()
 
 void CAN_filter_ID(int fs, int mb, int ID, int mID)
 {
-	uint32_t		BFS = (1UL << fs);
+	uint32_t		BFS = (1U << fs);
 
 	CAN1->FMR |= CAN_FMR_FINIT;
 	CAN1->FA1R &= ~BFS;
@@ -156,10 +156,10 @@ void CAN_filter_ID(int fs, int mb, int ID, int mID)
 		CAN1->FS1R |= BFS;
 
 		CAN1->FFA1R &= ~BFS;
-		CAN1->FFA1R |= (mb == 1) ? BFS : 0UL;
+		CAN1->FFA1R |= (mb == 1) ? BFS : 0U;
 
 		CAN1->sFilterRegister[fs].FR1 = (ID << 21);
-		CAN1->sFilterRegister[fs].FR2 = (mID << 21) + 6UL;
+		CAN1->sFilterRegister[fs].FR2 = (mID << 21) + 6U;
 
 		CAN1->FA1R |= BFS;
 	}

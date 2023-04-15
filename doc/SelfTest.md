@@ -4,17 +4,21 @@ This page describes how to verify the integrity of PMC.
 
 ## Automated Self Test
 
-Basic built-in integrity check. It is useful to do this the first time you
-power PMC on to make sure that hardware is OK.
+There is basic built-in integrity check. It is useful to do this the first time
+you power PMC up to make sure that hardware is ok.
 
-	# pm_self_test
+	(pmc) pm_self_test
 
-The results of self-adjustment are also useful.
+You can do it with or without motor connected. Ignore the appropriate error
+notification when do it without motor connected.
 
-	# pm_self_adjust
+## Automated Self Adjust
 
-You can do it with or without motor connected. Ignore appropriate error reason
-when do it without motor connected. In case of motor connected you also check
-the current sensing misalignment. Above two procedures are must do in case of
-new hardware first powerup.
+The result of self-adjustment is also useful since it allows you to identify
+abnormal deviations in measuring circuits.
+
+	(pmc) pm_self_adjust
+
+In case of motor connected you also check the current sensing circuit. Above
+two procedures are must do in case of new hardware first powerup.
 

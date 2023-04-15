@@ -56,7 +56,7 @@ typedef struct {
 
 	/* IDLE control.
 	 * */
-	float			idle_TIME_s;
+	float			idle_TIME;
 	int			idle_RESET;
 	int			idle_INVOKE;
 	int			idle_revol_cached;

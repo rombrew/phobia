@@ -30,8 +30,7 @@ enum {
 	POPUP_UNABLE_WARNING,
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
-	POPUP_TELEMETRY_FLUSH,
-	POPUP_CONFIG_EXPORT,
+	POPUP_TELEMETRY_FLUSH
 };
 
 enum {
@@ -847,211 +846,6 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 
 			link_grab_file_close(lp);
 		}
-
-		pub->popup_enum = 0;
-	}
-}
-
-static void
-pub_popup_config_export(struct public *pub, int popup, const char *title)
-{
-	struct nk_sdl			*nk = pub->nk;
-	struct link_pmc			*lp = pub->lp;
-	struct nk_context		*ctx = &nk->ctx;
-
-	struct nk_rect			bounds;
-	struct nk_style_button		disabled;
-
-	int				N, height, sel, newsel;
-
-	if (pub->popup_enum != popup)
-		return ;
-
-	bounds = pub_get_popup_bounds_full(pub);
-
-	if (nk_popup_begin(ctx, NK_POPUP_STATIC, title,
-				NK_WINDOW_CLOSABLE
-				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
-
-		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
-		nk_spacer(ctx);
-
-		nk_layout_row_template_begin(ctx, 0);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 5);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_variable(ctx, 1);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_end(ctx);
-
-		nk_spacer(ctx);
-
-		sprintf(pub->lbuf, "# %i", lp->grab_N);
-		nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
-
-		nk_spacer(ctx);
-
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD,
-				pub->config.file_grab,
-				sizeof(pub->config.file_grab),
-				nk_filter_default);
-
-		if (		pub->scan.selected >= 0
-				&& pub->scan.selected < PHOBIA_FILE_MAX) {
-
-			N = pub->scan.selected;
-
-			if (		strcmp(pub->scan.file[N].name,
-						pub->config.file_grab) != 0) {
-
-				pub->scan.selected = -1;
-			}
-		}
-
-		nk_spacer(ctx);
-
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-
-		height = ctx->current->bounds.h - ctx->current->layout->row.height * 6;
-
-		nk_layout_row_template_begin(ctx, height);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_variable(ctx, 1);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_end(ctx);
-
-		nk_spacer(ctx);
-
-		if (nk_group_begin(ctx, "FILES", NK_WINDOW_BORDER)) {
-
-			nk_layout_row_template_begin(ctx, 0);
-			nk_layout_row_template_push_variable(ctx, 1);
-			nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
-			nk_layout_row_template_push_static(ctx, pub->fe_base * 5);
-			nk_layout_row_template_end(ctx);
-
-			for (N = 0; N < PHOBIA_FILE_MAX; ++N) {
-
-				if (pub->scan.file[N].name[0] == 0)
-					break;
-
-				sel = (N == pub->scan.selected) ? 1 : 0;
-
-				newsel = nk_select_label(ctx, pub->scan.file[N].name,
-						NK_TEXT_LEFT, sel);
-
-				newsel |= nk_select_label(ctx, pub->scan.file[N].time,
-						NK_TEXT_LEFT, sel);
-
-				newsel |= nk_select_label(ctx, pub->scan.file[N].size,
-						NK_TEXT_RIGHT, sel);
-
-				if (newsel != sel && newsel != 0) {
-
-					pub->scan.selected = N;
-
-					strcpy(pub->config.file_grab,
-							pub->scan.file[N].name);
-				}
-			}
-
-			nk_group_end(ctx);
-		}
-
-		nk_spacer(ctx);
-
-		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
-		nk_spacer(ctx);
-
-		nk_layout_row_template_begin(ctx, 0);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_end(ctx);
-
-		nk_spacer(ctx);
-
-		if (nk_button_label(ctx, "Scan")) {
-
-			pub_directory_scan(pub, FILE_CONFIG_FILTER);
-		}
-
-		nk_spacer(ctx);
-
-		if (nk_button_label(ctx, "Export")) {
-
-			strcpy(pub->lbuf, pub->fe->storage);
-			strcat(pub->lbuf, DIRSEP);
-			strcat(pub->lbuf, pub->config.file_grab);
-			strcpy(pub->config.file_snap, pub->lbuf);
-
-			if (link_grab_file_open(lp, pub->config.file_snap) != 0) {
-
-				link_command(lp, "export_reg" "\r\n");
-
-				pub_directory_scan(pub, FILE_CONFIG_FILTER);
-			}
-		}
-
-		nk_spacer(ctx);
-
-		if (		pub->scan.selected >= 0
-				&& pub->scan.selected < PHOBIA_FILE_MAX) {
-
-			if (nk_button_label(ctx, "Import")) {
-
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, pub->config.file_grab);
-				strcpy(pub->config.file_snap, pub->lbuf);
-
-				if (link_push_file_open(lp, pub->config.file_snap) != 0) {
-
-					/* TODO */
-				}
-			}
-
-			nk_spacer(ctx);
-
-			if (nk_button_label(ctx, "Remove")) {
-
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, pub->config.file_grab);
-
-				file_remove(pub->lbuf);
-
-				pub_directory_scan(pub, FILE_CONFIG_FILTER);
-			}
-		}
-		else {
-			disabled = ctx->style.button;
-
-			disabled.normal = disabled.active;
-			disabled.hover = disabled.active;
-			disabled.text_normal = disabled.text_active;
-			disabled.text_hover = disabled.text_active;
-
-			nk_button_label_styled(ctx, &disabled, "Import");
-
-			nk_spacer(ctx);
-
-			nk_button_label_styled(ctx, &disabled, "Remove");
-		}
-
-		nk_spacer(ctx);
-
-		nk_popup_end(ctx);
-	}
-	else {
-		link_reg_fetch_all_shown(lp);
 
 		pub->popup_enum = 0;
 	}
@@ -2184,7 +1978,7 @@ page_serial(struct public *pub)
 		}
 
 		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Loading register list", link_pce);
+				"Loading ...", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2384,8 +2178,8 @@ page_probe(struct public *pub)
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
 	reg_float(pub, "pm.const_fb_U", "Battery voltage");
-	reg_float_um(pub, "pm.const_E", "Kv constant", 1);
-	reg_float(pub, "pm.const_R", "Winding resistance");
+	reg_float_um(pub, "pm.const_lambda", "Flux linkage", 1);
+	reg_float(pub, "pm.const_Rs", "Winding resistance");
 	reg_float(pub, "pm.const_Zp", "Rotor pole pairs number");
 	reg_float_um(pub, "pm.const_Ja", "Moment of inertia", 1);
 	reg_float(pub, "pm.const_im_L1", "Inductance D");
@@ -2399,7 +2193,7 @@ page_probe(struct public *pub)
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.const_E");
+		reg = link_reg_lookup(pub->lp, "pm.const_lambda");
 		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 
 		reg = link_reg_lookup(pub->lp, "pm.const_Ja");
@@ -2504,29 +2298,29 @@ page_probe(struct public *pub)
 		nk_spacer(ctx);
 
 		nk_layout_row_template_begin(ctx, 0);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 11);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 13);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_end(ctx);
 
-		if (nk_button_label(ctx, "Probe E")) {
+		if (nk_button_label(ctx, "Probe Flux Linkage")) {
 
-			link_command(pub->lp, "pm_probe_const_E");
+			link_command(pub->lp, "pm_probe_const_flux_linkage");
 		}
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Probe J")) {
+		if (nk_button_label(ctx, "Probe Inertia")) {
 
-			link_command(pub->lp, "pm_probe_const_J");
+			link_command(pub->lp, "pm_probe_const_inertia");
 		}
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Probe NT")) {
+		if (nk_button_label(ctx, "Probe NOISE threshold")) {
 
 			link_command(pub->lp, "pm_probe_noise_threshold");
 		}
@@ -2866,7 +2660,7 @@ page_in_network(struct public *pub)
 		}
 
 		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Loading register list", link_pce);
+				"Loading ...", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2943,7 +2737,7 @@ page_in_pwm(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_TIME_s", "IDLE timeout");
+	reg_float(pub, "ap.idle_TIME", "IDLE timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3004,7 +2798,7 @@ page_in_knob(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_TIME_s", "IDLE timeout");
+	reg_float(pub, "ap.idle_TIME", "IDLE timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3099,20 +2893,7 @@ page_config(struct public *pub)
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
-
-	if (nk_button_label(ctx, "Export")) {
-
-		strcpy(pub->popup_msg, " Config Export");
-		pub->popup_enum = POPUP_CONFIG_EXPORT;
-
-		strcpy(pub->config.file_grab, FILE_CONFIG_DEFAULT);
-		pub_directory_scan(pub, FILE_CONFIG_FILTER);
-	}
-
-	nk_spacer(ctx);
 
 	if (nk_button_label(ctx, "Default")) {
 
@@ -3137,9 +2918,10 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "pm.config_NOP", "Number of motor phases", 0);
+	reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
 	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
+	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine saliency", 0);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3151,11 +2933,17 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Rotor position SENSOR", 1);
 	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
 	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop", 0);
-	reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HF injection waveform", 1);
-	reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "Flux polarity detection");
+
+	reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE");
+
+	if (reg != NULL && reg->lval == 2) {
+
+		reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
+		reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "HFI flux polarity");
+	}
+
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
-	reg_enum_toggle(pub, "pm.config_SALIENCY_UNUSUAL", "Saliency reverse");
 
 	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
 
@@ -3172,8 +2960,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.tm_transient_slow", "Transient time (slow)");
-	reg_float(pub, "pm.tm_transient_fast", "Transient time (fast)");
+	reg_float(pub, "pm.tm_transient_slow", "Transient time slow");
+	reg_float(pub, "pm.tm_transient_fast", "Transient time fast");
 	reg_float(pub, "pm.tm_voltage_hold", "Voltage hold time");
 	reg_float(pub, "pm.tm_current_hold", "Current hold time");
 	reg_float(pub, "pm.tm_current_ramp", "Current ramp time");
@@ -3187,12 +2975,6 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.damping_DI", "Damping on current loop");
-	reg_float(pub, "pm.damping_DS", "Damping on speed loop");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
 	reg_float(pub, "pm.probe_current_hold", "Probe hold current");
 	reg_float(pub, "pm.probe_current_weak", "Probe weak current");
 	reg_float(pub, "pm.probe_hold_angle", "Probe hold angle");
@@ -3201,6 +2983,10 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
 	reg_float_um(pub, "pm.probe_speed_detached", "Probe speed (detached)", 0);
+	reg_float(pub, "pm.probe_damping_current", "Damping on current loop");
+	reg_float(pub, "pm.probe_damping_speed", "Damping on speed loop");
+	reg_float(pub, "pm.probe_speed_tol", "Speed settle tolerance");
+	reg_float(pub, "pm.probe_location_tol", "Location settle tolerance");
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
 	reg_float(pub, "pm.probe_gain_I", "Probe loop gain I");
 
@@ -3235,11 +3021,9 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	pub_popup_config_export(pub, POPUP_CONFIG_EXPORT, pub->popup_msg);
-
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
-				" want to reset entire PMC configuration") != 0) {
+				" want to reset all PMC configuration") != 0) {
 
 		link_command(pub->lp, "pm_default_config");
 		link_reg_fetch_all_shown(pub->lp);
@@ -3291,11 +3075,11 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.kalman_gain_Q0", "Kalman Q on iD");
-	reg_float(pub, "pm.kalman_gain_Q1", "Kalman Q on iQ");
-	reg_float(pub, "pm.kalman_gain_Q2", "Kalman Q on position");
-	reg_float(pub, "pm.kalman_gain_Q3", "Kalman Q on speed");
-	reg_float(pub, "pm.kalman_gain_Q4", "Kalman Q on bias");
+	reg_float(pub, "pm.kalman_gain_Q0", "Kalman Q0 current D");
+	reg_float(pub, "pm.kalman_gain_Q1", "Kalman Q1 current Q");
+	reg_float(pub, "pm.kalman_gain_Q2", "Kalman Q2 position");
+	reg_float(pub, "pm.kalman_gain_Q3", "Kalman Q3 speed");
+	reg_float(pub, "pm.kalman_gain_Q4", "Kalman Q4 bias Q");
 	reg_float(pub, "pm.kalman_gain_R", "Kalman R gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3385,6 +3169,9 @@ page_lu_hfi(struct public *pub)
 
 		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(pub->lp, "pm.hfi_pole");
+		if (reg != NULL) { reg->update = rate; }
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
@@ -3483,7 +3270,7 @@ page_lu_hall(struct public *pub)
 		reg = link_reg_lookup(pub->lp, "pm.hall_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		rate = (reg->lval != 0) ? 400 : 1000;
+		rate = (rate != 0) ? rate : 1000;
 
 		reg = link_reg_lookup(pub->lp, "pm.fb_HS");
 		if (reg != NULL) { reg->update = rate; }
@@ -3574,13 +3361,12 @@ page_wattage(struct public *pub)
 
 	if (reg != NULL) {
 
-		int		rate, slow;
+		int		rate;
 
 		reg->update = 1000;
 		reg->shown = pub->lp->clock;
 
 		rate = (reg->lval != 0) ? 100 : 0;
-		slow = (reg->lval != 0) ? 900 : 0;
 
 		reg = link_reg_lookup(pub->lp, "pm.const_fb_U");
 		if (reg != NULL) { reg->update = rate; }
@@ -3588,20 +3374,22 @@ page_wattage(struct public *pub)
 		reg = link_reg_lookup(pub->lp, "pm.watt_consumption_wP");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
+		rate = (rate != 0) ? 1000 : 0;
+
 		reg = link_reg_lookup(pub->lp, "pm.lu_total_revol");
-		if (reg != NULL) { reg->update = slow; }
+		if (reg != NULL) { reg->update = rate; }
 
 		reg = link_reg_lookup(pub->lp, "pm.mi_traveled");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		reg = link_reg_lookup(pub->lp, "pm.mi_consumed_Wh");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		reg = link_reg_lookup(pub->lp, "pm.mi_reverted_Wh");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = slow; }
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		reg = link_reg_lookup(pub->lp, "pm.mi_fuel_gauge");
-		if (reg != NULL) { reg->update = slow; }
+		if (reg != NULL) { reg->update = rate; }
 	}
 
 	reg_float(pub, "pm.const_fb_U", "Battery voltage");
@@ -3722,7 +3510,7 @@ page_lp_speed(struct public *pub)
 }
 
 static void
-page_lp_servo(struct public *pub)
+page_lp_location(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -4077,7 +3865,7 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "Wattage", &page_wattage);
 		menu_select_button(pub, "lp Current", &page_lp_current);
 		menu_select_button(pub, "lp Speed", &page_lp_speed);
-		menu_select_button(pub, "lp Servo", &page_lp_servo);
+		menu_select_button(pub, "lp Location", &page_lp_location);
 		menu_select_button(pub, "Telemetry", &page_telemetry);
 		menu_select_button(pub, "Flash", &page_flash);
 		menu_select_button(pub, "Upgrade", &page_upgrade);

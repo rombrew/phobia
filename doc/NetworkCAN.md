@@ -8,9 +8,9 @@ networking functions.
 conventional two wire bus
 uses a linear bus terminated at each end
 
-	       +------------------------+--------------------
+	       +------------------------*--------------------
 	       |                        |
-	       |     +------------------|-----+--------------
+	       |     +------------------|-----*--------------
 	       |     |                  |     |
 	+------|-----|------+    +------|-----|------+
 	|    CAN_H CAN_L    |    |    CAN_H CAN_L    |    ...
@@ -24,8 +24,6 @@ We use base frame format with 11-bit identifier.
 ## Network survey
 
 ## IO forwarding
-
-## Massive flash update
 
 ## Flexible data pipes
 

@@ -22,7 +22,7 @@ float m_logf(float x);
 float m_exp2f(float x);
 float m_expf(float x);
 
-void m_la_eigf(const float a[3], float v[4], int sort);
+void m_la_eigf(const float a[3], float v[4], int m);
 
 typedef struct {
 
@@ -31,7 +31,7 @@ typedef struct {
 }
 lf_seed_t;
 
-void m_lf_initial(lf_seed_t *lf);
+void m_lf_randseed(lf_seed_t *lf, int seed);
 float m_lf_randf(lf_seed_t *lf);
 
 #endif /* _H_LIB_M_ */

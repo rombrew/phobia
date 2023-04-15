@@ -2,20 +2,18 @@
 
 PMC is an open project that aims to build the quality permanent magnet
 synchronous motor (PMSM) controller for use in a variety of scopes like RC or
-electrotransport.
+electric transport.
 
 ## Software features
 
 * Sensorless vector control of three-phase PMSM based on current measurements.
 * Robust ORTEGA observer with gain scheduling against speed.
-* Accurate KALMAN observer with bias compensation.
-* Two-phase machine support (e.g. bipolar stepper).
-* Self adjust of all onboard measurements along symmetrical channels.
-* Flux weakening control.
+* Accurate KALMAN observer with convergence on HF injection.
+* Flux weakening and MTPA control (**EXPERIMENTAL**).
+* Two and three phase machine support.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
-* Can be compiled for various controller boards (including VESC clones).
-* Flash storage for all of configurable parameters.
-* Regular command line interface (CLI) with autocompletion and history.
+* Various controller boards are supported (including VESC clones).
+* Regular Command Line Interface (CLI) with autocompletion and history.
 * Graphical front-end software based on
   [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) and
   [SDL2](https://www.libsdl.org/).
@@ -23,8 +21,13 @@ electrotransport.
   [FreeRTOS](http://www.freertos.org/).
 * USB protocol stack from
   [CherryUSB](https://github.com/sakumisu/CherryUSB).
-* Least Squares estimate using library
+* Least Squares estimate library
   [LSE](https://github.com/rombrew/lse).
+
+* Phase current sampling schemes includes two or three sensors configuration
+  with inline or low-side placement.
+* Self-adjustment of all onboard measurements (current and voltage) along
+  symmetrical channels.
 
 * Advanced SVPWM scheme provides:
 	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
@@ -32,49 +35,46 @@ electrotransport.
 	* Prevent bootstrap circuit undervoltage condition.
 	* Optional reduced ripple mode (clamp to middle) for precise control.
 
-* Phase current sampling schemes includes two or three sensors configuration
-  with inline or low-side placement.
-
 * Terminal voltage measurements (TVM):
 	* Compensation of the voltage distortion caused by Dead-Time insertion.
 	* BEMF tracking to get smooth start when motor is already running.
-	* Self test of the power stages integrity.
-	* Self test of bootstrap retention time.
+	* Self-test of the power stages integrity and motor connection.
+	* Self-test of bootstrap retention time.
 
 * Automated motor parameters identification with no additional tools:
 	* Stator DC resistance (R).
 	* Stator AC impedance in DQ frame (L1, L2, R).
-	* Motor back EMF constant (E).
-	* Moment of inertia (Ja).
+	* Rotor flux linkage constant (E).
+	* Mechanical moment of inertia (Ja).
 	* Discrete Hall signals recognition.
 
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
 	  force rotor hold or turn.
 	* Freewheeling.
-	* High frequency injection (HFI) based on magnetic saliency.
+	* High Frequency Injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
-	* ABI incremental encoder.
-	* SINCOS analog resolver (**TODO**).
+	* AB incremental (ABI) encoder.
+	* Absolute position sensor with SPI interface (**TODO**).
+	* Analog Hall sensors and resolver decoder (**TODO**).
 
 * Control loops:
 	* Current control is always enabled.
 	* Speed control loop.
-	* Servo control loop.
-	* Boost loop (battery charger) (**TODO**).
+	* Location control loop.
 
-* Adjustable limits:
-	* Phase current with adjustable derate on PCB overheat.
+* Adjustable constraints:
+	* Phase current with derate on PCB overheat.
 	* Motor voltage applied from VSI.
-	* Battery current (power) consumption and regeneration.
+	* Battery current consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration.
 
-* Control inputs:
-	* CAN bus flexible configurable data pipes.
-	* RC servo pulse width.
-	* STEP/DIR interface (**EXPERIMENTAL**).
+* Input interfaces:
 	* Analog input knob with brake signal.
+	* RC servo pulse width.
+	* CAN bus flexible configurable data pipes.
+	* STEP/DIR interface (**EXPERIMENTAL**).
 	* Manual control through CLI or graphical front-end.
 	* Custom embedded application can implement any control strategy.
 
@@ -82,12 +82,12 @@ electrotransport.
 	* Up to 30 nodes in peer network.
 	* Network survey on request (no heartbeat messages).
 	* Automated node address assignment.
-	* IO forwarding to get CLI of remote node.
+	* IO forwarding to log in to the remote node CLI.
 	* Flexible configurable data pipes.
 
 * Available information:
 	* Total distance traveled.
-	* Battery energy (Wh) and charge (Ah) consumed (reverted).
+	* Battery energy (Wh) and charge (Ah) consumed.
 	* Fuel gauge percentage.
 
 ## Hardware specification (**REV5A**)
@@ -110,7 +110,7 @@ electrotransport.
 	* Temperature of PCB with NTC resistor.
 
 * Motor interfaces:
-	* Discrete Hall sensors or ABI incremental encoder (5v pull-up).
+	* Discrete Hall sensors or ABI encoder (5v pull-up).
 	* External NTC resistor (e.g. motor temperature sensing).
 
 * Control interfaces:
@@ -143,7 +143,6 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
 * Make a detailed documentation.
 * Introduce MTPA control.
-* Introduce VSI model with Dead-Time distortion.
 * Add pulse output signal.
 * Make a drawing of the heatsink case for REV5A.
 * Design the new hardware for 120v battery voltage.

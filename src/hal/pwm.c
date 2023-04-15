@@ -1,7 +1,7 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2UL)
+#define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2U)
 #define TIM_ADC_ADVANCE			80
 
 void irq_TIM1_UP_TIM10() { }
@@ -9,24 +9,24 @@ void irq_TIM1_UP_TIM10() { }
 static int
 PWM_build()
 {
-	int		resolution, dtick;
+	int		resolution, dtu;
 
-	resolution = (int) ((float) CLOCK_TIM1_HZ / 2.f / hal.PWM_frequency + .5f);
-	dtick = (int) ((float) CLOCK_TIM1_HZ * (float) hal.PWM_deadtime / 1000000000.f + .5f);
-	dtick = (dtick < 127) ? dtick : 127;
+	resolution = (int) ((float) (CLOCK_TIM1_HZ / 2U) / hal.PWM_frequency + .5f);
+	dtu = (int) ((float) CLOCK_TIM1_HZ * hal.PWM_deadtime / 1000000000.f + .5f);
+	dtu = (dtu < 127) ? dtu : 127;
 
-	hal.PWM_frequency = (float) CLOCK_TIM1_HZ / 2.f / (float) resolution;
+	hal.PWM_frequency = (float) (CLOCK_TIM1_HZ / 2U) / (float) resolution;
 	hal.PWM_resolution = resolution;
-	hal.PWM_deadtime = (float) dtick * 1000000000.f / (float) CLOCK_TIM1_HZ;
+	hal.PWM_deadtime = (float) dtu * 1000000000.f / (float) CLOCK_TIM1_HZ;
 
-	return dtick;
+	return dtu;
 }
 
 void PWM_startup()
 {
-	int		dtick;
+	int		DTG;
 
-	dtick = PWM_build();
+	DTG = PWM_build();
 
 	/* Enable TIM1 clock.
 	 * */
@@ -51,7 +51,7 @@ void PWM_startup()
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
-	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | dtick;
+	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | DTG;
 
 	/* Start TIM1.
 	 * */
@@ -78,14 +78,14 @@ void PWM_startup()
 
 void PWM_configure()
 {
-	int		dtick;
+	int		DTG;
 
-	dtick = PWM_build();
+	DTG = PWM_build();
 
 	TIM1->ARR = hal.PWM_resolution;
 	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
 
-	MODIFY_REG(TIM1->BDTR, 0xFFUL, dtick);
+	MODIFY_REG(TIM1->BDTR, 0xFFU, DTG);
 }
 
 void PWM_set_DC(int A, int B, int C)
@@ -134,12 +134,6 @@ void PWM_set_Z(int Z)
 		TIM1->CCER |= (TIM_CCER_CC3NE | TIM_CCER_CC3E);
 	}
 
-	TIM1->EGR |= TIM_EGR_COMG;
-}
-
-void PWM_halt_Z()
-{
-	TIM1->CCER = TIM_CCER_CC4E;
 	TIM1->EGR |= TIM_EGR_COMG;
 }
 

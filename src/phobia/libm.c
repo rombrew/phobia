@@ -244,7 +244,7 @@ float m_expf(float x)
 	return m_exp2f(x / M_LOG2_F);
 }
 
-void m_la_eigf(const float a[3], float v[4], int sort)
+void m_la_eigf(const float a[3], float v[4], int m)
 {
 	float           b, d, la;
 
@@ -262,7 +262,7 @@ void m_la_eigf(const float a[3], float v[4], int sort)
 
 	la = (d > 0.f) ? m_sqrtf(d) : 0.f;
 
-	if (sort == 0) {
+	if (m == 0) {
 
 		v[2] = (b - la) * .5f;
 		v[3] = (b + la) * .5f;
@@ -295,12 +295,24 @@ void m_la_eigf(const float a[3], float v[4], int sort)
 	}
 }
 
-void m_lf_initial(lf_seed_t *lf)
+static unsigned int
+m_lf_lcgu(unsigned int rseed)
 {
-	lf->seed[0] = 0.1234567f;
-	lf->seed[1] = 0.8901234f;
-	lf->seed[2] = 0.5678901f;
-	lf->seed[3] = 0.2345678f;
+	return rseed * 17317U + 1U;
+}
+
+void m_lf_randseed(lf_seed_t *lf, int seed)
+{
+	const float	mu = 2.3283064E-10f;
+	unsigned int	lcgu;
+
+	lcgu = m_lf_lcgu(seed);
+	lcgu = m_lf_lcgu(lcgu);
+
+	lf->seed[0] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
+	lf->seed[1] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
+	lf->seed[2] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
+	lf->seed[3] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
 	lf->nb = 0;
 }
 

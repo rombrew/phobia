@@ -559,6 +559,7 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 static void
 pm_fsm_state_adjust_voltage(pmc_t *pm)
 {
+	float			*rem = pm->probe_REM;
 	lse_t			*ls = &pm->probe_lse[0];
 	lse_float_t		v[5];
 
@@ -750,35 +751,35 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 
 			if (pm->tm_value >= 2) {
 
-				REF = pm->probe_REM[0] * pm->const_fb_U * pm->ts_inverted;
+				REF = rem[0] * pm->const_fb_U * pm->ts_inverted;
 
 				v[0] = pm->fb_uA;
-				v[1] = pm->probe_REM[2];
+				v[1] = rem[2];
 				v[2] = 1.f;
 				v[3] = REF;
 
 				lse_insert(&pm->probe_lse[0], v);
 
 				v[0] = pm->fb_uB;
-				v[1] = pm->probe_REM[3];
+				v[1] = rem[3];
 				v[2] = 1.f;
 				v[3] = REF;
 
 				lse_insert(&pm->probe_lse[1], v);
 
 				v[0] = pm->fb_uC;
-				v[1] = pm->probe_REM[4];
+				v[1] = rem[4];
 				v[2] = 1.f;
 				v[3] = REF;
 
 				lse_insert(&pm->probe_lse[2], v);
 			}
 
-			pm->probe_REM[0] = pm->probe_REM[1];
-			pm->probe_REM[1] = (float) xDC;
-			pm->probe_REM[2] = pm->fb_uA;
-			pm->probe_REM[3] = pm->fb_uB;
-			pm->probe_REM[4] = pm->fb_uC;
+			rem[0] = rem[1];
+			rem[1] = (float) xDC;
+			rem[2] = pm->fb_uA;
+			rem[3] = pm->fb_uB;
+			rem[4] = pm->fb_uC;
 
 			pm->tm_value++;
 
@@ -1194,7 +1195,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	Z[1] = ls->sol.m[2] * iW;
 	Z[2] = ls->sol.m[3] * iW;
 
-	m_la_eigf(Z, la, (pm->config_SALIENCY_UNUSUAL == PM_ENABLED) ? 1 : 0);
+	m_la_eigf(Z, la, (pm->config_SALIENCY == PM_SALIENCY_POSITIVE) ? 1 : 0);
 }
 
 static void
@@ -1246,7 +1247,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_D, float track_Q, float track_H
 }
 
 static void
-pm_fsm_state_probe_const_r(pmc_t *pm)
+pm_fsm_state_probe_const_resistance(pmc_t *pm)
 {
 	lse_t			*ls = &pm->probe_lse[0];
 	lse_float_t		v[3];
@@ -1376,7 +1377,7 @@ pm_fsm_state_probe_const_r(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_const_l(pmc_t *pm)
+pm_fsm_state_probe_const_inductance(pmc_t *pm)
 {
 	float			iX, iY, uX, uY;
 	float			hold_A, la[5];
@@ -1579,8 +1580,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->zone_lpf_wS = 0.f;
 
 				pm->hfi_INJECT = PM_DISABLED;
-				pm->hfi_wave[0] = 1.f;
-				pm->hfi_wave[1] = 0.f;
+				pm->hfi_wave[0] = 0.f;
+				pm->hfi_wave[1] = 1.f;
 				pm->hfi_pole = 0.f;
 
 				pm->hall_F[0] = 1.f;
@@ -1619,6 +1620,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
+				pm->s_forward = 0.f;
 
 				pm->x_setpoint_location = 0.f;
 				pm->x_setpoint_speed = 0.f;
@@ -1681,7 +1683,7 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_const_e(pmc_t *pm)
+pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 {
 	lse_t			*ls = &pm->probe_lse[0];
 	lse_float_t		v[2];
@@ -1706,10 +1708,20 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			break;
 
 		case 1:
-			if (pm->flux_TYPE == PM_FLUX_KALMAN) {
+			if (pm->lu_MODE == PM_LU_DETACHED) {
 
 				v[0] = 1.f;
-				v[1] = pm->const_E;
+				v[1] = pm->flux_E;
+			}
+			else if (pm->flux_TYPE == PM_FLUX_ORTEGA) {
+
+				v[0] = 1.f;
+				v[1] = pm->flux_E;
+			}
+			else if (pm->flux_TYPE == PM_FLUX_KALMAN) {
+
+				v[0] = 1.f;
+				v[1] = pm->const_lambda;
 
 				if (m_fabsf(pm->flux_wS) > M_EPS_F) {
 
@@ -1718,7 +1730,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			}
 			else {
 				v[0] = 1.f;
-				v[1] = pm->flux_E;
+				v[1] = 0.f;
 			}
 
 			lse_insert(ls, v);
@@ -1737,7 +1749,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 			if (		m_isfinitef(ls->sol.m[0]) != 0
 					&& ls->sol.m[0] > M_EPS_F) {
 
-				pm->const_E = ls->sol.m[0];
+				pm->const_lambda = ls->sol.m[0];
 				pm->kalman_bias_Q = 0.f;
 
 				pm_quick_build(pm);
@@ -1753,7 +1765,7 @@ pm_fsm_state_probe_const_e(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_const_j(pmc_t *pm)
+pm_fsm_state_probe_const_inertia(pmc_t *pm)
 {
 	lse_t			*ls = &pm->probe_lse[0];
 	lse_float_t		v[4];
@@ -1878,10 +1890,11 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 static void
 pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 {
-	float			*NUM = pm->probe_lse[1].vm;
-	float			*REM = pm->probe_lse[2].vm;
+	float			*num = pm->probe_lse[1].vm;
+	float			*rm1 = num + 8;
+	float			*rm2 = num + 16;
 
-	int			HS, N, min_S;
+	int			HS, N, mN;
 	float			D;
 
 	switch (pm->fsm_phase) {
@@ -1889,14 +1902,16 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 		case 0:
 			if (pm->lu_MODE == PM_LU_ESTIMATE) {
 
+				pm->hall_ERN = 0;
+
 				for (N = 0; N < 8; ++N) {
 
 					pm->hall_ST[N].X = 0.f;
 					pm->hall_ST[N].Y = 0.f;
 
-					NUM[N] = 0.f;
-					REM[N] = 0.f;
-					REM[N + 8] = 0.f;
+					num[N] = 0.f;
+					rm1[N] = 0.f;
+					rm2[N] = 0.f;
 				}
 
 				pm->tm_value = 0;
@@ -1916,17 +1931,24 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 			if (HS >= 1 && HS <= 6) {
 
-				m_rsumf(&pm->hall_ST[HS].X, &REM[HS], pm->lu_F[0]);
-				m_rsumf(&pm->hall_ST[HS].Y, &REM[HS + 8], pm->lu_F[1]);
+				pm->hall_ERN = 0;
 
-				NUM[HS] += 1.f;
+				num[HS] += 1.f;
+
+				m_rsumf(&pm->hall_ST[HS].X, &rm1[HS], pm->lu_F[0]);
+				m_rsumf(&pm->hall_ST[HS].Y, &rm2[HS], pm->lu_F[1]);
 			}
 			else {
-				pm->hall_USEABLE = PM_DISABLED;
+				pm->hall_ERN++;
 
-				pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
+				if (pm->hall_ERN >= 10) {
+
+					pm->hall_USEABLE = PM_DISABLED;
+
+					pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
+					pm->fsm_state = PM_STATE_HALT;
+					pm->fsm_phase = 0;
+				}
 				break;
 			}
 
@@ -1939,14 +1961,14 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 			break;
 
 		case 2:
-			min_S = pm->tm_end / 12;
+			mN = pm->tm_end / 12;
 			N = 0;
 
 			for (HS = 1; HS < 7; ++HS) {
 
-				if (NUM[HS] > min_S) {
+				if (num[HS] > (float) mN) {
 
-					D = NUM[HS];
+					D = num[HS];
 
 					pm->hall_ST[HS].X /= D;
 					pm->hall_ST[HS].Y /= D;
@@ -2048,8 +2070,8 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_SELF_TEST_CLEARANCE:
 		case PM_STATE_ADJUST_VOLTAGE:
 		case PM_STATE_ADJUST_CURRENT:
-		case PM_STATE_PROBE_CONST_R:
-		case PM_STATE_PROBE_CONST_L:
+		case PM_STATE_PROBE_CONST_RESISTANCE:
+		case PM_STATE_PROBE_CONST_INDUCTANCE:
 		case PM_STATE_LU_DETACHED:
 		case PM_STATE_LU_STARTUP:
 
@@ -2066,8 +2088,8 @@ void pm_FSM(pmc_t *pm)
 			break;
 
 		case PM_STATE_LU_SHUTDOWN:
-		case PM_STATE_PROBE_CONST_E:
-		case PM_STATE_PROBE_CONST_J:
+		case PM_STATE_PROBE_CONST_FLUX_LINKAGE:
+		case PM_STATE_PROBE_CONST_INERTIA:
 		case PM_STATE_PROBE_NOISE_THRESHOLD:
 		case PM_STATE_ADJUST_SENSOR_HALL:
 		case PM_STATE_ADJUST_SENSOR_ABI:
@@ -2132,12 +2154,12 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_adjust_current(pm);
 			break;
 
-		case PM_STATE_PROBE_CONST_R:
-			pm_fsm_state_probe_const_r(pm);
+		case PM_STATE_PROBE_CONST_RESISTANCE:
+			pm_fsm_state_probe_const_resistance(pm);
 			break;
 
-		case PM_STATE_PROBE_CONST_L:
-			pm_fsm_state_probe_const_l(pm);
+		case PM_STATE_PROBE_CONST_INDUCTANCE:
+			pm_fsm_state_probe_const_inductance(pm);
 			break;
 
 		case PM_STATE_LU_DETACHED:
@@ -2152,12 +2174,12 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_lu_shutdown(pm);
 			break;
 
-		case PM_STATE_PROBE_CONST_E:
-			pm_fsm_state_probe_const_e(pm);
+		case PM_STATE_PROBE_CONST_FLUX_LINKAGE:
+			pm_fsm_state_probe_const_flux_linkage(pm);
 			break;
 
-		case PM_STATE_PROBE_CONST_J:
-			pm_fsm_state_probe_const_j(pm);
+		case PM_STATE_PROBE_CONST_INERTIA:
+			pm_fsm_state_probe_const_inertia(pm);
 			break;
 
 		case PM_STATE_PROBE_NOISE_THRESHOLD:

@@ -29,8 +29,8 @@
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
 
-#define CLOCK_APB1_HZ			(clock_cpu_hz / 4UL)
-#define CLOCK_APB2_HZ			(clock_cpu_hz / 2UL)
+#define CLOCK_APB1_HZ			(clock_cpu_hz / 4U)
+#define CLOCK_APB2_HZ			(clock_cpu_hz / 2U)
 
 #define GPIO_ADC_TEMPINT		XGPIO_DEF3('H', 0, 16)
 #define GPIO_ADC_VREFINT		XGPIO_DEF3('H', 0, 17)

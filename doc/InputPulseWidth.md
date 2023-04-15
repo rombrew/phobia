@@ -66,7 +66,7 @@ You can change the resolution of the timer that is used to measure the pulse
 width. By increasing the resolution you increase a minimum pulse rate that
 can be captured.
 
-	# reg hal.PPM_timebase <hz>
+	(pmc) reg hal.PPM_timebase <Hz>
 
 The minimum frequency is determined from the expression. Default timebase
 allows you to capture pulses from 31 Hz.

@@ -11,99 +11,111 @@
 #include "tsfunc.h"
 
 #define TLM_FILE	"/tmp/pm-TLM"
+#define PWM_FILE	"/tmp/pm-PWM"
 #define AGP_FILE	"/tmp/pm-auto.gp"
+
+#define TLM_SIZE	100
 
 blm_t			m;
 pmc_t			pm;
 
-FILE			*fdTlm;
-FILE			*fdGP;
+typedef struct {
+
+	float		y[TLM_SIZE];
+
+	FILE		*fd_tlm;
+	FILE		*fd_pwm;
+	FILE		*fd_gp;
+}
+tlm_t;
+
+static tlm_t		tlm;
 
 static void
-fmt_page_GP(int N, const char *figure, const char *label)
+tlm_page_GP(int nGP, const char *figure, const char *label)
 {
-	fprintf(fdGP, "page \"%s\"\n", figure);
-	if (label != NULL) { fprintf(fdGP, "label 1 \"(%s)\"\n", label); }
-	fprintf(fdGP, "figure 0 %i \"%s\"\n\n", N, figure);
+	fprintf(tlm.fd_gp, "page \"%s\"\n", figure);
+	if (label != NULL) { fprintf(tlm.fd_gp, "label 1 \"(%s)\"\n", label); }
+	fprintf(tlm.fd_gp, "figure 0 %i \"%s\"\n\n", nGP, figure);
 }
 
 static void
-sim_tlmgrab(float *pTlm)
+tlm_plot_grab()
 {
-	double		A, B, E, D, Q;
-	int		gp_N;
-
 	const double	kRPM = 30. / M_PI / m.Zp;
 	const double	kDEG = 180. / M_PI;
 
-#define sym_GP(x,s,l)	{ pTlm[gp_N] = (x); if (fdGP != NULL) \
-			{ fmt_page_GP(gp_N, s, (const char *) l); } gp_N++; }
-#define fmt_GP(x,l)	sym_GP(x, #x, l)
-#define fmk_GP(x,k,l)	sym_GP((x) * (k), #x, l)
+	double		A, B, D, Q, rel;
+	int		nGP;
+	
+#define sym_GP(x, s, l)		{ tlm.y[nGP] = (x); if (tlm.fd_gp != NULL) \
+				{ tlm_page_GP(nGP, s, (const char *) l); } nGP++; }
+#define fmt_GP(x, l)		sym_GP(x, #x, l)
+#define fmk_GP(x, k, l)		sym_GP((x) * (k), #x, l)
 
-	/* Model.
+	/* Machine State Variables.
 	 * */
-	pTlm[0] = m.Tsim;
-	pTlm[1] = m.X[0];
-	pTlm[2] = m.X[1];
-	pTlm[3] = m.X[2] * kRPM;
-	pTlm[4] = m.X[3] * kDEG;
-	pTlm[5] = m.X[4];
-	pTlm[6] = m.X[6];
+	tlm.y[0] = m.time;
+	tlm.y[1] = m.state[0];
+	tlm.y[2] = m.state[1];
+	tlm.y[3] = m.state[2] * kRPM;
+	tlm.y[4] = m.state[3] * kDEG;
+	tlm.y[5] = m.state[4];
+	tlm.y[6] = m.state[6];
 
-	/* Duty cycle.
+	/* Duty Cycle.
 	 * */
-	pTlm[7] = (double) m.PWM_A * 100. / (double) m.PWM_R;
-	pTlm[8] = (double) m.PWM_B * 100. / (double) m.PWM_R;
-	pTlm[9] = (double) m.PWM_C * 100. / (double) m.PWM_R;
+	tlm.y[7] = (double) m.pwm_A * 100. / (double) m.pwm_resolution;
+	tlm.y[8] = (double) m.pwm_B * 100. / (double) m.pwm_resolution;
+	tlm.y[9] = (double) m.pwm_C * 100. / (double) m.pwm_resolution;
 
-	/* VSI.
+	/* VSI Voltage.
 	 * */
-	pTlm[10] = pm.vsi_X;
-	pTlm[11] = pm.vsi_Y;
+	tlm.y[10] = pm.vsi_X;
+	tlm.y[11] = pm.vsi_Y;
 
-	/* Estimated current.
+	/* Estimated Current.
 	 * */
-	pTlm[12] = pm.lu_iD;
-	pTlm[13] = pm.lu_iQ;
+	tlm.y[12] = pm.lu_iD;
+	tlm.y[13] = pm.lu_iQ;
 
-	D = cos(m.X[3]);
-	Q = sin(m.X[3]);
+	D = cos(m.state[3]);
+	Q = sin(m.state[3]);
 	A = D * pm.lu_F[0] + Q * pm.lu_F[1];
 	B = D * pm.lu_F[1] - Q * pm.lu_F[0];
-	E = atan2(B, A);
+	rel = atan2(B, A);
 
-	if (m.sync_F != 0 && fabs(E) > 1.2) {
+	if (m.unsync_flag != 0 && fabs(rel) > 1.2) {
 
-		/* Throw an error if position estimate error is too large.
+		/* Throw an ERROR if position estimate deviation is too large.
 		 * */
 		pm.fsm_errno = PM_ERROR_NO_MOTOR_SYNC;
 	}
 
-	pTlm[14] = E * kDEG;
+	tlm.y[14] = rel * kDEG;
 
-	/* Estimated position.
+	/* Estimated Position.
 	 * */
-	pTlm[15] = atan2(pm.lu_F[1], pm.lu_F[0]) * kDEG;
+	tlm.y[15] = atan2(pm.lu_F[1], pm.lu_F[0]) * kDEG;
 
-	/* Estimated speed.
+	/* Estimated Speed.
 	 * */
-	pTlm[16] = pm.lu_wS * kRPM;
+	tlm.y[16] = pm.lu_wS * kRPM;
 
-	/* Power consumption.
+	/* Power Consumption.
 	 * */
-	pTlm[17] = m.iP;
-	pTlm[18] = pm.watt_consumption_wP;
+	tlm.y[17] = m.wP;
+	tlm.y[18] = pm.watt_consumption_wP;
 
-	/* Supply voltage.
+	/* DC link Voltage.
 	 * */
-	pTlm[19] = pm.const_fb_U;
+	tlm.y[19] = pm.const_fb_U;
 
-	/* NOTE: Individual parameters are managed with automatic generation of
-	 * GP configuration. So you only need to add a one line of code for
-	 * each parameter here.
+	/* NOTE: Private parameters are managed with automatic generation of GP
+	 * configuration. So you only need to add a one line of code for each
+	 * parameter here.
 	 * */
-	gp_N = 30;
+	nGP = 30;
 
 	fmt_GP(pm.fb_uA, 0);
 	fmt_GP(pm.fb_uB, 0);
@@ -124,9 +136,9 @@ sim_tlmgrab(float *pTlm)
 	fmt_GP(pm.vsi_SF, 0);
 	fmt_GP(pm.vsi_UF, 0);
 
-	fmt_GP(pm.tvm_A, 0);
-	fmt_GP(pm.tvm_B, 0);
-	fmt_GP(pm.tvm_C, 0);
+	fmt_GP(pm.tvm_A, "V");
+	fmt_GP(pm.tvm_B, "V");
+	fmt_GP(pm.tvm_C, "V");
 
 	fmt_GP(pm.lu_MODE, 0);
 	fmk_GP(pm.lu_mq_load, pm.const_Zp, "Nm");
@@ -171,57 +183,121 @@ sim_tlmgrab(float *pTlm)
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
 
-	if (fdGP != NULL) { fclose(fdGP); fdGP = NULL; }
+	if (tlm.fd_gp != NULL) { fclose(tlm.fd_gp); tlm.fd_gp = NULL; }
+
+	fwrite(tlm.y, sizeof(float), TLM_SIZE, tlm.fd_tlm);
 }
 
-void sim_tlmdrop()
+static void
+tlm_proc_step(double dT)
 {
-	if (fdTlm == NULL) {
+	double		iA, iB, iC;
 
-		fdTlm = fopen(TLM_FILE, "wb");
+	tlm.y[0] += dT / 1.E-6;
 
-		if (fdTlm == NULL) {
+	/* VSI Output.
+	 * */
+	tlm.y[1] = m.vsi[0];
+	tlm.y[2] = m.vsi[1];
+	tlm.y[3] = m.vsi[2];
+
+	blm_DQ_ABC(m.state[3], m.state[0], m.state[1], &iA, &iB, &iC);
+
+	/* Machine Current.
+	 * */
+	tlm.y[4] = iA;
+	tlm.y[5] = iB;
+	tlm.y[6] = iC;
+
+	/* Machine DC link Voltage.
+	 * */
+	tlm.y[7] = m.state[6];
+
+	/* Machine ADC.
+	 * */
+	tlm.y[8] = m.state[7];
+	tlm.y[9] = m.state[8];
+	tlm.y[10] = m.state[9];
+	tlm.y[11] = m.state[10];
+	tlm.y[12] = m.state[11];
+	tlm.y[13] = m.state[12];
+	tlm.y[14] = m.state[13];
+	tlm.y[15] = m.state[14];
+
+	fwrite(tlm.y, sizeof(float), 40, tlm.fd_pwm);
+}
+
+static void
+tlm_PWM_grab()
+{
+	tlm.fd_pwm = fopen(PWM_FILE, "wb");
+
+	if (tlm.fd_pwm == NULL) {
+
+		fprintf(stderr, "fopen: %s", strerror(errno));
+		exit(-1);
+	}
+
+	tlm.y[0] = 0.f;
+
+	m.sol_dT = 10.E-9;
+	m.proc_step = &tlm_proc_step;
+
+	/* Collect telemetry in one PWM cycle.
+	 * */
+	blm_update(&m);
+
+	fclose(tlm.fd_pwm);
+
+	m.sol_dT = 5.E-6;
+	m.proc_step = NULL;
+}
+
+void tlm_restart()
+{
+	if (tlm.fd_tlm == NULL) {
+
+		tlm.fd_tlm = fopen(TLM_FILE, "wb");
+
+		if (tlm.fd_tlm == NULL) {
 
 			fprintf(stderr, "fopen: %s", strerror(errno));
 			exit(-1);
 		}
 
-		fdGP = fopen(AGP_FILE, "w");
+		tlm.fd_gp = fopen(AGP_FILE, "w");
 
-		if (fdGP == NULL) {
+		if (tlm.fd_gp == NULL) {
 
 			fprintf(stderr, "fopen: %s", strerror(errno));
 			exit(-1);
 		}
 	}
 	else {
-		fdTlm = freopen(NULL, "wb", fdTlm);
+		tlm.fd_tlm = freopen(NULL, "wb", tlm.fd_tlm);
 	}
 }
 
 void sim_runtime(double dT)
 {
-	const int	szTlm = 100;
-	float		Tlm[szTlm];
-	double		Tend;
-
 	pmfb_t		fb;
+	double		stop;
 
-	Tend = m.Tsim + dT;
+	stop = m.time + dT;
 
-	while (m.Tsim < Tend) {
+	while (m.time < stop) {
 
 		/* Plant model update.
 		 * */
 		blm_update(&m);
 
-		fb.current_A = m.ADC_IA;
-		fb.current_B = m.ADC_IB;
-		fb.current_C = m.ADC_IC;
-		fb.voltage_U = m.ADC_US;
-		fb.voltage_A = m.ADC_UA;
-		fb.voltage_B = m.ADC_UB;
-		fb.voltage_C = m.ADC_UC;
+		fb.current_A = m.analog_iA;
+		fb.current_B = m.analog_iB;
+		fb.current_C = m.analog_iC;
+		fb.voltage_U = m.analog_uS;
+		fb.voltage_A = m.analog_uA;
+		fb.voltage_B = m.analog_uB;
+		fb.voltage_C = m.analog_uC;
 
 		fb.analog_SIN = m.analog_SIN;
 		fb.analog_COS = m.analog_COS;
@@ -233,46 +309,51 @@ void sim_runtime(double dT)
 		 * */
 		pm_feedback(&pm, &fb);
 
-		if (fdTlm != NULL) {
+		if (tlm.fd_tlm != NULL) {
 
 			/* Collect telemetry.
 			 * */
-			sim_tlmgrab(Tlm);
-
-			/* Dump telemetry array.
-			 * */
-			fwrite(Tlm, sizeof(float), szTlm, fdTlm);
+			tlm_plot_grab();
 		}
 
 		if (pm.fsm_errno != PM_OK) {
 
-			fprintf(stderr, "pm.fsm_errno: %s\n", pm_strerror(pm.fsm_errno));
+			fprintf(stderr, "fsm_errno: %s\n", pm_strerror(pm.fsm_errno));
 
-			fclose(fdTlm);
+			if (tlm.fd_tlm != NULL) {
+
+				fclose(tlm.fd_tlm);
+			}
+
 			exit(-1);
 		}
 	}
 }
 
-void sim_script_bench()
+void bench_script()
 {
 	blm_enable(&m);
-	blm_stop(&m);
-	sim_tlmdrop();
+	blm_restart(&m);
+	tlm_restart();
 
-	m.R = 14E-3;
-	m.Ld = 22E-6;
-	m.Lq = 35E-6;
-	m.U = 22.;
-	m.Rs = 0.1;
+	m.Rs = 14.E-3;
+	m.Ld = 22.E-6;
+	m.Lq = 35.E-6;
+	m.Udc = 22.;
+	m.Rdc = 0.1;
 	m.Zp = 14;
-	m.E = blm_Kv_to_E(&m, 270.);
-	m.J = 3E-4;
+	m.lambda = blm_Kv_lambda(&m, 270.);
+	m.Jm = 3.E-4;
 
 	ts_script_base();
 
-	blm_stop(&m);
-	sim_tlmdrop();
+	blm_restart(&m);
+	tlm_restart();
+
+	/*pm.fsm_req = PM_STATE_ZERO_DRIFT;
+	sim_runtime(.05);
+	tlm_PWM_grab();
+	ts_wait_for_idle();*/
 
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_HFI_WAVETYPE = PM_HFI_RANDOM;
@@ -295,17 +376,19 @@ void sim_script_bench()
 	sim_runtime(1.);
 
 	pm.s_setpoint_speed = 2000.f / (30. / M_PI / m.Zp);
-	sim_runtime(1.);
+	sim_runtime(.03);
+
+	
 }
 
 int main(int argc, char *argv[])
 {
-	lfg_start((int) time(NULL));
-
 	if (argc < 2) {
 
-		return -1;
+		exit(-1);
 	}
+
+	lfg_start((int) time(NULL));
 
 	if (strcmp(argv[1], "test") == 0) {
 
@@ -313,10 +396,13 @@ int main(int argc, char *argv[])
 	}
 	else if (strcmp(argv[1], "bench") == 0) {
 
-		sim_script_bench();
+		bench_script();
 	}
 
-	fclose(fdTlm);
+	if (tlm.fd_tlm != NULL) {
+
+		fclose(tlm.fd_tlm);
+	}
 
 	return 0;
 }

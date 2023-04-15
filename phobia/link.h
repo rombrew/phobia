@@ -116,7 +116,6 @@ int link_tlm_file_open(struct link_pmc *lp, const char *file);
 void link_tlm_file_close(struct link_pmc *lp);
 int link_grab_file_open(struct link_pmc *lp, const char *file);
 void link_grab_file_close(struct link_pmc *lp);
-int link_push_file_open(struct link_pmc *lp, const char *file);
 
 #endif /* _H_LINK_ */
 

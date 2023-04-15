@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_BOOT_SIGNATURE	0x557ABCDEUL
+#define HAL_BOOT_SIGNATURE	0x557ABCDEU
 
 uint32_t			clock_cpu_hz;
 
@@ -60,7 +60,7 @@ base_startup()
 {
 	/* Enable FPU.
 	 * */
-	SCB->CPACR |= (15UL << 20);
+	SCB->CPACR |= (15U << 20);
 
 	/* Vector table offset.
 	 * */
@@ -68,7 +68,7 @@ base_startup()
 
 	/* Configure priority grouping.
 	 * */
-	NVIC_SetPriorityGrouping(0UL);
+	NVIC_SetPriorityGrouping(0U);
 
 #ifdef STM32F7
 	SCB_EnableICache();
@@ -109,7 +109,7 @@ clock_startup()
 
 		__NOP();
 	}
-	while (HSE == 0 && N < 70000UL);
+	while (HSE == 0 && N < 70000U);
 
 	/* Enable power interface clock.
 	 * */
@@ -136,7 +136,7 @@ clock_startup()
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
 	}
 	else {
-		CLOCK = 16000000UL;
+		CLOCK = 16000000U;
 
 		/* From HSI.
 		 * */
@@ -146,23 +146,23 @@ clock_startup()
 	}
 
 #if defined(STM32F4)
-	clock_cpu_hz = 168000000UL;
+	clock_cpu_hz = 168000000U;
 #elif defined(STM32F7)
-	clock_cpu_hz = 216000000UL;
+	clock_cpu_hz = 216000000U;
 #endif /* STM32Fx */
 
 	PLLP = 2;
 
-	PLLM = (CLOCK + 1999999UL) / 2000000UL;
+	PLLM = (CLOCK + 1999999U) / 2000000U;
 	CLOCK /= PLLM;
 
 	PLLN = (PLLP * clock_cpu_hz) / CLOCK;
 	CLOCK *= PLLN;
 
-	PLLQ = (CLOCK + 47999999UL) / 48000000UL;
+	PLLQ = (CLOCK + 47999999U) / 48000000U;
 
 	RCC->PLLCFGR |= (PLLQ << 24)
-		| ((PLLP / 2UL - 1UL) << 16)
+		| ((PLLP / 2U - 1U) << 16)
 		| (PLLN << 6) | (PLLM << 0);
 
 	/* Update clock frequency.
@@ -234,7 +234,7 @@ flash_verify()
 	flash_sizeof = fw.ld_end - fw.ld_begin;
 	flash_crc32 = (uint32_t *) fw.ld_end;
 
-	if (*flash_crc32 == 0xFFFFFFFFUL) {
+	if (*flash_crc32 == 0xFFFFFFFFU) {
 
 		crc32 = crc32b((const void *) fw.ld_begin, flash_sizeof);
 
@@ -255,12 +255,12 @@ void hal_bootload()
 
 	if (bootload_jump == HAL_BOOT_SIGNATURE) {
 
-		bootload_jump = 0UL;
+		bootload_jump = 0U;
 
 #if defined(STM32F4)
-		sysmem = (uint32_t *) 0x1FFF0000UL;
+		sysmem = (uint32_t *) 0x1FFF0000U;
 #elif defined(STM32F7)
-		sysmem = (uint32_t *) 0x1FF00000UL;
+		sysmem = (uint32_t *) 0x1FF00000U;
 #endif /* STM32Fx */
 
 		/* Load MSP.
@@ -340,14 +340,14 @@ void log_bootup()
 	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
 
 		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
-		log.boot_COUNT = 0UL;
+		log.boot_COUNT = 0U;
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
 		log.len = 0;
 	}
 	else {
-		log.boot_COUNT += 1UL;
+		log.boot_COUNT += 1U;
 
 		log.textbuf[sizeof(log.textbuf) - 1] = 0;
 	}
@@ -358,7 +358,7 @@ void log_putc(int c)
 	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
 
 		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
-		log.boot_COUNT = 0UL;
+		log.boot_COUNT = 0U;
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 

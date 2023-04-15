@@ -10,7 +10,7 @@
 #define	IODEF_TO_USB()		if (iodef != &io_USB) { iodef = &io_USB; }
 #define	IODEF_TO_CAN()		if (iodef != &io_CAN) { iodef = &io_CAN; }
 
-#define URAND_MAX		65535
+#define URAND_MAX		65535U
 
 typedef struct {
 
@@ -32,10 +32,6 @@ extern io_ops_t		*iodef;
 /* EHCO mode.
  * */
 extern int		iodef_ECHO;
-
-/* PRETTY mode.
- * */
-extern int		iodef_PRETTY;
 
 /* Random SEED.
  * */

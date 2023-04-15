@@ -11,11 +11,11 @@ const FLASH_config_t	FLASH_config = { 8, 4 };
 
 const uint32_t FLASH_map[] = {
 
-	0x08080000UL,
-	0x080A0000UL,
-	0x080C0000UL,
-	0x080E0000UL,
-	0x08100000UL
+	0x08080000U,
+	0x080A0000U,
+	0x080C0000U,
+	0x080E0000U,
+	0x08100000U
 };
 
 #elif defined(STM32F7)
@@ -24,9 +24,9 @@ const FLASH_config_t	FLASH_config = { 6, 2 };
 
 const uint32_t FLASH_map[] = {
 
-	0x08040000UL,
-	0x08060000UL,
-	0x08080000UL
+	0x08040000U,
+	0x08060000U,
+	0x08080000U
 };
 
 #endif /* STM32Fx */
@@ -36,8 +36,8 @@ FLASH_unlock()
 {
 	if (FLASH->CR & FLASH_CR_LOCK) {
 
-		FLASH->KEYR = 0x45670123;
-		FLASH->KEYR = 0xCDEF89AB;
+		FLASH->KEYR = 0x45670123U;
+		FLASH->KEYR = 0xCDEF89ABU;
 	}
 }
 

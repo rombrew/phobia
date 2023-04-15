@@ -11,9 +11,9 @@
 
 #define CDC_DATA_SZ		64U
 
-#define CDC_IN_EP		0x81
-#define CDC_OUT_EP		0x02
-#define CDC_INT_EP		0x83
+#define CDC_IN_EP		0x81U
+#define CDC_OUT_EP		0x02U
+#define CDC_INT_EP		0x83U
 
 #define USBD_VID		0x0483	/* STMicroelectronics */
 #define USBD_PID		0x5740	/* Virtual COM Port */

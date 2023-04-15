@@ -11,8 +11,8 @@ possible the forced control is used. We apply a current vector without feedback
 to force rotor turn. You can adapt the current value and acceleration to your
 needs.
 
-	# reg pm.forced_hold_D <amp>
-	# reg pm.forced_accel <rad/s/s>
+	(pmc) reg pm.forced_hold_D <A>
+	(pmc) reg pm.forced_accel <rad/s2>
 
 For more reliable start increase hold current and decrease acceleration. Keep
 in mind that hold current is applied constantly (like in stepper motor) so it
@@ -21,137 +21,136 @@ causes significant heating.
 You have an option to disable forced control. The motor will be freewheeling at
 low speed range.
 
-	# reg pm.config_LU_FORCED 0
+	(pmc) reg pm.config_LU_FORCED 0
 
 ## Current loop
 
 You can limit phase current. It is the main tool not to burn the motor. This is
-global restriction applicable to all closed loop modes of operation. You also
-should set reverse limit for negative Q-axis current.
+global constraint applicable to all closed loop modes of operation. You also
+can set reverse limit of negative Q current.
 
-	# reg pm.i_maximal <amp>
-	# reg pm.i_reverse <amp>
+	(pmc) reg pm.i_maximal <A>
+	(pmc) reg pm.i_reverse <A>
 
-Thus, D-axis current will be limited to [**-pm.i_maximal** **+pm.i_maximal**]
-but Q-axis will be limited to [**-pm.i_reverse** **+pm.i_maximal**].
+Derated current in case of PCB overheat (look into other **ap.tpro** regs).
+Applicable to both D and Q axes.
 
-Derated current in case of PCB overheat (look into **ap.heat_PCB**). Applicable
-to both D and Q axes.
-
-	# reg ap.heat_PCB_derated <amp>
+	(pmc) reg ap.tpro_derated_PCB <A>
 
 If you are interested in transient performance try to change slew rate. But
-remember that low slew rate is useful for safe operation of the entire set of
+remember that low slew rate is necessary for safe operation of wattage
 constraints.
 
-	# reg pm.i_slew_rate <amp/s>
-
-You can limit consumption or regeneration battery current. Set the limit
-according to the power supply capabilities.
-
-	# reg pm.watt_wA_maximal <amp>
-	# reg pm.watt_wA_reverse <amp>
-
-Alternatively you can specify power limits. Note that the lowest of all
-constraints is used.
-
-	# reg pm.watt_wP_maximal <watt>
-	# reg pm.watt_wP_reverse <watt>
-
-You can limit DC link voltage at regenerative operation. This will derate
-regeneration power in case of overvoltage.
-
-	# reg pm.watt_uDC_maximal <volt>
-
-You can specify low limit of DC link voltage. This will prevent from source
-overload.
-
-	# reg pm.watt_uDC_minimal <volt>
+	(pmc) reg pm.i_slew_rate <A/s>
 
 Also you can tune PI regulator gains. But usually this is not required as
 default tune is good enough.
 
-	# reg pm.i_gain_P <x>
-	# reg pm.i_gain_I <x>
+	(pmc) reg pm.i_gain_P <x>
+	(pmc) reg pm.i_gain_I <x>
 
-Default gains tune can be done by setting to zero.
+PI regulator gains can be reverted to default by setting P to 0.
 
 	# reg pm.i_gain_P 0
 
-## FLUX observer
+## Wattage
 
-We use simple FLUX observer that almost does not need to be configured
-manually. However if it happened then say oh. You will probably need to change
-the range of low speed region. There are BEMF values at which switching occurs
-expressed relative to MPPE.
+You can limit consumption and regeneration battery current. Set the limits
+according to the power supply capabilities.
 
-	# reg pm.flux_gain_TAKE_E <volt>
-	# reg pm.flux_gain_GIVE_E <volt>
+	(pmc) reg pm.watt_wA_maximal <A>
+	(pmc) reg pm.watt_wA_reverse <A>
 
-Also inspect the MPPE value itself. This is approximate peak-to-peak noise of
-speed estimate.
+Alternatively you can specify power limits. Note that the lowest of all
+constraints will be used.
 
-	# reg pm.flux_MPPE
+	(pmc) reg pm.watt_wP_maximal <W>
+	(pmc) reg pm.watt_wP_reverse <W>
 
-Carefully try to enlarge low pass filter gain to get more fast but noisy speed
-estimate.
+You can limit DC link voltage at regenerative operation. This will derate
+regeneration power in case of overvoltage.
 
-	# reg pm.flux_gain_SF <x>
+	(pmc) reg pm.watt_uDC_maximal <V>
 
-Specify **IF** gain (from 0 to 1) as much as you want to add apriori speed
-prediction that takes into account moment of inertia and current applied.
+You can specify low limit of DC link voltage. This will prevent from battery
+overload.
 
-	# reg pm.flux_gain_IF <x>
+	(pmc) reg pm.watt_uDC_minimal <V>
 
-You have an option to disable sensorless estimation (**EXPERIMENTAL**).
+## FLUX estimate (ORTEGA)
 
-	# reg pm.config_ESTIMATE 0
+We use ORTEGA flux observer that almost does not need to be configured
+manually. You can carefully change speed loop gain to find tradeoff between
+transient rate and noise level.
+
+	(pmc) reg pm.flux_gain_SF <x>
+
+You have an option to disable sensorless estimation if you use position
+sensors.
+
+	(pmc) reg pm.config_ESTIMATE 0
+
+## FLUX estimate (KALMAN)
+
+We use KALMAN flux observer that has conventional Q and R diagonal covariance
+matrices. You can carefully change Q process noise to find tradeoff between
+transient rate and noise level.
+
+    (pmc) reg pm.kalman_gain_Q3 <x>
+
+**TODO**
 
 ## Speed loop
 
 You can limit absolute value of speed in forward and reverse direction. Also
 remember about alternative units of measure by using specific register name.
 
-	# reg pm.s_maximal <rad/s>
-	# reg pm.s_reverse <rad/s>
+	(pmc) reg pm.s_maximal <rad/s>
+	(pmc) reg pm.s_reverse <rad/s>
 
-You can limit the acceleration.
+You can limit the acceleration. We recommend to increase the default value.
 
-	# reg pm.s_accel <rad/s/s>
+	(pmc) reg pm.s_accel <rad/s/s>
 
-It should be noted that above restrictions are used differently depending on
-**pm.config_LU_DRIVE**. In case of speed control above restrictions are applied
+It should be noted that above constraints are used differently depending on
+selected control loop. In case of speed control above constraints are applied
 to speed setpoint to get trackpoint **pm.s_track**. In other words we do not
 limits actual parameters but limit input setpoint to comply it with
-restrictions.
+constraints.
 
-Quite different in the case of current control. You should specify
-**pm.config_SPEED_LIMITED** to apply above restrictions to actual speed and
-acceleration if you need it of course. Here trackppoint is driven by actual
-speed estimate with acceleration restriction. For system stability we have
-introduced a linear control area **pm.s_linspan**. So there may be some
-backlash e.g. in case of direction change.
+Quite different in the case of current control. You should enable
 
-Also you can tune P+FF regulator gains.
+    (pmc) reg pm.config_SPEED_LIMITED 1
 
-	# reg pm.s_gain_P <x>
-	# reg pm.lu_gain_mq_LP <x>
+to apply above constraints to actual speed and acceleration if you need it of
+course. Here trackppoint is driven by actual speed estimate with acceleration
+constraint. For system stability we have introduced a linear control area
+**pm.s_linspan**. So there may be some backlash in case of direction change.
 
-Default gains tune can be done by setting to zero.
+Also you can tune PI regulator gains.
 
-	# reg pm.s_gain_P 0
+    (pmc) reg pm.lu_gain_mq_LP <x>
+	(pmc) reg pm.s_gain_P <x>
+	(pmc) reg pm.s_gain_I <x>
+
+PI regulator gains can be reverted to default by setting P to 0.
+
+	(pmc) reg pm.s_gain_P 0
 
 ## Brake function
 
-If you need holding brake function in combination with current control then
+If you need a holding brake function in combination with current control then
 enable this. It is activated when current setpoint is negative. Brake current
-is limited by absolute value of setpoint, so brake is proportional.
+is limited by absolute value of setpoint so brake is proportional.
 
-	# reg pm.config_BRAKE 1
+	(pmc) reg pm.config_HOLDING_BRAKE 1
 
 Note that speed control loop should be fine tuned to use this feature.
 
 ## Flux weakening
 
-**TODO**
+TODO
 
+## MTPA control
+
+TODO

@@ -32,7 +32,7 @@ int pm_wait_for_idle()
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_spinup(float ref)
+int pm_wait_for_spinup(float s_ref)
 {
 	TickType_t		xTIME = (TickType_t) 0;
 
@@ -42,15 +42,15 @@ int pm_wait_for_spinup(float ref)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		/* Check the target speed has reached.
+		/* Check the target SPEED has reached.
 		 * */
-		if (m_fabsf(pm.lu_wS) + 10.f > ref)
+		if (m_fabsf(pm.lu_wS - s_ref) < pm.probe_speed_tol)
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
 				&& pm.vsi_lpf_DC > pm.forced_maximal_DC) {
 
-			ref = pm.lu_wS;
+			s_ref = pm.lu_wS;
 			break;
 		}
 
@@ -69,10 +69,10 @@ int pm_wait_for_spinup(float ref)
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_motion(float ref)
+int pm_wait_for_motion(float s_ref)
 {
 	TickType_t		xTIME = (TickType_t) 0;
-	int			revob = pm.lu_total_revol;
+	int			last_revol = pm.lu_total_revol;
 
 	do {
 		vTaskDelay((TickType_t) 50);
@@ -80,11 +80,9 @@ int pm_wait_for_motion(float ref)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (pm.lu_total_revol != revob) {
-
-			if (m_fabsf(pm.zone_lpf_wS) > ref)
-				break;
-		}
+		if (		pm.lu_total_revol != last_revol
+				&& m_fabsf(pm.zone_lpf_wS) > s_ref)
+			break;
 
 		if (xTIME > (TickType_t) 10000) {
 
@@ -95,6 +93,36 @@ int pm_wait_for_motion(float ref)
 		xTIME += (TickType_t) 50;
 	}
 	while (1);
+
+	return pm.fsm_errno;
+}
+
+int pm_wait_for_settle(float x_ref)
+{
+	TickType_t		xTick = (TickType_t) 0;
+
+	do {
+		vTaskDelay((TickType_t) 50);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		/* Check the target LOCATION has reached.
+		 * */
+		if (m_fabsf(x_ref - pm.lu_location) < pm.probe_location_tol)
+			break;
+
+		if (xTick > (TickType_t) 10000) {
+
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
+			break;
+		}
+
+		xTick += (TickType_t) 50;
+	}
+	while (1);
+
+	vTaskDelay((TickType_t) 100);
 
 	return pm.fsm_errno;
 }
@@ -130,16 +158,16 @@ SH_DEF(pm_probe_base)
 				break;
 		}
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		pm.const_R = pm.const_im_R;
+		pm.const_Rs = pm.const_im_R;
 
-		reg_format(&regfile[ID_PM_CONST_R]);
+		reg_format(&regfile[ID_PM_CONST_RS]);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_L;
+		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
@@ -187,7 +215,7 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		if (pm.const_E < M_EPS_F) {
+		if (pm.const_lambda < M_EPS_F) {
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -196,12 +224,12 @@ SH_DEF(pm_probe_spinup)
 
 			reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
 
-			pm.fsm_req = PM_STATE_PROBE_CONST_E;
+			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 			if (pm_wait_for_idle() != PM_OK)
 				break;
 
-			reg_format(&regfile[ID_PM_CONST_E_KV]);
+			reg_format(&regfile[ID_PM_CONST_LAMBDA_KV]);
 
 			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
@@ -225,12 +253,12 @@ SH_DEF(pm_probe_spinup)
 			break;
 		}
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_E;
+		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_E_KV]);
+		reg_format(&regfile[ID_PM_CONST_LAMBDA_KV]);
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -242,7 +270,7 @@ SH_DEF(pm_probe_spinup)
 		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
 		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_BASE]);
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_J;
+		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
 		vTaskDelay((TickType_t) 100);
 
@@ -305,13 +333,13 @@ SH_DEF(pm_probe_detached)
 		if (pm_wait_for_motion(pm.probe_speed_detached) != PM_OK)
 			break;
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_E;
+		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
-		reg_format(&regfile[ID_PM_CONST_E_KV]);
+		reg_format(&regfile[ID_PM_CONST_LAMBDA_KV]);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -330,7 +358,7 @@ SH_DEF(pm_probe_detached)
 	ap.probe_LOCK = PM_DISABLED;
 }
 
-SH_DEF(pm_probe_const_R)
+SH_DEF(pm_probe_const_resistance)
 {
 	float		R[3];
 
@@ -365,7 +393,7 @@ SH_DEF(pm_probe_const_R)
 
 		pm.probe_hold_angle = 0.f;
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
@@ -376,7 +404,7 @@ SH_DEF(pm_probe_const_R)
 
 		pm.probe_hold_angle = 120.f;
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
@@ -387,7 +415,7 @@ SH_DEF(pm_probe_const_R)
 
 		pm.probe_hold_angle = - 120.f;
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_R;
+		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
@@ -396,9 +424,9 @@ SH_DEF(pm_probe_const_R)
 
 		reg_format(&regfile[ID_PM_CONST_IM_R]);
 
-		pm.const_R = (R[0] + R[1] + R[2]) / 3.f;
+		pm.const_Rs = (R[0] + R[1] + R[2]) / 3.f;
 
-		reg_format(&regfile[ID_PM_CONST_R]);
+		reg_format(&regfile[ID_PM_CONST_RS]);
 	}
 	while (0);
 
@@ -409,7 +437,7 @@ SH_DEF(pm_probe_const_R)
 	ap.probe_LOCK = PM_DISABLED;
 }
 
-SH_DEF(pm_probe_const_E)
+SH_DEF(pm_probe_const_flux_linkage)
 {
 	if (pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -426,12 +454,12 @@ SH_DEF(pm_probe_const_E)
 	ap.probe_LOCK = PM_ENABLED;
 
 	do {
-		pm.fsm_req = PM_STATE_PROBE_CONST_E;
+		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_CONST_E_KV]);
+		reg_format(&regfile[ID_PM_CONST_LAMBDA_KV]);
 	}
 	while (0);
 
@@ -440,7 +468,7 @@ SH_DEF(pm_probe_const_E)
 	ap.probe_LOCK = PM_DISABLED;
 }
 
-SH_DEF(pm_probe_const_J)
+SH_DEF(pm_probe_const_inertia)
 {
 	float		wSP;
 
@@ -459,7 +487,7 @@ SH_DEF(pm_probe_const_J)
 	ap.probe_LOCK = PM_ENABLED;
 
 	do {
-		pm.fsm_req = PM_STATE_PROBE_CONST_J;
+		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
 		vTaskDelay((TickType_t) 100);
 
@@ -622,6 +650,81 @@ SH_DEF(pm_adjust_sensor_abi)
 SH_DEF(pm_adjust_sensor_sincos)
 {
 	/* TODO */
+}
+
+SH_DEF(pm_location_probe_const_inertia)
+{
+	if (pm.lu_MODE == PM_LU_DISABLED) {
+
+		printf("Unable when PM is stopped" EOL);
+		return;
+	}
+
+	if (pm.config_LU_DRIVE != PM_DRIVE_LOCATION) {
+
+		printf("Unable when LOCATION loop is DISABLED" EOL);
+		return;
+	}
+
+	do {
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
+
+		if (pm_wait_for_settle(pm.x_setpoint_location) != PM_OK)
+			break;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
+
+		vTaskDelay((TickType_t) 100);
+
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[1]);
+
+		vTaskDelay((TickType_t) 300);
+
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+
+		vTaskDelay((TickType_t) 300);
+
+		if (pm_wait_for_idle() != PM_OK)
+			break;
+
+		reg_format(&regfile[ID_PM_CONST_JA_KG]);
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+}
+
+SH_DEF(pm_location_adjust_range)
+{
+	float			wSP = 1.f;
+
+	if (pm.lu_MODE == PM_LU_DISABLED) {
+
+		printf("Unable when PM is stopped" EOL);
+		return;
+	}
+
+	if (pm.config_LU_DRIVE != PM_DRIVE_LOCATION) {
+
+		printf("Unable when LOCATION loop is DISABLED" EOL);
+		return;
+	}
+
+	do {
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
+
+		if (pm_wait_for_settle(pm.x_setpoint_location) != PM_OK)
+			break;
+
+		reg_SET_F(ID_PM_X_SETPOINT_SPEED, wSP);
+
+		/* TODO */
+	}
+	while (0);
+
+	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 }
 
 SH_DEF(pm_fsm_detached)

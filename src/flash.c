@@ -220,7 +220,7 @@ flash_is_block_dirty(const flash_block_t *block)
 
 	while (lsrc < lend) {
 
-		if (*lsrc++ != 0xFFFFFFFFUL) {
+		if (*lsrc++ != 0xFFFFFFFFU) {
 
 			dirty = 1;
 			break;

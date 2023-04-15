@@ -32,7 +32,7 @@ void SPI_startup(int bus_ID, int freq_hz, int mode)
 
 	for (BR = 0; BR < 8; ++BR) {
 
-		HZ = clock_HZ / (1UL << (BR + 1));
+		HZ = clock_HZ / (1U << (BR + 1));
 
 		if (HZ <= freq_hz)
 			break;
@@ -212,7 +212,7 @@ uint16_t SPI_transfer(int bus_ID, uint16_t txbuf)
 
 		__NOP();
 
-		if (wait_N > 70000UL) {
+		if (wait_N > 70000U) {
 
 			/* Timeout.
 			 * */

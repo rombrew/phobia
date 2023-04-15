@@ -12,7 +12,7 @@ The analog signal (from 0 to 5v) is fed to ANG pin. The brake signal (from 0 to
 	   | |   (analog)       |
 	   | |<-------------+   |
 	   |_|              |   |
-	    |           +---|---|-------~
+	    |           +---|---|-------~ (brake)
 	    +-------+   |   |   |
 	            |   |   |   |
 	            |   |   |   |
@@ -53,21 +53,21 @@ If signals do not change when you turn the knobs then check the wiring.
 	               |       /       |                  |
 	               |      /        |                  |
 	 control_ANG0  |<----o         |                  |
-	               |     |         |                  |      (volt)
+	               |     |         |                  |      (V)
 	               +-----+---------+------------------+--------------->
 	                  in_ANG0   in_ANG1            in_ANG2
 
 Select the ANG signal range in which you want to work. We use three point
 conversion from input voltage to the control value. Look at the diagram above.
 
-	(pmc) reg ap.knob_in_ANG0 <volt>
-	(pmc) reg ap.knob_in_ANG1 <volt>
-	(pmc) reg ap.knob_in_ANG2 <volt>
+	(pmc) reg ap.knob_in_ANG0 <V>
+	(pmc) reg ap.knob_in_ANG1 <V>
+	(pmc) reg ap.knob_in_ANG2 <V>
 
 The same for BRK signal but we use two point conversion here.
 
-	(pmc) reg ap.knob_in_BRK0 <volt>
-	(pmc) reg ap.knob_in_BRK1 <volt>
+	(pmc) reg ap.knob_in_BRK0 <V>
+	(pmc) reg ap.knob_in_BRK1 <V>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the current control is selected as a
@@ -95,8 +95,8 @@ the control variable will be interpolated to this value.
 If you need you can change input lost range. If signal goes beyond this range
 it is considered lost and output forced to **ap.knob_control_ANG0**.
 
-	(pmc) reg ap.knob_in_lost0 <volt>
-	(pmc) reg ap.knob_in_lost1 <volt>
+	(pmc) reg ap.knob_in_lost0 <V>
+	(pmc) reg ap.knob_in_lost1 <V>
 
 Now enable motor startup control. Each time when ANG signal is in range the
 startup is requested.
@@ -110,8 +110,8 @@ Now you are ready to enable the analog input interface.
 # Timeout shutdown
 
 To stop the control we check if motor is run or setpoint is high. If setpoint
-is out of input range and motor does not make full turns for **ap.idle_TIME_s**
+is out of input range and motor does not make full turns for **ap.idle_TIME**
 seconds the shutdown is requested.
 
-	(pmc) reg ap.idle_TIME_s <s>
+	(pmc) reg ap.idle_TIME <s>
 

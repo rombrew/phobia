@@ -4,7 +4,7 @@
 extern blm_t			m;
 extern pmc_t			pm;
 
-extern void sim_tlmdrop();
+extern void tlm_restart();
 extern void sim_runtime(double dT);
 
 int ts_wait_for_idle();

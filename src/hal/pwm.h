@@ -13,7 +13,6 @@ void PWM_configure();
 
 void PWM_set_DC(int A, int B, int C);
 void PWM_set_Z(int Z);
-void PWM_halt_Z();
 
 #endif /* _H_PWM_ */
 

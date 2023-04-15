@@ -31,7 +31,7 @@ def mkbuild():
 
     for file in os.listdir('hal/hw'):
         if file.endswith(".h"):
-            mkdefs(file[0:-2])
+            mkdefs(file.removesuffix('.h'))
 
 def checkmacro(s, m):
 

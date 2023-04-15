@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stddef.h>
 #include <limits.h>
 #include <math.h>
 
@@ -24,16 +24,15 @@ lfg_lcgu(unsigned int rseed)
 
 void lfg_start(int rseed)
 {
-	unsigned int	rlcg;
-	int		j;
+	unsigned int	lcgu;
+	int		i;
 
-	rlcg = lfg_lcgu(rseed);
-	rlcg = lfg_lcgu(rlcg);
+	lcgu = lfg_lcgu(rseed);
+	lcgu = lfg_lcgu(lcgu);
 
-	for (j = 0; j < 55; ++j) {
+	for (i = 0; i < 55; ++i) {
 
-		rlcg = lfg_lcgu(rlcg);
-		lfg.seed[j] = (double) rlcg / (double) UINT_MAX;
+		lfg.seed[i] = (double) (lcgu = lfg_lcgu(lcgu)) / (double) UINT_MAX;
 	}
 
 	lfg.ra = 0;
@@ -50,7 +49,7 @@ double lfg_rand()
 	a = lfg.seed[lfg.ra];
 	b = lfg.seed[lfg.rb];
 
-	x = (a < b) ? a - b + 1. : a - b;
+	x = (a < b) ? a - b + 1. : a - b - 1.;
 
 	lfg.seed[lfg.ra] = x;
 
@@ -62,14 +61,14 @@ double lfg_rand()
 
 double lfg_gauss()
 {
-	double		s, x;
+	double		x, s;
 
 	/* Box-Muller transform.
 	 * */
 
 	do {
-		s = 2. * lfg_rand() - 1.;
-		x = 2. * lfg_rand() - 1.;
+		s = lfg_rand();
+		x = lfg_rand();
 
 		s = s * s + x * x;
 

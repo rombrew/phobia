@@ -17,7 +17,6 @@
 enum {
 	LINK_MODE_IDLE			= 0,
 	LINK_MODE_DATA_GRAB,
-	LINK_MODE_DATA_PUSH,
 	LINK_MODE_HWINFO,
 	LINK_MODE_EPCAN_MAP,
 	LINK_MODE_FLASH_MAP,
@@ -37,7 +36,6 @@ struct link_priv {
 	FILE			*fd_log;
 	FILE			*fd_tlm;
 	FILE			*fd_grab;
-	FILE			*fd_push;
 
 	char			hw_revision[LINK_NAME_MAX];
 	char			hw_build[LINK_NAME_MAX];
@@ -432,7 +430,7 @@ link_fetch_flash_map(struct link_pmc *lp)
 
 			lp->flash[N].block[bN++] = *sp;
 
-			if (bN >= sizeof(lp->flash[0].block)) 
+			if (bN >= sizeof(lp->flash[0].block))
 				break ;
 		}
 		else if (*sp != ' ')
@@ -517,11 +515,6 @@ void link_close(struct link_pmc *lp)
 			fclose(priv->fd_grab);
 		}
 
-		if (priv->fd_push != NULL) {
-
-			fclose(priv->fd_push);
-		}
-
 		memset(priv, 0, sizeof(struct link_priv));
 	}
 
@@ -551,12 +544,6 @@ void link_remote(struct link_pmc *lp)
 
 		fclose(priv->fd_grab);
 		priv->fd_grab = NULL;
-	}
-
-	if (priv->fd_push != NULL) {
-
-		fclose(priv->fd_push);
-		priv->fd_push = NULL;
 	}
 
 	lp->fetched_N = 0;
@@ -668,26 +655,20 @@ int link_fetch(struct link_pmc *lp, int clock)
 	}
 	const link_map[] = {
 
-		{ "rtos_version",		LINK_MODE_HWINFO },
-		{ "rtos_reboot",		LINK_MODE_UNABLE_WARNING },
-		{ "flash_info",			LINK_MODE_FLASH_MAP },
-		{ "flash_prog",			LINK_MODE_UNABLE_WARNING },
-		{ "flash_wipe",			LINK_MODE_UNABLE_WARNING },
-		{ "pm_self_test",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_self_adjust",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_base",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_spinup",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_detached",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_const_E",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_const_J",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_noise_threshold",	LINK_MODE_UNABLE_WARNING },
-		{ "pm_adjust_sensor_hall",	LINK_MODE_UNABLE_WARNING },
-		{ "tlm_flush_sync",		LINK_MODE_DATA_GRAB },
-		{ "tlm_live_sync",		LINK_MODE_DATA_GRAB },
-		{ "net_survey",			LINK_MODE_EPCAN_MAP },
-		{ "net_assign",			LINK_MODE_UNABLE_WARNING },
-		{ "net_revoke",			LINK_MODE_UNABLE_WARNING },
-		{ "export_reg",			LINK_MODE_DATA_GRAB },
+		{ "rtos_version",	LINK_MODE_HWINFO },
+		{ "rtos_reboot",	LINK_MODE_UNABLE_WARNING },
+		{ "flash_info",		LINK_MODE_FLASH_MAP },
+		{ "flash_prog",		LINK_MODE_UNABLE_WARNING },
+		{ "flash_wipe",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_self_",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_probe_",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_adjust_",		LINK_MODE_UNABLE_WARNING },
+		{ "tlm_flush_sync",	LINK_MODE_DATA_GRAB },
+		{ "tlm_live_sync",	LINK_MODE_DATA_GRAB },
+		{ "net_survey",		LINK_MODE_EPCAN_MAP },
+		{ "net_assign",		LINK_MODE_UNABLE_WARNING },
+		{ "net_revoke",		LINK_MODE_UNABLE_WARNING },
+		{ "export_reg",		LINK_MODE_DATA_GRAB },
 
 		{ NULL, 0 }	/* END */
 	},
@@ -719,17 +700,9 @@ int link_fetch(struct link_pmc *lp, int clock)
 					fclose(priv->fd_grab);
 					priv->fd_grab = NULL;
 				}
+
+				lp->grab_N = 0;
 			}
-			else if (priv->link_mode == LINK_MODE_DATA_PUSH) {
-
-				if (priv->fd_push != NULL) {
-
-					fclose(priv->fd_push);
-					priv->fd_push = NULL;
-				}
-			}
-
-			lp->grab_N = 0;
 
 			priv->link_mode = LINK_MODE_IDLE;
 		}
@@ -773,9 +746,6 @@ int link_fetch(struct link_pmc *lp, int clock)
 				fflush(priv->fd_grab);
 
 				lp->grab_N++;
-				break;
-
-			case LINK_MODE_DATA_PUSH:
 				break;
 
 			case LINK_MODE_HWINFO:
@@ -831,53 +801,6 @@ int link_fetch(struct link_pmc *lp, int clock)
 	return N;
 }
 
-static void
-link_data_push(struct link_pmc *lp)
-{
-	struct link_priv	*priv = lp->priv;
-	char			*eol;
-
-	do {
-		if (priv->pbuf[0] != 0) {
-
-			if (serial_fputs(priv->fd, priv->pbuf) != SERIAL_OK)
-				break;
-
-			priv->pbuf[0] = 0;
-
-			lp->locked = lp->clock + lp->quantum;
-			lp->grab_N++;
-		}
-		else {
-			if (priv->fd_push == NULL) {
-
-				lp->grab_N = 0;
-
-				priv->link_mode = LINK_MODE_IDLE;
-			}
-			else if (fgets(priv->pbuf, sizeof(priv->pbuf) - 2U,
-						priv->fd_push) != NULL) {
-
-				eol = priv->pbuf;
-
-				while (		*eol != 0
-						&& *eol != '\r'
-						&& *eol != '\n')
-					eol++;
-
-				strcpy(eol, LINK_EOL);
-			}
-			else {
-				strcpy(priv->pbuf, "reg iodef_ECHO 1" LINK_EOL LINK_EOL);
-
-				fclose(priv->fd_push);
-				priv->fd_push = NULL;
-			}
-		}
-	}
-	while (1);
-}
-
 void link_push(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
@@ -889,12 +812,6 @@ void link_push(struct link_pmc *lp)
 
 	if (priv->link_mode == LINK_MODE_DATA_GRAB)
 		return ;
-
-	if (priv->link_mode == LINK_MODE_DATA_PUSH) {
-
-		link_data_push(lp);
-		return ;
-	}
 
 	if (lp->locked > lp->clock)
 		return ;
@@ -1206,34 +1123,5 @@ void link_grab_file_close(struct link_pmc *lp)
 
 		priv->link_mode = LINK_MODE_IDLE;
 	}
-}
-
-int link_push_file_open(struct link_pmc *lp, const char *file)
-{
-	struct link_priv	*priv = lp->priv;
-	FILE			*fd;
-	int			rc = 0;
-
-	if (lp->linked == 0)
-		return 0;
-
-	if (priv->fd_push == NULL) {
-
-		fd = fopen_from_UTF8(file, "r");
-
-		if (fd != NULL) {
-
-			strcpy(priv->pbuf, "reg iodef_ECHO 0" LINK_EOL);
-
-			priv->link_mode = LINK_MODE_DATA_PUSH;
-			priv->fd_push = fd;
-
-			lp->grab_N = 0;
-
-			rc = 1;
-		}
-	}
-
-	return rc;
 }
 

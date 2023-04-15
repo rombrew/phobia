@@ -23,19 +23,19 @@ LFLAGS  += -Wl,--gc-sections -Wl,--no-undefined -lusp10 -ldinput8 -ldxguid \
 	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 \
 	   -lshell32 -lsetupapi -lversion -luuid -lrpcrt4 -static-libgcc
 
-OBJS	= blob_ttf.o \
-	  config.o \
+OBJS	= config.o \
 	  dirent.o \
+	  font.o \
 	  link.o \
 	  nksdl.o \
 	  phobia.o \
 	  serial.o
 
 OBJS	+= gp/async.o \
-	   gp/blob_ttf.o \
 	   gp/dirent.o \
 	   gp/draw.o \
 	   gp/edit.o \
+	   gp/font.o \
 	   gp/gp.o \
 	   gp/lang.o \
 	   gp/lse.o \

@@ -14,19 +14,19 @@ CFLAGS	+= -D_EMBED_GP
 
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image
 
-OBJS	= blob_ttf.o \
-	  config.o \
+OBJS	= config.o \
 	  dirent.o \
+	  font.o \
 	  link.o \
 	  nksdl.o \
 	  phobia.o \
 	  serial.o
 
 OBJS	+= gp/async.o \
-	   gp/blob_ttf.o \
 	   gp/dirent.o \
 	   gp/draw.o \
 	   gp/edit.o \
+	   gp/font.o \
 	   gp/gp.o \
 	   gp/lang.o \
 	   gp/lse.o \

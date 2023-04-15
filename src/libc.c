@@ -11,7 +11,6 @@ io_ops_t		io_CAN;
 io_ops_t		*iodef;
 
 int			iodef_ECHO;
-int			iodef_PRETTY;
 
 uint32_t		rseed;
 
@@ -19,7 +18,7 @@ void *memset(void *d, int c, int n)
 {
 	uint32_t	fill, *long_d = (uint32_t *) d;
 
-	if (((uint32_t) long_d & 3UL) == 0) {
+	if (((uint32_t) long_d & 3U) == 0) {
 
 		fill = (uint8_t) c;
 		fill |= (fill << 8);
@@ -50,7 +49,7 @@ void *memcpy(void *restrict d, const void *restrict s, int n)
 	uint32_t	*restrict long_d = (uint32_t * restrict) d;
 	const uint32_t	*restrict long_s = (const uint32_t * restrict) s;
 
-	if (((uint32_t) long_d & 3UL) == 0 && ((uint32_t) long_s & 3UL) == 0) {
+	if (((uint32_t) long_d & 3U) == 0 && ((uint32_t) long_s & 3U) == 0) {
 
 		while (n >= 4) {
 
@@ -256,11 +255,11 @@ fmt_hexb(io_ops_t *_io, int x)
 {
 	int		n, c;
 
-	n = (x & 0xF0UL) >> 4;
+	n = (x & 0xF0U) >> 4;
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
 	_io->putc(c);
 
-	n = (x & 0x0FUL);
+	n = (x & 0x0FU);
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
 	_io->putc(c);
 }
@@ -275,10 +274,10 @@ fmt_hexh(io_ops_t *_io, int x)
 static void
 fmt_hexl(io_ops_t *_io, uint32_t x)
 {
-	fmt_hexb(_io, (x & 0xFF000000UL) >> 24);
-	fmt_hexb(_io, (x & 0x00FF0000UL) >> 16);
-	fmt_hexb(_io, (x & 0x0000FF00UL) >> 8);
-	fmt_hexb(_io, (x & 0x000000FFUL));
+	fmt_hexb(_io, (x & 0xFF000000U) >> 24);
+	fmt_hexb(_io, (x & 0x00FF0000U) >> 16);
+	fmt_hexb(_io, (x & 0x0000FF00U) >> 8);
+	fmt_hexb(_io, (x & 0x000000FFU));
 }
 
 static void
@@ -335,9 +334,9 @@ fmt_float(io_ops_t *_io, float x, int n)
 		x = - x;
 	}
 
-	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
+	if ((0xFFU & (u.i >> 23)) == 0xFFU) {
 
-		if ((u.i & 0x7FFFFFUL) != 0) {
+		if ((u.i & 0x7FFFFFU) != 0) {
 
 			xputs(_io, "NaN");
 		}
@@ -410,9 +409,9 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 		x = - x;
 	}
 
-	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
+	if ((0xFFU & (u.i >> 23)) == 0xFFU) {
 
-		if ((u.i & 0x7FFFFFUL) != 0) {
+		if ((u.i & 0x7FFFFFU) != 0) {
 
 			xputs(_io, "NaN");
 		}
@@ -494,9 +493,9 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 		x = - x;
 	}
 
-	if ((0xFFUL & (u.i >> 23)) == 0xFFUL) {
+	if ((0xFFU & (u.i >> 23)) == 0xFFU) {
 
-		if ((u.i & 0x7FFFFFUL) != 0) {
+		if ((u.i & 0x7FFFFFU) != 0) {
 
 			xputs(_io, "NaN");
 		}
@@ -637,13 +636,7 @@ void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
 					break;
 
 				case 'g':
-					if (iodef_PRETTY != 0) {
-
-						fmt_pretty(_io, * va_arg(ap, float *), n);
-					}
-					else {
-						fmt_fexp(_io, * va_arg(ap, float *), n);
-					}
+					fmt_pretty(_io, * va_arg(ap, float *), n);
 					break;
 
 				case 'c':
@@ -816,15 +809,15 @@ uint32_t crc32b(const void *s, int n)
 	const uint32_t		*ls = (const uint32_t *) s;
 	uint32_t		crc, buf;
 
-	const uint32_t		mask[16] = {
+	static const uint32_t	mask[16] = {
 
-		0x00000000UL, 0x1DB71064UL, 0x3B6E20C8UL, 0x26D930ACUL,
-		0x76DC4190UL, 0x6B6B51F4UL, 0x4DB26158UL, 0x5005713CUL,
-		0xEDB88320UL, 0xF00F9344UL, 0xD6D6A3E8UL, 0xCB61B38CUL,
-		0x9B64C2B0UL, 0x86D3D2D4UL, 0xA00AE278UL, 0xBDBDF21CUL
+		0x00000000U, 0x1DB71064U, 0x3B6E20C8U, 0x26D930ACU,
+		0x76DC4190U, 0x6B6B51F4U, 0x4DB26158U, 0x5005713CU,
+		0xEDB88320U, 0xF00F9344U, 0xD6D6A3E8U, 0xCB61B38CU,
+		0x9B64C2B0U, 0x86D3D2D4U, 0xA00AE278U, 0xBDBDF21CU
 	};
 
-	crc = 0xFFFFFFFFUL;
+	crc = 0xFFFFFFFFU;
 
 	while (n >= 4) {
 
@@ -833,24 +826,24 @@ uint32_t crc32b(const void *s, int n)
 
 		crc = crc ^ buf;
 
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
-		crc = (crc >> 4) ^ mask[crc & 0x0FUL];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crc = (crc >> 4) ^ mask[crc & 0x0FU];
 	}
 
-	return crc ^ 0xFFFFFFFFUL;
+	return crc ^ 0xFFFFFFFFU;
 }
 
 uint32_t urand()
 {
 	uint32_t	rval;
 
-	rseed = rseed * 17317UL + 1UL;
+	rseed = rseed * 17317U + 1U;
 	rval = rseed >> 16;
 
 	return rval;

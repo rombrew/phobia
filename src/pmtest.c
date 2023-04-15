@@ -149,68 +149,7 @@ SH_DEF(pm_self_adjust)
 	ap.probe_LOCK = PM_DISABLED;
 }
 
-SH_DEF(pm_test_current_ramp)
-{
-	TickType_t		xTS1;
-	float			iSP;
-
-	if (pm.lu_MODE == PM_LU_DISABLED) {
-
-		printf("Unable when PM is stopped" EOL);
-		return;
-	}
-
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.grabfreq);
-
-	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
-
-	do {
-		iSP = reg_GET_F(ID_PM_I_SETPOINT_CURRENT);
-		vTaskDelay(1UL * xTS1);
-
-		reg_SET_F(ID_PM_I_SETPOINT_CURRENT, pm.i_maximal);
-		vTaskDelay(5UL * xTS1);
-
-		reg_SET_F(ID_PM_I_SETPOINT_CURRENT, iSP);
-		vTaskDelay(4UL * xTS1);
-	}
-	while (0);
-}
-
-SH_DEF(pm_test_speed_ramp)
-{
-	TickType_t		xTS1;
-	float			wSP;
-
-	if (pm.lu_MODE == PM_LU_DISABLED) {
-
-		printf("Unable when PM is stopped" EOL);
-		return;
-	}
-
-	xTS1 = (TickType_t) (100UL * TLM_DATA_MAX / tlm.grabfreq);
-
-	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
-
-	do {
-		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
-		vTaskDelay(1UL * xTS1);
-
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
-		vTaskDelay(5UL * xTS1);
-
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
-		vTaskDelay(4UL * xTS1);
-	}
-	while (0);
-}
-
-SH_DEF(pm_test_thrust_curve)
-{
-	/* TODO */
-}
-
-SH_DEF(pm_test_TVM_ramp)
+SH_DEF(pm_self_tvm_ramp)
 {
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
@@ -233,13 +172,11 @@ SH_DEF(pm_test_TVM_ramp)
 
 	xDC = xMIN;
 
-	PWM_set_DC(xDC, xDC, xDC);
+	PWM_set_DC(0, 0, 0);
 	PWM_set_Z(0);
 
-	pm.vsi_UF = 0;
-	pm.vsi_AZ = 1;
-	pm.vsi_BZ = 1;
-	pm.vsi_CZ = 1;
+	pm_clearance(&pm, 0, 0, 0);
+	pm_clearance(&pm, 0, 0, 0);
 
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
@@ -254,6 +191,8 @@ SH_DEF(pm_test_TVM_ramp)
 		xDC = (xDC < xMAX) ? xDC + 1 : xMIN;
 
 		PWM_set_DC(xDC, xDC, xDC);
+
+		pm_clearance(&pm, xDC, xDC, xDC);
 
 		/* Reference voltage.
 		 * */
@@ -273,7 +212,8 @@ SH_DEF(pm_test_TVM_ramp)
 	}
 	while (1);
 
-	pm.fsm_req = PM_STATE_HALT;
+	PWM_set_DC(0, 0, 0);
+	PWM_set_Z(PM_Z_ABC);
 }
 
 SH_DEF(hal_DBGMCU_mode_stop)

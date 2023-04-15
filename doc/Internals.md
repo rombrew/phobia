@@ -5,12 +5,12 @@ PMC internals. Also this page will be useful for understanding.
 
 ## Hardware
 
-We have a three-phase voltage source inverter (VSI) which consists of six
+We have a three-phase Voltage Source Inverter (VSI) which consists of six
 field-effect transistors (FET). The voltage at each of the output terminals is
 measured. Phase current A and B (optionally C) is measured. The output
 terminals are connected to the motor.
 
-	  (+)   >---+--------+---------+---------+
+	  (VCC) >---+--------+---------+---------+
 	            |        |         |         |
 	            |     --FET     --FET     --FET
 	          -----      |         |         |

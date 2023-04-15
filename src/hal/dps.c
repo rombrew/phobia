@@ -89,14 +89,14 @@ void DPS_configure()
 int DPS_get_HALL()
 {
 	GPIO_TypeDef	*GPIO = (GPIO_TypeDef *) (GPIOA_BASE
-				+ 0x0400 * XGPIO_GET_PORT(GPIO_HALL_A));
+				+ 0x0400U * XGPIO_GET_PORT(GPIO_HALL_A));
 	int		IDR, HALL;
 
 	IDR = GPIO->IDR;
 
-	HALL  = (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_A))) ? LEG_A : 0UL;
-	HALL |= (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_B))) ? LEG_B : 0UL;
-	HALL |= (IDR & (1UL << XGPIO_GET_N(GPIO_HALL_C))) ? LEG_C : 0UL;
+	HALL  = (IDR & (1U << XGPIO_GET_N(GPIO_HALL_A))) ? LEG_A : 0U;
+	HALL |= (IDR & (1U << XGPIO_GET_N(GPIO_HALL_B))) ? LEG_B : 0U;
+	HALL |= (IDR & (1U << XGPIO_GET_N(GPIO_HALL_C))) ? LEG_C : 0U;
 
 	return HALL;
 }

@@ -1,111 +1,98 @@
 #ifndef _H_BLM_
 #define _H_BLM_
 
+enum {
+	BLM_Z_NONE		= 0,
+	BLM_Z_DETACHED
+};
+
 typedef struct {
 
-	double		Tsim;
-	double		dT, sT;
-	int		PWM_R;
+	int	ev;
+	int	comp;
+}
+blm_event_t;
 
-	/* Duty Cycle (INPUT).
-	 * */
-	int		PWM_A;
-	int		PWM_B;
-	int		PWM_C;
+typedef struct {
 
-	/* Detached (INPUT).
-	 * */
-	int		HI_Z;
+	double		time;
+	double		sol_dT;
 
-	/* State variables of BLM.
-	 * */
-	double		X[13];
-	int		revol_N;
-	int		VSI[3];
-	int		surge_I;
+	int		unsync_flag;
 
-	/* Power per cycle.
-	 * */
-	double		iP;
+	double		pwm_dT;
+	double		pwm_deadtime;
+	double		pwm_minimal;
+	int		pwm_resolution;
 
-	/* Motor constants.
-	 * */
-	double		R;
+	int		pwm_A;
+	int		pwm_B;
+	int		pwm_C;
+	int		pwm_Z;
+
+	double		state[15];
+	int		vsi[6];
+	blm_event_t	event[8];
+	int		revol;
+
+	double		wP;
+
+	double		Dtol;
+
+	double		Rs;
 	double		Ld;
 	double		Lq;
-	double		E;
-	double		Lk[3];
+	double		lambda;
 	int		Zp;
 
-	/* Thermal constants.
-	 * */
+	double		Ta;
 	double		Ct;
 	double		Rt;
 
-	/* Voltage source contants.
-	 * */
-	double		U;
-	double		Rs;
-	double		Cb;
+	double		Udc;
+	double		Rdc;
+	double		Cdc;
 
-	/* Mechanical constants.
-	 * */
-	double		J;
-	double		M[4];
+	double		Jm;
+	double		Mq[4];
 
-	/* Sensor constants.
-	 * */
-	double		T_ADC;
-	double		tau_I;
-	double		tau_U;
+	double		adc_Tconv;
+	double		tau_A;
+	double		tau_B;
+	double		range_A;
+	double		range_B;
 
-	/* Hall Sensors.
-	 * */
-	double		HS[3];
+	double		hall[3];
 
-	/* Incremental Encoder.
-	 * */
-	int		EP_PPR;
-	double		EP_Zq;
+	int		eabi_EPPR;
+	double		eabi_Zq;
 
-	/* Resolver SIN/COS.
-	 * */
-	double		SC_Zq;
+	double		analog_Zq;
 
-	/* ADC result (OUTPUT).
-	 * */
-	float		ADC_IA;
-	float		ADC_IB;
-	float		ADC_IC;
-	float		ADC_US;
-	float		ADC_UA;
-	float		ADC_UB;
-	float		ADC_UC;
+	float		analog_iA;
+	float		analog_iB;
+	float		analog_iC;
+	float		analog_uS;
+	float		analog_uA;
+	float		analog_uB;
+	float		analog_uC;
 
-	/* Hall Sensors (OUTPUT).
-	 * */
 	int		pulse_HS;
-
-	/* Encoder Pulse (OUTPUT).
-	 * */
 	int		pulse_EP;
 
-	/* Resolver SIN/COS (OUTPUT).
-	 * */
 	float		analog_SIN;
 	float		analog_COS;
 
-	/* This flag is used externally to throw
-	 * an error in case of sync loss.
-	 * */
-	int		sync_F;
+	void 		(* proc_step) (double);
 }
 blm_t;
 
-double blm_Kv_to_E(blm_t *m, double Kv);
+void blm_AB_DQ(double theta, double A, double B, double *D, double *Q);
+void blm_DQ_ABC(double theta, double D, double Q, double *A, double *B, double *C);
+double blm_Kv_lambda(blm_t *m, double Kv);
 
 void blm_enable(blm_t *m);
-void blm_stop(blm_t *m);
+void blm_restart(blm_t *m);
 void blm_update(blm_t *m);
 
 #endif /* _H_BLM_ */

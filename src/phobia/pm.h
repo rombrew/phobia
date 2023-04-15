@@ -7,7 +7,6 @@
 #define PM_CONFIG_NOP(pm)	(pm)->config_NOP
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
-#define PM_CONFIG_DEBUG(pm)	(pm)->config_DEBUG
 
 #define PM_TSMS(pm, ms)		(int) (pm->m_freq * (ms) * 0.001f)
 
@@ -45,6 +44,11 @@ enum {
 };
 
 enum {
+	PM_SALIENCY_NEGATIVE			= 0,
+	PM_SALIENCY_POSITIVE
+};
+
+enum {
 	PM_DISABLED				= 0,
 	PM_ENABLED
 };
@@ -53,12 +57,6 @@ enum {
 	PM_FLUX_NONE				= 0,
 	PM_FLUX_ORTEGA,
 	PM_FLUX_KALMAN
-};
-
-enum {
-	PM_HFI_NONE				= 0,
-	PM_HFI_SINE,
-	PM_HFI_RANDOM
 };
 
 enum {
@@ -77,7 +75,14 @@ enum {
 enum {
 	PM_DRIVE_CURRENT			= 0,
 	PM_DRIVE_SPEED,
-	PM_DRIVE_SERVO
+	PM_DRIVE_LOCATION
+};
+
+enum {
+	PM_HFI_NONE				= 0,
+	PM_HFI_SINE,
+	PM_HFI_RANDOM,
+	PM_HFI_SILENT
 };
 
 enum {
@@ -116,13 +121,13 @@ enum {
 	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_ADJUST_VOLTAGE,
 	PM_STATE_ADJUST_CURRENT,
-	PM_STATE_PROBE_CONST_R,
-	PM_STATE_PROBE_CONST_L,
+	PM_STATE_PROBE_CONST_RESISTANCE,
+	PM_STATE_PROBE_CONST_INDUCTANCE,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
-	PM_STATE_PROBE_CONST_E,
-	PM_STATE_PROBE_CONST_J,
+	PM_STATE_PROBE_CONST_FLUX_LINKAGE,
+	PM_STATE_PROBE_CONST_INERTIA,
 	PM_STATE_PROBE_NOISE_THRESHOLD,
 	PM_STATE_ADJUST_SENSOR_HALL,
 	PM_STATE_ADJUST_SENSOR_ABI,
@@ -225,7 +230,7 @@ typedef struct {
 	int		config_NOP;
 	int		config_IFB;
 	int		config_TVM;
-	int		config_DEBUG;
+	int		config_SALIENCY;
 
 	int		config_VSI_CIRCULAR;
 	int		config_VSI_PRECISE;
@@ -238,7 +243,6 @@ typedef struct {
 	int		config_HFI_POLARITY;
 	int		config_RELUCTANCE;		/* TODO */
 	int		config_WEAKENING;
-	int		config_SALIENCY_UNUSUAL;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
 	int		config_ABI_FRONTEND;
@@ -286,9 +290,6 @@ typedef struct {
 	int		fb_HS;
 	int		fb_EP;
 
-	float		damping_DI;
-	float		damping_DS;
-
 	float		probe_current_hold;
 	float		probe_current_weak;
 	float		probe_hold_angle;
@@ -297,9 +298,13 @@ typedef struct {
 	float		probe_freq_sine;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
+	float		probe_damping_current;
+	float		probe_damping_speed;
+	float		probe_speed_tol;
+	float		probe_location_tol;
 	float		probe_gain_P;
 	float		probe_gain_I;
-
+	
 	float		probe_DFT[8];
 	float		probe_REM[8];
 	float		probe_SC[2];
@@ -413,9 +418,9 @@ typedef struct {
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 
-	float		zone_lpf_wS;
 	float		zone_threshold_NOISE;
 	float		zone_threshold_BASE;
+	float		zone_lpf_wS;
 	float		zone_gain_TH;
 	float		zone_gain_LP;
 
@@ -478,8 +483,8 @@ typedef struct {
 	float		sincos_gain_IF;
 
 	float		const_fb_U;
-	float		const_E;
-	float		const_R;
+	float		const_lambda;
+	float		const_Rs;
 	int		const_Zp;
 	float		const_Ja;
 	float		const_im_L1;
@@ -537,12 +542,13 @@ typedef struct {
 	float		s_setpoint_speed;
 	float		s_maximal;
 	float		s_reverse;
+	float		s_track;
+	float		s_forward;
 	float		s_accel;
 	float		s_linspan;
-	float		s_track;
 	float		s_tolerance;
 	float		s_gain_P;
-	float		s_gain_I;
+	float		s_gain_Q;
 
 	float		x_location_range[2];
 	float		x_location_home;
