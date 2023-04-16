@@ -1,4 +1,4 @@
-#!/home/amaora/util/gp
+#!/usr/bin/env gp
 # vi: ft=conf
 
 load 0 0 float 100 "/tmp/pm-TLM"
@@ -51,6 +51,7 @@ page "VSI Voltage"
 label 0 "(V)"
 label 1 "(V)"
 figure 10 11 "pm.vsi_X / pm.vsi_Y"
+drawing dot 4
 
 page "------------------------------"
 

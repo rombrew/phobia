@@ -29,10 +29,6 @@ extern io_ops_t		io_CAN;
  * */
 extern io_ops_t		*iodef;
 
-/* EHCO mode.
- * */
-extern int		iodef_ECHO;
-
 /* Random SEED.
  * */
 extern uint32_t		rseed;

@@ -21,6 +21,8 @@ pmc_t			pm;
 
 typedef struct {
 
+	int		hatch;
+
 	float		y[TLM_SIZE];
 
 	FILE		*fd_tlm;
@@ -48,7 +50,7 @@ tlm_plot_grab()
 	double		A, B, D, Q, rel;
 	int		nGP;
 	
-#define sym_GP(x, s, l)		{ tlm.y[nGP] = (x); if (tlm.fd_gp != NULL) \
+#define sym_GP(x, s, l)		{ tlm.y[nGP] = (float) (x); if (tlm.fd_gp != NULL) \
 				{ tlm_page_GP(nGP, s, (const char *) l); } nGP++; }
 #define fmt_GP(x, l)		sym_GP(x, #x, l)
 #define fmk_GP(x, k, l)		sym_GP((x) * (k), #x, l)
@@ -127,9 +129,9 @@ tlm_plot_grab()
 	fmt_GP(pm.fb_COS, 0);
 
 	fmt_GP(pm.vsi_DC, 0);
+	fmt_GP(pm.vsi_lpf_DC, 0);
 	fmt_GP(pm.vsi_X, "V");
 	fmt_GP(pm.vsi_Y, "V");
-	fmt_GP(pm.vsi_lpf_DC, 0);
 	fmt_GP(pm.vsi_AF, 0);
 	fmt_GP(pm.vsi_BF, 0);
 	fmt_GP(pm.vsi_CF, 0);
@@ -152,7 +154,7 @@ tlm_plot_grab()
 	fmt_GP(pm.flux_ZONE, 0);
 	fmt_GP(pm.flux_X[0], "Wb");
 	fmt_GP(pm.flux_X[1], "Wb");
-	fmt_GP(pm.flux_E, "Wb");
+	fmt_GP(pm.flux_lambda, "Wb");
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
@@ -167,8 +169,8 @@ tlm_plot_grab()
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
 
-	sym_GP(atan2(pm.abi_F[1], pm.abi_F[0]) * kDEG, "pm.abi_F", "°");
-	fmk_GP(pm.abi_wS, kRPM, "rpm");
+	sym_GP(atan2(pm.eabi_F[1], pm.eabi_F[0]) * kDEG, "pm.eabi_F", "°");
+	fmk_GP(pm.eabi_wS, kRPM, "rpm");
 
 	fmt_GP(pm.watt_lpf_D, "V");
 	fmt_GP(pm.watt_lpf_Q, "V");
@@ -197,34 +199,42 @@ tlm_proc_step(double dT)
 
 	/* VSI Output.
 	 * */
-	tlm.y[1] = m.vsi[0];
-	tlm.y[2] = m.vsi[1];
-	tlm.y[3] = m.vsi[2];
+	tlm.y[1] = (m.xdtu[0] == 0) ? (float) m.xfet[0] : (float) tlm.hatch;
+	tlm.y[2] = (m.xdtu[1] == 0) ? (float) m.xfet[1] : (float) tlm.hatch;
+	tlm.y[3] = (m.xdtu[2] == 0) ? (float) m.xfet[2] : (float) tlm.hatch;
+
+	/* Deadtime Uncertainty.
+	 * */
+	tlm.y[4] = (float) m.xdtu[0];
+	tlm.y[5] = (float) m.xdtu[1];
+	tlm.y[6] = (float) m.xdtu[2];
 
 	blm_DQ_ABC(m.state[3], m.state[0], m.state[1], &iA, &iB, &iC);
 
 	/* Machine Current.
 	 * */
-	tlm.y[4] = iA;
-	tlm.y[5] = iB;
-	tlm.y[6] = iC;
+	tlm.y[7] = iA;
+	tlm.y[8] = iB;
+	tlm.y[9] = iC;
 
 	/* Machine DC link Voltage.
 	 * */
-	tlm.y[7] = m.state[6];
+	tlm.y[10] = m.state[6];
 
 	/* Machine ADC.
 	 * */
-	tlm.y[8] = m.state[7];
-	tlm.y[9] = m.state[8];
-	tlm.y[10] = m.state[9];
-	tlm.y[11] = m.state[10];
-	tlm.y[12] = m.state[11];
-	tlm.y[13] = m.state[12];
-	tlm.y[14] = m.state[13];
-	tlm.y[15] = m.state[14];
+	tlm.y[11] = m.state[7];
+	tlm.y[12] = m.state[8];
+	tlm.y[13] = m.state[9];
+	tlm.y[14] = m.state[10];
+	tlm.y[15] = m.state[11];
+	tlm.y[16] = m.state[12];
+	tlm.y[17] = m.state[13];
+	tlm.y[18] = m.state[14];
 
 	fwrite(tlm.y, sizeof(float), 40, tlm.fd_pwm);
+
+	tlm.hatch = (tlm.hatch == 0) ? 1 : 0;
 }
 
 static void
@@ -350,14 +360,8 @@ void bench_script()
 	blm_restart(&m);
 	tlm_restart();
 
-	/*pm.fsm_req = PM_STATE_ZERO_DRIFT;
-	sim_runtime(.05);
-	tlm_PWM_grab();
-	ts_wait_for_idle();*/
-
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-	pm.config_HFI_WAVETYPE = PM_HFI_RANDOM;
-	pm.config_HFI_POLARITY = PM_ENABLED;
+	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
 
 	pm.s_accel = 70000.f;
 
@@ -376,9 +380,9 @@ void bench_script()
 	sim_runtime(1.);
 
 	pm.s_setpoint_speed = 2000.f / (30. / M_PI / m.Zp);
-	sim_runtime(.03);
+	sim_runtime(1.);
 
-	
+	tlm_PWM_grab();
 }
 
 int main(int argc, char *argv[])
@@ -390,9 +394,9 @@ int main(int argc, char *argv[])
 
 	lfg_start((int) time(NULL));
 
-	if (strcmp(argv[1], "test") == 0) {
+	if (strcmp(argv[1], "verify") == 0) {
 
-		ts_script_all();
+		ts_script_verify();
 	}
 	else if (strcmp(argv[1], "bench") == 0) {
 

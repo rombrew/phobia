@@ -1569,7 +1569,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
-				pm->flux_E = 0.f;
+				pm->flux_lambda = 0.f;
 				pm->flux_F[0] = 1.f;
 				pm->flux_F[1] = 0.f;
 				pm->flux_wS = 0.f;
@@ -1588,11 +1588,11 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->hall_F[1] = 0.f;
 				pm->hall_wS = 0.f;
 
-				pm->abi_ENABLED = PM_DISABLED;
-				pm->abi_F[0] = 1.f;
-				pm->abi_F[1] = 0.f;
-				pm->abi_wS = 0.f;
-				pm->abi_location = 0.f;
+				pm->eabi_ENABLED = PM_DISABLED;
+				pm->eabi_F[0] = 1.f;
+				pm->eabi_F[1] = 0.f;
+				pm->eabi_wS = 0.f;
+				pm->eabi_location = 0.f;
 
 				pm->sincos_ENABLED = PM_DISABLED;
 				pm->sincos_revol = 0;
@@ -1711,12 +1711,12 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 			if (pm->lu_MODE == PM_LU_DETACHED) {
 
 				v[0] = 1.f;
-				v[1] = pm->flux_E;
+				v[1] = pm->flux_lambda;
 			}
 			else if (pm->flux_TYPE == PM_FLUX_ORTEGA) {
 
 				v[0] = 1.f;
-				v[1] = pm->flux_E;
+				v[1] = pm->flux_lambda;
 			}
 			else if (pm->flux_TYPE == PM_FLUX_KALMAN) {
 
@@ -1875,7 +1875,7 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 			if (		m_isfinitef(ls->std.m[0]) != 0
 					&& ls->std.m[0] > M_EPS_F) {
 
-				pm->zone_threshold_NOISE = ls->std.m[0] * 5.f;
+				pm->zone_speed_noise = ls->std.m[0] * 5.f;
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -2006,7 +2006,7 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_adjust_sensor_abi(pmc_t *pm)
+pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
 
@@ -2092,7 +2092,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_PROBE_CONST_INERTIA:
 		case PM_STATE_PROBE_NOISE_THRESHOLD:
 		case PM_STATE_ADJUST_SENSOR_HALL:
-		case PM_STATE_ADJUST_SENSOR_ABI:
+		case PM_STATE_ADJUST_SENSOR_EABI:
 		case PM_STATE_ADJUST_SENSOR_SINCOS:
 
 			if (pm->fsm_state != PM_STATE_IDLE)
@@ -2190,8 +2190,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_adjust_sensor_hall(pm);
 			break;
 
-		case PM_STATE_ADJUST_SENSOR_ABI:
-			pm_fsm_state_adjust_sensor_abi(pm);
+		case PM_STATE_ADJUST_SENSOR_EABI:
+			pm_fsm_state_adjust_sensor_eabi(pm);
 			break;
 
 		case PM_STATE_LOOP_BOOST:

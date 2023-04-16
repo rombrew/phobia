@@ -156,18 +156,22 @@ void blm_restart(blm_t *m)
 	m->state[7] = 0.;	/* Current Sensor iA */
 	m->state[8] = 0.;	/* Current Sensor iB */
 	m->state[9] = 0.;	/* Current Sensor iC */
-	m->state[10] = 0.;	/* Voltage Sensor uS */
-	m->state[11] = 0.;	/* Voltage Sensor uS */
+	m->state[10] = m->Udc;	/* Voltage Sensor uS */
+	m->state[11] = m->Udc;	/* Voltage Sensor uS */
 	m->state[12] = 0.;	/* Voltage Sensor uA */
 	m->state[13] = 0.;	/* Voltage Sensor uB */
 	m->state[14] = 0.;	/* Voltage Sensor uC */
 
-	m->vsi[0] = 0;
-	m->vsi[1] = 0;
-	m->vsi[2] = 0;
-	m->vsi[3] = 0;
-	m->vsi[4] = 0;
-	m->vsi[5] = 0;
+	m->xfet[0] = 0;
+	m->xfet[1] = 0;
+	m->xfet[2] = 0;
+	m->xfet[3] = 0;
+	m->xfet[4] = 0;
+	m->xfet[5] = 0;
+
+	m->xdtu[0] = 0;
+	m->xdtu[1] = 0;
+	m->xdtu[2] = 0;
 
 	m->event[0].ev = 1;
 	m->event[1].ev = 2;
@@ -193,9 +197,9 @@ blm_equation(const blm_t *m, const double state[7], double y[7])
 
 	/* Voltage from VSI.
 	 * */
-	uQ = (m->vsi[0] + m->vsi[1] + m->vsi[2]) / 3.;
-	uA = (m->vsi[0] - uQ) * state[6];
-	uB = (m->vsi[1] - uQ) * state[6];
+	uQ = (m->xfet[0] + m->xfet[1] + m->xfet[2]) / 3.;
+	uA = (m->xfet[0] - uQ) * state[6];
+	uB = (m->xfet[1] - uQ) * state[6];
 
 	blm_AB_DQ(state[3], uA, uB, &uD, &uQ);
 
@@ -292,9 +296,9 @@ blm_ode_step(blm_t *m, double dT)
 
 	if (m->pwm_Z != BLM_Z_DETACHED) {
 
-		uA = m->vsi[0] * m->state[6];
-		uB = m->vsi[1] * m->state[6];
-		uC = m->vsi[2] * m->state[6];
+		uA = m->xfet[0] * m->state[6];
+		uB = m->xfet[1] * m->state[6];
+		uC = m->xfet[2] * m->state[6];
 	}
 	else {
 		blm_DQ_ABC(m->state[3], 0., m->lambda * m->state[2], &uA, &uB, &uC);
@@ -322,25 +326,50 @@ blm_ode_step(blm_t *m, double dT)
 static void
 blm_solve(blm_t *m, double dT)
 {
-	if (m->vsi[0] != m->vsi[3]) {
+	double		iA, iB, iC;
 
-		/* Surge on A.
+	blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
+
+	if (m->xdtu[0] != 0) {
+
+		/* Deadtime on A.
+		 * */
+		m->xfet[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : m->xfet[0];
+	}
+
+	if (m->xdtu[1] != 0) {
+
+		/* Deadtime on B.
+		 * */
+		m->xfet[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : m->xfet[1];
+	}
+
+	if (m->xdtu[2] != 0) {
+
+		/* Deadtime on C.
+		 * */
+		m->xfet[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : m->xfet[2];
+	}
+
+	if (m->xfet[0] != m->xfet[3]) {
+
+		/* ADC surge on A.
 		 * */
 		m->state[7]  += lfg_gauss() * 5.;
 		m->state[10] += lfg_gauss() * 2.;
 	}
 
-	if (m->vsi[1] != m->vsi[4]) {
+	if (m->xfet[1] != m->xfet[4]) {
 
-		/* Surge on B.
+		/* ADC surge on B.
 		 * */
 		m->state[8]  += lfg_gauss() * 5.;
 		m->state[10] += lfg_gauss() * 2.;
 	}
 
-	if (m->vsi[2] != m->vsi[5]) {
+	if (m->xfet[2] != m->xfet[5]) {
 
-		/* Surge on C.
+		/* ADC surge on C.
 		 * */
 		m->state[9]  += lfg_gauss() * 5.;
 		m->state[10] += lfg_gauss() * 2.;
@@ -369,9 +398,9 @@ blm_solve(blm_t *m, double dT)
 
 	/* Keep the previous VSI state.
 	 * */
-	m->vsi[3] = m->vsi[0];
-	m->vsi[4] = m->vsi[1];
-	m->vsi[5] = m->vsi[2];
+	m->xfet[3] = m->xfet[0];
+	m->xfet[4] = m->xfet[1];
+	m->xfet[5] = m->xfet[2];
 }
 
 static double
@@ -467,8 +496,6 @@ blm_pwm_bsort(blm_t *m)
 static void
 blm_pwm_up_event(blm_t *m, int ev)
 {
-	double		iA, iB, iC;
-
 	switch (ev) {
 
 		case 0:
@@ -485,36 +512,40 @@ blm_pwm_up_event(blm_t *m, int ev)
 
 		case 2:
 			m->analog_uC = (float) blm_ADC(m->state[14], 0., m->range_B);
+
 			blm_sample_analog(m);
 			blm_sample_hall(m);
 			blm_sample_eabi(m);
 			break;
 
 		case 3:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : 0;
+			m->xfet[0] = 1;
+			m->xdtu[0] = 1;
 			break;
 
 		case 4:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : 0;
+			m->xfet[1] = 1;
+			m->xdtu[1] = 1;
 			break;
 
 		case 5:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : 0;
+			m->xfet[2] = 1;
+			m->xdtu[2] = 1;
 			break;
 
 		case 6:
-			m->vsi[0] = 1;
+			m->xfet[0] = 1;
+			m->xdtu[0] = 0;
 			break;
 
 		case 7:
-			m->vsi[1] = 1;
+			m->xfet[1] = 1;
+			m->xdtu[1] = 0;
 			break;
 
 		case 8:
-			m->vsi[2] = 1;
+			m->xfet[2] = 1;
+			m->xdtu[2] = 0;
 			break;
 
 		default:
@@ -525,35 +556,36 @@ blm_pwm_up_event(blm_t *m, int ev)
 static void
 blm_pwm_down_event(blm_t *m, int ev)
 {
-	double		iA, iB, iC;
-
 	switch (ev) {
 
 		case 3:
-			m->vsi[0] = 0;
+			m->xfet[0] = 0;
+			m->xdtu[0] = 0;
 			break;
 
 		case 4:
-			m->vsi[1] = 0;
+			m->xfet[1] = 0;
+			m->xdtu[1] = 0;
 			break;
 
 		case 5:
-			m->vsi[2] = 0;
+			m->xfet[2] = 0;
+			m->xdtu[2] = 0;
 			break;
 
 		case 6:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : 0;
+			m->xfet[0] = 0;
+			m->xdtu[0] = 1;
 			break;
 
 		case 7:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : 0;
+			m->xfet[1] = 0;
+			m->xdtu[1] = 1;
 			break;
 
 		case 8:
-			blm_DQ_ABC(m->state[3], m->state[0], m->state[1], &iA, &iB, &iC);
-			m->vsi[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : 0;
+			m->xfet[2] = 0;
+			m->xdtu[2] = 1;
 			break;
 
 		default:
@@ -564,8 +596,8 @@ blm_pwm_down_event(blm_t *m, int ev)
 static void
 blm_pwm_solve(blm_t *m)
 {
-	double		dTu, dTq;
-	int		rev[9], level, xA, xB, xC, xMIN, xMAX, i;
+	double		dTu;
+	int		rev[9], level, xA, xB, xC, i, xMIN, xMAX;
 
 	for (i = 0; i < 8; ++i) {
 
@@ -573,8 +605,7 @@ blm_pwm_solve(blm_t *m)
 		rev[level] = i;
 	}
 
-	dTu = m->pwm_dT / (double) m->pwm_resolution;
-	dTq = dTu / 2.;
+	dTu = m->pwm_dT / (double) (m->pwm_resolution * 2);
 
 	xMIN = (int) (m->pwm_minimal * (double) m->pwm_resolution / m->pwm_dT);
 	xMAX = m->pwm_resolution;
@@ -618,7 +649,7 @@ blm_pwm_solve(blm_t *m)
 
 		if (level != m->event[i].comp) {
 
-			blm_solve(m, dTq * (level - m->event[i].comp));
+			blm_solve(m, dTu * (level - m->event[i].comp));
 
 			level = m->event[i].comp;
 		}
@@ -628,7 +659,7 @@ blm_pwm_solve(blm_t *m)
 
 	if (m->event[7].comp != 0) {
 
-		blm_solve(m, dTq * m->event[7].comp);
+		blm_solve(m, dTu * m->event[7].comp);
 	}
 
 	level = 0;
@@ -639,7 +670,7 @@ blm_pwm_solve(blm_t *m)
 
 		if (level != m->event[i].comp) {
 
-			blm_solve(m, dTq * (m->event[i].comp - level));
+			blm_solve(m, dTu * (m->event[i].comp - level));
 
 			level = m->event[i].comp;
 		}
@@ -649,7 +680,7 @@ blm_pwm_solve(blm_t *m)
 
 	if (level != xMAX) {
 
-		blm_solve(m, dTq * (xMAX - level));
+		blm_solve(m, dTu * (xMAX - level));
 	}
 
 	/* Get average POWER on PWM cycle.

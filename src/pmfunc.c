@@ -235,9 +235,10 @@ SH_DEF(pm_probe_spinup)
 			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 			pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
+			reg_format(&regfile[ID_PM_ZONE_SPEED_NOISE]);
+			reg_format(&regfile[ID_PM_ZONE_SPEED_THRESHOLD]);
 			reg_format(&regfile[ID_PM_PROBE_SPEED_HOLD]);
-			reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
-			reg_format(&regfile[ID_PM_ZONE_THRESHOLD_BASE]);
+			reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 		}
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
@@ -267,8 +268,8 @@ SH_DEF(pm_probe_spinup)
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 
-		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
-		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_BASE]);
+		reg_format(&regfile[ID_PM_ZONE_SPEED_NOISE]);
+		reg_format(&regfile[ID_PM_ZONE_SPEED_THRESHOLD]);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -300,7 +301,7 @@ SH_DEF(pm_probe_spinup)
 		reg_format(&regfile[ID_PM_FORCED_ACCEL]);
 		reg_format(&regfile[ID_PM_LU_GAIN_MQ_LP]);
 		reg_format(&regfile[ID_PM_S_GAIN_P]);
-		reg_format(&regfile[ID_PM_S_GAIN_I]);
+		reg_format(&regfile[ID_PM_S_GAIN_Q]);
 	}
 	while (0);
 
@@ -534,7 +535,7 @@ SH_DEF(pm_probe_noise_threshold)
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		reg_format(&regfile[ID_PM_ZONE_THRESHOLD_NOISE]);
+		reg_format(&regfile[ID_PM_ZONE_SPEED_NOISE]);
 	}
 	while (0);
 

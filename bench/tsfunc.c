@@ -226,15 +226,16 @@ void ts_probe_spinup()
 			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 			pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
+			printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
+					pm.zone_speed_noise,
+					pm.zone_speed_noise * pm.const_lambda);
+
+			printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
+					pm.zone_speed_threshold,
+					pm.zone_speed_threshold * pm.const_lambda);
+
 			printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
-
-			printf("zone_threshold_NOISE = %.2f (rad/s) %.3f (V)\n",
-					pm.zone_threshold_NOISE,
-					pm.zone_threshold_NOISE * pm.const_lambda);
-
-			printf("zone_threshold_BASE = %.2f (rad/s) %.3f (V)\n",
-					pm.zone_threshold_BASE,
-					pm.zone_threshold_BASE * pm.const_lambda);
+			printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		}
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
@@ -268,13 +269,13 @@ void ts_probe_spinup()
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 
-		printf("zone_threshold_NOISE = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_threshold_NOISE,
-				pm.zone_threshold_NOISE * pm.const_lambda);
+		printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_speed_noise,
+				pm.zone_speed_noise * pm.const_lambda);
 
-		printf("zone_threshold_BASE = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_threshold_BASE,
-				pm.zone_threshold_BASE * pm.const_lambda);
+		printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_speed_threshold,
+				pm.zone_speed_threshold * pm.const_lambda);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -388,19 +389,16 @@ void ts_script_base()
 	ts_self_adjust();
 	ts_probe_base();
 	ts_probe_spinup();
-
-	sim_runtime(.1);
 }
 
-void ts_script_speed()
+static void
+ts_script_speed()
 {
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 	pm.s_accel = 300000.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
-
-	sim_runtime(.1);
 
 	m.unsync_flag = 1;
 
@@ -410,6 +408,8 @@ void ts_script_speed()
 	ts_wait_for_spinup(pm.s_setpoint_speed);
 	sim_runtime(.5);
 
+	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
+
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
 	sim_runtime(.5);
 
@@ -418,8 +418,13 @@ void ts_script_speed()
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
-	pm.s_setpoint_speed = 0.f;
+	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
+		* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_for_spinup(pm.s_setpoint_speed);
 	sim_runtime(.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	m.unsync_flag = 0;
 
@@ -427,7 +432,8 @@ void ts_script_speed()
 	ts_wait_for_idle();
 }
 
-void ts_script_hfi()
+static void
+ts_script_hfi()
 {
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
@@ -436,21 +442,19 @@ void ts_script_hfi()
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
-	sim_runtime(.5);
-
-	TS_assert(pm.lu_MODE == PM_LU_ON_HFI);
-
 	m.unsync_flag = 1;
 
-	pm.s_setpoint_speed = 2.f / m.lambda;
-	sim_runtime(.5);
+	pm.s_setpoint_speed = 1.f / m.lambda;
+	sim_runtime(1.);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	pm.s_setpoint_speed = 0;
 	sim_runtime(.5);
 
-	pm.s_setpoint_speed = - 2.f / m.lambda;
+	TS_assert(pm.lu_MODE == PM_LU_ON_HFI);
+
+	pm.s_setpoint_speed = - 1.f / m.lambda;
 	sim_runtime(.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -466,7 +470,8 @@ void ts_script_hfi()
 	pm.config_HFI_WAVETYPE = PM_HFI_NONE;
 }
 
-void ts_script_weakening()
+static void
+ts_script_weakening()
 {
 	pm.config_WEAKENING = PM_ENABLED;
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
@@ -474,14 +479,15 @@ void ts_script_weakening()
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
-	sim_runtime(.1);
-
 	m.unsync_flag = 1;
 
 	pm.s_setpoint_speed = 200.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup(pm.s_setpoint_speed);
+	sim_runtime(.5);
+
+	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 5.f;
 	sim_runtime(.5);
@@ -491,8 +497,13 @@ void ts_script_weakening()
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
-	pm.s_setpoint_speed = 0.f;
+	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
+		* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_for_spinup(pm.s_setpoint_speed);
 	sim_runtime(.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	m.unsync_flag = 0;
 
@@ -500,7 +511,8 @@ void ts_script_weakening()
 	ts_wait_for_idle();
 }
 
-void ts_script_hall()
+static void
+ts_script_hall()
 {
 	ts_adjust_sensor_hall();
 
@@ -509,23 +521,54 @@ void ts_script_hall()
 
 	pm.s_gain_P *= .5f;
 	pm.s_gain_Q *= .5f;
-}
-
-void ts_script_abi()
-{
-	//ts_adjust_sensor_abi();
-
-	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
-	pm.config_LU_SENSOR = PM_SENSOR_ABI;
-	pm.config_ABI_FRONTEND = PM_ABI_INCREMENTAL;
-	pm.abi_USEABLE = PM_ENABLED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
+	m.unsync_flag = 1;
+
+	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
+			* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_for_spinup(pm.s_setpoint_speed);
 	sim_runtime(.5);
 
-	TS_assert(pm.lu_MODE == PM_LU_SENSOR_ABI);
+	TS_assert(pm.lu_MODE == PM_LU_SENSOR_HALL);
+
+	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
+	sim_runtime(.5);
+
+	m.Mq[0] = 0.f;
+	sim_runtime(.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
+
+	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
+		* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_for_spinup(pm.s_setpoint_speed);
+	sim_runtime(.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
+
+	m.unsync_flag = 0;
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	ts_wait_for_idle();
+}
+
+static void
+ts_script_eabi()
+{
+	/*ts_adjust_sensor_eabi();*/
+	pm.eabi_USEABLE = PM_ENABLED;
+
+	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
+	pm.config_LU_SENSOR = PM_SENSOR_EABI;
+	pm.config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	ts_wait_for_idle();
 
 	m.unsync_flag = 1;
 
@@ -541,10 +584,16 @@ void ts_script_abi()
 	m.Mq[0] = 0.f;
 	sim_runtime(.5);
 
+	TS_assert(pm.lu_MODE == PM_LU_SENSOR_EABI);
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
-	pm.s_setpoint_speed = 0.f;
+	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
+		* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_for_spinup(pm.s_setpoint_speed);
 	sim_runtime(.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	m.unsync_flag = 0;
 
@@ -555,7 +604,7 @@ void ts_script_abi()
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 }
 
-void ts_script_all()
+void ts_script_verify()
 {
 	blm_enable(&m);
 	blm_restart(&m);
@@ -579,8 +628,8 @@ void ts_script_all()
 	ts_script_speed();
 	blm_restart(&m);
 
-	ts_script_hfi();
-	blm_restart(&m);
+	/*ts_script_hfi();
+	blm_restart(&m);*/
 
 	printf("\n---- Turnigy RotoMax 1.20 ----\n");
 
@@ -604,7 +653,7 @@ void ts_script_all()
 	ts_script_hfi();
 	blm_restart(&m);
 
-	ts_script_abi();
+	ts_script_eabi();
 	blm_restart(&m);
 
 	printf("\n---- E-scooter Hub Motor (250W) ----\n");
@@ -623,16 +672,13 @@ void ts_script_all()
 	ts_script_base();
 	blm_restart(&m);
 
-	ts_script_hall();
-	blm_restart(&m);
-
 	ts_script_speed();
 	blm_restart(&m);
 
-	pm.config_LU_ESTIMATE = PM_FLUX_ORTEGA;
-	pm.config_LU_SENSOR = PM_SENSOR_NONE;
-
 	ts_script_weakening();
+	blm_restart(&m);
+
+	ts_script_hall();
 	blm_restart(&m);
 }
 

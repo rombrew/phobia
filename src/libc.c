@@ -10,8 +10,6 @@ io_ops_t		io_CAN;
 
 io_ops_t		*iodef;
 
-int			iodef_ECHO;
-
 uint32_t		rseed;
 
 void *memset(void *d, int c, int n)
@@ -667,26 +665,20 @@ void xprintf(io_ops_t *_io, const char *fmt, ...)
 }
 
 int getc() { return iodef->getc(); }
-void putc(int c) { if (iodef_ECHO != 0) { iodef->putc(c); } }
+void putc(int c) { iodef->putc(c); }
 
 void puts(const char *s)
 {
-	if (iodef_ECHO != 0) {
-
-		xputs(iodef, s);
-	}
+	xputs(iodef, s);
 }
 
 void printf(const char *fmt, ...)
 {
         va_list		ap;
 
-	if (iodef_ECHO != 0) {
-
-		va_start(ap, fmt);
-		xvprintf(iodef, fmt, ap);
-		va_end(ap);
-	}
+	va_start(ap, fmt);
+	xvprintf(iodef, fmt, ap);
+	va_end(ap);
 }
 
 const char *stoi(int *x, const char *s)

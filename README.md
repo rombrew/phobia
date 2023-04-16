@@ -54,7 +54,7 @@ electric transport.
 	* Freewheeling.
 	* High Frequency Injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
-	* AB incremental (ABI) encoder.
+	* AB incremental encoder (EABI).
 	* Absolute position sensor with SPI interface (**TODO**).
 	* Analog Hall sensors and resolver decoder (**TODO**).
 
@@ -110,13 +110,13 @@ electric transport.
 	* Temperature of PCB with NTC resistor.
 
 * Motor interfaces:
-	* Discrete Hall sensors or ABI encoder (5v pull-up).
+	* Discrete Hall sensors or EABI encoder (5v pull-up).
 	* External NTC resistor (e.g. motor temperature sensing).
 
 * Control interfaces:
 	* CAN transceiver with optional termination resistor on PCB (5v).
 	* USART to bootload and configure (3.3v).
-	* Pulse input: RC servo, STEP/DIR, backup ABI (5v pull-up).
+	* Pulse input: RC servo, STEP/DIR, backup EABI (5v pull-up).
 	* Two analog input channels (from 0 to 6v).
 
 * Auxiliary interfaces:

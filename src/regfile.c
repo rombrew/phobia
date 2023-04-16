@@ -924,7 +924,7 @@ reg_format_enum(const reg_t *reg)
 
 				PM_SFI_CASE(DPS_DISABLED);
 				PM_SFI_CASE(DPS_DRIVE_HALL);
-				PM_SFI_CASE(DPS_DRIVE_ABI);
+				PM_SFI_CASE(DPS_DRIVE_EABI);
 				PM_SFI_CASE(DPS_DRIVE_SOFTWARE);
 
 				default: break;
@@ -939,7 +939,7 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(PPM_PULSE_WIDTH);
 				PM_SFI_CASE(PPM_OUTPULSE);
 				PM_SFI_CASE(PPM_STEP_DIR);
-				PM_SFI_CASE(PPM_BACKUP_ABI);
+				PM_SFI_CASE(PPM_BACKUP_EABI);
 
 				default: break;
 			}
@@ -1149,7 +1149,7 @@ reg_format_enum(const reg_t *reg)
 
 				PM_SFI_CASE(PM_SENSOR_NONE);
 				PM_SFI_CASE(PM_SENSOR_HALL);
-				PM_SFI_CASE(PM_SENSOR_ABI);
+				PM_SFI_CASE(PM_SENSOR_EABI);
 				PM_SFI_CASE(PM_SENSOR_SINCOS);
 
 				default: break;
@@ -1161,7 +1161,7 @@ reg_format_enum(const reg_t *reg)
 			switch (val) {
 
 				PM_SFI_CASE(PM_LOCATION_INHERITED);
-				PM_SFI_CASE(PM_LOCATION_ABI);
+				PM_SFI_CASE(PM_LOCATION_EABI);
 				PM_SFI_CASE(PM_LOCATION_SINCOS);
 
 				default: break;
@@ -1193,12 +1193,12 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_PM_CONFIG_ABI_FRONTEND:
+		case ID_PM_CONFIG_EABI_FRONTEND:
 
 			switch (val) {
 
-				PM_SFI_CASE(PM_ABI_INCREMENTAL);
-				PM_SFI_CASE(PM_ABI_ABSOLUTE);
+				PM_SFI_CASE(PM_EABI_INCREMENTAL);
+				PM_SFI_CASE(PM_EABI_ABSOLUTE);
 
 				default: break;
 			}
@@ -1236,7 +1236,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_TVM_USEABLE:
 		case ID_PM_HALL_USEABLE:
-		case ID_PM_ABI_USEABLE:
+		case ID_PM_EABI_USEABLE:
 
 			switch (val) {
 
@@ -1257,7 +1257,7 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(PM_LU_ESTIMATE);
 				PM_SFI_CASE(PM_LU_ON_HFI);
 				PM_SFI_CASE(PM_LU_SENSOR_HALL);
-				PM_SFI_CASE(PM_LU_SENSOR_ABI);
+				PM_SFI_CASE(PM_LU_SENSOR_EABI);
 				PM_SFI_CASE(PM_LU_SENSOR_SINCOS);
 
 				default: break;
@@ -1284,7 +1284,6 @@ reg_format_enum(const reg_t *reg)
 const reg_t		regfile[] = {
 
 	REG_DEF(null,,,				"",	"%i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(iodef_ECHO,,,			"",	"%i",	0, 0, NULL),
 
 	REG_DEF(hal.USART_baud_rate,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.PWM_frequency,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_PWM, NULL),
@@ -1474,7 +1473,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_WEAKENING,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HOLDING_BRAKE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SPEED_LIMITED,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_ABI_FRONTEND,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_EABI_FRONTEND,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SINCOS_FRONTEND,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_MILEAGE_INFO,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_BOOST_CHARGE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1611,12 +1610,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_maximal_DC,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
-	REG_DEF(pm.detach_threshold_BASE,,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.detach_voltage,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.detach_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.detach_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.flux_ZONE,,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
-	REG_DEF(pm.flux_E,,,			"Wb",	"%4g",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.flux_lambda,,,		"Wb",	"%4g",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
 	REG_DEF(pm.flux_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.flux_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
@@ -1638,10 +1637,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.kalman_gain_Q, 4, [4],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_R,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.zone_threshold_NOISE,,, "rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.zone_threshold_NOISE, _bemf,, "V",	"%3f",	REG_CONFIG, &reg_proc_bemf, NULL),
-	REG_DEF(pm.zone_threshold_BASE,,, "rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_threshold, NULL),
-	REG_DEF(pm.zone_threshold_BASE, _bemf,, "V",	"%3f",	REG_CONFIG, &reg_proc_bemf, NULL),
+	REG_DEF(pm.zone_speed_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.zone_speed_noise, _bemf,,	"V",	"%3f",	0, &reg_proc_bemf, NULL),
+	REG_DEF(pm.zone_speed_threshold,,, "rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_threshold, NULL),
+	REG_DEF(pm.zone_speed_threshold, _bemf,, "V",	"%3f",	0, &reg_proc_bemf, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1681,18 +1680,18 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
-	REG_DEF(pm.abi_USEABLE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.abi_EPPR,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gear_Zs,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gear_Zq,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
-	REG_DEF(pm.abi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.abi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
-	REG_DEF(pm.abi_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
-	REG_DEF(pm.abi_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.abi_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
+	REG_DEF(pm.eabi_USEABLE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.eabi_EPPR,,,			"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_gear_Zs,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_gear_Zq,,,		"",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_F, _g,,			"g",	"%2f",	REG_READ_ONLY, &reg_proc_Fg, NULL),
+	REG_DEF(pm.eabi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.eabi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
+	REG_DEF(pm.eabi_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
+	REG_DEF(pm.eabi_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.const_fb_U,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.const_lambda,,,		"Wb",	"%4g",	REG_CONFIG, NULL, NULL),
@@ -1726,13 +1725,13 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_setpoint_current,,,	"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_current, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
 	REG_DEF(pm.i_maximal,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
-	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
+	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_track_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_track_Q,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_tolerance,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
-	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
+	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.weak_maximal,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.weak_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1930,7 +1929,7 @@ const reg_t *reg_search_fuzzy(const char *sym)
 			}
 		}
 
-		if (found == NULL && iodef_ECHO != 0) {
+		if (found == NULL) {
 
 			for (reg = regfile; reg->sym != NULL; ++reg) {
 

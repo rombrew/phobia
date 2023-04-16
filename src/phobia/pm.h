@@ -62,13 +62,13 @@ enum {
 enum {
 	PM_SENSOR_NONE				= 0,
 	PM_SENSOR_HALL,
-	PM_SENSOR_ABI,
+	PM_SENSOR_EABI,
 	PM_SENSOR_SINCOS
 };
 
 enum {
 	PM_LOCATION_INHERITED			= 0,
-	PM_LOCATION_ABI,
+	PM_LOCATION_EABI,
 	PM_LOCATION_SINCOS
 };
 
@@ -86,8 +86,8 @@ enum {
 };
 
 enum {
-	PM_ABI_INCREMENTAL			= 0,
-	PM_ABI_ABSOLUTE
+	PM_EABI_INCREMENTAL			= 0,
+	PM_EABI_ABSOLUTE
 };
 
 enum {
@@ -109,7 +109,7 @@ enum {
 	PM_LU_ESTIMATE,
 	PM_LU_ON_HFI,
 	PM_LU_SENSOR_HALL,
-	PM_LU_SENSOR_ABI,
+	PM_LU_SENSOR_EABI,
 	PM_LU_SENSOR_SINCOS
 };
 
@@ -130,7 +130,7 @@ enum {
 	PM_STATE_PROBE_CONST_INERTIA,
 	PM_STATE_PROBE_NOISE_THRESHOLD,
 	PM_STATE_ADJUST_SENSOR_HALL,
-	PM_STATE_ADJUST_SENSOR_ABI,
+	PM_STATE_ADJUST_SENSOR_EABI,
 	PM_STATE_ADJUST_SENSOR_SINCOS,
 	PM_STATE_LOOP_BOOST,
 	PM_STATE_HALT
@@ -245,7 +245,7 @@ typedef struct {
 	int		config_WEAKENING;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
-	int		config_ABI_FRONTEND;
+	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
 	int		config_MILEAGE_INFO;
 	int		config_BOOST_CHARGE;		/* TODO */
@@ -304,7 +304,7 @@ typedef struct {
 	float		probe_location_tol;
 	float		probe_gain_P;
 	float		probe_gain_I;
-	
+
 	float		probe_DFT[8];
 	float		probe_REM[8];
 	float		probe_SC[2];
@@ -390,7 +390,7 @@ typedef struct {
 	float		forced_maximal_DC;
 
 	int		detach_TIM;
-	float		detach_threshold_BASE;
+	float		detach_voltage;
 	float		detach_trip_AP;
 	float		detach_gain_SF;
 
@@ -398,7 +398,7 @@ typedef struct {
 	int		flux_ZONE;
 
 	float		flux_X[2];
-	float		flux_E;
+	float		flux_lambda;
 	float		flux_F[2];
 	float		flux_wS;
 	float		flux_trip_AP;
@@ -418,8 +418,8 @@ typedef struct {
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 
-	float		zone_threshold_NOISE;
-	float		zone_threshold_BASE;
+	float		zone_speed_noise;
+	float		zone_speed_threshold;
 	float		zone_lpf_wS;
 	float		zone_gain_TH;
 	float		zone_gain_LP;
@@ -450,23 +450,23 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_IF;
 
-	int		abi_USEABLE;
-	int		abi_ENABLED;
-	int		abi_bEP;
-	int		abi_lEP;
-	int		abi_unwrap;
-	float		abi_interp;
-	float		abi_F0[2];
-	int		abi_EPPR;
-	int		abi_gear_Zs;
-	int		abi_gear_Zq;
-	float		abi_F[2];
-	float		abi_wS;
-	float		abi_location;
-	float		abi_trip_AP;
-	float		abi_gain_LO;
-	float		abi_gain_SF;
-	float		abi_gain_IF;
+	int		eabi_USEABLE;
+	int		eabi_ENABLED;
+	int		eabi_bEP;
+	int		eabi_lEP;
+	int		eabi_unwrap;
+	float		eabi_interp;
+	float		eabi_F0[2];
+	int		eabi_EPPR;
+	int		eabi_gear_Zs;
+	int		eabi_gear_Zq;
+	float		eabi_F[2];
+	float		eabi_wS;
+	float		eabi_location;
+	float		eabi_trip_AP;
+	float		eabi_gain_LO;
+	float		eabi_gain_SF;
+	float		eabi_gain_IF;
 
 	int		sincos_USEABLE;
 	int		sincos_ENABLED;
@@ -493,9 +493,9 @@ typedef struct {
 	float		const_im_R;
 	float		const_ld_S;
 
-	float		quick_iU;
-	float		quick_iE;
-	float		quick_iEq;
+	float		quick_iUdc;
+	float		quick_iWb;
+	float		quick_iWb2;
 	float		quick_iL1;
 	float		quick_iL2;
 	float		quick_TiL1;

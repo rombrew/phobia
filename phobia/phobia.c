@@ -207,11 +207,9 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 					|| strcmp(reg->sym, "pm.probe_speed_hold") == 0
 					|| strcmp(reg->sym, "pm.forced_maximal") == 0
 					|| strcmp(reg->sym, "pm.forced_accel") == 0
-					|| strcmp(reg->sym, "pm.zone_threshold_BASE") == 0
+					|| strcmp(reg->sym, "pm.zone_speed_threshold") == 0
 					|| strcmp(reg->sym, "pm.i_maximal") == 0
-					|| strcmp(reg->sym, "pm.i_reverse") == 0
 					|| strcmp(reg->sym, "pm.i_gain_P") == 0
-					|| strcmp(reg->sym, "pm.i_gain_I") == 0
 					|| strcmp(reg->sym, "pm.s_gain_P") == 0) {
 
 				if (nk_contextual_item_label(ctx, "Request configure",
@@ -2058,8 +2056,8 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.fb_uA", "A voltage feedback");
 	reg_float(pub, "pm.fb_uB", "B voltage feedback");
 	reg_float(pub, "pm.fb_uC", "C voltage feedback");
-	reg_float(pub, "pm.fb_HS", "HALL sensors feedback");
-	reg_float(pub, "pm.fb_EP", "ABI encoder feedback");
+	reg_float(pub, "pm.fb_HS", "Hall sensors feedback");
+	reg_float(pub, "pm.fb_EP", "EABI encoder feedback");
 	reg_float(pub, "pm.fb_SIN", "SIN analog feedback");
 	reg_float(pub, "pm.fb_COS", "COS analog feedback");
 
@@ -2302,7 +2300,7 @@ page_probe(struct public *pub)
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 13);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_end(ctx);
 
@@ -2320,7 +2318,7 @@ page_probe(struct public *pub)
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Probe NOISE threshold")) {
+		if (nk_button_label(ctx, "Probe Noise")) {
 
 			link_command(pub->lp, "pm_probe_noise_threshold");
 		}
@@ -2330,7 +2328,7 @@ page_probe(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		reg_float_um(pub, "pm.zone_threshold_NOISE", "NOISE threshold", 0);
+		reg_float_um(pub, "pm.zone_speed_noise", "Noise threshold", 0);
 	}
 
 	if (lp->unable_warning[0] != 0) {
@@ -2953,7 +2951,7 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limited");
 	}
 
-	reg_enum_combo(pub, "pm.config_ABI_FRONTEND", "ABI frontend", 0);
+	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
 	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
 	reg_enum_toggle(pub, "pm.config_MILEAGE_INFO", "Mileage info");
 
@@ -3058,7 +3056,7 @@ page_lu_flux(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_float(pub, "pm.detach_threshold_BASE", "Detached threshold");
+	reg_float(pub, "pm.detach_voltage", "Detached threshold");
 	reg_float(pub, "pm.detach_trip_AP", "Detached trip point");
 	reg_float(pub, "pm.detach_gain_SF", "Detached speed loop gain");
 
@@ -3085,8 +3083,8 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_threshold_NOISE", "NOISE zone threshold", 0);
-	reg_float_um(pub, "pm.zone_threshold_BASE", "BASE zone threshold", 0);
+	reg_float_um(pub, "pm.zone_speed_noise", "Noise threshold", 0);
+	reg_float_um(pub, "pm.zone_speed_threshold", "Zone threshold", 0);
 	reg_float(pub, "pm.zone_gain_TH", "Zone hysteresis");
 	reg_float(pub, "pm.zone_gain_LP", "Zone gain LP");
 
@@ -3114,12 +3112,18 @@ page_lu_flux(struct public *pub)
 		if (		reg != NULL
 				&& reg->lval == 1) {
 
-			reg = link_reg_lookup(pub->lp, "pm.flux_E");
-			if (reg != NULL) {  reg->update = rate; }
+			reg = link_reg_lookup(pub->lp, "pm.flux_lambda");
+			if (reg != NULL) { reg->update = rate; }
+
+			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
+			if (reg != NULL) { reg->update = 0; }
 		}
 
 		if (		reg != NULL
 				&& reg->lval == 2) {
+
+			reg = link_reg_lookup(pub->lp, "pm.flux_lambda");
+			if (reg != NULL) { reg->update = 0; }
 
 			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
 			if (reg != NULL) { reg->update = rate; }
@@ -3129,7 +3133,7 @@ page_lu_flux(struct public *pub)
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
 	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
-	reg_float(pub, "pm.flux_E", "Flux linkage estimate");
+	reg_float(pub, "pm.flux_lambda", "Flux linkage estimate");
 	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3322,7 +3326,7 @@ page_lu_hall(struct public *pub)
 }
 
 static void
-page_lu_abi(struct public *pub)
+page_lu_eabi(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -3860,7 +3864,7 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "lu FLUX", &page_lu_flux);
 		menu_select_button(pub, "lu HFI", &page_lu_hfi);
 		menu_select_button(pub, "lu Hall", &page_lu_hall);
-		menu_select_button(pub, "lu ABI", &page_lu_abi);
+		menu_select_button(pub, "lu EABI", &page_lu_eabi);
 		menu_select_button(pub, "lu SIN/COS", &page_lu_sincos);
 		menu_select_button(pub, "Wattage", &page_wattage);
 		menu_select_button(pub, "lp Current", &page_lp_current);

@@ -31,7 +31,8 @@ typedef struct {
 	int		pwm_Z;
 
 	double		state[15];
-	int		vsi[6];
+	int		xfet[6];
+	int		xdtu[3];
 	blm_event_t	event[8];
 	int		revol;
 

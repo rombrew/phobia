@@ -662,7 +662,6 @@ void task_INIT(void *pData)
 	/* Default to USART.
 	 * */
 	iodef = &io_USART;
-	iodef_ECHO = 1;
 
 	ap.lc_FLAG = 1;
 	ap.lc_TICK = 0;
@@ -928,7 +927,7 @@ void ADC_IRQ()
 
 		fb.pulse_HS = DPS_get_HALL();
 	}
-	else if (hal.DPS_mode == DPS_DRIVE_ABI) {
+	else if (hal.DPS_mode == DPS_DRIVE_EABI) {
 
 		fb.pulse_EP = DPS_get_EP();
 	}
@@ -945,7 +944,7 @@ void ADC_IRQ()
 
 		in_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_BACKUP_ABI) {
+	else if (hal.PPM_mode == PPM_BACKUP_EABI) {
 
 		fb.pulse_EP = PPM_get_backup_EP();
 	}

@@ -12,7 +12,7 @@ DPS_mode_DRIVE_HALL()
 }
 
 static void
-DPS_mode_DRIVE_ABI()
+DPS_mode_DRIVE_EABI()
 {
 	/* Enable TIM3 clock.
 	 * */
@@ -50,9 +50,9 @@ void DPS_startup()
 
 		DPS_mode_DRIVE_HALL();
 	}
-	else if (hal.DPS_mode == DPS_DRIVE_ABI) {
+	else if (hal.DPS_mode == DPS_DRIVE_EABI) {
 
-		DPS_mode_DRIVE_ABI();
+		DPS_mode_DRIVE_EABI();
 	}
 }
 

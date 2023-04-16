@@ -111,7 +111,7 @@ PPM_mode_STEP_DIR()
 }
 
 static void
-PPM_mode_BACKUP_ABI()
+PPM_mode_BACKUP_EABI()
 {
 	/* Enable TIM4 clock.
 	 * */
@@ -160,9 +160,9 @@ void PPM_startup()
 
 		PPM_mode_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_BACKUP_ABI) {
+	else if (hal.PPM_mode == PPM_BACKUP_EABI) {
 
-		PPM_mode_BACKUP_ABI();
+		PPM_mode_BACKUP_EABI();
 	}
 #endif /* HW_HAVE_STEP_DIR */
 }

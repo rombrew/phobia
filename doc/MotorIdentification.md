@@ -70,20 +70,20 @@ and calculate DQ inductances (**pm.const_im_L1** and **pm.const_im_L2**).
 
 ## Rotor flux linkage
 
-This parameter also known as Kv rating. Internal representation is E that
+This parameter also known as Kv rating. Internal representation is lambda that
 linked with Kv by following equation.
 
-	                 60
-	E = ----------------------------
-	     2 * PI * sqrt(3) * Kv * Zp
+	                      60
+	lambda = ----------------------------
+	          2 * PI * sqrt(3) * Kv * Zp
 
-To identify E you have to run the motor. Also the rotor should rotate at
+To identify lambda you have to run the motor. Also the rotor should rotate at
 significant speed. We do a forced initial spinup to reach this condition.
 
 	(pmc) pm_probe_spinup
 
-To get more accurate estimate you can run the motor at high speed and request E
-probe manually. Do not load the motor.
+To get more accurate estimate you can run the motor at high speed and request
+lambda probe manually. Do not load the motor.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>
@@ -105,8 +105,8 @@ speed.
 After flux linkage we estimate speed noise to know the lower bound of FLUX
 observer operation. As a result these threshold values are calculated.
 
-	# reg pm.zone_threshold_NOISE
-	# reg pm.zone_threshold_BASE
+	# reg pm.zone_speed_noise
+	# reg pm.zone_speed_threshold
 
 ## Moment of inertia
 

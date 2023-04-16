@@ -25,13 +25,13 @@ $(TARGET): $(SIM_OBJS)
 	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
 
+verify: $(TARGET)
+	@ echo "  TEST	" $(notdir $<)
+	@ $< verify
+
 run: $(TARGET)
 	@ echo "  RUN	" $(notdir $<)
 	@ $< bench
-
-test: $(TARGET)
-	@ echo "  TEST	" $(notdir $<)
-	@ $< test
 
 debug: $(TARGET)
 	@ echo "  GDB	" $(notdir $<)

@@ -116,7 +116,7 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 Read the following documentation for setting PMC up.
 
 [Command Line Interface](CLI.md)  
-[Hardware Self Test](SelfTest.md)
+[Hardware Self Test](SelfTest.md)  
 [Motor Identification](MotorIdentification.md)  
 [Motor Tuning](MotorTuning.md)  
 [High Frequency Injection](HFI.md)  
