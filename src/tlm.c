@@ -33,7 +33,7 @@ void tlm_reg_grab(tlm_t *tlm)
 
 	if (tlm->mode != TLM_MODE_DISABLED) {
 
-		if (tlm->S == 0) {
+		if (tlm->skip == 0) {
 
 			for (N = 0; N < TLM_INPUT_MAX; ++N) {
 
@@ -47,18 +47,28 @@ void tlm_reg_grab(tlm_t *tlm)
 			}
 		}
 
-		tlm->S += 1;
+		tlm->skip += 1;
 
-		if (tlm->S >= tlm->span) {
+		if (tlm->skip >= tlm->span) {
 
 			tlm->clock += 1;
-			tlm->S = 0;
+			tlm->skip = 0;
 
-			if (tlm->mode == TLM_MODE_SINGLE_GRAB) {
+			if (tlm->mode == TLM_MODE_GRAB) {
 
 				tlm->N++;
 
 				if (tlm->N >= TLM_DATA_MAX) {
+
+					tlm->mode = TLM_MODE_DISABLED;
+					tlm->N = 0;
+				}
+			}
+			else if (tlm->mode == TLM_MODE_WATCH) {
+
+				tlm->N = (tlm->N < (TLM_DATA_MAX - 1)) ? tlm->N + 1 : 0;
+
+				if (pm.lu_MODE == PM_DISABLED) {
 
 					tlm->mode = TLM_MODE_DISABLED;
 				}
@@ -73,6 +83,13 @@ void tlm_reg_grab(tlm_t *tlm)
 
 void tlm_startup(tlm_t *tlm, int freq, int mode)
 {
+	if (tlm->mode != TLM_MODE_DISABLED) {
+
+		tlm->mode = TLM_MODE_DISABLED;
+
+		hal_memory_fence();
+	}
+
 	if (freq > 0 && freq < hal.PWM_frequency) {
 
 		tlm->span = (int) (hal.PWM_frequency / (float) freq + .5f);
@@ -82,8 +99,8 @@ void tlm_startup(tlm_t *tlm, int freq, int mode)
 	}
 
 	tlm->clock = 0;
+	tlm->skip = 0;
 
-	tlm->S = 0;
 	tlm->N = 0;
 
 	hal_memory_fence();
@@ -109,7 +126,16 @@ SH_DEF(tlm_grab)
 
 	stoi(&freq, s);
 
-	tlm_startup(&tlm, freq, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, freq, TLM_MODE_GRAB);
+}
+
+SH_DEF(tlm_watch)
+{
+	int		freq = tlm.grabfreq;
+
+	stoi(&freq, s);
+
+	tlm_startup(&tlm, freq, TLM_MODE_WATCH);
 }
 
 SH_DEF(tlm_stop)
@@ -172,16 +198,23 @@ static void
 tlm_reg_flush(tlm_t *tlm)
 {
 	float			time;
-	int			N;
+	int			N, clock;
 
-	for (N = 0; N < TLM_DATA_MAX; ++N) {
+	N = tlm->N;
+	clock = 0;
 
-		time = (float) (N * tlm->span) / hal.PWM_frequency;
+	do {
+		time = (float) (clock * tlm->span) / hal.PWM_frequency;
 
 		printf("%6f;", &time);
 
 		tlm_reg_flush_line(tlm, N);
+
+		N = (N < (TLM_DATA_MAX - 1)) ? N + 1 : 0;
+
+		clock += 1;
 	}
+	while (N != tlm->N);
 }
 
 SH_DEF(tlm_flush_sync)

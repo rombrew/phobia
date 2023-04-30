@@ -1,6 +1,8 @@
 #define HW_MCU_STM32F405
 
-/* Tested on FLIPSKY 75100 V202 ESC */
+/* Tested on FLIPSKY 75100 V202 ESC
+ * Tested on Makerbase VESC 75200 V2 84V 200A
+ * */
 
 #define HW_HAVE_LOW_SIDE_SHUNT
 #define HW_HAVE_ANALOG_KNOB

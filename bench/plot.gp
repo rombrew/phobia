@@ -38,7 +38,7 @@ figure 0 19 "pm.const_fb_U"
 
 page "Power Consumption"
 label 1 "(W)"
-figure 0 17 "m.wP"
+figure 0 17 "m.instant_wP"
 figure 0 18 "pm.watt_consumption_wP"
 
 page "PWM Output"

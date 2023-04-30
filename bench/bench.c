@@ -106,7 +106,7 @@ tlm_plot_grab()
 
 	/* Power Consumption.
 	 * */
-	tlm.y[17] = m.wP;
+	tlm.y[17] = m.instant_wP;
 	tlm.y[18] = pm.watt_consumption_wP;
 
 	/* DC link Voltage.

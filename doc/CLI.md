@@ -40,10 +40,10 @@ Almost all of the configuration process is to change the value of the
 registers.
 
 You can also export all of configuration registers in plain text using a
-**export_reg** command. The output of this command can be fed back into the CLI
+**plain_reg** command. The output of this command can be fed back into the CLI
 to restore the configuration.
 
-	(pmc) export_reg
+	(pmc) plain_reg
 
 To save the values of the configuration registers in the flash storage there is
 a **flash_prog** command. Register values from the flash are loaded

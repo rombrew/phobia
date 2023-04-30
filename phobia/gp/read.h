@@ -33,11 +33,12 @@
 #define READ_TOKEN_MAX		80
 #define READ_FILE_PATH_MAX	800
 #define READ_TEXT_HEADER_MAX	9
+#define READ_SUBTRACT_MAX	4
 
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	5
+#define GP_CONFIG_VERSION	7
 
 enum {
 	FORMAT_NONE			= 0,
@@ -73,10 +74,11 @@ typedef struct {
 	int		busy;
 
 	int		column_2;
-	double		scale;
-	double		offset;
+
+	double		arg_1;
+	double		arg_2;
 }
-fig_ops_t;
+subtract_t;
 
 typedef struct {
 
@@ -96,7 +98,8 @@ typedef struct {
 		int		aX;
 		int		aY;
 
-		fig_ops_t	ops[2];
+		subtract_t	bX[READ_SUBTRACT_MAX];
+		subtract_t	bY[READ_SUBTRACT_MAX];
 
 		char		label[PLOT_STRING_MAX];
 	}
@@ -106,6 +109,7 @@ typedef struct {
 
 		int		slave;
 		int		slave_N;
+
 		double		scale;
 		double		offset;
 
@@ -147,6 +151,7 @@ typedef struct {
 	int		colorscheme;
 	int		timecol;
 	int		shortfilename;
+	int		drawboost;
 
 	markup_t	mk_config;
 	markup_t	mk_text;

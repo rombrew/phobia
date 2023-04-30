@@ -46,6 +46,19 @@
 
 #define GP_FILE_DIR_MAX			4000
 
+enum {
+	GP_TAKE_NONE		= 0,
+	GP_TAKE_PNG,
+	GP_TAKE_SVG,
+	GP_TAKE_CSV
+};
+
+enum {
+	GP_COMBINE_NONE		= 0,
+	GP_COMBINE_AXES_REMAP,
+	GP_COMBINE_NO_REMAP
+};
+
 struct gp_struct {
 
 	scheme_t	*sch;
@@ -78,6 +91,7 @@ struct gp_struct {
 	int		clock;
 	int		idled;
 	int		updated;
+	int		level;
 
 	int		ctrl_on;
 	int		shift_on;
@@ -265,6 +279,7 @@ gpDefaultFile(gp_t *gp)
 				"drawing line 2\n"
 				"timecol -1\n"
 				"shortfilename 1\n"
+				"drawboost 200\n"
 				"interpolation 1\n"
 				"precision 9\n"
 				"lz4_compress 1\n");
@@ -816,7 +831,7 @@ gpDirWalk(gp_t *gp, int dir_N, int revert)
 
 			gpUnifiedFileOpen(gp, gp->tempfile, 1);
 
-			walk = gp->shift_on ? 3 : 0;
+			walk = 3;
 		}
 	}
 
@@ -1252,22 +1267,28 @@ gpMakeAboutMenu(gp_t *gp)
 static void
 gpTakeScreen(gp_t *gp)
 {
-	if (gp->screen_take == 1) {
+	if (gp->screen_take == GP_TAKE_PNG) {
 
 		if (IMG_SavePNG(gp->surface, gp->tempfile) == 0) {
 
 			ERROR("Screen was saved to \"%s\"\n", gp->tempfile);
 		}
 	}
-	else if (gp->screen_take == 2) {
+	else if (gp->screen_take == GP_TAKE_SVG) {
 
 		svgClose((svg_t *) gp->surface->userdata);
 		gp->surface->userdata = NULL;
 
 		ERROR("Figure was saved to \"%s\"\n", gp->tempfile);
 	}
+	else if (gp->screen_take == GP_TAKE_CSV) {
 
-	gp->screen_take = 0;
+		plotFigureExportCSV(gp->pl, gp->tempfile);
+
+		ERROR("CSV table was saved to \"%s\"\n", gp->tempfile);
+	}
+
+	gp->screen_take = GP_TAKE_NONE;
 }
 
 #ifdef _WINDOWS
@@ -1382,6 +1403,8 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				editRaise(ed, 7, gp->la->file_name_edit,
 						gp->sbuf[0], mu->box_X, mu->box_Y);
 
+				ed->list_fmt = ".png\0.svg\0.csv\0\0";
+
 				gp->stat = GP_EDIT;
 				break;
 
@@ -1446,7 +1469,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					menuSelect(mu, rd->page_N);
 
 					mu->hidden_N[0] = rd->page_N - 1;
-					gp->combine_on = 0;
+					gp->combine_on = GP_COMBINE_NONE;
 
 					gp->stat = GP_MENU;
 				}
@@ -1461,7 +1484,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					menuSelect(mu, rd->page_N);
 
 					mu->hidden_N[0]= rd->page_N - 1;
-					gp->combine_on = 1;
+					gp->combine_on = GP_COMBINE_AXES_REMAP;
 
 					gp->stat = GP_MENU;
 				}
@@ -1476,7 +1499,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					menuSelect(mu, rd->page_N);
 
 					mu->hidden_N[0] = rd->page_N - 1;
-					gp->combine_on = 2;
+					gp->combine_on = GP_COMBINE_NO_REMAP;
 
 					gp->stat = GP_MENU;
 				}
@@ -1711,7 +1734,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 						gN = pl->data[gp->data_N].map[cN];
 
-						if (gN == -1) {
+						if (gN < 0) {
 
 							/* NOTE: last group numbers are occupied by time scale.
 							 * */
@@ -1855,6 +1878,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 2:
+				rd->drawboost = 0;
 				dw->antialiasing = (dw->antialiasing < DRAW_8X_MSAA)
 					? dw->antialiasing + 1 : DRAW_SOLID;
 				break;
@@ -2086,18 +2110,39 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 2:
-				menuRaise(mu, 301, gp->la->cancel_menu, mu->box_X, mu->box_Y);
+				menuRaise(mu, 301, gp->la->cancel_menu,
+						mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
 
 			case 3:
 				menuRaise(mu, 302, gp->la->figure_operation_menu,
 						mu->box_X, mu->box_Y);
+
+				N = plotFigureSelected(pl);
+
+				if (N < 2) {
+
+					mu->hidden_N[0] = 2;
+					mu->hidden_N[1] = 5;
+					mu->hidden_N[2] = 6;
+					mu->hidden_N[3] = 7;
+					mu->hidden_N[4] = 8;
+				}
+				else if (N != 2) {
+
+					mu->hidden_N[0] = 5;
+					mu->hidden_N[1] = 6;
+					mu->hidden_N[2] = 7;
+					mu->hidden_N[3] = 8;
+				}
+
 				gp->stat = GP_MENU;
 				break;
 
 			case 4:
-				menuRaise(mu, 303, gp->la->figure_edit_menu, mu->box_X, mu->box_Y);
+				menuRaise(mu, 303, gp->la->figure_edit_menu,
+						mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
 		}
@@ -2116,7 +2161,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 			case 0:
 				N = plotGetFreeFigure(pl);
 
-				if (N == -1) {
+				if (N < 0) {
 
 					ERROR("Unable to get free figure to duplicate\n");
 					break ;
@@ -2139,58 +2184,62 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 2:
+				plotFigureSubtractResample(pl, gp->fig_N);
+				break;
+
+			case 3:
 				editRaise(ed, 5, gp->la->scale_offset_edit,
 						"1", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 3:
+			case 4:
 				editRaise(ed, 6, gp->la->scale_offset_edit,
 						"-1", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 4:
+			case 5:
 				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_SUBTRACTION);
 				break;
 
-			case 5:
+			case 6:
 				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_ADDITION);
 				break;
 
-			case 6:
+			case 7:
 				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_MULTIPLICATION);
 				break;
 
-			case 7:
+			case 8:
 				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_HYPOTENUSE);
 				break;
 
-			case 8:
+			case 9:
 				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_DIFFERENCE, 0., 0.);
 				break;
 
-			case 9:
+			case 10:
 				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_CUMULATIVE, 0., 0.);
 				break;
 
-			case 10:
+			case 11:
 				editRaise(ed, 8, gp->la->bit_number_edit,
 						"0", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 11:
+			case 12:
 				editRaise(ed, 13, gp->la->low_pass_edit,
 						"0.1", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 12:
+			case 13:
 				if (plotDataBoxPolyfit(pl, gp->fig_N) == 0) {
 
 					editRaise(ed, 16, gp->la->polynomial_edit,
@@ -2384,49 +2433,37 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 		N = item_N + 1;
 
-		if (gp->combine_on == 1) {
+		if (gp->combine_on == GP_COMBINE_AXES_REMAP) {
 
 			readCombinePage(rd, N, 1);
 
-			if (gp->shift_on == 1) {
+			for (N = 1; N < MENU_OPTION_MAX; ++N) {
 
-				for (N = 1; N < MENU_OPTION_MAX; ++N) {
+				if (mu->hidden_N[N] < 0) {
 
-					if (mu->hidden_N[N] < 0) {
-
-						mu->hidden_N[N] = item_N;
-						break;
-					}
+					mu->hidden_N[N] = item_N;
+					break;
 				}
+			}
 
-				menuResume(mu);
-				gp->stat = GP_MENU;
-			}
-			else {
-				gp->combine_on = 0;
-			}
+			menuResume(mu);
+			gp->stat = GP_MENU;
 		}
-		else if (gp->combine_on == 2) {
+		else if (gp->combine_on == GP_COMBINE_NO_REMAP) {
 
 			readCombinePage(rd, N, 0);
 
-			if (gp->shift_on == 1) {
+			for (N = 1; N < MENU_OPTION_MAX; ++N) {
 
-				for (N = 1; N < MENU_OPTION_MAX; ++N) {
+				if (mu->hidden_N[N] < 0) {
 
-					if (mu->hidden_N[N] < 0) {
-
-						mu->hidden_N[N] = item_N;
-						break;
-					}
+					mu->hidden_N[N] = item_N;
+					break;
 				}
+			}
 
-				menuResume(mu);
-				gp->stat = GP_MENU;
-			}
-			else {
-				gp->combine_on = 0;
-			}
+			menuResume(mu);
+			gp->stat = GP_MENU;
 		}
 		else {
 			readSelectPage(rd, N);
@@ -2513,7 +2550,7 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 
 		if (strcmp(file, ".png") == 0) {
 
-			gp->screen_take = 1;
+			gp->screen_take = GP_TAKE_PNG;
 		}
 		else if (strcmp(file, ".svg") == 0) {
 
@@ -2524,7 +2561,11 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 			g->font_pt = pl->layout_font_pt;
 
 			gp->surface->userdata = (void *) g;
-			gp->screen_take = 2;
+			gp->screen_take = GP_TAKE_SVG;
+		}
+		else if (strcmp(file, ".csv") == 0) {
+
+			gp->screen_take = GP_TAKE_CSV;
 		}
 	}
 	else if (edit_N == 8) {
@@ -2927,7 +2968,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						gp->box_Y = ev->button.y - pl->legend_Y;
 						gp->stat = GP_MOVING;
 						gp->legend_drag = 1;
-
 						break;
 					}
 
@@ -2939,7 +2979,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						gp->box_Y = ev->button.y - pl->data_box_Y;
 						gp->stat = GP_MOVING;
 						gp->data_box_drag = 1;
-
 						break;
 					}
 
@@ -2953,7 +2992,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 							gp->stat = GP_MOVING;
 							pl->on_X = N;
 							gp->ax_N = N;
-
 							break;
 						}
 						else if (pl->axis[N].busy == AXIS_BUSY_Y
@@ -2962,7 +3000,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 							gp->stat = GP_MOVING;
 							pl->on_Y = N;
 							gp->ax_N = N;
-
 							break;
 						}
 					}
@@ -2971,7 +3008,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						gp->box_Y = ev->button.y;
 						gp->ax_N = -1;
 						gp->stat = GP_MOVING;
-
 						break;
 					}
 				}
@@ -2988,12 +3024,18 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						menuRaise(mu, 1, gp->la->global_menu,
 								gp->cur_X, gp->cur_Y);
 
+						N = plotFigureSelected(pl);
+
+						if (N != 2) {
+
+							mu->hidden_N[0] = 9;
+						}
+
 #ifndef _WINDOWS
-						mu->hidden_N[0] = 14;
+						mu->hidden_N[1] = 14;
 #endif /* _WINDOWS */
 
 						gp->stat = GP_MENU;
-
 						break;
 					}
 
@@ -3006,7 +3048,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						menuRaise(mu, 3, gp->la->figure_menu,
 								gp->cur_X, gp->cur_Y);
 						gp->stat = GP_MENU;
-
 						break;
 					}
 
@@ -3024,7 +3065,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						mu->mark[1].subs = (pl->legend_compact == 0) ? " " : "X";
 
 						gp->stat = GP_MENU;
-
 						break;
 					}
 
@@ -3034,7 +3074,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 						pl->data_box_X = pl->viewport.max_x;
 						pl->data_box_Y = 0;
-
 						break;
 					}
 
@@ -3057,7 +3096,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 							mu->mark[2].subs = (pl->axis[N].lock_tick == 0) ? " " : "X";
 
 							gp->stat = GP_MENU;
-
 							break;
 						}
 						else {
@@ -3077,7 +3115,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 							mu->mark[2].subs = (pl->axis[N].lock_tick == 0) ? " " : "X";
 
 							gp->stat = GP_MENU;
-
 							break;
 						}
 					}
@@ -3090,7 +3127,6 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 							break;
 						}
-
 						break;
 					}
 				}
@@ -3099,12 +3135,15 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 		}
 		else if (ev->type == SDL_MOUSEWHEEL) {
 
-			if (ev->wheel.y > 0)
-				fmin = 1.1;
-			else if (ev->wheel.y < 0)
-				fmin = 1. / 1.1;
-			else
-				fmin = 1.;
+			if (gp->shift_on != 0) {
+
+				fmin =	  (ev->wheel.y > 0) ? 1.01
+					: (ev->wheel.y < 0) ? 1. / 1.01 : 1.;
+			}
+			else {
+				fmin =	  (ev->wheel.y > 0) ? 1.1
+					: (ev->wheel.y < 0) ? 1. / 1.1 : 1.;
+			}
 
 			SDL_GetMouseState(&gp->cur_X, &gp->cur_Y);
 			N = plotAxisGetByClick(pl, gp->cur_X, gp->cur_Y);
@@ -3201,20 +3240,45 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 			}
 			else if (gp->ax_N < 0) {
 
-				plotAxisScaleMove(pl, pl->on_X, ev->motion.x - gp->cur_X);
-				plotAxisScaleMove(pl, pl->on_Y, ev->motion.y - gp->cur_Y);
+				fmin = (double) (ev->motion.x - gp->cur_X);
+				fmax = (double) (ev->motion.y - gp->cur_Y);
+
+				if (gp->shift_on != 0) {
+
+					fmin *= 0.1;
+					fmax *= 0.1;
+				}
+
+				plotAxisScaleMove(pl, pl->on_X, fmin);
+				plotAxisScaleMove(pl, pl->on_Y, fmax);
 
 				gp->cur_X = ev->motion.x;
 				gp->cur_Y = ev->motion.y;
 			}
 			else if (pl->axis[gp->ax_N].busy == AXIS_BUSY_X) {
 
-				plotAxisScaleMove(pl, gp->ax_N, ev->motion.x - gp->cur_X);
+				fmin = (double) (ev->motion.x - gp->cur_X);
+
+				if (gp->shift_on != 0) {
+
+					fmin *= 0.1;
+				}
+
+				plotAxisScaleMove(pl, gp->ax_N, fmin);
+
 				gp->cur_X = ev->motion.x;
 			}
 			else if (pl->axis[gp->ax_N].busy == AXIS_BUSY_Y) {
 
-				plotAxisScaleMove(pl, gp->ax_N, ev->motion.y - gp->cur_Y);
+				fmin = (double) (ev->motion.y - gp->cur_Y);
+
+				if (gp->shift_on != 0) {
+
+					fmin *= 0.1;
+				}
+
+				plotAxisScaleMove(pl, gp->ax_N, fmin);
+
 				gp->cur_Y = ev->motion.y;
 			}
 		}
@@ -3522,6 +3586,10 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 			else if (ev->key.keysym.sym == SDLK_v && gp->ctrl_on == 1) {
 
 				editEvent(ed, EDIT_EVNO_CTRL_V, gp->cur_X, gp->cur_Y);
+			}
+			else if (ev->key.keysym.sym == SDLK_TAB) {
+
+				editEvent(ed, EDIT_EVNO_TAB, gp->cur_X, gp->cur_Y);
 			}
 		}
 		else if (ev->type == SDL_TEXTINPUT && gp->ctrl_on == 0) {
@@ -3875,6 +3943,7 @@ int gp_IsQuit(gp_t *gp)
 int gp_Draw(gp_t *gp)
 {
 	scheme_t	*sch = gp->sch;
+	draw_t		*dw = gp->dw;
 	plot_t		*pl = gp->pl;
 	read_t		*rd = gp->rd;
 	menu_t		*mu = gp->mu;
@@ -3920,6 +3989,8 @@ int gp_Draw(gp_t *gp)
 
 	if (gp->unfinished != 0) {
 
+		int	t0, t1;
+
 		SDL_LockSurface(gp->surface);
 
 		drawClearSurface(gp->dw, gp->surface, pl->sch->plot_background);
@@ -3941,7 +4012,28 @@ int gp_Draw(gp_t *gp)
 			gpDrawBoxLight(gp->surface, gp);
 		}
 
+		if (		rd->drawboost != 0
+				&& dw->antialiasing != DRAW_SOLID) {
+
+			t0 = SDL_GetTicks();
+		}
+
 		plotDraw(pl, gp->surface);
+
+		if (		rd->drawboost != 0
+				&& dw->antialiasing != DRAW_SOLID) {
+
+			t1 = SDL_GetTicks();
+
+			gp->level += (t1 - t0 > rd->drawboost) ? 1
+				: (gp->level > 0) ? - 1 : 0;
+
+			if (gp->level > 4) {
+
+				dw->antialiasing = DRAW_SOLID;
+				gp->level = 0;
+			}
+		}
 
 		if (gp->stat == GP_RANGE_SELECT) {
 
@@ -3974,15 +4066,22 @@ int gp_Draw(gp_t *gp)
 
 		if (gp->i_show_fps != 0) {
 
-			int		len, hh;
+			int		len, jam;
 
-			sprintf(gp->sbuf[0], "FPS: %2d", gp->i_FPS);
+			len = plotGetSketchLength(pl);
 
-			TTF_SizeUTF8(pl->font, gp->sbuf[0], &len, &hh);
+			sprintf(gp->sbuf[0], "L %4d FPS %2d", len, gp->i_FPS);
 
-			drawText(gp->dw, gp->surface, pl->font, pl->screen.max_x - (len + 5),
+			TTF_SizeUTF8(pl->font, gp->sbuf[0], &len, &jam);
+
+			drawFillRect(gp->surface, pl->screen.max_x - (len + 12),
+					pl->screen.min_y - gp->layout_page_box,
+					pl->screen.max_x, pl->screen.min_y,
+					pl->sch->plot_background);
+
+			drawText(gp->dw, gp->surface, pl->font, pl->screen.max_x - (len + 6),
 					pl->screen.min_y + gp->layout_page_title_offset,
-					gp->sbuf[0], TEXT_CENTERED_ON_Y, 0xFF5533);
+					gp->sbuf[0], TEXT_CENTERED_ON_Y, 0xFF2222);
 		}
 
 		SDL_BlitSurface(gp->surface, NULL, gp->fb, NULL);

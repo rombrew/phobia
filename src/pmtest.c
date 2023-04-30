@@ -181,7 +181,7 @@ SH_DEF(pm_self_tvm_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
-	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_SINGLE_GRAB);
+	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_GRAB);
 
 	do {
 		/* 1000 Hz.

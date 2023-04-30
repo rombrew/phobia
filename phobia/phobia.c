@@ -203,14 +203,14 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 
 		if (reg->mode & LINK_REG_CONFIG) {
 
-			if (		   strcmp(reg->sym, "pm.fault_current_halt") == 0
+			if (		   strcmp(reg->sym, "pm.i_maximal") == 0
 					|| strcmp(reg->sym, "pm.probe_speed_hold") == 0
+					|| strcmp(reg->sym, "pm.zone_speed_threshold") == 0
 					|| strcmp(reg->sym, "pm.forced_maximal") == 0
 					|| strcmp(reg->sym, "pm.forced_accel") == 0
-					|| strcmp(reg->sym, "pm.zone_speed_threshold") == 0
-					|| strcmp(reg->sym, "pm.i_maximal") == 0
 					|| strcmp(reg->sym, "pm.i_gain_P") == 0
-					|| strcmp(reg->sym, "pm.s_gain_P") == 0) {
+					|| strcmp(reg->sym, "pm.s_gain_P") == 0
+					|| strcmp(reg->sym, "pm.fault_current_halt") == 0) {
 
 				if (nk_contextual_item_label(ctx, "Request configure",
 							NK_TEXT_LEFT)) {
@@ -614,14 +614,24 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 				NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
+		struct link_reg			*reg_tlm;
+
+		reg_tlm = link_reg_lookup(pub->lp, "tlm.mode");
+
+		if (reg_tlm != NULL) {
+
+			reg_tlm->update = (reg_tlm->lval != 0) ? 100 : 1000;
+			reg_tlm->shown = lp->clock;
+		}
+
 		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
 		nk_spacer(ctx);
 
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
@@ -631,36 +641,59 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Scan")) {
-
-			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
-		}
-
-		nk_spacer(ctx);
-
 		if (nk_button_label(ctx, "Grab into RAM")) {
 
 			link_command(lp, "tlm_grab");
+
+			if (reg_tlm != NULL) {
+
+				reg_tlm->lval = 1;
+			}
 		}
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Flush GP")) {
+		if (nk_button_label(ctx, "Watch on PM")) {
 
-			strcpy(pub->lbuf, pub->fe->storage);
-			strcat(pub->lbuf, DIRSEP);
-			strcat(pub->lbuf, pub->telemetry.file_grab);
-			strcpy(pub->telemetry.file_snap, pub->lbuf);
+			link_command(lp, "tlm_watch");
 
-			if (link_grab_file_open(lp, pub->telemetry.file_snap) != 0) {
+			if (reg_tlm != NULL) {
 
-				if (link_command(lp, "tlm_flush_sync") != 0) {
-
-					pub->telemetry.wait_GP = 1;
-				}
-
-				pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+				reg_tlm->lval = 1;
 			}
+		}
+
+		nk_spacer(ctx);
+
+		if (reg_tlm != NULL && reg_tlm->lval == 0) {
+
+			if (nk_button_label(ctx, "Flush GP")) {
+
+				strcpy(pub->lbuf, pub->fe->storage);
+				strcat(pub->lbuf, DIRSEP);
+				strcat(pub->lbuf, pub->telemetry.file_grab);
+				strcpy(pub->telemetry.file_snap, pub->lbuf);
+
+				if (link_grab_file_open(lp, pub->telemetry.file_snap) != 0) {
+
+					if (link_command(lp, "tlm_flush_sync") != 0) {
+
+						pub->telemetry.wait_GP = 1;
+					}
+
+					pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+				}
+			}
+		}
+		else {
+			disabled = ctx->style.button;
+
+			disabled.normal = disabled.active;
+			disabled.hover = disabled.active;
+			disabled.text_normal = disabled.text_active;
+			disabled.text_hover = disabled.text_active;
+
+			nk_button_label_styled(ctx, &disabled, "Flush GP");
 		}
 
 		nk_spacer(ctx);
@@ -677,6 +710,11 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 				if (link_command(lp, "tlm_live_sync") != 0) {
 
 					pub->telemetry.wait_GP = 1;
+				}
+
+				if (reg_tlm != NULL) {
+
+					reg_tlm->lval = 1;
 				}
 
 				pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
@@ -782,7 +820,16 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "Scan")) {
+
+			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+		}
 
 		nk_spacer(ctx);
 
@@ -2981,10 +3028,10 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
 	reg_float_um(pub, "pm.probe_speed_detached", "Probe speed (detached)", 0);
-	reg_float(pub, "pm.probe_damping_current", "Damping on current loop");
-	reg_float(pub, "pm.probe_damping_speed", "Damping on speed loop");
-	reg_float(pub, "pm.probe_speed_tol", "Speed settle tolerance");
-	reg_float(pub, "pm.probe_location_tol", "Location settle tolerance");
+	reg_float(pub, "pm.probe_damping_current", "Damping of current loop");
+	reg_float(pub, "pm.probe_damping_speed", "Damping of speed loop");
+	reg_float_um(pub, "pm.probe_speed_tol", "Speed settle tolerance", 0);
+	reg_float_um(pub, "pm.probe_location_tol", "Location settle tolerance", 0);
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
 	reg_float(pub, "pm.probe_gain_I", "Probe loop gain I");
 

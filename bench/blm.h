@@ -36,7 +36,7 @@ typedef struct {
 	blm_event_t	event[8];
 	int		revol;
 
-	double		wP;
+	double		instant_wP;
 
 	double		Dtol;
 

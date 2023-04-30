@@ -266,6 +266,8 @@ void editRaise(edit_t *ed, int id, const char *title, const char *text, int sx, 
 	strcpy(ed->text, text);
 	ed->text_cur = ed->text + strlen(ed->text);
 
+	ed->list_fmt = "";
+
 	editBuild(ed, 0);
 }
 
@@ -294,7 +296,7 @@ void editEvent(edit_t *ed, int evno, int ex, int ey)
 		max_X = ed->box_X + ed->size_X - ed->layout_height + ed->layout_height / 2;
 		max_Y = ed->box_Y + 2 * ed->layout_height + ed->layout_height / 2;
 
-		if (ed->cur_X > min_X && ed->cur_X < max_X
+		if (		ed->cur_X > min_X && ed->cur_X < max_X
 				&& ed->cur_Y > min_Y && ed->cur_Y < max_Y) {
 
 			curbuf[0] = 0;
@@ -384,6 +386,37 @@ void editEvent(edit_t *ed, int evno, int ex, int ey)
 				}
 
 				SDL_free(clip);
+			}
+		}
+	}
+	else if (evno == EDIT_EVNO_TAB) {
+
+		const char	*fmt;
+		char		*eol;
+		int		len;
+
+		if (ed->list_fmt[0] != 0) {
+
+			len = strlen(ed->text);
+
+			if (len > 4) {
+
+				eol = ed->text + (len - 4);
+				fmt = ed->list_fmt;
+
+				do {
+					if (strcmp(eol, fmt) == 0) {
+
+						fmt += strlen(fmt) + 1;
+						fmt = (*fmt == 0) ? ed->list_fmt : fmt;
+
+						strcpy(eol, fmt);
+						break;
+					}
+
+					fmt += strlen(fmt) + 1;
+				}
+				while (*fmt != 0);
 			}
 		}
 	}

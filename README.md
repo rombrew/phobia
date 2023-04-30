@@ -6,9 +6,9 @@ electric transport.
 
 ## Software features
 
-* Sensorless vector control of three-phase PMSM based on current measurements.
+* Sensorless vector control of PMSM by measurement of currents and voltages.
 * Robust ORTEGA observer with gain scheduling against speed.
-* Accurate KALMAN observer with convergence on HF injection.
+* Accurate KALMAN observer having convergence at HF injection.
 * Flux weakening and MTPA control (**EXPERIMENTAL**).
 * Two and three phase machine support.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
@@ -42,15 +42,15 @@ electric transport.
 	* Self-test of bootstrap retention time.
 
 * Automated motor parameters identification with no additional tools:
-	* Stator DC resistance (R).
+	* Stator DC resistance (Rs).
 	* Stator AC impedance in DQ frame (L1, L2, R).
-	* Rotor flux linkage constant (E).
+	* Rotor flux linkage constant (lambda).
 	* Mechanical moment of inertia (Ja).
 	* Discrete Hall signals recognition.
 
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
-	  force rotor hold or turn.
+	  force rotor hold or spinup.
 	* Freewheeling.
 	* High Frequency Injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
@@ -66,7 +66,7 @@ electric transport.
 * Adjustable constraints:
 	* Phase current with derate on PCB overheat.
 	* Motor voltage applied from VSI.
-	* Battery current consumption and regeneration.
+	* DC link current consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration.
 

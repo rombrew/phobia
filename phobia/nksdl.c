@@ -33,6 +33,7 @@
 
 #define NK_MEMSET	memset
 #define NK_MEMCPY	memcpy
+#define NK_INV_SQRT
 #define NK_SQRT		sqrtf
 #define NK_SIN		sinf
 #define NK_COS		cosf

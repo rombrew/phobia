@@ -226,6 +226,7 @@ typedef struct {
 		sub[PLOT_SUBTRACT];
 
 		int		sub_N;
+		int		sub_postponed;
 	}
 	data[PLOT_DATASET_MAX];
 
@@ -441,8 +442,11 @@ void plotDataAlloc(plot_t *pl, int dN, int cN, int lN);
 void plotDataResize(plot_t *pl, int dN, int lN);
 int plotDataSpaceLeft(plot_t *pl, int dN);
 void plotDataGrowUp(plot_t *pl, int dN);
-void plotDataSubtract(plot_t *pl, int dN, int cN);
+void plotDataSubtractCompute(plot_t *pl, int dN, int sN);
+void plotDataSubtractResidual(plot_t *pl, int dN);
 void plotDataSubtractClean(plot_t *pl);
+void plotDataSubtractPostponed(plot_t *pl);
+void plotDataSubtractAlternate(plot_t *pl);
 void plotDataInsert(plot_t *pl, int dN, const fval_t *row);
 void plotDataClean(plot_t *pl, int dN);
 
@@ -457,7 +461,7 @@ void plotAxisScaleAutoCond(plot_t *pl, int aN, int bN);
 void plotAxisScaleLock(plot_t *pl, int knob);
 void plotAxisScaleDefault(plot_t *pl);
 void plotAxisScaleZoom(plot_t *pl, int aN, int origin, double zoom);
-void plotAxisScaleMove(plot_t *pl, int aN, int move);
+void plotAxisScaleMove(plot_t *pl, int aN, double move);
 void plotAxisScaleEqual(plot_t *pl);
 void plotAxisScaleGridAlign(plot_t *pl);
 void plotAxisScaleGridLock(plot_t *pl, int aN);
@@ -475,21 +479,27 @@ void plotFigureGarbage(plot_t *pl, int dN);
 void plotFigureMoveAxes(plot_t *pl, int fN);
 void plotFigureMakeIndividualAxes(plot_t *pl, int fN);
 void plotFigureExchange(plot_t *pl, int fN_1, int fN_2);
+int plotFigureSelected(plot_t *pl);
 
 int plotGetSubtractTimeUnwrap(plot_t *pl, int dN, int cN);
 int plotGetSubtractScale(plot_t *pl, int dN, int cN, double scale, double offset);
 int plotGetSubtractResample(plot_t *pl, int dN, int cN_X, int in_dN, int in_cN_X, int in_cN_Y);
 int plotGetSubtractBinary(plot_t *pl, int dN, int opSUB, int cN_1, int cN_2);
+int plotGetSubtractFilter(plot_t *pl, int dN, int cN, int opSUB, double arg_1, double arg_2);
 int plotGetFreeFigure(plot_t *pl);
 
 void plotFigureSubtractTimeUnwrap(plot_t *pl, int fN_1);
 void plotFigureSubtractScale(plot_t *pl, int fN_1, int aBUSY, double scale, double offset);
 void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double arg_1, double arg_2);
 void plotFigureSubtractSwitch(plot_t *pl, int opSUB);
+void plotFigureSubtractResample(plot_t *pl, int fN);
+
 int plotDataBoxPolyfit(plot_t *pl, int fN);
 void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int poly_N1, int poly_N2);
+void plotFigureExportCSV(plot_t *pl, const char *file);
 void plotFigureClean(plot_t *pl);
 void plotSketchClean(plot_t *pl);
+int plotGetSketchLength(plot_t *pl);
 
 void plotGroupAdd(plot_t *pl, int dN, int gN, int cN);
 void plotGroupLabel(plot_t *pl, int gN, const char *label);

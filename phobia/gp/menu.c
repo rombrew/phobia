@@ -130,7 +130,7 @@ menuBuild(menu_t *mu, int rep)
 		++s;
 	}
 
-	mu->size_X = size_X + mu->layout_height;
+	mu->size_X = size_X + mu->layout_height + mu->layout_height / 4;
 	mu->size_Y = mu->size_N * mu->layout_height;
 	size_Y = mu->screen.max_y / mu->layout_height;
 	size_Y = (mu->fuzzy[0] != 0) ? size_Y - 1 : size_Y;
@@ -353,7 +353,7 @@ menuConvFuzzy(menu_t *mu, int fuzzy_N)
 }
 
 static void
-menuScrollBarClick(menu_t *mu)
+menuScrollClick(menu_t *mu)
 {
 	int			topY, baseX, baseY;
 
@@ -404,7 +404,7 @@ void menuEvent(menu_t *mu, int evno, int ex, int ey)
 				? -1 : mu->clicked_N;
 		}
 
-		menuScrollBarClick(mu);
+		menuScrollClick(mu);
 	}
 	else if (evno == MENU_EVNO_UNCLICK) {
 
@@ -414,7 +414,7 @@ void menuEvent(menu_t *mu, int evno, int ex, int ey)
 
 		if (mu->scroll_drag != 0) {
 
-			menuScrollBarClick(mu);
+			menuScrollClick(mu);
 		}
 		else {
 			mu->hovered_N = menuItemHover(mu);
@@ -537,7 +537,7 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 {
 	const char		*fu, *s = mu->list;
 	int			light[MENU_FUZZY_SIZE * 2], N_fu;
-	int			topY, baseX, baseY, bxL, bxH;
+	int			topY, baseX, baseY, margin, side;
 	int			N = 0, N_visible, N_conv, hN;
 
 	colType_t		iCol;
@@ -564,33 +564,33 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 
 	if (mu->scroll_limit != 0) {
 
-		bxL = mu->layout_height / 4;
-		bxH = mu->layout_height - bxL;
+		margin = mu->layout_height / 4;
+		side = mu->layout_height - margin;
 
 		baseX = mu->box_X + mu->size_X - mu->layout_height;
 		baseY = mu->box_Y + (mu->size_Y - mu->layout_height)
 			* mu->scroll_shift / mu->scroll_limit;
 
-		drawFillRect(surface, baseX + bxL, baseY + bxL, baseX + bxH,
-				baseY + bxH, mu->sch->menu_scrollbar);
+		drawFillRect(surface, baseX + margin, baseY + margin, baseX + side,
+				baseY + side, mu->sch->menu_scrollbar);
 
-		baseX = mu->box_X + mu->size_X - mu->layout_height + bxL - 0;
-		baseY = mu->box_Y + bxL - 0;
+		baseX = mu->box_X + mu->size_X - mu->layout_height + margin;
+		baseY = mu->box_Y + margin;
 
-		bxL = bxH - bxL + 1;
-		bxH = mu->size_Y - mu->layout_height + bxL;
-
-		drawLine(mu->dw, surface, &mu->screen, baseX, baseY,
-				baseX + bxL, baseY, mu->sch->menu_scrollbar);
-
-		drawLine(mu->dw, surface, &mu->screen, baseX, baseY + bxH,
-				baseX + bxL, baseY + bxH, mu->sch->menu_scrollbar);
+		margin = side - margin + 1;
+		side = mu->size_Y - mu->layout_height + margin;
 
 		drawLine(mu->dw, surface, &mu->screen, baseX, baseY,
-				baseX, baseY + bxH, mu->sch->menu_scrollbar);
+				baseX + margin, baseY, mu->sch->menu_scrollbar);
 
-		drawLine(mu->dw, surface, &mu->screen, baseX + bxL, baseY,
-				baseX + bxL, baseY + bxH, mu->sch->menu_scrollbar);
+		drawLine(mu->dw, surface, &mu->screen, baseX, baseY + side,
+				baseX + margin, baseY + side, mu->sch->menu_scrollbar);
+
+		drawLine(mu->dw, surface, &mu->screen, baseX, baseY,
+				baseX, baseY + side, mu->sch->menu_scrollbar);
+
+		drawLine(mu->dw, surface, &mu->screen, baseX + margin, baseY,
+				baseX + margin, baseY + side, mu->sch->menu_scrollbar);
 	}
 
 	while (*s != 0) {
@@ -612,6 +612,9 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 	N = 0;
 	N_visible = mu->size_Y / mu->layout_height;
 
+	margin = mu->layout_height / 4;
+	side = mu->layout_height / 2;
+
 	while (*s != 0) {
 
 		if (menuFuzzyMatch(mu, s, mu->fuzzy, light)) {
@@ -632,8 +635,10 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 
 				while (*fu != 0) {
 
-					drawFillRect(surface, mu->box_X + light[N_fu + 0],
-							topY, mu->box_X + light[N_fu + 1],
+					baseX = mu->box_X + margin;
+
+					drawFillRect(surface, baseX + light[N_fu + 0],
+							topY, baseX + light[N_fu + 1],
 							topY + mu->layout_height,
 							mu->sch->menu_fuzzy_light);
 
@@ -660,10 +665,9 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 					? mu->size_X - mu->layout_height
 					: mu->size_X;
 
-				drawFillRect(surface, mu->box_X + mu->layout_height / 2,
-						topY + mu->layout_height / 4,
-						mu->box_X + baseX - mu->layout_height / 2,
-						topY + mu->layout_height - mu->layout_height / 4, iCol);
+				drawFillRect(surface, mu->box_X + side,
+						topY + margin, mu->box_X + baseX - side,
+						topY + mu->layout_height - margin, iCol);
 			}
 			else {
 				const char	*text = s;
@@ -692,9 +696,8 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 					}
 				}
 
-				drawText(mu->dw, surface, mu->font, mu->box_X,
-						topY + mu->layout_height / 2, text,
-						TEXT_CENTERED_ON_Y, iCol);
+				drawText(mu->dw, surface, mu->font, mu->box_X + margin,
+						topY + side, text, TEXT_CENTERED_ON_Y, iCol);
 			}
 
 			N++;
@@ -706,9 +709,9 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 
 	if (mu->fuzzy[0] != 0) {
 
-		topY = mu->box_Y + mu->size_Y + mu->layout_height / 2;
+		topY = mu->box_Y + mu->size_Y + side;
 
-		drawText(mu->dw, surface, mu->font, mu->box_X, topY, mu->fuzzy,
+		drawText(mu->dw, surface, mu->font, mu->box_X + margin, topY, mu->fuzzy,
 				TEXT_CENTERED_ON_Y, mu->sch->menu_fuzzy_light);
 	}
 }

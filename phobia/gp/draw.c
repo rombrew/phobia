@@ -262,7 +262,7 @@ clipLine(clipBox_t *cb, double *xs, double *ys, double *xe, double *ye)
 }
 
 static void
-drawRudeLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, colType_t col)
+drawRoughLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, colType_t col)
 {
 	colType_t		*pixels = (colType_t *) surface->pixels;
 	int			pitch = surface->pitch / 4;
@@ -342,7 +342,7 @@ drawRudeLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, colType_t col
 }
 
 static void
-drawRudeLineDahed(draw_t *dw, SDL_Surface *surface, int xs, int ys, int xe, int ye,
+drawRoughLineDahed(draw_t *dw, SDL_Surface *surface, int xs, int ys, int xe, int ye,
 		colType_t col, int dash, int space)
 {
 	colType_t		*pixels = (colType_t *) surface->pixels;
@@ -448,16 +448,16 @@ void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 	xe = (int) fxe;
 	ye = (int) fye;
 
-	drawRudeLine(surface, xs, ys, xe, ye, col);
+	drawRoughLine(surface, xs, ys, xe, ye, col);
 
 	for (n = 1; n <= dw->thickness; ++n) {
 
 		if (xs == xe) {
 
-			drawRudeLine(surface, xs + n, ys, xe + n, ye, col);
+			drawRoughLine(surface, xs + n, ys, xe + n, ye, col);
 		}
 		else {
-			drawRudeLine(surface, xs, ys - n, xe, ye - n, col);
+			drawRoughLine(surface, xs, ys - n, xe, ye - n, col);
 		}
 	}
 }
@@ -484,7 +484,7 @@ void drawLineDashed(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 
 	context = dw->dash_context;
 
-	drawRudeLineDahed(dw, surface, xs, ys, xe, ye, col, dash, space);
+	drawRoughLineDahed(dw, surface, xs, ys, xe, ye, col, dash, space);
 
 	for (n = 1; n <= dw->thickness; ++n) {
 
@@ -492,12 +492,12 @@ void drawLineDashed(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 
 		if (xs == xe) {
 
-			drawRudeLineDahed(dw, surface, xs + n, ys, xe + n, ye,
+			drawRoughLineDahed(dw, surface, xs + n, ys, xe + n, ye,
 					col, dash, space);
 		}
 		else if (ys == ye) {
 
-			drawRudeLineDahed(dw, surface, xs, ys - n, xe, ye - n,
+			drawRoughLineDahed(dw, surface, xs, ys - n, xe, ye - n,
 					col, dash, space);
 		}
 	}
@@ -629,6 +629,19 @@ void drawLineCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 
 					*(canvas + x) = ncol;
 				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+						lw3 += w3dx * 15;
+
+						x += 15;
+					}
+				}
 
 				lw1 += w1dx;
 				lw2 += w2dx;
@@ -697,6 +710,19 @@ void drawLineCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 				else if (lw1 < l && lw1 >= - l) {
 
 					touch = 1;
+				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+						lw3 += w3dx * 15;
+
+						x += 15;
+					}
 				}
 
 				if (touch != 0) {
@@ -901,6 +927,19 @@ void drawLineCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 				else if (lw1 < l && lw1 >= - l) {
 
 					touch = 1;
+				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+						lw3 += w3dx * 15;
+
+						x += 15;
+					}
 				}
 
 				if (touch != 0) {
@@ -1298,6 +1337,18 @@ void drawDashCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 						*(canvas + x) = ncol;
 					}
 				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+
+						x += 15;
+					}
+				}
 
 				lw1 += w1dx;
 				lw2 += w2dx;
@@ -1401,6 +1452,18 @@ void drawDashCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 					}
 
 					*(canvas + x) = nb;
+				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+
+						x += 15;
+					}
 				}
 
 				lw1 += w1dx;
@@ -1574,6 +1637,18 @@ void drawDashCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 
 					*(canvas + x * 2 + 1) = nb;
 				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+
+						x += 15;
+					}
+				}
 
 				lw1 += w1dx;
 				lw2 += w2dx;
@@ -1743,6 +1818,19 @@ int drawLineTrial(draw_t *dw, clipBox_t *cb, double fxs, double fys,
 						*(trial + x) = ncol;
 						fill++; }
 				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+						lw3 += w3dx * 15;
+
+						x += 15;
+					}
+				}
 
 				lw1 += w1dx;
 				lw2 += w2dx;
@@ -1810,6 +1898,19 @@ int drawLineTrial(draw_t *dw, clipBox_t *cb, double fxs, double fys,
 				else if (lw1 < l && lw1 >= - l) {
 
 					touch = 1;
+				}
+				else {
+					nw1 = lw1 + w1dx * 15;
+
+					if (		(lw1 > l && nw1 > l)
+							|| (lw1 < - l && nw1 < - l)) {
+
+						lw1 = nw1;
+						lw2 += w2dx * 15;
+						lw3 += w3dx * 15;
+
+						x += 15;
+					}
 				}
 
 				if (touch != 0) {

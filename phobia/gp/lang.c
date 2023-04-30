@@ -146,6 +146,7 @@ void langFill(lang_t *la, int lang)
 
 			"    Duplicate figure\0"
 			"    Time unwrap\0"
+			"    Resample all\0"
 			"    Scale on X ...\0"
 			"    Scale on Y ...\0"
 			"R   Add B subtraction\0"
@@ -315,6 +316,7 @@ void langFill(lang_t *la, int lang)
 
 			"    Дублировать фигуру\0"
 			"    Развернуть время\0"
+			"    Передискретизация\0"
 			"    Масштаб по X ...\0"
 			"    Масштаб по Y ...\0"
 			"R   Добавить B вычитание\0"

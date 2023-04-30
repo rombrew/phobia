@@ -19,7 +19,6 @@ MK	= mkdir -p
 RM	= rm -rf
 
 #CC	= clang -target $(CROSS)
-#GDB	= /home/amaora/src/blackmagic/armv7m-none-eabi-gdb
 #CROSS	= armv7m-none-eabi
 
 CFLAGS	= -Os -flto=auto -g3 -pipe
@@ -50,6 +49,7 @@ CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,--no-warn-rwx-segment
+#LDFLAGS += -Wl,--print-memory-usage
 
 ifeq ($(HWMCU), STM32F405)
 LDFLAGS	+= -Wl,-T,hal/link_f405.ld

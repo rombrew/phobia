@@ -8,7 +8,8 @@
 
 enum {
 	TLM_MODE_DISABLED	= 0,
-	TLM_MODE_SINGLE_GRAB,
+	TLM_MODE_GRAB,
+	TLM_MODE_WATCH,
 	TLM_MODE_LIVE
 };
 
@@ -25,7 +26,8 @@ typedef struct {
 	int		span;
 	int		clock;
 
-	int		S, N;
+	int		skip;
+	int		N;
 }
 tlm_t;
 

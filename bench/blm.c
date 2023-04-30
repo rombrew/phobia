@@ -685,7 +685,7 @@ blm_pwm_solve(blm_t *m)
 
 	/* Get average POWER on PWM cycle.
 	 * */
-	m->wP = m->state[5] / m->pwm_dT;
+	m->instant_wP = m->state[5] / m->pwm_dT;
 	m->state[5] = 0.;
 }
 

@@ -54,6 +54,8 @@ typedef struct {
 	int			layout_height;
 	int			layout_long;
 
+	const char		*list_fmt;
+
 	draw_t			*dw;
 	scheme_t		*sch;
 }
@@ -69,6 +71,7 @@ enum {
 	EDIT_EVNO_CTRL_X,
 	EDIT_EVNO_CTRL_C,
 	EDIT_EVNO_CTRL_V,
+	EDIT_EVNO_TAB,
 };
 
 edit_t *editAlloc(draw_t *dw, scheme_t *sch);

@@ -500,7 +500,7 @@ reg_proc_auto_probe_speed_hold(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_auto_threshold(const reg_t *reg, float *lval, const float *rval)
+reg_proc_auto_zone_threshold(const reg_t *reg, float *lval, const float *rval)
 {
 	if (lval != NULL) {
 
@@ -595,7 +595,7 @@ reg_proc_auto_loop_speed(const reg_t *reg, float *lval, const float *rval)
 }
 
 static void
-reg_proc_halt(const reg_t *reg, float *lval, const float *rval)
+reg_proc_current_halt(const reg_t *reg, float *lval, const float *rval)
 {
 	float			halt, adjust;
 
@@ -1277,6 +1277,19 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
+		case ID_TLM_MODE:
+
+			switch (val) {
+
+				PM_SFI_CASE(TLM_MODE_DISABLED);
+				PM_SFI_CASE(TLM_MODE_GRAB);
+				PM_SFI_CASE(TLM_MODE_WATCH);
+				PM_SFI_CASE(TLM_MODE_LIVE);
+
+				default: break;
+			}
+			break;
+
 		default: break;
 	}
 }
@@ -1543,11 +1556,11 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fault_current_tol,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_accuracy_tol,,,	"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.fault_terminal_tol,,,	"V",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.fault_current_halt,,,	"A",	"%3f",	REG_CONFIG, &reg_proc_halt, NULL),
+	REG_DEF(pm.fault_current_halt,,,	"A",	"%3f",	REG_CONFIG, &reg_proc_current_halt, NULL),
 	REG_DEF(pm.fault_voltage_halt,,,	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.vsi_DC,,,			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_lpf_DC,,,		"",	"%4f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_DC,,,			"",	"%2f",	REG_READ_ONLY, &reg_proc_percent, NULL),
+	REG_DEF(pm.vsi_lpf_DC,,,		"",	"%2f",	REG_READ_ONLY, &reg_proc_percent, NULL),
 	REG_DEF(pm.vsi_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.vsi_mask_XF,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 
@@ -1639,7 +1652,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.zone_speed_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.zone_speed_noise, _bemf,,	"V",	"%3f",	0, &reg_proc_bemf, NULL),
-	REG_DEF(pm.zone_speed_threshold,,, "rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_threshold, NULL),
+	REG_DEF(pm.zone_speed_threshold,,, "rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_zone_threshold, NULL),
 	REG_DEF(pm.zone_speed_threshold, _bemf,, "V",	"%3f",	0, &reg_proc_bemf, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
@@ -1798,6 +1811,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(tlm.grabfreq,,,			"Hz",	"%i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(tlm.livefreq,,,			"Hz",	"%i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(tlm.mode,,,			"",	"%i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(tlm.reg_ID, 0, [0],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(tlm.reg_ID, 1, [1],		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
@@ -2053,7 +2067,7 @@ SH_DEF(reg)
 	}
 }
 
-SH_DEF(export_reg)
+SH_DEF(plain_reg)
 {
 	reg_val_t		rval;
 	const reg_t		*reg;

@@ -207,6 +207,7 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->window_size_y = GP_MIN_SIZE_Y;
 	rd->timecol = -1;
 	rd->shortfilename = 0;
+	rd->drawboost = 0;
 
 	rd->mk_config.delim = '.';
 	strcpy(rd->mk_config.space, " \t;");
@@ -634,19 +635,21 @@ void legacy_readConfigGRM(read_t *rd, const char *path, const char *confile, con
 
 						sprintf(rd->page[pN].fig[fN].label, "fig.%i.%i", fN, cY);
 
-						if (scale != 1. || offset != 0.) {
-
-							rd->page[pN].fig[fN].ops[1].busy = SUBTRACT_SCALE;
-							rd->page[pN].fig[fN].ops[1].scale = scale;
-							rd->page[pN].fig[fN].ops[1].offset = offset;
-						}
+						N = 0;
 
 						if (cY != cYm) {
 
-							rd->page[pN].fig[fN].ops[1].busy = SUBTRACT_BINARY_SUBTRACTION;
-							rd->page[pN].fig[fN].ops[1].column_2 = cYm;
-							rd->page[pN].fig[fN].ops[1].scale = scale;
-							rd->page[pN].fig[fN].ops[1].offset = offset;
+							rd->page[pN].fig[fN].bY[N].busy = SUBTRACT_BINARY_SUBTRACTION;
+							rd->page[pN].fig[fN].bY[N].column_2 = cYm;
+
+							N++;
+						}
+
+						if (scale != 1. || offset != 0.) {
+
+							rd->page[pN].fig[fN].bY[N].busy = SUBTRACT_SCALE;
+							rd->page[pN].fig[fN].bY[N].arg_1 = scale;
+							rd->page[pN].fig[fN].bY[N].arg_2 = offset;
 						}
 
 						fN++;
@@ -1318,10 +1321,7 @@ LEGACY_Read(read_t *rd, int dN)
 int readUpdate(read_t *rd)
 {
 	FILE		*fd;
-	int		dN, bN;
-	int		file_N = 0;
-	int		ulN = 0;
-	int		tTOP;
+	int		dN, bN, tTOP, file_N = 0, ulN = 0;
 
 	for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
 
@@ -1391,7 +1391,7 @@ int readUpdate(read_t *rd)
 			}
 			while (SDL_GetTicks() < tTOP);
 
-			plotDataSubtract(rd->pl, dN, -1);
+			plotDataSubtractResidual(rd->pl, dN);
 		}
 	}
 
@@ -1446,7 +1446,7 @@ configToken(read_t *rd, parse_t *pa)
 	do { c = config_getc(pa); }
 	while (strchr(rd->mk_config.space, c) != NULL);
 
-	if (c == -1) {
+	if (c < 0) {
 
 		r = -1;
 	}
@@ -1517,6 +1517,34 @@ configDataMap(read_t *rd, parse_t *pa)
 	}
 }
 
+static int
+configGetSubtract(read_t *rd, int pN, int fN, int axis)
+{
+	int		N, sN = -1;
+
+	for (N = 0; N < READ_SUBTRACT_MAX; ++N) {
+
+		if (axis == 0) {
+
+			if (rd->page[pN].fig[fN].bX[N].busy == SUBTRACT_FREE) {
+
+				sN = N;
+				break;
+			}
+		}
+		else if (axis == 1) {
+
+			if (rd->page[pN].fig[fN].bY[N].busy == SUBTRACT_FREE) {
+
+				sN = N;
+				break;
+			}
+		}
+	}
+
+	return sN;
+}
+
 static void
 configParseFSM(read_t *rd, parse_t *pa)
 {
@@ -1525,7 +1553,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 	char 		lname[READ_FILE_PATH_MAX];
 
 	char		*lbuf, *tbuf = pa->tbuf;
-	int		r, failed;
+	int		r, failed, N;
 
 	double		argd[2];
 	int		argi[4];
@@ -1540,7 +1568,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 	do {
 		r = configToken(rd, pa);
 
-		if (r == -1) break;
+		if (r < 0) break;
 		else if (r == 1) {
 
 			failed = 0;
@@ -1985,6 +2013,27 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
+			else if (strcmp(tbuf, "drawboost") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] >= 0) {
+
+						failed = 0;
+						rd->drawboost = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid drawboost %i", argi[0]);
+					}
+				}
+				while (0);
+			}
 			else if (strcmp(tbuf, "interpolation") == 0) {
 
 				failed = 1;
@@ -2232,7 +2281,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					if (rd->bind_N == -1) {
+					if (rd->bind_N < 0) {
 
 						sprintf(msg_tbuf, "no dataset selected");
 						break;
@@ -2355,7 +2404,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 				do {
 					r = configToken(rd, pa);
 
-					if (rd->bind_N == -1) {
+					if (rd->bind_N < 0) {
 
 						sprintf(msg_tbuf, "no dataset selected");
 						break;
@@ -2412,7 +2461,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
 					else break;
 
-					if (rd->bind_N == -1) {
+					if (rd->bind_N < 0) {
 
 						sprintf(msg_tbuf, "no dataset selected");
 						break;
@@ -2443,7 +2492,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					r = configToken(rd, pa);
 
-					if (rd->page_N == -1) {
+					if (rd->page_N < 0) {
 
 						sprintf(msg_tbuf, "no page selected");
 						break;
@@ -2488,7 +2537,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stod(&rd->mk_config, argd + 1, tbuf) != NULL) ;
 					else break;
 
-					if (rd->page_N == -1) {
+					if (rd->page_N < 0) {
 
 						sprintf(msg_tbuf, "no page selected");
 						break;
@@ -2526,13 +2575,13 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					r = configToken(rd, pa);
 
-					if (rd->page_N == -1) {
+					if (rd->page_N < 0) {
 
 						sprintf(msg_tbuf, "no page selected");
 						break;
 					}
 
-					if (rd->bind_N == -1) {
+					if (rd->bind_N < 0) {
 
 						sprintf(msg_tbuf, "no dataset selected");
 						break;
@@ -2584,7 +2633,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
 					else break;
 
-					if (rd->figure_N == -1) {
+					if (rd->figure_N < 0) {
 
 						sprintf(msg_tbuf, "no figure selected");
 						break;
@@ -2623,18 +2672,237 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stod(&rd->mk_config, &argd[1], tbuf) != NULL) ;
 					else break;
 
-					if (rd->figure_N == -1) {
+					if (rd->figure_N < 0) {
 
 						sprintf(msg_tbuf, "no figure selected");
 						break;
 					}
 
-					if (argi[0] == 0 || argi[0] == 1) {
+					if (argi[0] == 0) {
 
-						failed = 0;
-						rd->page[rd->page_N].fig[rd->figure_N].ops[argi[0]].busy = SUBTRACT_SCALE;
-						rd->page[rd->page_N].fig[rd->figure_N].ops[argi[0]].scale = argd[0];
-						rd->page[rd->page_N].fig[rd->figure_N].ops[argi[0]].offset = argd[1];
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = SUBTRACT_SCALE;
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argd[0];
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_2 = argd[1];
+						}
+					}
+					else if (argi[0] == 1) {
+
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = SUBTRACT_SCALE;
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argd[0];
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_2 = argd[1];
+						}
+					}
+					else {
+						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "subtract") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					r = configToken(rd, pa);
+
+					if (r == 0) {
+
+						if (strcmp(tbuf, "sub") == 0) {
+
+							argi[1] = SUBTRACT_BINARY_SUBTRACTION;
+						}
+						else if (strcmp(tbuf, "add") == 0) {
+
+							argi[1] = SUBTRACT_BINARY_ADDITION;
+						}
+						else if (strcmp(tbuf, "mul") == 0) {
+
+							argi[1] = SUBTRACT_BINARY_MULTIPLICATION;
+						}
+						else if (strcmp(tbuf, "hyp") == 0) {
+
+							argi[1] = SUBTRACT_BINARY_HYPOTENUSE;
+						}
+						else {
+							sprintf(msg_tbuf, "invalid subtract operation \"%.80s\"", tbuf);
+							break;
+						}
+					}
+
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+					else break;
+
+					if (rd->figure_N < 0) {
+
+						sprintf(msg_tbuf, "no figure selected");
+						break;
+					}
+
+					if (argi[0] == 0) {
+
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_2 = argi[2];
+						}
+					}
+					else if (argi[0] == 1) {
+
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_2 = argi[2];
+						}
+					}
+					else {
+						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "filter") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					r = configToken(rd, pa);
+
+					if (r == 0) {
+
+						if (strcmp(tbuf, "diff") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_DIFFERENCE;
+						}
+						else if (strcmp(tbuf, "csum") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_CUMULATIVE;
+						}
+						else if (strcmp(tbuf, "bit") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_BITMASK;
+
+							r = configToken(rd, pa);
+
+							if (r == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else break;
+
+							r = configToken(rd, pa);
+
+							if (r == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
+							else break;
+						}
+						else if (strcmp(tbuf, "lpf") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_LOW_PASS;
+
+							r = configToken(rd, pa);
+
+							if (r == 0 && stod(&rd->mk_config, &argd[0], tbuf) != NULL) ;
+							else break;
+						}
+						else {
+							sprintf(msg_tbuf, "invalid filter operation \"%.80s\"", tbuf);
+							break;
+						}
+					}
+
+					if (rd->figure_N < 0) {
+
+						sprintf(msg_tbuf, "no figure selected");
+						break;
+					}
+
+					if (argi[0] == 0) {
+
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
+
+							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_2 = argi[3];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_LOW_PASS) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argd[0];
+							}
+						}
+					}
+					else if (argi[0] == 1) {
+
+						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
+
+						if (N < 0) {
+
+							sprintf(msg_tbuf, "no free subtract found");
+						}
+						else {
+							failed = 0;
+
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
+
+							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_2 = argi[3];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_LOW_PASS) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argd[0];
+							}
+						}
 					}
 					else {
 						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
@@ -2673,7 +2941,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						failed = 0;
 
-						if (rd->figure_N == -1) {
+						if (rd->figure_N < 0) {
 
 							rd->pl->default_drawing = argi[0];
 							rd->pl->default_width = argi[1];
@@ -3144,9 +3412,9 @@ timeDataMap(plot_t *pl, int dN, int cN)
 }
 
 static int
-scaleDataMap(plot_t *pl, int dN, int cN, fig_ops_t *ops)
+scaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
 {
-	int		gN, cMAP;
+	int		N, gN, cMAP;
 
 	if (dN < 0 || dN >= PLOT_DATASET_MAX) {
 
@@ -3184,27 +3452,38 @@ scaleDataMap(plot_t *pl, int dN, int cN, fig_ops_t *ops)
 		}
 	}
 
-	if (ops->busy == SUBTRACT_SCALE) {
+	for (N = 0; N < READ_SUBTRACT_MAX; ++N) {
 
-		cMAP = plotGetSubtractScale(pl, dN, cN,
-				ops->scale, ops->offset);
-
-		if (cMAP != -1) {
-
-			cN = cMAP;
-		}
-	}
-	else if (ops->busy == SUBTRACT_BINARY_SUBTRACTION) {
-
-		cMAP = plotGetSubtractBinary(pl, dN, ops->busy,
-				cN, ops->column_2);
-
-		if (cMAP != -1) {
-
-			cN = cMAP;
+		if (sb[N].busy == SUBTRACT_SCALE) {
 
 			cMAP = plotGetSubtractScale(pl, dN, cN,
-					ops->scale, ops->offset);
+					sb[N].arg_1, sb[N].arg_2);
+
+			if (cMAP != -1) {
+
+				cN = cMAP;
+			}
+		}
+		else if (	sb[N].busy == SUBTRACT_BINARY_SUBTRACTION
+				|| sb[N].busy == SUBTRACT_BINARY_ADDITION
+				|| sb[N].busy == SUBTRACT_BINARY_MULTIPLICATION
+				|| sb[N].busy == SUBTRACT_BINARY_HYPOTENUSE) {
+
+			cMAP = plotGetSubtractBinary(pl, dN, sb[N].busy,
+					cN, sb[N].column_2);
+
+			if (cMAP != -1) {
+
+				cN = cMAP;
+			}
+		}
+		else if (	sb[N].busy == SUBTRACT_FILTER_DIFFERENCE
+				|| sb[N].busy == SUBTRACT_FILTER_CUMULATIVE
+				|| sb[N].busy == SUBTRACT_FILTER_BITMASK
+				|| sb[N].busy == SUBTRACT_FILTER_LOW_PASS) {
+
+			cMAP = plotGetSubtractFilter(pl, dN, cN, sb[N].busy,
+					sb[N].arg_1, sb[N].arg_2);
 
 			if (cMAP != -1) {
 
@@ -3239,14 +3518,17 @@ void readSelectPage(read_t *rd, int pN)
 
 	plotDataRangeCacheSubtractClean(pl);
 	plotDataSubtractClean(pl);
+	plotDataSubtractPostponed(pl);
 
 	for (N = 0; N < PLOT_FIGURE_MAX; ++N) {
 
 		if (pg->fig[N].busy != 0) {
 
 			cX = timeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
-			cX = scaleDataMap(pl, pg->fig[N].dN, cX, &pg->fig[N].ops[0]);
-			cY = scaleDataMap(pl, pg->fig[N].dN, pg->fig[N].cY, &pg->fig[N].ops[1]);
+			cY = pg->fig[N].cY;
+
+			cX = scaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
+			cY = scaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
 
 			plotFigureAdd(pl, N, pg->fig[N].dN, cX, cY, pg->fig[N].aX,
 					pg->fig[N].aY, pg->fig[N].label);
@@ -3269,6 +3551,8 @@ void readSelectPage(read_t *rd, int pN)
 					pg->ax[N].offset, AXIS_SLAVE_ENABLE);
 		}
 	}
+
+	plotDataSubtractAlternate(rd->pl);
 
 	plotLayout(pl);
 	plotAxisScaleDefault(pl);
@@ -3385,6 +3669,8 @@ void readCombinePage(read_t *rd, int pN, int remap)
 	if (pg->busy == 0)
 		return;
 
+	plotDataSubtractPostponed(pl);
+
 	for (N = 0; N < PLOT_AXES_MAX; ++N)
 		map[N] = -1;
 
@@ -3398,17 +3684,17 @@ void readCombinePage(read_t *rd, int pN, int remap)
 
 			if (pg->fig[N].busy != 0) {
 
-				if (map[pg->fig[N].aX] == -1) {
+				if (map[pg->fig[N].aX] < 0) {
 
 					aX = combineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cX);
-					aX = (aX == -1) ? combineGetFreeAxis(pl, map) : aX;
+					aX = (aX < 0) ? combineGetFreeAxis(pl, map) : aX;
 					map[pg->fig[N].aX] = aX;
 				}
 
-				if (map[pg->fig[N].aY] == -1) {
+				if (map[pg->fig[N].aY] < 0) {
 
 					aY = combineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cY);
-					aY = (aY == -1) ? combineGetFreeAxis(pl, map) : aY;
+					aY = (aY < 0) ? combineGetFreeAxis(pl, map) : aY;
 					map[pg->fig[N].aY] = aY;
 				}
 			}
@@ -3421,7 +3707,7 @@ void readCombinePage(read_t *rd, int pN, int remap)
 
 			fN = plotGetFreeFigure(pl);
 
-			if (fN == -1) {
+			if (fN < 0) {
 
 				ERROR("No free figure to combine\n");
 				break;
@@ -3431,12 +3717,12 @@ void readCombinePage(read_t *rd, int pN, int remap)
 			aY = (map[pg->fig[N].aY] != -1) ? map[pg->fig[N].aY] : pg->fig[N].aY;
 
 			cX = timeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
-			cX = scaleDataMap(pl, pg->fig[N].dN, cX, &pg->fig[N].ops[0]);
-			cY = scaleDataMap(pl, pg->fig[N].dN, pg->fig[N].cY, &pg->fig[N].ops[1]);
+			cY = pg->fig[N].cY;
 
-			plotFigureAdd(pl, fN, pg->fig[N].dN, cX, cY, aX, aY, "");
+			cX = scaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
+			cY = scaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
 
-			sprintf(pl->figure[fN].label, "%i: %.75s", pN, pg->fig[N].label);
+			plotFigureAdd(pl, fN, pg->fig[N].dN, cX, cY, aX, aY, pg->fig[N].label);
 
 			if (pg->fig[N].drawing != -1) {
 
@@ -3464,6 +3750,8 @@ void readCombinePage(read_t *rd, int pN, int remap)
 					pg->ax[N].offset, AXIS_SLAVE_ENABLE);
 		}
 	}
+
+	plotDataSubtractAlternate(rd->pl);
 
 	plotLayout(pl);
 	plotAxisScaleDefault(pl);

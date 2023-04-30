@@ -668,7 +668,6 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "net_survey",		LINK_MODE_EPCAN_MAP },
 		{ "net_assign",		LINK_MODE_UNABLE_WARNING },
 		{ "net_revoke",		LINK_MODE_UNABLE_WARNING },
-		{ "export_reg",		LINK_MODE_DATA_GRAB },
 
 		{ NULL, 0 }	/* END */
 	},
