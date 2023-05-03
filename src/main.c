@@ -467,6 +467,9 @@ default_flash_load()
 	hal.ADC_knob_ratio = HW_ADC_KNOB_R2 / (HW_ADC_KNOB_R1 + HW_ADC_KNOB_R2);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
+	hal.ADC_sampling_time = ADC_SMP_28;
+	hal.ADC_sampling_advance = ADC_SAMPLING_ADVANCE;
+
 	hal.DPS_mode = DPS_DISABLED;
 	hal.PPM_mode = PPM_DISABLED;
 	hal.PPM_timebase = 2000000U;

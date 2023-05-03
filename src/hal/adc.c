@@ -5,17 +5,6 @@
 #include "freertos/FreeRTOS.h"
 #include "cmsis/stm32xx.h"
 
-enum {
-	ADC_SMP_3	= 0,	/* ~ 0.07 (us) */
-	ADC_SMP_15,		/* ~ 0.35 (us) */
-	ADC_SMP_28,		/* ~ 0.66 (us) */
-	ADC_SMP_56,		/* ~ 1.33 (us) */
-	ADC_SMP_84,		/* ~ 2.00 (us) */
-	ADC_SMP_112,		/* ~ 2.66 (us) */
-	ADC_SMP_144,		/* ~ 3.42 (us) */
-	ADC_SMP_480,		/* ~ 11.4 (us) */
-};
-
 typedef struct {
 
 	SemaphoreHandle_t	mutex_sem;
@@ -26,8 +15,6 @@ static priv_ADC_t		priv_ADC;
 
 void irq_ADC()
 {
-	int			xADC;
-
 	if (ADC3->SR & ADC_SR_JEOC) {
 
 		ADC1->SR = ~ADC_SR_JEOC;
@@ -35,67 +22,26 @@ void irq_ADC()
 		ADC3->SR = ~ADC_SR_JEOC;
 
 #if (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU)
-
-		xADC = (int) ADC1->JDR1;
-		hal.ADC_current_A = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC2->JDR1;
-		hal.ADC_current_B = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC3->JDR1;
-		hal.ADC_voltage_U = (float) (xADC) * hal.const_ADC.GU;
-
+		hal.ADC_current_A = (float) ((int) ADC1->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_current_B = (float) ((int) ADC2->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_voltage_U = (float) ((int) ADC3->JDR1) * hal.const_ADC.GU;
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU_TTT)
-
-		xADC = (int) ADC1->JDR1;
-		hal.ADC_current_A = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC2->JDR1;
-		hal.ADC_current_B = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC3->JDR1;
-		hal.ADC_voltage_U = (float) (xADC) * hal.const_ADC.GU;
-
-		xADC = (int) ADC1->JDR2;
-		hal.ADC_voltage_A = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
-		xADC = (int) ADC2->JDR2;
-		hal.ADC_voltage_B = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
-		xADC = (int) ADC3->JDR2;
-		hal.ADC_voltage_C = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
+		hal.ADC_current_A = (float) ((int) ADC1->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_current_B = (float) ((int) ADC2->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_voltage_U = (float) ((int) ADC3->JDR1) * hal.const_ADC.GU;
+		hal.ADC_voltage_A = (float) ((int) ADC1->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_B = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_C = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UXX)
-
-		/* TODO */
-
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TXX)
-
-		xADC = (int) ADC1->JDR1;
-		hal.ADC_current_A = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC2->JDR1;
-		hal.ADC_current_B = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC3->JDR1;
-		hal.ADC_current_C = (float) (xADC - 2047) * hal.const_ADC.GA;
-
-		xADC = (int) ADC1->JDR2;
-		hal.ADC_voltage_U = (float) (xADC) * hal.const_ADC.GU;
-
-		xADC = (int) ADC2->JDR2;
-		hal.ADC_voltage_A = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
-		xADC = (int) ADC3->JDR2;
-		hal.ADC_voltage_B = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
-		xADC = (int) ADC1->JDR3;
-		hal.ADC_voltage_C = (float) (xADC) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-
+		hal.ADC_current_A = (float) ((int) ADC1->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_current_B = (float) ((int) ADC2->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_current_C = (float) ((int) ADC3->JDR1 - 2047) * hal.const_ADC.GA;
+		hal.ADC_voltage_U = (float) ((int) ADC1->JDR2) * hal.const_ADC.GU;
+		hal.ADC_voltage_A = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_B = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_C = (float) ((int) ADC1->JDR3) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
-
-		/* TODO */
-
 #endif /* HW_ADC_SAMPLING_SEQUENCE */
 
 		EXTI->SWIER = EXTI_SWIER_SWIER0;
@@ -107,6 +53,18 @@ void irq_EXTI0()
 	EXTI->PR = EXTI_PR_PR0;
 
 	ADC_IRQ();
+}
+
+static void
+ADC_set_SMPR(ADC_TypeDef *pADC, int xCH, int xSMP)
+{
+	if (xCH < 10) {
+
+		pADC->SMPR2 |= xSMP << (xCH * 3);
+	}
+	else {
+		pADC->SMPR1 |= xSMP << ((xCH - 10) * 3);
+	}
 }
 
 void ADC_const_build()
@@ -138,18 +96,29 @@ void ADC_const_build()
 #ifdef HW_HAVE_ANALOG_KNOB
 	hal.const_ADC.GK = hal.ADC_reference_voltage / hal.ADC_knob_ratio;
 #endif /* HW_HAVE_ANALOG_KNOB */
-}
 
-static void
-ADC_set_SMPR(ADC_TypeDef *pADC, int xCH, int xSMP)
-{
-	if (xCH < 10) {
-
-		pADC->SMPR2 |= xSMP << (xCH * 3);
-	}
-	else {
-		pADC->SMPR1 |= xSMP << ((xCH - 10) * 3);
-	}
+#if (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU)
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), hal.ADC_sampling_time);
+#elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU_TTT)
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C), hal.ADC_sampling_time);
+#elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UXX)
+#elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TXX)
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_CURRENT_C), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B), hal.ADC_sampling_time);
+	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C), hal.ADC_sampling_time);
+#elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
+#endif /* HW_ADC_SAMPLING_SEQUENCE */
 }
 
 void ADC_startup()
@@ -211,69 +180,34 @@ void ADC_startup()
 	ADC3->SQR1 = 0;
 
 #if (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU)
-
 	ADC1->JSQR = XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 15;
 	ADC2->JSQR = XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 15;
 	ADC3->JSQR = XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 15;
-
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), ADC_SMP_28);
-	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), ADC_SMP_28);
-	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), ADC_SMP_28);
-
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABU_TTT)
-
 	ADC1->JSQR = ADC_JSQR_JL_0
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 15);
-
 	ADC2->JSQR = ADC_JSQR_JL_0
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B) << 15);
-
 	ADC3->JSQR = ADC_JSQR_JL_0
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C) << 15);
-
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), ADC_SMP_28);
-	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), ADC_SMP_28);
-	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), ADC_SMP_28);
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A), ADC_SMP_28);
-	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B), ADC_SMP_28);
-	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C), ADC_SMP_28);
-
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UXX)
-
-	/* TODO */
-
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TXX)
-
 	ADC1->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_A) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C) << 15);
-
 	ADC2->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_B) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VREFINT) << 15);
-
 	ADC3->JSQR = ADC_JSQR_JL_1
 		| (XGPIO_GET_CH(GPIO_ADC_CURRENT_C) << 5)
 		| (XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B) << 10)
 		| (XGPIO_GET_CH(GPIO_ADC_VREFINT) << 15);
-
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_CURRENT_A), ADC_SMP_28);
-	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_CURRENT_B), ADC_SMP_28);
-	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_CURRENT_C), ADC_SMP_28);
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_U), ADC_SMP_28);
-	ADC_set_SMPR(ADC2, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_A), ADC_SMP_28);
-	ADC_set_SMPR(ADC3, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_B), ADC_SMP_28);
-	ADC_set_SMPR(ADC1, XGPIO_GET_CH(GPIO_ADC_VOLTAGE_C), ADC_SMP_28);
-
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
-
-	/* TODO */
-
 #endif /* HW_ADC_SAMPLING_SEQUENCE */
 
 	/* Update CONST.

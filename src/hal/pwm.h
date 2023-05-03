@@ -1,6 +1,8 @@
 #ifndef _H_PWM_
 #define _H_PWM_
 
+#define ADC_SAMPLING_ADVANCE		(110)
+
 #define GPIO_TIM1_CH1N			XGPIO_DEF4('B', 13, 0, 1)
 #define GPIO_TIM1_CH2N			XGPIO_DEF4('B', 14, 0, 1)
 #define GPIO_TIM1_CH3N			XGPIO_DEF4('B', 15, 0, 1)

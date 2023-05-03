@@ -2,7 +2,6 @@
 #include "cmsis/stm32xx.h"
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2U)
-#define TIM_ADC_ADVANCE			80
 
 void irq_TIM1_UP_TIM10() { }
 
@@ -50,7 +49,7 @@ void PWM_startup()
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
+	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sampling_advance;
 	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | DTG;
 
 	/* Start TIM1.
@@ -83,7 +82,7 @@ void PWM_configure()
 	DTG = PWM_build();
 
 	TIM1->ARR = hal.PWM_resolution;
-	TIM1->CCR4 = hal.PWM_resolution - TIM_ADC_ADVANCE;
+	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sampling_advance;
 
 	MODIFY_REG(TIM1->BDTR, 0xFFU, DTG);
 }

@@ -53,6 +53,12 @@ label 1 "(V)"
 figure 10 11 "pm.vsi_X / pm.vsi_Y"
 drawing dot 4
 
+page "Absolute Current"
+label 1 "(A)"
+figure 0 20 "m.iA"
+figure 0 21 "m.iB"
+figure 0 22 "m.iC"
+
 page "------------------------------"
 
 include "/tmp/pm-auto.gp"

@@ -1028,7 +1028,7 @@ gpMakeDatasetMenu(gp_t *gp)
 	plot_t		*pl = gp->pl;
 	read_t		*rd = gp->rd;
 	char		*la = gp->la_menu;
-	int		N, cN, gN, dN, mbUSAGE, mbUNC, lzPC, menulen, fnlen;
+	int		N, cN, gN, dN, mbUSAGE, mbRAW, mbCACHE, lzPC, menulen, fnlen;
 
 	menulen = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
 
@@ -1097,12 +1097,13 @@ gpMakeDatasetMenu(gp_t *gp)
 	la += strlen(la) + 1;
 
 	mbUSAGE = plotDataMemoryUsage(pl, dN) / 1048576UL;
-	mbUNC = plotDataMemoryUncompressed(pl, dN) / 1048576UL;
+	mbRAW = plotDataMemoryUncompressed(pl, dN) / 1048576UL;
+	mbCACHE = plotDataMemoryCached(pl, dN) / 1048576UL;
 
-	lzPC = (mbUNC != 0) ? 100U * mbUSAGE / mbUNC : 0;
+	lzPC = (mbRAW != 0) ? 100U * mbUSAGE / mbRAW : 0;
 
 	sprintf(gp->sbuf[0], gp->la->dataset_menu[3],
-			rd->data[dN].length_N, mbUSAGE, lzPC);
+			rd->data[dN].length_N, mbUSAGE, lzPC, mbCACHE);
 
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;

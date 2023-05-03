@@ -30,10 +30,10 @@ electric transport.
   symmetrical channels.
 
 * Advanced SVPWM scheme provides:
-	* Reduced switching losses (clamp to GND) and fully utilised DC link voltage.
+	* Reduced switching losses and fully utilised DC link voltage.
+	* Reduced voltage distortion for precise control.
 	* Voltage hopping to get accurate ADC measurements with inline current sensors.
 	* Prevent bootstrap circuit undervoltage condition.
-	* Optional reduced ripple mode (clamp to middle) for precise control.
 
 * Terminal voltage measurements (TVM):
 	* Compensation of the voltage distortion caused by Dead-Time insertion.

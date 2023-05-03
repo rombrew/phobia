@@ -2400,8 +2400,16 @@ page_hal(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	reg_float(pub, "hal.USART_baud_rate", "USART baudrate");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "hal.PWM_frequency", "PWM frequency");
 	reg_float(pub, "hal.PWM_deadtime", "PWM deadtime");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "hal.ADC_reference_voltage", "ADC reference voltage");
 	reg_float(pub, "hal.ADC_shunt_resistance", "Current shunt resistance");
 	reg_float(pub, "hal.ADC_amplifier_gain", "Current amplifier gain");
@@ -2409,6 +2417,12 @@ page_hal(struct public *pub)
 	reg_float(pub, "hal.ADC_terminal_ratio", "Terminal voltage ratio");
 	reg_float(pub, "hal.ADC_terminal_bias", "Terminal voltage bias");
 	reg_float(pub, "hal.ADC_knob_ratio", "Knob voltage ratio");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "hal.ADC_sampling_time", "ADC sampling time", 0);
+	reg_float(pub, "hal.ADC_sampling_advance", "ADC sampling advance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2966,13 +2980,17 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
 	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
-	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine saliency", 0);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.config_VSI_CIRCULAR", "Circular SVPWM clamping");
-	reg_enum_toggle(pub, "pm.config_VSI_PRECISE", "Precise SVPWM in middle");
+	reg_enum_combo(pub, "pm.config_VSI_ZERO", "Zero-Sequence modulation", 1);
+	reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
+	reg_enum_toggle(pub, "pm.config_VSI_STRICT", "Strict rules of clearance");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
 	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "Sensorless estimate", 1);
 	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Rotor position SENSOR", 1);
@@ -2987,6 +3005,7 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "HFI flux polarity");
 	}
 
+	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine saliency", 0);
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
 

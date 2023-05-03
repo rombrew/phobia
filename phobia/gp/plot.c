@@ -318,6 +318,30 @@ unsigned long long plotDataMemoryUncompressed(plot_t *pl, int dN)
 	return bUSAGE;
 }
 
+unsigned long long plotDataMemoryCached(plot_t *pl, int dN)
+{
+	int			N;
+	unsigned long long	bUSAGE;
+
+	if (dN < 0 || dN >= PLOT_DATASET_MAX) {
+
+		ERROR("Dataset number is out of range\n");
+		return 0;
+	}
+
+	bUSAGE = 0;
+
+	for (N = 0; N < PLOT_CHUNK_CACHE; ++N) {
+
+		if (pl->data[dN].cache[N].raw != NULL) {
+
+			bUSAGE += pl->data[dN].chunk_bSIZE;
+		}
+	}
+
+	return bUSAGE;
+}
+
 static int
 plotDataCacheGetNode(plot_t *pl, int dN, int kN)
 {
@@ -1519,6 +1543,7 @@ void plotDataInsert(plot_t *pl, int dN, const fval_t *row)
 		place += (cN + PLOT_SUBTRACT) * jN;
 
 		memcpy(place, row, cN * sizeof(fval_t));
+		memset(place + cN, 0, PLOT_SUBTRACT * sizeof(fval_t));
 
 		tN = (tN < lN - 1) ? tN + 1 : 0;
 

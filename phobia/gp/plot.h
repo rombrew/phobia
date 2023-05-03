@@ -40,8 +40,8 @@
 #define PLOT_DATASET_MAX			10
 #define PLOT_CHUNK_SIZE				16777216
 #define PLOT_CHUNK_MAX				2000
-#define PLOT_CHUNK_CACHE			8
-#define PLOT_RCACHE_SIZE			40
+#define PLOT_CHUNK_CACHE			4
+#define PLOT_RCACHE_SIZE			32
 #define PLOT_SLICE_SPAN				4
 #define PLOT_AXES_MAX				9
 #define PLOT_FIGURE_MAX				8
@@ -438,6 +438,8 @@ void plotFontOpen(plot_t *pl, const char *file, int ptsize, int style);
 
 unsigned long long plotDataMemoryUsage(plot_t *pl, int dN);
 unsigned long long plotDataMemoryUncompressed(plot_t *pl, int dN);
+unsigned long long plotDataMemoryCached(plot_t *pl, int dN);
+
 void plotDataAlloc(plot_t *pl, int dN, int cN, int lN);
 void plotDataResize(plot_t *pl, int dN, int lN);
 int plotDataSpaceLeft(plot_t *pl, int dN);

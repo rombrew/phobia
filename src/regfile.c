@@ -918,6 +918,19 @@ reg_format_enum(const reg_t *reg)
 
 	switch (reg_ID) {
 
+		case ID_HAL_ADC_SAMPLING_TIME:
+
+			switch (val) {
+
+				PM_SFI_CASE(ADC_SMP_3);
+				PM_SFI_CASE(ADC_SMP_15);
+				PM_SFI_CASE(ADC_SMP_28);
+				PM_SFI_CASE(ADC_SMP_56);
+
+				default: break;
+			}
+			break;
+
 		case ID_HAL_DPS_MODE:
 
 			switch (val) {
@@ -1100,20 +1113,9 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_PM_CONFIG_SALIENCY:
-
-			switch (val) {
-
-				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
-				PM_SFI_CASE(PM_SALIENCY_POSITIVE);
-
-				default: break;
-			}
-			break;
-
 		case ID_PM_CONFIG_TVM:
-		case ID_PM_CONFIG_VSI_CIRCULAR:
-		case ID_PM_CONFIG_VSI_PRECISE:
+		case ID_PM_CONFIG_VSI_CLAMP:
+		case ID_PM_CONFIG_VSI_STRICT:
 		case ID_PM_CONFIG_LU_FORCED:
 		case ID_PM_CONFIG_HFI_POLARITY:
 		case ID_PM_CONFIG_RELUCTANCE:
@@ -1126,6 +1128,18 @@ reg_format_enum(const reg_t *reg)
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
+
+				default: break;
+			}
+			break;
+
+		case ID_PM_CONFIG_VSI_ZERO:
+
+			switch (val) {
+
+				PM_SFI_CASE(PM_VSI_GND);
+				PM_SFI_CASE(PM_VSI_CENTER);
+				PM_SFI_CASE(PM_VSI_EXTREME);
 
 				default: break;
 			}
@@ -1187,7 +1201,17 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(PM_HFI_NONE);
 				PM_SFI_CASE(PM_HFI_SINE);
 				PM_SFI_CASE(PM_HFI_RANDOM);
-				PM_SFI_CASE(PM_HFI_SILENT);
+
+				default: break;
+			}
+			break;
+
+		case ID_PM_CONFIG_SALIENCY:
+
+			switch (val) {
+
+				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
+				PM_SFI_CASE(PM_SALIENCY_POSITIVE);
 
 				default: break;
 			}
@@ -1311,6 +1335,9 @@ const reg_t		regfile[] = {
 #ifdef HW_HAVE_ANALOG_KNOB
 	REG_DEF(hal.ADC_knob_ratio,,,		"",	"%4e",	REG_CONFIG, &reg_proc_ADC, NULL),
 #endif /* HW_HAVE_ANALOG_KNOB */
+
+	REG_DEF(hal.ADC_sampling_time,,,	"",	"%i",	REG_CONFIG, &reg_proc_ADC, &reg_format_enum),
+	REG_DEF(hal.ADC_sampling_advance,,,	"",	"%i",	REG_CONFIG, &reg_proc_PWM, NULL),
 
 	REG_DEF(hal.DPS_mode,,,		"",	"%i",	REG_CONFIG, &reg_proc_DPS, &reg_format_enum),
 	REG_DEF(hal.PPM_mode,,,		"",	"%i",	REG_CONFIG, &reg_proc_PPM, &reg_format_enum),
@@ -1471,10 +1498,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_NOP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_IFB,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_TVM,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_SALIENCY,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-
-	REG_DEF(pm.config_VSI_CIRCULAR,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_VSI_PRECISE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	
+	REG_DEF(pm.config_VSI_ZERO,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_VSI_CLAMP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_VSI_STRICT,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_FORCED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_ESTIMATE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_SENSOR,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1482,6 +1509,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_LU_DRIVE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI_WAVETYPE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI_POLARITY,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_SALIENCY,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_RELUCTANCE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_WEAKENING,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HOLDING_BRAKE,,,	"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1566,13 +1594,15 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.vsi_X,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_Y,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_DX,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.vsi_DY,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_AF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_BF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_CF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_IF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_SF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_UF,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_AQ,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_BQ,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.vsi_CQ,,,			"",	"%i",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.tvm_USEABLE,,,		"",	"%i",	REG_CONFIG, &reg_proc_USEABLE, &reg_format_enum),
 	REG_DEF(pm.tvm_clean_zone,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),

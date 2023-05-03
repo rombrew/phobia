@@ -47,9 +47,9 @@ tlm_plot_grab()
 	const double	kRPM = 30. / M_PI / m.Zp;
 	const double	kDEG = 180. / M_PI;
 
-	double		A, B, D, Q, rel;
+	double		A, B, C, D, Q, rel;
 	int		nGP;
-	
+
 #define sym_GP(x, s, l)		{ tlm.y[nGP] = (float) (x); if (tlm.fd_gp != NULL) \
 				{ tlm_page_GP(nGP, s, (const char *) l); } nGP++; }
 #define fmt_GP(x, l)		sym_GP(x, #x, l)
@@ -113,6 +113,14 @@ tlm_plot_grab()
 	 * */
 	tlm.y[19] = pm.const_fb_U;
 
+	blm_DQ_ABC(m.state[3], m.state[0], m.state[1], &A, &B, &C);
+
+	/* Absolute Current.
+	 * */
+	tlm.y[20] = fabsf(A);
+	tlm.y[21] = fabsf(B);
+	tlm.y[22] = fabsf(C);
+
 	/* NOTE: Private parameters are managed with automatic generation of GP
 	 * configuration. So you only need to add a one line of code for each
 	 * parameter here.
@@ -135,6 +143,7 @@ tlm_plot_grab()
 	fmt_GP(pm.vsi_AF, 0);
 	fmt_GP(pm.vsi_BF, 0);
 	fmt_GP(pm.vsi_CF, 0);
+	fmt_GP(pm.vsi_IF, 0);
 	fmt_GP(pm.vsi_SF, 0);
 	fmt_GP(pm.vsi_UF, 0);
 
@@ -164,6 +173,7 @@ tlm_plot_grab()
 	fmk_GP(pm.zone_lpf_wS, kRPM, "rpm");
 
 	fmt_GP(pm.hfi_wave[0], 0);
+	fmt_GP(pm.hfi_wave[1], 0);
 	fmt_GP(pm.hfi_pole, 0);
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");

@@ -92,6 +92,9 @@ typedef struct {
 	float		ADC_terminal_ratio;
 	float		ADC_terminal_bias;
 
+	int		ADC_sampling_time;
+	int		ADC_sampling_advance;
+
 #ifdef HW_HAVE_ANALOG_KNOB
 	float		ADC_knob_ratio;
 #endif /* HW_HAVE_ANALOG_KNOB */

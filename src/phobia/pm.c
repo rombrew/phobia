@@ -88,10 +88,9 @@ pm_auto_basic_default(pmc_t *pm)
 static void
 pm_auto_config_default(pmc_t *pm)
 {
-	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
-
-	pm->config_VSI_CIRCULAR = PM_DISABLED;
-	pm->config_VSI_PRECISE = PM_DISABLED;
+	pm->config_VSI_ZERO = PM_VSI_GND;
+	pm->config_VSI_CLAMP = PM_DISABLED;
+	pm->config_VSI_STRICT = PM_DISABLED;
 	pm->config_LU_FORCED = PM_ENABLED;
 	pm->config_LU_ESTIMATE = PM_FLUX_ORTEGA;
 	pm->config_LU_SENSOR = PM_SENSOR_NONE;
@@ -99,6 +98,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_LU_DRIVE = PM_DRIVE_SPEED;
 	pm->config_HFI_WAVETYPE = PM_HFI_NONE;
 	pm->config_HFI_POLARITY = PM_DISABLED;
+	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
 	pm->config_HOLDING_BRAKE = PM_DISABLED;
@@ -1397,8 +1397,7 @@ pm_hfi_on_kalman(pmc_t *pm)
 
 		pm->hfi_wave[1] += pm->quick_HFwS * pm->m_dT;
 	}
-	else if (pm->config_HFI_WAVETYPE == PM_HFI_SILENT) {
-
+	else {
 		/* No HF wave injection.
 		 * */
 		pm->hfi_wave[0] = 0.f;
@@ -1479,7 +1478,7 @@ pm_sensor_eabi(pmc_t *pm)
 	float		F[2], A, rel;
 	int		relEP, WRAP;
 
-	const float	halftol = pm->quick_ZiEP * .55f;
+	const float	halftol = pm->quick_ZiEP * .6f;
 
 	if (pm->eabi_ENABLED != PM_ENABLED) {
 
@@ -2060,19 +2059,20 @@ pm_lu_FSM(pmc_t *pm)
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 {
-	int		xMIN;
+	int		xZONE, xSKIP, xMIN, xTOP;
 
-	xA = pm->dc_resolution - xA;
-	xB = pm->dc_resolution - xB;
-	xC = pm->dc_resolution - xC;
+	xZONE = pm->dc_resolution - pm->ts_clearance;
+	xSKIP = pm->dc_resolution - pm->ts_skip;
+
+	xTOP = pm->dc_resolution;
 
 	/* Check if there are PWM edges within clearance zone. The CURRENT
 	 * measurements will be used or rejected based on this flags.
 	 *
-	 * NOTE: In case of current sensors placement is inline we will try to
-	 * hop voltages to the TOP to get more valid samples.
+	 * NOTE: In case of current sensors placement is inline you can try to
+	 * clamp voltages to the TOP to get more valid samples.
 	 *
-	 * NOTE: To get best result you should have a current sensor with a
+	 * NOTE: To get the best result you should have a current sensor with a
 	 * fast transient that allows you to specify narrow clearance zone.
 	 *
 	 *                   1 - sqrt(3) / 2
@@ -2082,32 +2082,53 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	 * */
 	if (PM_CONFIG_IFB(pm) == PM_IFB_AB_INLINE) {
 
-		pm->vsi_AF = ((pm->vsi_AG >= pm->ts_clearance && xA > pm->ts_skip)
-				|| (pm->vsi_AG == 0 && xA == 0)) ? 0 : 1;
-		pm->vsi_BF = ((pm->vsi_BG >= pm->ts_clearance && xB > pm->ts_skip)
-				|| (pm->vsi_BG == 0 && xB == 0)) ? 0 : 1;
+		pm->vsi_AF = (pm->vsi_AQ < xZONE || pm->vsi_AQ == xTOP) ? 0 : 1;
+		pm->vsi_BF = (pm->vsi_BQ < xZONE || pm->vsi_BQ == xTOP) ? 0 : 1;
 		pm->vsi_CF = 1;
+
+		if (pm->config_VSI_STRICT == PM_ENABLED) {
+
+			pm->vsi_AF = (xA < xSKIP || xA == xTOP) ? pm->vsi_AF : 1;
+			pm->vsi_BF = (xB < xSKIP || xB == xTOP) ? pm->vsi_BF : 1;
+		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_AB_GND) {
 
-		pm->vsi_AF = (pm->vsi_AG >= pm->ts_clearance && xA > pm->ts_skip) ? 0 : 1;
-		pm->vsi_BF = (pm->vsi_BG >= pm->ts_clearance && xB > pm->ts_skip) ? 0 : 1;
+		pm->vsi_AF = (pm->vsi_AQ < xZONE) ? 0 : 1;
+		pm->vsi_BF = (pm->vsi_BQ < xZONE) ? 0 : 1;
 		pm->vsi_CF = 1;
+
+		if (pm->config_VSI_STRICT == PM_ENABLED) {
+
+			pm->vsi_AF = (xA < xSKIP) ? pm->vsi_AF : 1;
+			pm->vsi_BF = (xB < xSKIP) ? pm->vsi_BF : 1;
+		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_INLINE) {
 
-		pm->vsi_AF = ((pm->vsi_AG >= pm->ts_clearance && xA > pm->ts_skip)
-				|| (pm->vsi_AG == 0 && xA == 0)) ? 0 : 1;
-		pm->vsi_BF = ((pm->vsi_BG >= pm->ts_clearance && xB > pm->ts_skip)
-				|| (pm->vsi_BG == 0 && xB == 0)) ? 0 : 1;
-		pm->vsi_CF = ((pm->vsi_CG >= pm->ts_clearance && xC > pm->ts_skip)
-				|| (pm->vsi_CG == 0 && xC == 0)) ? 0 : 1;
+		pm->vsi_AF = (pm->vsi_AQ < xZONE || pm->vsi_AQ == xTOP) ? 0 : 1;
+		pm->vsi_BF = (pm->vsi_BQ < xZONE || pm->vsi_BQ == xTOP) ? 0 : 1;
+		pm->vsi_CF = (pm->vsi_CQ < xZONE || pm->vsi_CQ == xTOP) ? 0 : 1;
+
+		if (pm->config_VSI_STRICT == PM_ENABLED) {
+
+			pm->vsi_AF = (xA < xSKIP || xA == xTOP) ? pm->vsi_AF : 1;
+			pm->vsi_BF = (xB < xSKIP || xB == xTOP) ? pm->vsi_BF : 1;
+			pm->vsi_CF = (xC < xSKIP || xC == xTOP) ? pm->vsi_CF : 1;
+		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_GND) {
 
-		pm->vsi_AF = (pm->vsi_AG >= pm->ts_clearance && xA > pm->ts_skip) ? 0 : 1;
-		pm->vsi_BF = (pm->vsi_BG >= pm->ts_clearance && xB > pm->ts_skip) ? 0 : 1;
-		pm->vsi_CF = (pm->vsi_CG >= pm->ts_clearance && xC > pm->ts_skip) ? 0 : 1;
+		pm->vsi_AF = (pm->vsi_AQ < xZONE) ? 0 : 1;
+		pm->vsi_BF = (pm->vsi_BQ < xZONE) ? 0 : 1;
+		pm->vsi_CF = (pm->vsi_CQ < xZONE) ? 0 : 1;
+
+		if (pm->config_VSI_STRICT == PM_ENABLED) {
+
+			pm->vsi_AF = (xA < xSKIP) ? pm->vsi_AF : 1;
+			pm->vsi_BF = (xB < xSKIP) ? pm->vsi_BF : 1;
+			pm->vsi_CF = (xC < xSKIP) ? pm->vsi_CF : 1;
+		}
 	}
 
 	/* You can mask a specific channel for some reasons.
@@ -2124,49 +2145,49 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	/* Check if there are PWM edges within clearance zone. The DC link
 	 * voltage measurement will be used or rejected based on this flag.
 	 * */
-	pm->vsi_SF = (	   ((pm->vsi_AG > pm->ts_skip && xA > pm->ts_skip)
-				|| (pm->vsi_AG == 0 && xA == 0))
-			&& ((pm->vsi_BG > pm->ts_skip && xB > pm->ts_skip)
-				|| (pm->vsi_BG == 0 && xB == 0))
-			&& ((pm->vsi_CG > pm->ts_skip && xC > pm->ts_skip)
-				|| (pm->vsi_CG == 0 && xC == 0))) ? 0 : 1;
+	pm->vsi_SF = (	   ((pm->vsi_AQ < xSKIP && xA < xSKIP)
+				|| (pm->vsi_AQ == xTOP && xA == xTOP))
+			&& ((pm->vsi_BQ < xSKIP && xB < xSKIP)
+				|| (pm->vsi_BQ == xTOP && xB == xTOP))
+			&& ((pm->vsi_CQ < xSKIP && xC < xSKIP)
+				|| (pm->vsi_CQ == xTOP && xC == xTOP))) ? 0 : 1;
 
 	if (		PM_CONFIG_TVM(pm) == PM_ENABLED
 			&& pm->tvm_USEABLE == PM_ENABLED) {
 
-		xMIN = (int) (pm->dc_resolution * (1.f - pm->tvm_clean_zone));
+		xMIN = (int) (pm->dc_resolution * pm->tvm_clean_zone);
 
 		/* Check if terminal voltages were sampled within acceptable
 		 * zone. The VOLTAGE measurement will be used or rejected based
 		 * on these flags.
 		 * */
-		pm->vsi_UF = (	   pm->vsi_AG > xMIN
-				&& pm->vsi_BG > xMIN
-				&& pm->vsi_CG > xMIN
-				&& xA > xMIN
-				&& xB > xMIN
-				&& xC > xMIN) ? 0 : 1;
+		pm->vsi_UF = (	   pm->vsi_AQ < xMIN
+				&& pm->vsi_BQ < xMIN
+				&& pm->vsi_CQ < xMIN
+				&& xA < xMIN
+				&& xB < xMIN
+				&& xC < xMIN) ? 0 : 1;
 
 		/* Check if terminal voltages are exactly ZERO to get more
 		 * accuracy.
 		 * */
-		pm->vsi_AZ = (pm->vsi_AG == pm->dc_resolution) ? 0 : 1;
-		pm->vsi_BZ = (pm->vsi_BG == pm->dc_resolution) ? 0 : 1;
-		pm->vsi_CZ = (pm->vsi_CG == pm->dc_resolution) ? 0 : 1;
+		pm->vsi_AZ = (pm->vsi_AQ == 0) ? 0 : 1;
+		pm->vsi_BZ = (pm->vsi_BQ == 0) ? 0 : 1;
+		pm->vsi_CZ = (pm->vsi_CQ == 0) ? 0 : 1;
 	}
 	else {
 		pm->vsi_UF = 1;
 	}
 
-	pm->vsi_AG = xA;
-	pm->vsi_BG = xB;
-	pm->vsi_CG = xC;
+	pm->vsi_AQ = xA;
+	pm->vsi_BQ = xB;
+	pm->vsi_CQ = xC;
 }
 
 void pm_voltage(pmc_t *pm, float uX, float uY)
 {
 	float		uA, uB, uC, uMIN, uMAX, uDC;
-	int		xA, xB, xC, xMIN, xMAX;
+	int		xA, xB, xC, xMIN, xMAX, nZONE;
 
 	uX *= pm->quick_iUdc;
 	uY *= pm->quick_iUdc;
@@ -2176,7 +2197,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	pm->vsi_DC = uDC / pm->k_EMAX;
 	pm->vsi_lpf_DC += (pm->vsi_DC - pm->vsi_lpf_DC) * pm->vsi_gain_LP;
 
-	if (		pm->config_VSI_CIRCULAR == PM_ENABLED
+	if (		pm->config_VSI_CLAMP == PM_ENABLED
 			&& uDC > pm->k_EMAX) {
 
 		uDC = pm->k_EMAX / uDC;
@@ -2199,21 +2220,12 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (uA < uB) {
 
-		uMIN = uA;
-		uMAX = uB;
+		uMIN = (uC < uA) ? uC : uA;
+		uMAX = (uB > uC) ? uB : uC;
 	}
 	else {
-		uMIN = uB;
-		uMAX = uA;
-	}
-
-	if (uC < uMIN) {
-
-		uMIN = uC;
-	}
-	else if (uMAX < uC) {
-
-		uMAX = uC;
+		uMIN = (uC < uB) ? uC : uB;
+		uMAX = (uA > uC) ? uA : uC;
 	}
 
 	uDC = uMAX - uMIN;
@@ -2230,12 +2242,50 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		uMAX *= uDC;
 	}
 
-	if (pm->config_VSI_PRECISE == PM_ENABLED) {
+	if (pm->config_VSI_ZERO == PM_VSI_GND) {
+
+		uDC = 0.f - uMIN;
+	}
+	else if (pm->config_VSI_ZERO == PM_VSI_CENTER) {
 
 		uDC = .5f - (uMAX + uMIN) * .5f;
 	}
+	else if (pm->config_VSI_ZERO == PM_VSI_EXTREME) {
+
+		float	bA, bB, bC, bMIN, bMAX;
+
+		if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+
+			bA = m_fabsf(pm->lu_iX);
+			bB = m_fabsf(.5f * pm->lu_iX - .8660254f * pm->lu_iY);
+			bC = m_fabsf(.5f * pm->lu_iX + .8660254f * pm->lu_iY);
+		}
+		else {
+			bA = m_fabsf(pm->lu_iX);
+			bB = m_fabsf(pm->lu_iY);
+			bC = 0.f;
+		}
+
+		if (uA < uB) {
+
+			bMIN = (uC < uA) ? bC : bA;
+			bMAX = (uB > uC) ? bB : bC;
+		}
+		else {
+			bMIN = (uC < uB) ? bC : bB;
+			bMAX = (uA > uC) ? bA : bC;
+		}
+
+		bA = pm->fault_current_tol;
+
+		bA = (		   pm->vsi_AQ < pm->dc_resolution
+				&& pm->vsi_BQ < pm->dc_resolution
+				&& pm->vsi_CQ < pm->dc_resolution) ? bA : 0.f;
+
+		uDC = (bMIN + bA < bMAX) ? 1.f - uMAX : 0.f - uMIN;
+	}
 	else {
-		uDC = 0.f - uMIN;
+		uDC = 0.f;
 	}
 
 	uA += uDC;
@@ -2250,112 +2300,159 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 		if (PM_CONFIG_IFB(pm) == PM_IFB_AB_INLINE) {
 
-			xMAX = pm->dc_resolution - pm->ts_clearance;
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->dc_resolution - pm->ts_clearance;
 
-			if (xA > xMAX || xB > xMAX) {
+			nZONE  =  ((xA < xMIN || xA > xMAX) ? 1 : 0)
+				+ ((xB < xMIN || xB > xMAX) ? 1 : 0);
 
-				xMAX = (xA > xB) ? xA : xB;
-				xMAX = (xC > xMAX) ? xC : xMAX;
-				xMIN = pm->dc_resolution - xMAX;
+			if (nZONE < 2) {
 
-				xA += xMIN;
-				xB += xMIN;
-				xC += xMIN;
+				xMIN = (xA < xB) ? (xC < xA) ? xC : xA
+					: (xC < xB) ? xC : xB;
+
+				if (xMIN > 0) {
+
+					xA -= xMIN;
+					xB -= xMIN;
+					xC -= xMIN;
+				}
 			}
 
 			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->dc_resolution - pm->ts_clearance;
 
-			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
-			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
-			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
+			nZONE  =  ((xA < xMIN || xA > xMAX) ? 1 : 0)
+				+ ((xB < xMIN || xB > xMAX) ? 1 : 0);
+
+			if (nZONE < 2) {
+
+				xMAX = (xA > xB) ? (xC > xA) ? xC : xA
+					: (xC > xB) ? xC : xB;
+
+				if (xMAX < pm->dc_resolution) {
+
+					xA += pm->dc_resolution - xMAX;
+					xB += pm->dc_resolution - xMAX;
+					xC += pm->dc_resolution - xMAX;
+				}
+			}
+
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->ts_minimal;
+
+			xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
+			xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
+			xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 		}
 		else if (PM_CONFIG_IFB(pm) == PM_IFB_AB_GND) {
 
 			xMAX = pm->dc_resolution - pm->ts_clearance;
-			xMIN = pm->dc_resolution - pm->ts_minimal;
 
-			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? xMAX : xA;
-			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? xMAX : xB;
-			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? xMAX : xC;
+			if (xA >= xMAX || xB >= xMAX) {
+
+				xMIN = (xA < xB) ? (xC < xA) ? xC : xA
+					: (xC < xB) ? xC : xB;
+
+				if (xMIN > 0) {
+
+					xA -= xMIN;
+					xB -= xMIN;
+					xC -= xMIN;
+				}
+			}
+
+			xMAX = pm->dc_resolution - (pm->ts_clearance + 1);
+			xMIN = pm->ts_minimal;
+
+			xA = (xA < xMIN) ? 0 : (xA > xMAX) ? xMAX : xA;
+			xB = (xB < xMIN) ? 0 : (xB > xMAX) ? xMAX : xB;
+			xC = (xC < xMIN) ? 0 : (xC > xMAX) ? xMAX : xC;
 		}
 		else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_INLINE) {
 
-			xMAX = pm->dc_resolution - pm->ts_clearance;
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->dc_resolution - pm->ts_clearance;
 
-			if (xA > xMAX || xB > xMAX || xC > xMAX) {
+			nZONE  =  ((xA < xMIN || xA > xMAX) ? 1 : 0)
+				+ ((xB < xMIN || xB > xMAX) ? 1 : 0)
+				+ ((xC < xMIN || xC > xMAX) ? 1 : 0);
 
-				xMAX = (xA > xB) ? xA : xB;
-				xMAX = (xC > xMAX) ? xC : xMAX;
-				xMIN = pm->dc_resolution - xMAX;
+			if (nZONE < 2) {
 
-				xA += xMIN;
-				xB += xMIN;
-				xC += xMIN;
+				xMIN = (xA < xB) ? (xC < xA) ? xC : xA
+					: (xC < xB) ? xC : xB;
+
+				if (xMIN > 0) {
+
+					xA -= xMIN;
+					xB -= xMIN;
+					xC -= xMIN;
+				}
 			}
 
 			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->dc_resolution - pm->ts_clearance;
 
-			xA = (xA < pm->ts_minimal) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
-			xB = (xB < pm->ts_minimal) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
-			xC = (xC < pm->ts_minimal) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
+			nZONE  =  ((xA < xMIN || xA > xMAX) ? 1 : 0)
+				+ ((xB < xMIN || xB > xMAX) ? 1 : 0)
+				+ ((xC < xMIN || xC > xMAX) ? 1 : 0);
+
+			if (nZONE < 2) {
+
+				xMAX = (xA > xB) ? (xC > xA) ? xC : xA
+					: (xC > xB) ? xC : xB;
+
+				if (xMAX < pm->dc_resolution) {
+
+					xA += pm->dc_resolution - xMAX;
+					xB += pm->dc_resolution - xMAX;
+					xC += pm->dc_resolution - xMAX;
+				}
+			}
+
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->ts_minimal;
+
+			xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
+			xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
+			xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 		}
 		else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_GND) {
 
-			xA = (xA < pm->ts_minimal) ? 0 : xA;
-                        xB = (xB < pm->ts_minimal) ? 0 : xB;
-			xC = (xC < pm->ts_minimal) ? 0 : xC;
-
 			xMAX = pm->dc_resolution - pm->ts_clearance;
-			xMIN = pm->dc_resolution - pm->ts_minimal;
 
-			if (xA > xMAX && xB > xMAX) {
+			nZONE  =  ((xA < xMAX) ? 1 : 0)
+				+ ((xB < xMAX) ? 1 : 0)
+				+ ((xC < xMAX) ? 1 : 0);
 
-				xC = (xC > xMIN) ? pm->dc_resolution : xC;
+			if (nZONE < 2) {
 
-				if (xA < xB) {
+				xMIN = (xA < xB) ? (xC < xA) ? xC : xA
+					: (xC < xB) ? xC : xB;
 
-					xA = (xA > xMAX) ? xMAX : xA;
-					xB = (xB > xMIN) ? pm->dc_resolution : xB;
-				}
-				else {
-					xA = (xA > xMIN) ? pm->dc_resolution : xA;
-					xB = (xB > xMAX) ? xMAX : xB;
-				}
-			}
-			else if (xB > xMAX && xC > xMAX) {
+				if (xMIN > 0) {
 
-				xA = (xA > xMIN) ? pm->dc_resolution : xA;
-
-				if (xB < xC) {
-
-					xB = (xB > xMAX) ? xMAX : xB;
-					xC = (xC > xMIN) ? pm->dc_resolution : xC;
-				}
-				else {
-					xB = (xB > xMIN) ? pm->dc_resolution : xB;
-					xC = (xC > xMAX) ? xMAX : xC;
+					xA -= xMIN;
+					xB -= xMIN;
+					xC -= xMIN;
 				}
 			}
-			else if (xA > xMAX && xC > xMAX) {
 
-				xB = (xB > xMIN) ? pm->dc_resolution : xB;
+			xMAX = pm->dc_resolution - pm->ts_minimal;
+			xMIN = pm->ts_minimal;
 
-				if (xA < xC) {
-
-					xA = (xA > xMAX) ? xMAX : xA;
-					xC = (xC > xMIN) ? pm->dc_resolution : xC;
-				}
-				else {
-					xA = (xA > xMIN) ? pm->dc_resolution : xA;
-					xC = (xC > xMAX) ? xMAX : xC;
-				}
-			}
+			xA = (xA < xMIN) ? 0 : (xA > xMAX) ? pm->dc_resolution : xA;
+			xB = (xB < xMIN) ? 0 : (xB > xMAX) ? pm->dc_resolution : xB;
+			xC = (xC < xMIN) ? 0 : (xC > xMAX) ? pm->dc_resolution : xC;
 		}
 	}
 	else {
-		xA += pm->ts_minimal;
-		xB += pm->ts_minimal;
-		xC += pm->ts_minimal;
+		xMIN = (xA < xB) ? (xC < xA) ? xC : xA : (xC < xB) ? xC : xB;
+
+		xA += pm->ts_minimal - xMIN;
+		xB += pm->ts_minimal - xMIN;
+		xC += pm->ts_minimal - xMIN;
 
 		xMAX = pm->dc_resolution - pm->ts_clearance;
 
@@ -2366,33 +2463,37 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (pm->ts_bootstrap != 0) {
 
-		pm->vsi_SA = (xA == pm->dc_resolution) ? pm->vsi_SA + 1 : 0;
-		pm->vsi_SB = (xB == pm->dc_resolution) ? pm->vsi_SB + 1 : 0;
-		pm->vsi_SC = (xC == pm->dc_resolution) ? pm->vsi_SC + 1 : 0;
+		pm->vsi_AT = (xA == pm->dc_resolution) ? pm->vsi_AT + 1 : 0;
+		pm->vsi_BT = (xB == pm->dc_resolution) ? pm->vsi_BT + 1 : 0;
+		pm->vsi_CT = (xC == pm->dc_resolution) ? pm->vsi_CT + 1 : 0;
 
-		if (		   pm->vsi_SA > pm->ts_bootstrap
-				|| pm->vsi_SB > pm->ts_bootstrap
-				|| pm->vsi_SC > pm->ts_bootstrap) {
+		if (		   pm->vsi_AT > pm->ts_bootstrap
+				|| pm->vsi_BT > pm->ts_bootstrap
+				|| pm->vsi_CT > pm->ts_bootstrap) {
 
 			/* Clamp the output DC to a safe level if bootstrap
 			 * retention time is running out.
 			 * */
-			pm->vsi_TIM = 1;
+			pm->vsi_XT = 1;
 		}
 
-		if (pm->vsi_TIM >= 1) {
+		if (pm->vsi_XT >= 1) {
 
-			xMAX = pm->dc_resolution - pm->ts_clearance;
+			xMIN = pm->ts_clearance;
 
-			xA = (xA > xMAX) ? xMAX : xA;
-			xB = (xB > xMAX) ? xMAX : xB;
-			xC = (xC > xMAX) ? xMAX : xC;
+			xA -= xMIN;
+			xB -= xMIN;
+			xC -= xMIN;
 
-			pm->vsi_TIM++;
+			xA = (xA < 0) ? 0 : xA;
+			xB = (xB < 0) ? 0 : xB;
+			xC = (xC < 0) ? 0 : xC;
 
-			if (pm->vsi_TIM >= pm->ts_clamped) {
+			pm->vsi_XT++;
 
-				pm->vsi_TIM = 0;
+			if (pm->vsi_XT >= pm->ts_clamped) {
+
+				pm->vsi_XT = 0;
 			}
 		}
 	}

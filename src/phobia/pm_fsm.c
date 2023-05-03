@@ -137,7 +137,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			pm->self_BST[1] = 0.f;
 			pm->self_BST[2] = 0.f;
 
-			pm->vsi_SA = PM_TSMS(pm, pm->tm_transient_fast);
+			pm->vsi_AT = PM_TSMS(pm, pm->tm_transient_fast);
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
@@ -152,7 +152,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(pm->dc_resolution, 0, 0);
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -164,14 +164,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 3:
 			if (m_fabsf(pm->fb_uA - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->self_BST[0] += 1.f;
 			}
 			else {
-				pm->vsi_TIM++;
+				pm->vsi_XT++;
 
-				if (pm->vsi_TIM >= pm->vsi_SA) {
+				if (pm->vsi_XT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -200,7 +200,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(0, pm->dc_resolution, 0);
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -212,14 +212,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 5:
 			if (m_fabsf(pm->fb_uB - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->self_BST[1] += 1.f;
 			}
 			else {
-				pm->vsi_TIM++;
+				pm->vsi_XT++;
 
-				if (pm->vsi_TIM >= pm->vsi_SA) {
+				if (pm->vsi_XT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -248,7 +248,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(0, 0, pm->dc_resolution);
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -260,14 +260,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 7:
 			if (m_fabsf(pm->fb_uC - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_TIM = 0;
+				pm->vsi_XT = 0;
 
 				pm->self_BST[2] += 1.f;
 			}
 			else {
-				pm->vsi_TIM++;
+				pm->vsi_XT++;
 
-				if (pm->vsi_TIM >= pm->vsi_SA) {
+				if (pm->vsi_XT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -1530,13 +1530,13 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->vsi_DX = 0.f;
 				pm->vsi_DY = 0.f;
 
-				pm->vsi_SA = 0;
-				pm->vsi_SB = 0;
-				pm->vsi_SC = 0;
-				pm->vsi_TIM = 0;
+				pm_clearance(pm, 0, 0, 0);
+				pm_clearance(pm, 0, 0, 0);
 
-				pm_clearance(pm, 0, 0, 0);
-				pm_clearance(pm, 0, 0, 0);
+				pm->vsi_AT = 0;
+				pm->vsi_BT = 0;
+				pm->vsi_CT = 0;
+				pm->vsi_XT = 0;
 
 				pm->lu_MODE = PM_LU_DETACHED;
 

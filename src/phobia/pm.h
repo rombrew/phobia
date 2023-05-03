@@ -49,6 +49,12 @@ enum {
 };
 
 enum {
+	PM_VSI_GND				= 0,
+	PM_VSI_CENTER,
+	PM_VSI_EXTREME
+};
+
+enum {
 	PM_DISABLED				= 0,
 	PM_ENABLED
 };
@@ -81,8 +87,7 @@ enum {
 enum {
 	PM_HFI_NONE				= 0,
 	PM_HFI_SINE,
-	PM_HFI_RANDOM,
-	PM_HFI_SILENT
+	PM_HFI_RANDOM
 };
 
 enum {
@@ -230,10 +235,10 @@ typedef struct {
 	int		config_NOP;
 	int		config_IFB;
 	int		config_TVM;
-	int		config_SALIENCY;
 
-	int		config_VSI_CIRCULAR;
-	int		config_VSI_PRECISE;
+	int		config_VSI_ZERO;
+	int		config_VSI_CLAMP;
+	int		config_VSI_STRICT;
 	int		config_LU_FORCED;
 	int		config_LU_ESTIMATE;
 	int		config_LU_SENSOR;
@@ -241,7 +246,8 @@ typedef struct {
 	int		config_LU_DRIVE;
 	int		config_HFI_WAVETYPE;
 	int		config_HFI_POLARITY;
-	int		config_RELUCTANCE;		/* TODO */
+	int		config_SALIENCY;
+	int		config_RELUCTANCE;
 	int		config_WEAKENING;
 	int		config_HOLDING_BRAKE;
 	int		config_SPEED_LIMITED;
@@ -331,13 +337,6 @@ typedef struct {
 	float		vsi_gain_LP;
 	int		vsi_mask_XF;
 
-	int		vsi_SA;
-	int		vsi_SB;
-	int		vsi_SC;
-	int		vsi_TIM;
-	int		vsi_AG;
-	int		vsi_BG;
-	int		vsi_CG;
 	int		vsi_AF;
 	int		vsi_BF;
 	int		vsi_CF;
@@ -347,6 +346,13 @@ typedef struct {
 	int		vsi_AZ;
 	int		vsi_BZ;
 	int		vsi_CZ;
+	int		vsi_AT;
+	int		vsi_BT;
+	int		vsi_CT;
+	int		vsi_XT;
+	int		vsi_AQ;
+	int		vsi_BQ;
+	int		vsi_CQ;
 
 	int		tvm_USEABLE;
 	float		tvm_clean_zone;

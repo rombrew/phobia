@@ -79,7 +79,7 @@ void langFill(lang_t *la, int lang)
 		la->dataset_menu[0] = " Time column  [%3i]";
 		la->dataset_menu[1] = " Time unwrap  [ %s ]";
 		la->dataset_menu[2] = " Time scale   [%s]";
-		la->dataset_menu[3] = " Length       [%3i]  %iM (%i%%)";
+		la->dataset_menu[3] = " Length       [%3i]  %iM (%i%%) cache %iM";
 		la->dataset_menu[4] = " Close file";
 
 		la->axis_menu =
@@ -249,7 +249,7 @@ void langFill(lang_t *la, int lang)
 		la->dataset_menu[0] = " Столбец времени   [%3i]";
 		la->dataset_menu[1] = " Развернуть время  [ %s ]";
 		la->dataset_menu[2] = " Масштаб времени   [%s]";
-		la->dataset_menu[3] = " Длина             [%3i]  %iM (%i%%)";
+		la->dataset_menu[3] = " Длина             [%3i]  %iM (%i%%) кэш %iM";
 		la->dataset_menu[4] = " Закрыть файл";
 
 		la->axis_menu =
