@@ -12,13 +12,13 @@
 void tlm_reg_default(tlm_t *tlm)
 {
 	tlm->grabfreq = 0;
-	tlm->livefreq = 20;
+	tlm->livefreq = 10;
 
 	tlm->reg_ID[0] = ID_PM_LU_ID;
 	tlm->reg_ID[1] = ID_PM_LU_IQ;
 	tlm->reg_ID[2] = ID_PM_LU_WS_RPM;
 	tlm->reg_ID[3] = ID_PM_LU_MQ_LOAD;
-	tlm->reg_ID[4] = ID_PM_WATT_CONSUMPTION_WA;
+	tlm->reg_ID[4] = ID_PM_WATT_DRAIN_WA;
 	tlm->reg_ID[5] = ID_PM_CONST_FB_U;
 	tlm->reg_ID[6] = ID_AP_TEMP_PCB;
 	tlm->reg_ID[7] = ID_NULL;

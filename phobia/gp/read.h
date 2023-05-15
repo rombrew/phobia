@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -38,7 +38,7 @@
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	7
+#define GP_CONFIG_VERSION	8
 
 enum {
 	FORMAT_NONE			= 0,
@@ -151,13 +151,13 @@ typedef struct {
 	int		colorscheme;
 	int		timecol;
 	int		shortfilename;
-	int		drawboost;
+	int		fastdraw;
 
 	markup_t	mk_config;
 	markup_t	mk_text;
 
 #ifdef _WINDOWS
-	int		legacy_label_enc;
+	int		legacy_label;
 #endif /* _WINDOWS */
 
 	int		preload;
@@ -203,9 +203,11 @@ void readToggleHint(read_t *rd, int dN, int cN);
 int readUpdate(read_t *rd);
 
 #ifdef _WINDOWS
-void legacy_ACP_to_UTF8(char *ustr, const char *text, int n);
-void legacy_OEM_to_UTF8(char *ustr, const char *text, int n);
-void legacy_readConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI);
+void legacy_ACP_to_UTF8(char *us, const char *text, int n);
+void legacy_OEM_to_UTF8(char *us, const char *text, int n);
+void legacy_UTF8_to_ACP(char *text, const char *us, int n);
+void legacy_UTF8_to_OEM(char *text, const char *us, int n);
+void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI);
 #endif /* _WINDOWS */
 
 FILE *unified_fopen(const char *file, const char *mode);

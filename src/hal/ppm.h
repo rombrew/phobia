@@ -10,8 +10,9 @@
 void PPM_startup();
 void PPM_configure();
 
-float PPM_get_PERIOD();
 float PPM_get_PULSE();
+float PPM_get_PERIOD();
+
 int PPM_get_STEP_DIR();
 int PPM_get_backup_EP();
 

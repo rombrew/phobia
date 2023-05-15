@@ -6,4 +6,6 @@ void TIM_startup();
 void TIM_wait_ns(int ns);
 void TIM_wait_ms(int ms);
 
+int TIM_get_CNT();
+
 #endif /* _H_TIM_ */

@@ -32,6 +32,10 @@
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4U)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2U)
 
+#define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2U)
+#define CLOCK_TIM4_HZ			(CLOCK_APB1_HZ * 2U)
+#define CLOCK_TIM7_HZ			(CLOCK_APB1_HZ * 2U)
+
 #define GPIO_ADC_TEMPINT		XGPIO_DEF3('H', 0, 16)
 #define GPIO_ADC_VREFINT		XGPIO_DEF3('H', 0, 17)
 
@@ -40,6 +44,8 @@
 
 #define GPIO_DAC_1			GPIO_SPI_NSS
 #define GPIO_DAC_2			GPIO_SPI_SCK
+
+#define ADC_SAMPLE_ADVANCE		110
 
 enum {
 	LEG_A				= 1U,
@@ -92,8 +98,8 @@ typedef struct {
 	float		ADC_terminal_ratio;
 	float		ADC_terminal_bias;
 
-	int		ADC_sampling_time;
-	int		ADC_sampling_advance;
+	int		ADC_sample_time;
+	int		ADC_sample_advance;
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	float		ADC_knob_ratio;
@@ -114,25 +120,30 @@ typedef struct {
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	int		PPM_mode;
-	int		PPM_timebase;
+	int		PPM_frequency;
 	int		PPM_caught;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	DRV_config_t	DRV;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
+	int		CNT_raw[4];
+	float		CNT_diag[3];
+
 	struct {
 
 		float		GA;
 		float		GU;
 		float		GT[2];
-		float		TEMP[2];
+		float		TS[2];
 		float		GS;
 #ifdef HW_HAVE_ANALOG_KNOB
 		float		GK;
 #endif /* HW_HAVE_ANALOG_KNOB */
 	}
 	const_ADC;
+
+	float		const_CNT[2];
 }
 HAL_t;
 

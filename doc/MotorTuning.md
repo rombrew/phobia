@@ -127,13 +127,13 @@ course. Here trackppoint is driven by actual speed estimate with acceleration
 constraint. For system stability we have introduced a linear control area
 **pm.s_linspan**. So there may be some backlash in case of direction change.
 
-Also you can tune PI regulator gains.
+Also you can tune PD regulator gains.
 
     (pmc) reg pm.lu_gain_mq_LP <x>
 	(pmc) reg pm.s_gain_P <x>
-	(pmc) reg pm.s_gain_I <x>
+	(pmc) reg pm.s_gain_D <x>
 
-PI regulator gains can be reverted to default by setting P to 0.
+PD regulator gains can be reverted to default by setting **s_gain_P** to 0.
 
 	(pmc) reg pm.s_gain_P 0
 

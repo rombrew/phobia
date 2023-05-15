@@ -472,11 +472,11 @@ blm_sample_analog(blm_t *m)
 static void
 blm_pwm_bsort(blm_t *m)
 {
-	blm_event_t	event;
+	int		ebuf[2];
 	int		i;
 
 	do {
-		event.ev = 0;
+		ebuf[0] = 0;
 
 		/* Bubble SORT.
 		 * */
@@ -484,13 +484,16 @@ blm_pwm_bsort(blm_t *m)
 
 			if (m->event[i - 1].comp < m->event[i].comp) {
 
-				event = m->event[i];
-				m->event[i] = m->event[i - 1];
-				m->event[i - 1] = event;
+				ebuf[0] = m->event[i].ev;
+				ebuf[1] = m->event[i].comp;
+				m->event[i].ev   = m->event[i - 1].ev;
+				m->event[i].comp = m->event[i - 1].comp;
+				m->event[i - 1].ev   = ebuf[0];
+				m->event[i - 1].comp = ebuf[1];
 			}
 		}
 	}
-	while (event.ev != 0);
+	while (ebuf[0] != 0);
 }
 
 static void
@@ -685,7 +688,7 @@ blm_pwm_solve(blm_t *m)
 
 	/* Get average POWER on PWM cycle.
 	 * */
-	m->instant_wP = m->state[5] / m->pwm_dT;
+	m->drain_wP = m->state[5] / m->pwm_dT;
 	m->state[5] = 0.;
 }
 

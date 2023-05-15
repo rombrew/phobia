@@ -106,8 +106,8 @@ tlm_plot_grab()
 
 	/* Power Consumption.
 	 * */
-	tlm.y[17] = m.instant_wP;
-	tlm.y[18] = pm.watt_consumption_wP;
+	tlm.y[17] = m.drain_wP;
+	tlm.y[18] = pm.watt_drain_wP;
 
 	/* DC link Voltage.
 	 * */
@@ -185,7 +185,6 @@ tlm_plot_grab()
 	fmt_GP(pm.watt_lpf_D, "V");
 	fmt_GP(pm.watt_lpf_Q, "V");
 
-	fmt_GP(pm.i_derate_on_weakening, "A");
 	fmt_GP(pm.i_setpoint_current, "A");
 	fmt_GP(pm.i_track_D, "A");
 	fmt_GP(pm.i_track_Q, "A");
@@ -371,25 +370,34 @@ void bench_script()
 	tlm_restart();
 
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+	pm.config_HFI_WAVE = PM_HFI_SINE;
+	pm.config_LU_DRIVE = PM_DRIVE_CURRENT;
 
-	pm.s_accel = 70000.f;
+	pm.s_maximal = 2000.f;
+	pm.s_reverse = 2000.f;
+	pm.s_accel = 700.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
 	sim_runtime(.1);
 
-	pm.s_setpoint_speed = 300.f / (30. / M_PI / m.Zp);
+	pm.i_setpoint_current = 10.f;
 	sim_runtime(1.);
 
-	pm.s_setpoint_speed = 100.f / (30. / M_PI / m.Zp);
+	pm.i_setpoint_current = 0.f;
 	sim_runtime(1.);
 
-	pm.s_setpoint_speed = -100.f / (30. / M_PI / m.Zp);
+	pm.i_setpoint_current = 10.f;
 	sim_runtime(1.);
 
-	pm.s_setpoint_speed = 2000.f / (30. / M_PI / m.Zp);
+	pm.i_setpoint_current = 0.f;
+	sim_runtime(1.);
+
+	pm.i_setpoint_current = 10.f;
+	sim_runtime(1.);
+
+	pm.i_setpoint_current = 0.f;
 	sim_runtime(1.);
 
 	tlm_PWM_grab();

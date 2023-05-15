@@ -1,11 +1,9 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#define CLOCK_TIM4_HZ			(CLOCK_APB1_HZ * 2U)
-
 typedef struct {
 
-	float			us_per_tik;
+	float			natural;
 }
 priv_PPM_t;
 
@@ -40,8 +38,8 @@ PPM_mode_PULSE_WIDTH()
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
 
-	hal.PPM_timebase = (hal.PPM_timebase < 1000000U) ? 1000000U
-		: (hal.PPM_timebase > CLOCK_TIM4_HZ) ? CLOCK_TIM4_HZ : hal.PPM_timebase;
+	hal.PPM_frequency = (hal.PPM_frequency < 1000000U) ? 1000000U
+		: (hal.PPM_frequency > CLOCK_TIM4_HZ) ? CLOCK_TIM4_HZ : hal.PPM_frequency;
 
 	TIM4->CR1 = 0;
 	TIM4->CR2 = 0;
@@ -51,15 +49,16 @@ PPM_mode_PULSE_WIDTH()
 	TIM4->CCMR2 = TIM_CCMR2_OC4M_0;
 	TIM4->CCER = TIM_CCER_CC2P | TIM_CCER_CC2E | TIM_CCER_CC1E;
 	TIM4->CNT = 0;
-	TIM4->PSC = CLOCK_TIM4_HZ / hal.PPM_timebase - 1U;
+	TIM4->PSC = CLOCK_TIM4_HZ / hal.PPM_frequency - 1U;
 	TIM4->ARR = 65535;
 	TIM4->CCR1 = 0;
 	TIM4->CCR2 = 0;
 	TIM4->CCR3 = 0;
 	TIM4->CCR4 = 65535;
 
-	priv_PPM.us_per_tik = 1000000.f * (float) (TIM4->PSC + 1U) / (float) CLOCK_TIM4_HZ;
-	hal.PPM_timebase = CLOCK_TIM4_HZ / (TIM4->PSC + 1U);
+	priv_PPM.natural = (float) (TIM4->PSC + 1U) / (float) CLOCK_TIM4_HZ;
+
+	hal.PPM_frequency = CLOCK_TIM4_HZ / (TIM4->PSC + 1U);
 	hal.PPM_caught = 0;
 
 	/* Enable IRQ.
@@ -200,22 +199,14 @@ void PPM_configure()
 	}
 }
 
-float PPM_get_PERIOD()
-{
-	float		us;
-
-	us = (float) TIM4->CCR1 * priv_PPM.us_per_tik;
-
-	return us;
-}
-
 float PPM_get_PULSE()
 {
-	float		us;
+	return (float) TIM4->CCR2 * priv_PPM.natural;
+}
 
-	us = (float) TIM4->CCR2 * priv_PPM.us_per_tik;
-
-	return us;
+float PPM_get_PERIOD()
+{
+	return (float) TIM4->CCR1 * priv_PPM.natural;
 }
 
 int PPM_get_STEP_DIR()

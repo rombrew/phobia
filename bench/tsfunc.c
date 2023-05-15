@@ -116,8 +116,8 @@ void ts_self_adjust()
 
 		printf("const_fb_U = %.3f (V)\n", pm.const_fb_U);
 
-		printf("ad_IABC0 = %.3f %.3f %.3f (A)\n", pm.ad_IA[0],
-				pm.ad_IB[0], pm.ad_IC[0]);
+		printf("scale_iABC0 = %.3f %.3f %.3f (A)\n", pm.scale_iA[0],
+				pm.scale_iB[0], pm.scale_iC[0]);
 
 		printf("self_STDi = %.3f %.3f %.3f (A)\n", pm.self_STDi[0],
 				pm.self_STDi[1], pm.self_STDi[2]);
@@ -130,9 +130,9 @@ void ts_self_adjust()
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			ts_wait_for_idle();
 
-			printf("ad_UA = %.4E %.4f (V)\n", pm.ad_UA[1], pm.ad_UA[0]);
-			printf("ad_UB = %.4E %.4f (V)\n", pm.ad_UB[1], pm.ad_UB[0]);
-			printf("ad_UC = %.4E %.4f (V)\n", pm.ad_UC[1], pm.ad_UC[0]);
+			printf("scale_uA = %.4E %.4f (V)\n", pm.scale_uA[1], pm.scale_uA[0]);
+			printf("scale_uB = %.4E %.4f (V)\n", pm.scale_uB[1], pm.scale_uB[0]);
+			printf("scale_uC = %.4E %.4f (V)\n", pm.scale_uC[1], pm.scale_uC[0]);
 
 			tau_A = pm.m_dT / log(pm.tvm_FIR_A[0] / - pm.tvm_FIR_A[1]);
 			tau_B = pm.m_dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
@@ -310,7 +310,6 @@ void ts_probe_spinup()
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
 		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
 		printf("s_gain_P = %.2E\n", pm.s_gain_P);
-		printf("s_gain_Q = %.2E\n", pm.s_gain_Q);
 	}
 	while (0);
 }
@@ -437,7 +436,7 @@ ts_script_hfi()
 {
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
-	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+	pm.config_HFI_WAVE = PM_HFI_SINE;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
@@ -467,7 +466,7 @@ ts_script_hfi()
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	ts_wait_for_idle();
 
-	pm.config_HFI_WAVETYPE = PM_HFI_NONE;
+	pm.config_HFI_WAVE = PM_HFI_NONE;
 }
 
 static void
@@ -520,7 +519,6 @@ ts_script_hall()
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
 
 	pm.s_gain_P *= .5f;
-	pm.s_gain_Q *= .5f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();

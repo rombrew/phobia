@@ -18,7 +18,7 @@ To setup HFI configuration you should select KALMAN sensorless estimation.
 
 Select injection waveform type. The usual type is SINE wave.
 
-    (pmc) reg pm.config_HFI_WAVETYPE 1
+    (pmc) reg pm.config_HFI_WAVE 1
 
 The main parameters of injection is a frequency and amplitude. It is usually
 large frequency and amplitude makes HFI operation is more stable. Beware of

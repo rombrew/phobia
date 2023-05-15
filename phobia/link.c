@@ -234,12 +234,24 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 
 		if (reg->started != 0) {
 
-			reg->fmin = (reg->fval < reg->fmin) ? reg->fval : reg->fmin;
-			reg->fmax = (reg->fval > reg->fmax) ? reg->fval : reg->fmax;
+			if (reg->fval < reg->fmin) {
+
+				reg->fmin = reg->fval;
+				strcpy(reg->vmin, reg->val);
+			}
+
+			if (reg->fval > reg->fmax) {
+
+				reg->fmax = reg->fval;
+				strcpy(reg->vmax, reg->val);
+			}
 		}
 		else {
 			reg->fmin = reg->fval;
 			reg->fmax = reg->fval;
+
+			strcpy(reg->vmin, reg->val);
+			strcpy(reg->vmax, reg->val);
 
 			reg->started = 1;
 		}

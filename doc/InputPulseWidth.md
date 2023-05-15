@@ -20,8 +20,8 @@ First you need to enable the appropriate mode of the PPM interface.
 	(pmc) reg hal.PPM_mode 1
 
 Now you can see how the controller receives the control signal. If variable
-**hal.PPM_caught** is 1 then pulse is caught. Use HAL registers to view pulse
-parameters.
+**hal.PPM_caught** is nonzero then pulse is caught. Use HAL registers to view
+pulse parameters.
 
 	(pmc) reg hal.PPM_get_PERIOD
 	(pmc) reg hal.PPM_get_PULSE
@@ -62,17 +62,17 @@ safety.
 
 ## Precision
 
-You can change the resolution of the timer that is used to measure the pulse
-width. By increasing the resolution you increase a minimum pulse rate that
-can be captured.
+You can change the timebase frequency of the timer that is used to measure the
+pulse width. By increasing the resolution you increase a minimum pulse rate
+that can be captured.
 
-	(pmc) reg hal.PPM_timebase <Hz>
+	(pmc) reg hal.PPM_frequency <Hz>
 
-The minimum frequency is determined from the expression. Default timebase
+The minimum pulse frequency is determined from the expression. Default timebase
 allows you to capture pulses from 31 Hz.
 
-	        timebase
-	Fmin = ----------
+	       frequency
+	min = -----------
 	         65536
 
 Maximal timebase allowed is 84000000 Hz that gives a resolution about 12 ns

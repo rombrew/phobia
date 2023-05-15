@@ -19,16 +19,14 @@ SH_DEF(pm_self_test)
 		return;
 	}
 
-	ap.probe_LOCK = PM_ENABLED;
-
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
-		reg_format(&regfile[ID_PM_AD_IA0]);
-		reg_format(&regfile[ID_PM_AD_IB0]);
-		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SCALE_IA0]);
+		reg_format(&regfile[ID_PM_SCALE_IB0]);
+		reg_format(&regfile[ID_PM_SCALE_IC0]);
 		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
@@ -84,8 +82,6 @@ SH_DEF(pm_self_test)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
-
-	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_self_adjust)
@@ -96,16 +92,14 @@ SH_DEF(pm_self_adjust)
 		return;
 	}
 
-	ap.probe_LOCK = PM_ENABLED;
-
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
-		reg_format(&regfile[ID_PM_AD_IA0]);
-		reg_format(&regfile[ID_PM_AD_IB0]);
-		reg_format(&regfile[ID_PM_AD_IC0]);
+		reg_format(&regfile[ID_PM_SCALE_IA0]);
+		reg_format(&regfile[ID_PM_SCALE_IB0]);
+		reg_format(&regfile[ID_PM_SCALE_IC0]);
 		reg_format(&regfile[ID_PM_SELF_STDI]);
 
 		if (pm.fsm_errno != PM_OK)
@@ -116,12 +110,12 @@ SH_DEF(pm_self_adjust)
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_AD_UA0]);
-			reg_format(&regfile[ID_PM_AD_UA1]);
-			reg_format(&regfile[ID_PM_AD_UB0]);
-			reg_format(&regfile[ID_PM_AD_UB1]);
-			reg_format(&regfile[ID_PM_AD_UC0]);
-			reg_format(&regfile[ID_PM_AD_UC1]);
+			reg_format(&regfile[ID_PM_SCALE_UA0]);
+			reg_format(&regfile[ID_PM_SCALE_UA1]);
+			reg_format(&regfile[ID_PM_SCALE_UB0]);
+			reg_format(&regfile[ID_PM_SCALE_UB1]);
+			reg_format(&regfile[ID_PM_SCALE_UC0]);
+			reg_format(&regfile[ID_PM_SCALE_UC1]);
 
 			reg_format(&regfile[ID_PM_TVM_USEABLE]);
 			reg_format(&regfile[ID_PM_TVM_FIR_A_TAU]);
@@ -137,16 +131,14 @@ SH_DEF(pm_self_adjust)
 		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
 		pm_wait_for_idle();
 
-		reg_format(&regfile[ID_PM_AD_IA1]);
-		reg_format(&regfile[ID_PM_AD_IB1]);
-		reg_format(&regfile[ID_PM_AD_IC1]);
+		reg_format(&regfile[ID_PM_SCALE_IA1]);
+		reg_format(&regfile[ID_PM_SCALE_IB1]);
+		reg_format(&regfile[ID_PM_SCALE_IC1]);
 		reg_format(&regfile[ID_PM_SELF_RMSI]);
 	}
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
-
-	ap.probe_LOCK = PM_DISABLED;
 }
 
 SH_DEF(pm_self_tvm_ramp)
@@ -252,7 +244,7 @@ SH_DEF(hal_ADC_scan_CH)
 		xGPIO = gpios_stm32f405_lqfp64[xCH];
 
 		GPIO_set_mode_ANALOG(xGPIO);
-		fU = ADC_get_VALUE(xGPIO);
+		fU = ADC_get_sample(xGPIO);
 
 		printf("P%c%i %4f" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
 				XGPIO_GET_N(xGPIO), &fU);

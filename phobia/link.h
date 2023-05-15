@@ -40,6 +40,9 @@ struct link_reg {
 	float		fmin;
 	float		fmax;
 
+	char		vmin[LINK_NAME_MAX];
+	char		vmax[LINK_NAME_MAX];
+
 	int		started;
 	int		update;
 	int		always;

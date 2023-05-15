@@ -1,8 +1,6 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#define CLOCK_TIM7_HZ			(CLOCK_APB1_HZ * 2UL)
-
 typedef struct {
 
 	uint32_t		tick_CNT;
@@ -43,17 +41,16 @@ void TIM_startup()
 
 void TIM_wait_ns(int ns)
 {
-	uint16_t		xCNT;
-	int			elapsed, hold;
+	int			CNT, timeout, elapsed;
 
-	xCNT = TIM7->CNT;
+	CNT = TIM7->CNT;
 
-	hold = ns * (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
+	timeout = ns * (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
 
 	do {
-		elapsed = (int) ((uint16_t) TIM7->CNT - xCNT);
+		elapsed = (int) (TIM7->CNT - CNT) & 0xFFFFU;
 
-		if (elapsed >= hold)
+		if (elapsed >= timeout)
 			break;
 
 		__NOP();
@@ -62,24 +59,8 @@ void TIM_wait_ns(int ns)
 	while (1);
 }
 
-void TIM_wait_ms(int ms)
+int TIM_get_CNT()
 {
-	uint32_t		xCNT;
-	int			elapsed, hold;
-
-	xCNT = priv_TIM.tick_CNT;
-
-	hold = ms * (CLOCK_TIM7_HZ / 65536UL) / 1000UL;
-
-	do {
-		__DSB();
-		__WFI();
-
-		elapsed = (int) (priv_TIM.tick_CNT - xCNT);
-
-		if (elapsed >= hold)
-			break;
-	}
-	while (1);
+	return TIM7->CNT;
 }
 

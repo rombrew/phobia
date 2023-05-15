@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_BOOT_SIGNATURE	0x557ABCDEU
+#define HAL_BOOT_SIGNATURE	0x3C34EB12U
 
 uint32_t			clock_cpu_hz;
 

@@ -179,7 +179,7 @@ void task_USB_IN(void *pData)
 	while (1);
 }
 
-extern QueueHandle_t USART_shared_rx_queue();
+extern QueueHandle_t USART_public_rx_queue();
 
 void USB_startup()
 {
@@ -209,7 +209,7 @@ void USB_startup()
 
 	/* Alloc queues.
 	 * */
-	priv_USB.rx_queue = USART_shared_rx_queue();
+	priv_USB.rx_queue = USART_public_rx_queue();
 	priv_USB.tx_queue = xQueueCreate(320, sizeof(char));
 
 	/* Create USB task.

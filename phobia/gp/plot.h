@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -118,6 +118,8 @@ typedef struct {
 
 	draw_t			*dw;
 	scheme_t		*sch;
+
+	void			*ld;
 
 	struct {
 
@@ -366,6 +368,9 @@ typedef struct {
 	draw[PLOT_FIGURE_MAX];
 
 	int			draw_in_progress;
+
+	int			tick_cached;
+	int			tick_skip;
 
 	struct {
 

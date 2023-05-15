@@ -33,8 +33,8 @@ extern io_ops_t		*iodef;
  * */
 extern uint32_t		rseed;
 
-void *memset(void *d, int c, int n);
-void *memcpy(void *restrict d, const void *restrict s, int n);
+void *memset(void *d, int c, size_t n);
+void *memcpy(void *restrict d, const void *restrict s, size_t n);
 
 int strcmp(const char *s, const char *p);
 int strcmpe(const char *s, const char *p);

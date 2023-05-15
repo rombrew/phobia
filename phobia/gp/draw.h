@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -60,7 +60,7 @@ clipBox_t;
 typedef struct {
 
 	int		antialiasing;
-	int		solidfont;
+	int		blendfont;
 	int		thickness;
 
 	int		dash_context;
@@ -101,7 +101,7 @@ int clipBoxTest(clipBox_t *cb, int x, int y);
 void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
 		double fxe, double fye, colType_t col);
 
-void drawLineDashed(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
+void drawDash(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
 		double fxe, double fye, colType_t col, int dash, int space);
 
 void drawLineCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,

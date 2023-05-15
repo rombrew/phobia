@@ -126,5 +126,5 @@ void USART_putc(int c)
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }
 
-QueueHandle_t USART_shared_rx_queue() { return priv_USART.rx_queue; }
+QueueHandle_t USART_public_rx_queue() { return priv_USART.rx_queue; }
 

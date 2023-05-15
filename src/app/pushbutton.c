@@ -7,8 +7,8 @@
 #include "main.h"
 #include "regfile.h"
 
-/* The application allows you to control the speed using TWO push-buttons.
- * Such control is convenient for a drill machine or other tool.
+/* The application allows you to control the speed using two push-buttons.
+ * Such control is convenient for drill machine and other tools.
  *
  * [A]		- START or switch the speed.
  * [B]		- STOP.
@@ -27,14 +27,19 @@ static const float		rpm_table[] = {
 	7000.f
 };
 
-void app_PUSHTWO(void *pData)
+void app_PUSHBUTTON(void *pData)
 {
 	volatile int		*enabled = (volatile int *) pData;
 
 	TickType_t		xWake;
 
+	const int		gpio_A = GPIO_HALL_A;
+	const int		gpio_B = GPIO_HALL_B;
+
+/*
 	const int		gpio_A = GPIO_PPM;
 	const int		gpio_B = GPIO_DIR;
+*/
 
 	int			pushed_A, value_A, count_A, event_A;
 	int			pushed_B, value_B, count_B, event_B;

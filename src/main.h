@@ -1,8 +1,8 @@
 #ifndef _H_MAIN_
 #define _H_MAIN_
 
-#include "phobia/pm.h"
 #include "phobia/libm.h"
+#include "phobia/pm.h"
 
 #include "libc.h"
 #include "ntc.h"
@@ -10,47 +10,42 @@
 
 typedef struct {
 
-	/* IRQ entrance counter.
-	 * */
-	int			lc_irq_CNT;
-
-	/* CPU load counters.
-	 * */
-	int			lc_FLAG;
-	int			lc_TICK;
-	int			lc_IDLE;
-
-	/* INPUT lock during probe.
-	 * */
-	int			probe_LOCK;
-
 	/* PPM interface (PWM).
 	 * */
+	float			ppm_in_pulse;
+	float			ppm_in_freq;
+	float			ppm_reg_DATA;
 	int			ppm_reg_ID;
 	int			ppm_STARTUP;
 	int			ppm_ACTIVE;
 	int			ppm_DISARM;
-	float			ppm_in_range[3];
-	float			ppm_control_range[3];
+	float			ppm_range_pulse[3];
+	float			ppm_range_control[3];
 
 	/* STEP/DIR interface.
 	 * */
+	int			step_in_EP;
+	float			step_reg_DATA;
 	int			step_reg_ID;
 	int			step_STARTUP;
 	int			step_ACTIVE;
-	int			step_baseEP;
-	int			step_accuEP;
+	int			step_prev_EP;
+	int			step_accu_EP;
 	float			step_const_ld_EP;
 
 	/* Knob analog interface.
 	 * */
-	int			knob_ENABLED;
+	float			knob_in_ANG;
+	float			knob_in_BRK;
+	float			knob_reg_DATA;
 	int			knob_reg_ID;
+	int			knob_ENABLED;
 	int			knob_STARTUP;
 	int			knob_ACTIVE;
-	float			knob_in_ANG[3];
-	float			knob_in_BRK[2];
-	float			knob_in_lost[2];
+	int			knob_DISARM;
+	float			knob_range_ANG[3];
+	float			knob_range_BRK[2];
+	float			knob_range_LST[2];
 	float			knob_control_ANG[3];
 	float			knob_control_BRK;
 
@@ -63,6 +58,7 @@ typedef struct {
 
 	/* DISARM control.
 	 * */
+	float			disarm_TIME;
 	int			disarm_RESET;
 	int			disarm_INVOKE;
 
@@ -89,10 +85,10 @@ typedef struct {
 
 	/* App knobs.
 	 * */
+	int			task_PUSHBUTTON;
 	int			task_AS5047;
 	int			task_HX711;
 	int			task_MPU6050;
-	int			task_PUSHTWO;
 
 	/* ADC load cell (e.g. HX711).
 	 * */
@@ -113,9 +109,6 @@ extern int flash_block_regs_load();
 extern int pm_wait_for_idle();
 
 void app_halt();
-
-float ADC_get_knob_ANG();
-float ADC_get_knob_BRK();
 
 #endif /* _H_MAIN_ */
 

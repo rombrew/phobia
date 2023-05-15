@@ -89,8 +89,7 @@ EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 		default: break;
 	}
 
-	if (		ep->reg_ID != ID_NULL
-			&& ap.probe_LOCK != PM_ENABLED) {
+	if (ep->reg_ID != ID_NULL) {
 
 		reg_SET_F(ep->reg_ID, ep->reg_DATA);
 	}
@@ -155,13 +154,20 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 
 			ep->tx_N = 0;
 
+			if (		ep->ACTIVE == PM_ENABLED
+					&& pm.fsm_errno != PM_OK) {
+
+				ep->ACTIVE = PM_DISABLED;
+			}
+
 			if (		ep->STARTUP == PM_ENABLED
 					&& ep->ACTIVE != PM_ENABLED
-					&& ap.probe_LOCK != PM_ENABLED
 					&& pm.lu_MODE == PM_LU_DISABLED) {
 
-				ep->ACTIVE = PM_ENABLED;
+				pm.fsm_errno = PM_OK;
 				pm.fsm_req = PM_STATE_LU_STARTUP;
+
+				ep->ACTIVE = PM_ENABLED;
 			}
 
 			EPCAN_pipe_INCOMING(ep, msg);
@@ -205,7 +211,7 @@ void EPCAN_pipe_REGULAR()
 
 			ep->tx_N++;
 
-			if (ep->tx_N >= ep->TIM) {
+			if (ep->tx_N >= ep->rate) {
 
 				ep->tx_N = 0;
 
@@ -707,7 +713,7 @@ void EPCAN_putc(int c)
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }
 
-extern QueueHandle_t USART_shared_rx_queue();
+extern QueueHandle_t USART_public_rx_queue();
 
 void EPCAN_startup()
 {
@@ -718,7 +724,7 @@ void EPCAN_startup()
 	/* Allocate queues.
 	 * */
 	local.in_queue = xQueueCreate(10, sizeof(CAN_msg_t));
-	local.rx_queue = USART_shared_rx_queue();
+	local.rx_queue = USART_public_rx_queue();
 	local.tx_queue = xQueueCreate(80, sizeof(char));
 	local.remote_queue = xQueueCreate(40, sizeof(char));
 	local.log_queue = xQueueCreate(320, sizeof(char));

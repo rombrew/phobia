@@ -83,7 +83,7 @@ DRV8303_startup()
 	GPIO_set_mode_INPUT(hal.DRV.gpio_FAULT);
 	GPIO_set_mode_PULL_UP(hal.DRV.gpio_FAULT);
 
-	TIM_wait_ms(20);
+	vTaskDelay((TickType_t) 20);
 
 	SPI_startup(SPI_ID_ON_PCB, 4000000UL, SPI_MODE_LOW_FALLING | SPI_MODE_SIZE_16);
 
@@ -114,7 +114,7 @@ void DRV_halt()
 
 		GPIO_set_LOW(hal.DRV.gpio_GATE_EN);
 
-		TIM_wait_ms(50);
+		vTaskDelay((TickType_t) 50);
 	}
 }
 

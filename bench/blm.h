@@ -8,13 +8,6 @@ enum {
 
 typedef struct {
 
-	int	ev;
-	int	comp;
-}
-blm_event_t;
-
-typedef struct {
-
 	double		time;
 	double		sol_dT;
 
@@ -25,20 +18,26 @@ typedef struct {
 	double		pwm_minimal;
 	int		pwm_resolution;
 
+	double		Dtol;
+
 	int		pwm_A;
 	int		pwm_B;
 	int		pwm_C;
 	int		pwm_Z;
 
 	double		state[15];
+	double		drain_wP;
+
 	int		xfet[6];
 	int		xdtu[3];
-	blm_event_t	event[8];
 	int		revol;
 
-	double		instant_wP;
+	struct {
 
-	double		Dtol;
+		int	ev;
+		int	comp;
+	}
+	event[8];
 
 	double		Rs;
 	double		Ld;

@@ -164,7 +164,7 @@ enum {
 	PM_ERROR_BOOTSTRAP_FAULT,
 	PM_ERROR_POWER_STAGE_DAMAGED,
 	PM_ERROR_INSUFFICIENT_ACCURACY,
-	PM_ERROR_CURRENT_LOOP_IS_OPEN,
+	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INSTANT_OVERCURRENT,
 	PM_ERROR_DC_LINK_OVERVOLTAGE,
 	PM_ERROR_UNCERTAIN_RESULT,
@@ -244,7 +244,7 @@ typedef struct {
 	int		config_LU_SENSOR;
 	int		config_LU_LOCATION;
 	int		config_LU_DRIVE;
-	int		config_HFI_WAVETYPE;
+	int		config_HFI_WAVE;
 	int		config_HFI_POLARITY;
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
@@ -277,13 +277,13 @@ typedef struct {
 	float		tm_startup;
 	float		tm_halt_pause;
 
-	float		ad_IA[2];
-	float		ad_IB[2];
-	float		ad_IC[2];
-	float		ad_US[2];
-	float		ad_UA[2];
-	float		ad_UB[2];
-	float		ad_UC[2];
+	float		scale_iA[2];
+	float		scale_iB[2];
+	float		scale_iC[2];
+	float		scale_uS[2];
+	float		scale_uA[2];
+	float		scale_uB[2];
+	float		scale_uC[2];
 
 	float		fb_iA;
 	float		fb_iB;
@@ -304,8 +304,6 @@ typedef struct {
 	float		probe_freq_sine;
 	float		probe_speed_hold;
 	float		probe_speed_detached;
-	float		probe_damping_current;
-	float		probe_damping_speed;
 	float		probe_speed_tol;
 	float		probe_location_tol;
 	float		probe_gain_P;
@@ -314,12 +312,15 @@ typedef struct {
 	float		probe_DFT[8];
 	float		probe_REM[8];
 	float		probe_SC[2];
-	float		probe_lpf_HF;
-	float		probe_integral_HF;
+	float		probe_HF_lpf_track;
+	float		probe_HF_integral;
 	float		probe_LP;
 	float		probe_TEMP[2];
 
 	lse_t		probe_lse[3];
+
+	float		auto_loop_current;
+	float		auto_loop_speed;
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -518,13 +519,12 @@ typedef struct {
 	float		watt_uDC_minimal;
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
-	float		watt_consumption_wP;
-	float		watt_consumption_wA;
+	float		watt_drain_wP;
+	float		watt_drain_wA;
 	float		watt_gain_LP;
 
 	float		i_derate_on_HFI;
 	float		i_derate_on_PCB;
-	float		i_derate_on_weakening;
 
 	float		i_setpoint_current;
 	float		i_maximal;
@@ -534,7 +534,6 @@ typedef struct {
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_slew_rate;
-	float		i_tolerance;
 	float		i_gain_P;
 	float		i_gain_I;
 
@@ -549,12 +548,12 @@ typedef struct {
 	float		s_maximal;
 	float		s_reverse;
 	float		s_track;
-	float		s_forward;
 	float		s_accel;
 	float		s_linspan;
-	float		s_tolerance;
+	float		s_clamp;
 	float		s_gain_P;
-	float		s_gain_Q;
+	float		s_gain_D;
+	float		s_gain_LP;
 
 	float		x_location_range[2];
 	float		x_location_home;

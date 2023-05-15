@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -269,23 +269,23 @@ gpDefaultFile(gp_t *gp)
 		fprintf(fd,	"font 24 \"normal\"\n"
 				"preload 8388608\n"
 				"chunk 4096\n"
-				"timeout 1000\n"
+				"timeout 5000\n"
 				"windowsize 1200 900\n"
 				"language 0\n"
 				"colorscheme 0\n"
 				"antialiasing 1\n"
-				"solidfont 0\n"
+				"blendfont 1\n"
 				"thickness 1\n"
 				"drawing line 2\n"
 				"timecol -1\n"
 				"shortfilename 1\n"
-				"drawboost 200\n"
+				"fastdraw 200\n"
 				"interpolation 1\n"
 				"precision 9\n"
 				"lz4_compress 1\n");
 
 #ifdef _WINDOWS
-		fprintf(fd,	"legacy_label_enc 0\n");
+		fprintf(fd,	"legacy_label 0\n");
 #endif /* _WINDOWS */
 
 		fclose(fd);
@@ -569,7 +569,7 @@ legacy_FileOpenBAT(gp_t *gp, const char *file, int fromUI)
 						strcpy(gp->sbuf[1], file);
 						path = legacy_DirName(gp->sbuf[1]);
 
-						legacy_readConfigGRM(gp->rd, path, argv[0], argv[1], fromUI);
+						legacy_ConfigGRM(gp->rd, path, argv[0], argv[1], fromUI);
 						break;
 					}
 				}
@@ -1237,7 +1237,7 @@ gpMakeAboutMenu(gp_t *gp)
 {
 	char		*la = gp->la_menu;
 
-	strcpy(la, "Graph Plotter (GP) for numerical data analysis");
+	strcpy(la, "Graph Plotter is a tool to analyse numerical data");
 	la += strlen(la) + 1;
 
 	gpTextSepFill(gp->sbuf[0], 54);
@@ -1249,6 +1249,18 @@ gpMakeAboutMenu(gp_t *gp)
 	la += strlen(la) + 1;
 
 	strcpy(la, "Build: " __DATE__);
+	la += strlen(la) + 1;
+
+	sprintf(la, "SDL: %d.%d.%d", SDL_MAJOR_VERSION,
+			SDL_MINOR_VERSION, SDL_PATCHLEVEL);
+	la += strlen(la) + 1;
+
+	sprintf(la, "SDL_ttf: %d.%d.%d", SDL_TTF_MAJOR_VERSION,
+			SDL_TTF_MINOR_VERSION, SDL_TTF_PATCHLEVEL);
+	la += strlen(la) + 1;
+
+	sprintf(la, "SDL_image: %d.%d.%d", SDL_IMAGE_MAJOR_VERSION,
+			SDL_IMAGE_MINOR_VERSION, SDL_IMAGE_PATCHLEVEL);
 	la += strlen(la) + 1;
 
 	gpTextSepFill(gp->sbuf[0], 54);
@@ -1295,12 +1307,13 @@ gpTakeScreen(gp_t *gp)
 #ifdef _WINDOWS
 void legacy_SetClipboard(SDL_Surface *surface)
 {
-	long		length = 9437184UL;
+	long		length;
 	void		*mBMP;
 
 	SDL_RWops	*rwops;
 	HGLOBAL		hDIB;
 
+	length = surface->pitch * surface->h + 1048576UL;
 	mBMP = malloc(length);
 
 	if (mBMP == NULL) {
@@ -1436,7 +1449,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 						:  (dw->antialiasing == DRAW_8X_MSAA)  ? "8x MSAA" : "Solid  ";
 
 				mu->mark[3].N = 3;
-				mu->mark[3].subs = (dw->solidfont != 0)  ? "Solid  " : "Blended";
+				mu->mark[3].subs = (dw->blendfont != 0)  ? "Blended" : "Solid  ";
 
 				sprintf(gp->sbuf[3], "%i      ", dw->thickness);
 
@@ -1879,13 +1892,13 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 2:
-				rd->drawboost = 0;
+				rd->fastdraw = 0;
 				dw->antialiasing = (dw->antialiasing < DRAW_8X_MSAA)
 					? dw->antialiasing + 1 : DRAW_SOLID;
 				break;
 
 			case 3:
-				dw->solidfont = (dw->solidfont != 0) ? 0 : 1;
+				dw->blendfont = (dw->blendfont != 0) ? 0 : 1;
 				break;
 
 			case 4:
@@ -1915,7 +1928,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					:  (pl->layout_font_ttf == TTF_ID_ROBOTO_MONO_THIN) ? "Thin   " : "       ";
 			mu->mark[2].subs = (dw->antialiasing == DRAW_4X_MSAA)  ? "4x MSAA"
 					:  (dw->antialiasing == DRAW_8X_MSAA)  ? "8x MSAA" : "Solid  ";
-			mu->mark[3].subs = (dw->solidfont != 0)  ? "Solid  " : "Blended";
+			mu->mark[3].subs = (dw->blendfont != 0)  ? "Blended" : "Solid  ";
 
 			sprintf(gp->sbuf[3], "%i      ", dw->thickness);
 
@@ -3654,18 +3667,24 @@ gpDrawRangeSelect(SDL_Surface *surface, gp_t *gp)
 
 	if (abs(gp->box_X - gp->cur_X) >= abs(gp->box_Y - gp->cur_Y)) {
 
-		drawLineDashed(dw, surface, &pl->viewport, gp->box_X, pl->viewport.min_y,
+		drawDashReset(dw);
+		drawDash(dw, surface, &pl->viewport, gp->box_X, pl->viewport.min_y,
 				gp->box_X, pl->viewport.max_y, pl->sch->plot_text,
 				pl->layout_fence_dash, pl->layout_fence_space);
-		drawLineDashed(dw, surface, &pl->viewport, gp->cur_X, pl->viewport.min_y,
+
+		drawDashReset(dw);
+		drawDash(dw, surface, &pl->viewport, gp->cur_X, pl->viewport.min_y,
 				gp->cur_X, pl->viewport.max_y, pl->sch->plot_text,
 				pl->layout_fence_dash, pl->layout_fence_space);
 	}
 	else {
-		drawLineDashed(dw, surface, &pl->viewport, pl->viewport.min_x, gp->box_Y,
+		drawDashReset(dw);
+		drawDash(dw, surface, &pl->viewport, pl->viewport.min_x, gp->box_Y,
 				pl->viewport.max_x, gp->box_Y, pl->sch->plot_text,
 				pl->layout_fence_dash, pl->layout_fence_space);
-		drawLineDashed(dw, surface, &pl->viewport, pl->viewport.min_x, gp->cur_Y,
+
+		drawDashReset(dw);
+		drawDash(dw, surface, &pl->viewport, pl->viewport.min_x, gp->cur_Y,
 				pl->viewport.max_x, gp->cur_Y, pl->sch->plot_text,
 				pl->layout_fence_dash, pl->layout_fence_space);
 	}
@@ -3715,16 +3734,16 @@ gpDrawBoxSelect(SDL_Surface *surface, gp_t *gp)
 
 	SDL_LockSurface(surface);
 
-	drawLineDashed(dw, surface, &pl->viewport, gp->box_X, gp->box_Y,
+	drawDash(dw, surface, &pl->viewport, gp->box_X, gp->box_Y,
 			gp->cur_X, gp->box_Y, pl->sch->plot_text,
 			pl->layout_fence_dash, pl->layout_fence_space);
-	drawLineDashed(dw, surface, &pl->viewport, gp->box_X, gp->box_Y,
+	drawDash(dw, surface, &pl->viewport, gp->box_X, gp->box_Y,
 			gp->box_X, gp->cur_Y, pl->sch->plot_text,
 			pl->layout_fence_dash, pl->layout_fence_space);
-	drawLineDashed(dw, surface, &pl->viewport, gp->cur_X, gp->cur_Y,
+	drawDash(dw, surface, &pl->viewport, gp->cur_X, gp->cur_Y,
 			gp->cur_X, gp->box_Y, pl->sch->plot_text,
 			pl->layout_fence_dash, pl->layout_fence_space);
-	drawLineDashed(dw, surface, &pl->viewport, gp->cur_X, gp->cur_Y,
+	drawDash(dw, surface, &pl->viewport, gp->cur_X, gp->cur_Y,
 			gp->box_X, gp->cur_Y, pl->sch->plot_text,
 			pl->layout_fence_dash, pl->layout_fence_space);
 
@@ -3767,7 +3786,7 @@ gp_t *gp_Alloc()
 	gp->dw = dw;
 
 	dw->antialiasing = DRAW_4X_MSAA;
-	dw->solidfont = 0;
+	dw->blendfont = 1;
 	dw->thickness = 1;
 
 	pl = plotAlloc(dw, sch);
@@ -3775,6 +3794,7 @@ gp_t *gp_Alloc()
 
 	rd = readAlloc(dw, pl);
 	gp->rd = rd;
+	pl->ld = rd;
 
 	mu = menuAlloc(dw, sch);
 	gp->mu = mu;
@@ -4013,7 +4033,7 @@ int gp_Draw(gp_t *gp)
 			gpDrawBoxLight(gp->surface, gp);
 		}
 
-		if (		rd->drawboost != 0
+		if (		rd->fastdraw != 0
 				&& dw->antialiasing != DRAW_SOLID) {
 
 			t0 = SDL_GetTicks();
@@ -4021,12 +4041,12 @@ int gp_Draw(gp_t *gp)
 
 		plotDraw(pl, gp->surface);
 
-		if (		rd->drawboost != 0
+		if (		rd->fastdraw != 0
 				&& dw->antialiasing != DRAW_SOLID) {
 
 			t1 = SDL_GetTicks();
 
-			gp->level += (t1 - t0 > rd->drawboost) ? 1
+			gp->level += (t1 - t0 > rd->fastdraw) ? 1
 				: (gp->level > 0) ? - 1 : 0;
 
 			if (gp->level > 4) {
@@ -4135,7 +4155,7 @@ int main(int argn, char *argv[])
 		legacy_ACP_to_UTF8(gp->sbuf[0], argv[1], READ_FILE_PATH_MAX);
 		legacy_ACP_to_UTF8(gp->sbuf[1], argv[2], READ_FILE_PATH_MAX);
 
-		legacy_readConfigGRM(gp->rd, NULL, gp->sbuf[0], gp->sbuf[1], 0);
+		legacy_ConfigGRM(gp->rd, NULL, gp->sbuf[0], gp->sbuf[1], 0);
 	}
 	else
 #endif /* _WINDOWS */

@@ -12,58 +12,54 @@ io_ops_t		*iodef;
 
 uint32_t		rseed;
 
-void *memset(void *d, int c, int n)
+void *memset(void *d, int c, size_t n)
 {
-	uint32_t	fill, *long_d = (uint32_t *) d;
+	uint32_t	fill, *ld = (uint32_t *) d;
 
-	if (((uint32_t) long_d & 3U) == 0) {
+	if (((uint32_t) ld & 3U) == 0) {
 
 		fill = (uint8_t) c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (n >= 4) {
+		for (; n >= 4; n -= 4) {
 
-			*long_d++ = fill;
-			n += - 4;
+			*ld++ = fill;
 		}
 	}
 
 	{
-		uint8_t		*tail_d = (uint8_t *) long_d;
+		uint8_t		*bd = (uint8_t *) ld;
 
-		while (n >= 1) {
+		for (; n >= 1; n -= 1) {
 
-			*tail_d++ = (uint8_t) c;
-			n += - 1;
+			*bd++ = (uint8_t) c;
 		}
 	}
 
 	return d;
 }
 
-void *memcpy(void *restrict d, const void *restrict s, int n)
+void *memcpy(void *restrict d, const void *restrict s, size_t n)
 {
-	uint32_t	*restrict long_d = (uint32_t * restrict) d;
-	const uint32_t	*restrict long_s = (const uint32_t * restrict) s;
+	uint32_t	*restrict ld = (uint32_t * restrict) d;
+	const uint32_t	*restrict ls = (const uint32_t * restrict) s;
 
-	if (((uint32_t) long_d & 3U) == 0 && ((uint32_t) long_s & 3U) == 0) {
+	if (((uint32_t) ld & 3U) == 0 && ((uint32_t) ls & 3U) == 0) {
 
-		while (n >= 4) {
+		for (; n >= 4; n -= 4) {
 
-			*long_d++ = *long_s++;
-			n += - 4;
+			*ld++ = *ls++;
 		}
 	}
 
 	{
-		uint8_t		*restrict tail_d = (uint8_t * restrict) long_d;
-		const uint8_t	*restrict tail_s = (const uint8_t * restrict) long_s;
+		uint8_t		*restrict bd = (uint8_t * restrict) ld;
+		const uint8_t	*restrict bs = (const uint8_t * restrict) ls;
 
-		while (n >= 1) {
+		for (; n >= 1; n -= 1) {
 
-			*tail_d++ = *tail_s++;
-			n += - 1;
+			*bd++ = *bs++;
 		}
 	}
 

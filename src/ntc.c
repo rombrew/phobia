@@ -14,7 +14,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 		case NTC_GND:
 
-			um = ADC_get_VALUE(ntc->gpio);
+			um = ADC_get_sample(ntc->gpio);
 			ohm = um * ntc->balance / (1.f - um);
 			log = m_logf(ohm / ntc->ntc0);
 			temp = 1.f / (1.f / (ntc->ta0 + 273.f)
@@ -23,7 +23,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 		case NTC_VCC:
 
-			um = ADC_get_VALUE(ntc->gpio);
+			um = ADC_get_sample(ntc->gpio);
 			ohm = (1.f - um) * ntc->balance / um;
 			log = m_logf(ohm / ntc->ntc0);
 			temp = 1.f / (1.f / (ntc->ta0 + 273.f)
@@ -32,7 +32,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 		case NTC_CMOS:
 
-			um = ADC_get_VALUE(ntc->gpio);
+			um = ADC_get_sample(ntc->gpio);
 			temp = um * ntc->betta + ntc->ta0;
 			break;
 

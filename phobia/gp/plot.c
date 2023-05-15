@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -4692,6 +4692,9 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 
 	if (len_N >= 2) {
 
+#ifdef _WINDOWS
+		read_t		*rd = (read_t *) pl->ld;
+#endif /* _WINDOWS */
 		char		labelbuf[PLOT_STRING_MAX];
 
 		for (N = 0; N < len_N; ++N) {
@@ -4713,6 +4716,17 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 						pl->axis[aN].label);
 
 			}
+
+#ifdef _WINDOWS
+			if (rd->legacy_label == 1) {
+
+				legacy_UTF8_to_ACP(labelbuf, labelbuf, sizeof(labelbuf));
+			}
+			else if (rd->legacy_label == 2) {
+
+				legacy_UTF8_to_OEM(labelbuf, labelbuf, sizeof(labelbuf));
+			}
+#endif /* _WINDOWS */
 
 			fprintf(fd_csv, "%s;", labelbuf);
 		}
@@ -5237,15 +5251,14 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 			SDL_LockSurface(surface);
 
-			drawDashReset(pl->dw);
-
 			if (pl->axis[pl->slice_axis_N].busy == AXIS_BUSY_X) {
 
 				if (pl->slice_range_on != 0) {
 
 					if (fp_isfinite(base_X)) {
 
-						drawLineDashed(pl->dw, surface, &pl->viewport,
+						drawDashReset(pl->dw);
+						drawDash(pl->dw, surface, &pl->viewport,
 								base_X, pl->viewport.min_y,
 								base_X, pl->viewport.max_y,
 								pl->sch->plot_text,
@@ -5256,7 +5269,8 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 				if (fp_isfinite(data_X)) {
 
-					drawLineDashed(pl->dw, surface, &pl->viewport,
+					drawDashReset(pl->dw);
+					drawDash(pl->dw, surface, &pl->viewport,
 							data_X, pl->viewport.min_y,
 							data_X, pl->viewport.max_y,
 							pl->sch->plot_text,
@@ -5270,7 +5284,8 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 					if (fp_isfinite(base_Y)) {
 
-						drawLineDashed(pl->dw, surface, &pl->viewport,
+						drawDashReset(pl->dw);
+						drawDash(pl->dw, surface, &pl->viewport,
 								pl->viewport.min_x, base_Y,
 								pl->viewport.max_x, base_Y,
 								pl->sch->plot_text,
@@ -5281,7 +5296,8 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 				if (fp_isfinite(data_Y)) {
 
-					drawLineDashed(pl->dw, surface, &pl->viewport,
+					drawDashReset(pl->dw);
+					drawDash(pl->dw, surface, &pl->viewport,
 							pl->viewport.min_x, data_Y,
 							pl->viewport.max_x, data_Y,
 							pl->sch->plot_text,
@@ -5488,13 +5504,28 @@ plotDrawPalette(plot_t *pl)
 	palette[10] = sch->plot_text;
 }
 
+static int
+plotGetTickCached(plot_t *pl)
+{
+	if (pl->tick_skip > 0) {
+
+		pl->tick_skip--;
+	}
+	else {
+		pl->tick_cached = SDL_GetTicks();
+		pl->tick_skip = 63;
+	}
+
+	return pl->tick_cached;
+}
+
 static void
 plotDrawFigureTrial(plot_t *pl, int fN, int tTOP)
 {
 	const fval_t	*row;
 	double		scale_X, scale_Y, offset_X, offset_Y, im_MIN, im_MAX;
 	double		X, Y, last_X, last_Y, im_X, im_Y, last_im_X, last_im_Y;
-	int		dN, rN, xN, yN, xNR, yNR, aN, bN, id_N, top_N, kN, kN_cached;
+	int		dN, rN, xN, yN, xNR, yNR, aN, bN, id_N, id_N_top, kN, kN_cached;
 	int		job, skipped, line, rc, ncolor, fdrawing, fwidth;
 
 	ncolor = (pl->figure[fN].hidden != 0) ? 9 : fN + 1;
@@ -5542,7 +5573,7 @@ plotDrawFigureTrial(plot_t *pl, int fN, int tTOP)
 	rN = pl->draw[fN].rN;
 	id_N = pl->draw[fN].id_N;
 
-	top_N = id_N + (1UL << pl->data[dN].chunk_SHIFT);
+	id_N_top = id_N + (1UL << pl->data[dN].chunk_SHIFT);
 	kN_cached = -1;
 
 	plotSketchDataChunkSetUp(pl, fN);
@@ -5660,7 +5691,7 @@ plotDrawFigureTrial(plot_t *pl, int fN, int tTOP)
 				line = 0;
 			}
 
-			if (id_N > top_N || SDL_GetTicks() > tTOP) {
+			if (id_N > id_N_top || plotGetTickCached(pl) > tTOP) {
 
 				pl->draw[fN].sketch = SKETCH_INTERRUPTED;
 				pl->draw[fN].rN = rN;
@@ -5751,7 +5782,7 @@ plotDrawFigureTrial(plot_t *pl, int fN, int tTOP)
 				plotDataChunkSkip(pl, dN, &rN, &id_N);
 			}
 
-			if (id_N > top_N || SDL_GetTicks() > tTOP) {
+			if (id_N > id_N_top || plotGetTickCached(pl) > tTOP) {
 
 				pl->draw[fN].sketch = SKETCH_INTERRUPTED;
 				pl->draw[fN].rN = rN;
@@ -5903,10 +5934,12 @@ plotDrawSketch(plot_t *pl, SDL_Surface *surface)
 static void
 plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 {
-	double		scale, offset, fmin, fmax, fexp, tih, tis, tik, temp;
+	char		numfmt[PLOT_STRING_MAX];
+	char		numbuf[PLOT_STRING_MAX];
+
+	double		scale, offset, fmin, fmax, fpow, tih, tis, tik, la;
 	int		fN, bN, texp, lpos, tpos, tmpi, onhover;
 
-	char		numfmt[PLOT_STRING_MAX], numbuf[PLOT_STRING_MAX];
 	colType_t	axCol = pl->sch->plot_hidden;
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
@@ -5967,14 +6000,14 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 	if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-		temp = (double) (pl->viewport.max_x - pl->viewport.min_x);
+		la = (double) (pl->viewport.max_x - pl->viewport.min_x);
 	}
 	else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-		temp = (double) (pl->viewport.max_y - pl->viewport.min_y);
+		la = (double) (pl->viewport.max_y - pl->viewport.min_y);
 	}
 
-	tik = (int) (tih * scale * temp);
+	tik = (int) (tih * scale * la);
 	lpos = pl->layout_font_long * (abs(texp) + 2);
 
 	if (tik < lpos) {
@@ -5989,19 +6022,19 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 	pl->axis[aN].ruler_tih = tih * scale;
 	pl->axis[aN].ruler_tis = tis * scale + offset;
 
-	fexp = 1.;
+	fpow = 1.;
 
 	if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-		temp = (double) (pl->viewport.max_x - pl->viewport.min_x);
-		scale *= temp;
-		offset = offset * temp + pl->viewport.min_x;
+		la = (double) (pl->viewport.max_x - pl->viewport.min_x);
+		scale *= la;
+		offset = offset * la + pl->viewport.min_x;
 	}
 	else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-		temp = (double) (pl->viewport.min_y - pl->viewport.max_y);
-		scale *= temp;
-		offset = offset * temp + pl->viewport.max_y;
+		la = (double) (pl->viewport.min_y - pl->viewport.max_y);
+		scale *= la;
+		offset = offset * la + pl->viewport.max_y;
 	}
 
 	SDL_LockSurface(surface);
@@ -6041,14 +6074,11 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			drawLine(pl->dw, surface, &pl->screen, tpos, lpos, tpos,
 					lpos + pl->layout_tick_tooth, pl->sch->plot_axis);
 
-			drawDashReset(pl->dw);
-
 			if (		pl->axis[aN].lock_tick != 0
 					|| pl->on_X == aN) {
 
 				drawDashReset(pl->dw);
-
-				drawLineDashed(pl->dw, surface, &pl->screen, tpos,
+				drawDash(pl->dw, surface, &pl->screen, tpos,
 						pl->viewport.min_y, tpos,
 						pl->viewport.max_y, pl->sch->plot_axis,
 						pl->layout_grid_dash, pl->layout_grid_space);
@@ -6110,8 +6140,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 					|| pl->on_Y == aN) {
 
 				drawDashReset(pl->dw);
-
-				drawLineDashed(pl->dw, surface, &pl->screen,
+				drawDash(pl->dw, surface, &pl->screen,
 						pl->viewport.min_x, tpos,
 						pl->viewport.max_x, tpos,
 						pl->sch->plot_axis, pl->layout_grid_dash,
@@ -6152,7 +6181,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			if (tmpi != 0) {
 
 				texp += tmpi;
-				fexp *= pow(10., (double) tmpi);
+				fpow *= pow(10., (double) tmpi);
 
 				sprintf(numbuf, "E%+i", - tmpi);
 
@@ -6177,7 +6206,13 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			tfar += - (txlen + pl->layout_font_long);
 		}
 
-		sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
+		if (abs(texp) < 100) {
+
+			sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
+		}
+		else {
+			numfmt[0] = 0;
+		}
 
 		for (tik = tis; tik < fmax; tik += tih) {
 
@@ -6186,7 +6221,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			if (tpos < pl->viewport.min_x || tpos > pl->viewport.max_x)
 				continue ;
 
-			sprintf(numbuf, numfmt, tik * fexp);
+			sprintf(numbuf, numfmt, tik * fpow);
 
 			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
 			tleft = tpos - txlen / 2 - pl->layout_font_long;
@@ -6233,7 +6268,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			if (tmpi != 0) {
 
 				texp += tmpi;
-				fexp *= pow(10., (double) tmpi);
+				fpow *= pow(10., (double) tmpi);
 
 				sprintf(numbuf, "E%+i", - tmpi);
 
@@ -6260,7 +6295,13 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			tfar += txlen + pl->layout_font_long / 2;
 		}
 
-		sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
+		if (abs(texp) < 100) {
+
+			sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
+		}
+		else {
+			numfmt[0] = 0;
+		}
 
 		for (tik = tis; tik < fmax; tik += tih) {
 
@@ -6269,7 +6310,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 			if (tpos < pl->viewport.min_y || tpos > pl->viewport.max_y)
 				continue ;
 
-			sprintf(numbuf, numfmt, tik * fexp);
+			sprintf(numbuf, numfmt, tik * fpow);
 
 			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
 			tleft = tpos + txlen / 2 + pl->layout_font_long;
@@ -6405,8 +6446,8 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 							ncolor, fwidth);
 				}
 				else {
-					drawLineCanvas(pl->dw, surface, &pl->viewport, boxX, boxY + .5,
-							boxX + pl->layout_font_height, boxY + .5,
+					drawLineCanvas(pl->dw, surface, &pl->viewport, boxX, boxY + 0.5,
+							boxX + pl->layout_font_height, boxY + 0.5,
 							ncolor, fwidth);
 				}
 			}
@@ -6424,8 +6465,8 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 							pl->layout_drawing_space);
 				}
 				else {
-					drawDashCanvas(pl->dw, surface, &pl->viewport, boxX, boxY + .5,
-							boxX + pl->layout_font_height, boxY + .5,
+					drawDashCanvas(pl->dw, surface, &pl->viewport, boxX, boxY + 0.5,
+							boxX + pl->layout_font_height, boxY + 0.5,
 							ncolor, fwidth, pl->layout_drawing_dash,
 							pl->layout_drawing_space);
 				}
@@ -6434,16 +6475,16 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 
 				boxX = legX + pl->layout_font_height;
 
-				if (fwidth > 2) {
+				if (fwidth > 4) {
 
 					drawDotCanvas(pl->dw, surface, &pl->viewport,
-							boxX + .5, boxY + .5,
+							boxX + 0.5, boxY + 0.5,
 							fwidth, ncolor, 1);
 				}
 				else {
 					drawDotCanvas(pl->dw, surface, &pl->viewport,
-							boxX + .5, boxY + .5,
-							2, ncolor, 1);
+							boxX + 0.5, boxY + 0.5,
+							4, ncolor, 1);
 				}
 			}
 
@@ -6826,7 +6867,6 @@ void plotDraw(plot_t *pl, SDL_Surface *surface)
 	SDL_UnlockSurface(surface);
 
 	drawClearCanvas(pl->dw);
-	drawDashReset(pl->dw);
 
 	plotDrawAxisAll(pl, surface);
 

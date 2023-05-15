@@ -18,10 +18,11 @@ GDB	= $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-#CC	= clang -target $(CROSS)
 #CROSS	= armv7m-none-eabi
+#CC	= clang -target $(CROSS)
 
-CFLAGS	= -Os -flto=auto -g3 -pipe
+CFLAGS	= -O3 -flto=auto -g3 -pipe
+CFLAGS	+= -Wno-stringop-overflow
 
 ifeq ($(HWMCU), STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
@@ -49,7 +50,7 @@ CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
 
 LDFLAGS	= -nostdlib
 LDFLAGS	+= -Wl,--no-warn-rwx-segment
-#LDFLAGS += -Wl,--print-memory-usage
+LDFLAGS += -Wl,--print-memory-usage
 
 ifeq ($(HWMCU), STM32F405)
 LDFLAGS	+= -Wl,-T,hal/link_f405.ld
@@ -62,7 +63,7 @@ endif
 OBJS	=  app/as5047.o \
 	   app/hx711.o \
 	   app/mpu6050.o \
-	   app/pushtwo.o
+	   app/pushbutton.o
 
 OBJS	+= freertos/heap_4.o \
 	   freertos/list.o \

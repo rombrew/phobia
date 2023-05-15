@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -60,7 +60,8 @@ stoi(const markup_t *mk, int *x, char *s)
 
 	if (k == 0) return NULL;
 
-	if (*s == 0 || strchr(mk->space, *s) != NULL || strchr(mk->lend, *s) != NULL) {
+	if (*s == 0 || strchr(mk->space, *s) != NULL
+			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = i;
 	}
@@ -94,7 +95,8 @@ htoi(const markup_t *mk, int *x, char *s)
 
 	if (k == 0) return NULL;
 
-	if (*s == 0 || strchr(mk->space, *s) != NULL || strchr(mk->lend, *s) != NULL) {
+	if (*s == 0 || strchr(mk->space, *s) != NULL
+			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = h;
 	}
@@ -124,7 +126,8 @@ otoi(const markup_t *mk, int *x, char *s)
 
 	if (k == 0) return NULL;
 
-	if (*s == 0 || strchr(mk->space, *s) != NULL || strchr(mk->lend, *s) != NULL) {
+	if (*s == 0 || strchr(mk->space, *s) != NULL
+			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = h;
 	}
@@ -180,7 +183,8 @@ stod(const markup_t *mk, double *x, char *s)
 		else return NULL;
 	}
 
-	if (*s == 0 || strchr(mk->space, *s) != NULL || strchr(mk->lend, *s) != NULL) {
+	if (*s == 0 || strchr(mk->space, *s) != NULL
+			|| strchr(mk->lend, *s) != NULL) {
 
 		while (v < 0) { f /= 10.; v++; }
 		while (v > 0) { f *= 10.; v--; }
@@ -207,7 +211,7 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->window_size_y = GP_MIN_SIZE_Y;
 	rd->timecol = -1;
 	rd->shortfilename = 0;
-	rd->drawboost = 0;
+	rd->fastdraw = 0;
 
 	rd->mk_config.delim = '.';
 	strcpy(rd->mk_config.space, " \t;");
@@ -218,12 +222,12 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	strcpy(rd->mk_text.lend, rd->mk_config.lend);
 
 #ifdef _WINDOWS
-	rd->legacy_label_enc = 0;
+	rd->legacy_label = 0;
 #endif /* _WINDOWS */
 
 	rd->preload = 8388608;
 	rd->chunk = 4096;
-	rd->timeout = 1000;
+	rd->timeout = 5000;
 	rd->length_N = 1000;
 
 	rd->bind_N = -1;
@@ -239,7 +243,7 @@ void readClean(read_t *rd)
 }
 
 static void
-ansiShort(char *tbuf, const char *text, int allowed)
+readCutLabel(char *tbuf, const char *text, int allowed)
 {
 	int		length;
 
@@ -258,7 +262,7 @@ ansiShort(char *tbuf, const char *text, int allowed)
 }
 
 static void
-filenameShort(read_t *rd, char *tbuf, const char *file, int allowed)
+readCutFile(read_t *rd, char *tbuf, const char *file, int allowed)
 {
 	const char	*eol;
 	int		length, ndir;
@@ -311,20 +315,36 @@ filenameShort(read_t *rd, char *tbuf, const char *file, int allowed)
 }
 
 #ifdef _WINDOWS
-void legacy_ACP_to_UTF8(char *ustr, const char *text, int n)
+void legacy_ACP_to_UTF8(char *us, const char *text, int n)
 {
 	wchar_t			wbuf[READ_TOKEN_MAX * READ_COLUMN_MAX];
 
 	MultiByteToWideChar(CP_ACP, 0, text, -1, wbuf, sizeof(wbuf) / sizeof(wchar_t));
-	WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, ustr, n, NULL, NULL);
+	WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, us, n, NULL, NULL);
 }
 
-void legacy_OEM_to_UTF8(char *ustr, const char *text, int n)
+void legacy_OEM_to_UTF8(char *us, const char *text, int n)
 {
 	wchar_t			wbuf[READ_TOKEN_MAX * READ_COLUMN_MAX];
 
 	MultiByteToWideChar(CP_OEMCP, 0, text, -1, wbuf, sizeof(wbuf) / sizeof(wchar_t));
-	WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, ustr, n, NULL, NULL);
+	WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, us, n, NULL, NULL);
+}
+
+void legacy_UTF8_to_ACP(char *text, const char *us, int n)
+{
+	wchar_t			wbuf[READ_TOKEN_MAX * READ_COLUMN_MAX];
+
+	MultiByteToWideChar(CP_UTF8, 0, us, -1, wbuf, sizeof(wbuf) / sizeof(wchar_t));
+	WideCharToMultiByte(CP_ACP, 0, wbuf, -1, text, n, NULL, NULL);
+}
+
+void legacy_UTF8_to_OEM(char *text, const char *us, int n)
+{
+	wchar_t			wbuf[READ_TOKEN_MAX * READ_COLUMN_MAX];
+
+	MultiByteToWideChar(CP_UTF8, 0, us, -1, wbuf, sizeof(wbuf) / sizeof(wchar_t));
+	WideCharToMultiByte(CP_OEMCP, 0, wbuf, -1, text, n, NULL, NULL);
 }
 
 static FILE *
@@ -358,7 +378,7 @@ legacy_GetFreeData(read_t *rd)
 }
 
 static int
-legacy_GetLabel(char *s, char *label[9])
+legacy_LabelExtract(char *s, char *label[9])
 {
 	char		*cur;
 	int		m, N;
@@ -406,7 +426,7 @@ legacy_GetLabel(char *s, char *label[9])
 }
 
 static char *
-legacy_Trim(read_t *rd, char *s)
+legacy_TextTrim(read_t *rd, char *s)
 {
 	char		*eol;
 
@@ -431,7 +451,7 @@ legacy_Trim(read_t *rd, char *s)
 	return s;
 }
 
-void legacy_readConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI)
+void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI)
 {
 	FILE		*fd;
 
@@ -556,20 +576,20 @@ void legacy_readConfigGRM(read_t *rd, const char *path, const char *confile, con
 
 				rd->page[pN].busy = 1;
 
-				strcpy(lbuf, legacy_Trim(rd, tbuf));
+				strcpy(lbuf, legacy_TextTrim(rd, tbuf));
 				ptext = lbuf;
 
 				if (fromUI != 0) {
 
-					filenameShort(rd, nbuf, pfile, 95);
+					readCutFile(rd, nbuf, pfile, 95);
 
 					sprintf(xbuf, "%s: %.95s", nbuf, lbuf);
 					ptext = xbuf;
 				}
 
-				ansiShort(rd->page[pN].title, ptext, PLOT_STRING_MAX);
+				readCutLabel(rd->page[pN].title, ptext, PLOT_STRING_MAX);
 
-				lbN = legacy_GetLabel(lbuf, label);
+				lbN = legacy_LabelExtract(lbuf, label);
 
 				fgets(tbuf, sizeof(rd->data[0].buf), fd);
 
@@ -594,7 +614,7 @@ void legacy_readConfigGRM(read_t *rd, const char *path, const char *confile, con
 				line_N++;
 
 				legacy_OEM_to_UTF8(tbuf, tbuf, sizeof(rd->data[0].buf));
-				sprintf(rd->page[pN].ax[0].label, "%.20s", legacy_Trim(rd, tbuf));
+				sprintf(rd->page[pN].ax[0].label, "%.20s", legacy_TextTrim(rd, tbuf));
 
 				fN = 0;
 
@@ -701,8 +721,67 @@ FILE *unified_fopen(const char *file, const char *mode)
 #endif
 }
 
+static char *
+readTimeGetSbuf(char *s, int len, FILE *fd, int timeout)
+{
+	int		c, eol, nq, waiting;
+
+	eol = 0;
+	nq = 0;
+	waiting = 0;
+
+	do {
+		c = fgetc(fd);
+
+		if (c != EOF) {
+
+			if (c == '\r' || c == '\n') {
+
+				eol = (nq > 0) ? 1 : 0;
+			}
+			else if (eol == 1) {
+
+				ungetc(c, fd);
+				break;
+			}
+			else if (nq < len - 1) {
+
+				*s++ = (char) c;
+				nq++;
+			}
+		}
+		else {
+			if (feof(fd) || ferror(fd)) {
+
+				if (waiting < timeout) {
+
+					clearerr(fd);
+
+					SDL_Delay(10);
+
+					waiting += 10;
+				}
+				else {
+					break;
+				}
+			}
+		}
+	}
+	while (1);
+
+	if (eol != 0) {
+
+		*s = 0;
+
+		return s;
+	}
+	else {
+		return NULL;
+	}
+}
+
 static int
-TEXT_GetRow(read_t *rd, int dN)
+readTEXTGetRow(read_t *rd, int dN)
 {
 	fval_t 		*row = rd->data[dN].row;
 	int		*hint = rd->data[dN].hint;
@@ -800,19 +879,19 @@ TEXT_GetRow(read_t *rd, int dN)
 }
 
 static int
-TEXT_GetLabel(read_t *rd, int dN)
+readTEXTGetLabel(read_t *rd, int dN)
 {
 	char		*label, *s = rd->data[dN].buf;
 	int		m, N;
 
 #ifdef _WINDOWS
-	if (rd->legacy_label_enc == 1) {
+	if (rd->legacy_label == 1) {
 
-		legacy_ACP_to_UTF8(s, s, sizeof(rd->data[dN].buf));
+		legacy_ACP_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
 	}
-	else if (rd->legacy_label_enc == 2) {
+	else if (rd->legacy_label == 2) {
 
-		legacy_OEM_to_UTF8(s, s, sizeof(rd->data[dN].buf));
+		legacy_OEM_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
 	}
 #endif /* _WINDOWS */
 
@@ -821,7 +900,8 @@ TEXT_GetLabel(read_t *rd, int dN)
 
 	while (*s != 0) {
 
-		if (strchr(rd->mk_text.space, *s) != NULL || strchr(rd->mk_text.lend, *s) != NULL) {
+		if (		strchr(rd->mk_text.space, *s) != NULL
+				|| strchr(rd->mk_text.lend, *s) != NULL) {
 
 			if (m != 0) {
 
@@ -856,67 +936,8 @@ TEXT_GetLabel(read_t *rd, int dN)
 	return N;
 }
 
-static char *
-follow_fgets(char *s, int len, FILE *fd, int timeout)
-{
-	int		c, eol, nq, waiting;
-
-	eol = 0;
-	nq = 0;
-	waiting = 0;
-
-	do {
-		c = fgetc(fd);
-
-		if (c != EOF) {
-
-			if (c == '\r' || c == '\n') {
-
-				eol = (nq > 0) ? 1 : 0;
-			}
-			else if (eol == 1) {
-
-				ungetc(c, fd);
-				break;
-			}
-			else if (nq < len - 1) {
-
-				*s++ = (char) c;
-				nq++;
-			}
-		}
-		else {
-			if (feof(fd) || ferror(fd)) {
-
-				if (waiting < timeout) {
-
-					clearerr(fd);
-
-					SDL_Delay(10);
-
-					waiting += 10;
-				}
-				else {
-					break;
-				}
-			}
-		}
-	}
-	while (1);
-
-	if (eol != 0) {
-
-		*s = 0;
-
-		return s;
-	}
-	else {
-		return NULL;
-	}
-}
-
 static int
-TEXT_WipeBOM(read_t *rd, int dN)
+readTEXTWipeBOM(read_t *rd, int dN)
 {
 	char		*tbuf = rd->data[dN].buf;
 	int		nBOM = 1;
@@ -944,7 +965,7 @@ TEXT_WipeBOM(read_t *rd, int dN)
 }
 
 static int
-TEXT_GetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
+readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 {
 	int		label_cN, fixed_N, total_N;
 	int		N, cN, timeout;
@@ -959,7 +980,7 @@ TEXT_GetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 	timeout = 0;
 
 	do {
-		r = follow_fgets(rd->data[dN].buf, sizeof(rd->data[0].buf), fd, timeout);
+		r = readTimeGetSbuf(rd->data[dN].buf, sizeof(rd->data[0].buf), fd, timeout);
 
 		total_N++;
 
@@ -968,7 +989,7 @@ TEXT_GetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 
 		if (total_N == 1) {
 
-			if (TEXT_WipeBOM(rd, dN) == 0) {
+			if (readTEXTWipeBOM(rd, dN) == 0) {
 
 				cN = 0;
 				break;
@@ -977,16 +998,16 @@ TEXT_GetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 
 		if (label_cN < 1) {
 
-			label_cN = TEXT_GetLabel(rd, dN);
+			label_cN = readTEXTGetLabel(rd, dN);
 		}
 		else {
-			cN = TEXT_GetRow(rd, dN);
+			cN = readTEXTGetRow(rd, dN);
 
 			if (cN != 0) {
 
 				if (cN > label_cN) {
 
-					label_cN = TEXT_GetLabel(rd, dN);
+					label_cN = readTEXTGetLabel(rd, dN);
 					fixed_N = 0;
 				}
 				else {
@@ -1018,7 +1039,7 @@ TEXT_GetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 }
 
 static ulen_t
-FILE_GetSize(const char *file)
+readFILEGetSize(const char *file)
 {
 	unsigned long long	sb;
 
@@ -1075,14 +1096,14 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 	else {
 		if (fd != stdin) {
 
-			sF = FILE_GetSize(file);
+			sF = readFILEGetSize(file);
 		}
 
 		rd->data[dN].length_N = lN;
 
 		if (fmt == FORMAT_PLAIN_TEXT) {
 
-			cN = TEXT_GetCN(rd, dN, fd, rbuf, &rbuf_N);
+			cN = readTEXTGetCN(rd, dN, fd, rbuf, &rbuf_N);
 
 			if (cN < 1) {
 
@@ -1203,7 +1224,7 @@ void readToggleHint(read_t *rd, int dN, int cN)
 }
 
 static int
-TEXT_Read(read_t *rd, int dN)
+readTEXTCSV(read_t *rd, int dN)
 {
 	int		r, cN;
 
@@ -1211,7 +1232,7 @@ TEXT_Read(read_t *rd, int dN)
 
 	if (r == ASYNC_OK) {
 
-		cN = TEXT_GetRow(rd, dN);
+		cN = readTEXTGetRow(rd, dN);
 
 		if (cN == rd->pl->data[dN].column_N) {
 
@@ -1229,7 +1250,7 @@ TEXT_Read(read_t *rd, int dN)
 }
 
 static int
-FLOAT_Read(read_t *rd, int dN)
+readFLOAT(read_t *rd, int dN)
 {
 	float		*fb = (float *) rd->data[dN].buf;
 	int		r, N, cN = rd->pl->data[dN].column_N;
@@ -1254,7 +1275,7 @@ FLOAT_Read(read_t *rd, int dN)
 }
 
 static int
-DOUBLE_Read(read_t *rd, int dN)
+readDOUBLE(read_t *rd, int dN)
 {
 	double		*fb = (double *) rd->data[dN].buf;
 	int		r, N, cN = rd->pl->data[dN].column_N;
@@ -1280,7 +1301,7 @@ DOUBLE_Read(read_t *rd, int dN)
 
 #ifdef _WINDOWS
 static int
-LEGACY_Read(read_t *rd, int dN)
+readLEGACY(read_t *rd, int dN)
 {
 	char		*fb = (char *) rd->data[dN].buf;
 	int		r, N, cN = rd->pl->data[dN].column_N;
@@ -1337,7 +1358,7 @@ int readUpdate(read_t *rd)
 			do {
 				if (rd->data[dN].format == FORMAT_PLAIN_TEXT) {
 
-					if (TEXT_Read(rd, dN) != 0) {
+					if (readTEXTCSV(rd, dN) != 0) {
 
 						ulN += 1;
 					}
@@ -1347,7 +1368,7 @@ int readUpdate(read_t *rd)
 				}
 				else if (rd->data[dN].format == FORMAT_BINARY_FLOAT) {
 
-					if (FLOAT_Read(rd, dN) != 0) {
+					if (readFLOAT(rd, dN) != 0) {
 
 						ulN += 1;
 					}
@@ -1357,7 +1378,7 @@ int readUpdate(read_t *rd)
 				}
 				else if (rd->data[dN].format == FORMAT_BINARY_DOUBLE) {
 
-					if (DOUBLE_Read(rd, dN) != 0) {
+					if (readDOUBLE(rd, dN) != 0) {
 
 						ulN += 1;
 					}
@@ -1370,7 +1391,7 @@ int readUpdate(read_t *rd)
 				else if (rd->data[dN].format == FORMAT_BINARY_LEGACY_V1
 					|| rd->data[dN].format == FORMAT_BINARY_LEGACY_V2) {
 
-					if (LEGACY_Read(rd, dN) != 0) {
+					if (readLEGACY(rd, dN) != 0) {
 
 						ulN += 1;
 					}
@@ -1401,7 +1422,7 @@ int readUpdate(read_t *rd)
 }
 
 static int
-config_getc(parse_t *pa)
+configGetC(parse_t *pa)
 {
 	int		r;
 
@@ -1430,7 +1451,7 @@ config_getc(parse_t *pa)
 }
 
 static int
-config_ungetc(parse_t *pa, int c)
+configUngetC(parse_t *pa, int c)
 {
 	pa->unchar = c;
 
@@ -1443,7 +1464,7 @@ configToken(read_t *rd, parse_t *pa)
 	char		*p = pa->tbuf;
 	int		c, n = 0, r = 0;
 
-	do { c = config_getc(pa); }
+	do { c = configGetC(pa); }
 	while (strchr(rd->mk_config.space, c) != NULL);
 
 	if (c < 0) {
@@ -1452,7 +1473,7 @@ configToken(read_t *rd, parse_t *pa)
 	}
 	else if (c == '"') {
 
-		c = config_getc(pa);
+		c = configGetC(pa);
 		n = 0;
 
 		while (c != -1 && c != '"' && strchr(rd->mk_config.lend, c) == NULL) {
@@ -1463,11 +1484,11 @@ configToken(read_t *rd, parse_t *pa)
 				n++;
 			}
 
-			c = config_getc(pa);
+			c = configGetC(pa);
 		}
 
 		if (strchr(rd->mk_config.lend, c) != NULL)
-			config_ungetc(pa, c);
+			configUngetC(pa, c);
 
 		*p = 0;
 	}
@@ -1485,13 +1506,13 @@ configToken(read_t *rd, parse_t *pa)
 				n++;
 			}
 
-			c = config_getc(pa);
+			c = configGetC(pa);
 		}
 		while (c != -1 && strchr(rd->mk_config.space, c) == NULL
 			&& strchr(rd->mk_config.lend, c) == NULL);
 
 		if (strchr(rd->mk_config.lend, c) != NULL)
-			config_ungetc(pa, c);
+			configUngetC(pa, c);
 
 		*p = 0;
 	}
@@ -1706,7 +1727,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 			}
 
 #ifdef _WINDOWS
-			else if (strcmp(tbuf, "legacy_label_enc") == 0) {
+			else if (strcmp(tbuf, "legacy_label") == 0) {
 
 				failed = 1;
 
@@ -1717,7 +1738,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 					else break;
 
 					failed = 0;
-					rd->legacy_label_enc = argi[0];
+					rd->legacy_label = argi[0];
 				}
 				while (0);
 			}
@@ -1929,7 +1950,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "solidfont") == 0) {
+			else if (strcmp(tbuf, "blendfont") == 0) {
 
 				failed = 1;
 
@@ -1942,10 +1963,10 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (argi[0] >= 0 && argi[0] <= 1) {
 
 						failed = 0;
-						rd->dw->solidfont = argi[0];
+						rd->dw->blendfont = argi[0];
 					}
 					else {
-						sprintf(msg_tbuf, "invalid solidfont %i", argi[0]);
+						sprintf(msg_tbuf, "invalid blendfont %i", argi[0]);
 					}
 				}
 				while (0);
@@ -2013,7 +2034,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "drawboost") == 0) {
+			else if (strcmp(tbuf, "fastdraw") == 0) {
 
 				failed = 1;
 
@@ -2026,10 +2047,10 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (argi[0] >= 0) {
 
 						failed = 0;
-						rd->drawboost = argi[0];
+						rd->fastdraw = argi[0];
 					}
 					else {
-						sprintf(msg_tbuf, "invalid drawboost %i", argi[0]);
+						sprintf(msg_tbuf, "invalid fastdraw %i", argi[0]);
 					}
 				}
 				while (0);
@@ -2440,13 +2461,13 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						if (pa->fromUI != 0) {
 
-							filenameShort(rd, lpath, pa->file, 95);
+							readCutFile(rd, lpath, pa->file, 95);
 
 							sprintf(lname, "%s: %.95s", lpath, tbuf);
 							lbuf = lname;
 						}
 
-						ansiShort(rd->page[rd->page_N].title, lbuf, PLOT_STRING_MAX);
+						readCutLabel(rd->page[rd->page_N].title, lbuf, PLOT_STRING_MAX);
 					}
 				}
 				while (0);
@@ -3005,7 +3026,7 @@ void readConfigIN(read_t *rd, const char *config, int fromUI)
 }
 
 static char *
-pathDirName(char *path)
+readDirName(char *path)
 {
 	char		*eol;
 
@@ -3051,7 +3072,7 @@ void readConfigGP(read_t *rd, const char *file, int fromUI)
 		strcpy(pa.file, file);
 		strcpy(lpath, file);
 
-		pa.path = pathDirName(lpath);
+		pa.path = readDirName(lpath);
 		pa.fd = fd;
 		pa.in = NULL;
 
@@ -3084,7 +3105,7 @@ void readConfigVerify(read_t *rd)
 }
 
 static void
-labelGetUnit(char *tbuf, const char *label, int allowed)
+readGetUnit(char *tbuf, const char *label, int allowed)
 {
 	const char		*text;
 	int			length;
@@ -3153,10 +3174,10 @@ void readMakePages(read_t *rd, int dN, int cX, int fromUI)
 
 		rd->page[pN].busy = 2;
 
-		filenameShort(rd, tbuf, rd->data[dN].file, 95);
+		readCutFile(rd, tbuf, rd->data[dN].file, 95);
 
 		sprintf(sbuf, "%s: [%2i] %.95s", tbuf, N, rd->data[dN].label[N]);
-		ansiShort(rd->page[pN].title, sbuf, PLOT_STRING_MAX);
+		readCutLabel(rd->page[pN].title, sbuf, PLOT_STRING_MAX);
 
 		rd->page[pN].fig[0].busy = 1;
 		rd->page[pN].fig[0].drawing = -1;
@@ -3166,21 +3187,21 @@ void readMakePages(read_t *rd, int dN, int cX, int fromUI)
 		rd->page[pN].fig[0].aX = 0;
 		rd->page[pN].fig[0].aY = 1;
 
-		filenameShort(rd, tbuf, rd->data[dN].file, 20);
+		readCutFile(rd, tbuf, rd->data[dN].file, 20);
 
 		sprintf(sbuf, "%s: [%2i] %.95s", tbuf, N, rd->data[dN].label[N]);
-		ansiShort(rd->page[pN].fig[0].label, sbuf, PLOT_STRING_MAX);
+		readCutLabel(rd->page[pN].fig[0].label, sbuf, PLOT_STRING_MAX);
 
 		if (cX >= 0) {
 
-			labelGetUnit(tbuf, rd->data[dN].label[cX], 20);
+			readGetUnit(tbuf, rd->data[dN].label[cX], 20);
 			strcpy(rd->page[pN].ax[0].label, tbuf);
 		}
 		else {
 			rd->page[pN].ax[0].label[0] = 0;
 		}
 
-		labelGetUnit(tbuf, rd->data[dN].label[N], 20);
+		readGetUnit(tbuf, rd->data[dN].label[N], 20);
 		strcpy(rd->page[pN].ax[1].label, tbuf);
 	}
 
@@ -3341,7 +3362,7 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 
 				if (cX >= 0) {
 
-					labelGetUnit(tbuf, rd->data[dN].label[cX], 20);
+					readGetUnit(tbuf, rd->data[dN].label[cX], 20);
 					strcpy(rd->page[pN].ax[0].label, tbuf);
 				}
 				else {
@@ -3370,7 +3391,7 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 }
 
 static int
-timeDataMap(plot_t *pl, int dN, int cN)
+readTimeDataMap(plot_t *pl, int dN, int cN)
 {
 	int		gN, cMAP;
 
@@ -3412,7 +3433,7 @@ timeDataMap(plot_t *pl, int dN, int cN)
 }
 
 static int
-scaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
+readScaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
 {
 	int		N, gN, cMAP;
 
@@ -3524,11 +3545,11 @@ void readSelectPage(read_t *rd, int pN)
 
 		if (pg->fig[N].busy != 0) {
 
-			cX = timeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
+			cX = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
 			cY = pg->fig[N].cY;
 
-			cX = scaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
-			cY = scaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
+			cX = readScaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
+			cY = readScaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
 
 			plotFigureAdd(pl, N, pg->fig[N].dN, cX, cY, pg->fig[N].aX,
 					pg->fig[N].aY, pg->fig[N].label);
@@ -3559,7 +3580,7 @@ void readSelectPage(read_t *rd, int pN)
 }
 
 static int
-combineGetFreeAxis(plot_t *pl, int *map)
+readCombineGetFreeAxis(plot_t *pl, int *map)
 {
 	int		N, J, sF, aN = -1;
 
@@ -3590,7 +3611,7 @@ combineGetFreeAxis(plot_t *pl, int *map)
 }
 
 static int
-combineGetMappedAxis(plot_t *pl, int dN, int cN)
+readCombineGetMappedAxis(plot_t *pl, int dN, int cN)
 {
 	int		N, aN = -1;
 	int		gN, *map;
@@ -3686,15 +3707,15 @@ void readCombinePage(read_t *rd, int pN, int remap)
 
 				if (map[pg->fig[N].aX] < 0) {
 
-					aX = combineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cX);
-					aX = (aX < 0) ? combineGetFreeAxis(pl, map) : aX;
+					aX = readCombineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cX);
+					aX = (aX < 0) ? readCombineGetFreeAxis(pl, map) : aX;
 					map[pg->fig[N].aX] = aX;
 				}
 
 				if (map[pg->fig[N].aY] < 0) {
 
-					aY = combineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cY);
-					aY = (aY < 0) ? combineGetFreeAxis(pl, map) : aY;
+					aY = readCombineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cY);
+					aY = (aY < 0) ? readCombineGetFreeAxis(pl, map) : aY;
 					map[pg->fig[N].aY] = aY;
 				}
 			}
@@ -3716,11 +3737,11 @@ void readCombinePage(read_t *rd, int pN, int remap)
 			aX = (map[pg->fig[N].aX] != -1) ? map[pg->fig[N].aX] : pg->fig[N].aX;
 			aY = (map[pg->fig[N].aY] != -1) ? map[pg->fig[N].aY] : pg->fig[N].aY;
 
-			cX = timeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
+			cX = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
 			cY = pg->fig[N].cY;
 
-			cX = scaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
-			cY = scaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
+			cX = readScaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
+			cY = readScaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
 
 			plotFigureAdd(pl, fN, pg->fig[N].dN, cX, cY, aX, aY, pg->fig[N].label);
 

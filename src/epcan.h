@@ -81,10 +81,10 @@ typedef struct {
 	float		reg_DATA;	/* current DATA */
 	int		reg_ID;		/* linked register ID */
 
+	int		PAYLOAD;	/* packet payload type */
 	int		STARTUP;	/* motor startup behaviour */
 	int		ACTIVE;
-	int		TIM;		/* transfer rate (on PWM clock) */
-	int		PAYLOAD;	/* packet payload type */
+	int		rate;		/* transfer rate */
 	float		range[2];	/* natural data range */
 
 	int		tx_N;

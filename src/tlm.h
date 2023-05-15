@@ -21,7 +21,7 @@ typedef struct {
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 
-	reg_val_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
+	reg_value_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
 
 	int		span;
 	int		clock;

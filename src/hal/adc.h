@@ -17,7 +17,7 @@ enum {
 void ADC_const_build();
 void ADC_startup();
 
-float ADC_get_VALUE(int xGPIO);
+float ADC_get_sample(int xGPIO);
 
 extern void ADC_IRQ();
 

@@ -1,5 +1,5 @@
 /*
-   Graph Plotter for numerical data analysis.
+   Graph Plotter is a tool to analyse numerical data.
    Copyright (C) 2023 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -60,7 +60,7 @@ void langFill(lang_t *la, int lang)
 			"    Change a font         [ %s ]\0"
 			"    Drawing antialiasing  [ %s ]\0"
 			"    Solid font            [ %s ]\0"
-			"    Line thickness        [ %s ]\0"
+			"    Grid thickness        [ %s ]\0"
 			"    Hinting mode          [ %s ]\0"
 			"    Font size             [ %s ]\0"
 
@@ -230,7 +230,7 @@ void langFill(lang_t *la, int lang)
 			"    Переключение шрифтов    [ %s ]\0"
 			"    Сглаживание рисования   [ %s ]\0"
 			"    Сплошной шрифт          [ %s ]\0"
-			"    Толщина линий           [ %s ]\0"
+			"    Толщина сетки           [ %s ]\0"
 			"    Хинтинг шрифта          [ %s ]\0"
 			"    Размер шрифта           [ %s ]\0"
 

@@ -34,12 +34,12 @@ or terminal voltage sensors may be damaged.
 Result of adjustment shows the parameter deviation is above the fault
 threshold. Check the voltage and current measurement accuracy.
 
-#### PM_ERROR_CURRENT_LOOP_IS_OPEN
+#### PM_ERROR_CURRENT_LOOP_FAULT
 
-Means that we apply the full voltage but current setpoint is still not reached.
-If current sensing circuit is ok this may be caused by open circuit in motor
-phases or in its connection. Also a common cause of this error is a low level
-of DC link voltage.
+This means that we apply the full voltage but actual current is still near
+zero. If current sensing circuit is ok this may be caused by open circuit in
+motor phases or in its connection. Also a common cause of this error is a low
+level of DC link voltage in combine with large stator resistance.
 
 #### PM_ERROR_INSTANT_OVERCURRENT
 
@@ -89,9 +89,9 @@ These codes arise by hardware:
 
 #### PM_ERROR_HW_UNMANAGED_IRQ
 
-PMC control code has not completed its execution when the next IRQ occurred.
-Try to decrease PWM frequency or disable some computationally expensive
-features.
+PMC control code has not completed its execution when the next ADC IRQ
+occurred. Try to decrease PWM frequency or disable some computationally
+expensive features.
 
 #### PM_ERROR_HW_OVERCURRENT
 
