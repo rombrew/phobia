@@ -10,15 +10,15 @@
 /* The application allows you to control the speed using two push-buttons.
  * Such control is convenient for drill machine and other tools.
  *
- * [A]		- START or switch the speed.
- * [B]		- STOP.
- * [B] + [A]	- START in reverse.
+ * [A]		- START or step up the speed
+ * [B]		- STOP
+ * [B] + [A]	- START with reverse direction
  * */
 
 #define PUSH_DEBOUNCE		5
-#define PUSH_RPM_TABLE_MAX	(sizeof(rpm_table) / sizeof(rpm_table[0]) - 1U)
+#define PUSH_RPM_MAX		(sizeof(rpm_list) / sizeof(rpm_list[0]))
 
-static const float		rpm_table[] = {
+static const float		rpm_list[] = {
 
 	3000.f,
 	4000.f,
@@ -103,10 +103,10 @@ void app_PUSHBUTTON(void *pData)
 				pm_wait_for_idle();
 			}
 			else {
-				rpm_N = (rpm_N < PUSH_RPM_TABLE_MAX) ? rpm_N + 1 : 0;
+				rpm_N = (rpm_N < PUSH_RPM_MAX) ? rpm_N + 1 : 0;
 			}
 
-			total_rpm = rpm_table[rpm_N] * (float) direction;
+			total_rpm = rpm_list[rpm_N] * (float) direction;
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, total_rpm);
 

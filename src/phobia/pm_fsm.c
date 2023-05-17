@@ -1630,7 +1630,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
-				pm->s_clamp = 0.f;
+				pm->l_blend = 0.f;
 
 				pm->x_setpoint_location = 0.f;
 				pm->x_setpoint_speed = 0.f;

@@ -28,7 +28,6 @@ void tlm_reg_default(tlm_t *tlm)
 
 void tlm_reg_grab(tlm_t *tlm)
 {
-	const reg_t		*reg;
 	int			N;
 
 	if (tlm->mode != TLM_MODE_DISABLED) {
@@ -41,8 +40,7 @@ void tlm_reg_grab(tlm_t *tlm)
 
 					/* Grab the register VALUE.
 					 * */
-					reg = &regfile[tlm->reg_ID[N]];
-					reg_getval(reg, &tlm->data[tlm->N][N]);
+					reg_GET(tlm->reg_ID[N], &tlm->data[tlm->N][N]);
 				}
 			}
 		}

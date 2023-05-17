@@ -15,8 +15,8 @@ void app_HX711(void *pData)
 {
 	volatile int		*enabled = (volatile int *) pData;
 
-	const int		gpio_DOUT = GPIO_SPI_EXT_MISO;
-	const int		gpio_PD_SCK = GPIO_SPI_EXT_SCK;
+	const int		gpio_DOUT = GPIO_SPI1_MISO;
+	const int		gpio_PD_SCK = GPIO_SPI1_SCK;
 
 	int			DOUT, ADC, N;
 

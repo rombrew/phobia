@@ -7,20 +7,20 @@ CLI with autocompletion and command history.
 
 These are the basic special keys that are used in the CLI:
 
-* **Return** - Run the command.
-* **Backspace** or **Delete** - Erase last typed character.
-* **Tab** or (@) - Automplete function.
-* **Shift + Tab** - Automplete function reverse.
-* **Ctrl + C** or **Ctrl + D** - Drop the content of the line or abort the command.
-* **Ctrl + P** or **Up** or (\*) - History function scroll up.
-* **Ctrl + N** or **Down** or (!) - History function scroll down.
+* `Return` - Run the command.
+* `Backspace` or `Delete` - Erase last typed character.
+* `Tab` or (@) - Automplete function.
+* `Shift` + `Tab` - Automplete function reverse.
+* `Ctrl` + `C` or `Ctrl` + `D` - Drop the content of the line or abort the command.
+* `Ctrl` + `P` or `Up` or `*` - History function scroll up.
+* `Ctrl` + `N` or `Down` or `!` - History function scroll down.
 
 ## Register file concept
 
 Register is a scalar variable known by its name and having associated
 attributes. All registers together are called the register file. This is a
 convenient way to access all parameters using a single mechanism. There is a
-**reg** command to work with registers from the CLI. There are several ways to
+`reg` command to work with registers from the CLI. There are several ways to
 call this command:
 
 * Without arguments it will list all registers and their values.
@@ -40,13 +40,13 @@ Almost all of the configuration process is to change the value of the
 registers.
 
 You can also export all of configuration registers in plain text using a
-**plain_reg** command. The output of this command can be fed back into the CLI
+`plain_reg` command. The output of this command can be fed back into the CLI
 to restore the configuration.
 
 	(pmc) plain_reg
 
 To save the values of the configuration registers in the flash storage there is
-a **flash_prog** command. Register values from the flash are loaded
+a `flash_prog` command. Register values from the flash are loaded
 automatically at startup.
 
 	(pmc) flash_prog
@@ -64,8 +64,8 @@ a complex non-obvious actions during access to it.
 
 As we have already mentioned there are link registers. If we start accessing
 such a register we will be redirected to the link. For example the analog input
-module writes the control signal to register **ap.knob_reg_ID** but the value
-falls into **pm.i_setpoint_current_pc**. You can configure **ap.knob_reg_ID**
+module writes the control signal to register `ap.knob_reg_ID` but the value
+falls into `pm.i_setpoint_current_pc`. You can configure `ap.knob_reg_ID`
 to link it to another register if you want control another parameter. We
 provide many registers in different units of measurement. You are free to
 choose what to control current in Amperes or percentage from full scale or

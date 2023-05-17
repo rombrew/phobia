@@ -105,11 +105,17 @@ clock_startup()
 	 * */
 	do {
 		HSE = RCC->CR & RCC_CR_HSERDY;
-		N++;
 
 		__NOP();
+		__NOP();
+
+		if (N > 70000U)
+			break;
+
+		N++;
 	}
-	while (HSE == 0 && N < 70000U);
+	while (HSE == 0);
+
 
 	/* Enable power interface clock.
 	 * */

@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 

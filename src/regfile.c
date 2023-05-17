@@ -551,44 +551,6 @@ reg_proc_auto_forced_accel(const reg_t *reg, reg_value_t *lval, const reg_value_
 }
 
 static void
-reg_proc_auto_loop_current(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
-{
-	if (lval != NULL) {
-
-		lval->f = reg->link->f;
-	}
-	else if (rval != NULL) {
-
-		if (rval->f < M_EPS_F) {
-
-			pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
-		}
-		else {
-			reg->link->f = rval->f;
-		}
-	}
-}
-
-static void
-reg_proc_auto_loop_speed(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
-{
-	if (lval != NULL) {
-
-		lval->f = reg->link->f;
-	}
-	else if (rval != NULL) {
-
-		if (rval->f < M_EPS_F) {
-
-			pm_auto(&pm, PM_AUTO_LOOP_SPEED);
-		}
-		else {
-			reg->link->f = rval->f;
-		}
-	}
-}
-
-static void
 reg_proc_current_halt(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
 {
 	float			halt, adjust;
@@ -630,7 +592,7 @@ reg_proc_percent(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
 }
 
 static void
-reg_proc_percent_auto_loop_current(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
+reg_proc_auto_loop_current(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
 {
 	if (lval != NULL) {
 
@@ -647,7 +609,7 @@ reg_proc_percent_auto_loop_current(const reg_t *reg, reg_value_t *lval, const re
 }
 
 static void
-reg_proc_percent_auto_loop_speed(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
+reg_proc_auto_loop_speed(const reg_t *reg, reg_value_t *lval, const reg_value_t *rval)
 {
 	if (lval != NULL) {
 
@@ -1611,8 +1573,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_gain_P,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_gain_I,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.auto_loop_current,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent_auto_loop_current, NULL),
-	REG_DEF(pm.auto_loop_speed,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent_auto_loop_speed, NULL),
+	REG_DEF(pm.auto_loop_current,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
+	REG_DEF(pm.auto_loop_speed,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_auto_loop_speed, NULL),
 
 	REG_DEF(pm.fault_voltage_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_tol,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1806,7 +1768,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_track_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_track_Q,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
+	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.weak_maximal,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1833,11 +1795,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_accel,,,		"rad/s2",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_accel, _rpm,,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.s_accel, _kmh,,	"km/h/s",	"%1f",	0, &reg_proc_kmh, NULL),
-	REG_DEF(pm.s_linspan,,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_clamp,,,			"",	"%2f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, &reg_proc_auto_loop_speed, NULL),
+	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.l_blend,,,			"",	"%2f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.l_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_location_range, 0, [0],	"rad",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_location_range, 0_g, [0],	"g",	"%2f",	0, &reg_proc_location_g, NULL),
@@ -1891,7 +1854,8 @@ const reg_t		regfile[] = {
 	{ NULL, "", 0, NULL, NULL, NULL }
 };
 
-void reg_getval(const reg_t *reg, reg_value_t *lval)
+static void
+reg_getval(const reg_t *reg, reg_value_t *lval)
 {
 	if (reg->proc != NULL) {
 
@@ -1902,7 +1866,8 @@ void reg_getval(const reg_t *reg, reg_value_t *lval)
 	}
 }
 
-void reg_setval(const reg_t *reg, const reg_value_t *rval)
+static void
+reg_setval(const reg_t *reg, const reg_value_t *rval)
 {
 	if ((reg->mode & REG_READ_ONLY) == 0) {
 

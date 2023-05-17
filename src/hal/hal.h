@@ -8,6 +8,7 @@
 #ifdef HW_HAVE_NETWORK_EPCAN
 #include "can.h"
 #endif /* HW_HAVE_NETWORK_EPCAN */
+#include "dac.h"
 #include "dps.h"
 #ifdef HW_HAVE_DRV_ON_PCB
 #include "drv.h"
@@ -41,9 +42,6 @@
 
 #define GPIO_SWDIO			XGPIO_DEF2('A', 13)
 #define GPIO_SWCLK			XGPIO_DEF2('A', 14)
-
-#define GPIO_DAC_1			GPIO_SPI_NSS
-#define GPIO_DAC_2			GPIO_SPI_SCK
 
 #define ADC_SAMPLE_ADVANCE		110
 

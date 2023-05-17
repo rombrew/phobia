@@ -549,11 +549,12 @@ typedef struct {
 	float		s_reverse;
 	float		s_track;
 	float		s_accel;
-	float		s_linspan;
-	float		s_clamp;
 	float		s_gain_P;
 	float		s_gain_D;
-	float		s_gain_LP;
+
+	float		l_track_tol;
+	float		l_blend;
+	float		l_gain_LP;
 
 	float		x_location_range[2];
 	float		x_location_home;

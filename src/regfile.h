@@ -33,8 +33,6 @@ reg_t;
 
 extern const reg_t	regfile[];
 
-void reg_getval(const reg_t *reg, reg_value_t *lval);
-void reg_setval(const reg_t *reg, const reg_value_t *rval);
 void reg_format_rval(const reg_t *reg, const reg_value_t *rval);
 void reg_format(const reg_t *reg);
 

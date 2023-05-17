@@ -208,15 +208,10 @@ SH_DEF(pm_self_tvm_ramp)
 	PWM_set_Z(PM_Z_ABC);
 }
 
-SH_DEF(hal_DBGMCU_mode_stop)
-{
-	DBGMCU_mode_stop();
-}
-
 SH_DEF(hal_ADC_scan_CH)
 {
 	int			xCH, xGPIO;
-	float			fU;
+	float			fvoltage;
 
 	const int gpios_stm32f405_lqfp64[16] = {
 
@@ -244,10 +239,11 @@ SH_DEF(hal_ADC_scan_CH)
 		xGPIO = gpios_stm32f405_lqfp64[xCH];
 
 		GPIO_set_mode_ANALOG(xGPIO);
-		fU = ADC_get_sample(xGPIO);
 
-		printf("P%c%i %4f" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
-				XGPIO_GET_N(xGPIO), &fU);
+		fvoltage = ADC_get_sample(xGPIO) * hal.ADC_reference_voltage;
+
+		printf("P%c%i %4f (V)" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
+				XGPIO_GET_N(xGPIO), &fvoltage);
 	}
 }
 
@@ -277,51 +273,49 @@ SH_DEF(hal_PWM_set_Z)
 SH_DEF(hal_SPI_startup)
 {
 	float		freq;
-	int		hz, mode;
+	int		bus_ID, mode;
 
-	if (stof(&freq, s) != NULL) {
+	if (stoi(&bus_ID, s) != NULL) {
 
-		hz = (int) freq;
-		mode = SPI_MODE_LOW_RISING;
+		freq = 1000000.f;
+		mode = 0;
 
-		stoi(&mode, sh_next_arg(s));
+		stof(&freq, s = sh_next_arg(s));
+		stoi(&mode, s = sh_next_arg(s));
 
-		SPI_startup(SPI_ID_EXT, hz, mode);
+		SPI_startup(bus_ID, (int) freq, mode);
 	}
 }
 
 SH_DEF(hal_SPI_halt)
 {
-	SPI_halt(SPI_ID_EXT);
+	int		bus_ID;
+
+	if (stoi(&bus_ID, s) != NULL) {
+
+		SPI_halt(bus_ID);
+	}
 }
 
 SH_DEF(hal_SPI_transfer)
 {
-	int		txbuf, rxbuf;
+	int		bus_ID, txbuf, rxbuf;
 
-	while (htoi(&txbuf, s) != NULL) {
+	if (stoi(&bus_ID, s) != NULL) {
 
-		rxbuf = SPI_transfer(SPI_ID_EXT, txbuf);
+		while (htoi(&txbuf, s = sh_next_arg(s)) != NULL) {
 
-		printf("%4x ", rxbuf);
+			rxbuf = SPI_transfer(bus_ID, txbuf, 500);
 
-		s = sh_next_arg(s);
+			printf("%4x ", rxbuf);
+		}
+
+		puts(EOL);
 	}
-
-	puts(EOL);
 }
 
-SH_DEF(hal_GPIO_set_high_FAN_EN)
+SH_DEF(hal_DBGMCU_mode_stop)
 {
-#ifdef HW_HAVE_FAN_CONTROL
-	GPIO_set_HIGH(GPIO_FAN_EN);
-#endif /* HW_HAVE_FAN_CONTROL */
-}
-
-SH_DEF(hal_GPIO_set_low_FAN_EN)
-{
-#ifdef HW_HAVE_FAN_CONTROL
-	GPIO_set_LOW(GPIO_FAN_EN);
-#endif /* HW_HAVE_FAN_CONTROL */
+	DBGMCU_mode_stop();
 }
 

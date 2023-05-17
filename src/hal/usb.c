@@ -1,6 +1,3 @@
-#include <stddef.h>
-#include <stdint.h>
-
 #include "hal.h"
 
 #include "freertos/FreeRTOS.h"

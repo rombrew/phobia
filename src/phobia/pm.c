@@ -247,10 +247,11 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_maximal = 15000.f;
 	pm->s_reverse = pm->s_maximal;
 	pm->s_accel = 7000.f;
-	pm->s_linspan = 50.f;
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_D = 7E-5f;
-	pm->s_gain_LP = 5E-3f;
+
+	pm->l_track_tol = 50.f;
+	pm->l_gain_LP = 5E-3f;
 
 	pm->x_location_range[0] = - 600.f;
 	pm->x_location_range[1] = 600.f;
@@ -2578,8 +2579,7 @@ pm_loop_current(pmc_t *pm)
 	else if (	pm->lu_MODE == PM_LU_ESTIMATE
 			&& pm->flux_ZONE != PM_ZONE_HIGH) {
 
-		/* NOTE: Here we have a freewheeling mode in case of no TVM
-		 * enabled.
+		/* NOTE: Here we have a freewheeling mode.
 		 * */
 
 		if (		pm->config_LU_DRIVE == PM_DRIVE_CURRENT
@@ -2606,7 +2606,7 @@ pm_loop_current(pmc_t *pm)
 
 			if (pm->config_SPEED_LIMITED == PM_ENABLED) {
 
-				float		wSP, eS, lerp;
+				float		wSP, eSP, lerp;
 
 				wSP = pm->lu_wS;
 				wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
@@ -2616,13 +2616,13 @@ pm_loop_current(pmc_t *pm)
 				pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
 					: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
 
-				eS = pm->s_track - pm->lu_wS;
+				eSP = pm->s_track - pm->lu_wS;
 
-				lerp= m_fabsf(eS) / pm->s_linspan;
+				lerp= m_fabsf(eSP) / pm->l_track_tol;
 				lerp = (lerp > 1.f) ? 1.f : lerp;
 
-				pm->s_clamp += (lerp - pm->s_clamp) * pm->s_gain_LP;
-				track_Q += (pm_form_SP(pm, eS) - track_Q) * pm->s_clamp;
+				pm->l_blend += (lerp - pm->l_blend) * pm->l_gain_LP;
+				track_Q += (pm_form_SP(pm, eSP) - track_Q) * pm->l_blend;
 			}
 		}
 

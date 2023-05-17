@@ -5,7 +5,7 @@ deal with PMC.
 
 ## Error condition
 
-If something goes wrong PMC stops and gives the error code in **pm.fsm_errno**.
+If something goes wrong PMC stops and gives the error code in `pm.fsm_errno`.
 
 	(pmc) reg pm.fsm_errno
 

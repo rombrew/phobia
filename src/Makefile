@@ -80,6 +80,7 @@ OBJS	+= hal/drv.o
 endif
 
 OBJS	+= hal/adc.o \
+	   hal/dac.o \
 	   hal/dps.o \
 	   hal/entry.o \
 	   hal/flash.o \

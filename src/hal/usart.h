@@ -2,6 +2,7 @@
 #define _H_USART_
 
 void USART_startup();
+
 int USART_getc();
 void USART_putc(int c);
 

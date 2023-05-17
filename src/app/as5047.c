@@ -29,7 +29,7 @@ AS5047_read_reg(int addr)
 	txbuf = addr & 0x3FFFU;
 	txbuf |= AS5047_parity(txbuf) << 15;
 
-	rxbuf = SPI_transfer(SPI_ID_EXT, txbuf);
+	rxbuf = SPI_transfer(1, txbuf, 200);
 
 	parity = (rxbuf & 0x8000U) >> 15;
 	fault = (rxbuf & 0x4000U) ? 1 : 0;

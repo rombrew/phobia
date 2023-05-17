@@ -20,37 +20,37 @@ First you need to enable the appropriate mode of the PPM interface.
 	(pmc) reg hal.PPM_mode 1
 
 Now you can see how the controller receives the control signal. If variable
-**hal.PPM_caught** is nonzero then pulse is caught. Use HAL registers to view
+`hal.PPM_caught` is nonzero then pulse is caught. Use these registers to view
 pulse parameters.
 
-	(pmc) reg hal.PPM_get_PERIOD
-	(pmc) reg hal.PPM_get_PULSE
+	(pmc) reg ap.ppm_in_pulse
+	(pmc) reg ap.ppm_in_freq
 
 Select the pulse width range in which you want to operate. Write the range to a
 PPM configuration or leave defaults. We use three point conversion from pulse
 width to the control value.
 
-	(pmc) reg ap.ppm_pulse_range0 <us>
-	(pmc) reg ap.ppm_pulse_range1 <us>
-	(pmc) reg ap.ppm_pulse_range2 <us>
+	(pmc) reg ap.ppm_range_pulse0 <ms>
+	(pmc) reg ap.ppm_range_pulse1 <ms>
+	(pmc) reg ap.ppm_range_pulse2 <ms>
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the speed control is selected as a percentage
-of maximal no load speed. There is a variable **pm.s_setpoint_pc**.
+of maximal no load speed. There is a variable `pm.s_setpoint_pc`.
 
 	(pmc) reg ap.ppm_reg_ID <reg>
 
 Note that setting the control variable does not enable appropriate control loop
 automatically. You may need to enable appropriate control mode explicitly.
 
-	(pmc) reg pm.config_LU_DRIVE <x>
+	(pmc) reg pm.config_LU_DRIVE 1       0 = `current loop` 1 = `speed loop`
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.
 
-	(pmc) reg ap.ppm_control_range0 <x>
-	(pmc) reg ap.ppm_control_range1 <x>
-	(pmc) reg ap.ppm_control_range2 <x>
+	(pmc) reg ap.ppm_range_control0 <x>
+	(pmc) reg ap.ppm_range_control1 <x>
+	(pmc) reg ap.ppm_range_control2 <x>
 
 Now enable the motor startup control. The condition to start is the transition
 of pulse signal to the operating range from the low side.

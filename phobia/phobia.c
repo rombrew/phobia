@@ -196,8 +196,6 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bound)
 					|| strcmp(reg->sym, "pm.zone_speed_threshold") == 0
 					|| strcmp(reg->sym, "pm.forced_maximal") == 0
 					|| strcmp(reg->sym, "pm.forced_accel") == 0
-					|| strcmp(reg->sym, "pm.i_gain_P") == 0
-					|| strcmp(reg->sym, "pm.s_gain_P") == 0
 					|| strcmp(reg->sym, "pm.fault_current_halt") == 0) {
 
 				sprintf(pub->lbuf, "Request automatic configuration");
@@ -3146,12 +3144,6 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.auto_loop_current", "Current loop performance");
-	reg_float(pub, "pm.auto_loop_speed", "Speed loop performance");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
 	reg_float(pub, "pm.fault_voltage_tol", "Voltage tolerance");
 	reg_float(pub, "pm.fault_current_tol", "Current tolerance");
 	reg_float(pub, "pm.fault_accuracy_tol", "Accuracy tolerance");
@@ -3591,6 +3583,11 @@ page_lp_current(struct public *pub)
 	reg_float(pub, "pm.i_maximal", "Maximal forward current");
 	reg_float(pub, "pm.i_reverse", "Maximal reverse current");
 	reg_float(pub, "pm.i_slew_rate", "Slew rate");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "pm.auto_loop_current", "Auto loop performance");
 	reg_float(pub, "pm.i_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.i_gain_I", "Integral loop gain");
 
@@ -3603,15 +3600,15 @@ page_lp_current(struct public *pub)
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
-	reg = link_reg_lookup(pub->lp, "pm.i_gain_P");
+	reg = link_reg_lookup(pub->lp, "pm.auto_loop_current");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.i_slew_rate_D");
+		reg = link_reg_lookup(pub->lp, "pm.i_slew_rate");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.i_slew_rate_Q");
+		reg = link_reg_lookup(pub->lp, "pm.i_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(pub->lp, "pm.i_gain_I");
@@ -3646,22 +3643,30 @@ page_lp_speed(struct public *pub)
 	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 0);
 	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 0);
-	reg_float(pub, "pm.s_linspan", "Regulation span");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.l_track_tol", "Tracking tolerance");
+	reg_float(pub, "pm.l_gain_LP", "Blend gain LP");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "pm.auto_loop_speed", "Auto loop performance");
 	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 	reg_float(pub, "pm.s_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative loop gain");
-	reg_float(pub, "pm.s_gain_LP", "Regulation gain LP");
 
-	reg = link_reg_lookup(pub->lp, "pm.s_gain_P");
+	reg = link_reg_lookup(pub->lp, "pm.auto_loop_speed");
 
 	if (		reg != NULL
 			&& reg->fetched == pub->lp->clock) {
 
 		reg = link_reg_lookup(pub->lp, "pm.lu_gain_mq_LP");
+		if (reg != NULL) { reg->onefetch = 1; }
+
+		reg = link_reg_lookup(pub->lp, "pm.s_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(pub->lp, "pm.s_gain_D");
