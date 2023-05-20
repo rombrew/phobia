@@ -2868,8 +2868,8 @@ page_in_pwm(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_TIME", "IDLE timeout");
-	reg_float(pub, "ap.disarm_TIME", "DISARM timeout");
+	reg_float(pub, "ap.idle_timeout", "IDLE timeout");
+	reg_float(pub, "ap.disarm_timeout", "DISARM timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2937,8 +2937,8 @@ page_in_knob(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_TIME", "IDLE timeout");
-	reg_float(pub, "ap.disarm_TIME", "DISARM timeout");
+	reg_float(pub, "ap.idle_timeout", "IDLE timeout");
+	reg_float(pub, "ap.disarm_timeout", "DISARM timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3318,7 +3318,7 @@ page_lu_hfi(struct public *pub)
 
 		reg->update = 1000;
 
-		rate = (reg->lval != 0) ? 400 : 0;
+		rate = (reg->lval != 0) ? 100 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
 		reg = link_reg_lookup(pub->lp, "pm.flux_F_g");
@@ -3507,8 +3507,8 @@ page_wattage(struct public *pub)
 	reg_float(pub, "pm.watt_wA_maximal", "Maximal DC link current");
 	reg_float(pub, "pm.watt_wP_reverse", "Maximal regeneration");
 	reg_float(pub, "pm.watt_wA_reverse", "Maximal DC link reverse");
-	reg_float(pub, "pm.watt_uDC_maximal", "Maximal DC link voltage");
-	reg_float(pub, "pm.watt_uDC_minimal", "Minimal DC link voltage");
+	reg_float(pub, "pm.watt_uDC_maximal", "DC link voltage HIGH");
+	reg_float(pub, "pm.watt_uDC_minimal", "DC link voltage LOW");
 	reg_float(pub, "pm.watt_gain_LP", "Wattage gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);

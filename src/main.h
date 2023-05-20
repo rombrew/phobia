@@ -51,14 +51,14 @@ typedef struct {
 
 	/* IDLE control.
 	 * */
-	float			idle_TIME;
+	float			idle_timeout;
 	int			idle_RESET;
 	int			idle_INVOKE;
 	int			idle_revol_cached;
 
 	/* DISARM control.
 	 * */
-	float			disarm_TIME;
+	float			disarm_timeout;
 	int			disarm_RESET;
 	int			disarm_INVOKE;
 

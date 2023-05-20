@@ -1435,8 +1435,8 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.knob_control_BRK,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	REG_DEF(ap.idle_TIME,,,			"s",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.disarm_TIME,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.idle_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.disarm_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	REG_DEF(ap.ntc_PCB.type,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),

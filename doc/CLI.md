@@ -88,8 +88,8 @@ Or live telemetry printout.
 	(pmc) tlm_live_sync <freq>
 
 Using CAN data pipes you are able to link register across CAN network. You can
-easily control many motors from single input. Build a traction control by
-exchange the speed signals across motors.
+easily control many machines from single input. Build a traction control by
+exchange the speed signals across machines.
 
 ## Examples
 
@@ -97,7 +97,7 @@ Show all raw feedback values that PMC uses in control loops.
 
 	(pmc) reg pm.fb
 
-Show all motor constants.
+Show all machine constants.
 
 	(pmc) reg pm.const
 

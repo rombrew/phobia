@@ -10,10 +10,12 @@ Inductance variance can be produced by salient pole machine design (IPMSM,
 SynRM) or by magnetic saturation in the stator iron (BLDC outrunner). The first
 step is to specify `SALIENCY` depending on machine type.
 
-	(pmc) reg pm.config_SALIENCY 0      if `Ld < Lq` (BLDC)
-	(pmc) reg pm.config_SALIENCY 1      if `Ld > Lq` (IPM or SynRM)
+	(pmc) reg pm.config_SALIENCY 0
 
-You can check the inductance difference along the DQ axes on the motor probe
+* 0 - regular brushless machine (BLDC) with `Ld <= Lq`.
+* 1 - reluctance machine (IPM, SynRM) with `Ld > Lq`.
+
+You can check the inductance difference along the DQ axes on the machine probe
 procedures. Inductances L1 and L2 should differ by more than ~10% to get
 reliable HFI operation.
 
@@ -23,7 +25,11 @@ The second step is to select KALMAN sensorless estimation.
 
 Select injection waveform type. The usual type is SINE wave.
 
-	(pmc) reg pm.config_HFI_WAVE 1      1 = `sine`  2 = `random`
+	(pmc) reg pm.config_HFI_WAVE 1
+
+* 0 - no HF injection.
+* 1 - sine wave.
+* 2 - random noise.
 
 The main parameters of injection is a frequency and amplitude. It is usually
 large frequency and amplitude makes HFI operation is more stable. Beware of

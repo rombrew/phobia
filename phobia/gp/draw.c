@@ -34,6 +34,16 @@ void drawDashReset(draw_t *dw)
 	dw->cached_ncol = -1;
 }
 
+void drawGamma(draw_t *dw)
+{
+	int		i;
+
+	for (i = 0; i < 16; ++i) {
+
+		dw->ltgamma[i] = (int) (powf(i / 15.f, dw->gamma / 100.f) * 255.f);
+	}
+}
+
 void drawClearSurface(draw_t *dw, SDL_Surface *surface, colType_t col)
 {
 	colType_t		*pixels = (colType_t *) surface->pixels;
@@ -3245,6 +3255,7 @@ void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 {
 	colType_t		*pixels = (colType_t *) surface->pixels;
 	colType_t		*palette = dw->palette;
+	int			*ltgamma = dw->ltgamma;
 
 	int			pitch, x, y;
 	int			yspan, ncol, blend[3];
@@ -3327,9 +3338,9 @@ void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 					blend[1] += vcol.b[1];
 					blend[2] += vcol.b[2];
 
-					vcol.b[0] = blend[0] >> 2;
-					vcol.b[1] = blend[1] >> 2;
-					vcol.b[2] = blend[2] >> 2;
+					vcol.b[0] = ltgamma[(blend[0] >> 6) & 0x0FU];
+					vcol.b[1] = ltgamma[(blend[1] >> 6) & 0x0FU];
+					vcol.b[2] = ltgamma[(blend[2] >> 6) & 0x0FU];
 					vcol.b[3] = 0;
 
 					*(pixels + x) = vcol.l;
@@ -3422,9 +3433,9 @@ void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 					blend[1] += vcol.b[1];
 					blend[2] += vcol.b[2];
 
-					vcol.b[0] = blend[0] >> 3;
-					vcol.b[1] = blend[1] >> 3;
-					vcol.b[2] = blend[2] >> 3;
+					vcol.b[0] = ltgamma[(blend[0] >> 7) & 0x0FU];
+					vcol.b[1] = ltgamma[(blend[1] >> 7) & 0x0FU];
+					vcol.b[2] = ltgamma[(blend[2] >> 7) & 0x0FU];
 					vcol.b[3] = 0;
 
 					*(pixels + x) = vcol.l;

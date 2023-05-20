@@ -175,7 +175,8 @@ enum {
 	 * */
 	PM_ERROR_TIMEOUT,
 	PM_ERROR_NO_FLUX_CAUGHT,
-	PM_ERROR_NO_MOTOR_SYNC,			/* from BLM model only */
+	PM_ERROR_SYNC_FAULT,
+	PM_ERROR_KNOB_CONTROL_FAULT,
 
 	/* Arise by hardware.
 	 * */

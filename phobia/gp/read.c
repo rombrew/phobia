@@ -1992,6 +1992,29 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
+			else if (strcmp(tbuf, "gamma") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] > 0 && argi[0] < 1000) {
+
+						failed = 0;
+						rd->dw->gamma = argi[0];
+
+						drawGamma(rd->dw);
+					}
+					else {
+						sprintf(msg_tbuf, "invalid gamma %i", argi[0]);
+					}
+				}
+				while (0);
+			}
 			else if (strcmp(tbuf, "timecol") == 0) {
 
 				failed = 1;

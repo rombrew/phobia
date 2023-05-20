@@ -52,7 +52,7 @@ There are a few parts of software:
 
 1. Workbench includes numerical model of VSI with PMSM connected (`bench/...`).
    The numerical model enables us to develop control code in fast cycle without
-   hardware tests. It is complete enough to take into account all of motor
+   hardware tests. It is complete enough to take into account all of machine
    parameters. We also provide some set of automated tests which uses a
    numerical model. But keep in mind that only abstract control code from
    `src/phobia/...` directory is covered by these tests.
@@ -77,7 +77,7 @@ there are a few ways to load the firmware into the MCU:
 
 SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
 [Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be
-careful when using hardware debugging while the motor is running. The sudden
+careful when using hardware debugging while the machine is running. The sudden
 stop of feedback loop can cause overcurrent accident.
 
 	$ make HWREV=REV5A gdb
@@ -117,8 +117,8 @@ Read the following documentation for setting PMC up.
 
 * [Command Line Interface](CLI.md)
 * [Hardware Self Test](SelfTest.md)
-* [Motor Identification](MotorIdentification.md)
-* [Motor Tuning](MotorTuning.md)
+* [Machine Probe](MachineProbe.md)
+* [Machine Tuning](MachineTuning.md)
 * [High Frequency Injection](HFI.md)
 * [Input Analog Knob](InputAnalogKnob.md)
 * [Input Pulse Width](InputPulseWidth.md)

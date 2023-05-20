@@ -91,7 +91,7 @@ tlm_plot_grab()
 
 		/* Throw an ERROR if position estimate deviation is too large.
 		 * */
-		pm.fsm_errno = PM_ERROR_NO_MOTOR_SYNC;
+		pm.fsm_errno = PM_ERROR_SYNC_FAULT;
 	}
 
 	tlm.y[14] = rel * kDEG;

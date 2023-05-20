@@ -276,6 +276,7 @@ gpDefaultFile(gp_t *gp)
 				"antialiasing 1\n"
 				"blendfont 1\n"
 				"thickness 1\n"
+				"gamma 50\n"
 				"drawing line 2\n"
 				"timecol -1\n"
 				"shortfilename 1\n"
@@ -1456,14 +1457,10 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				mu->mark[4].N = 4;
 				mu->mark[4].subs = gp->sbuf[3];
 
-				mu->mark[5].N = 5;
-				mu->mark[5].subs = (gp->hinting == 1) ? "Light  "
-						:  (gp->hinting == 2) ? "Normal " : "       ";
-
 				sprintf(gp->sbuf[2], "%2i     ", pl->layout_font_pt);
 
-				mu->mark[6].N = 6;
-				mu->mark[6].subs = gp->sbuf[2];
+				mu->mark[5].N = 5;
+				mu->mark[5].subs = gp->sbuf[2];
 
 				gp->stat = GP_MENU;
 				break;
@@ -1906,11 +1903,6 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 5:
-				gp->hinting = (gp->hinting < 2) ? gp->hinting + 1 : 0;
-				gpFontHinting(gp);
-				break;
-
-			case 6:
 				sprintf(gp->sbuf[0], "%i", pl->layout_font_pt);
 
 				editRaise(ed, 15, gp->la->font_size_edit,
@@ -1934,9 +1926,6 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 			mu->mark[4].N = 4;
 			mu->mark[4].subs = gp->sbuf[3];
-
-			mu->mark[5].subs = (gp->hinting == 1) ? "Light  "
-					:  (gp->hinting == 2) ? "Normal " : "       ";
 
 			menuResume(mu);
 			menuLayout(mu);
@@ -2695,7 +2684,7 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 
 			sprintf(gp->sbuf[2], "%2i     ", pl->layout_font_pt);
 
-			mu->mark[6].subs = gp->sbuf[2];
+			mu->mark[5].subs = gp->sbuf[2];
 
 			menuResume(mu);
 			menuLayout(mu);
@@ -3788,6 +3777,7 @@ gp_t *gp_Alloc()
 	dw->antialiasing = DRAW_4X_MSAA;
 	dw->blendfont = 1;
 	dw->thickness = 1;
+	dw->gamma = 50;
 
 	pl = plotAlloc(dw, sch);
 	gp->pl = pl;
@@ -3942,6 +3932,8 @@ int gp_OpenWindow(gp_t *gp)
 	schemeFill(sch, rd->colorscheme);
 
 	readSelectPage(rd, 1);
+
+	drawGamma(gp->dw);
 
 	return gp->window_ID;
 }

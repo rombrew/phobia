@@ -94,7 +94,7 @@ elapsed_IDLE()
 	TickType_t		xIDLE, xNOW;
 	int			elapsed = PM_DISABLED;
 
-	xIDLE = (TickType_t) (ap.idle_TIME * (float) configTICK_RATE_HZ);
+	xIDLE = (TickType_t) (ap.idle_timeout * (float) configTICK_RATE_HZ);
 
 	if (xIDLE > 0) {
 
@@ -128,7 +128,7 @@ elapsed_DISARM()
 	TickType_t		xDISARM, xNOW;
 	int			elapsed = PM_DISABLED;
 
-	xDISARM = (TickType_t) (ap.disarm_TIME * (float) configTICK_RATE_HZ);
+	xDISARM = (TickType_t) (ap.disarm_timeout * (float) configTICK_RATE_HZ);
 
 	if (xDISARM > 0) {
 
@@ -338,6 +338,7 @@ inner_KNOB()
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
+				pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 			}
 
@@ -572,8 +573,8 @@ default_flash_load()
 	ap.knob_control_ANG[2] = 100.f;
 	ap.knob_control_BRK = - 100.f;
 
-	ap.idle_TIME = 2.f;
-	ap.disarm_TIME = 1.f;
+	ap.idle_timeout = 2.f;
+	ap.disarm_timeout = 1.f;
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
@@ -896,6 +897,7 @@ in_PULSE_WIDTH()
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
+				pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 			}
 

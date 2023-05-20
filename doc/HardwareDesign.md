@@ -5,10 +5,10 @@ PMC internals. Also this page will be useful for understanding.
 
 ## Hardware
 
-We have a three-phase Voltage Source Inverter (VSI) which consists of six
-field-effect transistors (FET). The voltage at each of the output terminals is
-measured. Phase current A and B (optionally C) is measured. The output
-terminals are connected to the motor.
+We have a three-phase Voltage Source Inverter (VSI) which consists of at least
+six metal–oxide–semiconductor field-effect transistors (MOSFET). The voltage at
+each of the output terminals is measured. Phase current A and B (optionally
+C) is measured. The output terminals are connected to the machine.
 
 	  (VCC) >---+--------+---------+---------+
 	            |        |         |         |
@@ -20,7 +20,7 @@ terminals are connected to the motor.
 	            |        |         |         |
 	  (GND) >---+--------+---------+---------+
 	
-	  // Three-phase voltage source inverter //
+	                // Three-phase VSI //
 
 The three-phase bridge operates as three separate half-bridges. Each of which
 can be abstractly considered as controlled voltage source. We use a symmetric
@@ -46,13 +46,13 @@ PWM scheme as shown in the diagram.
 	                // Output voltage waveform //
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
-specified Dead-Time (DET). Depending on the direction of the current flow
+specified Dead-Time `DET`. Depending on the direction of the current flow
 during the Dead-Time the actual voltage on half-bridge may be different. The
-amount of uncertainty in the output voltage expressed as follows:
+amount of uncertainty in the output voltage `dU` expressed as follows:
 
-	         2 * DET * DC_link_voltage
-	 dUDT = ---------------------------
-	                    dT
+	       2 * DET * DC_link_voltage
+	 dU = ---------------------------
+	                  dT
 
 	           |
 	           |
@@ -113,8 +113,8 @@ over whole temperature and voltage range.
 	                        \ /  AGND
 
 The current (iA, iB, iC) is measured in phases A and B (optionally C) using a
-shunt and amplifier. The measurement is distorted for some time after a
-switching of the MOSFETs.
+shunt and amplifier. Typically the measurement is distorted for some time after
+a switching of the MOSFETs.
 
 Note that we prefer to use in-line current measurement. To use low-side
 measurement you will need to configure the software appropriately.
@@ -137,29 +137,58 @@ Also supply voltage (uS) is measured using a voltage divider.
 
 ## Control loop
 
-ADC is sampled in the middle of PWM period. The values obtained are processed
-by software. The new value of duty cycle is loaded to the hardware timer. This
-value is used at next PWM period. ADC samples are made using three ADCs in
-order shown on the diagram.
+Currents are sampled strictly in the middle of PWM period simultaneously using
+three ADCs. Then the voltages and other signals are sampled depending on
+particular sampling scheme selected.
+
+The values obtained are passed to the main IRQ handler to pprocess. The MCU
+software calculates a new value of duty cycle and load it to hw timer. This
+value will be used at next PWM period.
 
 	                // Control loop diagram //
 	
-	     |<--------------------- dT ---------------------->|
+	  -->|<--------------------- dT ---------------------->|<-------------
 	     |                                                 |
 	     |  TIM update     +----+---+----+        PWM      |
-	     | /               |    |   |    | <--  waveforms  |
+	     | /               |    |   |    | <--  waveforms  |    next PWM period
 	     |/                |    |   |    |                 |
-	  ---*--*--*-----------------------------+-------------*---
-	     |  |  |                             |             |
-	     iA uS uC         preload DC         |
-	     iB uA uX          to hw timer -->  TIM
-         iC uB uX
-	             \                          /
+	  ---*--*--*-----------------------------+-------------*--*--*--------
+	     |  |  |                             |             |  |  |
+	     iA uS uC         preload DC         |             iA uS uC
+	     iB uA uX          to hw timer -->  TIM            iB uA uX
+         iC uB uX                                          iC uB uX
+	             \                          /                      \ ...
 	              pm_feedback()            /
 	                proc_set_DC(xA, xB, xC)
 
-We typically need about 3us before ADC samples to be clean. If MOSFETs
+
+## Clean zones
+
+We typically need about 5us before current samples to be clean. If MOSFETs
 switching occur at this time then the result is discarded.
 
-## Current zones
+	                // ADC sample clean zones //
+	
+	  -->|<--------------------- dT ---------------------->|<-------------
+	     |                                                 |
+	     |    PWM      +--------+---+--------+             |
+	     |  waveforms  |        |   |        |             |    next PWM period
+	     |             |        |   |        |             |
+	  ---*--*--*-------------------------------------------*--*--*--------
+	                                         |             |
+                                          -->|  clearence  |<--
+                                                           |      |
+                                                        -->| skip |<--
+
+The diagram above shows `clearance` and `skip` parameters that is used in
+software to decide ADC samples further usage. Based on transient performance of
+current measurements circuit you should specify clerance thresholds in board
+configuration. To get the best result you should have a current sensor with a
+fast transient that allows you to specify narrow clearance zone.
+
+	               1 - sqrt(3) / 2
+	  clearance < -----------------
+	                  PWM_freq
+
+## TODO
 

@@ -5,7 +5,7 @@ conditions. We will consider the most important of them.
 
 ## Forced control
 
-If the motor is at low speed then FLUX observer is unable to provide reliable
+If the machine is at low speed then FLUX observer is unable to provide reliable
 estimates. You need to use some sort of position sensor. If this is not
 possible the forced control is used. We apply a current vector without feedback
 to force rotor turn. You can adapt the current value and acceleration to your
@@ -18,50 +18,39 @@ For more reliable start increase hold current and decrease acceleration. Keep
 in mind that hold current is applied constantly (like in stepper motor) so it
 causes significant heating.
 
-You have an option to disable forced control. The motor will be freewheeling at
-low speed range.
+You have an option to disable forced control. The machine will be freewheeling
+at low speed range.
 
 	(pmc) reg pm.config_LU_FORCED 0
 
 ## Current loop
 
-You can limit phase current. It is the main tool not to burn the motor. This is
+Automatically tune current loop PI regulator gains based on performance
+percentage. Reasonable values are from 50 to 150.
+
+	(pmc) reg pm.auto_loop_current <pc>
+
+Phase current constraint is the main tool not to burn the machine. This is
 global constraint applicable to all closed loop modes of operation. You also
 can set reverse limit of negative Q current.
 
 	(pmc) reg pm.i_maximal <A>
 	(pmc) reg pm.i_reverse <A>
 
-Derated current in case of PCB overheat (look into other **ap.tpro** regs).
-Applicable to both D and Q axes.
+Derated current constraint in case of PCB overheat (also look into other
+`ap.tpro` regs). Applicable to both D and Q axes.
 
 	(pmc) reg ap.tpro_derated_PCB <A>
 
-If you are interested in transient performance try to change slew rate. But
-remember that low slew rate is necessary for safe operation of wattage
-constraints.
-
-	(pmc) reg pm.i_slew_rate <A/s>
-
-Also you can tune PI regulator gains. But usually this is not required as
-default tune is good enough.
-
-	(pmc) reg pm.i_gain_P <x>
-	(pmc) reg pm.i_gain_I <x>
-
-PI regulator gains can be reverted to default by setting P to 0.
-
-	# reg pm.i_gain_P 0
-
 ## Wattage
 
-You can limit consumption and regeneration battery current. Set the limits
+You can limit consumption and regeneration DC link current. Set the limits
 according to the power supply capabilities.
 
 	(pmc) reg pm.watt_wA_maximal <A>
 	(pmc) reg pm.watt_wA_reverse <A>
 
-Alternatively you can specify power limits. Note that the lowest of all
+Alternatively you can specify wattage limits. Note that the lowest of all
 constraints will be used.
 
 	(pmc) reg pm.watt_wP_maximal <W>
@@ -85,8 +74,8 @@ transient rate and noise level.
 
 	(pmc) reg pm.flux_gain_SF <x>
 
-You have an option to disable sensorless estimation if you use position
-sensors.
+You have an option to completely disable sensorless estimation if you use
+position sensors.
 
 	(pmc) reg pm.config_ESTIMATE 0
 
@@ -98,9 +87,12 @@ transient rate and noise level.
 
     (pmc) reg pm.kalman_gain_Q3 <x>
 
-**TODO**
-
 ## Speed loop
+
+Automatically tune speed loop PD regulator gains based on performance
+percentage. Reasonable values are from 10 to 200.
+
+	(pmc) reg pm.auto_loop_speed <pc>
 
 You can limit absolute value of speed in forward and reverse direction. Also
 remember about alternative units of measure by using specific register name.
@@ -114,34 +106,33 @@ You can limit the acceleration. We recommend to increase the default value.
 
 It should be noted that above constraints are used differently depending on
 selected control loop. In case of speed control above constraints are applied
-to speed setpoint to get trackpoint **pm.s_track**. In other words we do not
+to speed setpoint to get trackpoint `pm.s_track`. In other words we do not
 limits actual parameters but limit input setpoint to comply it with
 constraints.
 
 Quite different in the case of current control. You should enable
+`SPEED_LIMITED` feature to apply above speed loop constraints to actual speed
+and acceleration.
 
     (pmc) reg pm.config_SPEED_LIMITED 1
 
-to apply above constraints to actual speed and acceleration if you need it of
-course. Here trackppoint is driven by actual speed estimate with acceleration
-constraint. For system stability we have introduced a linear control area
-**pm.s_linspan**. So there may be some backlash in case of direction change.
+Here trackpoint is driven by actual speed estimate with acceleration
+constraint. For system stability we have introduced a linear regulation region
+`pm.l_track_tol` and blending gain `pm.l_gain_LP`. So there may be some
+backlash in case of direction change.
 
-Also you can tune PD regulator gains.
+Also you can tune PD regulator gains manually.
 
     (pmc) reg pm.lu_gain_mq_LP <x>
 	(pmc) reg pm.s_gain_P <x>
 	(pmc) reg pm.s_gain_D <x>
 
-PD regulator gains can be reverted to default by setting **s_gain_P** to 0.
-
-	(pmc) reg pm.s_gain_P 0
-
 ## Brake function
 
 If you need a holding brake function in combination with current control then
-enable this. It is activated when current setpoint is negative. Brake current
-is limited by absolute value of setpoint so brake is proportional.
+enable `HOLDING_BRAKE` feature. It is activated when current setpoint is
+negative. Brake current is limited by absolute value of setpoint so brake is
+proportional.
 
 	(pmc) reg pm.config_HOLDING_BRAKE 1
 

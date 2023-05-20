@@ -62,6 +62,7 @@ typedef struct {
 	int		antialiasing;
 	int		blendfont;
 	int		thickness;
+	int		gamma;
 
 	int		dash_context;
 
@@ -84,10 +85,12 @@ typedef struct {
 	pixmap;
 
 	colType_t	palette[16];
+	int		ltgamma[16];
 }
 draw_t;
 
 void drawDashReset(draw_t *dw);
+void drawGamma(draw_t *dw);
 
 void drawClearSurface(draw_t *dw, SDL_Surface *surface, colType_t col);
 void drawClearCanvas(draw_t *dw);

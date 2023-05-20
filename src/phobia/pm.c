@@ -2548,11 +2548,15 @@ pm_loop_current(pmc_t *pm)
 	float		track_D, track_Q, eD, eQ, uD, uQ, uX, uY, wP;
 	float		iMAX, iREV, uMAX, uREV, wMAX, wREV, dS;
 
-	if (		pm->lu_MODE == PM_LU_FORCED
-			|| pm->forced_track_D > M_EPS_F) {
+	if (pm->lu_MODE == PM_LU_FORCED) {
 
-		track_D = (pm->lu_MODE == PM_LU_FORCED)
-			? pm->forced_hold_D : 0.f;
+		track_D = pm->forced_hold_D;
+	}
+	else {
+		track_D = 0.f;
+	}
+
+	if (track_D > M_EPS_F || pm->forced_track_D > M_EPS_F) {
 
 		/* Forced current slew rate limited tracking.
 		 * */

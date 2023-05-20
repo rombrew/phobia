@@ -61,7 +61,6 @@ void langFill(lang_t *la, int lang)
 			"    Drawing antialiasing  [ %s ]\0"
 			"    Solid font            [ %s ]\0"
 			"    Grid thickness        [ %s ]\0"
-			"    Hinting mode          [ %s ]\0"
 			"    Font size             [ %s ]\0"
 
 			"\0";
@@ -231,7 +230,6 @@ void langFill(lang_t *la, int lang)
 			"    Сглаживание рисования   [ %s ]\0"
 			"    Сплошной шрифт          [ %s ]\0"
 			"    Толщина сетки           [ %s ]\0"
-			"    Хинтинг шрифта          [ %s ]\0"
 			"    Размер шрифта           [ %s ]\0"
 
 			"\0";

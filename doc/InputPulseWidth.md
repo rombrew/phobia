@@ -43,7 +43,10 @@ of maximal no load speed. There is a variable `pm.s_setpoint_pc`.
 Note that setting the control variable does not enable appropriate control loop
 automatically. You may need to enable appropriate control mode explicitly.
 
-	(pmc) reg pm.config_LU_DRIVE 1       0 = `current loop` 1 = `speed loop`
+	(pmc) reg pm.config_LU_DRIVE 1
+
+* 0 - Current loop.
+* 1 - Speed loop.
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.
@@ -52,7 +55,7 @@ converted to this control range.
 	(pmc) reg ap.ppm_range_control1 <x>
 	(pmc) reg ap.ppm_range_control2 <x>
 
-Now enable the motor startup control. The condition to start is the transition
+Now enable the machine startup control. The condition to start is the transition
 of pulse signal to the operating range from the low side.
 
 	(pmc) reg ap.ppm_STARTUP 1
@@ -77,4 +80,11 @@ allows you to capture pulses from 31 Hz.
 
 Maximal timebase allowed is 84000000 Hz that gives a resolution about 12 ns
 with 1282 Hz minimal pulse frequency.
+
+# Disarm reset
+
+To ensure a safe startup it is required to hold low pulse signal for
+`ap.disarm_timeout` seconds until disarmed state was reset.
+
+	(pmc) reg ap.disarm_timeout <s>
 
