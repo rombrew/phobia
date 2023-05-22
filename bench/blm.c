@@ -332,21 +332,21 @@ blm_solve(blm_t *m, double dT)
 
 	if (m->xdtu[0] != 0) {
 
-		/* Deadtime on A.
+		/* Dead-Time on A.
 		 * */
 		m->xfet[0] = (iA > m->Dtol) ? 0 : (iA < - m->Dtol) ? 1 : m->xfet[0];
 	}
 
 	if (m->xdtu[1] != 0) {
 
-		/* Deadtime on B.
+		/* Dead-Time on B.
 		 * */
 		m->xfet[1] = (iB > m->Dtol) ? 0 : (iB < - m->Dtol) ? 1 : m->xfet[1];
 	}
 
 	if (m->xdtu[2] != 0) {
 
-		/* Deadtime on C.
+		/* Dead-Time on C.
 		 * */
 		m->xfet[2] = (iC > m->Dtol) ? 0 : (iC < - m->Dtol) ? 1 : m->xfet[2];
 	}

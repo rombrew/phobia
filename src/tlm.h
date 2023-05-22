@@ -3,7 +3,7 @@
 
 #include "regfile.h"
 
-#define TLM_DATA_MAX		1000
+#define TLM_DATA_MAX		2000
 #define TLM_INPUT_MAX		10
 
 enum {

@@ -14,7 +14,7 @@
 
 #define USBD_VID		0x0483	/* STMicroelectronics */
 #define USBD_PID		0x5740	/* Virtual COM Port */
-#define USBD_MAX_POWER		100
+
 #define USBD_LANGID_STRING	0x0409	/* English (United States) */
 
 typedef struct {
@@ -37,28 +37,25 @@ static priv_USB_t		priv_USB;
 
 static const uint8_t		cdc_acm_descriptor[] = {
 
-	USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xEF, 0x02, 0x01,
-			USBD_VID, USBD_PID, 0x0100, 0x01),
-
-	USB_CONFIG_DESCRIPTOR_INIT(0x09 + CDC_ACM_DESCRIPTOR_LEN, 0x02, 0x01,
-			USB_CONFIG_SELF_POWERED, USBD_MAX_POWER),
-
+	USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xEF, 0x02, 0x01, USBD_VID, USBD_PID, 0x0100, 0x01),
+	USB_CONFIG_DESCRIPTOR_INIT(0x09 + CDC_ACM_DESCRIPTOR_LEN, 0x02, 0x01, USB_CONFIG_SELF_POWERED, 100),
 	CDC_ACM_DESCRIPTOR_INIT(0x00, CDC_INT_EP, CDC_OUT_EP, CDC_IN_EP, 0x02),
 
 	USB_LANGID_INIT(USBD_LANGID_STRING),
-	0x16,					/* bLength */
+	0x26,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'C', 0, 'h', 0, 'e', 0, 'r', 0, 'r', 0, 'y', 0, ' ', 0, 'U', 0, 'S', 0, 'B', 0,
+	'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, 'e', 0, 'l', 0,
+	'e', 0, 'c', 0, 't', 0, 'r', 0, 'o', 0, 'n', 0, 'i', 0, 'c', 0, 's', 0,
 
-	0x30,					/* bLength */
+	0x2A,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'P', 0, 'h', 0, 'o', 0, 'b', 0, 'i', 0, 'a', 0, ' ', 0, 'M', 0, 'o', 0,
-	't', 0, 'o', 0, 'r', 0, ' ', 0, 'C', 0, 'o', 0, 'n', 0, 't', 0, 'r', 0,
-	'o', 0, 'l', 0, 'l', 0, 'e', 0, 'r', 0,
+	'P', 0, 'M', 0, 'C', 0, ' ', 0, 'V', 0, 'i', 0, 'r', 0, 't', 0, 'u', 0,
+	'a', 0, 'l', 0, ' ', 0, 'C', 0, 'O', 0, 'M', 0, ' ', 0, 'P', 0, 'o', 0,
+	'r', 0, 't', 0,
 
 	0x12,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'9', 0, 'C', 0, '9', 0, '6', 0, '2', 0, '9', 0, 'C', 0, '6', 0,
+	'4', 0, 'C', 0, 'E', 0, '2', 0, '4', 0, '6', 0, '6', 0, '8', 0,
 
 	0x00
 };
@@ -180,16 +177,16 @@ extern QueueHandle_t USART_public_rx_queue();
 
 void USB_startup()
 {
-	const struct usbd_endpoint	cdc_out_ep = {
-
-		.ep_addr = CDC_OUT_EP,
-		.ep_cb = usbd_cdc_acm_bulk_out
-	};
-
 	const struct usbd_endpoint	cdc_in_ep = {
 
 		.ep_addr = CDC_IN_EP,
 		.ep_cb = usbd_cdc_acm_bulk_in
+	};
+
+	const struct usbd_endpoint	cdc_out_ep = {
+
+		.ep_addr = CDC_OUT_EP,
+		.ep_cb = usbd_cdc_acm_bulk_out
 	};
 
 	/* Enable OTG_FS clock.
@@ -218,8 +215,8 @@ void USB_startup()
 	usbd_desc_register(cdc_acm_descriptor);
 	usbd_add_interface(usbd_cdc_acm_init_iface(&priv_USB.iface0));
 	usbd_add_interface(usbd_cdc_acm_init_iface(&priv_USB.iface1));
-	usbd_add_endpoint(&cdc_out_ep);
 	usbd_add_endpoint(&cdc_in_ep);
+	usbd_add_endpoint(&cdc_out_ep);
 	usbd_initialize();
 
 	/* Enable IRQ.

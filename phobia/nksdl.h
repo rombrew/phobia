@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-#define NK_ASSERT(s)			/* nope */
+#define NK_ASSERT(s)			/* do nothing */
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -49,7 +49,7 @@ struct nk_sdl {
 };
 
 NK_API void nk_sdl_input_event(struct nk_sdl *nk, SDL_Event *ev);
-NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding);
+NK_API void nk_sdl_style_custom(struct nk_sdl *nk);
 NK_API float nk_sdl_text_width(nk_handle font, float height, const char *text, int len);
 NK_API void nk_sdl_render(struct nk_sdl *nk);
 

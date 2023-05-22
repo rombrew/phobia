@@ -1,7 +1,7 @@
 # Phobia Motor Controller
 
 PMC is an open project that aims to build the quality permanent magnet
-synchronous motor (PMSM) controller for use in a variety of scopes like RC or
+synchronous machine (PMSM) controller for use in a variety of scopes like RC or
 electric transport.
 
 ## Software features
@@ -37,11 +37,11 @@ electric transport.
 
 * Terminal voltage measurements (TVM):
 	* Compensation of the voltage distortion caused by Dead-Time insertion.
-	* BEMF tracking to get smooth start when motor is already running.
-	* Self-test of the power stages integrity and motor connection.
+	* Back EMF voltage tracking to catch an already running machine.
+	* Self-test of the power stages integrity and machine connection.
 	* Self-test of bootstrap retention time.
 
-* Automated motor parameters identification with no additional tools:
+* Automated machine parameters identification with no additional tools:
 	* Stator DC resistance (Rs).
 	* Stator AC impedance in DQ frame (L1, L2, R).
 	* Rotor flux linkage constant (lambda).
@@ -111,7 +111,7 @@ electric transport.
 
 * Motor interfaces:
 	* Discrete Hall sensors or EABI encoder (5v pull-up).
-	* External NTC resistor (e.g. motor temperature sensing).
+	* External NTC resistor (e.g. machine temperature sensing).
 
 * Control interfaces:
 	* CAN transceiver with optional termination resistor on PCB (5v).
@@ -133,7 +133,7 @@ electric transport.
 ## Current Status
 
 Now we can declare that PMC is ready to use in most applications. But it may be
-difficult to configure the PMC for some types of motors.
+difficult to configure the PMC for some types of machine.
 
 There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 

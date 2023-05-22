@@ -141,7 +141,7 @@ Currents are sampled strictly in the middle of PWM period simultaneously using
 three ADCs. Then the voltages and other signals are sampled depending on
 particular sampling scheme selected.
 
-The values obtained are passed to the main IRQ handler to pprocess. The MCU
+The values obtained are passed to the main IRQ handler to process. The MCU
 software calculates a new value of duty cycle and load it to hw timer. This
 value will be used at next PWM period.
 

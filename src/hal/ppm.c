@@ -75,7 +75,7 @@ PPM_mode_PULSE_WIDTH()
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
 }
 
-#ifdef HW_HAVE_STEP_DIR
+#ifdef HW_HAVE_STEP_DIR_KNOB
 static void
 PPM_mode_STEP_DIR()
 {
@@ -141,7 +141,7 @@ PPM_mode_BACKUP_EABI()
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH1);
 	GPIO_set_mode_FUNCTION(GPIO_TIM4_CH2);
 }
-#endif /* HW_HAVE_STEP_DIR */
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 void PPM_startup()
 {
@@ -154,7 +154,7 @@ void PPM_startup()
 		/* TODO */
 	}
 
-#ifdef HW_HAVE_STEP_DIR
+#ifdef HW_HAVE_STEP_DIR_KNOB
 	else if (hal.PPM_mode == PPM_STEP_DIR) {
 
 		PPM_mode_STEP_DIR();
@@ -163,7 +163,7 @@ void PPM_startup()
 
 		PPM_mode_BACKUP_EABI();
 	}
-#endif /* HW_HAVE_STEP_DIR */
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 }
 
 static void

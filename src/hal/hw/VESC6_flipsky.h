@@ -5,6 +5,7 @@
 
 #define HW_HAVE_DRV_ON_PCB
 #define HW_HAVE_ANALOG_KNOB
+#define HW_HAVE_BRAKE_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
 #define HW_HAVE_USB_CDC_ACM
@@ -37,7 +38,7 @@
 #define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
-#define HW_ADC_KNOB_R2			1.f
+#define HW_ADC_KNOB_R2			1000.f
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f

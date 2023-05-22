@@ -15,6 +15,8 @@ app_main_t			ap;
 pmc_t 				pm LD_CCRAM;
 tlm_t				tlm;
 
+uint8_t				ucHeap[configTOTAL_HEAP_SIZE] LD_CCRAM;
+
 void xvprintf(io_ops_t *_io, const char *fmt, va_list ap);
 
 void log_TRACE(const char *fmt, ...)
@@ -73,19 +75,17 @@ ADC_get_knob_ANG()
 	return knob * hal.const_ADC.GK;
 }
 
+#ifdef HW_HAVE_BRAKE_KNOB
 static float
 ADC_get_knob_BRK()
 {
 	float			knob;
 
-#ifndef HW_HAVE_NO_BRAKE_KNOB
 	knob = ADC_get_sample(GPIO_ADC_KNOB_BRK);
-#else /* HW_HAVE_NO_BRAKE_KNOB */
-	knob = 0.f;
-#endif
 
 	return knob * hal.const_ADC.GK;
 }
+#endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
 static int
@@ -318,7 +318,7 @@ void task_ALERT(void *pData)
 static void
 inner_KNOB()
 {
-	float			control, range, scaled_ANG, scaled_BRK;
+	float			control, range, scaled_ANG;
 
 	if (		ap.knob_ACTIVE == PM_ENABLED
 			&& pm.lu_MODE == PM_LU_DISABLED) {
@@ -414,14 +414,16 @@ inner_KNOB()
 		control = ap.knob_control_ANG[1] + range * scaled_ANG;
 	}
 
+#ifdef HW_HAVE_BRAKE_KNOB
 	if (		   ap.knob_in_BRK < ap.knob_range_LST[0]
 			|| ap.knob_in_BRK > ap.knob_range_LST[1]) {
 
 		/* Loss of BRAKE signal.
 		 * */
-		scaled_BRK = 0.f;
 	}
 	else {
+		float		scaled_BRK;
+
 		range = ap.knob_range_BRK[1] - ap.knob_range_BRK[0];
 		scaled_BRK = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 
@@ -430,6 +432,7 @@ inner_KNOB()
 
 		control += (ap.knob_control_BRK - control) * scaled_BRK;
 	}
+#endif /* HW_HAVE_BRAKE_KNOB */
 
 	if (ap.knob_reg_DATA != control) {
 
@@ -448,9 +451,9 @@ void task_KNOB(void *pData)
 
 	GPIO_set_mode_ANALOG(GPIO_ADC_KNOB_ANG);
 
-#ifndef HW_HAVE_NO_BRAKE_KNOB
+#ifdef HW_HAVE_BRAKE_KNOB
 	GPIO_set_mode_ANALOG(GPIO_ADC_KNOB_BRK);
-#endif /* HW_HAVE_NO_BRAKE_KNOB */
+#endif /* HW_HAVE_BRAKE_KNOB */
 
 	xWake = xTaskGetTickCount();
 
@@ -462,7 +465,10 @@ void task_KNOB(void *pData)
 			vTaskDelayUntil(&xWake, (TickType_t) 10);
 
 			ap.knob_in_ANG = ADC_get_knob_ANG();
+
+#ifdef HW_HAVE_BRAKE_KNOB
 			ap.knob_in_BRK = ADC_get_knob_BRK();
+#endif /* HW_HAVE_BRAKE_KNOB */
 
 			inner_KNOB();
 		}
@@ -472,7 +478,10 @@ void task_KNOB(void *pData)
 			vTaskDelayUntil(&xWake, (TickType_t) 100);
 
 			ap.knob_in_ANG = ADC_get_knob_ANG();
+
+#ifdef HW_HAVE_BRAKE_KNOB
 			ap.knob_in_BRK = ADC_get_knob_BRK();
+#endif /* HW_HAVE_BRAKE_KNOB */
 		}
 	}
 	while (1);
@@ -783,7 +792,7 @@ void task_INIT(void *pData)
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	xTaskCreate(task_SH, "SH", 320, NULL, 1, NULL);
+	xTaskCreate(task_CMDSH, "CMDSH", 220, NULL, 1, NULL);
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
@@ -1083,68 +1092,80 @@ SH_DEF(rtos_uptime)
 
 SH_DEF(rtos_task_info)
 {
-	TaskStatus_t		*pLIST;
-	int			xSIZE, xState, N;
+	TaskStatus_t		*list;
+	int			len, symStat, n;
 
-	xSIZE = uxTaskGetNumberOfTasks();
-	pLIST = pvPortMalloc(xSIZE * sizeof(TaskStatus_t));
+	len = uxTaskGetNumberOfTasks();
+	list = pvPortMalloc(len * sizeof(TaskStatus_t));
 
-	if (pLIST != NULL) {
+	if (list != NULL) {
 
-		xSIZE = uxTaskGetSystemState(pLIST, xSIZE, NULL);
+		len = uxTaskGetSystemState(list, len, NULL);
 
 		printf("TCB      ID Name              Stat Prio Stack    Free" EOL);
 
-		for (N = 0; N < xSIZE; ++N) {
+		for (n = 0; n < len; ++n) {
 
-			switch (pLIST[N].eCurrentState) {
+			switch (list[n].eCurrentState) {
 
 				case eRunning:
-					xState = 'R';
+					symStat = 'R';
 					break;
 
 				case eReady:
-					xState = 'E';
+					symStat = 'E';
 					break;
 
 				case eBlocked:
-					xState = 'B';
+					symStat = 'B';
 					break;
 
 				case eSuspended:
-					xState = 'S';
+					symStat = 'S';
 					break;
 
 				case eDeleted:
-					xState = 'D';
+					symStat = 'D';
 					break;
 
 				case eInvalid:
 				default:
-					xState = 'N';
+					symStat = 'N';
 					break;
 			}
 
 			printf("%8x %2i %17s %c    %2i   %8x %i" EOL,
-					(uint32_t) pLIST[N].xHandle,
-					(int) pLIST[N].xTaskNumber,
-					pLIST[N].pcTaskName,
-					(int) xState,
-					(int) pLIST[N].uxCurrentPriority,
-					(uint32_t) pLIST[N].pxStackBase,
-					(int) pLIST[N].usStackHighWaterMark);
+					(uint32_t) list[n].xHandle,
+					(int) list[n].xTaskNumber,
+					list[n].pcTaskName, (int) symStat,
+					(int) list[n].uxCurrentPriority,
+					(uint32_t) list[n].pxStackBase,
+					(int) list[n].usStackHighWaterMark);
 		}
 
-		vPortFree(pLIST);
+		vPortFree(list);
 	}
 }
 
 SH_DEF(rtos_heap_info)
 {
-	printf("Total %iK Free %iK (%iK)" EOL,
-			configTOTAL_HEAP_SIZE / 1024U,
-			xPortGetFreeHeapSize() / 1024U,
-			xPortGetMinimumEverFreeHeapSize() / 1024U);
+	HeapStats_t	heapinfo;
+
+	vPortGetHeapStats(&heapinfo);
+
+	printf("RAM      Total  Free   Minimum" EOL);
+
+	printf("%8x %6i %6i %6i" EOL,
+			configTOTAL_HEAP_SIZE,
+			heapinfo.xAvailableHeapSpaceInBytes,
+			heapinfo.xMinimumEverFreeBytesRemaining);
+
+	printf("Diag     %6i %6i %6i %6i %6i" EOL,
+			heapinfo.xSizeOfLargestFreeBlockInBytes,
+			heapinfo.xSizeOfSmallestFreeBlockInBytes,
+			heapinfo.xNumberOfFreeBlocks,
+			heapinfo.xNumberOfSuccessfulAllocations,
+			heapinfo.xNumberOfSuccessfulFrees);
 }
 
 SH_DEF(rtos_log_flush)

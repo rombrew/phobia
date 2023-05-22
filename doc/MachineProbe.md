@@ -77,7 +77,7 @@ values of holding current. For more accuracy you need to increase the probe
 current or reduce DC link voltage.
 
 Then we use a high frequency sinusoidal signal to measure the full impedance
-and calculate DQ inductances `L1` and `L2`.
+and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
 
 	(pmc) pm_probe_base
 
@@ -86,8 +86,8 @@ you machine.
 
 ## Rotor flux linkage
 
-This parameter also known as `Kv` rating. Internal representation is `lambda`
-that linked with `Kv` by following equation.
+This parameter also known as `Kv` rating. Internal representation is
+`pm.const_lambda` that linked with `Kv` by following equation.
 
 	                      60
 	lambda = ----------------------------

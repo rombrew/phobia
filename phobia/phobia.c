@@ -48,7 +48,6 @@ struct public {
 	int			fe_def_size_x;
 	int			fe_def_size_y;
 	int			fe_font_h;
-	int			fe_padding;
 	int			fe_base;
 
 	int			fuzzy_count;
@@ -133,7 +132,6 @@ pub_font_layout(struct public *pub)
 		pub->fe_def_size_x = 1200;
 		pub->fe_def_size_y = 900;
 		pub->fe_font_h = 26;
-		pub->fe_padding = 5;
 		pub->fe_base = pub->fe_font_h - 2;
 	}
 	else if (fe->windowsize == 2) {
@@ -141,15 +139,13 @@ pub_font_layout(struct public *pub)
 		pub->fe_def_size_x = 1600;
 		pub->fe_def_size_y = 1200;
 		pub->fe_font_h = 34;
-		pub->fe_padding = 5;
 		pub->fe_base = pub->fe_font_h - 2;
 	}
 	else {
 		pub->fe_def_size_x = 900;
 		pub->fe_def_size_y = 600;
 		pub->fe_font_h = 18;
-		pub->fe_padding = 5;
-		pub->fe_base = pub->fe_font_h - 0;
+		pub->fe_base = pub->fe_font_h;
 	}
 
 	if (nk->ttf_font != NULL) {
@@ -170,12 +166,12 @@ pub_font_layout(struct public *pub)
 }
 
 static void
-pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bound)
+pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bound)) {
+	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
@@ -238,12 +234,12 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bound)
 }
 
 static void
-pub_contextual_hidden(struct public *pub, const char *sym, struct nk_rect bound)
+pub_contextual_hidden(struct public *pub, const char *sym, struct nk_rect bounds)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bound)) {
+	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
@@ -260,9 +256,9 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	struct nk_rect			bound;
+	struct nk_rect			bounds;
 
-	bound = nk_widget_bounds(ctx);
+	bounds = nk_widget_bounds(ctx);
 
 	if (reg->mode & LINK_REG_CONFIG) {
 
@@ -272,7 +268,7 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 		nk_label(ctx, name, NK_TEXT_LEFT);
 	}
 
-	pub_contextual(pub, reg, bound);
+	pub_contextual(pub, reg, bounds);
 }
 
 static void
@@ -281,13 +277,13 @@ pub_name_label_hidden(struct public *pub, const char *name, const char *sym)
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	struct nk_rect			bound;
+	struct nk_rect			bounds;
 
-	bound = nk_widget_bounds(ctx);
+	bounds = nk_widget_bounds(ctx);
 
 	nk_label_colored(ctx, name, NK_TEXT_LEFT, nk->table[NK_COLOR_HIDDEN]);
 
-	pub_contextual_hidden(pub, sym, bound);
+	pub_contextual_hidden(pub, sym, bounds);
 }
 
 static int
@@ -328,7 +324,7 @@ pub_combo_linked(struct public *pub, struct link_reg *reg,
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_end(ctx);
 
-		nk_button_symbol_styled(ctx, &button, NK_SYMBOL_TRIANGLE_RIGHT);
+		nk_button_symbol_styled(ctx, &button, NK_SYMBOL_RECT_SOLID);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD,
 				pub->fe->fuzzy, sizeof(pub->fe->fuzzy),
@@ -414,8 +410,7 @@ pub_popup_message(struct public *pub, int popup, const char *title)
 
 	bounds = pub_get_popup_bounds_tiny(pub);
 
-	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ",
-				NK_WINDOW_CLOSABLE
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ", NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
 		nk_layout_row_template_begin(ctx, pub->fe_font_h * 5);
@@ -465,8 +460,7 @@ pub_popup_progress(struct public *pub, int popup, const char *title, int pce)
 
 	bounds = pub_get_popup_bounds_tiny(pub);
 
-	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, title,
-				NK_WINDOW_CLOSABLE
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, title, NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
 		nk_layout_row_template_begin(ctx, 0);
@@ -508,8 +502,7 @@ pub_popup_ok_cancel(struct public *pub, int popup, const char *title)
 
 	bounds = pub_get_popup_bounds_tiny(pub);
 
-	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ",
-				NK_WINDOW_CLOSABLE
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ", NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
 		nk_layout_row_template_begin(ctx, pub->fe_font_h * 5);
@@ -643,8 +636,7 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 
 	bounds = pub_get_popup_bounds_full(pub);
 
-	if (nk_popup_begin(ctx, NK_POPUP_STATIC, title,
-				NK_WINDOW_CLOSABLE
+	if (nk_popup_begin(ctx, NK_POPUP_STATIC, title, NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
 		struct link_reg			*reg_tlm;
@@ -1335,8 +1327,8 @@ reg_enum_combo(struct public *pub, const char *sym, const char *name, int onligh
 		}
 
 		rc = nk_combo_callback(ctx, &reg_enum_get_item, reg,
-				reg->lval, reg->lmax_combo + 2, pub->fe_font_h
-				+ pub->fe_padding, nk_vec2(pub->fe_base * 20, 400));
+				reg->lval, reg->lmax_combo + 2, pub->fe_font_h + 5,
+				nk_vec2(pub->fe_base * 20, 400));
 
 		if (rc != reg->lval) {
 
@@ -1591,8 +1583,8 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 		nk_spacer(ctx);
 
 		rc = nk_combo_callback(ctx, &reg_um_get_item, &lp->reg[min],
-				lp->reg[min].um_sel, max - min + 1, pub->fe_font_h
-				+ pub->fe_padding, nk_vec2(pub->fe_base * 8, 400));
+				lp->reg[min].um_sel, (max - min) + 1, pub->fe_font_h + 5,
+				nk_vec2(pub->fe_base * 8, 400));
 
 		if (rc != lp->reg[min].um_sel) {
 
@@ -1650,7 +1642,7 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 
 		pub_name_label(pub, name, reg);
 
-		rc = pub_combo_linked(pub, reg, pub->fe_font_h + pub->fe_padding,
+		rc = pub_combo_linked(pub, reg, pub->fe_font_h + 5,
 				nk_vec2(pub->fe_base * 20, 400));
 
 		if (rc != reg->lval) {
@@ -1692,7 +1684,7 @@ reg_float_prog(struct public *pub, int reg_ID, float fmin, float fmax)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg = NULL;
 
-	struct nk_rect			bound;
+	struct nk_rect			bounds;
 	struct nk_style_edit		edit;
 	struct nk_color			hidden;
 
@@ -1741,12 +1733,12 @@ reg_float_prog(struct public *pub, int reg_ID, float fmin, float fmax)
 			pce = 0;
 		}
 
-		bound = nk_widget_bounds(ctx);
+		bounds = nk_widget_bounds(ctx);
 
 		nk_prog(ctx, pce, 1000, nk_false);
 		nk_spacer(ctx);
 
-		pub_contextual(pub, reg, bound);
+		pub_contextual(pub, reg, bounds);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 				reg->val, 79, nk_filter_default);
@@ -1851,8 +1843,7 @@ page_serial(struct public *pub)
 		nk_label(ctx, "Serial port", NK_TEXT_LEFT);
 		pub->serial.selected = nk_combo(ctx, pub->serial.list.name,
 				pub->serial.list.dnum, pub->serial.selected,
-				pub->fe_font_h + pub->fe_padding,
-				nk_vec2(pub->fe_base * 13, 400));
+				pub->fe_font_h + 5, nk_vec2(pub->fe_base * 13, 400));
 
 		nk_spacer(ctx);
 
@@ -1865,8 +1856,8 @@ page_serial(struct public *pub)
 
 		nk_label(ctx, "Baudrate", NK_TEXT_LEFT);
 		pub->serial.baudrate = nk_combo(ctx, ls_baudrates, 4,
-				pub->serial.baudrate, pub->fe_font_h
-				+ pub->fe_padding, nk_vec2(pub->fe_base * 13, 400));
+				pub->serial.baudrate, pub->fe_font_h + 5,
+				nk_vec2(pub->fe_base * 13, 400));
 
 		nk_spacer(ctx);
 
@@ -1959,8 +1950,8 @@ page_serial(struct public *pub)
 
 	nk_label(ctx, "Window resolution", NK_TEXT_LEFT);
 
-	select = nk_combo(ctx, ls_windowsize, 3, fe->windowsize, pub->fe_font_h
-			+ pub->fe_padding, nk_vec2(pub->fe_base * 22, 400));
+	select = nk_combo(ctx, ls_windowsize, 3, fe->windowsize,
+			pub->fe_font_h + 5, nk_vec2(pub->fe_base * 22, 400));
 
 	if (select != fe->windowsize) {
 
@@ -2695,7 +2686,7 @@ page_in_network(struct public *pub)
 
 		reg_float(pub, "net.ep0_ID", "EP 0 network ID");
 		reg_float(pub, "net.ep0_clock_ID", "EP 0 clock ID");
-		reg_float(pub, "net.ep0_reg_DATA", "EP 0 data");
+		reg_float(pub, "net.ep0_reg_DATA", "EP 0 DATA");
 		reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
 		reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type", 0);
 		reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
@@ -2715,7 +2706,7 @@ page_in_network(struct public *pub)
 
 		reg_float(pub, "net.ep1_ID", "EP 1 network ID");
 		reg_float(pub, "net.ep1_clock_ID", "EP 1 clock ID");
-		reg_float(pub, "net.ep1_reg_DATA", "EP 1 data");
+		reg_float(pub, "net.ep1_reg_DATA", "EP 1 DATA");
 		reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
 		reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type", 0);
 		reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
@@ -2735,7 +2726,7 @@ page_in_network(struct public *pub)
 
 		reg_float(pub, "net.ep2_ID", "EP 2 network ID");
 		reg_float(pub, "net.ep2_clock_ID", "EP 2 clock ID");
-		reg_float(pub, "net.ep2_reg_DATA", "EP 2 data");
+		reg_float(pub, "net.ep2_reg_DATA", "EP 2 DATA");
 		reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
 		reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type", 0);
 		reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
@@ -2755,7 +2746,7 @@ page_in_network(struct public *pub)
 
 		reg_float(pub, "net.ep3_ID", "EP 3 network ID");
 		reg_float(pub, "net.ep3_clock_ID", "EP 3 clock ID");
-		reg_float(pub, "net.ep3_reg_DATA", "EP 3 data");
+		reg_float(pub, "net.ep3_reg_DATA", "EP 3 DATA");
 		reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
 		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type", 0);
 		reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
@@ -4122,7 +4113,7 @@ int main(int argc, char **argv)
 	}
 
 	nk_init_default(&nk->ctx, &nk->font);
-	nk_sdl_style_custom(nk, pub->fe_padding);
+	nk_sdl_style_custom(nk);
 
 	while (nk->onquit == 0) {
 
@@ -4189,7 +4180,8 @@ int main(int argc, char **argv)
 				sprintf(pub->lbuf, " Not linked to PMC");
 			}
 
-			if (nk_begin(&nk->ctx, pub->lbuf, bounds, NK_WINDOW_TITLE)) {
+			if (nk_begin(&nk->ctx, pub->lbuf, bounds, NK_WINDOW_TITLE
+						| NK_WINDOW_NO_SCROLLBAR)) {
 
 				menu_group_layout(pub);
 

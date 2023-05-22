@@ -233,13 +233,13 @@ void task_tlm_FLUSH(void *pData)
 	tlm_reg_label(tlm);
 
 	do {
-		vTaskDelay((TickType_t) 5);
+		vTaskDelay((TickType_t) 1);
 
 		while (tlm->N != N) {
 
 			time = (float) (tlm->clock * tlm->span) / hal.PWM_frequency;
 
-			printf("%6f;", &time);
+			printf("%4f;", &time);
 
 			tlm_reg_flush_line(tlm, N);
 

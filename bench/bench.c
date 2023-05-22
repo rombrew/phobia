@@ -212,7 +212,7 @@ tlm_proc_step(double dT)
 	tlm.y[2] = (m.xdtu[1] == 0) ? (float) m.xfet[1] : (float) tlm.hatch;
 	tlm.y[3] = (m.xdtu[2] == 0) ? (float) m.xfet[2] : (float) tlm.hatch;
 
-	/* Deadtime Uncertainty.
+	/* Dead-Time Uncertainty.
 	 * */
 	tlm.y[4] = (float) m.xdtu[0];
 	tlm.y[5] = (float) m.xdtu[1];

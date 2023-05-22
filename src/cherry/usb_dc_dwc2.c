@@ -321,7 +321,7 @@ static void dwc2_tx_fifo_empty_process(uint8_t ep_idx)
 
     while (((USB_OTG_INEP(ep_idx)->DTXFSTS & USB_OTG_DTXFSTS_INEPTFSAV) >= len32b) &&
            (g_dwc2_udc.in_ep[ep_idx].actual_xfer_len < g_dwc2_udc.in_ep[ep_idx].xfer_len)
-	   && (g_dwc2_udc.in_ep[ep_idx].xfer_len != 0U)) {
+           && (g_dwc2_udc.in_ep[ep_idx].xfer_len != 0U)) {
         /* Write the FIFO */
         len = g_dwc2_udc.in_ep[ep_idx].xfer_len - g_dwc2_udc.in_ep[ep_idx].actual_xfer_len;
         if (len > g_dwc2_udc.in_ep[ep_idx].ep_mps) {
@@ -444,7 +444,7 @@ int usb_dc_init(void)
         USB_OTG_GLB->DIEPTXF[i] = 0U;
     }
 
-#if defined(STM32F7) || defined(STM32H7)
+#if defined(STM32F7) || defined(STM32H7) || defined(STM32L4)
 #ifdef CONFIG_DWC2_VBUS_SENSING_ENABLE
     /* Enable HW VBUS sensing */
     USB_OTG_GLB->GCCFG |= USB_OTG_GCCFG_VBDEN;
@@ -462,6 +462,9 @@ int usb_dc_init(void)
     USB_OTG_GLB->GCCFG &= ~USB_OTG_GCCFG_NOVBUSSENS;
     USB_OTG_GLB->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
 #else
+#ifdef CONFIG_DWC2_GD32
+    USB_OTG_GLB->GCCFG |= USB_OTG_GCCFG_VBUSBSEN | USB_OTG_GCCFG_VBUSASEN;
+#else
     /*
      * Disable HW VBUS sensing. VBUS is internally considered to be always
      * at VBUS-Valid level (5V).
@@ -469,6 +472,7 @@ int usb_dc_init(void)
     USB_OTG_GLB->GCCFG |= USB_OTG_GCCFG_NOVBUSSENS;
     USB_OTG_GLB->GCCFG &= ~USB_OTG_GCCFG_VBUSBSEN;
     USB_OTG_GLB->GCCFG &= ~USB_OTG_GCCFG_VBUSASEN;
+#endif
 #endif
 #endif
     /* Restart the Phy Clock */
@@ -625,7 +629,6 @@ int usbd_ep_close(const uint8_t ep)
 
     if (USB_EP_DIR_IS_OUT(ep)) {
         USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DOEPCTL_SNAK;
-        USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DOEPCTL_EPDIS;
 
         USB_OTG_DEV->DEACHMSK &= ~(USB_OTG_DAINTMSK_OEPM & ((uint32_t)(1UL << (ep_idx & 0x07)) << 16));
         USB_OTG_DEV->DAINTMSK &= ~(USB_OTG_DAINTMSK_OEPM & ((uint32_t)(1UL << (ep_idx & 0x07)) << 16));
@@ -635,7 +638,6 @@ int usbd_ep_close(const uint8_t ep)
                                             USB_OTG_DOEPCTL_EPTYP);
     } else {
         USB_OTG_INEP(ep_idx)->DIEPCTL |= USB_OTG_DIEPCTL_SNAK;
-        USB_OTG_INEP(ep_idx)->DIEPCTL |= USB_OTG_DIEPCTL_EPDIS;
 
         USB_OTG_DEV->DEACHMSK &= ~(USB_OTG_DAINTMSK_IEPM & (uint32_t)(1UL << (ep_idx & 0x07)));
         USB_OTG_DEV->DAINTMSK &= ~(USB_OTG_DAINTMSK_IEPM & (uint32_t)(1UL << (ep_idx & 0x07)));
@@ -743,9 +745,6 @@ int usbd_ep_start_write(const uint8_t ep, const uint8_t *data, uint32_t data_len
         USB_OTG_INEP(ep_idx)->DIEPTSIZ |= (USB_OTG_DIEPTSIZ_XFRSIZ & data_len);
     }
 
-#ifdef CONFIG_USB_DWC2_DMA_ENABLE
-    USB_OTG_INEP(ep_idx)->DIEPDMA = (uint32_t)data;
-
     if (g_dwc2_udc.in_ep[ep_idx].ep_type == 0x01) {
         if ((USB_OTG_DEV->DSTS & (1U << 8)) == 0U) {
             USB_OTG_INEP(ep_idx)->DIEPCTL |= USB_OTG_DIEPCTL_SODDFRM;
@@ -755,6 +754,9 @@ int usbd_ep_start_write(const uint8_t ep, const uint8_t *data, uint32_t data_len
         USB_OTG_INEP(ep_idx)->DIEPTSIZ &= ~(USB_OTG_DIEPTSIZ_MULCNT);
         USB_OTG_INEP(ep_idx)->DIEPTSIZ |= (USB_OTG_DIEPTSIZ_MULCNT & (1U << 29));
     }
+
+#ifdef CONFIG_USB_DWC2_DMA_ENABLE
+    USB_OTG_INEP(ep_idx)->DIEPDMA = (uint32_t)data;
     USB_OTG_INEP(ep_idx)->DIEPCTL |= (USB_OTG_DIEPCTL_CNAK | USB_OTG_DIEPCTL_EPENA);
 #else
     USB_OTG_INEP(ep_idx)->DIEPCTL |= (USB_OTG_DIEPCTL_CNAK | USB_OTG_DIEPCTL_EPENA);
@@ -800,7 +802,7 @@ int usbd_ep_start_read(const uint8_t ep, uint8_t *data, uint32_t data_len)
         if (data_len > g_dwc2_udc.out_ep[ep_idx].ep_mps) {
             data_len = g_dwc2_udc.out_ep[ep_idx].ep_mps;
         }
-        g_dwc2_udc.in_ep[ep_idx].xfer_len = data_len;
+        g_dwc2_udc.out_ep[ep_idx].xfer_len = data_len;
         USB_OTG_OUTEP(ep_idx)->DOEPTSIZ |= (USB_OTG_DOEPTSIZ_PKTCNT & (1U << 19));
         USB_OTG_OUTEP(ep_idx)->DOEPTSIZ |= (USB_OTG_DOEPTSIZ_XFRSIZ & data_len);
     } else {
@@ -812,16 +814,14 @@ int usbd_ep_start_read(const uint8_t ep, uint8_t *data, uint32_t data_len)
 
 #ifdef CONFIG_USB_DWC2_DMA_ENABLE
     USB_OTG_OUTEP(ep_idx)->DOEPDMA = (uint32_t)data;
-
+#endif
     if (g_dwc2_udc.out_ep[ep_idx].ep_type == 0x01) {
         if ((USB_OTG_DEV->DSTS & (1U << 8)) == 0U) {
-            USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DIEPCTL_SODDFRM;
+            USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DOEPCTL_SODDFRM;
         } else {
-            USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DIEPCTL_SD0PID_SEVNFRM;
+            USB_OTG_OUTEP(ep_idx)->DOEPCTL |= USB_OTG_DOEPCTL_SD0PID_SEVNFRM;
         }
     }
-#endif
-
     USB_OTG_OUTEP(ep_idx)->DOEPCTL |= (USB_OTG_DOEPCTL_CNAK | USB_OTG_DOEPCTL_EPENA);
     return 0;
 }

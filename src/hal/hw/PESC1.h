@@ -1,6 +1,7 @@
 #define HW_MCU_STM32F722
 
 #define HW_HAVE_ANALOG_KNOB
+#define HW_HAVE_BRAKE_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MOTOR
 #define HW_HAVE_USB_CDC_ACM

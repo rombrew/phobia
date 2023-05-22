@@ -251,7 +251,7 @@ void ADC_startup()
 float ADC_get_sample(int xGPIO)
 {
 	int			xCH, xADC;
-	float			fU = 0.f;
+	float			um = 0.f;
 
 	if (xSemaphoreTake(priv_ADC.mutex_sem, (TickType_t) 10) == pdTRUE) {
 
@@ -272,15 +272,15 @@ float ADC_get_sample(int xGPIO)
 
 		if (xCH == XGPIO_GET_CH(GPIO_ADC_TEMPINT)) {
 
-			fU = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
+			um = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
 		}
 		else {
-			fU = (float) (xADC) * hal.const_ADC.GS;
+			um = (float) (xADC) * hal.const_ADC.GS;
 		}
 
 		xSemaphoreGive(priv_ADC.mutex_sem);
 	}
 
-	return fU;
+	return um;
 }
 

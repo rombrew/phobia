@@ -125,7 +125,7 @@ OBJS	+= flash.o \
 
 PMC_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
-all: $(TARGET)
+all: $(IMAGE)
 
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
@@ -143,10 +143,6 @@ $(IMAGE): $(TARGET)
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)
 	@ $(GDB) $<
-
-zip: $(IMAGE)
-	@ echo "  ZIP   " $(notdir $<)
-	@ zip -j9 $(BUILD)/pmc-$(HWREV)-$(shell hg id -n).zip $<
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)

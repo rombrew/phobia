@@ -661,7 +661,7 @@ pm_flux_detached(pmc_t *pm)
 {
 	float		uA, uB, uC, uX, uY, U, A, B, lerp;
 
-	/* Get BEMF voltage.
+	/* Get back EMF voltage.
 	 * */
 	uA = pm->fb_uA;
 	uB = pm->fb_uB;
@@ -684,7 +684,7 @@ pm_flux_detached(pmc_t *pm)
 	pm->vsi_X = uX;
 	pm->vsi_Y = uY;
 
-	/* Absolute BEMF voltage.
+	/* Absolute back EMF voltage.
 	 * */
 	U = m_sqrtf(uX * uX + uY * uY);
 

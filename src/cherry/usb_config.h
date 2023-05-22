@@ -6,9 +6,7 @@
 #ifndef CHERRYUSB_CONFIG_H
 #define CHERRYUSB_CONFIG_H
 
-extern void log_TRACE(const char *fmt, ...);
-
-/* ================ USB common Configuration ================ */
+/* ================ USB common Configuration ==================== */
 
 #ifndef CONFIG_USB_DBG_LEVEL
 #define CONFIG_USB_DBG_LEVEL		-1
@@ -22,13 +20,11 @@ extern void log_TRACE(const char *fmt, ...);
 #define CONFIG_USB_ALIGN_SIZE		4
 #endif
 
-#define USB_NOCACHE_RAM_SECTION		/* TODO */
+#define USB_NOCACHE_RAM_SECTION
 #define USB_MEM_ALIGN			__attribute__ ((aligned(CONFIG_USB_ALIGN_SIZE)))
 
-/* ================= USB Device Stack Configuration ================ */
+/* ================ USB Device Stack Configuration ============== */
 
-/* Ep0 max transfer buffer, specially for receiving data from ep0 out
- * */
 #define CONFIG_USBDEV_REQUEST_BUFFER_LEN	256
 
 /* ================ USB Device Port Configuration ================*/
@@ -41,6 +37,8 @@ extern void log_TRACE(const char *fmt, ...);
 #if defined(HW_MCU_STM32F722) && !defined(STM32F7)
 #define STM32F7
 #endif /* HW_MCU_STM32F722 */
+
+extern void log_TRACE(const char *fmt, ...);
 
 #endif /* CHERRYUSB_CONFIG_H */
 

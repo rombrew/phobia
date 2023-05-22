@@ -76,7 +76,7 @@ typedef struct {
 	uint32_t	ld_begin;
 	uint32_t	ld_end;
 
-	const char	hwrevision[16];
+	const char	hwrevision[40];
 	const char	build[16];
 }
 FW_info_t;

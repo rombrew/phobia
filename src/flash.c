@@ -141,8 +141,8 @@ int flash_block_regs_load()
 	const reg_t		*reg, *linked;
 	const char		*lsym;
 
-	char			*temp_s;
-	int			flash_fail = 0;
+	char			*symbuf;
+	int			rc = 0;
 
 	block = flash_block_scan();
 
@@ -150,28 +150,28 @@ int flash_block_regs_load()
 
 		/* No valid configuration block found.
 		 * */
-		return flash_fail;
+		return rc;
 	}
 
-	temp_s = pvPortMalloc(REGS_SYM_MAX + 1);
+	symbuf = pvPortMalloc(REGS_SYM_MAX + 1);
 	lsym = (const char *) block->content;
 
 	while (*lsym != 0xFF) {
 
-		lsym = flash_strcpyn(temp_s, lsym, REGS_SYM_MAX);
+		lsym = flash_strcpyn(symbuf, lsym, REGS_SYM_MAX);
 
 		/* Search for an exact match of symbolic NAME.
 		 * */
-		reg = reg_search(temp_s);
+		reg = reg_search(symbuf);
 
 		if (*lsym == 0xFE) {
 
-			lsym = flash_strcpyn(temp_s, lsym + 1, REGS_SYM_MAX);
+			lsym = flash_strcpyn(symbuf, lsym + 1, REGS_SYM_MAX);
 
 			if (reg != NULL && reg->mode & REG_CONFIG
 					&& reg->mode & REG_LINKED) {
 
-				linked = reg_search(temp_s);
+				linked = reg_search(symbuf);
 
 				if (linked != NULL) {
 
@@ -191,22 +191,22 @@ int flash_block_regs_load()
 			lsym += 5;
 		}
 		else {
-			flash_fail = 1;
+			rc = 1;
 			break;
 		}
 
 		if (*lsym != 0xFF) {
 
-			flash_fail = 1;
+			rc = 1;
 			break;
 		}
 
 		lsym++;
 	}
 
-	vPortFree(temp_s);
+	vPortFree(symbuf);
 
-	return flash_fail;
+	return rc;
 }
 
 static int
@@ -268,12 +268,8 @@ flash_prog_config_regs(flash_block_t *block)
 				flash_prog_long(&pg, reg->link->i);
 			}
 
-			rc = flash_prog_putc(&pg, 0xFF);
-
-			if (rc == 0) {
-
+			if ((rc = flash_prog_putc(&pg, 0xFF)) == 0)
 				break;
-			}
 		}
 	}
 
@@ -329,9 +325,7 @@ flash_block_prog()
 
 	FLASH_prog(&block->number, number);
 
-	rc = flash_prog_config_regs(block);
-
-	if (rc != 0) {
+	if ((rc = flash_prog_config_regs(block)) != 0) {
 
 		crc32 = flash_block_crc32(block);
 

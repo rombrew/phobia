@@ -57,10 +57,11 @@
 #define configUSE_COUNTING_SEMAPHORES			0
 #define configUSE_QUEUE_SETS				0
 #define configUSE_TIME_SLICING				1
+#define configUSE_NEWLIB_REENTRANT			0
 
 #define configSUPPORT_DYNAMIC_ALLOCATION		1
-#define configTOTAL_HEAP_SIZE				40960
-#define configAPPLICATION_ALLOCATED_HEAP		0
+#define configAPPLICATION_ALLOCATED_HEAP		1
+#define configTOTAL_HEAP_SIZE				22000
 
 #define configUSE_IDLE_HOOK				1
 #define configUSE_TICK_HOOK				0
@@ -82,7 +83,7 @@
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	(5  << (8 - configPRIO_BITS))
 
 /*
-#define configASSERT(x)	if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)
+#define configASSERT(x)		if ((x) == pdFALSE) vAssertCalled(__FILE__, __LINE__)
 */
 
 #define vPortSVCHandler		irq_SVCall

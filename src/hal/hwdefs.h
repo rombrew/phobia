@@ -33,8 +33,8 @@
 
 #include "gpio.h"
 
-/* Include appropriate configuration file according to the hardware revision
- * selected in build options through macros.
+/* We include appropriate configuration file according to the hardware revision
+ * selected in make options.
  * */
 #include _HW_INCLUDE
 

@@ -34,8 +34,10 @@ enum usbd_event_type {
     USBD_EVENT_RESUME,       /** USB connection resumed by the HOST */
 
     /* USB DEVICE STATUS */
-    USBD_EVENT_CONFIGURED,    /** USB configuration done */
-    USBD_EVENT_SET_INTERFACE, /** USB interface selected */
+    USBD_EVENT_CONFIGURED,        /** USB configuration done */
+    USBD_EVENT_SET_INTERFACE,     /** USB interface selected */
+    USBD_EVENT_SET_REMOTE_WAKEUP, /** USB set remote wakeup */
+    USBD_EVENT_CLR_REMOTE_WAKEUP, /** USB clear remote wakeup */
     USBD_EVENT_UNKNOWN
 };
 
@@ -70,6 +72,8 @@ bool usb_device_is_configured(void);
 void usbd_configure_done_callback(void);
 int usbd_initialize(void);
 int usbd_deinitialize(void);
+
+void usbd_event_handler(uint8_t event);
 
 #ifdef __cplusplus
 }

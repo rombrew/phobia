@@ -1,0 +1,21 @@
+#!/bin/bash
+
+export CROSS="armv7m-none-eabi"
+export MKOPTS="-j4 $1"
+
+make $MKOPTS HWREV=PESC1				|| exit
+make $MKOPTS HWREV=REV4C				|| exit
+make $MKOPTS HWREV=REV5A				|| exit
+make $MKOPTS HWREV=VESC6_flipsky			|| exit
+make $MKOPTS HWREV=VESC6_flipsky_mini			|| exit
+make $MKOPTS HWREV=VESC6_holybro			|| exit
+make $MKOPTS HWREV=VESC75_300				|| exit
+make $MKOPTS HWREV=VESC75_flipsky			|| exit
+
+make -C ../phobia -f Makefile.mingw ARCH=x86_64 -j4 $1	|| exit
+
+test -z $1 || exit
+
+zip -j9 /tmp/pmc-bundle-$(hg id -n).zip	\
+	/tmp/pmc-*/*.bin /tmp/phobia/*/phobia.exe
+

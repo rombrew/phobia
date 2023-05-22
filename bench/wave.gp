@@ -11,7 +11,7 @@ figure 0 1 "m.xfet[A]"
 figure 0 2 "m.xfet[B]"
 figure 0 3 "m.xfet[C]"
 
-page "Deadtime Uncertainty"
+page "Dead-Time Uncertainty"
 figure 0 4 "m.xdtu[A]"
 figure 0 5 "m.xdtu[B]"
 figure 0 6 "m.xdtu[C]"

@@ -226,7 +226,7 @@ NK_API void nk_sdl_clipboard_copy(nk_handle userdata, const char *text, int len)
 	SDL_SetClipboardText(nk_sdl_nullstr(text, len));
 }
 
-NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
+NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 {
 	struct nk_context		*ctx = &nk->ctx;
 	struct nk_style			*style;
@@ -277,21 +277,21 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	style = &ctx->style;
 
 	style->button.text_active = nk->table[NK_COLOR_EDIT_NUMBER];
-	style->button.padding = nk_vec2(padding, padding);
+	style->button.padding = nk_vec2(4.0f, 4.0f);
 	style->button.rounding = 4.0f;
 
 	style->selectable.hover = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
 	style->selectable.hover_active = nk_style_item_color(nk->table[NK_COLOR_ACTIVE_HOVER]);
-	style->selectable.padding = nk_vec2(padding, padding);
+	style->selectable.padding = nk_vec2(4.0f, 4.0f);
 	style->selectable.rounding = 2.0f;
 
 	style->checkbox.padding = nk_vec2(4.0f, 4.0f);
-	style->checkbox.spacing = padding;
+	style->checkbox.spacing = 4.0f;
 
 	style->combo.hover = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
 	style->combo.button.hover = style->combo.hover;
-	style->combo.content_padding = nk_vec2(padding, padding);
-	style->combo.button_padding = nk_vec2(0.0f, 8.0f + padding / 5);
+	style->combo.content_padding = nk_vec2(4.0f, 4.0f);
+	style->combo.button_padding = nk_vec2(0.0f, 8.0f);
 	style->combo.rounding = 2.0f;
 
 	style->edit.normal = nk_style_item_color(nk->table[NK_COLOR_EDIT]);
@@ -308,7 +308,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk, int padding)
 	style->edit.selected_hover = nk->table[NK_COLOR_EDIT_NUMBER];
 	style->edit.selected_text_normal = nk->table[NK_COLOR_EDIT];
 	style->edit.selected_text_hover = nk->table[NK_COLOR_EDIT];
-	style->edit.padding = nk_vec2(padding, padding);
+	style->edit.padding = nk_vec2(4.0f, 4.0f);
 	style->edit.rounding = 2.0f;
 
 	ctx->clip.paste = &nk_sdl_clipboard_paste;
@@ -359,9 +359,8 @@ nk_sdl_line_horizontal(struct nk_sdl *nk, int x0, int y0, int x1, Uint32 qcol)
 
 	if (x1 < x0) {
 
-		int	temp;
+		int	temp = x1;
 
-		temp = x1;
 		x1 = x0;
 		x0 = temp;
 	}
@@ -861,15 +860,15 @@ nk_sdl_text(struct nk_sdl *nk, const struct nk_command_text *t)
 	TTF_Font	*ttf_font = (TTF_Font *) t->font->userdata.ptr;
 	SDL_Surface	*text_surface;
 	SDL_Rect	clip_rect, text_rect;
-	SDL_Color	fg;
+	SDL_Color	fgcol;
 
-	fg.r = t->foreground.r;
-	fg.g = t->foreground.g;
-	fg.b = t->foreground.b;
-	fg.a = t->foreground.a;
+	fgcol.r = t->foreground.r;
+	fgcol.g = t->foreground.g;
+	fgcol.b = t->foreground.b;
+	fgcol.a = t->foreground.a;
 
 	text_surface = TTF_RenderUTF8_Blended(ttf_font,
-			nk_sdl_nullstr(t->string, t->length), fg);
+			nk_sdl_nullstr(t->string, t->length), fgcol);
 
 	if (text_surface != NULL) {
 

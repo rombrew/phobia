@@ -85,8 +85,8 @@ the next PWM period. Then it transferred to the hardware timer.
 
 The main sensorless method is a flux linkage observer. It is based on BEMF
 induced in stator windings when rotor flux is moving. This method works well
-when the value of BEMF is greater that voltage distortion (dUDT). Look at the
-synchronous machine equations:
+when the value of back EMF is greater that voltage distortion (dUDT). Look at
+the synchronous machine equations:
 
 	iD
 	-- * Ld = uD - iD * R + fluxQ * wS

@@ -964,8 +964,7 @@ SH_DEF(net_node_remote)
 
 		/* Do listen to incoming messages from remote node.
 		 * */
-		CAN_filter_ID(4, 0, EPCAN_ID(local.remote_node_ID, EPCAN_NODE_TX),
-				EPCAN_FILTER_MATCH);
+		CAN_filter_ID(4, 0, EPCAN_ID(local.remote_node_ID, EPCAN_NODE_TX), EPCAN_FILTER_MATCH);
 
 		/* Create task to outgoing message packaging.
 		 * */

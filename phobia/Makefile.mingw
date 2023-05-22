@@ -16,7 +16,7 @@ CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -I$(SDLDIR)/include -I$(SDLDIR)/include/SDL2
 CFLAGS	+= -D_EMBED_GP -D_WINDOWS
 
-LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image -static
+LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image -static -mwindows
 LFLAGS	+= -L$(SDLDIR)/lib
 
 LFLAGS  += -Wl,--gc-sections -Wl,--no-undefined -lusp10 -ldinput8 -ldxguid \
@@ -58,11 +58,8 @@ $(BUILD)/%.o: %.c
 $(TARGET): $(PMCFE_OBJS)
 	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
-
-zip: $(TARGET)
-	@ echo "  ZIP   " $(notdir $<)
-	@ $(STRIP) $<
-	@ zip -j9 $(BUILD)/phobia-$(ARCH)-$(shell hg id -b)-$(shell hg id -n).zip $<
+	@ echo "  STRIP " $(notdir $@)
+	@ $(STRIP) $@
 
 clean:
 	@ echo "  CLEAN "

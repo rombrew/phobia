@@ -3,6 +3,7 @@ TARGET	= $(BUILD)/phobia
 
 CC	= gcc
 LD	= gcc
+STRIP	= strip -s
 GDB	= gdb
 MK	= mkdir -p
 RM	= rm -rf
@@ -57,6 +58,10 @@ run: $(TARGET)
 debug: $(TARGET)
 	@ echo "  GDB	" $(notdir $<)
 	@ $(GDB) $<
+
+strip: $(TARGET)
+	@ echo "  STRIP " $(notdir $<)
+	@ $(STRIP) $<
 
 clean:
 	@ echo "  CLEAN "
