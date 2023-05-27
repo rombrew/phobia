@@ -8,8 +8,8 @@ extern void tlm_restart();
 extern void sim_runtime(double dT);
 
 int ts_wait_for_idle();
-int ts_wait_for_spinup(float s_ref);
-int ts_wait_for_motion(float s_ref);
+int ts_wait_for_motion();
+int ts_wait_for_spinup();
 
 void ts_script_base();
 void ts_script_verify();

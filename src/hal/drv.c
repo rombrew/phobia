@@ -162,7 +162,7 @@ int DRV_fault()
 
 	if (hal.DRV.device_ON != 0) {
 
-		fault = (GPIO_get_VALUE(hal.DRV.gpio_FAULT) != 0) ? 0 : 1;
+		fault = (GPIO_get_STATE(hal.DRV.gpio_FAULT) != 0) ? 0 : 1;
 	}
 
 	return fault;

@@ -1,6 +1,6 @@
 #define HW_MCU_STM32F405
 
-/* Holybro Mini FOC ESC Based on VESC6
+/* Tested on Holybro Mini FOC ESC Based on VESC6
  * */
 
 #define HW_HAVE_ANALOG_KNOB

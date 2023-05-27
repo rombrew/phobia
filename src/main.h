@@ -10,7 +10,7 @@
 
 typedef struct {
 
-	/* PPM interface (PWM).
+	/* PPM interface knob.
 	 * */
 	float			ppm_in_pulse;
 	float			ppm_in_freq;
@@ -22,7 +22,7 @@ typedef struct {
 	float			ppm_range_pulse[3];
 	float			ppm_range_control[3];
 
-	/* STEP/DIR interface.
+	/* STEP/DIR interface knob.
 	 * */
 	int			step_in_EP;
 	float			step_reg_DATA;
@@ -33,13 +33,14 @@ typedef struct {
 	int			step_accu_EP;
 	float			step_const_ld_EP;
 
-	/* Knob analog interface.
+	/* Analog interface knob.
 	 * */
 	float			knob_in_ANG;
 	float			knob_in_BRK;
 	float			knob_reg_DATA;
 	int			knob_reg_ID;
 	int			knob_ENABLED;
+	int			knob_BRAKE;
 	int			knob_STARTUP;
 	int			knob_ACTIVE;
 	int			knob_DISARM;
@@ -49,14 +50,14 @@ typedef struct {
 	float			knob_control_ANG[3];
 	float			knob_control_BRK;
 
-	/* IDLE control.
+	/* IDLE function.
 	 * */
 	float			idle_timeout;
 	int			idle_RESET;
 	int			idle_INVOKE;
 	int			idle_revol_cached;
 
-	/* DISARM control.
+	/* Disarm function.
 	 * */
 	float			disarm_timeout;
 	int			disarm_RESET;
@@ -83,7 +84,7 @@ typedef struct {
 	float			tpro_derated_EXT;
 	float			tpro_temp_recovery;
 
-	/* App knobs.
+	/* App enable knobs.
 	 * */
 	int			task_PUSHBUTTON;
 	int			task_AS5047;

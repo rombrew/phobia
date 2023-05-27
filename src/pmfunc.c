@@ -32,7 +32,7 @@ int pm_wait_for_idle()
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_spinup(float s_ref)
+int pm_wait_for_motion()
 {
 	TickType_t		xTIME = (TickType_t) 0;
 
@@ -42,17 +42,39 @@ int pm_wait_for_spinup(float s_ref)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		/* Check the target SPEED has reached.
-		 * */
-		if (m_fabsf(pm.lu_wS - s_ref) < pm.probe_speed_tol)
+		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_speed_threshold
+				&& pm.detach_TIM > PM_TSMS(&pm, pm.tm_transient_slow))
+			break;
+
+		if (xTIME > (TickType_t) 10000) {
+
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
+			break;
+		}
+
+		xTIME += (TickType_t) 50;
+	}
+	while (1);
+
+	return pm.fsm_errno;
+}
+
+int pm_wait_for_spinup()
+{
+	TickType_t		xTIME = (TickType_t) 0;
+
+	do {
+		vTaskDelay((TickType_t) 50);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (m_fabsf(pm.s_setpoint_speed - pm.lu_wS) < pm.probe_speed_tol)
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
-				&& pm.vsi_lpf_DC > pm.forced_maximal_DC) {
-
-			s_ref = pm.lu_wS;
+				&& pm.vsi_lpf_DC > pm.forced_maximal_DC)
 			break;
-		}
 
 		if (xTIME > (TickType_t) 10000) {
 
@@ -69,47 +91,21 @@ int pm_wait_for_spinup(float s_ref)
 	return pm.fsm_errno;
 }
 
-int pm_wait_for_motion(float s_ref)
-{
-	TickType_t		xTIME = (TickType_t) 0;
-	int			last_revol = pm.lu_total_revol;
-
-	do {
-		vTaskDelay((TickType_t) 50);
-
-		if (pm.fsm_errno != PM_OK)
-			break;
-
-		if (		pm.lu_total_revol != last_revol
-				&& m_fabsf(pm.zone_lpf_wS) > s_ref)
-			break;
-
-		if (xTIME > (TickType_t) 10000) {
-
-			pm.fsm_errno = PM_ERROR_TIMEOUT;
-			break;
-		}
-
-		xTIME += (TickType_t) 50;
-	}
-	while (1);
-
-	return pm.fsm_errno;
-}
-
-int pm_wait_for_settle(float x_ref)
+int pm_wait_for_settle()
 {
 	TickType_t		xTick = (TickType_t) 0;
 
 	do {
+		float		xER;
+
 		vTaskDelay((TickType_t) 50);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		/* Check the target LOCATION has reached.
-		 * */
-		if (m_fabsf(x_ref - pm.lu_location) < pm.probe_location_tol)
+		xER = pm.x_setpoint_location - pm.lu_location;
+
+		if (m_fabsf(xER) < pm.probe_location_tol)
 			break;
 
 		if (xTick > (TickType_t) 10000) {
@@ -213,7 +209,7 @@ SH_DEF(pm_probe_spinup)
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-			if (pm_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+			if (pm_wait_for_spinup() != PM_OK)
 				break;
 
 			reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
@@ -237,7 +233,7 @@ SH_DEF(pm_probe_spinup)
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-		if (pm_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+		if (pm_wait_for_spinup() != PM_OK)
 			break;
 
 		reg_format(&regfile[ID_PM_ZONE_LPF_WS]);
@@ -317,10 +313,7 @@ SH_DEF(pm_probe_detached)
 	do {
 		pm.fsm_req = PM_STATE_LU_DETACHED;
 
-		if (pm_wait_for_idle() != PM_OK)
-			break;
-
-		if (pm_wait_for_motion(pm.probe_speed_detached) != PM_OK)
+		if (pm_wait_for_motion() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
@@ -535,13 +528,13 @@ SH_DEF(pm_adjust_sensor_hall)
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-			if (pm_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+			if (pm_wait_for_spinup() != PM_OK)
 				break;
 
 			ACTIVE = 1;
 		}
 
-		if (m_fabsf(pm.zone_lpf_wS) < pm.probe_speed_detached) {
+		if (m_fabsf(pm.zone_lpf_wS) < pm.zone_speed_threshold) {
 
 			printf("Unable at too LOW speed" EOL);
 			return;
@@ -638,7 +631,7 @@ SH_DEF(pm_location_probe_const_inertia)
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
 
-		if (pm_wait_for_settle(pm.x_setpoint_location) != PM_OK)
+		if (pm_wait_for_settle() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
@@ -683,7 +676,7 @@ SH_DEF(pm_location_adjust_range)
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
 
-		if (pm_wait_for_settle(pm.x_setpoint_location) != PM_OK)
+		if (pm_wait_for_settle() != PM_OK)
 			break;
 
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, wSP);

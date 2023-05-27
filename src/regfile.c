@@ -1038,6 +1038,9 @@ reg_format_enum(const reg_t *reg)
 
 #ifdef HW_HAVE_ANALOG_KNOB
 		case ID_AP_KNOB_ENABLED:
+#ifdef HW_HAVE_BRAKE_KNOB
+		case ID_AP_KNOB_BRAKE:
+#endif /* HW_HAVE_BRAKE_KNOB */
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
 
@@ -1417,22 +1420,29 @@ const reg_t		regfile[] = {
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	REG_DEF(ap.knob_in_ANG,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+#ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_in_BRK,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+#endif /* HW_HAVE_BRAKE_KNOB */
 	REG_DEF(ap.knob_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_referenced_knob),
 	REG_DEF(ap.knob_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.knob_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(ap.knob_BRAKE,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.knob_STARTUP,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.knob_range_ANG, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_ANG, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_ANG, 2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+#ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_range_BRK, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_BRK, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+#endif /* HW_HAVE_BRAKE_KNOB */
 	REG_DEF(ap.knob_range_LST, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_LST, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_control_ANG, 0, [0],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
 	REG_DEF(ap.knob_control_ANG, 1, [1],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
 	REG_DEF(ap.knob_control_ANG, 2, [2],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
+#ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_control_BRK,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
+#endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
 	REG_DEF(ap.idle_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -1527,23 +1537,24 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tm_average_probe,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_average_drift,,, 		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_average_inertia,,, 	"ms",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.tm_startup,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.tm_halt_pause,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_pause_startup,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_pause_forced,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_pause_halt,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.scale_iA, 0, [0],		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_iA, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_iA, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_iB, 0, [0],		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_iB, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_iB, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_iC, 0, [0],		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_iC, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_iC, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_uS, 0, [0],		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_uS, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_uS, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_uA, 0, [0],		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_uA, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_uA, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_uB, 0, [0],		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_uB, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_uB, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_uC, 0, [0],		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.scale_uC, 1, [1],		"",	"%4e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.scale_uC, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.fb_iA,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.fb_iB,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1564,11 +1575,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_freq_sine,,,		"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_hold,,,		"rad/s","%2f",	REG_CONFIG, &reg_proc_auto_probe_speed_hold, NULL),
 	REG_DEF(pm.probe_speed_hold, _rpm,,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.probe_speed_detached,,,	"rad/s","%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.probe_speed_detached, _rpm,,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.probe_speed_tol,,,		"rad/s","%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_speed_tol, _rpm,,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.probe_location_tol,,,	"rad",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_location_tol,,,	"rad",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_location_tol, _mm,,	"mm",	"%3f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.probe_gain_P,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_gain_I,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1798,6 +1807,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.l_brake,,,			"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.l_blend,,,			"",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.l_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),

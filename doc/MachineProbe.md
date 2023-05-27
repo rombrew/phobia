@@ -116,7 +116,7 @@ manually in this case.
 
 	(pmc) pm_probe_detached
 
-PMC will wait for the machine to reach at least `pm.probe_speed_detached`
+PMC will wait for the machine to reach at least `pm.zone_speed_threshold`
 speed.
 
 ## Speed noise threshold

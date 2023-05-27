@@ -88,6 +88,35 @@ ADC_get_knob_BRK()
 #endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
+#ifdef HW_HAVE_FAN_CONTROL
+static void
+GPIO_set_mode_FAN()
+{
+	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
+
+#ifdef GPIO_FAN_OPEN_DRAIN
+	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
+#else /* HW_GPIO_FAN_OPEN_DRAIN */
+	GPIO_set_mode_PUSH_PULL(GPIO_FAN_EN);
+#endif
+}
+
+static void
+GPIO_set_state_FAN(int knob)
+{
+#ifdef GPIO_FAN_OPEN_DRAIN
+	if (knob == PM_ENABLED) {
+#else /* HW_GPIO_FAN_OPEN_DRAIN */
+	if (knob != PM_ENABLED) {
+#endif
+		GPIO_set_LOW(GPIO_FAN_EN);
+	}
+	else {
+		GPIO_set_HIGH(GPIO_FAN_EN);
+	}
+}
+#endif /* HW_HAVE_FAN_CONTROL */
+
 static int
 elapsed_IDLE()
 {
@@ -227,19 +256,11 @@ void task_TEMP(void *pData)
 		 * */
 		if (ap.temp_PCB > ap.tpro_PCB_temp_FAN) {
 
-#ifdef HW_FAN_OPEN_DRAIN
-			GPIO_set_LOW(GPIO_FAN_EN);
-#else /* HW_FAN_OPEN_DRAIN */
-			GPIO_set_HIGH(GPIO_FAN_EN);
-#endif
+			GPIO_set_state_FAN(PM_ENABLED);
 		}
 		else if (ap.temp_PCB < ap.tpro_PCB_temp_FAN - ap.tpro_temp_recovery) {
 
-#ifdef HW_FAN_OPEN_DRAIN
-			GPIO_set_HIGH(GPIO_FAN_EN);
-#else /* HW_FAN_OPEN_DRAIN */
-			GPIO_set_LOW(GPIO_FAN_EN);
-#endif
+			GPIO_set_state_FAN(PM_DISABLED);
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
@@ -318,7 +339,7 @@ void task_ALERT(void *pData)
 static void
 inner_KNOB()
 {
-	float			control, range, scaled_ANG;
+	float			control, range, scaled;
 
 	if (		ap.knob_ACTIVE == PM_ENABLED
 			&& pm.lu_MODE == PM_LU_DISABLED) {
@@ -332,7 +353,7 @@ inner_KNOB()
 
 		/* Loss of KNOB signal.
 		 * */
-		scaled_ANG = - 1.f;
+		scaled = - 1.f;
 
 		if (ap.knob_ACTIVE == PM_ENABLED) {
 
@@ -351,16 +372,16 @@ inner_KNOB()
 		if (ap.knob_in_ANG < ap.knob_range_ANG[1]) {
 
 			range = ap.knob_range_ANG[0] - ap.knob_range_ANG[1];
-			scaled_ANG = (ap.knob_range_ANG[1] - ap.knob_in_ANG) / range;
+			scaled = (ap.knob_range_ANG[1] - ap.knob_in_ANG) / range;
 		}
 		else {
 			range = ap.knob_range_ANG[2] - ap.knob_range_ANG[1];
-			scaled_ANG = (ap.knob_in_ANG - ap.knob_range_ANG[1]) / range;
+			scaled = (ap.knob_in_ANG - ap.knob_range_ANG[1]) / range;
 		}
 
-		if (scaled_ANG < - 1.f) {
+		if (scaled < - 1.f) {
 
-			scaled_ANG = - 1.f;
+			scaled = - 1.f;
 
 			if (ap.knob_ACTIVE == PM_ENABLED) {
 
@@ -383,9 +404,9 @@ inner_KNOB()
 			}
 		}
 		else {
-			if (scaled_ANG > 1.f) {
+			if (scaled > 1.f) {
 
-				scaled_ANG = 1.f;
+				scaled = 1.f;
 			}
 
 			if (		ap.knob_STARTUP == PM_ENABLED
@@ -404,14 +425,14 @@ inner_KNOB()
 		}
 	}
 
-	if (scaled_ANG < 0.f) {
+	if (scaled < 0.f) {
 
 		range = ap.knob_control_ANG[1] - ap.knob_control_ANG[0];
-		control = ap.knob_control_ANG[1] + range * scaled_ANG;
+		control = ap.knob_control_ANG[1] + range * scaled;
 	}
 	else {
 		range = ap.knob_control_ANG[2] - ap.knob_control_ANG[1];
-		control = ap.knob_control_ANG[1] + range * scaled_ANG;
+		control = ap.knob_control_ANG[1] + range * scaled;
 	}
 
 #ifdef HW_HAVE_BRAKE_KNOB
@@ -421,16 +442,14 @@ inner_KNOB()
 		/* Loss of BRAKE signal.
 		 * */
 	}
-	else {
-		float		scaled_BRK;
+	else if (ap.knob_BRAKE == PM_ENABLED) {
 
 		range = ap.knob_range_BRK[1] - ap.knob_range_BRK[0];
-		scaled_BRK = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
+		scaled = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 
-		scaled_BRK = (scaled_BRK < 0.f) ? 0.f
-			: (scaled_BRK > 1.f) ? 1.f : scaled_BRK;
+		scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-		control += (ap.knob_control_BRK - control) * scaled_BRK;
+		control += (ap.knob_control_BRK - control) * scaled;
 	}
 #endif /* HW_HAVE_BRAKE_KNOB */
 
@@ -566,8 +585,10 @@ default_flash_load()
 	ap.step_STARTUP = PM_DISABLED;
 	ap.step_const_ld_EP = 0.f;
 
+#ifdef HW_HAVE_ANALOG_KNOB
 	ap.knob_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
 	ap.knob_ENABLED = PM_DISABLED;
+	ap.knob_BRAKE = PM_DISABLED;
 	ap.knob_STARTUP = PM_DISABLED;
 	ap.knob_DISARM = PM_ENABLED;
 	ap.knob_range_ANG[0] = 1.0f;	/* (V) */
@@ -581,6 +602,7 @@ default_flash_load()
 	ap.knob_control_ANG[1] = 50.f;
 	ap.knob_control_ANG[2] = 100.f;
 	ap.knob_control_BRK = - 100.f;
+#endif /* HW_HAVE_ANALOG_KNOB */
 
 	ap.idle_timeout = 2.f;
 	ap.disarm_timeout = 1.f;
@@ -729,14 +751,8 @@ void task_INIT(void *pData)
 #endif /* GPIO_BOOST_EN */
 
 #ifdef HW_HAVE_FAN_CONTROL
-	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
-#ifdef HW_FAN_OPEN_DRAIN
-	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
-	GPIO_set_HIGH(GPIO_FAN_EN);
-#else /* HW_FAN_OPEN_DRAIN */
-	GPIO_set_mode_PUSH_PULL(GPIO_FAN_EN);
-	GPIO_set_LOW(GPIO_FAN_EN);
-#endif
+	GPIO_set_mode_FAN();
+	GPIO_set_state_FAN(PM_DISABLED);
 #endif /* HW_HAVE_FAN_CONTROL */
 
 	hal_lock_irq();

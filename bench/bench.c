@@ -160,6 +160,8 @@ tlm_plot_grab()
 	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
 	fmk_GP(pm.forced_wS, kRPM, "rpm");
 
+	fmt_GP(pm.detach_TIM, 0);
+
 	fmt_GP(pm.flux_ZONE, 0);
 	fmt_GP(pm.flux_X[0], "Wb");
 	fmt_GP(pm.flux_X[1], "Wb");
@@ -369,35 +371,16 @@ void bench_script()
 	blm_restart(&m);
 	tlm_restart();
 
-	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-	pm.config_HFI_WAVE = PM_HFI_SINE;
-	pm.config_LU_DRIVE = PM_DRIVE_CURRENT;
+	m.state[2] = 1000.;
 
-	pm.s_maximal = 2000.f;
-	pm.s_reverse = 2000.f;
-	pm.s_accel = 700.f;
+	//pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 
-	pm.fsm_req = PM_STATE_LU_STARTUP;
+	pm.fsm_req = PM_STATE_LU_DETACHED;
 	ts_wait_for_idle();
 
 	sim_runtime(.1);
 
-	pm.i_setpoint_current = 10.f;
-	sim_runtime(1.);
-
-	pm.i_setpoint_current = 0.f;
-	sim_runtime(1.);
-
-	pm.i_setpoint_current = 10.f;
-	sim_runtime(1.);
-
-	pm.i_setpoint_current = 0.f;
-	sim_runtime(1.);
-
-	pm.i_setpoint_current = 10.f;
-	sim_runtime(1.);
-
-	pm.i_setpoint_current = 0.f;
+	//pm.i_setpoint_current = 10.f;
 	sim_runtime(1.);
 
 	tlm_PWM_grab();

@@ -35,7 +35,7 @@ void blm_DQ_ABC(double theta, double D, double Q, double *A, double *B, double *
 
 double blm_Kv_lambda(blm_t *m, double Kv)
 {
-	/* Convert the total motor Kv (rpm/Volt) to the flux linkage (Weber)
+	/* Convert the total machine Kv (rpm/Volt) to the flux linkage (Weber)
 	 * */
 	return (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
 }
@@ -82,9 +82,9 @@ void blm_enable(blm_t *m)
 
 	/* Thermal capacity (Joule/Kelvin).
 	 * */
-	m->Ct = 30.;
+	m->Ct = 20.;
 
-	/* Thermal resistance (Kelvin/Watt).
+	/* Thermal resistance to ambient (Kelvin/Watt).
 	 * */
 	m->Rt = 0.5;
 
@@ -125,7 +125,7 @@ void blm_enable(blm_t *m)
 	m->range_A = 165.;	/* (Ampere) */
 	m->range_B = 60.;	/* (Volt)   */
 
-	/* Hall sensor angles.
+	/* Hall sensor mount angles.
 	 * */
 	m->hall[0] = 30.7;
 	m->hall[1] = 150.1;

@@ -105,7 +105,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_SPEED_LIMITED = PM_ENABLED;
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
-	pm->config_MILEAGE_INFO	= PM_ENABLED;
+	pm->config_MILEAGE_INFO = PM_ENABLED;
 	pm->config_BOOST_CHARGE = PM_DISABLED;
 
 	pm->tm_transient_slow = 40.f;		/* (ms) */
@@ -117,8 +117,9 @@ pm_auto_config_default(pmc_t *pm)
 	pm->tm_average_probe = 200.f;		/* (ms) */
 	pm->tm_average_drift = 100.f;		/* (ms) */
 	pm->tm_average_inertia = 700.f;		/* (ms) */
-	pm->tm_startup = 100.f;			/* (ms) */
-	pm->tm_halt_pause = 1000.f;		/* (ms) */
+	pm->tm_pause_startup = 100.f;		/* (ms) */
+	pm->tm_pause_forced = 1000.f;		/* (ms) */
+	pm->tm_pause_halt = 2000.f;		/* (ms) */
 
 	pm->scale_iA[0] = 0.f;
 	pm->scale_iA[1] = 1.f;
@@ -142,7 +143,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_current_bias = 0.f;
 	pm->probe_freq_sine = 1100.f;
 	pm->probe_speed_hold = 900.f;
-	pm->probe_speed_detached = 50.f;
 	pm->probe_speed_tol = 10.f;
 	pm->probe_location_tol = .1f;
 	pm->probe_gain_P = 1E-2f;
@@ -173,7 +173,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->forced_maximal = 900.f;
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;
-	pm->forced_slew_rate = 900.f;
+	pm->forced_slew_rate = 100.f;
 	pm->forced_maximal_DC = 0.7f;
 
 	pm->detach_voltage = 1.f;
@@ -250,6 +250,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_D = 7E-5f;
 
+	pm->l_brake = 1.f;
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
 
@@ -474,9 +475,9 @@ pm_auto_loop_current(pmc_t *pm)
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
 
-		/* Get the current slew rate limit.
+		/* Set the current slew rate limit.
 		 * */
-		pm->i_slew_rate = 0.05f * pm->const_fb_U / Lm;
+		pm->i_slew_rate = 0.05f * Df * pm->const_fb_U / Lm;
 	}
 }
 
@@ -619,7 +620,7 @@ pm_torque_approx(pmc_t *pm, float mQ)
 static void
 pm_forced(pmc_t *pm)
 {
-	float		wSP, dS;
+	float		wSP, dSA, xRF;
 
 	/* Get the SETPOINT of forced speed.
 	 * */
@@ -645,11 +646,15 @@ pm_forced(pmc_t *pm)
 		wSP = 0.f;
 	}
 
-	/* Update actual speed with specified acceleration.
+	/* Reduce the acceleration in case of current lack.
 	 * */
-	dS = pm->forced_accel * pm->m_dT;
-	pm->forced_wS = (pm->forced_wS < wSP - dS) ? pm->forced_wS + dS :
-		(pm->forced_wS > wSP + dS) ? pm->forced_wS - dS : wSP;
+	xRF = m_fabsf(pm->forced_track_D / pm->forced_hold_D);
+
+	/* Update actual speed with allowed acceleration.
+	 * */
+	dSA = pm->forced_accel * xRF * pm->m_dT;
+	pm->forced_wS = (pm->forced_wS < wSP - dSA) ? pm->forced_wS + dSA :
+		(pm->forced_wS > wSP + dSA) ? pm->forced_wS - dSA : wSP;
 
 	/* Update DQ-axes.
 	 * */
@@ -1207,7 +1212,6 @@ static void
 pm_flux_zone(pmc_t *pm)
 {
 	float			thld_wS;
-	int			lev_TIM;
 
 	/* Get smooth speed passed through LPF.
 	 * */
@@ -1220,7 +1224,7 @@ pm_flux_zone(pmc_t *pm)
 
 		if (pm->lu_MODE == PM_LU_DETACHED) {
 
-			lev_TIM = PM_TSMS(pm, pm->tm_transient_slow);
+			int	lev_TIM = PM_TSMS(pm, pm->tm_transient_slow);
 
 			if (		m_fabsf(pm->zone_lpf_wS) > thld_wS
 					&& pm->detach_TIM > lev_TIM) {
@@ -1736,7 +1740,7 @@ pm_lu_FSM(pmc_t *pm)
 
 			pm->proc_set_Z(PM_Z_NONE);
 		}
-		else if (pm->base_TIM < PM_TSMS(pm, pm->tm_startup)) {
+		else if (pm->base_TIM < PM_TSMS(pm, pm->tm_pause_startup)) {
 
 			/* Not enough time passed to go into low speed mode.
 			 * */
@@ -1798,7 +1802,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->hold_TIM = 0;
 		}
 		else {
-			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_current_hold)) {
+			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_pause_forced)) {
 
 				pm->hold_TIM++;
 			}
@@ -1825,7 +1829,7 @@ pm_lu_FSM(pmc_t *pm)
 
 		pm->lu_wS = pm->flux_wS;
 
-		if (pm->base_TIM < PM_TSMS(pm, pm->tm_startup)) {
+		if (pm->base_TIM < PM_TSMS(pm, pm->tm_pause_startup)) {
 
 			/* Not enough time passed to go into low speed mode.
 			 * */
@@ -1896,7 +1900,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->hold_TIM = 0;
 		}
 		else {
-			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_startup)) {
+			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_pause_startup)) {
 
 				pm->hold_TIM++;
 			}
@@ -2546,7 +2550,7 @@ static void
 pm_loop_current(pmc_t *pm)
 {
 	float		track_D, track_Q, eD, eQ, uD, uQ, uX, uY, wP;
-	float		iMAX, iREV, uMAX, uREV, wMAX, wREV, dS;
+	float		iMAX, iREV, uMAX, uREV, wMAX, wREV, dSA;
 
 	if (pm->lu_MODE == PM_LU_FORCED) {
 
@@ -2556,14 +2560,15 @@ pm_loop_current(pmc_t *pm)
 		track_D = 0.f;
 	}
 
-	if (track_D > M_EPS_F || pm->forced_track_D > M_EPS_F) {
+	if (		pm->forced_track_D > M_EPS_F
+			|| track_D > M_EPS_F) {
 
 		/* Forced current slew rate limited tracking.
 		 * */
-		dS = pm->forced_slew_rate * pm->m_dT;
-		pm->forced_track_D = (pm->forced_track_D < track_D - dS)
-			? pm->forced_track_D + dS : (pm->forced_track_D > track_D + dS)
-			? pm->forced_track_D - dS : track_D;
+		dSA = pm->forced_slew_rate * pm->m_dT;
+		pm->forced_track_D = (pm->forced_track_D < track_D - dSA)
+			? pm->forced_track_D + dSA : (pm->forced_track_D > track_D + dSA)
+			? pm->forced_track_D - dSA : track_D;
 	}
 
 	track_D = pm->forced_track_D;
@@ -2598,11 +2603,11 @@ pm_loop_current(pmc_t *pm)
 		if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
 			if (		pm->config_HOLDING_BRAKE == PM_ENABLED
-					&& pm->i_setpoint_current < 0.f) {
+					&& track_Q * pm->l_brake < - M_EPS_F) {
 
 				track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
 
-				iMAX = m_fabsf(pm->i_setpoint_current);
+				iMAX = m_fabsf(track_Q);
 
 				track_Q = (track_Q > iMAX) ? iMAX
 					: (track_Q < - iMAX) ? - iMAX : track_Q;
@@ -2616,9 +2621,9 @@ pm_loop_current(pmc_t *pm)
 				wSP = (wSP > pm->s_maximal) ? pm->s_maximal :
 					(wSP < - pm->s_reverse) ? - pm->s_reverse : wSP;
 
-				dS = pm->s_accel * pm->m_dT;
-				pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
-					: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
+				dSA = pm->s_accel * pm->m_dT;
+				pm->s_track = (pm->s_track < wSP - dSA) ? pm->s_track + dSA
+					: (pm->s_track > wSP + dSA) ? pm->s_track - dSA : wSP;
 
 				eSP = pm->s_track - pm->lu_wS;
 
@@ -2790,14 +2795,14 @@ pm_loop_current(pmc_t *pm)
 		}
 	}
 
-	dS = pm->i_slew_rate * pm->m_dT;
+	dSA = pm->i_slew_rate * pm->m_dT;
 
 	/* Slew rate limited current tracking.
 	 * */
-	pm->i_track_D = (pm->i_track_D < track_D - dS) ? pm->i_track_D + dS
-		: (pm->i_track_D > track_D + dS) ? pm->i_track_D - dS : track_D;
-	pm->i_track_Q = (pm->i_track_Q < track_Q - dS) ? pm->i_track_Q + dS
-		: (pm->i_track_Q > track_Q + dS) ? pm->i_track_Q - dS : track_Q;
+	pm->i_track_D = (pm->i_track_D < track_D - dSA) ? pm->i_track_D + dSA
+		: (pm->i_track_D > track_D + dSA) ? pm->i_track_D - dSA : track_D;
+	pm->i_track_Q = (pm->i_track_Q < track_Q - dSA) ? pm->i_track_Q + dSA
+		: (pm->i_track_Q > track_Q + dSA) ? pm->i_track_Q - dSA : track_Q;
 
 	/* Obtain discrepancy in DQ-axes.
 	 * */
@@ -2865,7 +2870,7 @@ pm_loop_current(pmc_t *pm)
 static void
 pm_loop_speed(pmc_t *pm)
 {
-	float		wSP, eS, dS;
+	float		wSP, eS, dSA;
 
 	wSP = pm->s_setpoint_speed;
 
@@ -2883,9 +2888,9 @@ pm_loop_speed(pmc_t *pm)
 
 			/* Maximal ACCELERATION constraint.
 			 * */
-			dS = pm->s_accel * pm->m_dT;
-			pm->s_track = (pm->s_track < wSP - dS) ? pm->s_track + dS
-				: (pm->s_track > wSP + dS) ? pm->s_track - dS : wSP;
+			dSA = pm->s_accel * pm->m_dT;
+			pm->s_track = (pm->s_track < wSP - dSA) ? pm->s_track + dSA
+				: (pm->s_track > wSP + dSA) ? pm->s_track - dSA : wSP;
 		}
 		else {
 			/* No constraint required.
@@ -2918,9 +2923,11 @@ pm_loop_location(pmc_t *pm)
 	xSP = (xSP < pm->x_location_range[0]) ? pm->x_location_range[0]
 		: (xSP > pm->x_location_range[1]) ? pm->x_location_range[1] : xSP;
 
+	pm->x_setpoint_location = xSP;
+
 	/* Get location discrepancy.
 	 * */
-	xER = xSP - pm->lu_location;
+	xER = pm->x_setpoint_location - pm->lu_location;
 
 	/* Servo is based on constant acceleration formula.
 	 * */
@@ -3079,7 +3086,6 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 			pm->lu_iX = - pm->fb_iB - pm->fb_iC;
 			pm->lu_iY = pm->fb_iB;
-
 		}
 		else if (	   pm->vsi_AF == 0
 				&& pm->vsi_CF == 0) {

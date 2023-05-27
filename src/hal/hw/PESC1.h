@@ -37,8 +37,6 @@
 #define HW_NTC_PCB_TA0			194.1f
 #define HW_NTC_PCB_BETTA		- 242.7f
 
-#define HW_FAN_OPEN_DRAIN
-
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 1, 1)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
 #define GPIO_ADC_CURRENT_C		XGPIO_DEF3('A', 3, 3)
@@ -63,6 +61,8 @@
 #define GPIO_BOOST_EN			XGPIO_DEF2('B', 2)
 #define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
+
+#define GPIO_FAN_OPEN_DRAIN		/* IRLML6401 */
 
 #define HW_CONFIG_INLINE 	do {						\
 					pm.config_IFB = PM_IFB_AB_INLINE;	\

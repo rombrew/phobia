@@ -37,8 +37,6 @@
 #define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3435.f		/* EWTF05-103H3I */
 
-#define HW_FAN_OPEN_DRAIN
-
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)
 #define GPIO_ADC_VOLTAGE_U		XGPIO_DEF3('A', 1, 1)
@@ -59,4 +57,6 @@
 #define GPIO_BOOST_EN			XGPIO_DEF2('B', 2)
 #define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
+
+#define GPIO_FAN_OPEN_DRAIN		/* IRLML6401 */
 

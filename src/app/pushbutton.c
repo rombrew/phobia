@@ -66,8 +66,8 @@ void app_PUSHBUTTON(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 10);
 
-		value_A = GPIO_get_VALUE(gpio_A);
-		value_B = GPIO_get_VALUE(gpio_B);
+		value_A = GPIO_get_STATE(gpio_A);
+		value_B = GPIO_get_STATE(gpio_B);
 
 		/* Detect if button [A] is pressed.
 		 * */

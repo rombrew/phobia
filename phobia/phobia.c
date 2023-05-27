@@ -27,6 +27,7 @@ enum {
 	POPUP_NONE			= 0,
 	POPUP_LINK_PROGRESS,
 	POPUP_RESET_DEFAULT,
+	POPUP_PROBE_DETACHED,
 	POPUP_UNABLE_WARNING,
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
@@ -187,27 +188,15 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 
 		if (reg->mode & LINK_REG_CONFIG) {
 
-			if (		   strcmp(reg->sym, "pm.i_maximal") == 0
-					|| strcmp(reg->sym, "pm.probe_speed_hold") == 0
-					|| strcmp(reg->sym, "pm.zone_speed_threshold") == 0
-					|| strcmp(reg->sym, "pm.forced_maximal") == 0
-					|| strcmp(reg->sym, "pm.forced_accel") == 0
-					|| strcmp(reg->sym, "pm.fault_current_halt") == 0) {
-
-				sprintf(pub->lbuf, "Request automatic configuration");
-
-				if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
-
-					strcpy(reg->val, "0");
-
-					reg->modified = pub->lp->clock;
-				}
-			}
+			/* nothing */
 		}
 		else {
 			sprintf(pub->lbuf, "Update rate %i", reg->update);
 
-			nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT);
+			if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
+
+				reg->update = (reg->update == 0) ? 100 : 0;
+			}
 
 			if (reg->mode & LINK_REG_TYPE_FLOAT) {
 
@@ -324,7 +313,10 @@ pub_combo_linked(struct public *pub, struct link_reg *reg,
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_end(ctx);
 
-		nk_button_symbol_styled(ctx, &button, NK_SYMBOL_RECT_SOLID);
+		if (nk_button_symbol_styled(ctx, &button, NK_SYMBOL_RECT_SOLID)) {
+
+			strcpy(pub->fe->fuzzy, "setpoint");
+		}
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD,
 				pub->fe->fuzzy, sizeof(pub->fe->fuzzy),
@@ -2227,7 +2219,10 @@ page_probe(struct public *pub)
 
 	if (nk_button_label(ctx, "Probe Detached")) {
 
-		link_command(pub->lp, "pm_probe_detached");
+		if (pub->lp->linked != 0) {
+
+			pub->popup_enum = POPUP_PROBE_DETACHED;
+		}
 	}
 
 	nk_spacer(ctx);
@@ -2242,10 +2237,18 @@ page_probe(struct public *pub)
 
 	nk_spacer(ctx);
 
+	if (pub_popup_ok_cancel(pub, POPUP_PROBE_DETACHED,
+				"You will have to rotate the machine"
+				" manually in this case. PMC will wait"
+				" for the machine to reach some speed") != 0) {
+
+		link_command(pub->lp, "pm_probe_detached");
+	}
+
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
 				" want to reset all measured parameters"
-				" related to the motor") != 0) {
+				" related to the machine") != 0) {
 
 		link_command(pub->lp, "pm_default_probe");
 		link_reg_fetch_all_shown(pub->lp);
@@ -2891,6 +2894,7 @@ page_in_knob(struct public *pub)
 	reg_float(pub, "ap.knob_reg_DATA", "Control register DATA");
 	reg_linked(pub, "ap.knob_reg_ID", "Control register ID");
 	reg_enum_toggle(pub, "ap.knob_ENABLED", "Knob function");
+	reg_enum_toggle(pub, "ap.knob_BRAKE", "Brake function");
 	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup control");
 	reg_float(pub, "ap.knob_range_ANG0", "ANG range LOW");
 	reg_float(pub, "ap.knob_range_ANG1", "ANG range MID");
@@ -3113,8 +3117,9 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.tm_average_probe", "Average probe time");
 	reg_float(pub, "pm.tm_average_drift", "Average drift time");
 	reg_float(pub, "pm.tm_average_inertia", "Average inertia time");
-	reg_float(pub, "pm.tm_startup", "Startup time");
-	reg_float(pub, "pm.tm_halt_pause", "Halt pause");
+	reg_float(pub, "pm.tm_pause_startup", "Startup pause");
+	reg_float(pub, "pm.tm_pause_forced", "Forced pause");
+	reg_float(pub, "pm.tm_pause_halt", "Halt pause");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3126,7 +3131,6 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
 	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
-	reg_float_um(pub, "pm.probe_speed_detached", "Probe speed (detached)", 0);
 	reg_float_um(pub, "pm.probe_speed_tol", "Speed settle tolerance", 0);
 	reg_float_um(pub, "pm.probe_location_tol", "Location settle tolerance", 0);
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
@@ -3638,6 +3642,7 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.l_brake", "Brake function reverse");
 	reg_float(pub, "pm.l_track_tol", "Tracking tolerance");
 	reg_float(pub, "pm.l_gain_LP", "Blend gain LP");
 

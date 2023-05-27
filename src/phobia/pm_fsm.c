@@ -1532,8 +1532,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 					&& pm->const_im_L1 > M_EPS_F
 					&& pm->const_im_L2 > M_EPS_F) {
 
-				pm->fsm_errno = PM_OK;
-
 				pm->vsi_DC = 0.f;
 				pm->vsi_lpf_DC = 0.f;
 				pm->vsi_X = 0.f;
@@ -1647,6 +1645,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 					pm->proc_set_Z(PM_Z_NONE);
 				}
 
+				pm->fsm_errno = PM_OK;
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;
 			}
@@ -1720,30 +1719,32 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 		case 1:
 			if (pm->lu_MODE == PM_LU_DETACHED) {
 
-				v[0] = 1.f;
-				v[1] = pm->flux_lambda;
+				if (pm->detach_TIM > PM_TSMS(pm, pm->tm_transient_slow)) {
+
+					v[0] = 1.f;
+					v[1] = pm->flux_lambda;
+
+					lse_insert(ls, v);
+				}
 			}
 			else if (pm->flux_TYPE == PM_FLUX_ORTEGA) {
 
 				v[0] = 1.f;
 				v[1] = pm->flux_lambda;
+
+				lse_insert(ls, v);
 			}
 			else if (pm->flux_TYPE == PM_FLUX_KALMAN) {
 
-				v[0] = 1.f;
-				v[1] = pm->const_lambda;
+				if (m_fabsf(pm->flux_wS) > pm->zone_speed_threshold) {
 
-				if (m_fabsf(pm->flux_wS) > M_EPS_F) {
+					v[0] = 1.f;
+					v[1] = pm->const_lambda
+						- pm->kalman_bias_Q / pm->flux_wS;
 
-					v[1] += - pm->kalman_bias_Q / pm->flux_wS;
+					lse_insert(ls, v);
 				}
 			}
-			else {
-				v[0] = 1.f;
-				v[1] = 0.f;
-			}
-
-			lse_insert(ls, v);
 
 			pm->tm_value++;
 
@@ -1754,18 +1755,24 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 			break;
 
 		case 2:
-			lse_solve(ls);
+			if (ls->n_total > PM_TSMS(pm, pm->tm_transient_fast)) {
 
-			if (		m_isfinitef(ls->sol.m[0]) != 0
-					&& ls->sol.m[0] > M_EPS_F) {
+				lse_solve(ls);
 
-				pm->const_lambda = ls->sol.m[0];
-				pm->kalman_bias_Q = 0.f;
+				if (		m_isfinitef(ls->sol.m[0]) != 0
+						&& ls->sol.m[0] > M_EPS_F) {
 
-				pm_quick_build(pm);
+					pm->const_lambda = ls->sol.m[0];
+					pm->kalman_bias_Q = 0.f;
+
+					pm_quick_build(pm);
+				}
+				else {
+					pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+				}
 			}
 			else {
-				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+				pm->fsm_errno = PM_ERROR_INVALID_OPERATION;
 			}
 
 			pm->fsm_state = PM_STATE_IDLE;
@@ -2047,7 +2054,7 @@ pm_fsm_state_halt(pmc_t *pm)
 			if (pm->lu_MODE != PM_LU_DISABLED) {
 
 				pm->tm_value = 0;
-				pm->tm_end = PM_TSMS(pm, pm->tm_halt_pause);
+				pm->tm_end = PM_TSMS(pm, pm->tm_pause_halt);
 
 				pm->lu_MODE = PM_LU_DISABLED;
 			}

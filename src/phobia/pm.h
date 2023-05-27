@@ -8,7 +8,7 @@
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
 
-#define PM_TSMS(pm, ms)		(int) (pm->m_freq * (ms) * 0.001f)
+#define PM_TSMS(pm, ms)		(int) ((pm)->m_freq * (ms) * 0.001f)
 
 #define PM_MAX_F		1000000000000.f
 #define PM_SFI(s)		#s
@@ -275,8 +275,9 @@ typedef struct {
 	float		tm_average_probe;
 	float		tm_average_drift;
 	float		tm_average_inertia;
-	float		tm_startup;
-	float		tm_halt_pause;
+	float		tm_pause_startup;
+	float		tm_pause_forced;
+	float		tm_pause_halt;
 
 	float		scale_iA[2];
 	float		scale_iB[2];
@@ -304,7 +305,6 @@ typedef struct {
 	float		probe_current_bias;
 	float		probe_freq_sine;
 	float		probe_speed_hold;
-	float		probe_speed_detached;
 	float		probe_speed_tol;
 	float		probe_location_tol;
 	float		probe_gain_P;
@@ -553,6 +553,7 @@ typedef struct {
 	float		s_gain_P;
 	float		s_gain_D;
 
+	float		l_brake;
 	float		l_track_tol;
 	float		l_blend;
 	float		l_gain_LP;

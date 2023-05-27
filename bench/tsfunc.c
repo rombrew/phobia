@@ -41,7 +41,7 @@ int ts_wait_for_idle()
 	return pm.fsm_errno;
 }
 
-int ts_wait_for_spinup(float s_ref)
+int ts_wait_for_motion()
 {
 	int			xTIME = 0;
 
@@ -51,17 +51,39 @@ int ts_wait_for_spinup(float s_ref)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		/* Check the target speed has reached.
-		 * */
-		if (m_fabsf(pm.lu_wS) + 10.f > s_ref)
+		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_speed_threshold
+				&& pm.detach_TIM > PM_TSMS(&pm, pm.tm_transient_slow))
+			break;
+
+		if (xTIME > 10000) {
+
+			pm.fsm_errno = PM_ERROR_TIMEOUT;
+			break;
+		}
+
+		xTIME += 50;
+	}
+	while (1);
+
+	return pm.fsm_errno;
+}
+
+int ts_wait_for_spinup()
+{
+	int			xTIME = 0;
+
+	do {
+		sim_runtime(50 / (double) TS_TICK_RATE);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (m_fabsf(pm.s_setpoint_speed - pm.lu_wS) < pm.probe_speed_tol)
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
-				&& pm.vsi_lpf_DC > pm.forced_maximal_DC) {
-
-			s_ref = pm.lu_wS;
+				&& pm.vsi_lpf_DC > pm.forced_maximal_DC)
 			break;
-		}
 
 		if (xTIME > 10000) {
 
@@ -74,34 +96,6 @@ int ts_wait_for_spinup(float s_ref)
 	while (1);
 
 	sim_runtime(100 / (double) TS_TICK_RATE);
-
-	return pm.fsm_errno;
-}
-
-int ts_wait_for_motion(float s_ref)
-{
-	int			xTIME = 0;
-	int			last_revol = pm.lu_total_revol;
-
-	do {
-		sim_runtime(50 / (double) TS_TICK_RATE);
-
-		if (pm.fsm_errno != PM_OK)
-			break;
-
-		if (		pm.lu_total_revol != last_revol
-				&& m_fabsf(pm.zone_lpf_wS) > s_ref)
-			break;
-
-		if (xTIME > 10000) {
-
-			pm.fsm_errno = PM_ERROR_TIMEOUT;
-			break;
-		}
-
-		xTIME += 50;
-	}
-	while (1);
 
 	return pm.fsm_errno;
 }

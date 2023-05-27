@@ -107,7 +107,7 @@ void GPIO_set_LOW(int xGPIO)
 	GPIO->BSRR = (1U << (N + 16));
 }
 
-int GPIO_get_VALUE(int xGPIO)
+int GPIO_get_STATE(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 

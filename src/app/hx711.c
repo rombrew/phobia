@@ -28,7 +28,7 @@ void app_HX711(void *pData)
 	do {
 		vTaskDelay((TickType_t) 5);
 
-		DOUT = GPIO_get_VALUE(gpio_DOUT);
+		DOUT = GPIO_get_STATE(gpio_DOUT);
 
 		if (DOUT == 0) {
 
@@ -51,7 +51,7 @@ void app_HX711(void *pData)
 				GPIO_set_HIGH(gpio_PD_SCK);
 				TIM_wait_ns(500);
 
-				DOUT = GPIO_get_VALUE(gpio_DOUT);
+				DOUT = GPIO_get_STATE(gpio_DOUT);
 
 				if (N == 0) {
 

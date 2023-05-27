@@ -1,5 +1,5 @@
 #!/usr/bin/env gp
-# vi: ft=conf
+# vi:ft=conf
 
 load 0 0 float 100 "/tmp/pm-TLM"
 

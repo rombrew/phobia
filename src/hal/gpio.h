@@ -27,7 +27,7 @@ void GPIO_set_mode_PULL_DOWN(int xGPIO);
 
 void GPIO_set_HIGH(int xGPIO);
 void GPIO_set_LOW(int xGPIO);
-int GPIO_get_VALUE(int xGPIO);
+int GPIO_get_STATE(int xGPIO);
 
 #endif /* _H_GPIO_ */
 
