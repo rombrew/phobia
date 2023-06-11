@@ -150,7 +150,7 @@ void ts_self_adjust()
 	while (0);
 }
 
-void ts_probe_base()
+void ts_probe_impedance()
 {
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
@@ -380,7 +380,7 @@ void ts_script_base()
 	pm.const_Zp = m.Zp;
 
 	ts_self_adjust();
-	ts_probe_base();
+	ts_probe_impedance();
 	ts_probe_spinup();
 }
 

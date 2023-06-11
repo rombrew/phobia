@@ -5,14 +5,14 @@ void pm_quick_build(pmc_t *pm)
 {
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
-		pm->k_UMAX = .66666667f;
-		pm->k_EMAX = .57735027f;
-		pm->k_KWAT = 1.5f;
+		pm->k_UMAX = .66666667f;	/* 2 / NOP */
+		pm->k_EMAX = .57735027f;	/* 1 / sqrt(NOP) */
+		pm->k_KWAT = 1.5f;		/* NOP / 2 */
 	}
 	else {
-		pm->k_UMAX = 1.f;
-		pm->k_EMAX = .70710678f;
-		pm->k_KWAT = 1.f;
+		pm->k_UMAX = 1.f;		/* 2 / NOP */
+		pm->k_EMAX = .70710678f;	/* 1 / sqrt(NOP) */
+		pm->k_KWAT = 1.f;		/* NOP / 2 */
 	}
 
 	pm->ts_minimal = (int) (pm->dc_minimal * (1.f / 1000000.f)
@@ -245,12 +245,11 @@ pm_auto_config_default(pmc_t *pm)
 	pm->v_reverse = pm->v_maximal;
 
 	pm->s_maximal = 15000.f;
-	pm->s_reverse = pm->s_maximal;
+	pm->s_reverse = pm->s_maximal - 1.f;
 	pm->s_accel = 7000.f;
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_D = 7E-5f;
 
-	pm->l_brake = 1.f;
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
 
@@ -1874,6 +1873,8 @@ pm_lu_FSM(pmc_t *pm)
 				pm->base_TIM = - PM_TSMS(pm, pm->tm_transient_fast);
 				pm->detach_TIM = 0;
 
+				pm->flux_TYPE = PM_FLUX_NONE;
+
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_drain_wP = 0.f;
@@ -2602,15 +2603,19 @@ pm_loop_current(pmc_t *pm)
 
 		if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
-			if (		pm->config_HOLDING_BRAKE == PM_ENABLED
-					&& track_Q * pm->l_brake < - M_EPS_F) {
+			if (pm->config_HOLDING_BRAKE == PM_ENABLED) {
 
-				track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
+				iREV = (pm->s_reverse < pm->s_maximal) ? 1.f : - 1.f;
 
-				iMAX = m_fabsf(track_Q);
+				if (track_Q * iREV < - M_EPS_F) {
 
-				track_Q = (track_Q > iMAX) ? iMAX
-					: (track_Q < - iMAX) ? - iMAX : track_Q;
+					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
+
+					iMAX = m_fabsf(track_Q);
+
+					track_Q = (track_Q > iMAX) ? iMAX
+						: (track_Q < - iMAX) ? - iMAX : track_Q;
+				}
 			}
 
 			if (pm->config_SPEED_LIMITED == PM_ENABLED) {

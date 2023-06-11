@@ -26,19 +26,19 @@
 
 typedef struct {
 
-	colType_t		plot_background;
-	colType_t		plot_figure[8];
-	colType_t		plot_axis;
-	colType_t		plot_hovered;
-	colType_t		plot_text;
-	colType_t		plot_hidden;
+	Uint32		plot_background;
+	Uint32		plot_figure[8];
+	Uint32		plot_axis;
+	Uint32		plot_hovered;
+	Uint32		plot_text;
+	Uint32		plot_hidden;
 
-	colType_t		menu_background;
-	colType_t		menu_hovered;
-	colType_t		menu_scrollbar;
-	colType_t		menu_item_text;
-	colType_t		menu_item_hidden;
-	colType_t		menu_fuzzy_light;
+	Uint32		menu_background;
+	Uint32		menu_hovered;
+	Uint32		menu_scrollbar;
+	Uint32		menu_item_text;
+	Uint32		menu_item_hidden;
+	Uint32		menu_fuzzy_light;
 }
 scheme_t;
 

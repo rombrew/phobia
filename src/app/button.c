@@ -15,8 +15,8 @@
  * [B] + [A]	- START with reverse direction
  * */
 
-#define PUSH_DEBOUNCE		5
-#define PUSH_RPM_MAX		(sizeof(rpm_list) / sizeof(rpm_list[0]))
+#define BUTTON_DEBOUNCE		5
+#define BUTTON_LIST_MAX		(sizeof(rpm_list) / sizeof(rpm_list[0]))
 
 static const float		rpm_list[] = {
 
@@ -27,7 +27,7 @@ static const float		rpm_list[] = {
 	7000.f
 };
 
-void app_PUSHBUTTON(void *pData)
+void app_BUTTON(void *pData)
 {
 	volatile int		*enabled = (volatile int *) pData;
 
@@ -36,10 +36,8 @@ void app_PUSHBUTTON(void *pData)
 	const int		gpio_A = GPIO_HALL_A;
 	const int		gpio_B = GPIO_HALL_B;
 
-/*
-	const int		gpio_A = GPIO_PPM;
-	const int		gpio_B = GPIO_DIR;
-*/
+	/*const int		gpio_A = GPIO_PPM;
+	const int		gpio_B = GPIO_DIR;*/
 
 	int			pushed_A, value_A, count_A, event_A;
 	int			pushed_B, value_B, count_B, event_B;
@@ -75,7 +73,7 @@ void app_PUSHBUTTON(void *pData)
 
 			count_A = (value_A == 0) ? count_A + 1 : 0;
 
-			if (count_A >= PUSH_DEBOUNCE) {
+			if (count_A >= BUTTON_DEBOUNCE) {
 
 				pushed_A = 1;
 				count_A = 0;
@@ -85,7 +83,7 @@ void app_PUSHBUTTON(void *pData)
 		else {
 			count_A = (value_A != 0) ? count_A + 1 : 0;
 
-			if (count_A >= PUSH_DEBOUNCE) {
+			if (count_A >= BUTTON_DEBOUNCE) {
 
 				pushed_A = 0;
 				count_A = 0;
@@ -103,7 +101,7 @@ void app_PUSHBUTTON(void *pData)
 				pm_wait_for_idle();
 			}
 			else {
-				rpm_N = (rpm_N < PUSH_RPM_MAX) ? rpm_N + 1 : 0;
+				rpm_N = (rpm_N < BUTTON_LIST_MAX) ? rpm_N + 1 : 0;
 			}
 
 			total_rpm = rpm_list[rpm_N] * (float) direction;
@@ -119,7 +117,7 @@ void app_PUSHBUTTON(void *pData)
 
 			count_B = (value_B == 0) ? count_B + 1 : 0;
 
-			if (count_B >= PUSH_DEBOUNCE) {
+			if (count_B >= BUTTON_DEBOUNCE) {
 
 				pushed_B = 1;
 				count_B = 0;
@@ -129,7 +127,7 @@ void app_PUSHBUTTON(void *pData)
 		else {
 			count_B = (value_B != 0) ? count_B + 1 : 0;
 
-			if (count_B >= PUSH_DEBOUNCE) {
+			if (count_B >= BUTTON_DEBOUNCE) {
 
 				pushed_B = 0;
 				count_B = 0;

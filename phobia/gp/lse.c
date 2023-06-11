@@ -52,12 +52,13 @@ lse_qrupdate(lse_upper_t *rm, lse_row_t *xz)
 	int		n, lz, i, j;
 
 	n = (rm->len < rm->keep) ? rm->len : rm->keep;
+
+	/* Do we have leading zeros?
+	 * */
 	lz = rm->len - xz->len;
 
 	if (lz > 0) {
 
-		/* We skip leading zeros.
-		 * */
 		m += lz * rm->len - lz * (lz - 1) / 2;
 	}
 
@@ -161,8 +162,8 @@ lse_qrmerge(lse_upper_t *rm, lse_upper_t *em)
 		}
 	}
 	else {
-		/* We copy all row-vectors from \em matrix to the \rm matrix as
-		 * it does not contain any data for now.
+		/* We just copy all row-vectors from \em matrix to the \rm
+		 * matrix as it does not contain any data for now.
 		 * */
 		m = rm->m;
 		k = rm->len * (rm->len + 1) / 2;
@@ -283,8 +284,8 @@ void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)
 	ls->std.len = ls->n_len_of_z;
 	ls->std.m = vm + ls->sol.len;
 
-	ls->l_max = (lse_float_t) 0.;
-	ls->l_min = (lse_float_t) 0.;
+	ls->svd.max = (lse_float_t) 0.;
+	ls->svd.min = (lse_float_t) 0.;
 }
 
 void lse_insert(lse_t *ls, lse_float_t *v)
@@ -501,16 +502,27 @@ void lse_cond(lse_t *ls, int n_approx)
 
 	lse_float_t	*m, u;
 
-	int		i, n;
+	int		len, i;
 
 	lse_collapse(ls);
 
-	if (n_approx > 0 && ls->n_cascades > 2) {
+	if (n_approx >= 1) {
 
-		/* NOTE: We allocate two new \Rx matrices instead of \R
-		 * cascades that are empty for now.
-		 * */
-		m = ls->rm[0].m;
+		len = ls->n_len_of_x * (ls->n_len_of_x + 1) + ls->n_len_of_x;
+
+		if (ls->rm[0].m + len <= ls->rm[ls->n_cascades - 1].m) {
+
+			/* We allocate temporal \Rx matrices instead of \R
+			 * cascades that are empty after collapse.
+			 * */
+			m = ls->rm[0].m;
+		}
+		else {
+			/* WARNING: We allocate temporal \Rx matrices in tail
+			 * of LSE memory instead of \b and so on.
+			 * */
+			m = ls->sol.m;
+		}
 
 		um.len = ls->n_len_of_x;
 		um.m = m;
@@ -529,9 +541,7 @@ void lse_cond(lse_t *ls, int n_approx)
 		 * */
 		lse_qrstep(&um, &ls->rm[ls->n_cascades - 1], &qq);
 
-		n = 1;
-
-		while (n < n_approx) {
+		for (i = 1; i < n_approx; ++i) {
 
 			/* Swap the matrices content.
 			 * */
@@ -542,21 +552,19 @@ void lse_cond(lse_t *ls, int n_approx)
 			 * diagonal approaches singular values.
 			 * */
 			lse_qrstep(&um, &im, &qq);
-
-			n++;
 		}
 
 		rm = &um;
 	}
 	else {
-		/* Take the \R matrix diagonal.
+		/* Take the original \Rx matrix diagonal.
 		 * */
 		rm = &ls->rm[ls->n_cascades - 1];
 	}
 
 	m = rm->m;
 
-	/* We are looking for the largest and smallest diagonal element.
+	/* We are looking for the largest and smallest diagonal elements of \Rx.
 	 * */
 	for (i = 0; i < ls->n_len_of_x; ++i) {
 
@@ -564,12 +572,12 @@ void lse_cond(lse_t *ls, int n_approx)
 
 		if (i != 0) {
 
-			ls->l_max = (ls->l_max < u) ? u : ls->l_max;
-			ls->l_min = (ls->l_min > u) ? u : ls->l_min;
+			ls->svd.max = (ls->svd.max < u) ? u : ls->svd.max;
+			ls->svd.min = (ls->svd.min > u) ? u : ls->svd.min;
 		}
 		else {
-			ls->l_max = u;
-			ls->l_min = u;
+			ls->svd.max = u;
+			ls->svd.min = u;
 		}
 
 		m += rm->len - i;

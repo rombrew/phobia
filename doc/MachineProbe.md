@@ -79,7 +79,7 @@ current or reduce DC link voltage.
 Then we use a high frequency sinusoidal signal to measure the full impedance
 and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
 
-	(pmc) pm_probe_base
+	(pmc) pm_probe_impedance
 
 If the procedure fails with an error sure that probe currents are suitable for
 you machine.

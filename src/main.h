@@ -63,6 +63,12 @@ typedef struct {
 	int			disarm_RESET;
 	int			disarm_INVOKE;
 
+	/* Autostart function.
+	 * */
+	float			auto_reg_DATA;
+	int			auto_reg_ID;
+	int			auto_ENABLED;
+
 	/* NTC constants.
 	 * */
 	ntc_t			ntc_PCB;
@@ -86,7 +92,7 @@ typedef struct {
 
 	/* App enable knobs.
 	 * */
-	int			task_PUSHBUTTON;
+	int			task_BUTTON;
 	int			task_AS5047;
 	int			task_HX711;
 	int			task_MPU6050;
@@ -96,7 +102,7 @@ typedef struct {
 	float			adc_load_kg;
 	float			adc_load_scale[2];
 
-	/* Digital position sensor (e.g. AS5047).
+	/* Digital position encoder (e.g. AS5047).
 	 * */
 	int			pulse_EP;
 }

@@ -92,7 +92,7 @@ typedef struct {
 	 * */
 	lse_upper_t	rm[LSE_CASCADE_MAX];
 
-	/* LS solution \sol is a column-major matrix.
+	/* LS solution \b is a column-major matrix.
 	 * */
 	lse_row_t	sol;
 
@@ -100,10 +100,14 @@ typedef struct {
 	 * */
 	lse_row_t	std;
 
-	/* Approximate largest and smallest singular values of \Rx.
+	/* LS approximate singular values of \Rx matrix.
 	 * */
-	lse_float_t	l_max;
-	lse_float_t	l_min;
+	struct {
+
+		lse_float_t	min;
+		lse_float_t	max;
+	}
+	svd;
 
 	/* We allocate the maximal amount of memory.
 	 * */
@@ -133,7 +137,7 @@ void lse_insert(lse_t *ls, lse_float_t *v);
 void lse_reduce(lse_t *ls, lse_float_t *v);
 
 /* The function introduces ridge regularization with \la. Most reasonable \la
- * value is \n_len_of_x * \l_max * \machine_epsilon.
+ * value is \n_len_of_x * \svd.max * \machine_epsilon.
  * */
 void lse_ridge(lse_t *ls, lse_float_t la);
 
@@ -152,8 +156,12 @@ void lse_std(lse_t *ls);
 
 /* The function estimates the approximate largest and smallest singular values
  * of \Rx in \n_approx iterations. A rather computationally heavy function if
- * \n_approx is large. You can calculate the conditional number or detect a
- * rank deficiency based on retrieved values.
+ * \n_approx is large (most reasonable is 4). You can calculate the conditional
+ * number or detect a rank deficiency based on retrieved values.
+ *
+ * NOTE: You need to provide enough memory to use this function. We use empty
+ * cascades of \R as temporal storage.
+ *
  * */
 void lse_cond(lse_t *ls, int n_approx);
 

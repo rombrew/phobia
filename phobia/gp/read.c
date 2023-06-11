@@ -1038,19 +1038,6 @@ readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 	return cN;
 }
 
-static ulen_t
-readFILEGetSize(const char *file)
-{
-	unsigned long long	sb;
-
-	if (fstatsize(file, &sb) != 0) {
-
-		sb = 0U;
-	}
-
-	return (ulen_t) sb;
-}
-
 static void
 readClose(read_t *rd, int dN)
 {
@@ -1072,8 +1059,8 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 	fval_t		rbuf[READ_COLUMN_MAX * 3];
 	int		N, rbuf_N;
 
-	FILE		*fd;
-	ulen_t		sF = 0U;
+	FILE			*fd;
+	unsigned long long	bF = 0U;
 
 	if (rd->data[dN].fd != NULL) {
 
@@ -1096,7 +1083,7 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 	else {
 		if (fd != stdin) {
 
-			sF = readFILEGetSize(file);
+			file_stat(file, &bF);
 		}
 
 		rd->data[dN].length_N = lN;
@@ -1112,7 +1099,7 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 				return ;
 			}
 
-			if (sF != 0 && lN < 1) {
+			if (bF != 0 && lN < 1) {
 
 				/* We do not use the file size to guess the
 				 * length since there is an incremental dataset
@@ -1127,26 +1114,26 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 		}
 		else if (fmt == FORMAT_BINARY_FLOAT) {
 
-			lN = (lN < 1) ? sF / (cN * sizeof(float)) : lN;
+			lN = (lN < 1) ? bF / (cN * sizeof(float)) : lN;
 			rd->data[dN].line_N = 1;
 		}
 		else if (fmt == FORMAT_BINARY_DOUBLE) {
 
-			lN = (lN < 1) ? sF / (cN * sizeof(double)) : lN;
+			lN = (lN < 1) ? bF / (cN * sizeof(double)) : lN;
 			rd->data[dN].line_N = 1;
 		}
 
 #ifdef _WINDOWS
 		else if (fmt == FORMAT_BINARY_LEGACY_V1) {
 
-			lN = (lN < 1) ? (sF - 6) / (cN * 6) : lN;
+			lN = (lN < 1) ? (bF - 6) / (cN * 6) : lN;
 			rd->data[dN].line_N = 1;
 
 			fseek(fd, 6UL, SEEK_SET);
 		}
 		else if (fmt == FORMAT_BINARY_LEGACY_V2) {
 
-			lN = (lN < 1) ? (sF - 4) / (cN * 4) : lN;
+			lN = (lN < 1) ? (bF - 4) / (cN * 4) : lN;
 			rd->data[dN].line_N = 1;
 
 			fseek(fd, 4UL, SEEK_SET);

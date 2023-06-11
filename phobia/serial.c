@@ -193,7 +193,7 @@ async_space_available(struct async_priv *ap)
 void serial_enumerate(struct serial_list *ls)
 {
 	char		*lpPath, *lpName, *lpCOM;
-	int		comTake, uMax = 131072;
+	DWORD		comTake, uMax = 131072U;
 
 	memset(ls, 0, sizeof(struct serial_list));
 
@@ -205,12 +205,14 @@ void serial_enumerate(struct serial_list *ls)
 		if (QueryDosDeviceA(NULL, lpPath, uMax) != 0)
 			break;
 
-		if (uMax < 8388608) {
+		if (uMax < 8388608U) {
 
-			uMax *= 2;
+			uMax *= 2U;
 			lpPath = realloc(lpPath, uMax);
 		}
 		else {
+			/* We are unable to get DOS device names.
+			 * */
 			return ;
 		}
 	}
@@ -272,7 +274,7 @@ serial_port_open(const char *devname, int baudrate, const char *mode)
 	COMMTIMEOUTS		CommTimeouts;
 	DCB			CommDCB;
 
-	sprintf(lpName, "//./%.77s", devname);
+	sprintf(lpName, "//./%.75s", devname);
 
 	hFile = CreateFileA(lpName, GENERIC_READ | GENERIC_WRITE,
 			0, NULL, OPEN_EXISTING, 0, NULL);
@@ -632,8 +634,11 @@ async_thread_rx(struct serial_fd *fd)
 		}
 
 		SDL_Delay(1);
+
+		if (SDL_AtomicGet(&ap->terminate) != 0)
+			break;
 	}
-	while (SDL_AtomicGet(&ap->terminate) == 0);
+	while (1);
 
 	async_close(ap);
 
@@ -644,10 +649,15 @@ static int
 async_thread_tx(struct serial_fd *fd)
 {
 	struct async_priv	*ap = fd->txq;
-	int			cq, rc, n;
+	int			cq, rc, n, terminate = 0;
 
 	do {
 		n = 0;
+
+		if (SDL_AtomicGet(&ap->terminate) != 0) {
+
+			terminate = 1;
+		}
 
 		do {
 			cq = async_getc(ap);
@@ -673,9 +683,12 @@ async_thread_tx(struct serial_fd *fd)
 		}
 		else {
 			SDL_Delay(10);
+
+			if (terminate != 0)
+				break;
 		}
 	}
-	while (SDL_AtomicGet(&ap->terminate) == 0);
+	while (1);
 
 	async_close(ap);
 
@@ -706,6 +719,8 @@ struct serial_fd *serial_open(const char *devname, int baudrate, const char *mod
 static int
 serial_thread_garbage(struct serial_fd *fd)
 {
+	SDL_WaitThread(fd->thread_txq, NULL);
+
 #ifdef _WINDOWS
 	CloseHandle(fd->hFile);
 #else
@@ -713,7 +728,6 @@ serial_thread_garbage(struct serial_fd *fd)
 #endif /* _WINDOWS */
 
 	SDL_WaitThread(fd->thread_rxq, NULL);
-	SDL_WaitThread(fd->thread_txq, NULL);
 
 	free(fd);
 

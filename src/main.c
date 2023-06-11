@@ -299,6 +299,20 @@ void task_TEMP(void *pData)
 			GPIO_set_LOW(GPIO_LED_MODE);
 		}
 #endif /* GPIO_LED_MODE */
+
+		if (ap.auto_ENABLED == PM_ENABLED) {
+
+			if (pm.lu_MODE == PM_LU_DISABLED) {
+
+				/* Keep running no matter what.
+				 * */
+				pm.fsm_req = PM_STATE_LU_STARTUP;
+			}
+			else if (ap.auto_reg_ID != ID_NULL) {
+
+				reg_SET_F(ap.auto_reg_ID, ap.auto_reg_DATA);
+			}
+		}
 	}
 	while (1);
 }
@@ -604,8 +618,12 @@ default_flash_load()
 	ap.knob_control_BRK = - 100.f;
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	ap.idle_timeout = 2.f;
-	ap.disarm_timeout = 1.f;
+	ap.idle_timeout = 2.f;		/* (s) */
+	ap.disarm_timeout = 1.f;	/* (s) */
+
+	ap.auto_reg_DATA = 0.f;
+	ap.auto_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
+	ap.auto_ENABLED = PM_DISABLED;
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;

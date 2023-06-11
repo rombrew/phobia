@@ -61,9 +61,9 @@ LDFLAGS	+= -Wl,-T,hal/link_f722.ld
 endif
 
 OBJS	=  app/as5047.o \
+	   app/button.o \
 	   app/hx711.o \
-	   app/mpu6050.o \
-	   app/pushbutton.o
+	   app/mpu6050.o
 
 OBJS	+= freertos/heap_4.o \
 	   freertos/list.o \
@@ -146,7 +146,7 @@ gdb: $(TARGET)
 
 flash: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ stm32flash -w $< -v -S 0x08000000:245760 -b $(BAUD) -R $(TTY)
+	@ stm32flash -w $< -v -S 0x08000000 -b $(BAUD) -R $(TTY)
 
 stlink: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
@@ -154,7 +154,7 @@ stlink: $(IMAGE)
 
 dfu: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ dfu-util -d 0483:df11 -a0 --dfuse-address 0x08000000 -D $<
+	@ dfu-util -d 0483:df11 -a0 --dfuse-address 0x08000000:will-reset -R -D $<
 
 connect:
 	@ picocom -l -b $(BAUD) -ye $(TTY) -g $(LOG)

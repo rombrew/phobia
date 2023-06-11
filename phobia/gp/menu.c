@@ -540,7 +540,7 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 	int			topY, baseX, baseY, margin, side;
 	int			N = 0, N_visible, N_conv, hN;
 
-	colType_t		iCol;
+	Uint32			iCol;
 
 	if (mu->raised == 0)
 		return ;

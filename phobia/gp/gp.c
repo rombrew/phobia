@@ -126,6 +126,9 @@ struct gp_struct {
 	int		layout_menu_page_margin;
 	int		layout_menu_dir_margin;
 	int		layout_menu_dataset_margin;
+	int		layout_menu_dataset_minimal;
+
+	struct dirent_stat	sb;
 
 	char		cwd[READ_FILE_PATH_MAX];
 	int		cwd_ok;
@@ -296,9 +299,9 @@ gpDefaultFile(gp_t *gp)
 static int
 gpFileExist(const char *file)
 {
-	unsigned long long		sb;
+	unsigned long long	nsize;
 
-	return (fstatsize(file, &sb) == 0) ? 1 : 0;
+	return (file_stat(file, &nsize) == ENT_OK) ? 1 : 0;
 }
 
 static int
@@ -401,8 +404,9 @@ gpFontLayout(gp_t *gp)
 	gp->layout_page_box = pl->layout_font_height;
 	gp->layout_page_title_offset = - pl->layout_font_height / 2;
 	gp->layout_menu_page_margin = 8;
-	gp->layout_menu_dir_margin = 12;
+	gp->layout_menu_dir_margin = 36;
 	gp->layout_menu_dataset_margin = 16;
+	gp->layout_menu_dataset_minimal = 42;
 }
 
 static void
@@ -620,21 +624,19 @@ static void
 gpMakeDirMenu(gp_t *gp)
 {
 	char			sfmt[PLOT_STRING_MAX];
-	DIR			*dir;
-	struct dirent 		*en;
-	unsigned long long	sb;
 	char			*la = gp->la_menu;
-	int			menulen, pad, eN, kmg;
+	int			len, pad, N, kmg;
 
-	menulen = gpScreenLength(gp->pl) - gp->layout_menu_dir_margin;
+	len = gpScreenLength(gp->pl) - gp->layout_menu_dir_margin;
 
-	dir = opendir(gp->cwd);
+	if (dirent_open(&gp->sb, gp->cwd) == ENT_OK) {
 
-	if (dir == NULL) {
-
+		gp->cwd_ok = 1;
+	}
+	else {
 		gpDirWalk(gp, 2, 1);
 
-		dir = opendir(gp->cwd);
+		gp->cwd_ok = (dirent_open(&gp->sb, gp->cwd) == ENT_OK) ? 1 : 0;
 	}
 
 	gpTextLeftCrop(gp->pl, gp->sbuf[1], gp->cwd, gp->layout_menu_dir_margin);
@@ -644,7 +646,7 @@ gpMakeDirMenu(gp_t *gp)
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
 
-	gpTextSepFill(gp->sbuf[0], menulen + 7);
+	gpTextSepFill(gp->sbuf[0], len + 26);
 
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
@@ -653,94 +655,91 @@ gpMakeDirMenu(gp_t *gp)
 	la += strlen(la) + 1;
 
 	strcpy(gp->d_names[0], "/..");
-	eN = 1;
+	N = 1;
 
-	if (dir != NULL) {
+	if (gp->cwd_ok != 0) {
 
-		while ((en = readdir(dir)) != NULL) {
+		while (dirent_read(&gp->sb) == ENT_OK) {
 
-			if (en->d_type == DT_DIR) {
+			if (gp->sb.ntype == ENT_TYPE_DIRECTORY) {
 
-				if (strcmp(en->d_name, ".") != 0 && strcmp(en->d_name, "..") != 0) {
+				if (		strcmp(gp->sb.name, ".") == 0
+						|| strcmp(gp->sb.name, "..") == 0) {
 
-					if (eN >= GP_FILE_DIR_MAX)
-						break;
-
-					sprintf(gp->sbuf[0], "/%s", en->d_name);
-
-					if (strlen(gp->sbuf[0]) < PLOT_STRING_MAX) {
-
-						strcpy(gp->d_names[eN], gp->sbuf[0]);
-
-						gpTextLeftCrop(gp->pl, gp->sbuf[1], en->d_name,
-								gp->layout_menu_dir_margin);
-
-						pad = menulen - utf8_length(gp->sbuf[1]);
-
-						sprintf(sfmt, "/%%s%%%ds", pad);
-						sprintf(gp->sbuf[0], sfmt, gp->sbuf[1], "");
-
-						strcpy(la, gp->sbuf[0]);
-						la += strlen(la) + 1;
-
-						eN++;
-					}
+					continue;
 				}
-			}
-		}
 
-		rewinddir(dir);
-
-		while ((en = readdir(dir)) != NULL) {
-
-			if (en->d_type != DT_DIR) {
-
-				if (eN >= GP_FILE_DIR_MAX)
+				if (N >= GP_FILE_DIR_MAX)
 					break;
 
-				sprintf(gp->sbuf[0], "%s", en->d_name);
+				sprintf(gp->sbuf[0], "/%s", gp->sb.name);
 
 				if (strlen(gp->sbuf[0]) < PLOT_STRING_MAX) {
 
-					strcpy(gp->d_names[eN], gp->sbuf[0]);
+					strcpy(gp->d_names[N], gp->sbuf[0]);
 
-					sprintf(gp->sbuf[0], "%s/%s", gp->cwd, en->d_name);
-
-					kmg = 0;
-
-					if (fstatsize(gp->sbuf[0], &sb) == 0) {
-
-						while (sb >= 1024U) {
-
-							sb /= 1024U;
-							++kmg;
-						}
-					}
-					else {
-						sb = 0U;
-					}
-
-					gpTextLeftCrop(gp->pl, gp->sbuf[1], en->d_name,
+					gpTextLeftCrop(gp->pl, gp->sbuf[1], gp->sb.name,
 							gp->layout_menu_dir_margin);
 
-					pad = menulen - utf8_length(gp->sbuf[1]);
+					pad = len - utf8_length(gp->sbuf[1]);
 
-					sprintf(sfmt, " %%s%%%ds %%4d %%cb", pad);
-					sprintf(gp->sbuf[0], sfmt, gp->sbuf[1], "",
-							(int) sb, " KMG??" [kmg]);
+					sprintf(sfmt, "/%%s%%%ds %%16s", pad);
+					sprintf(gp->sbuf[0], sfmt, gp->sbuf[1],
+							"", gp->sb.time);
 
 					strcpy(la, gp->sbuf[0]);
 					la += strlen(la) + 1;
 
-					eN++;
+					N++;
 				}
 			}
 		}
 
-		closedir(dir);
-	}
+		dirent_rewind(&gp->sb);
 
-	gp->cwd_ok = (dir != NULL) ? 1 : 0;
+		while (dirent_read(&gp->sb) == ENT_OK) {
+
+			if (gp->sb.ntype == ENT_TYPE_REGULAR) {
+
+				if (N >= GP_FILE_DIR_MAX)
+					break;
+
+				sprintf(gp->sbuf[0], "%s", gp->sb.name);
+
+				if (strlen(gp->sbuf[0]) < PLOT_STRING_MAX) {
+
+					strcpy(gp->d_names[N], gp->sbuf[0]);
+
+					sprintf(gp->sbuf[0], "%s/%s", gp->cwd, gp->sb.name);
+
+					kmg = 0;
+
+					while (gp->sb.nsize >= 1024U) {
+
+						gp->sb.nsize /= 1024U;
+						++kmg;
+					}
+
+					gpTextLeftCrop(gp->pl, gp->sbuf[1], gp->sb.name,
+							gp->layout_menu_dir_margin);
+
+					pad = len - utf8_length(gp->sbuf[1]);
+
+					sprintf(sfmt, " %%s%%%ds %%16s %%4d %%cb", pad);
+					sprintf(gp->sbuf[0], sfmt, gp->sbuf[1], "",
+							gp->sb.time, (int) gp->sb.nsize,
+							" KMG??" [kmg]);
+
+					strcpy(la, gp->sbuf[0]);
+					la += strlen(la) + 1;
+
+					N++;
+				}
+			}
+		}
+
+		dirent_close(&gp->sb);
+	}
 
 	*la = 0;
 }
@@ -765,7 +764,7 @@ gpDirWalk(gp_t *gp, int dir_N, int revert)
 	}
 	else if (dir_N == 2) {
 
-		if (*gp->cwd != 0 && gp->cwd_ok != 0) {
+		if (gp->cwd[0] != 0 && gp->cwd_ok != 0) {
 
 			eol = gp->cwd + strlen(gp->cwd) - 1;
 
@@ -792,7 +791,7 @@ gpDirWalk(gp_t *gp, int dir_N, int revert)
 			}
 			else if (gp->cwd[0] == '.' && revert == 0) {
 
-				if (*gp->cwd != 0) {
+				if (gp->cwd[0] != 0) {
 
 					eol = gp->cwd + strlen(gp->cwd) - 1;
 
@@ -815,7 +814,7 @@ gpDirWalk(gp_t *gp, int dir_N, int revert)
 	else {
 		if (file[0] == '/') {
 
-			if (*gp->cwd != 0) {
+			if (gp->cwd[0] != 0) {
 
 				eol = gp->cwd + strlen(gp->cwd) - 1;
 
@@ -997,9 +996,12 @@ static void
 gpMakeDatasetSelectMenu(gp_t *gp)
 {
 	char		*la = gp->la_menu;
-	int		dN = 0, menulen, fnlen, fnlen_max;
+	int		dN = 0, len, fnlen, fnlen_max;
 
-	menulen = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
+	len = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
+	len = (len < gp->layout_menu_dataset_minimal)
+		? gp->layout_menu_dataset_minimal : len;
+
 	fnlen_max = 0;
 
 	do {
@@ -1015,7 +1017,7 @@ gpMakeDatasetSelectMenu(gp_t *gp)
 	}
 	while (1);
 
-	gpTextSepFill(gp->sbuf[1], (fnlen_max > menulen) ? fnlen_max : menulen);
+	gpTextSepFill(gp->sbuf[1], (fnlen_max > len) ? fnlen_max : len);
 
 	strcpy(la, gp->sbuf[1]);
 	la += strlen(la) + 1;
@@ -1029,9 +1031,16 @@ gpMakeDatasetMenu(gp_t *gp)
 	plot_t		*pl = gp->pl;
 	read_t		*rd = gp->rd;
 	char		*la = gp->la_menu;
-	int		N, cN, gN, dN, mbUSAGE, mbRAW, mbCACHE, lzPC, menulen, fnlen;
+	int		N, cN, gN, dN, mbUSAGE, mbRAW, mbCACHE, lzPC, len, fnlen;
 
-	menulen = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
+	len = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
+	len = (len < gp->layout_menu_dataset_minimal)
+		? gp->layout_menu_dataset_minimal : len;
+
+	if (len < 42) {
+
+		len = 42;
+	}
 
 	dN = gp->data_N;
 
@@ -1053,7 +1062,7 @@ gpMakeDatasetMenu(gp_t *gp)
 
 	fnlen = utf8_length(gp->sbuf[0]);
 
-	gpTextSepFill(gp->sbuf[1], (fnlen > menulen) ? fnlen : menulen);
+	gpTextSepFill(gp->sbuf[1], (fnlen > len) ? fnlen : len);
 
 	strcpy(la, gp->sbuf[1]);
 	la += strlen(la) + 1;

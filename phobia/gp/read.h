@@ -59,8 +59,6 @@ enum {
 	DATA_HINT_OCT
 };
 
-typedef unsigned long long	ulen_t;
-
 typedef struct {
 
 	char		delim;

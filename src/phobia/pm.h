@@ -553,7 +553,6 @@ typedef struct {
 	float		s_gain_P;
 	float		s_gain_D;
 
-	float		l_brake;
 	float		l_track_tol;
 	float		l_blend;
 	float		l_gain_LP;

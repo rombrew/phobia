@@ -5312,8 +5312,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 					drawDotCanvas(pl->dw, surface, &pl->viewport,
 							base_X, base_Y,
-							pl->layout_fence_point,
-							10, 0);
+							pl->layout_fence_point, 10, 0);
 				}
 			}
 
@@ -5321,8 +5320,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 				drawDotCanvas(pl->dw, surface, &pl->viewport,
 						data_X, data_Y,
-						pl->layout_fence_point,
-						10, 0);
+						pl->layout_fence_point, 10, 0);
 			}
 
 			SDL_UnlockSurface(surface);
@@ -5487,21 +5485,21 @@ plotDrawPalette(plot_t *pl)
 {
 	draw_t			*dw = pl->dw;
 	scheme_t		*sch = pl->sch;
-	colType_t		*palette;
+	Uint32			*palette;
 
 	palette = dw->palette;
 
-	palette[0] = sch->plot_background;
-	palette[1] = sch->plot_figure[0];
-	palette[2] = sch->plot_figure[1];
-	palette[3] = sch->plot_figure[2];
-	palette[4] = sch->plot_figure[3];
-	palette[5] = sch->plot_figure[4];
-	palette[6] = sch->plot_figure[5];
-	palette[7] = sch->plot_figure[6];
-	palette[8] = sch->plot_figure[7];
-	palette[9] = sch->plot_hidden;
-	palette[10] = sch->plot_text;
+	palette[0] = drawRGBMap(dw, sch->plot_background);
+	palette[1] = drawRGBMap(dw, sch->plot_figure[0]);
+	palette[2] = drawRGBMap(dw, sch->plot_figure[1]);
+	palette[3] = drawRGBMap(dw, sch->plot_figure[2]);
+	palette[4] = drawRGBMap(dw, sch->plot_figure[3]);
+	palette[5] = drawRGBMap(dw, sch->plot_figure[4]);
+	palette[6] = drawRGBMap(dw, sch->plot_figure[5]);
+	palette[7] = drawRGBMap(dw, sch->plot_figure[6]);
+	palette[8] = drawRGBMap(dw, sch->plot_figure[7]);
+	palette[9] = drawRGBMap(dw, sch->plot_hidden);
+	palette[10] = drawRGBMap(dw, sch->plot_text);
 }
 
 static int
@@ -5940,7 +5938,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 	double		scale, offset, fmin, fmax, fpow, tih, tis, tik, la;
 	int		fN, bN, texp, lpos, tpos, tmpi, onhover;
 
-	colType_t	axCol = pl->sch->plot_hidden;
+	Uint32		axCol = pl->sch->plot_hidden;
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 

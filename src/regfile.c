@@ -894,6 +894,12 @@ reg_format_referenced_knob(const reg_t *reg)
 }
 #endif /* HW_HAVE_ANALOG_KNOB */
 
+static void
+reg_format_referenced_auto(const reg_t *reg)
+{
+	reg_format_referenced(reg, ID_AP_AUTO_REG_ID);
+}
+
 #undef PM_SFI_CASE
 #define PM_SFI_CASE(val)	case val: printf("(%s)", PM_SFI(val)); break
 
@@ -1043,6 +1049,7 @@ reg_format_enum(const reg_t *reg)
 #endif /* HW_HAVE_BRAKE_KNOB */
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
+		case ID_AP_AUTO_ENABLED:
 
 			switch (val) {
 
@@ -1448,6 +1455,10 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.idle_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.disarm_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_auto),
+	REG_DEF(ap.auto_reg_ID,,,		"",	"%i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.auto_ENABLED,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
+
 #ifdef HW_HAVE_NTC_ON_PCB
 	REG_DEF(ap.ntc_PCB.type,,,		"",	"%i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.ntc_PCB.balance,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -1478,7 +1489,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.tpro_derated_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.tpro_temp_recovery,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.task_PUSHBUTTON,,,		"",	"%i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_BUTTON,,,		"",	"%i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_AS5047,,,		"",	"%i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_HX711,,,		"",	"%i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_MPU6050,,,		"",	"%i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
@@ -1807,7 +1818,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.l_brake,,,			"",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.l_blend,,,			"",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.l_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),

@@ -1,6 +1,6 @@
 ARCH	?= x86_64
 BUILD	?= /tmp/phobia/$(ARCH)
-TARGET	= $(BUILD)/phobia.exe
+TARGET	= $(BUILD)/phobia-$(ARCH).exe
 
 CROSS	= $(ARCH)-w64-mingw32
 SDLDIR	= ../mingw/$(ARCH)-w64-mingw32
@@ -24,7 +24,6 @@ LFLAGS  += -Wl,--gc-sections -Wl,--no-undefined -lusp10 -ldinput8 -ldxguid \
 	   -lshell32 -lsetupapi -lversion -luuid -lrpcrt4 -static-libgcc
 
 OBJS	= config.o \
-	  dirent.o \
 	  font.o \
 	  link.o \
 	  nksdl.o \

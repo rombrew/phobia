@@ -5,9 +5,9 @@
 
 #include <SDL2/SDL.h>
 
+#include "gp/dirent.h"
 #include "config.h"
 #include "link.h"
-#include "dirent.h"
 #include "serial.h"
 
 #define LINK_EOL			"\r\n"
@@ -669,6 +669,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 		{ "rtos_version",	LINK_MODE_HWINFO },
 		{ "rtos_reboot",	LINK_MODE_UNABLE_WARNING },
+		{ "rtos_bootload",	LINK_MODE_UNABLE_WARNING },
 		{ "flash_info",		LINK_MODE_FLASH_MAP },
 		{ "flash_prog",		LINK_MODE_UNABLE_WARNING },
 		{ "flash_wipe",		LINK_MODE_UNABLE_WARNING },

@@ -6,14 +6,40 @@
 #include <windows.h>
 #endif /* _WINDOWS */
 
+#include "gp/dirent.h"
 #include "config.h"
-#include "dirent.h"
 
 #ifdef _WINDOWS
 #define FILE_HIDDEN_CONFIG	"_" FILE_HOME_CONFIG
 #else /* _WINDOWS */
 #define FILE_HIDDEN_CONFIG	"." FILE_HOME_CONFIG
 #endif
+
+#ifdef _WINDOWS
+static void
+config_ACP_to_UTF8(char *lputf, const char *lpacp, int len)
+{
+	wchar_t			wbuf[DIRENT_PATH_MAX];
+
+	MultiByteToWideChar(CP_ACP, 0, lpacp, -1, wbuf, DIRENT_PATH_MAX);
+	WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, lputf, len, NULL, NULL);
+}
+#endif /* _WINDOWS */
+
+FILE *fopen_from_UTF8(const char *file, const char *mode)
+{
+#ifdef _WINDOWS
+	wchar_t			wfile[DIRENT_PATH_MAX];
+	wchar_t			wmode[16];
+
+	MultiByteToWideChar(CP_UTF8, 0, file, -1, wfile, DIRENT_PATH_MAX);
+	MultiByteToWideChar(CP_UTF8, 0, mode, -1, wmode, 16);
+
+	return _wfopen(wfile, wmode);
+#else /* _WINDOWS */
+	return fopen(file, mode);
+#endif
+}
 
 static int
 config_rcfiletry(struct config_phobia *fe)
@@ -106,7 +132,7 @@ void config_open(struct config_phobia *fe)
 	if (fe->local == 0) {
 
 #ifdef _WINDOWS
-		windows_ACP_to_UTF8(fe->rcfile, path_HOME, sizeof(fe->rcfile));
+		config_ACP_to_UTF8(fe->rcfile, path_HOME, sizeof(fe->rcfile));
 #else /* _WINDOWS */
 		strcpy(fe->rcfile, path_HOME);
 #endif
@@ -176,7 +202,7 @@ void config_default(struct config_phobia *fe)
 	if (fe->local == 0) {
 
 		GetTempPathA(sizeof(lptemp), lptemp);
-		windows_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
+		config_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
 	}
 	else {
 		fe->storage[0] = 0;
@@ -188,6 +214,6 @@ void config_default(struct config_phobia *fe)
 	strcpy(fe->fuzzy, "setpoint");
 
 	fe->tlmrate = 1000;
-	fe->regmaxn = 462;
+	fe->regmaxn = 466;
 }
 

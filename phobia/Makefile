@@ -16,7 +16,6 @@ CFLAGS	+= -D_EMBED_GP
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image
 
 OBJS	= config.o \
-	  dirent.o \
 	  font.o \
 	  link.o \
 	  nksdl.o \

@@ -123,7 +123,7 @@ int pm_wait_for_settle()
 	return pm.fsm_errno;
 }
 
-SH_DEF(pm_probe_base)
+SH_DEF(pm_probe_impedance)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 

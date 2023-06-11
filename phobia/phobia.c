@@ -7,10 +7,10 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 
+#include "gp/dirent.h"
 #include "gp/gp.h"
 
 #include "config.h"
-#include "dirent.h"
 #include "link.h"
 #include "serial.h"
 #include "nksdl.h"
@@ -31,6 +31,7 @@ enum {
 	POPUP_UNABLE_WARNING,
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
+	POPUP_SYSTEM_BOOTLOAD,
 	POPUP_TELEMETRY_FLUSH
 };
 
@@ -1319,7 +1320,7 @@ reg_enum_combo(struct public *pub, const char *sym, const char *name, int onligh
 		}
 
 		rc = nk_combo_callback(ctx, &reg_enum_get_item, reg,
-				reg->lval, reg->lmax_combo + 2, pub->fe_font_h + 5,
+				reg->lval, reg->lmax_combo + 2, pub->fe_font_h + 10,
 				nk_vec2(pub->fe_base * 20, 400));
 
 		if (rc != reg->lval) {
@@ -1575,7 +1576,7 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 		nk_spacer(ctx);
 
 		rc = nk_combo_callback(ctx, &reg_um_get_item, &lp->reg[min],
-				lp->reg[min].um_sel, (max - min) + 1, pub->fe_font_h + 5,
+				lp->reg[min].um_sel, (max - min) + 1, pub->fe_font_h + 10,
 				nk_vec2(pub->fe_base * 8, 400));
 
 		if (rc != lp->reg[min].um_sel) {
@@ -1798,7 +1799,7 @@ page_serial(struct public *pub)
 
 	orange = ctx->style.button;
 	orange.normal = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON]);
-	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON_HOVER]);
+	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_HOVER]);
 
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_variable(ctx, 1);
@@ -1835,7 +1836,7 @@ page_serial(struct public *pub)
 		nk_label(ctx, "Serial port", NK_TEXT_LEFT);
 		pub->serial.selected = nk_combo(ctx, pub->serial.list.name,
 				pub->serial.list.dnum, pub->serial.selected,
-				pub->fe_font_h + 5, nk_vec2(pub->fe_base * 13, 400));
+				pub->fe_font_h + 10, nk_vec2(pub->fe_base * 13, 400));
 
 		nk_spacer(ctx);
 
@@ -1848,7 +1849,7 @@ page_serial(struct public *pub)
 
 		nk_label(ctx, "Baudrate", NK_TEXT_LEFT);
 		pub->serial.baudrate = nk_combo(ctx, ls_baudrates, 4,
-				pub->serial.baudrate, pub->fe_font_h + 5,
+				pub->serial.baudrate, pub->fe_font_h + 10,
 				nk_vec2(pub->fe_base * 13, 400));
 
 		nk_spacer(ctx);
@@ -1914,7 +1915,6 @@ page_serial(struct public *pub)
 			}
 
 			config_write(pub->fe);
-
 			link_close(pub->lp);
 		}
 
@@ -1943,7 +1943,7 @@ page_serial(struct public *pub)
 	nk_label(ctx, "Window resolution", NK_TEXT_LEFT);
 
 	select = nk_combo(ctx, ls_windowsize, 3, fe->windowsize,
-			pub->fe_font_h + 5, nk_vec2(pub->fe_base * 22, 400));
+			pub->fe_font_h + 10, nk_vec2(pub->fe_base * 22, 400));
 
 	if (select != fe->windowsize) {
 
@@ -1981,7 +1981,7 @@ page_serial(struct public *pub)
 
 	nk_spacer(ctx);
 
-	nk_label(ctx, "Telemetry log rate", NK_TEXT_LEFT);
+	nk_label(ctx, "Telemetry logging rate", NK_TEXT_LEFT);
 
 	rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
 			| NK_EDIT_SIG_ENTER, fe->tlmrate_lbuf,
@@ -2020,7 +2020,7 @@ page_serial(struct public *pub)
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
 				" want to reset all local Phobia"
-				" frontend configuration") != 0) {
+				" frontend configuration.") != 0) {
 
 		config_default(pub->fe);
 		config_write(pub->fe);
@@ -2063,26 +2063,61 @@ page_diagnose(struct public *pub)
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Self Test")) {
+	if (nk_menu_begin_label(ctx, "Test", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		link_command(pub->lp, "pm_self_test");
+                if (nk_menu_item_label(ctx, "Self Test", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_self_test");
+		}
+
+		if (nk_menu_item_label(ctx, "Self Adjust", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_self_adjust");
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	if (nk_menu_begin_label(ctx, "Debug", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-	if (nk_button_label(ctx, "Self Adjust")) {
+		if (nk_menu_item_label(ctx, "Set PWM to GND", NK_TEXT_LEFT)) {
 
-		link_command(pub->lp, "pm_self_adjust");
+			link_command(pub->lp,	"hal_PWM_set_Z 0" "\r\n"
+						"hal_PWM_set_DC 0");
+		}
+
+		if (nk_menu_item_label(ctx, "Set PWM to 50%", NK_TEXT_LEFT)) {
+
+			struct link_reg		*reg;
+			int			dc_resolution = 2800;
+
+			reg = link_reg_lookup(pub->lp, "pm.dc_resolution");
+			if (reg != NULL) { dc_resolution = reg->lval; }
+
+			sprintf(pub->lbuf,	"hal_PWM_set_Z 0" "\r\n"
+						"hal_PWM_set_DC %i", dc_resolution / 2);
+
+			link_command(pub->lp, pub->lbuf);
+		}
+
+		if (nk_menu_item_label(ctx, "Stop DBGMCU", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "hal_DBGMCU_mode_stop");
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2136,37 +2171,6 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
-
-	if (nk_button_label(ctx, "PWM  0%")) {
-
-		link_command(pub->lp,	"hal_PWM_set_Z 0" "\r\n"
-					"hal_PWM_set_DC 0");
-	}
-
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "PWM 50%")) {
-
-		struct link_reg		*reg;
-		int			dc_resolution = 2800;
-
-		reg = link_reg_lookup(pub->lp, "pm.dc_resolution");
-		if (reg != NULL) { dc_resolution = reg->lval; }
-
-		sprintf(pub->lbuf,	"hal_PWM_set_Z 0" "\r\n"
-					"hal_PWM_set_DC %i", dc_resolution / 2);
-
-		link_command(pub->lp, pub->lbuf);
-	}
-
-	nk_spacer(ctx);
-
 	if (lp->unable_warning[0] != 0) {
 
 		strcpy(pub->popup_msg, lp->unable_warning);
@@ -2192,55 +2196,83 @@ page_probe(struct public *pub)
 
 	int				config_LU_DRIVE = 1;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Probe Base")) {
+	if (nk_menu_begin_label(ctx, "Probe", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		link_command(pub->lp, "pm_probe_base");
-	}
+                if (nk_menu_item_label(ctx, "Probe Impedance", NK_TEXT_LEFT)) {
 
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "Probe Spinup")) {
-
-		link_command(pub->lp, "pm_probe_spinup");
-	}
-
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "Probe Detached")) {
-
-		if (pub->lp->linked != 0) {
-
-			pub->popup_enum = POPUP_PROBE_DETACHED;
+			link_command(pub->lp, "pm_probe_impedance");
 		}
-	}
 
-	nk_spacer(ctx);
+		if (nk_menu_item_label(ctx, "Probe Spinup", NK_TEXT_LEFT)) {
 
-	if (nk_button_label(ctx, "Default")) {
-
-		if (pub->lp->linked != 0) {
-
-			pub->popup_enum = POPUP_RESET_DEFAULT;
+			link_command(pub->lp, "pm_probe_spinup");
 		}
+
+		if (nk_menu_item_label(ctx, "Probe Detached", NK_TEXT_LEFT)) {
+
+			if (pub->lp->linked != 0) {
+
+				pub->popup_enum = POPUP_PROBE_DETACHED;
+			}
+		}
+
+		nk_layout_row_dynamic(ctx, pub->fe_base / 2, 1);
+		nk_label_colored(ctx, "----------------------------------------------",
+				NK_TEXT_LEFT, nk->table[NK_COLOR_HIDDEN]);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "Probe Resistance", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_probe_const_resistance");
+		}
+
+		if (nk_menu_item_label(ctx, "Probe Flux Linkage", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_probe_const_flux_linkage");
+		}
+
+		if (nk_menu_item_label(ctx, "Probe Inertia", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_probe_const_inertia");
+		}
+
+		if (nk_menu_item_label(ctx, "Probe Noise", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_probe_noise_threshold");
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	if (nk_menu_begin_label(ctx, "Config", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "Default Machine", NK_TEXT_LEFT)) {
+
+			if (pub->lp->linked != 0) {
+
+				pub->popup_enum = POPUP_RESET_DEFAULT;
+			}
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	nk_menubar_end(ctx);
 
 	if (pub_popup_ok_cancel(pub, POPUP_PROBE_DETACHED,
-				"You will have to rotate the machine"
-				" manually in this case. PMC will wait"
-				" for the machine to reach some speed") != 0) {
+				"PMC will wait for the machine to reach"
+				" some speed. You will have to rotate"
+				" the machine rotor manually.") != 0) {
 
 		link_command(pub->lp, "pm_probe_detached");
 	}
@@ -2248,7 +2280,7 @@ page_probe(struct public *pub)
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
 				" want to reset all measured parameters"
-				" related to the machine") != 0) {
+				" related to the machine.") != 0) {
 
 		link_command(pub->lp, "pm_default_probe");
 		link_reg_fetch_all_shown(pub->lp);
@@ -2285,11 +2317,13 @@ page_probe(struct public *pub)
 	nk_spacer(ctx);
 
 	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
 
 	if (nk_button_label(ctx, "Start FSM")) {
 
@@ -2321,8 +2355,6 @@ page_probe(struct public *pub)
 			if (reg != NULL) { reg->onefetch = 1; }
 		}
 	}
-
-	nk_spacer(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2374,44 +2406,6 @@ page_probe(struct public *pub)
 
 			reg_float_um(pub, "pm.s_setpoint_speed", "Speed setpoint", 1);
 		}
-
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-
-		nk_layout_row_template_begin(ctx, 0);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 11);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
-		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_end(ctx);
-
-		if (nk_button_label(ctx, "Probe Flux Linkage")) {
-
-			link_command(pub->lp, "pm_probe_const_flux_linkage");
-		}
-
-		nk_spacer(ctx);
-
-		if (nk_button_label(ctx, "Probe Inertia")) {
-
-			link_command(pub->lp, "pm_probe_const_inertia");
-		}
-
-		nk_spacer(ctx);
-
-		if (nk_button_label(ctx, "Probe Noise")) {
-
-			link_command(pub->lp, "pm_probe_noise_threshold");
-		}
-
-		nk_spacer(ctx);
-
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-
-		reg_float_um(pub, "pm.zone_speed_noise", "Noise threshold", 0);
 	}
 
 	if (lp->unable_warning[0] != 0) {
@@ -2519,7 +2513,7 @@ page_in_network(struct public *pub)
 
 	orange = ctx->style.button;
 	orange.normal = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON]);
-	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_BUTTON_HOVER]);
+	orange.hover = nk_style_item_color(nk->table[NK_COLOR_ORANGE_HOVER]);
 
 	reg_float(pub, "net.node_ID", "Node network ID");
 	reg_enum_combo(pub, "net.log_MODE", "Messages logging", 1);
@@ -2947,10 +2941,17 @@ page_apps(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_enum_toggle(pub, "ap.task_PUSHBUTTON", "Two push-buttons control");
+	reg_enum_toggle(pub, "ap.task_BUTTON", "Two push-buttons control");
 	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
 	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
 	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial sensor");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
+	reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
+	reg_enum_toggle(pub, "ap.auto_ENABLED", "Auto startup function");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3033,20 +3034,26 @@ page_config(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Default")) {
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (lp->linked != 0) {
+		if (nk_menu_item_label(ctx, "Default Configuration", NK_TEXT_LEFT)) {
 
-			pub->popup_enum = POPUP_RESET_DEFAULT;
+			if (lp->linked != 0) {
+
+				pub->popup_enum = POPUP_RESET_DEFAULT;
+			}
 		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3077,16 +3084,22 @@ page_config(struct public *pub)
 
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
 	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "Sensorless estimate", 1);
-	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Rotor position SENSOR", 1);
-	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
+	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position sensor type", 1);
+	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo location source", 1);
 	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop", 0);
 
 	reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE");
 
-	if (reg != NULL && reg->lval == 2) {
+	if (		reg != NULL
+			&& reg->lval == 2) {
 
 		reg_enum_combo(pub, "pm.config_HFI_WAVE", "HFI waveform type", 1);
 		reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "HFI flux polarity");
+	}
+	else {
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+		nk_spacer(ctx);
 	}
 
 	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine saliency", 0);
@@ -3095,10 +3108,16 @@ page_config(struct public *pub)
 
 	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
 
-	if (reg != NULL && reg->lval == 0) {
+	if (		reg != NULL
+			&& reg->lval == 0) {
 
 		reg_enum_toggle(pub, "pm.config_HOLDING_BRAKE", "Holding brake");
 		reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limited");
+	}
+	else {
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+		nk_spacer(ctx);
 	}
 
 	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
@@ -3169,7 +3188,7 @@ page_config(struct public *pub)
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
-				" want to reset all PMC configuration") != 0) {
+				" want to reset all PMC configuration.") != 0) {
 
 		link_command(pub->lp, "pm_default_config");
 		link_reg_fetch_all_shown(pub->lp);
@@ -3371,17 +3390,28 @@ page_lu_hall(struct public *pub)
 
 	int				m_drawing = pub->fe_def_size_x / 4;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Adjust Hall")) {
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		link_command(pub->lp, "pm_adjust_sensor_hall");
+		if (nk_menu_item_label(ctx, "Hall Adjust", NK_TEXT_LEFT)) {
+
+			link_command(pub->lp, "pm_adjust_sensor_hall");
+		}
+
+		if (nk_menu_item_label(ctx, "Default Hall", NK_TEXT_LEFT)) {
+
+			/* TODO */
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3642,7 +3672,6 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.l_brake", "Brake function reverse");
 	reg_float(pub, "pm.l_track_tol", "Tracking tolerance");
 	reg_float(pub, "pm.l_gain_LP", "Blend gain LP");
 
@@ -3690,55 +3719,53 @@ page_telemetry(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_variable(ctx, 1);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Grab")) {
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		strcpy(pub->popup_msg, " Telemetry Flush");
-		pub->popup_enum = POPUP_TELEMETRY_FLUSH;
+                if (nk_menu_item_label(ctx, "Telemetry Flush", NK_TEXT_LEFT)) {
 
-		pub->telemetry.wait_GP = 0;
+			strcpy(pub->popup_msg, "Telemetry Flush");
+			pub->popup_enum = POPUP_TELEMETRY_FLUSH;
 
-		strcpy(pub->telemetry.file_grab, FILE_TELEMETRY_GRAB);
-		pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
-	}
+			pub->telemetry.wait_GP = 0;
 
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "Default")) {
-
-		if (pub->lp->linked != 0) {
-
-			pub->popup_enum = POPUP_RESET_DEFAULT;
+			strcpy(pub->telemetry.file_grab, FILE_TELEMETRY_GRAB);
+			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
 		}
-	}
 
-	nk_spacer(ctx);
+		if (nk_menu_item_label(ctx, "Telemetry GP", NK_TEXT_LEFT)) {
 
-	if (nk_button_label(ctx, "Log")) {
+			if (pub->lp->linked != 0) {
 
-		if (pub->lp->linked != 0) {
+				strcpy(pub->lbuf, pub->fe->storage);
+				strcat(pub->lbuf, DIRSEP);
+				strcat(pub->lbuf, FILE_TELEMETRY_LOG);
+				strcpy(pub->telemetry.file_snap, pub->lbuf);
 
-			strcpy(pub->lbuf, pub->fe->storage);
-			strcat(pub->lbuf, DIRSEP);
-			strcat(pub->lbuf, FILE_TELEMETRY_LOG);
-			strcpy(pub->telemetry.file_snap, pub->lbuf);
+				if (link_tlm_file_open(pub->lp, pub->telemetry.file_snap) != 0) {
 
-			if (link_tlm_file_open(pub->lp, pub->telemetry.file_snap) != 0) {
-
-				pub_open_GP(pub, pub->telemetry.file_snap);
+					pub_open_GP(pub, pub->telemetry.file_snap);
+				}
 			}
 		}
+
+		if (nk_menu_item_label(ctx, "Default Telemetry", NK_TEXT_LEFT)) {
+
+			if (pub->lp->linked != 0) {
+
+				pub->popup_enum = POPUP_RESET_DEFAULT;
+			}
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	nk_menubar_end(ctx);
 
 	if (pub->popup_enum != POPUP_TELEMETRY_FLUSH) {
 
@@ -3811,7 +3838,7 @@ page_telemetry(struct public *pub)
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
-				" want to reset all telemetry configuration") != 0) {
+				" want to reset all telemetry configuration.") != 0) {
 
 		link_command(pub->lp, "tlm_default");
 		link_reg_fetch_all_shown(pub->lp);
@@ -3831,46 +3858,44 @@ page_flash(struct public *pub)
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base);
-	nk_layout_row_template_end(ctx);
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
-	if (nk_button_label(ctx, "Program")) {
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
-		link_command(pub->lp,	"flash_prog" "\r\n"
-					"flash_info");
-	}
+                if (nk_menu_item_label(ctx, "Flash Program", NK_TEXT_LEFT)) {
 
-	nk_spacer(ctx);
-
-	if (nk_button_label(ctx, "Wipe")) {
-
-		if (lp->linked != 0) {
-
-			pub->popup_enum = POPUP_FLASH_WIPE;
+			link_command(pub->lp,	"flash_prog" "\r\n"
+						"flash_info");
 		}
-	}
 
-	nk_spacer(ctx);
+		if (nk_menu_item_label(ctx, "Flash Wipe", NK_TEXT_LEFT)) {
 
-	if (nk_button_label(ctx, "Reboot")) {
+			if (lp->linked != 0) {
 
-		if (lp->linked != 0) {
-
-			pub->popup_enum = POPUP_SYSTEM_REBOOT;
+				pub->popup_enum = POPUP_FLASH_WIPE;
+			}
 		}
+
+		if (nk_menu_item_label(ctx, "Reboot MCU", NK_TEXT_LEFT)) {
+
+			if (lp->linked != 0) {
+
+				pub->popup_enum = POPUP_SYSTEM_REBOOT;
+			}
+		}
+
+		nk_menu_end(ctx);
 	}
 
-	nk_spacer(ctx);
+	nk_menubar_end(ctx);
 
 	if (pub_popup_ok_cancel(pub, POPUP_FLASH_WIPE,
 				"Please confirm that you really"
-				" want to WIPE flash storage") != 0) {
+				" want to WIPE flash storage.") != 0) {
 
 		link_command(pub->lp,	"flash_wipe" "\r\n"
 					"flash_info");
@@ -3878,7 +3903,7 @@ page_flash(struct public *pub)
 
 	if (pub_popup_ok_cancel(pub, POPUP_SYSTEM_REBOOT,
 				"Please confirm that you really"
-				" want to reboot PMC") != 0) {
+				" want to reboot PMC.") != 0) {
 
 		link_command(pub->lp, "rtos_reboot");
 	}
@@ -3948,9 +3973,41 @@ static void
 page_upgrade(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
-	/* TODO*/
+	nk_menubar_begin(ctx);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 400)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "Embedded Bootloader", NK_TEXT_LEFT)) {
+
+			if (lp->linked != 0) {
+
+				pub->popup_enum = POPUP_SYSTEM_BOOTLOAD;
+			}
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	nk_menubar_end(ctx);
+
+	if (pub_popup_ok_cancel(pub, POPUP_SYSTEM_BOOTLOAD,
+				"Please confirm that you really want to"
+				" reboot into embedded bootloader. Note"
+				" that PMC connection will be closed.") != 0) {
+
+		if (link_command(pub->lp, "rtos_bootload") != 0) {
+
+			config_write(pub->fe);
+			link_close(pub->lp);
+		}
+	}
 }
 
 static void
@@ -4045,7 +4102,21 @@ menu_group_layout(struct public *pub)
 
 	if (nk_group_begin(ctx, "PAGE", 0)) {
 
+		struct nk_style_item	item;
+
+		item = nk_style_item_color(nk->table[NK_COLOR_BACKGROUND]);
+
+		nk_style_push_color(ctx, &ctx->style.window.background, item.data.color);
+		nk_style_push_color(ctx, &ctx->style.contextual_button.text_background, item.data.color);
+		nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, item);
+		nk_style_push_style_item(ctx, &ctx->style.contextual_button.normal, item);
+
 		(void) pub->menu.pagetab[pub->menu.page_selected] (pub);
+
+		nk_style_pop_color(ctx);
+		nk_style_pop_color(ctx);
+		nk_style_pop_style_item(ctx);
+		nk_style_pop_style_item(ctx);
 
 		nk_group_end(ctx);
 	}
@@ -4241,8 +4312,8 @@ int main(int argc, char **argv)
 		gp_Clean(pub->gp);
 	}
 
-	link_close(lp);
 	config_write(pub->fe);
+	link_close(lp);
 
 	free(nk);
 	free(lp);

@@ -6,7 +6,7 @@
 #include "libc.h"
 #include "main.h"
 
-/* This is the helper task that reads AS5047 magnetic rotary position sensor.
+/* This is the helper task that reads AS5047 magnetic rotary encoder.
  * */
 
 static int

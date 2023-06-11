@@ -357,30 +357,29 @@ void bench_script()
 	blm_restart(&m);
 	tlm_restart();
 
-	m.Rs = 14.E-3;
-	m.Ld = 22.E-6;
-	m.Lq = 35.E-6;
-	m.Udc = 22.;
+	m.Rs = 0.205;
+	m.Ld = 2E-3;
+	m.Lq = 2E-3;
+	m.Udc = 32.;
 	m.Rdc = 0.1;
-	m.Zp = 14;
-	m.lambda = blm_Kv_lambda(&m, 270.);
+	m.Zp = 1;
+	m.lambda = blm_Kv_lambda(&m, 70.);
 	m.Jm = 3.E-4;
 
 	ts_script_base();
 
 	blm_restart(&m);
-	tlm_restart();
+	//tlm_restart();
 
-	m.state[2] = 1000.;
-
-	//pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-
-	pm.fsm_req = PM_STATE_LU_DETACHED;
+	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
 	sim_runtime(.1);
 
-	//pm.i_setpoint_current = 10.f;
+	pm.s_setpoint_speed = 400.f;
+	sim_runtime(1.);
+
+	pm.s_setpoint_speed = 2000.f;
 	sim_runtime(1.);
 
 	tlm_PWM_grab();

@@ -70,10 +70,10 @@ The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
 	$ hg clone https://hg.code.sf.net/p/phobia/code phobia
 	$ git clone https://github.com/rombrew/phobia.git phobia
 	$ cd phobia/src
-	$ make HWREV=REV5A zip
+	$ make HWREV=REV5A
 
-So using the above commands we have built the firmware and zipped it. Next
-there are a few ways to load the firmware into the MCU:
+So using the above commands we have built the firmware. Next there are a few
+ways to load the firmware into the MCU:
 
 SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
 [Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be

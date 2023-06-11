@@ -18208,7 +18208,7 @@ nk_style_from_table(struct nk_context *ctx, const struct nk_color *table)
     button->text_active     = table[NK_COLOR_TEXT];
     button->padding         = nk_vec2(2.0f,2.0f);
     button->image_padding   = nk_vec2(0.0f,0.0f);
-    button->touch_padding   = nk_vec2(0.0f, 0.0f);
+    button->touch_padding   = nk_vec2(0.0f,0.0f);
     button->userdata        = nk_handle_ptr(0);
     button->text_alignment  = NK_TEXT_CENTERED;
     button->border          = 1.0f;
@@ -19802,7 +19802,7 @@ nk_panel_end(struct nk_context *ctx)
         /* fill right empty space */
         empty_space.x = layout->bounds.x + layout->bounds.w;
         empty_space.y = layout->bounds.y;
-        empty_space.w = panel_padding.x + layout->border;
+        empty_space.w = panel_padding.x + layout->border - 1.0f;
         empty_space.h = layout->bounds.h;
         if (*layout->offset_y == 0 && !(layout->flags & NK_WINDOW_NO_SCROLLBAR))
             empty_space.w += scrollbar_size.x;

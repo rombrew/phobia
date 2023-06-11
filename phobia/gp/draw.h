@@ -22,8 +22,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-typedef Uint32		colType_t;
-
 enum {
 	TEXT_CENTERED_ON_X	= 1,
 	TEXT_CENTERED_ON_Y	= 2,
@@ -84,15 +82,18 @@ typedef struct {
 	}
 	pixmap;
 
-	colType_t	palette[16];
-	int		ltgamma[16];
+	Uint32		palette[16];
+	Uint8		ltgamma[256];
+	Uint8		ltcomap[256];
 }
 draw_t;
 
 void drawDashReset(draw_t *dw);
 void drawGamma(draw_t *dw);
 
-void drawClearSurface(draw_t *dw, SDL_Surface *surface, colType_t col);
+Uint32 drawRGBMap(draw_t *dw, Uint32 col);
+
+void drawClearSurface(draw_t *dw, SDL_Surface *surface, Uint32 col);
 void drawClearCanvas(draw_t *dw);
 void drawClearTrial(draw_t *dw);
 
@@ -102,10 +103,10 @@ void drawPixmapClean(draw_t *dw);
 int clipBoxTest(clipBox_t *cb, int x, int y);
 
 void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
-		double fxe, double fye, colType_t col);
+		double fxe, double fye, Uint32 col);
 
 void drawDash(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
-		double fxe, double fye, colType_t col, int dash, int space);
+		double fxe, double fye, Uint32 col, int dash, int space);
 
 void drawLineCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
 		double fxe, double fye, int ncol, int thickness);
@@ -117,13 +118,13 @@ int drawLineTrial(draw_t *dw, clipBox_t *cb, double fxs, double fys,
 		double fxe, double fye, int ncol, int thickness);
 
 void drawText(draw_t *dw, SDL_Surface *surface, TTF_Font *font, int xs, int ys,
-		const char *text, int flags, colType_t col);
+		const char *text, int flags, Uint32 col);
 
 void drawFillRect(SDL_Surface *surface, int xs, int ys,
-		int xe, int ye, colType_t col);
+		int xe, int ye, Uint32 col);
 
 void drawClipRect(SDL_Surface *surface, clipBox_t *cb, int xs, int ys,
-		int xe, int ye, colType_t col);
+		int xe, int ye, Uint32 col);
 
 void drawDotCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
 		int rsize, int ncol, int round);

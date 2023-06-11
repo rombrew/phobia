@@ -36,23 +36,44 @@ void drawDashReset(draw_t *dw)
 
 void drawGamma(draw_t *dw)
 {
-	int		i;
+	int		n;
 
-	for (i = 0; i < 16; ++i) {
+	for (n = 0; n < 256; ++n) {
 
-		dw->ltgamma[i] = (int) (powf(i / 15.f, dw->gamma / 100.f) * 255.f);
+		dw->ltgamma[n] = (Uint8) ceilf(powf(n / 255.f, dw->gamma / 100.f) * 255.f);
+		dw->ltcomap[n] = (Uint8) ceilf(powf(n / 255.f, 100.f / dw->gamma) * 255.f);
 	}
 }
 
-void drawClearSurface(draw_t *dw, SDL_Surface *surface, colType_t col)
+Uint32 drawRGBMap(draw_t *dw, Uint32 col)
 {
-	colType_t		*pixels = (colType_t *) surface->pixels;
+	union {
+
+		Uint32          l;
+		Uint8           b[4];
+	}
+	vcol = { col };
+
+	if (dw->antialiasing != DRAW_SOLID) {
+
+		vcol.b[0] = dw->ltcomap[vcol.b[0] & 0xFFU];
+		vcol.b[1] = dw->ltcomap[vcol.b[1] & 0xFFU];
+		vcol.b[2] = dw->ltcomap[vcol.b[2] & 0xFFU];
+	}
+
+	return vcol.l;
+}
+
+void drawClearSurface(draw_t *dw, SDL_Surface *surface, Uint32 col)
+{
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+
 	int			pitch = surface->pitch / 4;
-	int			len, i;
+	int			len, n;
 
 	len = pitch * surface->h;
 
-	for (i = 0; i < len - 15UL; i += 16UL) {
+	for (n = 0; n < len - 15UL; n += 16UL) {
 
 		*pixels++ = col;
 		*pixels++ = col;
@@ -75,7 +96,7 @@ void drawClearSurface(draw_t *dw, SDL_Surface *surface, colType_t col)
 		*pixels++ = col;
 	}
 
-	for (; i < len; i++)
+	for (; n < len; n++)
 		*pixels++ = col;
 
 	drawDashReset(dw);
@@ -272,9 +293,10 @@ clipLine(clipBox_t *cb, double *xs, double *ys, double *xe, double *ye)
 }
 
 static void
-drawRoughLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, colType_t col)
+drawRoughLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, Uint32 col)
 {
-	colType_t		*pixels = (colType_t *) surface->pixels;
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+
 	int			pitch = surface->pitch / 4;
 	int			dx, dy, vx, vy, i;
 
@@ -353,9 +375,10 @@ drawRoughLine(SDL_Surface *surface, int xs, int ys, int xe, int ye, colType_t co
 
 static void
 drawRoughDash(draw_t *dw, SDL_Surface *surface, int xs, int ys, int xe, int ye,
-		colType_t col, int dash, int space)
+		Uint32 col, int dash, int space)
 {
-	colType_t		*pixels = (colType_t *) surface->pixels;
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+
 	int			pitch = surface->pitch / 4;
 	int			dx, dy, vx, vy, j, i;
 
@@ -439,7 +462,7 @@ drawRoughDash(draw_t *dw, SDL_Surface *surface, int xs, int ys, int xe, int ye,
 }
 
 void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
-		double fxe, double fye, colType_t col)
+		double fxe, double fye, Uint32 col)
 {
 	svg_t			*g = (svg_t *) surface->userdata;
 	int			xs, ys, xe, ye, n;
@@ -473,7 +496,7 @@ void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 }
 
 void drawDash(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, double fys,
-		double fxe, double fye, colType_t col, int dash, int space)
+		double fxe, double fye, Uint32 col, int dash, int space)
 {
 	svg_t			*g = (svg_t *) surface->userdata;
 	int			xs, ys, xe, ye, context, n;
@@ -2223,7 +2246,7 @@ int drawLineTrial(draw_t *dw, clipBox_t *cb, double fxs, double fys,
 }
 
 void drawText(draw_t *dw, SDL_Surface *surface, TTF_Font *font, int xs, int ys,
-		const char *text, int flags, colType_t col)
+		const char *text, int flags, Uint32 col)
 {
 	svg_t			*g = (svg_t *) surface->userdata;
 	SDL_Surface		*textSurface, *surfaceCopy;
@@ -2342,11 +2365,11 @@ void drawText(draw_t *dw, SDL_Surface *surface, TTF_Font *font, int xs, int ys,
 }
 
 void drawFillRect(SDL_Surface *surface, int xs, int ys,
-		int xe, int ye, colType_t col)
+		int xe, int ye, Uint32 col)
 {
 	svg_t			*g = (svg_t *) surface->userdata;
-	colType_t		*pixels = (colType_t *) surface->pixels;
-	colType_t		*px, *px_end;
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+	Uint32			*px, *px_end;
 
 	int			pitch, i;
 
@@ -2376,11 +2399,11 @@ void drawFillRect(SDL_Surface *surface, int xs, int ys,
 }
 
 void drawClipRect(SDL_Surface *surface, clipBox_t *cb, int xs, int ys,
-		int xe, int ye, colType_t col)
+		int xe, int ye, Uint32 col)
 {
 	svg_t			*g = (svg_t *) surface->userdata;
-	colType_t		*pixels = (colType_t *) surface->pixels;
-	colType_t		*px, *px_end;
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+	Uint32			*px, *px_end;
 
 	int			pitch, i;
 
@@ -3253,9 +3276,9 @@ void drawMarkCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs,
 
 void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 {
-	colType_t		*pixels = (colType_t *) surface->pixels;
-	colType_t		*palette = dw->palette;
-	int			*ltgamma = dw->ltgamma;
+	Uint32			*pixels = (Uint32 *) surface->pixels;
+	Uint32			*palette = dw->palette;
+	Uint8			*ltgamma = dw->ltgamma;
 
 	int			pitch, x, y;
 	int			yspan, ncol, blend[3];
@@ -3338,9 +3361,9 @@ void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 					blend[1] += vcol.b[1];
 					blend[2] += vcol.b[2];
 
-					vcol.b[0] = ltgamma[(blend[0] >> 6) & 0x0FU];
-					vcol.b[1] = ltgamma[(blend[1] >> 6) & 0x0FU];
-					vcol.b[2] = ltgamma[(blend[2] >> 6) & 0x0FU];
+					vcol.b[0] = ltgamma[(blend[0] >> 2) & 0xFFU];
+					vcol.b[1] = ltgamma[(blend[1] >> 2) & 0xFFU];
+					vcol.b[2] = ltgamma[(blend[2] >> 2) & 0xFFU];
 					vcol.b[3] = 0;
 
 					*(pixels + x) = vcol.l;
@@ -3433,9 +3456,9 @@ void drawFlushCanvas(draw_t *dw, SDL_Surface *surface, clipBox_t *cb)
 					blend[1] += vcol.b[1];
 					blend[2] += vcol.b[2];
 
-					vcol.b[0] = ltgamma[(blend[0] >> 7) & 0x0FU];
-					vcol.b[1] = ltgamma[(blend[1] >> 7) & 0x0FU];
-					vcol.b[2] = ltgamma[(blend[2] >> 7) & 0x0FU];
+					vcol.b[0] = ltgamma[(blend[0] >> 3) & 0xFFU];
+					vcol.b[1] = ltgamma[(blend[1] >> 3) & 0xFFU];
+					vcol.b[2] = ltgamma[(blend[2] >> 3) & 0xFFU];
 					vcol.b[3] = 0;
 
 					*(pixels + x) = vcol.l;

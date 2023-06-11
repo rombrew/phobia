@@ -19,35 +19,46 @@
 #ifndef _H_DIRENT_
 #define _H_DIRENT_
 
-#ifdef _WINDOWS
-struct DIR_sb;
-typedef struct DIR_sb DIR;
-
 #define DIRENT_PATH_MAX			272
 
-struct dirent
-{
-	int		d_type;
-	char		d_name[DIRENT_PATH_MAX];
+#ifdef _WINDOWS
+#define DIRSEP 			"\\"
+#else /* _WINDOWS */
+#define DIRSEP			"/"
+#endif
+
+enum {
+	ENT_TYPE_UNKNOWN		= 0,
+	ENT_TYPE_REGULAR,
+	ENT_TYPE_DIRECTORY
 };
 
 enum {
-	DT_REG		= 0,
-	DT_DIR,
+	ENT_OK				= 0,
+	ENT_END_OF_DIR,
+	ENT_ERROR_UNKNOWN
 };
 
-DIR *opendir(const char *name);
-int closedir(DIR *d);
-struct dirent *readdir(DIR *d);
-void rewinddir(DIR *d);
+struct dirent_priv;
 
-#else /* _WINDOWS */
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#endif /* _WINDOWS */
+struct dirent_stat {
 
-int fstatsize(const char *file, unsigned long long *sb);
+	unsigned long long	nsize;
+	int			ntype;
+
+	char			name[DIRENT_PATH_MAX];
+	char			time[24];
+
+	struct dirent_priv	*priv;
+};
+
+int dirent_open(struct dirent_stat *sb, const char *path);
+int dirent_rewind(struct dirent_stat *sb);
+int dirent_read(struct dirent_stat *sb);
+void dirent_close(struct dirent_stat *sb);
+
+int file_stat(const char *file, unsigned long long *nsize);
+int file_remove(const char *file);
 
 #endif /* _H_DIRENT_ */
 
