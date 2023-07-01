@@ -30,10 +30,13 @@ float ntc_read_temperature(ntc_t *ntc)
 					+ log / ntc->betta) - 273.f;
 			break;
 
-		case NTC_CMOS:
+		case NTC_LMT87:
 
 			um = ADC_get_sample(ntc->gpio);
-			temp = um * ntc->betta + ntc->ta0;
+			temp = 194.1f - um * 242.7f;
+			break;
+
+		case NTC_KTY84:
 			break;
 
 		default:

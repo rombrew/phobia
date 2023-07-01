@@ -1,7 +1,7 @@
 #define HW_MCU_STM32F405
 
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_NTC_MOTOR
+#define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_NETWORK_EPCAN
 #define HW_HAVE_STEP_DIR_KNOB
 
@@ -23,13 +23,15 @@
 
 #define HW_ADC_VOLTAGE_R1		470000.f
 #define HW_ADC_VOLTAGE_R2		27000.f
-#define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
+#define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_NTC_PCB_TYPE			NTC_GND
 #define HW_NTC_PCB_BALANCE		10000.f
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3435.f
+
+#define HW_NTC_EXT_BALANCE		10000.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 3, 3)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)

@@ -90,7 +90,6 @@ pm_auto_config_default(pmc_t *pm)
 {
 	pm->config_VSI_ZERO = PM_VSI_GND;
 	pm->config_VSI_CLAMP = PM_DISABLED;
-	pm->config_VSI_STRICT = PM_DISABLED;
 	pm->config_LU_FORCED = PM_ENABLED;
 	pm->config_LU_ESTIMATE = PM_FLUX_ORTEGA;
 	pm->config_LU_SENSOR = PM_SENSOR_NONE;
@@ -143,8 +142,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_current_bias = 0.f;
 	pm->probe_freq_sine = 1100.f;
 	pm->probe_speed_hold = 900.f;
-	pm->probe_speed_tol = 10.f;
-	pm->probe_location_tol = .1f;
+	pm->probe_speed_tol = 50.f;
+	pm->probe_location_tol = .10f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
@@ -176,12 +175,12 @@ pm_auto_config_default(pmc_t *pm)
 	pm->forced_slew_rate = 100.f;
 	pm->forced_maximal_DC = 0.7f;
 
-	pm->detach_voltage = 1.f;
+	pm->detach_threshold = 1.f;
 	pm->detach_trip_AP = 2E-1f;
 	pm->detach_gain_SF = 5E-2f;
 
 	pm->flux_trip_AP = 2E-1f;
-	pm->flux_gain_IN = 5E-4f;
+	pm->flux_gain_IN = 5E-3f;
 	pm->flux_gain_LO = 2E-6f;
 	pm->flux_gain_HI = 5E-5f;
 	pm->flux_gain_SF = 5E-2f;
@@ -269,8 +268,6 @@ pm_auto_config_default(pmc_t *pm)
 static void
 pm_auto_probe_default(pmc_t *pm)
 {
-	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
-
 	pm->probe_speed_hold = 900.f;
 
 	pm->lu_gain_mq_LP = 4E-3f;
@@ -341,14 +338,14 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 		probe_MIN = 1.5f * (pm->zone_speed_threshold + pm->zone_speed_noise);
 
-		if (pm->probe_speed_hold > probe_MAX) {
-
-			pm->probe_speed_hold = probe_MAX;
-		}
-
 		if (pm->probe_speed_hold < probe_MIN) {
 
 			pm->probe_speed_hold = probe_MIN;
+		}
+
+		if (pm->probe_speed_hold > probe_MAX) {
+
+			pm->probe_speed_hold = probe_MAX;
 		}
 	}
 }
@@ -356,7 +353,7 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 static void
 pm_auto_zone_threshold(pmc_t *pm)
 {
-	float			thld_MAX, bemf_MAX, thld_MIN, thld_IRU, thld_DTU;
+	float			thld_MAX, lamb_MAX, thld_MIN, thld_IRU, thld_DTU;
 
 	if (		   pm->const_Rs > M_EPS_F
 			&& pm->const_lambda > M_EPS_F) {
@@ -364,9 +361,9 @@ pm_auto_zone_threshold(pmc_t *pm)
 		/* Allowable range of the noise threshold.
 		 * */
 		thld_MAX = 0.4f * pm->forced_maximal;
-		bemf_MAX = 10.f / pm->const_lambda;
+		lamb_MAX = 10.f / pm->const_lambda;
 
-		thld_MAX = (bemf_MAX < thld_MAX) ? bemf_MAX : thld_MAX;
+		thld_MAX = (lamb_MAX < thld_MAX) ? lamb_MAX : thld_MAX;
 		thld_MIN = 10.f;
 
 		if (pm->zone_speed_noise > thld_MAX) {
@@ -420,14 +417,14 @@ pm_auto_forced_maximal(pmc_t *pm)
 	forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 	forced_MIN = pm->probe_speed_hold;
 
-	if (pm->forced_maximal > forced_MAX) {
-
-		pm->forced_maximal = forced_MAX;
-	}
-
 	if (pm->forced_maximal < forced_MIN) {
 
 		pm->forced_maximal = forced_MIN;
+	}
+
+	if (pm->forced_maximal > forced_MAX) {
+
+		pm->forced_maximal = forced_MAX;
 	}
 
 	pm->forced_reverse = pm->forced_maximal;
@@ -674,6 +671,7 @@ pm_flux_detached(pmc_t *pm)
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 		U = .33333333f * (uA + uB + uC);
+
 		uA = uA - U;
 		uB = uB - U;
 
@@ -692,7 +690,7 @@ pm_flux_detached(pmc_t *pm)
 	 * */
 	U = m_sqrtf(uX * uX + uY * uY);
 
-	if (U > pm->detach_voltage) {
+	if (U > pm->detach_threshold) {
 
 		A = 1.f / U;
 
@@ -750,8 +748,8 @@ pm_flux_ortega(pmc_t *pm)
 
 	if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-		uX += pm->tvm_DX - pm->vsi_DX;
-		uY += pm->tvm_DY - pm->vsi_DY;
+		uX += pm->tvm_X0 - pm->vsi_X0;
+		uY += pm->tvm_Y0 - pm->vsi_Y0;
 	}
 
 	/* Stator FLUX.
@@ -849,60 +847,60 @@ pm_flux_ortega(pmc_t *pm)
 static void
 pm_kalman_equation(pmc_t *pm, float Y[2], const float X[2], const float F[2])
 {
-        float           uD, uQ, R1, E1, flux_D, flux_Q;
+	float		uD, uQ, R1, E1, flux_D, flux_Q;
 
-        uD = F[0] * pm->vsi_X + F[1] * pm->vsi_Y;
-        uQ = F[0] * pm->vsi_Y - F[1] * pm->vsi_X;
+	uD = F[0] * pm->vsi_X + F[1] * pm->vsi_Y;
+	uQ = F[0] * pm->vsi_Y - F[1] * pm->vsi_X;
 
-        R1 = pm->const_Rs;
-        E1 = pm->const_lambda;
+	R1 = pm->const_Rs;
+	E1 = pm->const_lambda;
 
 	uQ += pm->kalman_bias_Q;
 
-        flux_D = pm->const_im_L1 * X[0] + E1;
-        flux_Q = pm->const_im_L2 * X[1];
+	flux_D = pm->const_im_L1 * X[0] + E1;
+	flux_Q = pm->const_im_L2 * X[1];
 
-        Y[0] = (uD - R1 * X[0] + flux_Q * pm->flux_wS) * pm->quick_iL1;
-        Y[1] = (uQ - R1 * X[1] - flux_D * pm->flux_wS) * pm->quick_iL2;
+	Y[0] = (uD - R1 * X[0] + flux_Q * pm->flux_wS) * pm->quick_iL1;
+	Y[1] = (uQ - R1 * X[1] - flux_D * pm->flux_wS) * pm->quick_iL2;
 }
 
 static void
 pm_kalman_solve(pmc_t *pm, float X[2], float F[2], float wS)
 {
-        float           Y1[2], Y2[2];
+	float		Y1[2], Y2[2];
 
-        /* Second-order ODE solver.
-         * */
+	/* Second-order ODE solver.
+	 * */
 
-        pm_kalman_equation(pm, Y1, X, F);
+	pm_kalman_equation(pm, Y1, X, F);
 
-        X[0] += Y1[0] * pm->m_dT;
-        X[1] += Y1[1] * pm->m_dT;
+	X[0] += Y1[0] * pm->m_dT;
+	X[1] += Y1[1] * pm->m_dT;
 
-        m_rotatef(F, wS * pm->m_dT);
+	m_rotatef(F, wS * pm->m_dT);
 
-        pm_kalman_equation(pm, Y2, X, F);
+	pm_kalman_equation(pm, Y2, X, F);
 
-        X[0] += (Y2[0] - Y1[0]) * pm->m_dT * .5f;
-        X[1] += (Y2[1] - Y1[1]) * pm->m_dT * .5f;
+	X[0] += (Y2[0] - Y1[0]) * pm->m_dT * .5f;
+	X[1] += (Y2[1] - Y1[1]) * pm->m_dT * .5f;
 }
 
 static void
 pm_kalman_solve_tvm(pmc_t *pm, float X[2], float F[2])
 {
-        float           uX, uY, uD, uQ;
+	float		uX, uY, uD, uQ;
 
-        /* First-order ODE solver.
-         * */
+	/* First-order ODE solver.
+	 * */
 
-        uX = pm->tvm_DX - pm->vsi_DX;
-        uY = pm->tvm_DY - pm->vsi_DY;
+	uX = pm->tvm_X0 - pm->vsi_X0;
+	uY = pm->tvm_Y0 - pm->vsi_Y0;
 
-        uD = F[0] * uX + F[1] * uY;
-        uQ = F[0] * uY - F[1] * uX;
+	uD = F[0] * uX + F[1] * uY;
+	uQ = F[0] * uY - F[1] * uX;
 
-        X[0] += uD * pm->m_dT * pm->quick_iL1;
-        X[1] += uQ * pm->m_dT * pm->quick_iL2;
+	X[0] += uD * pm->m_dT * pm->quick_iL1;
+	X[1] += uQ * pm->m_dT * pm->quick_iL2;
 }
 
 static void
@@ -1093,7 +1091,7 @@ pm_kalman_lock_guard(pmc_t *pm, float A)
 	float		thld_wS;
 	int		k_UNLOCK = PM_DISABLED;
 
-	/* Bare speed estiamte (LPF).
+	/* Bare speed estiamte filtered.
 	 * */
 	pm->kalman_lpf_wS += (A * pm->m_freq - pm->kalman_lpf_wS) * pm->zone_gain_LP;
 
@@ -1139,7 +1137,7 @@ pm_flux_kalman(pmc_t *pm)
 		pm_kalman_solve_tvm(pm, pm->flux_X, pm->flux_F);
 	}
 
-	/* DQ-axes position frame.
+	/* DQ-axes frame.
 	 * */
 	bF[0] = pm->flux_F[0];
 	bF[1] = pm->flux_F[1];
@@ -1212,7 +1210,7 @@ pm_flux_zone(pmc_t *pm)
 {
 	float			thld_wS;
 
-	/* Get smooth speed passed through LPF.
+	/* Get filtered speed with low noise.
 	 * */
 	pm->zone_lpf_wS += (pm->flux_wS - pm->zone_lpf_wS) * pm->zone_gain_LP;
 
@@ -1696,14 +1694,30 @@ pm_lu_FSM(pmc_t *pm)
 	pm->lu_iD = pm->lu_F[0] * pm->lu_iX + pm->lu_F[1] * pm->lu_iY;
 	pm->lu_iQ = pm->lu_F[0] * pm->lu_iY - pm->lu_F[1] * pm->lu_iX;
 
+	/* Get TVM voltage on DQ-axes.
+	 * */
+	pm->lu_uD = pm->lu_F[0] * pm->tvm_X0 + pm->lu_F[1] * pm->tvm_Y0;
+	pm->lu_uQ = pm->lu_F[0] * pm->tvm_Y0 - pm->lu_F[1] * pm->tvm_X0;
+
+	{
+		float		A;
+
+		A = pm->lu_wS * pm->m_dT * .5f;
+
+		/* Approximate in the middle of past cycle.
+		 * */
+		pm->lu_uD += - pm->lu_uQ * A;
+		pm->lu_uQ += pm->lu_uD * A;
+	}
+
 	/* Transfer to the next apriori position.
 	 * */
 	m_rotatef(pm->lu_F, pm->lu_wS * pm->m_dT);
 
 	if (pm->vsi_IF != 0) {
 
-		/* The current prediction in XY-axes will be used in case of
-		 * too much current samples are discarded.
+		/* We transform DQ current back to XY-axes throught apriori
+		 * DQ-frame if there are no clean measurements available.
 		 * */
 		pm->lu_iX = pm->lu_F[0] * pm->lu_iD - pm->lu_F[1] * pm->lu_iQ;
 		pm->lu_iY = pm->lu_F[1] * pm->lu_iD + pm->lu_F[0] * pm->lu_iQ;
@@ -1875,10 +1889,18 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->flux_TYPE = PM_FLUX_NONE;
 
+				pm->lu_uD = 0.f;
+				pm->lu_uQ = 0.f;
+
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_drain_wP = 0.f;
 				pm->watt_drain_wA = 0.f;
+
+				pm->i_track_D = 0.f;
+				pm->i_track_Q = 0.f;
+				pm->i_integral_D = 0.f;
+				pm->i_integral_Q = 0.f;
 
 				pm->proc_set_Z(PM_Z_ABC);
 			}
@@ -2049,14 +2071,14 @@ pm_lu_FSM(pmc_t *pm)
 		/* Get an external mechanical LOAD torque estimate.
 		 * */
 		mQ = pm_torque_equation(pm, pm->lu_iD, pm->lu_iQ)
-			- (pm->lu_wS - pm->lu_last_wS) * pm->m_freq * pm->const_Ja;
+			- (pm->lu_wS - pm->lu_wS0) * pm->m_freq * pm->const_Ja;
 
-		/* Pass through LPF to suppress the noise.
+		/* Get filtered estimate with low noise.
 		 * */
 		pm->lu_mq_load += (mQ - pm->lu_mq_load) * pm->lu_gain_mq_LP;
 	}
 
-	pm->lu_last_wS = pm->lu_wS;
+	pm->lu_wS0 = pm->lu_wS;
 }
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
@@ -2087,50 +2109,24 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 		pm->vsi_AF = (pm->vsi_AQ < xZONE || pm->vsi_AQ == xTOP) ? 0 : 1;
 		pm->vsi_BF = (pm->vsi_BQ < xZONE || pm->vsi_BQ == xTOP) ? 0 : 1;
 		pm->vsi_CF = 1;
-
-		if (pm->config_VSI_STRICT == PM_ENABLED) {
-
-			pm->vsi_AF = (xA < xSKIP || xA == xTOP) ? pm->vsi_AF : 1;
-			pm->vsi_BF = (xB < xSKIP || xB == xTOP) ? pm->vsi_BF : 1;
-		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_AB_GND) {
 
 		pm->vsi_AF = (pm->vsi_AQ < xZONE) ? 0 : 1;
 		pm->vsi_BF = (pm->vsi_BQ < xZONE) ? 0 : 1;
 		pm->vsi_CF = 1;
-
-		if (pm->config_VSI_STRICT == PM_ENABLED) {
-
-			pm->vsi_AF = (xA < xSKIP) ? pm->vsi_AF : 1;
-			pm->vsi_BF = (xB < xSKIP) ? pm->vsi_BF : 1;
-		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_INLINE) {
 
 		pm->vsi_AF = (pm->vsi_AQ < xZONE || pm->vsi_AQ == xTOP) ? 0 : 1;
 		pm->vsi_BF = (pm->vsi_BQ < xZONE || pm->vsi_BQ == xTOP) ? 0 : 1;
 		pm->vsi_CF = (pm->vsi_CQ < xZONE || pm->vsi_CQ == xTOP) ? 0 : 1;
-
-		if (pm->config_VSI_STRICT == PM_ENABLED) {
-
-			pm->vsi_AF = (xA < xSKIP || xA == xTOP) ? pm->vsi_AF : 1;
-			pm->vsi_BF = (xB < xSKIP || xB == xTOP) ? pm->vsi_BF : 1;
-			pm->vsi_CF = (xC < xSKIP || xC == xTOP) ? pm->vsi_CF : 1;
-		}
 	}
 	else if (PM_CONFIG_IFB(pm) == PM_IFB_ABC_GND) {
 
 		pm->vsi_AF = (pm->vsi_AQ < xZONE) ? 0 : 1;
 		pm->vsi_BF = (pm->vsi_BQ < xZONE) ? 0 : 1;
 		pm->vsi_CF = (pm->vsi_CQ < xZONE) ? 0 : 1;
-
-		if (pm->config_VSI_STRICT == PM_ENABLED) {
-
-			pm->vsi_AF = (xA < xSKIP) ? pm->vsi_AF : 1;
-			pm->vsi_BF = (xB < xSKIP) ? pm->vsi_BF : 1;
-			pm->vsi_CF = (xC < xSKIP) ? pm->vsi_CF : 1;
-		}
 	}
 
 	/* You can mask a specific channel for some reasons.
@@ -2456,7 +2452,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		xB += pm->ts_minimal - xMIN;
 		xC += pm->ts_minimal - xMIN;
 
-		xMAX = pm->dc_resolution - pm->ts_clearance;
+		xMAX = pm->dc_resolution - (pm->ts_clearance + 1);
 
 		xA = (xA > xMAX) ? xMAX : xA;
 		xB = (xB > xMAX) ? xMAX : xB;
@@ -2473,30 +2469,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 				|| pm->vsi_BT > pm->ts_bootstrap
 				|| pm->vsi_CT > pm->ts_bootstrap) {
 
-			/* Clamp the output DC to a safe level if bootstrap
-			 * retention time is running out.
-			 * */
-			pm->vsi_XT = 1;
-		}
-
-		if (pm->vsi_XT >= 1) {
-
-			xMIN = pm->ts_clearance;
-
-			xA -= xMIN;
-			xB -= xMIN;
-			xC -= xMIN;
-
-			xA = (xA < 0) ? 0 : xA;
-			xB = (xB < 0) ? 0 : xB;
-			xC = (xC < 0) ? 0 : xC;
-
-			pm->vsi_XT++;
-
-			if (pm->vsi_XT >= pm->ts_clamped) {
-
-				pm->vsi_XT = 0;
-			}
+			pm->fsm_errno = PM_ERROR_BOOTSTRAP_FAULT;
+			pm->fsm_state = PM_STATE_HALT;
 		}
 	}
 
@@ -2504,8 +2478,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	 * */
 	pm->proc_set_DC(xA, xB, xC);
 
-	pm->vsi_DX = pm->vsi_X;
-	pm->vsi_DY = pm->vsi_Y;
+	pm->vsi_X0 = pm->vsi_X;
+	pm->vsi_Y0 = pm->vsi_Y;
 
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
@@ -2545,6 +2519,24 @@ pm_form_SP(pmc_t *pm, float eS)
 	iSP += pm->s_gain_D * (0.f - pm_torque_accel(pm, pm->lu_iD, pm->lu_iQ));
 
 	return iSP;
+}
+
+static void
+pm_wattage(pmc_t *pm)
+{
+	float		wP;
+
+	/* Get filtered voltage to use in POWER constraints loop.
+	 * */
+	pm->watt_lpf_D += (pm->lu_uD - pm->watt_lpf_D) * pm->watt_gain_LP;
+	pm->watt_lpf_Q += (pm->lu_uQ - pm->watt_lpf_Q) * pm->watt_gain_LP;
+
+	/* Actual operating POWER is a scalar product of voltage and current.
+	 * */
+	wP = pm->k_KWAT * (pm->lu_iD * pm->lu_uD + pm->lu_iQ * pm->lu_uQ);
+
+	pm->watt_drain_wP += (wP - pm->watt_drain_wP) * pm->watt_gain_LP;
+	pm->watt_drain_wA = pm->watt_drain_wP * pm->quick_iUdc;
 }
 
 static void
@@ -2690,23 +2682,6 @@ pm_loop_current(pmc_t *pm)
 			}
 		}
 	}
-
-	/* Get VSI voltages on DQ-axes.
-	 * */
-	uD = pm->lu_F[0] * pm->tvm_DX + pm->lu_F[1] * pm->tvm_DY;
-	uQ = pm->lu_F[0] * pm->tvm_DY - pm->lu_F[1] * pm->tvm_DX;
-
-	/* LPF is necessary to ensure the stability of POWER constraints loop.
-	 * */
-	pm->watt_lpf_D += (uD - pm->watt_lpf_D) * pm->watt_gain_LP;
-	pm->watt_lpf_Q += (uQ - pm->watt_lpf_Q) * pm->watt_gain_LP;
-
-	/* Operating POWER is a scalar product of voltage and current.
-	 * */
-	wP = pm->k_KWAT * (pm->lu_iD * pm->watt_lpf_D + pm->lu_iQ * pm->watt_lpf_Q);
-
-	pm->watt_drain_wP += (wP - pm->watt_drain_wP) * pm->watt_gain_LP;
-	pm->watt_drain_wA = pm->watt_drain_wP * pm->quick_iUdc;
 
 	/* Maximal CURRENT constraints.
 	 * */
@@ -2956,7 +2931,7 @@ pm_loop_location(pmc_t *pm)
 }
 
 static void
-pm_mileage_info(pmc_t *pm)
+pm_mileage(pmc_t *pm)
 {
 	float		dTiH, Wh, Ah, total_Ah, fuel;
 
@@ -3043,6 +3018,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				&& pm->vsi_CF == 0) {
 
 			Q = .33333333f * (pm->fb_iA + pm->fb_iB + pm->fb_iC);
+
 			vA = pm->fb_iA - Q;
 			vB = pm->fb_iB - Q;
 
@@ -3074,6 +3050,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				&& pm->vsi_CF == 0) {
 
 			Q = .33333333f * (pm->fb_iA + pm->fb_iB + pm->fb_iC);
+
 			vA = pm->fb_iA - Q;
 			vB = pm->fb_iB - Q;
 
@@ -3115,16 +3092,11 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		}
 	}
 
-	/* This fallback makes possible the use of TVM voltages in case of
-	 * no TVM capable hardware or TVM is not enabled.
-	 * */
-	pm->tvm_DX = pm->vsi_DX;
-	pm->tvm_DY = pm->vsi_DY;
+	pm->tvm_X0 = pm->vsi_X0;
+	pm->tvm_Y0 = pm->vsi_Y0;
 
 	if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-		/* Save previous cycle voltages.
-		 * */
 		vA = pm->fb_uA;
 		vB = pm->fb_uB;
 		vC = pm->fb_uC;
@@ -3176,32 +3148,27 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
 
 				Q = .33333333f * (vA + vB + vC);
+
 				vA = vA - Q;
 				vB = vB - Q;
 
-				pm->tvm_DX = vA;
-				pm->tvm_DY = .57735027f * vA + 1.1547005f * vB;
+				pm->tvm_X0 = vA;
+				pm->tvm_Y0 = .57735027f * vA + 1.1547005f * vB;
 			}
 			else {
 				vA = vA - vC;
 				vB = vB - vC;
 
-				pm->tvm_DX = vA;
-				pm->tvm_DY = vB;
+				pm->tvm_X0 = vA;
+				pm->tvm_Y0 = vB;
 			}
 		}
 	}
 
-	/* Get SENSOR values.
-	 * */
 	pm->fb_SIN = fb->analog_SIN;
 	pm->fb_COS = fb->analog_COS;
 	pm->fb_HS = fb->pulse_HS;
 	pm->fb_EP = fb->pulse_EP;
-
-	/* Main FSM is used to execute external commands.
-	 * */
-	pm_FSM(pm);
 
 	if (pm->lu_MODE != PM_LU_DISABLED) {
 
@@ -3223,6 +3190,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				pm_loop_location(pm);
 				pm_loop_speed(pm);
 			}
+
+			/* Wattage calculation.
+			 * */
+			pm_wattage(pm);
 
 			/* Current loop is always enabled.
 			 * */
@@ -3249,7 +3220,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 			/* To collect mileage information.
 			 * */
-			pm_mileage_info(pm);
+			pm_mileage(pm);
 		}
 
 		if (m_isfinitef(pm->lu_F[0]) == 0) {
@@ -3258,5 +3229,9 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm->fsm_state = PM_STATE_HALT;
 		}
 	}
+
+	/* The FSM is used to execute assistive routines.
+	 * */
+	pm_FSM(pm);
 }
 

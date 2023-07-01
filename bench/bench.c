@@ -151,6 +151,9 @@ tlm_plot_grab()
 	fmt_GP(pm.tvm_B, "V");
 	fmt_GP(pm.tvm_C, "V");
 
+	fmt_GP(pm.tvm_X0, "V");
+	fmt_GP(pm.tvm_Y0, "V");
+
 	fmt_GP(pm.lu_MODE, 0);
 	fmk_GP(pm.lu_mq_load, pm.const_Zp, "Nm");
 
@@ -357,13 +360,22 @@ void bench_script()
 	blm_restart(&m);
 	tlm_restart();
 
-	m.Rs = 0.205;
-	m.Ld = 2E-3;
-	m.Lq = 2E-3;
-	m.Udc = 32.;
+	/*m.Rs = 0.202;
+	m.Ld = 700E-6;
+	m.Lq = 700E-6;
+	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 1;
-	m.lambda = blm_Kv_lambda(&m, 70.);
+	m.lambda = blm_Kv_lambda(&m, 71.);
+	m.Jm = 3.E-4;*/
+
+	m.Rs = 14.E-3;
+	m.Ld = 10.E-6;
+	m.Lq = 15.E-6;
+	m.Udc = 25.;
+	m.Rdc = 0.1;
+	m.Zp = 14;
+        m.lambda = blm_Kv_lambda(&m, 270.);
 	m.Jm = 3.E-4;
 
 	ts_script_base();
@@ -371,12 +383,14 @@ void bench_script()
 	blm_restart(&m);
 	//tlm_restart();
 
+	//pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
 	sim_runtime(.1);
 
-	pm.s_setpoint_speed = 400.f;
+	pm.s_setpoint_speed = 800.f;
 	sim_runtime(1.);
 
 	pm.s_setpoint_speed = 2000.f;

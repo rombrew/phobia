@@ -44,7 +44,8 @@ enum {
 };
 
 enum {
-	PM_SALIENCY_NEGATIVE			= 0,
+	PM_SALIENCY_NONE			= 0,
+	PM_SALIENCY_NEGATIVE,
 	PM_SALIENCY_POSITIVE
 };
 
@@ -228,7 +229,7 @@ typedef struct {
 	float		ts_inverted;
 
 	float		self_BST[3];
-	int		self_BM[8];
+	int		self_IST[8];
 	float		self_STDi[3];
 	float		self_RMSi[3];
 	float		self_RMSu[4];
@@ -239,7 +240,6 @@ typedef struct {
 
 	int		config_VSI_ZERO;
 	int		config_VSI_CLAMP;
-	int		config_VSI_STRICT;
 	int		config_LU_FORCED;
 	int		config_LU_ESTIMATE;
 	int		config_LU_SENSOR;
@@ -334,8 +334,8 @@ typedef struct {
 	float		vsi_lpf_DC;
 	float		vsi_X;
 	float		vsi_Y;
-	float		vsi_DX;
-	float		vsi_DY;
+	float		vsi_X0;
+	float		vsi_Y0;
 	float		vsi_gain_LP;
 	int		vsi_mask_XF;
 
@@ -351,7 +351,6 @@ typedef struct {
 	int		vsi_AT;
 	int		vsi_BT;
 	int		vsi_CT;
-	int		vsi_XT;
 	int		vsi_AQ;
 	int		vsi_BQ;
 	int		vsi_CQ;
@@ -364,8 +363,8 @@ typedef struct {
 	float		tvm_FIR_A[3];
 	float		tvm_FIR_B[3];
 	float		tvm_FIR_C[3];
-	float		tvm_DX;
-	float		tvm_DY;
+	float		tvm_X0;
+	float		tvm_Y0;
 
 	int		lu_MODE;
 
@@ -373,6 +372,8 @@ typedef struct {
 	float		lu_iY;
 	float		lu_iD;
 	float		lu_iQ;
+	float		lu_uD;
+	float		lu_uQ;
 	float		lu_F[3];
 	float		lu_wS;
 	float		lu_location;
@@ -381,7 +382,7 @@ typedef struct {
 	int		lu_total_revol;
 	float		lu_rate;
 	float		lu_mq_load;
-	float		lu_last_wS;
+	float		lu_wS0;
 	float		lu_gain_mq_LP;
 
 	int		base_TIM;
@@ -398,7 +399,7 @@ typedef struct {
 	float		forced_maximal_DC;
 
 	int		detach_TIM;
-	float		detach_voltage;
+	float		detach_threshold;
 	float		detach_trip_AP;
 	float		detach_gain_SF;
 

@@ -1,9 +1,9 @@
 #ifndef _H_TLM_
 #define _H_TLM_
 
-#include "regfile.h"
+#include <stdint.h>
 
-#define TLM_DATA_MAX		2000
+#define TLM_DATA_MAX		5000
 #define TLM_INPUT_MAX		10
 
 enum {
@@ -21,13 +21,15 @@ typedef struct {
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 
-	reg_value_t	data[TLM_DATA_MAX][TLM_INPUT_MAX];
-
 	int		span;
 	int		clock;
 
 	int		skip;
-	int		N;
+	int		line;
+
+	/* The memory to keep telemetry.
+	 * */
+	uint16_t	vm[TLM_DATA_MAX][TLM_INPUT_MAX];
 }
 tlm_t;
 

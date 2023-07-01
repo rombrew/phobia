@@ -152,7 +152,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(pm->dc_resolution, 0, 0);
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -164,14 +164,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 3:
 			if (m_fabsf(pm->fb_uA - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->self_BST[0] += 1.f;
 			}
 			else {
-				pm->vsi_XT++;
+				pm->vsi_BT++;
 
-				if (pm->vsi_XT >= pm->vsi_AT) {
+				if (pm->vsi_BT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -200,7 +200,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(0, pm->dc_resolution, 0);
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -212,14 +212,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 5:
 			if (m_fabsf(pm->fb_uB - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->self_BST[1] += 1.f;
 			}
 			else {
-				pm->vsi_XT++;
+				pm->vsi_BT++;
 
-				if (pm->vsi_XT >= pm->vsi_AT) {
+				if (pm->vsi_BT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -248,7 +248,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->proc_set_DC(0, 0, pm->dc_resolution);
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -260,14 +260,14 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 		case 7:
 			if (m_fabsf(pm->fb_uC - pm->const_fb_U) < pm->fault_voltage_tol) {
 
-				pm->vsi_XT = 0;
+				pm->vsi_BT = 0;
 
 				pm->self_BST[2] += 1.f;
 			}
 			else {
-				pm->vsi_XT++;
+				pm->vsi_BT++;
 
-				if (pm->vsi_XT >= pm->vsi_AT) {
+				if (pm->vsi_BT >= pm->vsi_AT) {
 
 					pm->tm_value = pm->tm_end;
 				}
@@ -300,7 +300,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 	lse_float_t		v[4];
 
 	float			uA, uB, uC, tol;
-	int			xBM;
+	int			xIST;
 
 	switch (pm->fsm_phase) {
 
@@ -402,14 +402,14 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			uB = ls->sol.m[1];
 			uC = ls->sol.m[2];
 
-			xBM  = (m_fabsf(uA - pm->const_fb_U) < tol) ? 1U
+			xIST  = (m_fabsf(uA - pm->const_fb_U) < tol) ? 1U
 				: (m_fabsf(uA) < tol) ? 0U : 0x10U;
-			xBM |= (m_fabsf(uB - pm->const_fb_U) < tol) ? 2U
+			xIST |= (m_fabsf(uB - pm->const_fb_U) < tol) ? 2U
 				: (m_fabsf(uB) < tol) ? 0U : 0x20U;
-			xBM |= (m_fabsf(uC - pm->const_fb_U) < tol) ? 4U
+			xIST |= (m_fabsf(uC - pm->const_fb_U) < tol) ? 4U
 				: (m_fabsf(uC) < tol) ? 0U : 0x40U;
 
-			pm->self_BM[pm->fsm_subi] = xBM;
+			pm->self_IST[pm->fsm_subi] = xIST;
 
 			if (pm->fsm_subi < 6) {
 
@@ -422,21 +422,21 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			break;
 
 		case 5:
-			if (		   pm->self_BM[1] == 7U
-					&& pm->self_BM[2] == 0U
-					&& pm->self_BM[3] == 7U
-					&& pm->self_BM[4] == 0U
-					&& pm->self_BM[5] == 7U
-					&& pm->self_BM[6] == 0U) {
+			if (		   pm->self_IST[1] == 7U
+					&& pm->self_IST[2] == 0U
+					&& pm->self_IST[3] == 7U
+					&& pm->self_IST[4] == 0U
+					&& pm->self_IST[5] == 7U
+					&& pm->self_IST[6] == 0U) {
 
 				pm->fsm_errno = PM_OK;
 			}
-			else if (	   (pm->self_BM[1] & 0x11U) == 1U
-					&& (pm->self_BM[2] & 0x11U) == 0U
-					&& (pm->self_BM[3] & 0x22U) == 2U
-					&& (pm->self_BM[4] & 0x22U) == 0U
-					&& (pm->self_BM[5] & 0x44U) == 4U
-					&& (pm->self_BM[6] & 0x44U) == 0U) {
+			else if (	   (pm->self_IST[1] & 0x11U) == 1U
+					&& (pm->self_IST[2] & 0x11U) == 0U
+					&& (pm->self_IST[3] & 0x22U) == 2U
+					&& (pm->self_IST[4] & 0x22U) == 0U
+					&& (pm->self_IST[5] & 0x44U) == 4U
+					&& (pm->self_IST[6] & 0x44U) == 0U) {
 
 				pm->fsm_errno = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
@@ -1138,11 +1138,11 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 
 	/* The primary impedance equation is \Z * \I = \U,
 	 *
-	 * [R - jZ(0)      jZ(1)] * [IX] = [UX]
-	 * [    jZ(1)  R - jZ(2)]   [IY]   [UY], where
+	 * [R - iZ(0)      iZ(1)] * [IX] = [UX]
+	 * [    iZ(1)  R - iZ(2)]   [IY]   [UY], where
 	 *
-	 * IX = [DFT(0) + jDFT(1)],  UX = [DFT(2) + jDFT(3)],
-	 * IY = [DFT(4) + jDFT(5)],  UY = [DFT(6) + jDFT(7)].
+	 * IX = [DFT(0) + iDFT(1)],  UX = [DFT(2) + iDFT(3)],
+	 * IY = [DFT(4) + iDFT(5)],  UY = [DFT(6) + iDFT(7)].
 	 *
 	 * We rewrite it with respect to the impedance components.
 	 *
@@ -1196,16 +1196,31 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	Z[1] = ls->sol.m[2] * iW;
 	Z[2] = ls->sol.m[3] * iW;
 
-	m_la_eigf(Z, la, (pm->config_SALIENCY == PM_SALIENCY_POSITIVE) ? 1 : 0);
+	if (pm->config_SALIENCY == PM_SALIENCY_NEGATIVE) {
+
+		m_la_eigf(Z, la, 0);
+	}
+	else if (pm->config_SALIENCY == PM_SALIENCY_POSITIVE) {
+
+		m_la_eigf(Z, la, 1);
+	}
+	else {
+		la[0] = 1.f;
+		la[1] = 0.f;
+		la[2] = (Z[0] + Z[2]) / 2.f;
+		la[3] = la[2];
+	}
 }
 
 static void
-pm_fsm_probe_loop_current(pmc_t *pm, float track_D, float track_Q, float track_HF)
+pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 {
 	float		eD, eQ, eHF, uD, uQ, uHF, uMAX;
 
-	eD = track_D - pm->lu_iX;
-	eQ = track_Q - pm->lu_iY;
+	eD = pm->i_track_D - pm->lu_iX;
+	eQ = pm->i_track_Q - pm->lu_iY;
+
+	uMAX = pm->k_UMAX * pm->const_fb_U;
 
 	if (track_HF > M_EPS_F) {
 
@@ -1213,6 +1228,9 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_D, float track_Q, float track_H
 
 		pm->probe_HF_lpf_track += (eHF - pm->probe_HF_lpf_track) * pm->probe_LP;
 		pm->probe_HF_integral += pm->probe_gain_I * pm->probe_HF_lpf_track;
+
+		pm->probe_HF_integral = (pm->probe_HF_integral > uMAX) ? uMAX
+			: (pm->probe_HF_integral < - uMAX) ? - uMAX : pm->probe_HF_integral;
 
 		uHF = pm->probe_gain_P * pm->probe_HF_lpf_track + pm->probe_HF_integral;
 	}
@@ -1222,8 +1240,6 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_D, float track_Q, float track_H
 
 	pm->i_integral_Q += pm->probe_gain_I * eQ;
 	uQ = pm->probe_gain_P * eQ + pm->i_integral_Q;
-
-	uMAX = pm->k_UMAX * pm->const_fb_U;
 
 	if (		m_fabsf(pm->i_integral_D) > uMAX
 			&& m_fabsf(pm->lu_iX) < pm->fault_current_tol) {
@@ -1298,7 +1314,7 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			pm->i_track_Q = pm->probe_TEMP[1] * ramp_A;
 
 		case 2:
-			pm_fsm_probe_loop_current(pm, pm->i_track_D, pm->i_track_Q, 0.f);
+			pm_fsm_probe_loop_current(pm, 0.f);
 
 			if (pm->fsm_errno != PM_OK)
 				break;
@@ -1327,12 +1343,12 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 				+ pm->probe_TEMP[1] * pm->lu_iY;
 
 			v[1] = 1.f;
-			v[2] = pm->probe_TEMP[0] * pm->tvm_DX
-				+ pm->probe_TEMP[1] * pm->tvm_DY;
+			v[2] = pm->probe_TEMP[0] * pm->tvm_X0
+				+ pm->probe_TEMP[1] * pm->tvm_Y0;
 
 			lse_insert(ls, v);
 
-			pm_fsm_probe_loop_current(pm, pm->i_track_D, pm->i_track_Q, 0.f);
+			pm_fsm_probe_loop_current(pm, 0.f);
 
 			if (pm->fsm_errno != PM_OK)
 				break;
@@ -1449,8 +1465,8 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			iX = pm->probe_TEMP[0];
 			iY = pm->probe_TEMP[1];
 
-			uX = pm->tvm_DX * pm->probe_SC[0] + pm->tvm_DY * pm->probe_SC[1];
-			uY = pm->tvm_DY * pm->probe_SC[0] - pm->tvm_DX * pm->probe_SC[1];
+			uX = pm->tvm_X0 * pm->probe_SC[0] + pm->tvm_Y0 * pm->probe_SC[1];
+			uY = pm->tvm_Y0 * pm->probe_SC[0] - pm->tvm_X0 * pm->probe_SC[1];
 
 			m_rsumf(&pm->probe_DFT[0], &pm->probe_REM[0], iX * pm->hfi_wave[0]);
 			m_rsumf(&pm->probe_DFT[1], &pm->probe_REM[1], iX * pm->hfi_wave[1]);
@@ -1465,8 +1481,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_TEMP[0] = pm->lu_iX;
 			pm->probe_TEMP[1] = pm->lu_iY;
 
-			pm_fsm_probe_loop_current(pm, pm->i_track_D, pm->i_track_Q,
-					pm->probe_current_sine);
+			pm_fsm_probe_loop_current(pm, pm->probe_current_sine);
 
 			if (pm->fsm_errno != PM_OK)
 				break;
@@ -1536,8 +1551,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->vsi_lpf_DC = 0.f;
 				pm->vsi_X = 0.f;
 				pm->vsi_Y = 0.f;
-				pm->vsi_DX = 0.f;
-				pm->vsi_DY = 0.f;
+				pm->vsi_X0 = 0.f;
+				pm->vsi_Y0 = 0.f;
 
 				pm_clearance(pm, 0, 0, 0);
 				pm_clearance(pm, 0, 0, 0);
@@ -1545,7 +1560,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->vsi_AT = 0;
 				pm->vsi_BT = 0;
 				pm->vsi_CT = 0;
-				pm->vsi_XT = 0;
 
 				pm->lu_MODE = PM_LU_DETACHED;
 
@@ -1553,6 +1567,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->lu_iY = 0.f;
 				pm->lu_iD = 0.f;
 				pm->lu_iQ = 0.f;
+				pm->lu_uD = 0.f;
+				pm->lu_uQ = 0.f;
 				pm->lu_F[0] = 1.f;
 				pm->lu_F[1] = 0.f;
 				pm->lu_F[2] = 0.f;
@@ -1561,7 +1577,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->lu_revol = 0;
 				pm->lu_revob = 0;
 				pm->lu_mq_load = 0.f;
-				pm->lu_last_wS = 0.f;
+				pm->lu_wS0 = 0.f;
 
 				pm->base_TIM = 0;
 				pm->hold_TIM = 0;

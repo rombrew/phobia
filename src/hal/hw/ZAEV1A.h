@@ -1,7 +1,7 @@
 #define HW_MCU_STM32F405
 
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_NTC_MOTOR
+#define HW_HAVE_NTC_MACHINE
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
@@ -21,13 +21,15 @@
 
 #define HW_ADC_VOLTAGE_R1		39000.f
 #define HW_ADC_VOLTAGE_R2		2200.f
-#define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
+#define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3380.f			/* unknown part */
+
+#define HW_NTC_EXT_BALANCE		10000.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('C', 0, 10)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('C', 1, 11)

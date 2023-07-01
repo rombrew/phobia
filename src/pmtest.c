@@ -23,6 +23,8 @@ SH_DEF(pm_self_test)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_SCALE_IA0]);
 		reg_format(&regfile[ID_PM_SCALE_IB0]);
@@ -38,13 +40,11 @@ SH_DEF(pm_self_test)
 			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_BST]);
-			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_SELF_BM]);
-			reg_format(&regfile[ID_PM_FSM_ERRNO]);
+			reg_format(&regfile[ID_PM_SELF_IST]);
 
 			if (		pm.fsm_errno == PM_ERROR_NO_MOTOR_CONNECTED
 					|| pm.fsm_errno == PM_OK) ;
@@ -82,6 +82,8 @@ SH_DEF(pm_self_test)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_self_adjust)
@@ -95,6 +97,8 @@ SH_DEF(pm_self_adjust)
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
+
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_SCALE_IA0]);
@@ -139,6 +143,8 @@ SH_DEF(pm_self_adjust)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_self_tvm_ramp)

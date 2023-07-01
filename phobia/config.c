@@ -214,6 +214,6 @@ void config_default(struct config_phobia *fe)
 	strcpy(fe->fuzzy, "setpoint");
 
 	fe->tlmrate = 1000;
-	fe->regmaxn = 466;
+	fe->regmaxn = 467;
 }
 

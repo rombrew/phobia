@@ -4,7 +4,7 @@
 #include "libc.h"
 
 #ifndef GPIO_SPI1_NSS
-#define GPIO_SPI1_NSS			XGPIO_DEF4('A', 4, 4, 5)
+#define GPIO_SPI1_NSS			XGPIO_DEF2('A', 15)
 #endif /* GPIO_SPI1_NSS */
 
 #ifndef GPIO_SPI1_SCK
@@ -24,7 +24,7 @@
 #endif /* GPIO_SPI2_SCK */
 
 #ifndef GPIO_SPI3_NSS
-#define GPIO_SPI3_NSS			XGPIO_DEF2('C', 9)
+#define GPIO_SPI3_NSS			XGPIO_DEF2('A', 15)
 #endif /* GPIO_SPI3_NSS */
 
 #ifndef GPIO_SPI3_SCK

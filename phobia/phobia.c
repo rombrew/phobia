@@ -32,7 +32,7 @@ enum {
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
 	POPUP_SYSTEM_BOOTLOAD,
-	POPUP_TELEMETRY_FLUSH
+	POPUP_TELEMETRY_GRAB
 };
 
 enum {
@@ -391,7 +391,7 @@ pub_get_popup_bounds_full(struct public *pub)
 }
 
 static void
-pub_popup_message(struct public *pub, int popup, const char *title)
+pub_popup_message(struct public *pub, int popup, const char *msg)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -413,7 +413,7 @@ pub_popup_message(struct public *pub, int popup, const char *title)
 		nk_layout_row_template_end(ctx);
 
 		nk_spacer(ctx);
-		nk_label_wrap(ctx, title);
+		nk_label_wrap(ctx, msg);
 		nk_spacer(ctx);
 
 		nk_layout_row_template_begin(ctx, 0);
@@ -481,7 +481,7 @@ pub_popup_progress(struct public *pub, int popup, const char *title, int pce)
 }
 
 static int
-pub_popup_ok_cancel(struct public *pub, int popup, const char *title)
+pub_popup_ok_cancel(struct public *pub, int popup, const char *msg)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
@@ -505,7 +505,7 @@ pub_popup_ok_cancel(struct public *pub, int popup, const char *title)
 		nk_layout_row_template_end(ctx);
 
 		nk_spacer(ctx);
-		nk_label_wrap(ctx, title);
+		nk_label_wrap(ctx, msg);
 		nk_spacer(ctx);
 
 		nk_layout_row_template_begin(ctx, 0);
@@ -612,7 +612,7 @@ pub_open_GP(struct public *pub, const char *file)
 }
 
 static void
-pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
+pub_popup_telemetry_grab(struct public *pub, int popup)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -629,7 +629,7 @@ pub_popup_telemetry_flush(struct public *pub, int popup, const char *title)
 
 	bounds = pub_get_popup_bounds_full(pub);
 
-	if (nk_popup_begin(ctx, NK_POPUP_STATIC, title, NK_WINDOW_CLOSABLE
+	if (nk_popup_begin(ctx, NK_POPUP_STATIC, " ", NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
 		struct link_reg			*reg_tlm;
@@ -2048,7 +2048,7 @@ page_serial(struct public *pub)
 		}
 
 		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Loading ...", link_pce);
+				"Reading", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2064,19 +2064,23 @@ page_diagnose(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Test", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-                if (nk_menu_item_label(ctx, "Self Test", NK_TEXT_LEFT)) {
+                if (nk_menu_item_label(ctx, "Integrity self-test", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_self_test");
 		}
 
-		if (nk_menu_item_label(ctx, "Self Adjust", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Board self-adjustment", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_self_adjust");
 		}
@@ -2085,7 +2089,7 @@ page_diagnose(struct public *pub)
 	}
 
 	if (nk_menu_begin_label(ctx, "Debug", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
@@ -2109,7 +2113,7 @@ page_diagnose(struct public *pub)
 			link_command(pub->lp, pub->lbuf);
 		}
 
-		if (nk_menu_item_label(ctx, "Stop DBGMCU", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Set DBGMCU stop", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "hal_DBGMCU_mode_stop");
 		}
@@ -2117,6 +2121,7 @@ page_diagnose(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -2128,7 +2133,7 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.scale_iB0", "B sensor drift");
 	reg_float(pub, "pm.scale_iC0", "C sensor drift");
 	reg_text_large(pub, "pm.self_BST", "Bootstrap retention time");
-	reg_text_large(pub, "pm.self_BM", "Self test result");
+	reg_text_large(pub, "pm.self_IST", "Self test result");
 	reg_text_large(pub, "pm.self_STDi", "Current noise STD");
 	reg_text_large(pub, "pm.self_RMSi", "Current sensor RMS");
 	reg_text_large(pub, "pm.self_RMSu", "Voltage sensor RMS");
@@ -2149,7 +2154,7 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is in service");
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is useable");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
@@ -2197,24 +2202,28 @@ page_probe(struct public *pub)
 	int				config_LU_DRIVE = 1;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Probe", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-                if (nk_menu_item_label(ctx, "Probe Impedance", NK_TEXT_LEFT)) {
+                if (nk_menu_item_label(ctx, "AC impedance probing", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_impedance");
 		}
 
-		if (nk_menu_item_label(ctx, "Probe Spinup", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "KV spinup probing", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_spinup");
 		}
 
-		if (nk_menu_item_label(ctx, "Probe Detached", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "KV detached probing", NK_TEXT_LEFT)) {
 
 			if (pub->lp->linked != 0) {
 
@@ -2222,28 +2231,24 @@ page_probe(struct public *pub)
 			}
 		}
 
-		nk_layout_row_dynamic(ctx, pub->fe_base / 2, 1);
-		nk_label_colored(ctx, "----------------------------------------------",
-				NK_TEXT_LEFT, nk->table[NK_COLOR_HIDDEN]);
+		nk_spacer(ctx);
 
-		nk_layout_row_dynamic(ctx, 0, 1);
-
-		if (nk_menu_item_label(ctx, "Probe Resistance", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "DC resistance probing", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_const_resistance");
 		}
 
-		if (nk_menu_item_label(ctx, "Probe Flux Linkage", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "KV flux linkage", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_const_flux_linkage");
 		}
 
-		if (nk_menu_item_label(ctx, "Probe Inertia", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "JA inertia probing", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_const_inertia");
 		}
 
-		if (nk_menu_item_label(ctx, "Probe Noise", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "NT noise threshold", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_probe_noise_threshold");
 		}
@@ -2252,11 +2257,11 @@ page_probe(struct public *pub)
 	}
 
 	if (nk_menu_begin_label(ctx, "Config", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Default Machine", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default machine", NK_TEXT_LEFT)) {
 
 			if (pub->lp->linked != 0) {
 
@@ -2267,6 +2272,7 @@ page_probe(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	if (pub_popup_ok_cancel(pub, POPUP_PROBE_DETACHED,
@@ -2772,7 +2778,7 @@ page_in_network(struct public *pub)
 		}
 
 		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Loading ...", link_pce);
+				"Reading", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3013,13 +3019,13 @@ page_thermal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.tpro_PCB_temp_halt", "Halt threshold (PCB)");
-	reg_float(pub, "ap.tpro_PCB_temp_derate", "Derate threshold (PCB)");
-	reg_float(pub, "ap.tpro_PCB_temp_FAN", "Fan ON threshold (PCB)");
-	reg_float(pub, "ap.tpro_EXT_temp_derate", "Derate threshold (EXT)");
-	reg_float(pub, "ap.tpro_derated_PCB", "Derated current (PCB)");
-	reg_float(pub, "ap.tpro_derated_EXT", "Derated current (EXT)");
-	reg_float(pub, "ap.tpro_temp_recovery", "Thermal recovery hysteresis");
+	reg_float(pub, "ap.oh_PCB_temp_halt", "Halt threshold (PCB)");
+	reg_float(pub, "ap.oh_PCB_temp_derate", "Derate threshold (PCB)");
+	reg_float(pub, "ap.oh_PCB_temp_FAN", "Fan ON threshold (PCB)");
+	reg_float(pub, "ap.oh_EXT_temp_derate", "Derate threshold (EXT)");
+	reg_float(pub, "ap.oh_derated_PCB", "Derated current (PCB)");
+	reg_float(pub, "ap.oh_derated_EXT", "Derated current (EXT)");
+	reg_float(pub, "ap.oh_temp_recovery", "Recovery hysteresis");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3035,14 +3041,18 @@ page_config(struct public *pub)
 	struct link_reg			*reg;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Default Configuration", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default configuration", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -3053,6 +3063,7 @@ page_config(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3077,7 +3088,6 @@ page_config(struct public *pub)
 
 	reg_enum_combo(pub, "pm.config_VSI_ZERO", "Zero sequence modulation", 1);
 	reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
-	reg_enum_toggle(pub, "pm.config_VSI_STRICT", "Strict rules of clearance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3174,7 +3184,7 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is in service");
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is useable");
 	reg_float(pub, "pm.tvm_clean_zone", "TVM clean zone");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3223,7 +3233,7 @@ page_lu_flux(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_float(pub, "pm.detach_voltage", "Detached threshold");
+	reg_float(pub, "pm.detach_threshold", "Detached threshold");
 	reg_float(pub, "pm.detach_trip_AP", "Detached trip point");
 	reg_float(pub, "pm.detach_gain_SF", "Detached speed loop gain");
 
@@ -3391,19 +3401,23 @@ page_lu_hall(struct public *pub)
 	int				m_drawing = pub->fe_def_size_x / 4;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Hall Adjust", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Hall adjustment", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp, "pm_adjust_sensor_hall");
 		}
 
-		if (nk_menu_item_label(ctx, "Default Hall", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Hall standard", NK_TEXT_LEFT)) {
 
 			/* TODO */
 		}
@@ -3411,6 +3425,7 @@ page_lu_hall(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3426,7 +3441,7 @@ page_lu_hall(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.hall_USEABLE", "Hall is in service");
+	reg_enum_toggle(pub, "pm.hall_USEABLE", "Hall is useable");
 	reg_float(pub, "pm.hall_trip_AP", "Hall speed trip point");
 	reg_float(pub, "pm.hall_gain_LO", "Hall speed gain LO");
 	reg_float(pub, "pm.hall_gain_SF", "Hall speed loop gain");
@@ -3720,25 +3735,27 @@ page_telemetry(struct public *pub)
 	struct link_reg			*reg;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-                if (nk_menu_item_label(ctx, "Telemetry Flush", NK_TEXT_LEFT)) {
+                if (nk_menu_item_label(ctx, "Telemetry grabbing", NK_TEXT_LEFT)) {
 
-			strcpy(pub->popup_msg, "Telemetry Flush");
-			pub->popup_enum = POPUP_TELEMETRY_FLUSH;
-
+			pub->popup_enum = POPUP_TELEMETRY_GRAB;
 			pub->telemetry.wait_GP = 0;
 
 			strcpy(pub->telemetry.file_grab, FILE_TELEMETRY_GRAB);
 			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
 		}
 
-		if (nk_menu_item_label(ctx, "Telemetry GP", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Background logging", NK_TEXT_LEFT)) {
 
 			if (pub->lp->linked != 0) {
 
@@ -3754,7 +3771,7 @@ page_telemetry(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "Default Telemetry", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default telemetry", NK_TEXT_LEFT)) {
 
 			if (pub->lp->linked != 0) {
 
@@ -3765,9 +3782,10 @@ page_telemetry(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
-	if (pub->popup_enum != POPUP_TELEMETRY_FLUSH) {
+	if (pub->popup_enum != POPUP_TELEMETRY_GRAB) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -3834,7 +3852,7 @@ page_telemetry(struct public *pub)
 		nk_spacer(ctx);
 	}
 
-	pub_popup_telemetry_flush(pub, POPUP_TELEMETRY_FLUSH, pub->popup_msg);
+	pub_popup_telemetry_grab(pub, POPUP_TELEMETRY_GRAB);
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
@@ -3859,20 +3877,24 @@ page_flash(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-                if (nk_menu_item_label(ctx, "Flash Program", NK_TEXT_LEFT)) {
+                if (nk_menu_item_label(ctx, "Flash program", NK_TEXT_LEFT)) {
 
 			link_command(pub->lp,	"flash_prog" "\r\n"
 						"flash_info");
 		}
 
-		if (nk_menu_item_label(ctx, "Flash Wipe", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Flash wipe", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -3891,6 +3913,7 @@ page_flash(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	if (pub_popup_ok_cancel(pub, POPUP_FLASH_WIPE,
@@ -3977,14 +4000,18 @@ page_upgrade(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
 
 	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
-				nk_vec2(pub->fe_base * 16, 400)))
+				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Embedded Bootloader", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Embedded bootloader", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -3995,6 +4022,7 @@ page_upgrade(struct public *pub)
 		nk_menu_end(ctx);
 	}
 
+	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
 	if (pub_popup_ok_cancel(pub, POPUP_SYSTEM_BOOTLOAD,

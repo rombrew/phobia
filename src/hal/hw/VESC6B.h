@@ -8,7 +8,7 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_BRAKE_KNOB
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_NTC_MOTOR
+#define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_USB_CDC_ACM
 #define HW_HAVE_NETWORK_EPCAN
 
@@ -22,7 +22,7 @@
 #define HW_PWM_SKIP_ZONE		2.0f
 #define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* DRV8303 */
 
-#define HW_SPI_ID_ON_PCB		3
+#define HW_DRV_ID_ON_PCB		3
 
 #define HW_DRV_PARTNO			DRV_PART_DRV8303
 #define HW_DRV_GATE_CURRENT		0
@@ -36,7 +36,7 @@
 
 #define HW_ADC_VOLTAGE_R1		39000.f
 #define HW_ADC_VOLTAGE_R2		2200.f
-#define HW_ADC_VOLTAGE_BIAS_R3		1000000000000.f		/* have no bias */
+#define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
 #define HW_ADC_KNOB_R2			1000.f
@@ -46,6 +46,8 @@
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f
 #define HW_NTC_PCB_BETTA		3380.f			/* unknown part */
+
+#define HW_NTC_EXT_BALANCE		10000.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('C', 0, 10)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('C', 1, 11)
@@ -61,6 +63,11 @@
 
 #define GPIO_DRV_GATE_EN		XGPIO_DEF2('B', 5)
 #define GPIO_DRV_FAULT			XGPIO_DEF2('B', 7)
+
+#define GPIO_SPI3_NSS			XGPIO_DEF2('C', 9)
+#define GPIO_SPI3_SCK			XGPIO_DEF4('C', 10, 0, 6)
+#define GPIO_SPI3_MISO			XGPIO_DEF4('C', 11, 0, 6)
+#define GPIO_SPI3_MOSI			XGPIO_DEF4('C', 12, 0, 6)
 
 #define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)

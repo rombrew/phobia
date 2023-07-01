@@ -3,7 +3,7 @@
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_BRAKE_KNOB
 #define HW_HAVE_NTC_ON_PCB
-#define HW_HAVE_NTC_MOTOR
+#define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_USB_CDC_ACM
 #define HW_HAVE_NETWORK_EPCAN
 #define HW_HAVE_FAN_CONTROL
@@ -26,16 +26,18 @@
 
 #define HW_ADC_VOLTAGE_R1		800000.f
 #define HW_ADC_VOLTAGE_R2		27000.f
-#define HW_ADC_VOLTAGE_BIAS_R3		470000.f
+#define HW_ADC_VOLTAGE_R3		470000.f
 
 #define HW_ADC_KNOB_R1			5000.f
 #define HW_ADC_KNOB_R2			10000.f
 
-#define HW_NTC_PCB_TYPE			NTC_CMOS	/* LMT87 */
+#define HW_NTC_PCB_TYPE			NTC_LMT87
 #define HW_NTC_PCB_BALANCE		0.f
 #define HW_NTC_PCB_NTC0			0.f
-#define HW_NTC_PCB_TA0			194.1f
-#define HW_NTC_PCB_BETTA		- 242.7f
+#define HW_NTC_PCB_TA0			0.f
+#define HW_NTC_PCB_BETTA		0.f
+
+#define HW_NTC_EXT_BALANCE		10000.f
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 1, 1)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 2, 2)

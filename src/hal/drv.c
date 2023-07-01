@@ -19,8 +19,8 @@ DRV_read_reg(int addr)
 
 	txbuf = 0x8000U | ((addr & 0xFU) << 11);
 
-	SPI_transfer(HW_SPI_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
-	rxbuf = SPI_transfer(HW_SPI_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
+	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
+	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
 
 	fault = (rxbuf & 0x8000U) ? 1 : 0;
 	raddr = (rxbuf & 0x7800U) >> 11;
@@ -43,8 +43,8 @@ DRV_write_reg(int addr, int data)
 
 	txbuf = ((addr & 0xFU) << 11) | (data & 0x7FFU);
 
-	SPI_transfer(HW_SPI_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
-	rxbuf = SPI_transfer(HW_SPI_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
+	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
+	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
 
 	fault = (rxbuf & 0x8000U) ? 1 : 0;
 
@@ -93,7 +93,7 @@ DRV8303_startup()
 
 	vTaskDelay((TickType_t) 20);
 
-	SPI_startup(HW_SPI_ID_ON_PCB, HW_DRV_FREQUENCY, SPI_LOW_FALLING | SPI_SIZE_16);
+	SPI_startup(HW_DRV_ID_ON_PCB, HW_DRV_FREQUENCY, SPI_LOW_FALLING | SPI_SIZE_16);
 
 	DRV8303_configure();
 
@@ -118,7 +118,7 @@ void DRV_halt()
 
 		hal.DRV.device_ON = 0;
 
-		SPI_halt(HW_SPI_ID_ON_PCB);
+		SPI_halt(HW_DRV_ID_ON_PCB);
 
 		GPIO_set_LOW(hal.DRV.gpio_GATE_EN);
 

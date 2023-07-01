@@ -262,7 +262,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 
 	nk->table[NK_COLOR_BACKGROUND] = nk_rgba(40, 40, 45, 255);
 	nk->table[NK_COLOR_HIDDEN] = nk_rgba(50, 50, 55, 255);
-	nk->table[NK_COLOR_CONFIG] = nk_rgba(190, 210, 120, 255);
+	nk->table[NK_COLOR_CONFIG] = nk_rgba(210, 190, 120, 255);
 	nk->table[NK_COLOR_FLICKER_LIGHT] = nk_rgba(75, 75, 85, 255);
 	nk->table[NK_COLOR_FLICKER_ALERT] = nk_rgba(175, 45, 55, 255);
 	nk->table[NK_COLOR_ENABLED] = nk_rgba(45, 155, 55, 255);
@@ -273,6 +273,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 	nk->table[NK_COLOR_ACTIVE_HOVER] = nk_rgba(55, 135, 65, 255);
 	nk->table[NK_COLOR_MENU_BUTTON] = nk_rgba(50, 55, 65, 255);
 	nk->table[NK_COLOR_MENU_HOVER] = nk_rgba(70, 75, 85, 255);
+	nk->table[NK_COLOR_TEXT_HOVER] = nk_rgba(210, 110, 55, 255);
 	nk->table[NK_COLOR_DRAWING_PEN] = nk_rgba(90, 90, 95, 255);
 
 	nk_style_from_table(ctx, nk->table);
@@ -293,6 +294,8 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 
 	style->contextual_button.hover = style->menu_button.hover;
 	style->contextual_button.active = style->menu_button.active;
+	style->contextual_button.text_hover = nk->table[NK_COLOR_TEXT_HOVER];
+	style->contextual_button.padding = nk_vec2(4.0f, 4.0f);
 
 	style->checkbox.padding = nk_vec2(4.0f, 4.0f);
 	style->checkbox.spacing = 4.0f;

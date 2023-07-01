@@ -21,8 +21,7 @@ RM	= rm -rf
 #CROSS	= armv7m-none-eabi
 #CC	= clang -target $(CROSS)
 
-CFLAGS	= -O3 -flto=auto -g3 -pipe
-CFLAGS	+= -Wno-stringop-overflow
+CFLAGS	= -Os -flto=auto -g3 -pipe
 
 ifeq ($(HWMCU), STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
@@ -35,6 +34,7 @@ CFLAGS	+= -mfloat-abi=hard -mfpu=fpv5-sp-d16
 endif
 
 CFLAGS	+= -Wall -Wdouble-promotion
+CFLAGS	+= -Wno-stringop-overflow
 CFLAGS	+= -ffreestanding
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
@@ -49,7 +49,7 @@ CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
 	   -D_HW_INCLUDE=\"hal/hw/$(HWREV).h\"
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= -Wl,--no-warn-rwx-segment
+LDFLAGS	+= -Wl,--no-warn-rwx-segments
 LDFLAGS += -Wl,--print-memory-usage
 
 ifeq ($(HWMCU), STM32F405)

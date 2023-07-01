@@ -135,6 +135,8 @@ SH_DEF(pm_probe_impedance)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		reg_format(&regfile[ID_PM_CONST_FB_U]);
 		reg_format(&regfile[ID_PM_SCALE_IA0]);
 		reg_format(&regfile[ID_PM_SCALE_IB0]);
@@ -182,6 +184,8 @@ SH_DEF(pm_probe_impedance)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_spinup)
@@ -204,6 +208,8 @@ SH_DEF(pm_probe_spinup)
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
+
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
 		if (pm.const_lambda < M_EPS_F) {
 
@@ -300,6 +306,8 @@ SH_DEF(pm_probe_spinup)
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_detached)
@@ -315,6 +323,8 @@ SH_DEF(pm_probe_detached)
 
 		if (pm_wait_for_motion() != PM_OK)
 			break;
+
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -337,6 +347,8 @@ SH_DEF(pm_probe_detached)
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_const_resistance)
@@ -429,6 +441,8 @@ SH_DEF(pm_probe_const_flux_linkage)
 	}
 
 	do {
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 		if (pm_wait_for_idle() != PM_OK)
@@ -439,6 +453,8 @@ SH_DEF(pm_probe_const_flux_linkage)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_const_inertia)
@@ -458,6 +474,8 @@ SH_DEF(pm_probe_const_inertia)
 	}
 
 	do {
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
 		vTaskDelay((TickType_t) 100);
@@ -479,6 +497,8 @@ SH_DEF(pm_probe_const_inertia)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_noise_threshold)
@@ -496,6 +516,8 @@ SH_DEF(pm_probe_noise_threshold)
 	}
 
 	do {
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
 		if (pm_wait_for_idle() != PM_OK)
@@ -506,6 +528,8 @@ SH_DEF(pm_probe_noise_threshold)
 	while (0);
 
 	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_adjust_sensor_hall)
@@ -540,6 +564,8 @@ SH_DEF(pm_adjust_sensor_hall)
 			return;
 		}
 
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
 
 		if (pm_wait_for_idle() != PM_OK)
@@ -569,6 +595,8 @@ SH_DEF(pm_adjust_sensor_hall)
 
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_adjust_sensor_abi)

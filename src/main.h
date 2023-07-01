@@ -4,7 +4,6 @@
 #include "phobia/libm.h"
 #include "phobia/pm.h"
 
-#include "libc.h"
 #include "ntc.h"
 #include "tlm.h"
 
@@ -80,15 +79,15 @@ typedef struct {
 	float			temp_EXT;
 	float			temp_MCU;
 
-	/* Thermal protection.
+	/* Overheat protection.
 	 * */
-	float			tpro_PCB_temp_halt;
-	float			tpro_PCB_temp_derate;
-	float			tpro_PCB_temp_FAN;
-	float			tpro_EXT_temp_derate;
-	float			tpro_derated_PCB;
-	float			tpro_derated_EXT;
-	float			tpro_temp_recovery;
+	float			oh_PCB_temp_halt;
+	float			oh_PCB_temp_derate;
+	float			oh_PCB_temp_FAN;
+	float			oh_EXT_temp_derate;
+	float			oh_derated_PCB;
+	float			oh_derated_EXT;
+	float			oh_temp_recovery;
 
 	/* App enable knobs.
 	 * */

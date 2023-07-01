@@ -38,9 +38,9 @@ can set reverse limit of negative Q current.
 	(pmc) reg pm.i_reverse <A>
 
 Derated current constraint in case of PCB overheat (also look into other
-`ap.tpro` regs). Applicable to both D and Q axes.
+`ap.oh` regs). Applicable to both D and Q axes.
 
-	(pmc) reg ap.tpro_derated_PCB <A>
+	(pmc) reg ap.oh_derated_PCB <A>
 
 ## Wattage
 

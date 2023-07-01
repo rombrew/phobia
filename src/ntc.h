@@ -1,28 +1,28 @@
 #ifndef _H_NTC_
 #define _H_NTC_
 
-/* NTC measurement schematic
+/* Temperature measurement schematic (NTC on GND)
  *
-	            +------< vREF
+	            +------< VCC
 	            |
 	            |
 	           | |
-	           | | R_balance 10K (1%)
+	           | | R_balance
 	           |_|
 	            |               +---+
 	            |              /    |
-	            +--------+----- ADC |  U output (from 0 to 1)
+	            +--------+----- ADC |  U output
 	            |        |     \    |
 	            |        |      +---+
 	           | |       |
-	 R_ntc 10K |/|     -----
+	    R_ntc  |/|     -----
 	           |_|     -----
-	            |        |    C1 10nF
+	            |        |    C1
 	            |        |
 	            +--------+
 	            |
 	           ---
-	           \ /  AGND
+	           \ /  GND
 
 */
 
@@ -30,7 +30,8 @@ enum {
 	NTC_NONE		= 0,
 	NTC_GND,
 	NTC_VCC,
-	NTC_CMOS,
+	NTC_LMT87,
+	NTC_KTY84,
 };
 
 typedef struct {

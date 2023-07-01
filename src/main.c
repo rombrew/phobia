@@ -9,6 +9,7 @@
 #include "epcan.h"
 #endif /* HW_HAVE_NETWORK_EPCAN */
 #include "libc.h"
+#include "regfile.h"
 #include "shell.h"
 
 app_main_t			ap;
@@ -224,7 +225,7 @@ void task_TEMP(void *pData)
 			ap.temp_EXT = 0.f;
 		}
 
-		if (ap.temp_PCB > ap.tpro_PCB_temp_halt - lock_PCB) {
+		if (ap.temp_PCB > ap.oh_PCB_temp_halt - lock_PCB) {
 
 			x_PCB = 0.f;
 
@@ -234,16 +235,16 @@ void task_TEMP(void *pData)
 				pm.fsm_req = PM_STATE_HALT;
 			}
 
-			lock_PCB = ap.tpro_temp_recovery;
+			lock_PCB = ap.oh_temp_recovery;
 		}
 		else {
-			if (ap.temp_PCB > ap.tpro_PCB_temp_derate) {
+			if (ap.temp_PCB > ap.oh_PCB_temp_derate) {
 
 				/* Derate current in case of PCB thermal overload.
 				 * */
-				x_PCB = ap.tpro_derated_PCB;
+				x_PCB = ap.oh_derated_PCB;
 			}
-			else if (ap.temp_PCB < ap.tpro_PCB_temp_derate - ap.tpro_temp_recovery) {
+			else if (ap.temp_PCB < ap.oh_PCB_temp_derate - ap.oh_temp_recovery) {
 
 				x_PCB = PM_MAX_F;
 			}
@@ -254,26 +255,26 @@ void task_TEMP(void *pData)
 #ifdef HW_HAVE_FAN_CONTROL
 		/* Enable FAN in case of PCB is warm enough.
 		 * */
-		if (ap.temp_PCB > ap.tpro_PCB_temp_FAN) {
+		if (ap.temp_PCB > ap.oh_PCB_temp_FAN) {
 
 			GPIO_set_state_FAN(PM_ENABLED);
 		}
-		else if (ap.temp_PCB < ap.tpro_PCB_temp_FAN - ap.tpro_temp_recovery) {
+		else if (ap.temp_PCB < ap.oh_PCB_temp_FAN - ap.oh_temp_recovery) {
 
 			GPIO_set_state_FAN(PM_DISABLED);
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
-		if (ap.tpro_EXT_temp_derate > M_EPS_F) {
+		if (ap.oh_EXT_temp_derate > M_EPS_F) {
 
-			if (ap.temp_EXT > ap.tpro_EXT_temp_derate) {
+			if (ap.temp_EXT > ap.oh_EXT_temp_derate) {
 
 				/* Derate current in case of external thermal
 				 * overload (motor overheat).
 				 * */
-				x_EXT = ap.tpro_derated_EXT;
+				x_EXT = ap.oh_derated_EXT;
 			}
-			else if (ap.temp_EXT < ap.tpro_EXT_temp_derate - ap.tpro_temp_recovery) {
+			else if (ap.temp_EXT < ap.oh_EXT_temp_derate - ap.oh_temp_recovery) {
 
 				x_EXT = PM_MAX_F;
 			}
@@ -524,7 +525,7 @@ void task_KNOB(void *pData)
 static void
 default_flash_load()
 {
-	float			vm_D, halt_I, halt_U;
+	float			volt_D, halt_I, halt_U;
 
 	hal.USART_baud_rate = 57600;
 
@@ -535,13 +536,13 @@ default_flash_load()
 	hal.ADC_amplifier_gain = HW_ADC_AMPLIFIER_GAIN;
 	hal.ADC_voltage_ratio = HW_ADC_VOLTAGE_R2 / (HW_ADC_VOLTAGE_R1 + HW_ADC_VOLTAGE_R2);
 
-	vm_D =    HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2
-		+ HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_BIAS_R3
-		+ HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_BIAS_R3;
+	volt_D =  HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2
+		+ HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_R3
+		+ HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R3;
 
-	hal.ADC_terminal_ratio = HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_BIAS_R3 / vm_D;
+	hal.ADC_terminal_ratio = HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_R3 / volt_D;
 	hal.ADC_terminal_bias = HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2
-				* hal.ADC_reference_voltage / vm_D;
+				* hal.ADC_reference_voltage / volt_D;
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	hal.ADC_knob_ratio = HW_ADC_KNOB_R2 / (HW_ADC_KNOB_R1 + HW_ADC_KNOB_R2);
@@ -634,22 +635,22 @@ default_flash_load()
 	ap.ntc_PCB.betta = HW_NTC_PCB_BETTA;
 #endif /* HW_HAVE_NTC_ON_PCB */
 
-#ifdef HW_HAVE_NTC_MOTOR
+#ifdef HW_HAVE_NTC_MACHINE
 	ap.ntc_EXT.type = NTC_GND;
 	ap.ntc_EXT.gpio = GPIO_ADC_NTC_EXT;
-	ap.ntc_EXT.balance = 10000.f;
+	ap.ntc_EXT.balance = HW_NTC_EXT_BALANCE;
 	ap.ntc_EXT.ntc0 = 10000.f;
 	ap.ntc_EXT.ta0 = 25.f;
 	ap.ntc_EXT.betta = 3380.f;
-#endif /* HW_HAVE_NTC_MOTOR */
+#endif /* HW_HAVE_NTC_MACHINE */
 
-	ap.tpro_PCB_temp_halt = 110.f;
-	ap.tpro_PCB_temp_derate = 90.f;
-	ap.tpro_PCB_temp_FAN = 50.f;
-	ap.tpro_EXT_temp_derate = 0.f;
-	ap.tpro_derated_PCB = 20.f;
-	ap.tpro_derated_EXT = 20.f;
-	ap.tpro_temp_recovery = 5.f;
+	ap.oh_PCB_temp_halt = 110.f;
+	ap.oh_PCB_temp_derate = 90.f;
+	ap.oh_PCB_temp_FAN = 50.f;
+	ap.oh_EXT_temp_derate = 0.f;
+	ap.oh_derated_PCB = 20.f;
+	ap.oh_derated_EXT = 20.f;
+	ap.oh_temp_recovery = 5.f;
 
 	ap.adc_load_scale[0] = 0.f;
 	ap.adc_load_scale[1] = 4.65E-6f;
@@ -1194,7 +1195,7 @@ SH_DEF(rtos_heap_info)
 			heapinfo.xAvailableHeapSpaceInBytes,
 			heapinfo.xMinimumEverFreeBytesRemaining);
 
-	printf("Diag     %6i %6i %6i %6i %6i" EOL,
+	printf("         %6i %6i %2i %2i %2i" EOL,
 			heapinfo.xSizeOfLargestFreeBlockInBytes,
 			heapinfo.xSizeOfSmallestFreeBlockInBytes,
 			heapinfo.xNumberOfFreeBlocks,
