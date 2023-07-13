@@ -95,8 +95,6 @@ int ts_wait_for_spinup()
 	}
 	while (1);
 
-	sim_runtime(100 / (double) TS_TICK_RATE);
-
 	return pm.fsm_errno;
 }
 

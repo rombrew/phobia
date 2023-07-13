@@ -81,13 +81,13 @@ typedef struct {
 
 	/* Overheat protection.
 	 * */
-	float			oh_PCB_temp_halt;
-	float			oh_PCB_temp_derate;
-	float			oh_PCB_temp_FAN;
-	float			oh_EXT_temp_derate;
-	float			oh_derated_PCB;
-	float			oh_derated_EXT;
-	float			oh_temp_recovery;
+	float			heat_PCB_temp_halt;
+	float			heat_PCB_temp_derate;
+	float			heat_PCB_temp_FAN;
+	float			heat_EXT_temp_derate;
+	float			heat_derated_PCB;
+	float			heat_derated_EXT;
+	float			heat_temp_recovery;
 
 	/* App enable knobs.
 	 * */

@@ -1069,7 +1069,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				REF = .01f;
+				REF = .01f;	/* regularization constant */
 
 				v[0] = REF;
 				v[1] = 0.f;
@@ -1153,7 +1153,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	 *
 	 * */
 
-	lse_construct(ls, LSE_CASCADE_MAX, 4, 1);
+	lse_construct(ls, /*LSE_CASCADE_MAX*/1, 4, 1);
 
 	v[0] = DFT[0];
 	v[1] = DFT[1];

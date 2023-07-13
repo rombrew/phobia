@@ -15,6 +15,7 @@
 typedef struct {
 
 	int		(* getc) ();
+	int		(* poll) ();
 	void		(* putc) (int c);
 }
 io_ops_t;
@@ -45,11 +46,13 @@ char *strcpyn(char *restrict d, const char *restrict s, int n);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
 
-void xputs(io_ops_t *_io, const char *s);
-void xprintf(io_ops_t *_io, const char *fmt, ...);
+void xputs(io_ops_t *io, const char *s);
+void xprintf(io_ops_t *io, const char *fmt, ...);
 
 int getc();
+int poll();
 void putc(int c);
+
 void puts(const char *s);
 void printf(const char *fmt, ...);
 

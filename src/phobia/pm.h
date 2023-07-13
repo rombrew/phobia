@@ -145,7 +145,8 @@ enum {
 enum {
 	PM_AUTO_BASIC_DEFAULT			= 0,
 	PM_AUTO_CONFIG_DEFAULT,
-	PM_AUTO_PROBE_DEFAULT,
+	PM_AUTO_MACHINE_DEFAULT,
+	PM_AUTO_SCALE_DEFAULT,
 	PM_AUTO_MAXIMAL_CURRENT,
 	PM_AUTO_PROBE_SPEED_HOLD,
 	PM_AUTO_ZONE_THRESHOLD,
@@ -319,9 +320,6 @@ typedef struct {
 	float		probe_TEMP[2];
 
 	lse_t		probe_lse[3];
-
-	float		auto_loop_current;
-	float		auto_loop_speed;
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -536,6 +534,7 @@ typedef struct {
 	float		i_integral_D;
 	float		i_integral_Q;
 	float		i_slew_rate;
+	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
 
@@ -551,6 +550,7 @@ typedef struct {
 	float		s_reverse;
 	float		s_track;
 	float		s_accel;
+	float		s_damping;
 	float		s_gain_P;
 	float		s_gain_D;
 

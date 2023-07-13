@@ -125,7 +125,7 @@ typedef struct {
 	DRV_config_t	DRV;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-	int		CNT_raw[4];
+	uint32_t	CNT_raw[4];
 	float		CNT_diag[3];
 
 	struct {

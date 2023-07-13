@@ -16,7 +16,7 @@ typedef union {
 	float		f;
 	int		i;
 }
-reg_value_t;
+rval_t;
 
 typedef struct {
 
@@ -24,26 +24,23 @@ typedef struct {
 	const char		fmt[4];
 
 	int			mode;
-	reg_value_t		*link;
+	rval_t			*link;
 
-	void	(* proc) (const void *reg, reg_value_t *lval, const reg_value_t *rval);
+	void	(* proc) (const void *reg, rval_t *lval, const rval_t *rval);
 	void	(* format) (const void *reg);
 }
 reg_t;
 
 extern const reg_t	regfile[];
 
-void reg_getval(const reg_t *reg, reg_value_t *lval);
-void reg_setval(const reg_t *reg, const reg_value_t *rval);
-
-void reg_format_rval(const reg_t *reg, const reg_value_t *rval);
+void reg_format_rval(const reg_t *reg, const rval_t *rval);
 void reg_format(const reg_t *reg);
 
 const reg_t *reg_search(const char *sym);
 const reg_t *reg_search_fuzzy(const char *sym);
 
-void reg_GET(int reg_ID, reg_value_t *lval);
-void reg_SET(int reg_ID, const reg_value_t *rval);
+void reg_GET(int reg_ID, rval_t *lval);
+void reg_SET(int reg_ID, const rval_t *rval);
 
 int reg_GET_I(int reg_ID);
 float reg_GET_F(int reg_ID);

@@ -121,8 +121,7 @@ void DRV_halt()
 		SPI_halt(HW_DRV_ID_ON_PCB);
 
 		GPIO_set_LOW(hal.DRV.gpio_GATE_EN);
-
-		vTaskDelay((TickType_t) 50);
+		vTaskDelay((TickType_t) 100);
 	}
 }
 

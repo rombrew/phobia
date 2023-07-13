@@ -111,6 +111,11 @@ int USART_getc()
 	return (int) xbyte;
 }
 
+int USART_poll()
+{
+	return uxQueueMessagesWaiting(priv_USART.rx_queue);
+}
+
 void USART_putc(int c)
 {
 	char		xbyte = (char) c;

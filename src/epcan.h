@@ -106,7 +106,6 @@ extern epcan_t			net;
 
 void EPCAN_pipe_REGULAR();
 
-int EPCAN_getc();
 void EPCAN_putc(int c);
 
 void EPCAN_startup();

@@ -40,15 +40,13 @@ SH_DEF(pm_self_test)
 			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_BST]);
+			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_IST]);
-
-			if (		pm.fsm_errno == PM_ERROR_NO_MOTOR_CONNECTED
-					|| pm.fsm_errno == PM_OK) ;
-			else break;
+			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 		}
 
 		xDC = pm.dc_resolution - pm.ts_clearance;
@@ -72,6 +70,7 @@ SH_DEF(pm_self_test)
 			pm_wait_for_idle();
 
 			reg_format(&regfile[ID_PM_SELF_RMSI]);
+			reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
@@ -80,8 +79,6 @@ SH_DEF(pm_self_test)
 		}
 	}
 	while (0);
-
-	reg_format(&regfile[ID_PM_FSM_ERRNO]);
 
 	tlm_halt(&tlm);
 }

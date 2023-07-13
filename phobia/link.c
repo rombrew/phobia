@@ -18,6 +18,7 @@ enum {
 	LINK_MODE_IDLE			= 0,
 	LINK_MODE_DATA_GRAB,
 	LINK_MODE_HWINFO,
+	LINK_MODE_UPTIME,
 	LINK_MODE_EPCAN_MAP,
 	LINK_MODE_FLASH_MAP,
 	LINK_MODE_UNABLE_WARNING,
@@ -377,6 +378,29 @@ link_fetch_hwinfo(struct link_pmc *lp)
 }
 
 static void
+link_fetch_uptime(struct link_pmc *lp)
+{
+	struct link_priv	*priv = lp->priv;
+	char			*sp = priv->lbuf;
+	int			time;
+
+	if (strcmp(lk_token(&sp), "Watch") == 0) {
+
+		lk_token(&sp);
+
+		if (lk_stoi(&time, lk_token(&sp)) != NULL) {
+
+			if (time < lp->uptime) {
+
+				lp->uptime_warning = 1;
+			}
+
+			lp->uptime = time;
+		}
+	}
+}
+
+static void
 link_fetch_epcan_map(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
@@ -409,10 +433,7 @@ link_fetch_epcan_map(struct link_pmc *lp)
 			return ;
 
 		sprintf(lp->epcan[N].UID, "%.15s", tok);
-
-		tok = lk_token(&sp);
-
-		sprintf(lp->epcan[N].node_ID, "%.23s", tok);
+		sprintf(lp->epcan[N].node_ID, "%.23s", lk_token(&sp));
 	}
 }
 
@@ -562,6 +583,7 @@ void link_remote(struct link_pmc *lp)
 
 	lp->locked = lp->clock + 1000;
 	lp->active = lp->clock;
+	lp->keep = lp->clock;
 
 	lp->grab_N = 0;
 	lp->tlm_N = 0;
@@ -668,14 +690,15 @@ int link_fetch(struct link_pmc *lp, int clock)
 	const link_map[] = {
 
 		{ "rtos_version",	LINK_MODE_HWINFO },
+		{ "rtos_uptime",	LINK_MODE_UPTIME },
 		{ "rtos_reboot",	LINK_MODE_UNABLE_WARNING },
 		{ "rtos_bootload",	LINK_MODE_UNABLE_WARNING },
 		{ "flash_info",		LINK_MODE_FLASH_MAP },
 		{ "flash_prog",		LINK_MODE_UNABLE_WARNING },
 		{ "flash_wipe",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_self_",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe_",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_adjust_",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_self",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_probe",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_adjust",		LINK_MODE_UNABLE_WARNING },
 		{ "tlm_flush_sync",	LINK_MODE_DATA_GRAB },
 		{ "tlm_live_sync",	LINK_MODE_DATA_GRAB },
 		{ "net_survey",		LINK_MODE_EPCAN_MAP },
@@ -707,13 +730,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 			if (priv->link_mode == LINK_MODE_DATA_GRAB) {
 
-				if (priv->fd_grab != NULL) {
-
-					fclose(priv->fd_grab);
-					priv->fd_grab = NULL;
-				}
-
-				lp->grab_N = 0;
+				link_grab_file_close(lp);
 			}
 
 			priv->link_mode = LINK_MODE_IDLE;
@@ -764,6 +781,10 @@ int link_fetch(struct link_pmc *lp, int clock)
 				link_fetch_hwinfo(lp);
 				break;
 
+			case LINK_MODE_UPTIME:
+				link_fetch_uptime(lp);
+				break;
+
 			case LINK_MODE_EPCAN_MAP:
 				link_fetch_epcan_map(lp);
 				break;
@@ -780,23 +801,26 @@ int link_fetch(struct link_pmc *lp, int clock)
 		N++;
 	}
 
-	if (		priv->link_mode == LINK_MODE_DATA_GRAB
-			&& lp->active + 500 < lp->clock) {
+	if (priv->link_mode != LINK_MODE_DATA_GRAB) {
 
-		link_grab_file_close(lp);
-	}
+		if (lp->keep + 2000 < lp->clock) {
 
-	if (		lp->active + 1000 < lp->clock
-			&& lp->keep + 1000 < lp->clock) {
+			if (lp->active + 12000 < lp->clock) {
 
-		lp->keep = lp->clock;
+				link_close(lp);
+			}
+			else {
+				sprintf(priv->lbuf, "rtos_uptime" LINK_EOL);
+				serial_fputs(priv->fd, priv->lbuf);
+			}
 
-		if (lp->active + 11000 > lp->clock) {
-
-			serial_fputs(priv->fd, LINK_EOL);
+			lp->keep = lp->clock;
 		}
-		else {
-			link_close(lp);
+	}
+	else {
+		if (lp->active + 1000 < lp->clock) {
+
+			link_grab_file_close(lp);
 		}
 	}
 
@@ -886,7 +910,7 @@ void link_push(struct link_pmc *lp)
 			}
 		}
 		else {
-			if (reg->queued + 500 < lp->clock)
+			if (reg->queued + 1000 < lp->clock)
 				reg->queued = 0;
 		}
 
@@ -986,9 +1010,7 @@ void link_reg_fetch_all_shown(struct link_pmc *lp)
 
 			reg = &lp->reg[reg_ID];
 
-			reg->shown = 0;
 			reg->update = 0;
-
 			reg->onefetch = 1;
 		}
 	}

@@ -28,7 +28,7 @@ at low speed range.
 Automatically tune current loop PI regulator gains based on performance
 percentage. Reasonable values are from 50 to 150.
 
-	(pmc) reg pm.auto_loop_current <pc>
+	(pmc) reg pm.i_damping <pc>
 
 Phase current constraint is the main tool not to burn the machine. This is
 global constraint applicable to all closed loop modes of operation. You also
@@ -92,7 +92,7 @@ transient rate and noise level.
 Automatically tune speed loop PD regulator gains based on performance
 percentage. Reasonable values are from 10 to 200.
 
-	(pmc) reg pm.auto_loop_speed <pc>
+	(pmc) reg pm.s_damping <pc>
 
 You can limit absolute value of speed in forward and reverse direction. Also
 remember about alternative units of measure by using specific register name.

@@ -44,7 +44,7 @@
 #define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
 
-#define GPIO_BOOST_EN			XGPIO_DEF2('A', 4)
+#define GPIO_GATE_EN			XGPIO_DEF2('A', 4)
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 7)
 #define GPIO_LED_MODE			XGPIO_DEF2('C', 12)
 

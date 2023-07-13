@@ -26,6 +26,7 @@ SDL_RWops *TTF_RW_droid_sans_normal();
 enum {
 	POPUP_NONE			= 0,
 	POPUP_LINK_PROGRESS,
+	POPUP_LINK_WARNING,
 	POPUP_RESET_DEFAULT,
 	POPUP_PROBE_DETACHED,
 	POPUP_UNABLE_WARNING,
@@ -173,6 +174,9 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
@@ -192,7 +196,7 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 			/* nothing */
 		}
 		else {
-			sprintf(pub->lbuf, "Update rate %i", reg->update);
+			sprintf(pub->lbuf, "Update \"%i\"", reg->update);
 
 			if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
 
@@ -221,6 +225,8 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 
 		nk_contextual_end(ctx);
 	}
+
+	nk_style_pop_vec2(ctx);
 }
 
 static void
@@ -228,6 +234,9 @@ pub_contextual_hidden(struct public *pub, const char *sym, struct nk_rect bounds
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
 
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
 
@@ -238,6 +247,8 @@ pub_contextual_hidden(struct public *pub, const char *sym, struct nk_rect bounds
 		nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 		nk_contextual_end(ctx);
 	}
+
+	nk_style_pop_vec2(ctx);
 }
 
 static void
@@ -634,7 +645,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		struct link_reg			*reg_tlm;
 
-		reg_tlm = link_reg_lookup(pub->lp, "tlm.mode");
+		reg_tlm = link_reg_lookup(lp, "tlm.mode");
 
 		if (reg_tlm != NULL) {
 
@@ -711,7 +722,15 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 			disabled.text_normal = disabled.text_active;
 			disabled.text_hover = disabled.text_active;
 
-			nk_button_label_styled(ctx, &disabled, "Flush GP");
+			if (nk_button_label_styled(ctx, &disabled, "Stop")) {
+
+				link_command(lp, "tlm_stop");
+
+				if (reg_tlm != NULL) {
+
+					reg_tlm->lval = 1;
+				}
+			}
 		}
 
 		nk_spacer(ctx);
@@ -915,9 +934,10 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 }
 
 static void
-pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
+pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
 	struct nk_rect			space;
@@ -953,7 +973,7 @@ pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
 
 		struct link_reg		*reg;
 
-		reg = link_reg_lookup(pub->lp, "pm.const_Zp");
+		reg = link_reg_lookup(lp, "pm.const_Zp");
 		if (reg != NULL) { Zp = reg->lval; }
 
 		if (Zp != 0) {
@@ -992,10 +1012,10 @@ pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
 
 		struct nk_color		col;
 		struct link_reg		*reg;
-		int			HS = -1;
+		int			hall = -1;
 
-		reg = link_reg_lookup(pub->lp, "pm.fb_HS");
-		if (reg != NULL) { HS = reg->lval; }
+		reg = link_reg_lookup(lp, "pm.fb_HS");
+		if (reg != NULL) { hall = reg->lval; }
 
 		arrow[0] = radius - 2.f * thickness;
 		arrow[1] = - thickness;
@@ -1010,7 +1030,7 @@ pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
 
 			sprintf(pub->lbuf, "pm.hall_ST%i", N);
 
-			reg = link_reg_lookup(pub->lp, pub->lbuf);
+			reg = link_reg_lookup(lp, pub->lbuf);
 
 			if (reg == NULL)
 				break;
@@ -1030,8 +1050,8 @@ pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
 			pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
 			pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
 
-			col = (N == HS) ? nk->table[NK_COLOR_ENABLED]
-					: nk->table[NK_COLOR_HIDDEN];
+			col = (N == hall) ? nk->table[NK_COLOR_ENABLED]
+					  : nk->table[NK_COLOR_HIDDEN];
 
 			nk_fill_polygon(canvas, pbuf, 4, col);
 		}
@@ -1066,7 +1086,7 @@ pub_drawing_motor_position(struct public *pub, float Fg, int dtype)
 }
 
 static void
-pub_drawing_brick_colored(struct nk_sdl *nk, const int sym)
+pub_drawing_flash_colored(struct nk_sdl *nk, const int sym)
 {
 	struct nk_context		*ctx = &nk->ctx;
 
@@ -1108,6 +1128,7 @@ reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 	struct link_reg			*reg;
 
 	struct nk_style_selectable	select;
+	struct nk_color			hidden;
 	int				rc;
 
 	select = ctx->style.selectable;
@@ -1143,23 +1164,18 @@ reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 		reg->shown = lp->clock;
 	}
 	else {
-		struct nk_color			hidden;
-
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ctx->style.selectable.normal  = nk_style_item_color(hidden);
-		ctx->style.selectable.hover   = nk_style_item_color(hidden);
-		ctx->style.selectable.pressed = nk_style_item_color(hidden);
-		ctx->style.selectable.normal_active  = nk_style_item_color(hidden);
-		ctx->style.selectable.hover_active   = nk_style_item_color(hidden);
-		ctx->style.selectable.pressed_active = nk_style_item_color(hidden);
-
 		pub_name_label_hidden(pub, name, sym);
-		nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
 
+		pub->lbuf[0] = 0;
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
+
+		nk_spacer(ctx);
 		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
-		nk_spacer(ctx);
 	}
 
 	ctx->style.selectable = select;
@@ -1240,15 +1256,12 @@ reg_enum_errno(struct public *pub, const char *sym, const char *name, int onaler
 	else {
 		hidden = nk->table[NK_COLOR_HIDDEN];
 
-		ctx->style.selectable.normal  = nk_style_item_color(hidden);
-		ctx->style.selectable.hover   = nk_style_item_color(hidden);
-		ctx->style.selectable.pressed = nk_style_item_color(hidden);
-		ctx->style.selectable.normal_active  = nk_style_item_color(hidden);
-		ctx->style.selectable.hover_active   = nk_style_item_color(hidden);
-		ctx->style.selectable.pressed_active = nk_style_item_color(hidden);
-
 		pub_name_label_hidden(pub, name, sym);
-		nk_select_label(ctx, " ", NK_TEXT_LEFT, 0);
+
+		pub->lbuf[0] = 0;
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -1670,7 +1683,7 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 }
 
 static void
-reg_float_prog(struct public *pub, int reg_ID, float fmin, float fmax)
+reg_float_prog_by_ID(struct public *pub, int reg_ID, float fmin, float fmax)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -1749,8 +1762,6 @@ reg_float_prog(struct public *pub, int reg_ID, float fmin, float fmax)
 
 		nk_spacer(ctx);
 
-		reg->update = 400;
-		reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
 		reg->shown = lp->clock;
 	}
 	else {
@@ -1771,6 +1782,139 @@ reg_float_prog(struct public *pub, int reg_ID, float fmin, float fmax)
 
 	nk_layout_row_dynamic(ctx, pub->fe_base, 1);
 	nk_spacer(ctx);
+
+	ctx->style.edit = edit;
+}
+
+static void
+reg_float_prog_um(struct public *pub, const char *sym, const char *name,
+		float fmin, float fmax, int defsel)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
+	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
+
+	struct nk_rect			bounds;
+	struct nk_style_edit		edit;
+	struct nk_color			hidden;
+
+	int				rc, min, max, pce;
+
+	edit = ctx->style.edit;
+
+	rc = link_reg_lookup_range(lp, sym, &min, &max);
+
+	if (rc != 0 && min < max) {
+
+		if (lp->reg[min + defsel].shown == 0) {
+
+			lp->reg[min].um_sel = defsel;
+		}
+
+		reg = &lp->reg[min + lp->reg[min].um_sel];
+
+		if (reg->fetched + 500 > lp->clock) {
+
+			struct nk_color		flash;
+
+			flash = nk->table[NK_COLOR_FLICKER_LIGHT];
+
+			ctx->style.edit.normal = nk_style_item_color(flash);
+			ctx->style.edit.hover  = nk_style_item_color(flash);
+			ctx->style.edit.active = nk_style_item_color(flash);
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		pub_name_label(pub, name, reg);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 11);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_end(ctx);
+
+		if (fmin < fmax) {
+
+			pce = (int) (1000.f * (reg->fval - fmin) / (fmax - fmin));
+		}
+		else if (reg->started != 0) {
+
+			pce = (int) (1000.f * (reg->fval - reg->fmin)
+					/ (reg->fmax - reg->fmin));
+		}
+		else {
+			pce = 0;
+		}
+
+		bounds = nk_widget_bounds(ctx);
+
+		nk_prog(ctx, pce, 1000, nk_false);
+		nk_spacer(ctx);
+
+		pub_contextual(pub, reg, bounds);
+
+		if (reg->mode & LINK_REG_READ_ONLY) {
+
+			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+					reg->val, 79, nk_filter_default);
+		}
+		else {
+			rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
+				| NK_EDIT_SIG_ENTER, reg->val, 79, nk_filter_default);
+
+			if (rc & (NK_EDIT_DEACTIVATED | NK_EDIT_COMMITED)) {
+
+				reg->modified = lp->clock;
+			}
+		}
+
+		nk_spacer(ctx);
+
+		rc = nk_combo_callback(ctx, &reg_um_get_item, &lp->reg[min],
+				lp->reg[min].um_sel, (max - min) + 1, pub->fe_font_h + 10,
+				nk_vec2(pub->fe_base * 8, 400));
+
+		if (rc != lp->reg[min].um_sel) {
+
+			lp->reg[min].um_sel = rc;
+			lp->reg[min + lp->reg[min].um_sel].onefetch = 1;
+		}
+
+		nk_spacer(ctx);
+
+		reg->shown = lp->clock;
+	}
+	else {
+		hidden = nk->table[NK_COLOR_HIDDEN];
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		pub_name_label_hidden(pub, name, sym);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 11);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+		nk_layout_row_template_end(ctx);
+
+		nk_prog(ctx, 0, 1000, nk_false);
+		nk_spacer(ctx);
+
+		pub->lbuf[0] = 0;
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				pub->lbuf, 79, nk_filter_default);
+
+		nk_spacer(ctx);
+		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
+		nk_spacer(ctx);
+	}
 
 	ctx->style.edit = edit;
 }
@@ -1862,15 +2006,15 @@ page_serial(struct public *pub)
 			portname = pub->serial.list.name[pub->serial.selected];
 			lk_stoi(&baudrate, ls_baudrates[pub->serial.baudrate]);
 
-			link_open(pub->lp, pub->fe, portname, baudrate, SERIAL_DEFAULT);
+			link_open(lp, pub->fe, portname, baudrate, SERIAL_DEFAULT);
 
-			if (pub->lp->linked != 0) {
+			if (lp->linked != 0) {
 
 				strcpy(pub->lbuf, fe->storage);
 				strcat(pub->lbuf, DIRSEP);
 				strcat(pub->lbuf, FILE_LINK_LOG);
 
-				link_log_file_open(pub->lp, pub->lbuf);
+				link_log_file_open(lp, pub->lbuf);
 
 				strcpy(fe->serialport, portname);
 				config_write(pub->fe);
@@ -1891,7 +2035,7 @@ page_serial(struct public *pub)
 	}
 	else {
 		nk_label(ctx, "Serial port", NK_TEXT_LEFT);
-		nk_label(ctx, pub->lp->devname, NK_TEXT_LEFT);
+		nk_label(ctx, lp->devname, NK_TEXT_LEFT);
 
 		nk_spacer(ctx);
 
@@ -1915,7 +2059,7 @@ page_serial(struct public *pub)
 			}
 
 			config_write(pub->fe);
-			link_close(pub->lp);
+			link_close(lp);
 		}
 
 		nk_spacer(ctx);
@@ -2062,6 +2206,7 @@ page_diagnose(struct public *pub)
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
 	nk_menubar_begin(ctx);
 
@@ -2077,12 +2222,20 @@ page_diagnose(struct public *pub)
 
                 if (nk_menu_item_label(ctx, "Integrity self-test", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_self_test");
+			link_command(lp, "pm_self_test");
 		}
 
 		if (nk_menu_item_label(ctx, "Board self-adjustment", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_self_adjust");
+			link_command(lp, "pm_self_adjust");
+		}
+
+		if (nk_menu_item_label(ctx, "Default scale & offset", NK_TEXT_LEFT)) {
+
+			if (lp->linked != 0) {
+
+				pub->popup_enum = POPUP_RESET_DEFAULT;
+			}
 		}
 
 		nk_menu_end(ctx);
@@ -2095,7 +2248,7 @@ page_diagnose(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Set PWM to GND", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp,	"hal_PWM_set_Z 0" "\r\n"
+			link_command(lp,	"hal_PWM_set_Z 0" "\r\n"
 						"hal_PWM_set_DC 0");
 		}
 
@@ -2104,18 +2257,18 @@ page_diagnose(struct public *pub)
 			struct link_reg		*reg;
 			int			dc_resolution = 2800;
 
-			reg = link_reg_lookup(pub->lp, "pm.dc_resolution");
+			reg = link_reg_lookup(lp, "pm.dc_resolution");
 			if (reg != NULL) { dc_resolution = reg->lval; }
 
 			sprintf(pub->lbuf,	"hal_PWM_set_Z 0" "\r\n"
 						"hal_PWM_set_DC %i", dc_resolution / 2);
 
-			link_command(pub->lp, pub->lbuf);
+			link_command(lp, pub->lbuf);
 		}
 
 		if (nk_menu_item_label(ctx, "Set DBGMCU stop", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "hal_DBGMCU_mode_stop");
+			link_command(lp, "hal_DBGMCU_mode_stop");
 		}
 
 		nk_menu_end(ctx);
@@ -2132,7 +2285,7 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.scale_iA0", "A sensor drift");
 	reg_float(pub, "pm.scale_iB0", "B sensor drift");
 	reg_float(pub, "pm.scale_iC0", "C sensor drift");
-	reg_text_large(pub, "pm.self_BST", "Bootstrap retention time");
+	reg_text_large(pub, "pm.self_BST", "Bootstrap retention");
 	reg_text_large(pub, "pm.self_IST", "Self test result");
 	reg_text_large(pub, "pm.self_STDi", "Current noise STD");
 	reg_text_large(pub, "pm.self_RMSi", "Current sensor RMS");
@@ -2154,7 +2307,7 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is useable");
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM has useable tau");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
@@ -2175,6 +2328,33 @@ page_diagnose(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg_float_prog_um(pub, "hal.CNT_diag0", "IRQ diagnostic 0", 0.f, 100.f, 1);
+	reg_float_prog_um(pub, "hal.CNT_diag1", "IRQ diagnostic 1", 0.f, 100.f, 1);
+	reg_float_prog_um(pub, "hal.CNT_diag2", "IRQ diagnostic 2", 0.f, 100.f, 1);
+
+	reg = link_reg_lookup(lp, "hal.CNT_diag0");
+	if (reg != NULL) { reg += reg->um_sel; reg->update = 1000; }
+
+	reg = link_reg_lookup(lp, "hal.CNT_diag1");
+	if (reg != NULL) { reg += reg->um_sel; reg->update = 1000; }
+
+	reg = link_reg_lookup(lp, "hal.CNT_diag2");
+	if (reg != NULL) { reg += reg->um_sel; reg->update = 1000; }
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
+				"Please confirm that you really"
+				" want to reset all adjustment constants"
+				" related to the board.") != 0) {
+
+		if (link_command(lp, "pm_default_scale") != 0) {
+
+			link_reg_fetch_all_shown(lp);
+		}
+	}
 
 	if (lp->unable_warning[0] != 0) {
 
@@ -2215,17 +2395,17 @@ page_probe(struct public *pub)
 
                 if (nk_menu_item_label(ctx, "AC impedance probing", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_impedance");
+			link_command(lp, "pm_probe_impedance");
 		}
 
 		if (nk_menu_item_label(ctx, "KV spinup probing", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_spinup");
+			link_command(lp, "pm_probe_spinup");
 		}
 
 		if (nk_menu_item_label(ctx, "KV detached probing", NK_TEXT_LEFT)) {
 
-			if (pub->lp->linked != 0) {
+			if (lp->linked != 0) {
 
 				pub->popup_enum = POPUP_PROBE_DETACHED;
 			}
@@ -2235,22 +2415,22 @@ page_probe(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "DC resistance probing", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_const_resistance");
+			link_command(lp, "pm_probe_const_resistance");
 		}
 
 		if (nk_menu_item_label(ctx, "KV flux linkage", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_const_flux_linkage");
+			link_command(lp, "pm_probe_const_flux_linkage");
 		}
 
 		if (nk_menu_item_label(ctx, "JA inertia probing", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_const_inertia");
+			link_command(lp, "pm_probe_const_inertia");
 		}
 
 		if (nk_menu_item_label(ctx, "NT noise threshold", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_probe_noise_threshold");
+			link_command(lp, "pm_probe_noise_threshold");
 		}
 
 		nk_menu_end(ctx);
@@ -2261,9 +2441,9 @@ page_probe(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Default machine", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default machine constants", NK_TEXT_LEFT)) {
 
-			if (pub->lp->linked != 0) {
+			if (lp->linked != 0) {
 
 				pub->popup_enum = POPUP_RESET_DEFAULT;
 			}
@@ -2274,23 +2454,6 @@ page_probe(struct public *pub)
 
 	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
-
-	if (pub_popup_ok_cancel(pub, POPUP_PROBE_DETACHED,
-				"PMC will wait for the machine to reach"
-				" some speed. You will have to rotate"
-				" the machine rotor manually.") != 0) {
-
-		link_command(pub->lp, "pm_probe_detached");
-	}
-
-	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
-				"Please confirm that you really"
-				" want to reset all measured parameters"
-				" related to the machine.") != 0) {
-
-		link_command(pub->lp, "pm_default_probe");
-		link_reg_fetch_all_shown(pub->lp);
-	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2307,15 +2470,15 @@ page_probe(struct public *pub)
 	reg_float(pub, "pm.const_im_R", "Active impedance");
 	reg_float(pub, "pm.const_ld_S", "Circumference length");
 
-	reg = link_reg_lookup(pub->lp, "pm.const_Zp");
+	reg = link_reg_lookup(lp, "pm.const_Zp");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.const_lambda");
+		reg = link_reg_lookup(lp, "pm.const_lambda");
 		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.const_Ja");
+		reg = link_reg_lookup(lp, "pm.const_Ja");
 		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 	}
 
@@ -2333,19 +2496,19 @@ page_probe(struct public *pub)
 
 	if (nk_button_label(ctx, "Start FSM")) {
 
-		if (link_command(pub->lp, "pm_fsm_startup") != 0) {
+		if (link_command(lp, "pm_fsm_startup") != 0) {
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+			reg = link_reg_lookup(lp, "pm.lu_MODE");
 			if (reg != NULL) { reg->onefetch = 1; }
 
 			if (config_LU_DRIVE == 0) {
 
-				reg = link_reg_lookup(pub->lp, "pm.i_setpoint_current");
+				reg = link_reg_lookup(lp, "pm.i_setpoint_current");
 				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 			else if (config_LU_DRIVE == 1) {
 
-				reg = link_reg_lookup(pub->lp, "pm.s_setpoint_speed");
+				reg = link_reg_lookup(lp, "pm.s_setpoint_speed");
 				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 		}
@@ -2355,9 +2518,9 @@ page_probe(struct public *pub)
 
 	if (nk_button_label(ctx, "Stop FSM")) {
 
-		if (link_command(pub->lp, "pm_fsm_shutdown") != 0) {
+		if (link_command(lp, "pm_fsm_shutdown") != 0) {
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+			reg = link_reg_lookup(lp, "pm.lu_MODE");
 			if (reg != NULL) { reg->onefetch = 1; }
 		}
 	}
@@ -2367,13 +2530,13 @@ page_probe(struct public *pub)
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 
-	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
+	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
 	if (reg != NULL) { config_LU_DRIVE = reg->lval; }
 
 	if (		   config_LU_DRIVE == 0
 			|| config_LU_DRIVE == 1) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+		reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 		if (reg != NULL) {
 
@@ -2383,16 +2546,16 @@ page_probe(struct public *pub)
 
 			rate = (reg->lval != 0) ? 100 : 0;
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_iD");
+			reg = link_reg_lookup(lp, "pm.lu_iD");
 			if (reg != NULL) { reg->update = rate; }
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_iQ");
+			reg = link_reg_lookup(lp, "pm.lu_iQ");
 			if (reg != NULL) { reg->update = rate; }
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_wS");
+			reg = link_reg_lookup(lp, "pm.lu_wS");
 			if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-			reg = link_reg_lookup(pub->lp, "pm.lu_mq_load");
+			reg = link_reg_lookup(lp, "pm.lu_mq_load");
 			if (reg != NULL) { reg->update = rate; }
 		}
 
@@ -2411,6 +2574,25 @@ page_probe(struct public *pub)
 		else if (config_LU_DRIVE == 1) {
 
 			reg_float_um(pub, "pm.s_setpoint_speed", "Speed setpoint", 1);
+		}
+	}
+
+	if (pub_popup_ok_cancel(pub, POPUP_PROBE_DETACHED,
+				"PMC will wait for the machine to reach"
+				" some speed. You will have to rotate"
+				" the machine rotor manually.") != 0) {
+
+		link_command(lp, "pm_probe_detached");
+	}
+
+	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
+				"Please confirm that you really"
+				" want to reset all measured constants"
+				" related to the machine.") != 0) {
+
+		if (link_command(lp, "pm_default_machine") != 0) {
+
+			link_reg_fetch_all_shown(lp);
 		}
 	}
 
@@ -2433,9 +2615,7 @@ static void
 page_hal(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
-	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
-	struct link_reg			*reg;
 
 	reg_float(pub, "hal.USART_baud_rate", "USART baudrate");
 
@@ -2480,26 +2660,6 @@ page_hal(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_label(ctx, "IRQ diagnostic 0", NK_TEXT_LEFT);
-
-	reg = link_reg_lookup(pub->lp, "hal.CNT_diag0");
-	reg_float_prog(pub, (reg != NULL) ? (int) (reg - lp->reg) : 0, 0.f, 100.f);
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_label(ctx, "IRQ diagnostic 1", NK_TEXT_LEFT);
-
-	reg = link_reg_lookup(pub->lp, "hal.CNT_diag1");
-	reg_float_prog(pub, (reg != NULL) ? (int) (reg - lp->reg) : 0, 0.f, 100.f);
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_label(ctx, "IRQ diagnostic 2", NK_TEXT_LEFT);
-
-	reg = link_reg_lookup(pub->lp, "hal.CNT_diag2");
-	reg_float_prog(pub, (reg != NULL) ? (int) (reg - lp->reg) : 0, 0.f, 100.f);
-
-	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 	nk_spacer(ctx);
 }
@@ -2544,7 +2704,7 @@ page_in_network(struct public *pub)
 
 	if (nk_button_label(ctx, "Survey")) {
 
-		link_command(pub->lp, "net_survey");
+		link_command(lp, "net_survey");
 
 		pub->network.selected = -1;
 	}
@@ -2553,10 +2713,10 @@ page_in_network(struct public *pub)
 
 	if (nk_button_label(ctx, "Assign")) {
 
-		link_command(pub->lp,	"net_assign" "\r\n"
+		link_command(lp,	"net_assign" "\r\n"
 					"net_survey");
 
-		reg = link_reg_lookup(pub->lp, "net.node_ID");
+		reg = link_reg_lookup(lp, "net.node_ID");
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		pub->network.selected = -1;
@@ -2574,7 +2734,7 @@ page_in_network(struct public *pub)
 			sprintf(pub->lbuf,	"net_revoke %.7s" "\r\n"
 						"net_survey", lp->epcan[N].node_ID);
 
-			link_command(pub->lp, pub->lbuf);
+			link_command(lp, pub->lbuf);
 
 			pub->network.selected = -1;
 		}
@@ -2588,8 +2748,8 @@ page_in_network(struct public *pub)
 				sprintf(pub->lbuf, "net_node_remote %.7s",
 						lp->epcan[N].node_ID);
 
-				link_command(pub->lp, pub->lbuf);
-				link_remote(pub->lp);
+				link_command(lp, pub->lbuf);
+				link_remote(lp);
 
 				pub->network.selected = -1;
 				pub->popup_enum = POPUP_LINK_PROGRESS;
@@ -2598,8 +2758,8 @@ page_in_network(struct public *pub)
 		else {
 			if (nk_button_label_styled(ctx, &orange, "Drop")) {
 
-				link_command(pub->lp, "\x04");
-				link_remote(pub->lp);
+				link_command(lp, "\x04");
+				link_remote(lp);
 
 				pub->network.selected = -1;
 				pub->popup_enum = POPUP_LINK_PROGRESS;
@@ -2625,8 +2785,8 @@ page_in_network(struct public *pub)
 		else {
 			if (nk_button_label_styled(ctx, &orange, "Drop")) {
 
-				link_command(pub->lp, "\x04");
-				link_remote(pub->lp);
+				link_command(lp, "\x04");
+				link_remote(lp);
 
 				pub->network.selected = -1;
 				pub->popup_enum = POPUP_LINK_PROGRESS;
@@ -2683,7 +2843,7 @@ page_in_network(struct public *pub)
 
 	reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode", 1);
 
-	reg = link_reg_lookup(pub->lp, "net.ep0_MODE");
+	reg = link_reg_lookup(lp, "net.ep0_MODE");
 
 	if (reg != NULL && reg->lval != 0) {
 
@@ -2703,7 +2863,7 @@ page_in_network(struct public *pub)
 
 	reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode", 1);
 
-	reg = link_reg_lookup(pub->lp, "net.ep1_MODE");
+	reg = link_reg_lookup(lp, "net.ep1_MODE");
 
 	if (reg != NULL && reg->lval != 0) {
 
@@ -2723,7 +2883,7 @@ page_in_network(struct public *pub)
 
 	reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode", 1);
 
-	reg = link_reg_lookup(pub->lp, "net.ep2_MODE");
+	reg = link_reg_lookup(lp, "net.ep2_MODE");
 
 	if (reg != NULL && reg->lval != 0) {
 
@@ -2743,7 +2903,7 @@ page_in_network(struct public *pub)
 
 	reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode", 1);
 
-	reg = link_reg_lookup(pub->lp, "net.ep3_MODE");
+	reg = link_reg_lookup(lp, "net.ep3_MODE");
 
 	if (reg != NULL && reg->lval != 0) {
 
@@ -2801,10 +2961,11 @@ static void
 page_in_pwm(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg = link_reg_lookup(pub->lp, "hal.PPM_caught");
+	reg = link_reg_lookup(lp, "hal.PPM_caught");
 
 	if (reg != NULL) {
 
@@ -2814,13 +2975,13 @@ page_in_pwm(struct public *pub)
 
 		rate = (reg->lval != 0) ? 100 : 0;
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_in_pulse");
+		reg = link_reg_lookup(lp, "ap.ppm_in_pulse");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_in_freq");
+		reg = link_reg_lookup(lp, "ap.ppm_in_freq");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_reg_DATA");
+		reg = link_reg_lookup(lp, "ap.ppm_reg_DATA");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -2841,21 +3002,21 @@ page_in_pwm(struct public *pub)
 	reg_float(pub, "ap.ppm_range_control1", "Control range MID");
 	reg_float(pub, "ap.ppm_range_control2", "Control range HIGH");
 
-	reg = link_reg_lookup(pub->lp, "ap.ppm_reg_ID");
+	reg = link_reg_lookup(lp, "ap.ppm_reg_ID");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_reg_DATA");
+		reg = link_reg_lookup(lp, "ap.ppm_reg_DATA");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_range_control0");
+		reg = link_reg_lookup(lp, "ap.ppm_range_control0");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_range_control1");
+		reg = link_reg_lookup(lp, "ap.ppm_range_control1");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.ppm_range_control2");
+		reg = link_reg_lookup(lp, "ap.ppm_range_control2");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -2873,16 +3034,17 @@ static void
 page_in_knob(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg = link_reg_lookup(pub->lp, "ap.knob_in_ANG");
+	reg = link_reg_lookup(lp, "ap.knob_in_ANG");
 	if (reg != NULL) { reg->update = 100; }
 
-	reg = link_reg_lookup(pub->lp, "ap.knob_in_BRK");
+	reg = link_reg_lookup(lp, "ap.knob_in_BRK");
 	if (reg != NULL) { reg->update = 100; }
 
-	reg = link_reg_lookup(pub->lp, "ap.knob_reg_DATA");
+	reg = link_reg_lookup(lp, "ap.knob_reg_DATA");
 	if (reg != NULL) { reg->update = 100; }
 
 	reg_float(pub, "ap.knob_in_ANG", "ANG voltage");
@@ -2908,24 +3070,24 @@ page_in_knob(struct public *pub)
 	reg_float(pub, "ap.knob_control_ANG2", "Control range HIGH");
 	reg_float(pub, "ap.knob_control_BRK", "BRK control");
 
-	reg = link_reg_lookup(pub->lp, "ap.knob_reg_ID");
+	reg = link_reg_lookup(lp, "ap.knob_reg_ID");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "ap.knob_reg_DATA");
+		reg = link_reg_lookup(lp, "ap.knob_reg_DATA");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG0");
+		reg = link_reg_lookup(lp, "ap.knob_control_ANG0");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG1");
+		reg = link_reg_lookup(lp, "ap.knob_control_ANG1");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.knob_control_ANG2");
+		reg = link_reg_lookup(lp, "ap.knob_control_ANG2");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "ap.knob_control_BRK");
+		reg = link_reg_lookup(lp, "ap.knob_control_BRK");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -2944,6 +3106,7 @@ static void
 page_apps(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -2962,7 +3125,7 @@ page_apps(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "ap.task_HX711");
+	reg = link_reg_lookup(lp, "ap.task_HX711");
 
 	if (reg != NULL && reg->lval != 0) {
 
@@ -2982,34 +3145,48 @@ static void
 page_thermal(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_enum_combo(pub, "ap.ntc_PCB.type", "NTC type (PCB)", 1);
-	reg_float(pub, "ap.ntc_PCB.balance", "NTC balance (PCB)");
+	reg_enum_combo(pub, "ap.ntc_PCB.type", "NTC type on PCB", 1);
+	reg_float(pub, "ap.ntc_PCB.balance", "NTC balance");
 	reg_float(pub, "ap.ntc_PCB.ntc0", "NTC resistance at Ta");
-	reg_float(pub, "ap.ntc_PCB.ta0", "NTC Ta (PCB)");
-	reg_float(pub, "ap.ntc_PCB.betta", "NTC betta (PCB)");
+	reg_float(pub, "ap.ntc_PCB.ta0", "NTC Ta");
+	reg_float(pub, "ap.ntc_PCB.betta", "NTC betta");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type (EXT)", 1);
-	reg_float(pub, "ap.ntc_EXT.balance", "NTC balance (EXT)");
-	reg_float(pub, "ap.ntc_EXT.ntc0", "NTC resistance at Ta");
-	reg_float(pub, "ap.ntc_EXT.ta0", "NTC Ta (EXT)");
-	reg_float(pub, "ap.ntc_EXT.betta", "NTC betta (EXT)");
+	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type on EXT", 1);
+	reg_float(pub, "ap.ntc_EXT.balance", "NTC balance");
+
+	reg = link_reg_lookup(lp, "ap.ntc_EXT.type");
+
+	if (		reg != NULL
+			&& (reg->lval >= 1 || reg->lval <= 2)) {
+
+		reg_float(pub, "ap.ntc_EXT.ntc0", "NTC resistance at Ta");
+		reg_float(pub, "ap.ntc_EXT.ta0", "NTC Ta");
+		reg_float(pub, "ap.ntc_EXT.betta", "NTC betta");
+	}
+	else {
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+		nk_spacer(ctx);
+		nk_spacer(ctx);
+	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "ap.temp_PCB");
+	reg = link_reg_lookup(lp, "ap.temp_PCB");
 	if (reg != NULL) { reg->update = 1000; }
 
-	reg = link_reg_lookup(pub->lp, "ap.temp_EXT");
+	reg = link_reg_lookup(lp, "ap.temp_EXT");
 	if (reg != NULL) { reg->update = 1000; }
 
-	reg = link_reg_lookup(pub->lp, "ap.temp_MCU");
+	reg = link_reg_lookup(lp, "ap.temp_MCU");
 	if (reg != NULL) { reg->update = 1000; }
 
 	reg_float(pub, "ap.temp_PCB", "Temperature PCB");
@@ -3019,13 +3196,13 @@ page_thermal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.oh_PCB_temp_halt", "Halt threshold (PCB)");
-	reg_float(pub, "ap.oh_PCB_temp_derate", "Derate threshold (PCB)");
-	reg_float(pub, "ap.oh_PCB_temp_FAN", "Fan ON threshold (PCB)");
-	reg_float(pub, "ap.oh_EXT_temp_derate", "Derate threshold (EXT)");
-	reg_float(pub, "ap.oh_derated_PCB", "Derated current (PCB)");
-	reg_float(pub, "ap.oh_derated_EXT", "Derated current (EXT)");
-	reg_float(pub, "ap.oh_temp_recovery", "Recovery hysteresis");
+	reg_float(pub, "ap.heat_PCB_temp_halt", "PCB halt threshold");
+	reg_float(pub, "ap.heat_PCB_temp_derate", "PCB derate threshold");
+	reg_float(pub, "ap.heat_PCB_temp_FAN", "PCB fan ON threshold");
+	reg_float(pub, "ap.heat_EXT_temp_derate", "EXT derate threshold");
+	reg_float(pub, "ap.heat_derated_PCB", "PCB derated current");
+	reg_float(pub, "ap.heat_derated_EXT", "EXT derated current");
+	reg_float(pub, "ap.heat_temp_recovery", "Recovery hysteresis");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3098,7 +3275,7 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo location source", 1);
 	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop", 0);
 
-	reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE");
+	reg = link_reg_lookup(lp, "pm.config_LU_ESTIMATE");
 
 	if (		reg != NULL
 			&& reg->lval == 2) {
@@ -3116,7 +3293,7 @@ page_config(struct public *pub)
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
 
-	reg = link_reg_lookup(pub->lp, "pm.config_LU_DRIVE");
+	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
 
 	if (		reg != NULL
 			&& reg->lval == 0) {
@@ -3184,7 +3361,7 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM is useable");
+	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM has useable ta tauu");
 	reg_float(pub, "pm.tvm_clean_zone", "TVM clean zone");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3200,8 +3377,8 @@ page_config(struct public *pub)
 				"Please confirm that you really"
 				" want to reset all PMC configuration.") != 0) {
 
-		link_command(pub->lp, "pm_default_config");
-		link_reg_fetch_all_shown(pub->lp);
+		link_command(lp, "pm_default_config");
+		link_reg_fetch_all_shown(lp);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3230,6 +3407,7 @@ static void
 page_lu_flux(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3268,7 +3446,7 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
 
@@ -3278,31 +3456,31 @@ page_lu_flux(struct public *pub)
 
 		rate = (reg->lval != 0) ? 200 : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_ZONE");
+		reg = link_reg_lookup(lp, "pm.flux_ZONE");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
+		reg = link_reg_lookup(lp, "pm.flux_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.config_LU_ESTIMATE");
+		reg = link_reg_lookup(lp, "pm.config_LU_ESTIMATE");
 
 		if (		reg != NULL
 				&& reg->lval == 1) {
 
-			reg = link_reg_lookup(pub->lp, "pm.flux_lambda");
+			reg = link_reg_lookup(lp, "pm.flux_lambda");
 			if (reg != NULL) { reg->update = rate; }
 
-			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
+			reg = link_reg_lookup(lp, "pm.kalman_bias_Q");
 			if (reg != NULL) { reg->update = 0; }
 		}
 
 		if (		reg != NULL
 				&& reg->lval == 2) {
 
-			reg = link_reg_lookup(pub->lp, "pm.flux_lambda");
+			reg = link_reg_lookup(lp, "pm.flux_lambda");
 			if (reg != NULL) { reg->update = 0; }
 
-			reg = link_reg_lookup(pub->lp, "pm.kalman_bias_Q");
+			reg = link_reg_lookup(lp, "pm.kalman_bias_Q");
 			if (reg != NULL) { reg->update = rate; }
 		}
 	}
@@ -3322,6 +3500,7 @@ static void
 page_lu_hfi(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3334,7 +3513,7 @@ page_lu_hfi(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
 
@@ -3345,13 +3524,13 @@ page_lu_hfi(struct public *pub)
 		rate = (reg->lval != 0) ? 100 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_F_g");
+		reg = link_reg_lookup(lp, "pm.flux_F_g");
 		if (reg != NULL) { reg->update = fast; }
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_wS");
+		reg = link_reg_lookup(lp, "pm.flux_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.hfi_pole");
+		reg = link_reg_lookup(lp, "pm.hfi_pole");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -3374,12 +3553,12 @@ page_lu_hfi(struct public *pub)
 
 		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(pub->lp, "pm.flux_F_g");
+		reg = link_reg_lookup(lp, "pm.flux_F_g");
 
 		if (		reg != NULL
 				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
 
-			pub_drawing_motor_position(pub, reg->fval, DRAWING_EMPTY);
+			pub_drawing_machine_position(pub, reg->fval, DRAWING_EMPTY);
 		}
 
 		nk_group_end(ctx);
@@ -3412,12 +3591,12 @@ page_lu_hall(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Hall adjustment", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Hall self-adjustment", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp, "pm_adjust_sensor_hall");
+			link_command(lp, "pm_adjust_sensor_hall");
 		}
 
-		if (nk_menu_item_label(ctx, "Hall standard", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default configuration", NK_TEXT_LEFT)) {
 
 			/* TODO */
 		}
@@ -3450,7 +3629,7 @@ page_lu_hall(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
 
@@ -3461,15 +3640,15 @@ page_lu_hall(struct public *pub)
 		rate = (reg->lval != 0) ? 400 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.hall_F_g");
+		reg = link_reg_lookup(lp, "pm.hall_F_g");
 		if (reg != NULL) { reg->update = fast; }
 
-		reg = link_reg_lookup(pub->lp, "pm.hall_wS");
+		reg = link_reg_lookup(lp, "pm.hall_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		rate = (rate != 0) ? rate : 1000;
 
-		reg = link_reg_lookup(pub->lp, "pm.fb_HS");
+		reg = link_reg_lookup(lp, "pm.fb_HS");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -3492,12 +3671,12 @@ page_lu_hall(struct public *pub)
 
 		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(pub->lp, "pm.hall_F_g");
+		reg = link_reg_lookup(lp, "pm.hall_F_g");
 
 		if (		reg != NULL
 				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
 
-			pub_drawing_motor_position(pub, reg->fval, DRAWING_WITH_HALL);
+			pub_drawing_machine_position(pub, reg->fval, DRAWING_WITH_HALL);
 		}
 
 		nk_group_end(ctx);
@@ -3540,6 +3719,7 @@ static void
 page_wattage(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3554,38 +3734,38 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(pub->lp, "pm.lu_MODE");
+	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
 
 		int		rate;
 
 		reg->update = 1000;
-		reg->shown = pub->lp->clock;
+		reg->shown = lp->clock;
 
 		rate = (reg->lval != 0) ? 100 : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.const_fb_U");
+		reg = link_reg_lookup(lp, "pm.const_fb_U");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.watt_drain_wP");
+		reg = link_reg_lookup(lp, "pm.watt_drain_wP");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		rate = (rate != 0) ? 1000 : 0;
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_total_revol");
+		reg = link_reg_lookup(lp, "pm.lu_total_revol");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.mi_traveled");
+		reg = link_reg_lookup(lp, "pm.mi_traveled");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.mi_consumed_Wh");
+		reg = link_reg_lookup(lp, "pm.mi_consumed_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.mi_reverted_Wh");
+		reg = link_reg_lookup(lp, "pm.mi_reverted_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(pub->lp, "pm.mi_fuel_gauge");
+		reg = link_reg_lookup(lp, "pm.mi_fuel_gauge");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -3611,6 +3791,7 @@ static void
 page_lp_current(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3627,31 +3808,31 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.auto_loop_current", "Auto loop performance");
+	reg_float(pub, "pm.i_damping", "Damping or performance");
 	reg_float(pub, "pm.i_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.i_gain_I", "Integral loop gain");
 
-	reg = link_reg_lookup(pub->lp, "pm.i_maximal");
+	reg = link_reg_lookup(lp, "pm.i_maximal");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.i_reverse");
+		reg = link_reg_lookup(lp, "pm.i_reverse");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
-	reg = link_reg_lookup(pub->lp, "pm.auto_loop_current");
+	reg = link_reg_lookup(lp, "pm.i_damping");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.i_slew_rate");
+		reg = link_reg_lookup(lp, "pm.i_slew_rate");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.i_gain_P");
+		reg = link_reg_lookup(lp, "pm.i_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.i_gain_I");
+		reg = link_reg_lookup(lp, "pm.i_gain_I");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -3676,6 +3857,7 @@ static void
 page_lp_speed(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3693,23 +3875,23 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.auto_loop_speed", "Auto loop performance");
+	reg_float(pub, "pm.s_damping", "Damping or performance");
 	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 	reg_float(pub, "pm.s_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative loop gain");
 
-	reg = link_reg_lookup(pub->lp, "pm.auto_loop_speed");
+	reg = link_reg_lookup(lp, "pm.s_damping");
 
 	if (		reg != NULL
-			&& reg->fetched == pub->lp->clock) {
+			&& reg->fetched == lp->clock) {
 
-		reg = link_reg_lookup(pub->lp, "pm.lu_gain_mq_LP");
+		reg = link_reg_lookup(lp, "pm.lu_gain_mq_LP");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.s_gain_P");
+		reg = link_reg_lookup(lp, "pm.s_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(pub->lp, "pm.s_gain_D");
+		reg = link_reg_lookup(lp, "pm.s_gain_D");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -3731,6 +3913,7 @@ static void
 page_telemetry(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
@@ -3757,14 +3940,14 @@ page_telemetry(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Background logging", NK_TEXT_LEFT)) {
 
-			if (pub->lp->linked != 0) {
+			if (lp->linked != 0) {
 
 				strcpy(pub->lbuf, pub->fe->storage);
 				strcat(pub->lbuf, DIRSEP);
 				strcat(pub->lbuf, FILE_TELEMETRY_LOG);
 				strcpy(pub->telemetry.file_snap, pub->lbuf);
 
-				if (link_tlm_file_open(pub->lp, pub->telemetry.file_snap) != 0) {
+				if (link_tlm_file_open(lp, pub->telemetry.file_snap) != 0) {
 
 					pub_open_GP(pub, pub->telemetry.file_snap);
 				}
@@ -3773,7 +3956,7 @@ page_telemetry(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Default telemetry", NK_TEXT_LEFT)) {
 
-			if (pub->lp->linked != 0) {
+			if (lp->linked != 0) {
 
 				pub->popup_enum = POPUP_RESET_DEFAULT;
 			}
@@ -3787,66 +3970,198 @@ page_telemetry(struct public *pub)
 
 	if (pub->popup_enum != POPUP_TELEMETRY_GRAB) {
 
+		int		reg_ID;
+
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
 		reg_float(pub, "tlm.grabfreq", "Grab into RAM frequency");
 		reg_float(pub, "tlm.livefreq", "Live frequency");
 
-		link_reg_clean_all_always(pub->lp);
+		link_reg_clean_all_always(lp);
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
 		reg_linked(pub, "tlm.reg_ID0", "Tele register ID 0");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID0");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID0");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID1", "Tele register ID 1");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID1");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID1");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID2", "Tele register ID 2");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID2");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID2");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID3", "Tele register ID 3");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID3");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID3");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID4", "Tele register ID 4");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID4");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID4");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID5", "Tele register ID 5");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID5");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID5");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID6", "Tele register ID 6");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID6");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID6");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID7", "Tele register ID 7");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID7");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID7");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID8", "Tele register ID 8");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID8");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID8");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		reg_linked(pub, "tlm.reg_ID9", "Tele register ID 9");
 
-		reg = link_reg_lookup(pub->lp, "tlm.reg_ID9");
-		reg_float_prog(pub, (reg != NULL) ? reg->lval : 0, 0.f, 0.f);
+		reg = link_reg_lookup(lp, "tlm.reg_ID9");
+		reg_ID = (reg != NULL) ? reg->lval : 0;
+
+		reg_float_prog_by_ID(pub, reg_ID, 0.f, 0.f);
+
+		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
+
+			reg = &lp->reg[reg_ID];
+
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+
+				reg->update = 1000;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+			}
+		}
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -3858,8 +4173,8 @@ page_telemetry(struct public *pub)
 				"Please confirm that you really"
 				" want to reset all telemetry configuration.") != 0) {
 
-		link_command(pub->lp, "tlm_default");
-		link_reg_fetch_all_shown(pub->lp);
+		link_command(lp, "tlm_default");
+		link_reg_fetch_all_shown(lp);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3890,7 +4205,7 @@ page_flash(struct public *pub)
 
                 if (nk_menu_item_label(ctx, "Flash program", NK_TEXT_LEFT)) {
 
-			link_command(pub->lp,	"flash_prog" "\r\n"
+			link_command(lp,	"flash_prog" "\r\n"
 						"flash_info");
 		}
 
@@ -3920,7 +4235,7 @@ page_flash(struct public *pub)
 				"Please confirm that you really"
 				" want to WIPE flash storage.") != 0) {
 
-		link_command(pub->lp,	"flash_wipe" "\r\n"
+		link_command(lp,	"flash_wipe" "\r\n"
 					"flash_info");
 	}
 
@@ -3928,7 +4243,12 @@ page_flash(struct public *pub)
 				"Please confirm that you really"
 				" want to reboot PMC.") != 0) {
 
-		link_command(pub->lp, "rtos_reboot");
+		if (link_command(lp, "rtos_reboot")) {
+
+			link_reg_fetch_all_shown(lp);
+
+			lp->uptime = 0;
+		}
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3970,7 +4290,7 @@ page_flash(struct public *pub)
 				if (sym == 0)
 					break;
 
-				pub_drawing_brick_colored(nk, sym);
+				pub_drawing_flash_colored(nk, sym);
 			}
 		}
 
@@ -4030,10 +4350,10 @@ page_upgrade(struct public *pub)
 				" reboot into embedded bootloader. Note"
 				" that PMC connection will be closed.") != 0) {
 
-		if (link_command(pub->lp, "rtos_bootload") != 0) {
+		if (link_command(lp, "rtos_bootload") != 0) {
 
 			config_write(pub->fe);
-			link_close(pub->lp);
+			link_close(lp);
 		}
 	}
 }
@@ -4042,6 +4362,7 @@ static void
 menu_select_button(struct public *pub, const char *title, void (* pfunc) (struct public *))
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
 	struct nk_style_button		button;
@@ -4063,7 +4384,7 @@ menu_select_button(struct public *pub, const char *title, void (* pfunc) (struct
 
 			nk_group_set_scroll(ctx, "PAGE", 0, 0);
 
-			link_reg_fetch_all_shown(pub->lp);
+			link_reg_fetch_all_shown(lp);
 
 			pub->menu.page_pushed = pub->menu.page_current;
 		}
@@ -4079,6 +4400,7 @@ static void
 menu_group_layout(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
 	struct nk_rect			window;
@@ -4135,7 +4457,8 @@ menu_group_layout(struct public *pub)
 		item = nk_style_item_color(nk->table[NK_COLOR_BACKGROUND]);
 
 		nk_style_push_color(ctx, &ctx->style.window.background, item.data.color);
-		nk_style_push_color(ctx, &ctx->style.contextual_button.text_background, item.data.color);
+		nk_style_push_color(ctx, &ctx->style.contextual_button
+				.text_background, item.data.color);
 		nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, item);
 		nk_style_push_style_item(ctx, &ctx->style.contextual_button.normal, item);
 
@@ -4145,6 +4468,21 @@ menu_group_layout(struct public *pub)
 		nk_style_pop_color(ctx);
 		nk_style_pop_style_item(ctx);
 		nk_style_pop_style_item(ctx);
+
+		if (lp->uptime_warning) {
+
+			pub->popup_enum = POPUP_LINK_WARNING;
+			lp->uptime_warning = 0;
+		}
+
+		if (pub_popup_ok_cancel(pub, POPUP_LINK_WARNING,
+					"A sudden reset was detected so we suggest"
+					" you drop this link and connect to PMC again"
+					" to read actual info") != 0) {
+
+			config_write(pub->fe);
+			link_close(lp);
+		}
 
 		nk_group_end(ctx);
 	}
@@ -4245,7 +4583,7 @@ int main(int argc, char **argv)
 
 		nk_input_end(&nk->ctx);
 
-		if (link_fetch(pub->lp, nk->clock) != 0) {
+		if (link_fetch(lp, nk->clock) != 0) {
 
 			nk->active = 1;
 		}
@@ -4301,7 +4639,7 @@ int main(int argc, char **argv)
 			nk->active = 0;
 		}
 
-		link_push(pub->lp);
+		link_push(lp);
 
 		if (		pub->gp != NULL
 				&& gp_IsQuit(pub->gp) == 0) {

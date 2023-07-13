@@ -86,8 +86,6 @@ int pm_wait_for_spinup()
 	}
 	while (1);
 
-	vTaskDelay((TickType_t) 100);
-
 	return pm.fsm_errno;
 }
 
@@ -117,8 +115,6 @@ int pm_wait_for_settle()
 		xTick += (TickType_t) 50;
 	}
 	while (1);
-
-	vTaskDelay((TickType_t) 100);
 
 	return pm.fsm_errno;
 }
@@ -745,9 +741,14 @@ SH_DEF(pm_default_config)
 	pm_auto(&pm, PM_AUTO_CONFIG_DEFAULT);
 }
 
-SH_DEF(pm_default_probe)
+SH_DEF(pm_default_machine)
 {
-	pm_auto(&pm, PM_AUTO_PROBE_DEFAULT);
+	pm_auto(&pm, PM_AUTO_MACHINE_DEFAULT);
 	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
+}
+
+SH_DEF(pm_default_scale)
+{
+	pm_auto(&pm, PM_AUTO_SCALE_DEFAULT);
 }
 

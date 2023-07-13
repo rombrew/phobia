@@ -225,15 +225,6 @@ void USB_startup()
 	NVIC_EnableIRQ(OTG_FS_IRQn);
 }
 
-int USB_getc()
-{
-	char		xbyte;
-
-	xQueueReceive(priv_USB.rx_queue, &xbyte, portMAX_DELAY);
-
-	return (int) xbyte;
-}
-
 void USB_putc(int c)
 {
 	char		xbyte = (char) c;

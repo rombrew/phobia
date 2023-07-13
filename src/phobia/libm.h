@@ -1,9 +1,10 @@
 #ifndef _H_LIB_M_
 #define _H_LIB_M_
 
-#define M_EPS_F			1.1920929E-7f
+#define M_EPS_F			1.19209E-7f
 #define M_PI_F			3.14159265f
 #define M_LOG2_F		0.69314718f
+#define M_LOG10_F		0.30103000f
 
 inline float m_fabsf(float x) { return __builtin_fabsf(x); }
 inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
@@ -18,8 +19,10 @@ float m_atan2f(float y, float x);
 float m_sinf(float x);
 float m_cosf(float x);
 float m_log2f(float x);
+float m_log10f(float x);
 float m_logf(float x);
 float m_exp2f(float x);
+float m_exp10f(float x);
 float m_expf(float x);
 
 void m_la_eigf(const float a[3], float v[4], int m);

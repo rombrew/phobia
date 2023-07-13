@@ -64,6 +64,7 @@ struct link_pmc {
 	int			quantum;
 
 	int			linked;
+	int			uptime;
 	int			fetched_N;
 
 	int			clock;
@@ -88,6 +89,7 @@ struct link_pmc {
 	flash[LINK_FLASH_MAX];
 
 	char			unable_warning[LINK_MESSAGE_MAX];
+	int			uptime_warning;
 
 	int			grab_N;
 	int			tlm_N;

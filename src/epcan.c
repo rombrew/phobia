@@ -693,15 +693,6 @@ void task_EPCAN_TX(void *pData)
 	while (1);
 }
 
-int EPCAN_getc()
-{
-	char		xbyte;
-
-	xQueueReceive(local.rx_queue, &xbyte, portMAX_DELAY);
-
-	return (int) xbyte;
-}
-
 void EPCAN_putc(int c)
 {
 	char		xbyte = (char) c;

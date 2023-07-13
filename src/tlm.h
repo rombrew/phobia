@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-#define TLM_DATA_MAX		5000
+#include "regfile.h"
+
+#define TLM_DATA_MAX		4000
 #define TLM_INPUT_MAX		10
 
 enum {
@@ -13,21 +15,35 @@ enum {
 	TLM_MODE_LIVE
 };
 
+enum {
+	TLM_TYPE_NONE		= 0,
+	TLM_TYPE_FLOAT,
+	TLM_TYPE_INT
+};
+
 typedef struct {
 
-	int		grabfreq;
-	int		livefreq;
+	float		grabfreq;
+	float		livefreq;
 
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 
-	int		span;
-	int		clock;
+	struct {
 
-	int		skip;
+		int	type;
+
+		rval_t	*lnk;
+	}
+	layout[TLM_INPUT_MAX];
+
+	int		clock;
+	int		count;
+
+	int		span;
 	int		line;
 
-	/* The memory to keep telemetry.
+	/* The memory to keep telemetry data.
 	 * */
 	uint16_t	vm[TLM_DATA_MAX][TLM_INPUT_MAX];
 }
@@ -35,7 +51,7 @@ tlm_t;
 
 void tlm_reg_default(tlm_t *tlm);
 void tlm_reg_grab(tlm_t *tlm);
-void tlm_startup(tlm_t *tlm, int freq, int mode);
+void tlm_startup(tlm_t *tlm, float freq, int mode);
 void tlm_halt(tlm_t *tlm);
 
 #endif /* _H_TLM_ */

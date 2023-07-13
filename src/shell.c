@@ -9,7 +9,7 @@
 #include "libc.h"
 
 #define SH_CLINE_SZ			84
-#define SH_HISTORY_SZ			440
+#define SH_HISTORY_SZ			240
 
 #define SH_HIST_INC(n)                 	(((n) < (SH_HISTORY_SZ - 1)) ? (n) + 1 : 0)
 #define SH_HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_SZ - 1)
@@ -32,11 +32,11 @@ typedef struct {
 	int		ceol, xesc;
 	char		*parg;
 
-	/* Completion block.
+	/* Completion feature.
 	 * */
 	int		mcomp, ceon, cnum;
 
-	/* History block.
+	/* History feature.
 	 * */
 	char		chist[SH_HISTORY_SZ];
 	int		mhist, hhead, htail, hnum;
@@ -58,14 +58,14 @@ const sh_cmd_t		cmLIST[] = {
 
 #define cmLIST_END	(cmLIST + sizeof(cmLIST) / sizeof(sh_cmd_t) - 2)
 
-static char
-sh_isdigit(char c)
+static int
+sh_byte_is_digit(int c)
 {
 	return (c >= '0') && (c <= '9');
 }
 
-static char
-sh_ischar(char c)
+static int
+sh_byte_is_char(int c)
 {
 	return ((c >= 'a') && (c <= 'z'))
 		|| ((c >= 'A') && (c <= 'Z'));
@@ -110,7 +110,7 @@ sh_exact_match_call(priv_sh_t *sh)
 }
 
 static void
-sh_cyclic_match(priv_sh_t *sh, int xdir)
+sh_cyclic_match(priv_sh_t *sh, int xd)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id;
@@ -120,7 +120,7 @@ sh_cyclic_match(priv_sh_t *sh, int xdir)
 	sh->cline[sh->ceon] = 0;
 
 	do {
-		cmd += (xdir == DIR_UP) ? 1 : - 1;
+		cmd += (xd == DIR_UP) ? 1 : - 1;
 
 		cmd = (cmd < cmLIST) ? cmLIST_END
 			: (cmd > cmLIST_END) ? cmLIST : cmd;
@@ -189,9 +189,9 @@ sh_common_match(priv_sh_t *sh)
 }
 
 static int
-sh_history_move(priv_sh_t *sh, int xnum, int xdir)
+sh_history_move(priv_sh_t *sh, int xnum, int xd)
 {
-	if (xdir == DIR_UP) {
+	if (xd == DIR_UP) {
 
 		if (xnum != sh->hhead) {
 
@@ -251,11 +251,12 @@ sh_history_put(priv_sh_t *sh, const char *s)
 		}
 		while (1);
 
-		if (r == 0)
+		if (r == 0) {
 
 			/* Do not put the same line again.
 			 * */
 			return ;
+		}
 	}
 
 	do {
@@ -356,7 +357,7 @@ sh_evaluate(priv_sh_t *sh)
 }
 
 static void
-sh_complete(priv_sh_t *sh, int xdir)
+sh_complete(priv_sh_t *sh, int xd)
 {
 	const char		space = ' ';
 	char			*s;
@@ -396,18 +397,21 @@ sh_complete(priv_sh_t *sh, int xdir)
 			/* Enter completion mode.
 			 * */
 			sh->mcomp = 1;
-			sh->cnum = (xdir == DIR_UP) ? - 1 : 0;
+			sh->cnum = (xd == DIR_UP) ? - 1 : 0;
 
-			if (sh->ceol != sh->ceon)
+			if (sh->ceol != sh->ceon) {
+
 				sh->ceol = sh->ceon;
-			else
-				sh_complete(sh, xdir);
+			}
+			else {
+				sh_complete(sh, xd);
+			}
 		}
 	}
 	else {
 		/* Search for the next match.
 		 * */
-		sh_cyclic_match(sh, xdir);
+		sh_cyclic_match(sh, xd);
 
 		/* Update the command line.
 		 * */
@@ -420,7 +424,7 @@ sh_complete(priv_sh_t *sh, int xdir)
 }
 
 static void
-sh_history(priv_sh_t *sh, int xdir)
+sh_history(priv_sh_t *sh, int xd)
 {
 	int			xnum;
 	char			*s;
@@ -431,21 +435,17 @@ sh_history(priv_sh_t *sh, int xdir)
 		 * */
 		sh->hnum = sh->htail;
 		sh->mhist = 1;
+
 		xnum = sh->htail;
 
 		/* Save current line.
 		 * */
 		sh_history_put(sh, sh->cline);
+
 		sh->htail = xnum;
 	}
 
-	if (xdir == DIR_UP) {
-
-		xnum = sh_history_move(sh, sh->hnum, DIR_UP);
-	}
-	else {
-		xnum = sh_history_move(sh, sh->hnum, DIR_DOWN);
-	}
+	xnum = sh_history_move(sh, sh->hnum, xd);
 
 	if (xnum != sh->hnum) {
 
@@ -465,6 +465,7 @@ sh_history(priv_sh_t *sh, int xdir)
 		 * */
 		sh_puts_erase(sh->ceol);
 		sh->ceol = strlen(sh->cline);
+
 		puts(sh->cline);
 	}
 
@@ -551,7 +552,8 @@ void task_CMDSH(void *pData)
 
 		if (sh->xesc == 0) {
 
-			if (sh_ischar(c) || sh_isdigit(c) || strchr(SH_ALLOWED, c) != NULL) {
+			if (sh_byte_is_char(c) || sh_byte_is_digit(c)
+					|| strchr(SH_ALLOWED, c) != NULL) {
 
 				sh_line_putc(sh, c);
 			}
@@ -581,6 +583,7 @@ void task_CMDSH(void *pData)
 				/* Ctrl + C.
 				 * */
 				puts(EOL);
+
 				sh_line_null(sh);
 			}
 			else if (c == K_DLE || c == '*') {
@@ -667,7 +670,7 @@ void task_CMDSH(void *pData)
 #undef SH_DEF
 #define SH_DEF(name)		void name(const char *s)
 
-SH_DEF(shell_keycodes)
+SH_DEF(sh_keycodes)
 {
 	int		c;
 

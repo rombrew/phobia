@@ -147,9 +147,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
-	pm->auto_loop_current = 1.f;
-	pm->auto_loop_speed = 2.f;
-
 	pm->vsi_gain_LP = 5E-3f;
 	pm->vsi_mask_XF = PM_MASK_NONE;
 
@@ -234,6 +231,7 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->i_derate_on_HFI = 10.f;
 	pm->i_slew_rate = 7000.f;
+	pm->i_damping = 1.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
 
@@ -246,6 +244,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_maximal = 15000.f;
 	pm->s_reverse = pm->s_maximal - 1.f;
 	pm->s_accel = 7000.f;
+	pm->s_damping = 2.f;
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_D = 7E-5f;
 
@@ -266,7 +265,7 @@ pm_auto_config_default(pmc_t *pm)
 }
 
 static void
-pm_auto_probe_default(pmc_t *pm)
+pm_auto_machine_default(pmc_t *pm)
 {
 	pm->probe_speed_hold = 900.f;
 
@@ -293,6 +292,36 @@ pm_auto_probe_default(pmc_t *pm)
 
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_D = 7E-5f;
+}
+
+static void
+pm_auto_scale_default(pmc_t *pm)
+{
+	pm->scale_iA[0] = 0.f;
+	pm->scale_iA[1] = 1.f;
+	pm->scale_iB[0] = 0.f;
+	pm->scale_iB[1] = 1.f;
+	pm->scale_iC[0] = 0.f;
+	pm->scale_iC[1] = 1.f;
+	pm->scale_uS[0] = 0.f;
+	pm->scale_uS[1] = 1.f;
+	pm->scale_uA[0] = 0.f;
+	pm->scale_uA[1] = 1.f;
+	pm->scale_uB[0] = 0.f;
+	pm->scale_uB[1] = 1.f;
+	pm->scale_uC[0] = 0.f;
+	pm->scale_uC[1] = 1.f;
+
+	pm->tvm_USEABLE = PM_DISABLED;
+	pm->tvm_FIR_A[0] = 0.f;
+	pm->tvm_FIR_A[1] = 0.f;
+	pm->tvm_FIR_A[2] = 0.f;
+	pm->tvm_FIR_B[0] = 0.f;
+	pm->tvm_FIR_B[1] = 0.f;
+	pm->tvm_FIR_B[2] = 0.f;
+	pm->tvm_FIR_C[0] = 0.f;
+	pm->tvm_FIR_C[1] = 0.f;
+	pm->tvm_FIR_C[2] = 0.f;
 }
 
 static void
@@ -457,7 +486,7 @@ pm_auto_loop_current(pmc_t *pm)
 		Lm = (pm->const_im_L1 < pm->const_im_L2)
 			? pm->const_im_L1 : pm->const_im_L2;
 
-		Df = pm->auto_loop_current;
+		Df = pm->i_damping;
 
 		/* Tune the current loop based on state-space model.
 		 *
@@ -480,7 +509,7 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_loop_speed(pmc_t *pm)
 {
-	float		Df = pm->auto_loop_speed;
+	float		Df = pm->s_damping;
 
 	if (pm->zone_speed_noise > M_EPS_F) {
 
@@ -511,8 +540,12 @@ void pm_auto(pmc_t *pm, int req)
 			pm_auto_config_default(pm);
 			break;
 
-		case PM_AUTO_PROBE_DEFAULT:
-			pm_auto_probe_default(pm);
+		case PM_AUTO_MACHINE_DEFAULT:
+			pm_auto_machine_default(pm);
+			break;
+
+		case PM_AUTO_SCALE_DEFAULT:
+			pm_auto_scale_default(pm);
 			break;
 
 		case PM_AUTO_MAXIMAL_CURRENT:
@@ -634,23 +667,19 @@ pm_forced(pmc_t *pm)
 	wSP = (wSP > pm->forced_maximal) ? pm->forced_maximal :
 		(wSP < - pm->forced_reverse) ? - pm->forced_reverse : wSP;
 
-	if (pm->vsi_lpf_DC > pm->forced_maximal_DC) {
-
-		/* We are unable to keep such a high speed at
-		 * this DC link voltage. Stop.
-		 * */
-		wSP = 0.f;
-	}
-
 	/* Reduce the acceleration in case of current lack.
 	 * */
 	xRF = m_fabsf(pm->forced_track_D / pm->forced_hold_D);
-
-	/* Update actual speed with allowed acceleration.
-	 * */
 	dSA = pm->forced_accel * xRF * pm->m_dT;
-	pm->forced_wS = (pm->forced_wS < wSP - dSA) ? pm->forced_wS + dSA :
-		(pm->forced_wS > wSP + dSA) ? pm->forced_wS - dSA : wSP;
+
+	if (		pm->vsi_lpf_DC < pm->forced_maximal_DC
+			|| m_fabsf(wSP) < m_fabsf(pm->forced_wS)) {
+
+		/* Update actual speed with allowed acceleration.
+		 * */
+		pm->forced_wS = (pm->forced_wS < wSP - dSA) ? pm->forced_wS + dSA :
+			(pm->forced_wS > wSP + dSA) ? pm->forced_wS - dSA : wSP;
+	}
 
 	/* Update DQ-axes.
 	 * */
@@ -1113,7 +1142,7 @@ pm_kalman_lock_guard(pmc_t *pm, float A)
 
 		if (k_UNLOCK == PM_ENABLED) {
 
-			/* Restart Kalman and Flip DQ-frame.
+			/* Restart Kalman and flip DQ-frame.
 			 * */
 			pm->flux_TYPE = PM_FLUX_NONE;
 
@@ -1687,7 +1716,7 @@ pm_sensor_sincos(pmc_t *pm)
 static void
 pm_lu_FSM(pmc_t *pm)
 {
-	float			lu_F[2];
+	float			lu_F[2], hS, A, B;
 
 	/* Get the current on DQ-axes.
 	 * */
@@ -1699,16 +1728,12 @@ pm_lu_FSM(pmc_t *pm)
 	pm->lu_uD = pm->lu_F[0] * pm->tvm_X0 + pm->lu_F[1] * pm->tvm_Y0;
 	pm->lu_uQ = pm->lu_F[0] * pm->tvm_Y0 - pm->lu_F[1] * pm->tvm_X0;
 
-	{
-		float		A;
+	A = pm->lu_wS * pm->m_dT * .5f;
 
-		A = pm->lu_wS * pm->m_dT * .5f;
-
-		/* Approximate in the middle of past cycle.
-		 * */
-		pm->lu_uD += - pm->lu_uQ * A;
-		pm->lu_uQ += pm->lu_uD * A;
-	}
+	/* Approximate to the middle of past cycle.
+	 * */
+	pm->lu_uD += - pm->lu_uQ * A;
+	pm->lu_uQ += pm->lu_uD * A;
 
 	/* Transfer to the next apriori position.
 	 * */
@@ -1971,36 +1996,32 @@ pm_lu_FSM(pmc_t *pm)
 		lu_F[1] = pm->lu_F[1];
 	}
 
-	{
-		float		hS, A, B;
+	/* Take the LU position estimate with TRANSIENT rate limited.
+	 * */
+	hS = pm->lu_rate * pm->m_dT;
 
-		/* Take the LU position estimate with TRANSIENT rate limited.
-		 * */
-		hS = pm->lu_rate * pm->m_dT;
+	A = lu_F[0] * pm->lu_F[0] + lu_F[1] * pm->lu_F[1];
+	B = lu_F[1] * pm->lu_F[0] - lu_F[0] * pm->lu_F[1];
 
-		A = lu_F[0] * pm->lu_F[0] + lu_F[1] * pm->lu_F[1];
-		B = lu_F[1] * pm->lu_F[0] - lu_F[0] * pm->lu_F[1];
+	if (A > M_EPS_F && B < - hS) {
 
-		if (A > M_EPS_F && B < - hS) {
+		m_rotatef(pm->lu_F, - hS);
+	}
+	else if (A > M_EPS_F && B > hS) {
 
-			m_rotatef(pm->lu_F, - hS);
-		}
-		else if (A > M_EPS_F && B > hS) {
+		m_rotatef(pm->lu_F, hS);
+	}
+	else {
+		pm->lu_F[0] = lu_F[0];
+		pm->lu_F[1] = lu_F[1];
 
-			m_rotatef(pm->lu_F, hS);
-		}
-		else {
-			pm->lu_F[0] = lu_F[0];
-			pm->lu_F[1] = lu_F[1];
+		if (A < M_EPS_F) {
 
-			if (A < M_EPS_F) {
-
-				/* NOTE: We reset current loop integrals in
-				 * case of position FLIP.
-				 * */
-				pm->i_integral_D = 0.f;
-				pm->i_integral_Q = 0.f;
-			}
+			/* NOTE: We reset current loop integrals in
+			 * case of position flip.
+			 * */
+			pm->i_integral_D = 0.f;
+			pm->i_integral_Q = 0.f;
 		}
 	}
 
@@ -3113,33 +3134,14 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			/* Extract the average terminal voltages using FIR.
 			 * */
 
-			vA *= pm->tvm_FIR_A[1];
-			vB *= pm->tvm_FIR_B[1];
-			vC *= pm->tvm_FIR_C[1];
+			vA = (pm->vsi_AZ != 0) ? pm->tvm_FIR_A[0] * pm->fb_uA
+				+ pm->tvm_FIR_A[1] * vA + pm->tvm_FIR_A[2] : 0.f;
 
-			if (pm->vsi_AZ != 0) {
+			vB = (pm->vsi_BZ != 0) ? pm->tvm_FIR_B[0] * pm->fb_uB
+				+ pm->tvm_FIR_B[1] * vB + pm->tvm_FIR_B[2] : 0.f;
 
-				vA += pm->tvm_FIR_A[0] * pm->fb_uA + pm->tvm_FIR_A[2];
-			}
-			else {
-				vA = 0.f;
-			}
-
-			if (pm->vsi_BZ != 0) {
-
-				vB += pm->tvm_FIR_B[0] * pm->fb_uB + pm->tvm_FIR_B[2];
-			}
-			else {
-				vB = 0.f;
-			}
-
-			if (pm->vsi_CZ != 0) {
-
-				vC += pm->tvm_FIR_C[0] * pm->fb_uC + pm->tvm_FIR_C[2];
-			}
-			else {
-				vC = 0.f;
-			}
+			vC = (pm->vsi_CZ != 0) ? pm->tvm_FIR_C[0] * pm->fb_uC
+				+ pm->tvm_FIR_C[1] * vC + pm->tvm_FIR_C[2] : 0.f;
 
 			pm->tvm_A = vA;
 			pm->tvm_B = vB;

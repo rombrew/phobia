@@ -21,7 +21,7 @@ RM	= rm -rf
 #CROSS	= armv7m-none-eabi
 #CC	= clang -target $(CROSS)
 
-CFLAGS	= -Os -flto=auto -g3 -pipe
+CFLAGS	= -O3 -flto=auto -g3 -pipe
 
 ifeq ($(HWMCU), STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb
@@ -35,7 +35,7 @@ endif
 
 CFLAGS	+= -Wall -Wdouble-promotion
 CFLAGS	+= -Wno-stringop-overflow
-CFLAGS	+= -ffreestanding
+CFLAGS	+= -fno-hosted
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -fno-math-errno
 CFLAGS	+= -ffinite-math-only
@@ -154,7 +154,7 @@ stlink: $(IMAGE)
 
 dfu: $(IMAGE)
 	@ echo "  FLASH " $(notdir $<)
-	@ dfu-util -d 0483:df11 -a0 --dfuse-address 0x08000000:will-reset -R -D $<
+	@ dfu-util -d 0483:df11 -a0 --dfuse-address 0x08000000 -R -D $<
 
 connect:
 	@ picocom -l -b $(BAUD) -ye $(TTY) -g $(LOG)

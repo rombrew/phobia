@@ -224,65 +224,80 @@ const char *strchr(const char *s, int c)
 	return s;
 }
 
-void xputs(io_ops_t *_io, const char *s)
+void xputs(io_ops_t *io, const char *s)
 {
-	while (*s) _io->putc(*s++);
+	while (*s) io->putc(*s++);
 }
 
-void xputsp(io_ops_t *_io, const char *s, int nleft)
+void xputs_aligned(io_ops_t *io, const char *s, int nleft)
 {
 	while (*s) {
 
-		_io->putc(*s++);
+		io->putc(*s++);
 		nleft--;
 	}
 
 	while (nleft > 0) {
 
-		_io->putc(' ');
+		io->putc(' ');
 		nleft--;
 	}
 }
 
 static void
-fmt_hexb(io_ops_t *_io, int x)
+fmt_hex_byte(io_ops_t *io, int x)
 {
 	int		n, c;
 
 	n = (x & 0xF0U) >> 4;
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
-	_io->putc(c);
+
+	io->putc(c);
 
 	n = (x & 0x0FU);
 	c = (n < 10) ? '0' + n : 'A' + (n - 10);
-	_io->putc(c);
+
+	io->putc(c);
 }
 
 static void
-fmt_hexh(io_ops_t *_io, int x)
+fmt_hex_short(io_ops_t *io, uint16_t x)
 {
-	fmt_hexb(_io, (x & 0xFF00U) >> 8);
-	fmt_hexb(_io, (x & 0x00FFU));
+	union {
+		uint16_t	x;
+		uint8_t		b[2];
+	}
+	u = { x };
+
+	fmt_hex_byte(io, u.b[1]);
+	fmt_hex_byte(io, u.b[0]);
 }
 
 static void
-fmt_hexl(io_ops_t *_io, uint32_t x)
+fmt_hex_long(io_ops_t *io, uint32_t x)
 {
-	fmt_hexb(_io, (x & 0xFF000000U) >> 24);
-	fmt_hexb(_io, (x & 0x00FF0000U) >> 16);
-	fmt_hexb(_io, (x & 0x0000FF00U) >> 8);
-	fmt_hexb(_io, (x & 0x000000FFU));
+	union {
+		uint32_t	x;
+		uint8_t		b[4];
+	}
+	u = { x };
+
+	fmt_hex_byte(io, u.b[3]);
+	fmt_hex_byte(io, u.b[2]);
+	fmt_hex_byte(io, u.b[1]);
+	fmt_hex_byte(io, u.b[0]);
 }
 
 static void
-fmt_intp(io_ops_t *_io, int x, int nleft)
+fmt_int_aligned(io_ops_t *io, int x, int nleft)
 {
 	char		s[16], *p;
 	int		n;
 
 	if (x < 0) {
 
-		_io->putc('-');
+		io->putc('-');
+
 		x = - x;
 		nleft--;
 	}
@@ -299,19 +314,19 @@ fmt_intp(io_ops_t *_io, int x, int nleft)
 
 	while (*p) {
 
-		_io->putc(*p++);
+		io->putc(*p++);
 		nleft--;
 	}
 
 	while (nleft > 0) {
 
-		_io->putc(' ');
+		io->putc(' ');
 		nleft--;
 	}
 }
 
 static void
-fmt_float(io_ops_t *_io, float x, int n)
+fmt_fp_fixed(io_ops_t *io, float x, int n)
 {
 	union {
 		float		f;
@@ -324,7 +339,8 @@ fmt_float(io_ops_t *_io, float x, int n)
 
 	if (x < 0.f) {
 
-		_io->putc('-');
+		io->putc('-');
+
 		x = - x;
 	}
 
@@ -332,10 +348,10 @@ fmt_float(io_ops_t *_io, float x, int n)
 
 		if ((u.i & 0x7FFFFFU) != 0) {
 
-			xputs(_io, "NaN");
+			xputs(io, "NaN");
 		}
 		else {
-			xputs(_io, "Inf");
+			xputs(io, "Inf");
 		}
 
 		return ;
@@ -358,7 +374,7 @@ fmt_float(io_ops_t *_io, float x, int n)
 	i = (int) x;
 	x -= i;
 
-	_io->putc('0' + i);
+	io->putc('0' + i);
 
 	while (v > 0) {
 
@@ -368,10 +384,10 @@ fmt_float(io_ops_t *_io, float x, int n)
 		i = (int) x;
 		x -= i;
 
-		_io->putc('0' + i);
+		io->putc('0' + i);
 	}
 
-	_io->putc('.');
+	io->putc('.');
 
 	while (n > 0) {
 
@@ -381,12 +397,12 @@ fmt_float(io_ops_t *_io, float x, int n)
 		i = (int) x;
 		x -= i;
 
-		_io->putc('0' + i);
+		io->putc('0' + i);
 	}
 }
 
 static void
-fmt_fexp(io_ops_t *_io, float x, int n)
+fmt_fp_normal(io_ops_t *io, float x, int n)
 {
 	union {
 		float		f;
@@ -399,7 +415,8 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 	if (x < 0) {
 
-		_io->putc('-');
+		io->putc('-');
+
 		x = - x;
 	}
 
@@ -407,10 +424,10 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 
 		if ((u.i & 0x7FFFFFU) != 0) {
 
-			xputs(_io, "NaN");
+			xputs(io, "NaN");
 		}
 		else {
-			xputs(_io, "Inf");
+			xputs(io, "Inf");
 		}
 
 		return ;
@@ -445,8 +462,8 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 	i = (int) x;
 	x -= i;
 
-	_io->putc('0' + i);
-	_io->putc('.');
+	io->putc('0' + i);
+	io->putc('.');
 
 	while (n > 0) {
 
@@ -456,21 +473,21 @@ fmt_fexp(io_ops_t *_io, float x, int n)
 		i = (int) x;
 		x -= i;
 
-		_io->putc('0' + i);
+		io->putc('0' + i);
 	}
 
-	_io->putc('E');
+	io->putc('E');
 
 	if (v >= 0) {
 
-		_io->putc('+');
+		io->putc('+');
 	}
 
-	fmt_intp(_io, v, 0);
+	fmt_int_aligned(io, v, 0);
 }
 
 static void
-fmt_pretty(io_ops_t *_io, float x, int n)
+fmt_fp_pretty(io_ops_t *io, float x, int n)
 {
 	union {
 		float		f;
@@ -483,7 +500,8 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 
 	if (x < 0) {
 
-		_io->putc('-');
+		io->putc('-');
+
 		x = - x;
 	}
 
@@ -491,10 +509,10 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 
 		if ((u.i & 0x7FFFFFU) != 0) {
 
-			xputs(_io, "NaN");
+			xputs(io, "NaN");
 		}
 		else {
-			xputs(_io, "Inf");
+			xputs(io, "Inf");
 		}
 
 		return ;
@@ -531,7 +549,7 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 	i = (int) x;
 	x -= i;
 
-	_io->putc('0' + i);
+	io->putc('0' + i);
 
 	while (v % 3 != 0) {
 
@@ -542,10 +560,10 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 		i = (int) x;
 		x -= i;
 
-		_io->putc('0' + i);
+		io->putc('0' + i);
 	}
 
-	_io->putc('.');
+	io->putc('.');
 
 	while (n > 0) {
 
@@ -555,112 +573,122 @@ fmt_pretty(io_ops_t *_io, float x, int n)
 		i = (int) x;
 		x -= i;
 
-		_io->putc('0' + i);
+		io->putc('0' + i);
 	}
 
-	if (v == - 9) _io->putc('n');
-	else if (v == - 6) _io->putc('u');
-	else if (v == - 3) _io->putc('m');
-	else if (v == 3) _io->putc('K');
-	else if (v == 6) _io->putc('M');
-	else if (v == 9) _io->putc('G');
+	if (v == - 9) io->putc('n');
+	else if (v == - 6) io->putc('u');
+	else if (v == - 3) io->putc('m');
+	else if (v == 3) io->putc('K');
+	else if (v == 6) io->putc('M');
+	else if (v == 9) io->putc('G');
 	else if (v != 0) {
 
-		_io->putc('E');
+		io->putc('E');
 
 		if (v >= 0) {
 
-			_io->putc('+');
+			io->putc('+');
 		}
 
-		fmt_intp(_io, v, 0);
+		fmt_int_aligned(io, v, 0);
 	}
 }
 
-void xvprintf(io_ops_t *_io, const char *fmt, va_list ap)
+void xvprintf(io_ops_t *io, const char *fmt, va_list ap)
 {
 	const char	*s;
-	int		n = 0;
+	int		n;
 
 	while (*fmt) {
 
                 if (*fmt == '%') {
 
-                        ++fmt;
+			n = 0;
 
-			if (*fmt >= '0' && *fmt <= '9') {
+			++fmt;
 
-				n = *fmt++ - '0';
+			if (*fmt == '*') {
 
-				if (*fmt >= '0' && *fmt <= '9')
-					n = 10 * n + (*fmt++ - '0');
+				n = va_arg(ap, int);
+
+				++fmt;
+			}
+			else {
+				while (*fmt >= '0' && *fmt <= '9') {
+
+					n = 10 * n + (*fmt - '0');
+
+					++fmt;
+				}
 			}
 
 			switch (*fmt) {
 
 				case '%':
-					_io->putc('%');
+					io->putc('%');
 					break;
 
 				case 'x':
 					if (n == 2) {
 
-						fmt_hexb(_io, va_arg(ap, int));
+						fmt_hex_byte(io, va_arg(ap, int));
 					}
 					else if (n == 4) {
 
-						fmt_hexh(_io, va_arg(ap, int));
+						fmt_hex_short(io, va_arg(ap, int));
 					}
 					else if (n == 8) {
 
-						fmt_hexl(_io, va_arg(ap, uint32_t));
+						fmt_hex_long(io, va_arg(ap, uint32_t));
 					}
 					break;
 
 				case 'i':
-					fmt_intp(_io, va_arg(ap, int), n);
+					fmt_int_aligned(io, va_arg(ap, int), n);
 					break;
 
 				case 'f':
-					fmt_float(_io, * va_arg(ap, float *), n);
+					fmt_fp_fixed(io, * va_arg(ap, float *), n);
 					break;
 
 				case 'e':
-					fmt_fexp(_io, * va_arg(ap, float *), n);
+					fmt_fp_normal(io, * va_arg(ap, float *), n);
 					break;
 
 				case 'g':
-					fmt_pretty(_io, * va_arg(ap, float *), n);
+					fmt_fp_pretty(io, * va_arg(ap, float *), n);
 					break;
 
 				case 'c':
-					_io->putc(va_arg(ap, int));
+					io->putc(va_arg(ap, int));
 					break;
 
 				case 's':
 					s = va_arg(ap, const char *);
-					xputsp(_io, (s != NULL) ? s : "(null)", n);
+					xputs_aligned(io, (s != NULL) ? s : "(null)", n);
 					break;
 			}
 		}
                 else {
-                        _io->putc(*fmt);
+                        io->putc(*fmt);
 		}
 
                 ++fmt;
         }
 }
 
-void xprintf(io_ops_t *_io, const char *fmt, ...)
+void xprintf(io_ops_t *io, const char *fmt, ...)
 {
         va_list		ap;
 
         va_start(ap, fmt);
-	xvprintf(_io, fmt, ap);
+	xvprintf(io, fmt, ap);
         va_end(ap);
 }
 
 int getc() { return iodef->getc(); }
+int poll() { return iodef->poll(); }
 void putc(int c) { iodef->putc(c); }
 
 void puts(const char *s)
@@ -679,36 +707,34 @@ void printf(const char *fmt, ...)
 
 const char *stoi(int *x, const char *s)
 {
-	int		n, k, i;
+	int		n, d, i;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	i = 0;
 
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
-		k++;
-
-		if (k > 9) return NULL;
+		d += 1;
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 9) { return NULL; }
 
 	if (*s == 0 || *s == ' ') { *x = i; }
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
 const char *htoi(int *x, const char *s)
 {
-	int		i, k, h;
+	int		i, d, h;
 
-	k = 0;
+	d = 0;
 	h = 0;
 
 	if (*s == '0' && *(s + 1) == 'x') { s += 2; }
@@ -720,37 +746,35 @@ const char *htoi(int *x, const char *s)
 		else break;
 
 		h = 16 * h + i;
-		k++;
-
-		if (k > 8) return NULL;
+		d += 1;
 	}
 	while (1);
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 8) { return NULL; }
 
 	if (*s == 0 || *s == ' ') { *x = h; }
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
 const char *stof(float *x, const char *s)
 {
-	int		n, k, v, e;
+	int		n, d, v, e;
 	float		f;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	v = 0;
 	f = 0.f;
 
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10.f * f + (*s++ - '0') * n;
-		k++;
+		d += 1;
 	}
 
 	if (*s == '.') {
@@ -760,11 +784,11 @@ const char *stof(float *x, const char *s)
 		while (*s >= '0' && *s <= '9') {
 
 			f = 10.f * f + (*s++ - '0') * n;
-			k++; v--;
+			d += 1; v -= 1;
 		}
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0) { return NULL; }
 
 	if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
@@ -777,17 +801,17 @@ const char *stof(float *x, const char *s)
 		s = stoi(&e, s + 1);
 
 		if (s != NULL) { v += e; }
-		else return NULL;
+		else { return NULL; }
 	}
 
 	if (*s == 0 || *s == ' ') {
 
-		while (v < 0) { f /= 10.f; v++; }
-		while (v > 0) { f *= 10.f; v--; }
+		while (v < 0) { f /= 10.f; v += 1; }
+		while (v > 0) { f *= 10.f; v -= 1; }
 
 		*x = f;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }

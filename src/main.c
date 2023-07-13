@@ -95,9 +95,9 @@ GPIO_set_mode_FAN()
 {
 	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
 
-#ifdef GPIO_FAN_OPEN_DRAIN
+#ifdef HW_FAN_OPEN_DRAIN
 	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
-#else /* HW_GPIO_FAN_OPEN_DRAIN */
+#else /* HW_HW_FAN_OPEN_DRAIN */
 	GPIO_set_mode_PUSH_PULL(GPIO_FAN_EN);
 #endif
 }
@@ -105,9 +105,9 @@ GPIO_set_mode_FAN()
 static void
 GPIO_set_state_FAN(int knob)
 {
-#ifdef GPIO_FAN_OPEN_DRAIN
+#ifdef HW_FAN_OPEN_DRAIN
 	if (knob == PM_ENABLED) {
-#else /* HW_GPIO_FAN_OPEN_DRAIN */
+#else /* HW_HW_FAN_OPEN_DRAIN */
 	if (knob != PM_ENABLED) {
 #endif
 		GPIO_set_LOW(GPIO_FAN_EN);
@@ -225,7 +225,7 @@ void task_TEMP(void *pData)
 			ap.temp_EXT = 0.f;
 		}
 
-		if (ap.temp_PCB > ap.oh_PCB_temp_halt - lock_PCB) {
+		if (ap.temp_PCB > ap.heat_PCB_temp_halt - lock_PCB) {
 
 			x_PCB = 0.f;
 
@@ -235,16 +235,16 @@ void task_TEMP(void *pData)
 				pm.fsm_req = PM_STATE_HALT;
 			}
 
-			lock_PCB = ap.oh_temp_recovery;
+			lock_PCB = ap.heat_temp_recovery;
 		}
 		else {
-			if (ap.temp_PCB > ap.oh_PCB_temp_derate) {
+			if (ap.temp_PCB > ap.heat_PCB_temp_derate) {
 
 				/* Derate current in case of PCB thermal overload.
 				 * */
-				x_PCB = ap.oh_derated_PCB;
+				x_PCB = ap.heat_derated_PCB;
 			}
-			else if (ap.temp_PCB < ap.oh_PCB_temp_derate - ap.oh_temp_recovery) {
+			else if (ap.temp_PCB < ap.heat_PCB_temp_derate - ap.heat_temp_recovery) {
 
 				x_PCB = PM_MAX_F;
 			}
@@ -255,26 +255,26 @@ void task_TEMP(void *pData)
 #ifdef HW_HAVE_FAN_CONTROL
 		/* Enable FAN in case of PCB is warm enough.
 		 * */
-		if (ap.temp_PCB > ap.oh_PCB_temp_FAN) {
+		if (ap.temp_PCB > ap.heat_PCB_temp_FAN) {
 
 			GPIO_set_state_FAN(PM_ENABLED);
 		}
-		else if (ap.temp_PCB < ap.oh_PCB_temp_FAN - ap.oh_temp_recovery) {
+		else if (ap.temp_PCB < ap.heat_PCB_temp_FAN - ap.heat_temp_recovery) {
 
 			GPIO_set_state_FAN(PM_DISABLED);
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
-		if (ap.oh_EXT_temp_derate > M_EPS_F) {
+		if (ap.heat_EXT_temp_derate > M_EPS_F) {
 
-			if (ap.temp_EXT > ap.oh_EXT_temp_derate) {
+			if (ap.temp_EXT > ap.heat_EXT_temp_derate) {
 
 				/* Derate current in case of external thermal
-				 * overload (motor overheat).
+				 * overload (machine overheat protection).
 				 * */
-				x_EXT = ap.oh_derated_EXT;
+				x_EXT = ap.heat_derated_EXT;
 			}
-			else if (ap.temp_EXT < ap.oh_EXT_temp_derate - ap.oh_temp_recovery) {
+			else if (ap.temp_EXT < ap.heat_EXT_temp_derate - ap.heat_temp_recovery) {
 
 				x_EXT = PM_MAX_F;
 			}
@@ -644,13 +644,13 @@ default_flash_load()
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MACHINE */
 
-	ap.oh_PCB_temp_halt = 110.f;
-	ap.oh_PCB_temp_derate = 90.f;
-	ap.oh_PCB_temp_FAN = 50.f;
-	ap.oh_EXT_temp_derate = 0.f;
-	ap.oh_derated_PCB = 20.f;
-	ap.oh_derated_EXT = 20.f;
-	ap.oh_temp_recovery = 5.f;
+	ap.heat_PCB_temp_halt = 110.f;	/* (C) */
+	ap.heat_PCB_temp_derate = 90.f;	/* (C) */
+	ap.heat_PCB_temp_FAN = 60.f;	/* (C) */
+	ap.heat_EXT_temp_derate = 0.f;	/* (C) */
+	ap.heat_derated_PCB = 20.f;	/* (A) */
+	ap.heat_derated_EXT = 20.f;	/* (A) */
+	ap.heat_temp_recovery = 5.f;	/* (C) */
 
 	ap.adc_load_scale[0] = 0.f;
 	ap.adc_load_scale[1] = 4.65E-6f;
@@ -764,10 +764,10 @@ void task_INIT(void *pData)
 	DRV_startup();
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef GPIO_BOOST_EN
-	GPIO_set_mode_OUTPUT(GPIO_BOOST_EN);
-	GPIO_set_HIGH(GPIO_BOOST_EN);
-#endif /* GPIO_BOOST_EN */
+#ifdef GPIO_GATE_EN
+	GPIO_set_mode_OUTPUT(GPIO_GATE_EN);
+	GPIO_set_HIGH(GPIO_GATE_EN);
+#endif /* GPIO_GATE_EN */
 
 #ifdef HW_HAVE_FAN_CONTROL
 	GPIO_set_mode_FAN();
@@ -794,15 +794,18 @@ void task_INIT(void *pData)
 	PPM_startup();
 
 	io_USART.getc = &USART_getc;
+	io_USART.poll = &USART_poll;
 	io_USART.putc = &USART_putc;
 
 #ifdef HW_HAVE_USB_CDC_ACM
-	io_USB.getc = &USB_getc;
+	io_USB.getc = &USART_getc;
+	io_USB.poll = &USART_poll;
 	io_USB.putc = &USB_putc;
 #endif /* HW_HAVE_USB_CDC_ACM */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
-	io_CAN.getc = &EPCAN_getc;
+	io_CAN.getc = &USART_getc;
+	io_CAN.poll = &USART_poll;
 	io_CAN.putc = &EPCAN_putc;
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
@@ -1074,15 +1077,14 @@ void app_control(const reg_t *reg, void (* pvTask) (void *), const char *pcName)
 
 void app_halt()
 {
-#ifdef GPIO_BOOST_EN
-	GPIO_set_LOW(GPIO_BOOST_EN);
-
-	vTaskDelay((TickType_t) 50);
-#endif /* GPIO_BOOST_EN */
-
 #ifdef HW_HAVE_DRV_ON_PCB
 	DRV_halt();
 #endif /* HW_HAVE_DRV_ON_PCB */
+
+#ifdef GPIO_GATE_EN
+	GPIO_set_LOW(GPIO_GATE_EN);
+	vTaskDelay((TickType_t) 100);
+#endif /* GPIO_GATE_EN */
 }
 
 SH_DEF(rtos_version)
@@ -1104,25 +1106,7 @@ SH_DEF(rtos_version)
 
 SH_DEF(rtos_uptime)
 {
-	struct {
-
-		int	day;
-		int	hour;
-		int	min;
-		int	sec;
-	}
-	tm;
-
-	tm.sec = xTaskGetTickCount() / configTICK_RATE_HZ;
-
-	tm.day = tm.sec / 86400;
-	tm.sec -= tm.day * 86400;
-	tm.hour = tm.sec / 3600;
-	tm.sec -= tm.hour * 3600;
-	tm.min = tm.sec / 60;
-	tm.sec -= tm.min * 60;
-
-	printf("[%i] %id %ih %im %is" EOL, log.boot_COUNT, tm.day, tm.hour, tm.min, tm.sec);
+	printf("Watch %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
 SH_DEF(rtos_task_info)

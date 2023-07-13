@@ -1,10 +1,12 @@
+#include <stdint.h>
+
 #include "libm.h"
 
 int m_isfinitef(float x)
 {
 	union {
 		float		f;
-		unsigned int	i;
+		uint32_t	i;
 	}
 	u = { x };
 
@@ -167,7 +169,7 @@ float m_log2f(float x)
 {
 	union {
 		float		f;
-		unsigned int	i;
+		uint32_t	i;
 	}
 	u = { x }, m;
 
@@ -199,6 +201,11 @@ float m_log2f(float x)
 	return q;
 }
 
+float m_log10f(float x)
+{
+	return m_log2f(x) * M_LOG10_F;
+}
+
 float m_logf(float x)
 {
 	return m_log2f(x) * M_LOG2_F;
@@ -208,7 +215,7 @@ float m_exp2f(float x)
 {
 	union {
 		float		f;
-		unsigned int	i;
+		uint32_t	i;
 	}
 	u = { x }, m;
 
@@ -237,6 +244,11 @@ float m_exp2f(float x)
 	q *= m.f / (1.f + r);
 
 	return q;
+}
+
+float m_exp10f(float x)
+{
+	return m_exp2f(x / M_LOG10_F);
 }
 
 float m_expf(float x)
@@ -295,24 +307,23 @@ void m_la_eigf(const float a[3], float v[4], int m)
 	}
 }
 
-static unsigned int
-m_lf_lcgu(unsigned int rseed)
+static uint32_t
+m_lf_lcgu(uint32_t rseed)
 {
 	return rseed * 17317U + 1U;
 }
 
 void m_lf_randseed(lf_seed_t *lf, int seed)
 {
-	const float	mu = 2.3283064E-10f;
-	unsigned int	lcgu;
+	uint32_t	lcgu;
 
 	lcgu = m_lf_lcgu(seed);
 	lcgu = m_lf_lcgu(lcgu);
 
-	lf->seed[0] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
-	lf->seed[1] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
-	lf->seed[2] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
-	lf->seed[3] = (float) (lcgu = m_lf_lcgu(lcgu)) * mu;
+	lf->seed[0] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
+	lf->seed[1] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
+	lf->seed[2] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
+	lf->seed[3] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
 	lf->nb = 0;
 }
 
