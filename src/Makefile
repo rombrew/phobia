@@ -21,36 +21,39 @@ RM	= rm -rf
 #CROSS	= armv7m-none-eabi
 #CC	= clang -target $(CROSS)
 
-CFLAGS	= -O3 -flto=auto -g3 -pipe
+CFLAGS	= -std=gnu99 -O3 -flto=auto -g3 -pipe
 
 ifeq ($(HWMCU), STM32F405)
-CFLAGS	+= -mcpu=cortex-m4 -mthumb
-CFLAGS	+= -mfloat-abi=hard -mfpu=fpv4-sp-d16
+CFLAGS	+= -mcpu=cortex-m4 -mthumb \
+	   -mfloat-abi=hard -mfpu=fpv4-sp-d16
 endif
 
 ifeq ($(HWMCU), STM32F722)
-CFLAGS	+= -mcpu=cortex-m7 -mthumb
-CFLAGS	+= -mfloat-abi=hard -mfpu=fpv5-sp-d16
+CFLAGS	+= -mcpu=cortex-m7 -mthumb \
+	   -mfloat-abi=hard -mfpu=fpv5-sp-d16
 endif
 
-CFLAGS	+= -Wall -Wdouble-promotion
-CFLAGS	+= -Wno-stringop-overflow
-CFLAGS	+= -fno-hosted
-CFLAGS	+= -fno-stack-protector
-CFLAGS	+= -fno-math-errno
-CFLAGS	+= -ffinite-math-only
-CFLAGS	+= -fno-signed-zeros
-CFLAGS	+= -fno-trapping-math
-CFLAGS	+= -fno-associative-math
-CFLAGS	+= -fno-reciprocal-math
-CFLAGS	+= -ffp-contract=fast
-CFLAGS  += -I.
+CFLAGS	+= -Wall -Wdouble-promotion \
+	   -Wno-stringop-overflow
+
+CFLAGS	+= -fno-hosted \
+	   -fno-stack-protector
+
+CFLAGS	+= -fno-math-errno \
+	   -ffinite-math-only \
+	   -fno-signed-zeros \
+	   -fno-trapping-math \
+	   -fno-associative-math \
+	   -fno-reciprocal-math \
+	   -ffp-contract=fast
+
+CFLAGS	+= -I.
 CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
 	   -D_HW_INCLUDE=\"hal/hw/$(HWREV).h\"
 
 LDFLAGS	= -nostdlib
-LDFLAGS	+= -Wl,--no-warn-rwx-segments
-LDFLAGS += -Wl,--print-memory-usage
+LDFLAGS += -Wl,--no-warn-rwx-segments \
+	   -Wl,--print-memory-usage
 
 ifeq ($(HWMCU), STM32F405)
 LDFLAGS	+= -Wl,-T,hal/link_f405.ld

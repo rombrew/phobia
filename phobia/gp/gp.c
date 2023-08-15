@@ -146,9 +146,6 @@ enum {
 	GP_EDIT,
 };
 
-int utf8_length(const char *s);
-const char *utf8_skip(const char *s, int n);
-
 #ifndef _EMBED_GP
 static void
 gpMakeHello(gp_t *gp)
@@ -285,11 +282,12 @@ gpDefaultFile(gp_t *gp)
 				"shortfilename 1\n"
 				"fastdraw 200\n"
 				"interpolation 1\n"
+				"defungap 10\n"
 				"precision 9\n"
 				"lz4_compress 1\n");
 
 #ifdef _WINDOWS
-		fprintf(fd,	"legacy_label 0\n");
+		fprintf(fd,	"legacy_label 1\n");
 #endif /* _WINDOWS */
 
 		fclose(fd);
@@ -500,7 +498,7 @@ gpFileIsGP(gp_t *gp, const char *file)
 	return rc;
 }
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 static int
 legacy_FileIsBAT(gp_t *gp, const char *file)
 {
@@ -590,7 +588,7 @@ legacy_FileOpenBAT(gp_t *gp, const char *file, int fromUI)
 		fclose(fd);
 	}
 }
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 static void
 gpUnifiedFileOpen(gp_t *gp, const char *file, int fromUI)
@@ -602,12 +600,12 @@ gpUnifiedFileOpen(gp_t *gp, const char *file, int fromUI)
 		readConfigGP(rd, file, fromUI);
 	}
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 	else if (legacy_FileIsBAT(gp, file) != 0) {
 
 		legacy_FileOpenBAT(gp, file, fromUI);
 	}
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 	else {
 		sprintf(gp->sbuf[0],	"load 0 0 text \"%s\"\n"
@@ -881,6 +879,10 @@ gpInsertDataset(gp_t *gp, char **la, int dN)
 
 		sformat = "NONE  ";
 	}
+	else if (rd->data[dN].format == FORMAT_PLAIN_STDIN) {
+
+		sformat = "STDIN ";
+	}
 	else if (rd->data[dN].format == FORMAT_PLAIN_TEXT) {
 
 		sformat = "TEXT  ";
@@ -924,13 +926,21 @@ gpMakeColumnSelectMenu(gp_t *gp, int dN)
 		else {
 			sN = cN - rd->data[dN].column_N;
 
-			sprintf(gp->sbuf[0], "* [%1i] %c ", sN,
-					" USRAMHDCBLTP??" [gp->pl->data[dN].sub[sN].busy]);
+			sprintf(gp->sbuf[0], "[%3i] %c ", cN,
+					" TFSEPRAXHDCBLM?" [gp->pl->data[dN].sub[sN].busy]);
 
-			if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_TIME_UNWRAP) {
+			if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_TIME_MEDIAN) {
 
-				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i)",
-						gp->pl->data[dN].sub[sN].op.time.column_1);
+				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i, %i)",
+						gp->pl->data[dN].sub[sN].op.median.column_1,
+						gp->pl->data[dN].sub[sN].op.median.length,
+						gp->pl->data[dN].sub[sN].op.median.unwrap);
+			}
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_DATA_MEDIAN) {
+
+				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i)",
+						gp->pl->data[dN].sub[sN].op.median.column_1,
+						gp->pl->data[dN].sub[sN].op.median.column_2);
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_SCALE) {
 
@@ -938,6 +948,21 @@ gpMakeColumnSelectMenu(gp_t *gp, int dN)
 						gp->pl->data[dN].sub[sN].op.scale.column_1,
 						gp->pl->data[dN].sub[sN].op.scale.scale,
 						gp->pl->data[dN].sub[sN].op.scale.offset);
+			}
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_RESAMPLE) {
+
+				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i) (%i, %i, %i)",
+						gp->pl->data[dN].sub[sN].op.resample.column_X,
+						gp->pl->data[dN].sub[sN].op.resample.in_data_N,
+						gp->pl->data[dN].sub[sN].op.resample.in_column_X,
+						gp->pl->data[dN].sub[sN].op.resample.in_column_Y);
+			}
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_POLYFIT) {
+
+				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i, %i)",
+						gp->pl->data[dN].sub[sN].op.polyfit.column_X,
+						gp->pl->data[dN].sub[sN].op.polyfit.column_Y,
+						gp->pl->data[dN].sub[sN].op.polyfit.poly_N1);
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_SUBTRACTION
 					|| gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_ADDITION
@@ -956,30 +981,26 @@ gpMakeColumnSelectMenu(gp_t *gp, int dN)
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_BITMASK) {
 
+				int	bf[2] = { 0, (int) gp->pl->data[dN].sub[sN].op.filter.gain };
+
+				bf[0] = bf[1] & 0xFFU;
+				bf[1] = bf[1] >> 8;
+
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i, %i)",
 						gp->pl->data[dN].sub[sN].op.filter.column_1,
-						(int) gp->pl->data[dN].sub[sN].op.filter.arg_1,
-						(int) gp->pl->data[dN].sub[sN].op.filter.arg_2);
+						(int) bf[0], (int) bf[1]);
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_LOW_PASS) {
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %.2E)",
 						gp->pl->data[dN].sub[sN].op.filter.column_1,
-						gp->pl->data[dN].sub[sN].op.filter.arg_1);
+						gp->pl->data[dN].sub[sN].op.filter.gain);
 			}
-			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_RESAMPLE) {
-
-				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i) (%i, %i, %i)",
-						gp->pl->data[dN].sub[sN].op.resample.column_X,
-						gp->pl->data[dN].sub[sN].op.resample.column_in_X,
-						gp->pl->data[dN].sub[sN].op.resample.column_in_Y,
-						gp->pl->data[dN].sub[sN].op.resample.in_data_N);
-			}
-			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_POLYFIT) {
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_MEDIAN) {
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i)",
-						gp->pl->data[dN].sub[sN].op.polyfit.column_X,
-						gp->pl->data[dN].sub[sN].op.polyfit.poly_N2);
+						gp->pl->data[dN].sub[sN].op.median.column_1,
+						(int) gp->pl->data[dN].sub[sN].op.median.length);
 			}
 
 			strcpy(la, gp->sbuf[0]);
@@ -1031,7 +1052,8 @@ gpMakeDatasetMenu(gp_t *gp)
 	plot_t		*pl = gp->pl;
 	read_t		*rd = gp->rd;
 	char		*la = gp->la_menu;
-	int		N, cN, gN, dN, mbUSAGE, mbRAW, mbCACHE, lzPC, len, fnlen;
+	int		N, cN, gN, dN, len, fnlen, unwrap, opdata;
+	int		mbUSAGE, mbRAW, mbCACHE, lzPC;
 
 	len = gpScreenLength(gp->pl) - gp->layout_menu_dataset_margin;
 	len = (len < gp->layout_menu_dataset_minimal)
@@ -1073,8 +1095,11 @@ gpMakeDatasetMenu(gp_t *gp)
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
 
-	strcpy(gp->sbuf[2], " ");
+	strcpy(gp->sbuf[2], "   ");
 	strcpy(gp->sbuf[3], "   ");
+
+	unwrap = 0;
+	opdata = 0;
 
 	if (cN >= -1 && pl->data[dN].map != NULL) {
 
@@ -1082,9 +1107,12 @@ gpMakeDatasetMenu(gp_t *gp)
 
 		if (gN >= 0 && gN < PLOT_GROUP_MAX) {
 
-			if (pl->group[gN].op_time_unwrap != 0) {
+			if (pl->group[gN].op_time_median != 0) {
 
-				strcpy(gp->sbuf[2], "X");
+				sprintf(gp->sbuf[2], "%3i", pl->group[gN].length);
+
+				unwrap = pl->group[gN].op_time_unwrap;
+				opdata = pl->group[gN].op_time_opdata;
 			}
 
 			if (pl->group[gN].op_scale != 0) {
@@ -1102,7 +1130,15 @@ gpMakeDatasetMenu(gp_t *gp)
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
 
-	sprintf(gp->sbuf[0], gp->la->dataset_menu[2], gp->sbuf[3]);
+	sprintf(gp->sbuf[0], gp->la->dataset_menu[2], (unwrap != 0) ? " X " : "   ");
+	strcpy(la, gp->sbuf[0]);
+	la += strlen(la) + 1;
+
+	sprintf(gp->sbuf[0], gp->la->dataset_menu[3], (opdata != 0) ? " X " : "   ");
+	strcpy(la, gp->sbuf[0]);
+	la += strlen(la) + 1;
+
+	sprintf(gp->sbuf[0], gp->la->dataset_menu[4], gp->sbuf[3]);
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
 
@@ -1112,13 +1148,13 @@ gpMakeDatasetMenu(gp_t *gp)
 
 	lzPC = (mbRAW != 0) ? 100U * mbUSAGE / mbRAW : 0;
 
-	sprintf(gp->sbuf[0], gp->la->dataset_menu[3],
+	sprintf(gp->sbuf[0], gp->la->dataset_menu[5],
 			rd->data[dN].length_N, mbUSAGE, lzPC, mbCACHE);
 
 	strcpy(la, gp->sbuf[0]);
 	la += strlen(la) + 1;
 
-	strcpy(la, gp->la->dataset_menu[4]);
+	strcpy(la, gp->la->dataset_menu[6]);
 	la += strlen(la) + 1;
 
 	strcpy(la, gp->sbuf[1]);
@@ -1315,7 +1351,8 @@ gpTakeScreen(gp_t *gp)
 }
 
 #ifdef _WINDOWS
-void legacy_SetClipboard(SDL_Surface *surface)
+static void
+legacy_SetClipboard(SDL_Surface *surface)
 {
 	long		length;
 	void		*mBMP;
@@ -1633,20 +1670,24 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 1:
+				plotDataSubtractAlternate(rd->pl);
+				break;
+
+			case 2:
 				gpMakeDirMenu(gp);
 
 				menuRaise(mu, 1021, gp->la_menu, mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
 
-			case 2:
+			case 3:
 				gpMakeDatasetMenu(gp);
 
 				menuRaise(mu, 1022, gp->la_menu, mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
 
-			case 3:
+			case 4:
 				gpMakeConfigurationMenu(gp);
 
 				menuRaise(mu, 1023, gp->la_menu, mu->box_X, mu->box_Y);
@@ -1654,7 +1695,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				gp->stat = GP_MENU;
 				break;
 
-			case 4:
+			case 5:
 				menuRaise(mu, 1024, gp->la->cancel_menu, mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
@@ -1701,7 +1742,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 		if (item_N != -1) {
 
-			int			gN, cN, unwrap;
+			int			gN, cN;
 
 			switch (item_N) {
 
@@ -1726,16 +1767,48 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 						gN = pl->data[gp->data_N].map[cN];
 
-						if (gN != -1) {
+						if (gN < 0) {
 
-							unwrap = (pl->group[gN].op_time_unwrap != 0) ? 0 : 1;
-							plotGroupTimeUnwrap(pl, gN, unwrap);
-						}
-						else {
 							gN = gp->data_N + (PLOT_GROUP_MAX - PLOT_DATASET_MAX);
 
 							plotGroupAdd(pl, gp->data_N, gN, cN);
-							plotGroupTimeUnwrap(pl, gN, 1);
+						}
+
+						if (pl->group[gN].op_time_median == 0) {
+
+							plotGroupMedian(pl, gN, 3, 0, 0);
+						}
+
+						sprintf(gp->sbuf[0], "%i", pl->group[gN].length);
+
+						gp->grp_N = gN;
+
+						editRaise(ed, 17, gp->la->median_unwrap_edit,
+								gp->sbuf[0], mu->box_X, mu->box_Y);
+
+						gp->stat = GP_EDIT;
+					}
+					else {
+						gpMakeDatasetMenu(gp);
+
+						menuResume(mu);
+						menuLayout(mu);
+
+						gp->stat = GP_MENU;
+					}
+					break;
+
+				case 4:
+					cN = readGetTimeColumn(rd, gp->data_N);
+
+					if (cN >= -1) {
+
+						gN = pl->data[gp->data_N].map[cN];
+
+						if (gN >= 0) {
+
+							pl->group[gN].op_time_unwrap =
+								(pl->group[gN].op_time_unwrap != 0) ? 0 : 1;
 						}
 					}
 
@@ -1747,7 +1820,29 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					gp->stat = GP_MENU;
 					break;
 
-				case 4:
+				case 5:
+					cN = readGetTimeColumn(rd, gp->data_N);
+
+					if (cN >= -1) {
+
+						gN = pl->data[gp->data_N].map[cN];
+
+						if (gN >= 0) {
+
+							pl->group[gN].op_time_opdata =
+								(pl->group[gN].op_time_opdata != 0) ? 0 : 1;
+						}
+					}
+
+					gpMakeDatasetMenu(gp);
+
+					menuResume(mu);
+					menuLayout(mu);
+
+					gp->stat = GP_MENU;
+					break;
+
+				case 6:
 					cN = readGetTimeColumn(rd, gp->data_N);
 
 					if (cN >= -1) {
@@ -1756,8 +1851,6 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 						if (gN < 0) {
 
-							/* NOTE: last group numbers are occupied by time scale.
-							 * */
 							gN = gp->data_N + (PLOT_GROUP_MAX - PLOT_DATASET_MAX);
 
 							plotGroupAdd(pl, gp->data_N, gN, cN);
@@ -1765,7 +1858,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 						if (pl->group[gN].op_scale == 0) {
 
-							plotGroupScale(pl, gN, 1., 0.);
+							plotGroupScale(pl, gN, 1, 1., 0.);
 						}
 
 						gpTextFloat(pl, gp->sbuf[0], pl->group[gN].scale);
@@ -1791,7 +1884,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					}
 					break;
 
-				case 5:
+				case 7:
 					sprintf(gp->sbuf[0], "%i", rd->data[gp->data_N].length_N);
 
 					editRaise(ed, 12, gp->la->length_edit,
@@ -1800,7 +1893,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					gp->stat = GP_EDIT;
 					break;
 
-				case 6:
+				case 8:
 					readDatasetClean(rd, gp->data_N);
 
 					gpMakeDatasetMenu(gp);
@@ -1812,16 +1905,16 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					break;
 
 				case 1:
-				case 7:
+				case 9:
 					menuResume(mu);
 					gp->stat = GP_MENU;
 					break;
 
 				default:
 
-					if (item_N >= 8) {
+					if (item_N >= 10) {
 
-						readToggleHint(rd, gp->data_N, item_N - 8);
+						readToggleHint(rd, gp->data_N, item_N - 10);
 					}
 
 					gpMakeDatasetMenu(gp);
@@ -2136,17 +2229,17 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				if (N < 2) {
 
 					mu->hidden_N[0] = 2;
-					mu->hidden_N[1] = 5;
-					mu->hidden_N[2] = 6;
-					mu->hidden_N[3] = 7;
-					mu->hidden_N[4] = 8;
-				}
-				else if (N != 2) {
-
-					mu->hidden_N[0] = 5;
 					mu->hidden_N[1] = 6;
 					mu->hidden_N[2] = 7;
 					mu->hidden_N[3] = 8;
+					mu->hidden_N[4] = 9;
+				}
+				else if (N != 2) {
+
+					mu->hidden_N[0] = 6;
+					mu->hidden_N[1] = 7;
+					mu->hidden_N[2] = 8;
+					mu->hidden_N[3] = 9;
 				}
 
 				gp->stat = GP_MENU;
@@ -2167,6 +2260,8 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 		}
 	}
 	else if (menu_N == 302) {
+
+		int		config[3];
 
 		switch (item_N) {
 
@@ -2192,7 +2287,18 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 1:
-				plotFigureSubtractTimeUnwrap(pl, gp->fig_N);
+				if (plotFigureSubtractGetMedianConfig(pl, gp->fig_N, config) >= 0) {
+
+					sprintf(gp->sbuf[0], "%d %d %d", config[0], config[1], config[2]);
+				}
+				else {
+					sprintf(gp->sbuf[0], "3 0 0");
+				}
+
+				editRaise(ed, 18, gp->la->median_unwrap_edit,
+						gp->sbuf[0], mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
 				break;
 
 			case 2:
@@ -2214,44 +2320,6 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 5:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_SUBTRACTION);
-				break;
-
-			case 6:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_ADDITION);
-				break;
-
-			case 7:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_MULTIPLICATION);
-				break;
-
-			case 8:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_HYPOTENUSE);
-				break;
-
-			case 9:
-				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_DIFFERENCE, 0., 0.);
-				break;
-
-			case 10:
-				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_CUMULATIVE, 0., 0.);
-				break;
-
-			case 11:
-				editRaise(ed, 8, gp->la->bit_number_edit,
-						"0", mu->box_X, mu->box_Y);
-
-				gp->stat = GP_EDIT;
-				break;
-
-			case 12:
-				editRaise(ed, 13, gp->la->low_pass_edit,
-						"0.1", mu->box_X, mu->box_Y);
-
-				gp->stat = GP_EDIT;
-				break;
-
-			case 13:
 				if (plotDataBoxPolyfit(pl, gp->fig_N) == 0) {
 
 					editRaise(ed, 16, gp->la->polynomial_edit,
@@ -2259,6 +2327,51 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 
 					gp->stat = GP_EDIT;
 				}
+				break;
+
+			case 6:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_SUBTRACTION);
+				break;
+
+			case 7:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_ADDITION);
+				break;
+
+			case 8:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_MULTIPLICATION);
+				break;
+
+			case 9:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_HYPOTENUSE);
+				break;
+
+			case 10:
+				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_DIFFERENCE, 0.);
+				break;
+
+			case 11:
+				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_CUMULATIVE, 0.);
+				break;
+
+			case 12:
+				editRaise(ed, 8, gp->la->bit_number_edit,
+						"0", mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
+				break;
+
+			case 13:
+				editRaise(ed, 13, gp->la->low_pass_edit,
+						"0.1", mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
+				break;
+
+			case 14:
+				editRaise(ed, 19, gp->la->median_unwrap_edit,
+						"3", mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
 				break;
 		}
 	}
@@ -2493,7 +2606,7 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 	menu_t		*mu = gp->mu;
 	svg_t		*g;
 
-	double		scale, offset;
+	double		scale, offset, gain;
 	int		len, n;
 
 	if (edit_N == 1) {
@@ -2520,15 +2633,18 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 5 || edit_N == 6) {
 
-		int		fN, axis_1;
-
-		offset = 0.;
+		int		fN, aBUSY;
 
 		n = sscanf(text, "%le %le", &scale, &offset);
 
 		if (n != 0) {
 
-			axis_1 = (edit_N == 5) ? AXIS_BUSY_X : AXIS_BUSY_Y;
+			if (n == 1) {
+
+				offset = 0.;
+			}
+
+			aBUSY = (edit_N == 5) ? AXIS_BUSY_X : AXIS_BUSY_Y;
 
 			if (gp->fig_N < 0) {
 
@@ -2537,34 +2653,35 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 					if (		pl->figure[fN].busy != 0
 							&& pl->figure[fN].hidden == 0) {
 
-						plotFigureSubtractScale(pl, fN, axis_1,
+						plotFigureSubtractScale(pl, fN, aBUSY,
 								scale, offset);
 					}
 				}
 			}
 			else {
-				plotFigureSubtractScale(pl, gp->fig_N, axis_1, scale, offset);
+				plotFigureSubtractScale(pl, gp->fig_N,
+						aBUSY, scale, offset);
 			}
 		}
 	}
 	else if (edit_N == 7) {
 
-		const char	*file;
+		const char	*filetype;
 
 		strcpy(gp->tempfile, text);
 
-		file = gp->tempfile + strlen(gp->tempfile);
+		filetype = gp->tempfile + strlen(gp->tempfile);
 
 		if (strlen(gp->tempfile) > 4) {
 
-			file += - 4;
+			filetype += - 4;
 		}
 
-		if (strcmp(file, ".png") == 0) {
+		if (strcmp(filetype, ".png") == 0) {
 
 			gp->screen_take = GP_TAKE_PNG;
 		}
-		else if (strcmp(file, ".svg") == 0) {
+		else if (strcmp(filetype, ".svg") == 0) {
 
 			g = (void *) svgOpenNew(gp->tempfile,
 					gp->surface->w, gp->surface->h);
@@ -2575,24 +2692,32 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 			gp->surface->userdata = (void *) g;
 			gp->screen_take = GP_TAKE_SVG;
 		}
-		else if (strcmp(file, ".csv") == 0) {
+		else if (strcmp(filetype, ".csv") == 0) {
 
 			gp->screen_take = GP_TAKE_CSV;
 		}
 	}
 	else if (edit_N == 8) {
 
-		int		arg_1, arg_2;
+		int		args[2];
 
-		n = sscanf(text, "%d %d", &arg_1, &arg_2);
+		n = sscanf(text, "%d %d", &args[0], &args[1]);
 
 		if (n != 0) {
 
-			arg_2 = (n == 1) ? arg_1 : arg_2;
-			arg_2 = (arg_2 < arg_1) ? arg_1 : arg_2;
+			if (n == 1) {
 
-			plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_BITMASK,
-					(double) arg_1, (double) arg_2);
+				args[1] = args[0];
+			}
+
+			if (		args[0] >= 0 && args[0] <= 64
+					&& args[1] >= 0 && args[1] <= 64
+					&& args[0] <= args[1]) {
+
+				plotFigureSubtractFilter(pl, gp->fig_N,
+						SUBTRACT_FILTER_BITMASK,
+						(double) (args[0] | (args[1] << 8)));
+			}
 		}
 	}
 	else if (edit_N == 9) {
@@ -2632,11 +2757,10 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 
 		if (n == 2) {
 
-			pl->group[gp->grp_N].scale = scale;
-			pl->group[gp->grp_N].offset = offset;
+			plotGroupScale(pl, gp->grp_N, 1, scale, offset);
 		}
 		else {
-			pl->group[gp->grp_N].op_scale = 0;
+			plotGroupScale(pl, gp->grp_N, 0, 1., 0.);
 		}
 
 		gpMakeDatasetMenu(gp);
@@ -2646,15 +2770,18 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 12) {
 
-		n = sscanf(text, "%i", &len);
+		n = sscanf(text, "%d", &len);
 
 		if (n == 1) {
 
-			rd->data[gp->data_N].length_N = len;
+			if (len >= 0) {
 
-			if (rd->data[gp->data_N].length_N >= 1) {
+				rd->data[gp->data_N].length_N = len;
 
-				plotDataResize(pl, gp->data_N, rd->data[gp->data_N].length_N + 1);
+				if (len >= 1) {
+
+					plotDataResize(pl, gp->data_N, len);
+				}
 			}
 		}
 
@@ -2665,11 +2792,12 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 13) {
 
-		n = sscanf(text, "%le", &scale);
+		n = sscanf(text, "%le", &gain);
 
 		if (n == 1) {
 
-			plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_LOW_PASS, scale, 0.);
+			plotFigureSubtractFilter(pl, gp->fig_N,
+					SUBTRACT_FILTER_LOW_PASS, gain);
 		}
 	}
 	else if (edit_N == 14) {
@@ -2678,14 +2806,15 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 
 		if (n == 1) {
 
-			len = (len < 0) ? 0 : (len > 16) ? 16 : len;
+			if (len >= 0 && len <= 16) {
 
-			pl->figure[gp->fig_N].width = len;
+				pl->figure[gp->fig_N].width = len;
+			}
 		}
 	}
 	else if (edit_N == 15) {
 
-		n = sscanf(text, "%i", &len);
+		n = sscanf(text, "%d", &len);
 
 		if (n == 1) {
 
@@ -2703,19 +2832,80 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 16) {
 
-		int		arg_1, arg_2;
+		int		args[2];
 
-		n = sscanf(text, "%d %d", &arg_1, &arg_2);
+		n = sscanf(text, "%d %d", &args[0], &args[1]);
 
 		if (n != 0) {
 
 			if (n == 1) {
 
-				arg_2 = arg_1;
-				arg_1 = 0;
+				args[1] = args[0];
+				args[0] = 0;
 			}
 
-			plotFigureSubtractPolyfit(pl, gp->fig_N, arg_1, arg_2);
+			if (		args[0] >= 0 && args[0] <= PLOT_POLYFIT_MAX
+					&& args[1] >= 0 && args[1] <= PLOT_POLYFIT_MAX
+					&& args[0] <= args[1]) {
+
+				plotFigureSubtractPolyfit(pl, gp->fig_N,
+						args[0], args[1]);
+			}
+		}
+	}
+	else if (edit_N == 17) {
+
+		n = sscanf(text, "%d", &len);
+
+		if (n != 0) {
+
+			int		unwrap = pl->group[gp->grp_N].op_time_unwrap;
+			int		opdata = pl->group[gp->grp_N].op_time_opdata;
+
+			if (len >= 1 && len <= PLOT_MEDIAN_MAX) {
+
+				plotGroupMedian(pl, gp->grp_N, len,
+						unwrap, opdata);
+			}
+			else {
+				plotGroupMedian(pl, gp->grp_N, 0, 0, 0);
+			}
+		}
+		else {
+			plotGroupMedian(pl, gp->grp_N, 0, 0, 0);
+		}
+
+		gpMakeDatasetMenu(gp);
+
+		menuRaise(mu, 1022, gp->la_menu, mu->box_X, mu->box_Y);
+		gp->stat = GP_MENU;
+	}
+	else if (edit_N == 18) {
+
+		int		args[2];
+
+		n = sscanf(text, "%d %d %d", &len, &args[0], &args[1]);
+
+		if (n != 0) {
+
+			if (len >= 0 && len <= PLOT_MEDIAN_MAX) {
+
+				plotFigureSubtractTimeMedian(pl, gp->fig_N,
+						len, args[0], args[1]);
+			}
+		}
+	}
+	else if (edit_N == 19) {
+
+		n = sscanf(text, "%d", &len);
+
+		if (n != 0) {
+
+			if (len >= 3 && len <= PLOT_MEDIAN_MAX) {
+
+				plotFigureSubtractFilter(pl, gp->fig_N,
+						SUBTRACT_FILTER_MEDIAN, (double) len);
+			}
 		}
 	}
 }
@@ -2813,12 +3003,16 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 				gpMenuHandle(gp, 102, 0);
 			}
+			else if (ev->key.keysym.sym == SDLK_j) {
+
+				gpMenuHandle(gp, 102, 1);
+			}
 			else if (ev->key.keysym.sym == SDLK_o) {
 
 				mu->box_X = -1;
 				mu->box_Y = -1;
 
-				gpMenuHandle(gp, 102, 1);
+				gpMenuHandle(gp, 102, 2);
 			}
 			else if (ev->key.keysym.sym == SDLK_p) {
 
@@ -4126,6 +4320,98 @@ int gp_Draw(gp_t *gp)
 }
 
 #ifndef _EMBED_GP
+static void
+gpGetOPT(gp_t *gp, char *argv[])
+{
+	read_t		*rd = gp->rd;
+
+	const char	*opname;
+	int		argi, op = 1;
+
+	while (argv[op] != NULL) {
+
+		if (		   argv[op][0] == '-'
+				&& argv[op][1] == '-') {
+
+			opname = &argv[op][2];
+
+			if (strcmp(opname, "stdin") == 0) {
+
+				sprintf(gp->sbuf[0],	"load 0 0 stdin\n"
+							"mkpages -2\n");
+
+				readConfigIN(rd, gp->sbuf[0], 0);
+			}
+			else if (strcmp(opname, "chunk") == 0) {
+
+				op++;
+
+				if (stoi(&rd->mk_config, &argi, argv[op]) != NULL) {
+
+					if (argi > 0) {
+
+						rd->chunk = argi;
+					}
+				}
+			}
+			else if (strcmp(opname, "timeout") == 0) {
+
+				op++;
+
+				if (stoi(&rd->mk_config, &argi, argv[op]) != NULL) {
+
+					if (argi >= 0) {
+
+						rd->timeout = argi;
+					}
+				}
+			}
+			else if (strcmp(opname, "length") == 0) {
+
+				op++;
+
+				if (stoi(&rd->mk_config, &argi, argv[op]) != NULL) {
+
+					if (argi > 0) {
+
+						rd->length_N = argi;
+					}
+				}
+			}
+			else if (strcmp(opname, "timecol") == 0) {
+
+				op++;
+
+				if (stoi(&rd->mk_config, &argi, argv[op]) != NULL) {
+
+					if (argi >= -1 && argi < READ_COLUMN_MAX) {
+
+						rd->timecol = argi;
+					}
+				}
+			}
+			else {
+				ERROR("unknown option \"%s\"\n", argv[op]);
+			}
+		}
+		else {
+			if (strlen(argv[op]) >= READ_FILE_PATH_MAX) {
+
+				ERROR("Too long input file names\n");
+				break;
+			}
+#ifdef _WINDOWS
+			legacy_ACP_to_UTF8(gp->tempfile, argv[op], READ_FILE_PATH_MAX);
+#else /* _WINDOWS */
+			strcpy(gp->tempfile, argv[op]);
+#endif
+			gpUnifiedFileOpen(gp, gp->tempfile, 0);
+		}
+
+		op++;
+	}
+}
+
 int main(int argn, char *argv[])
 {
 	gp_t		*gp;
@@ -4150,35 +4436,9 @@ int main(int argn, char *argv[])
 
 	gp = gp_Alloc();
 
-#ifdef _WINDOWS
-	if (argn >= 3) {
+	if (argn >= 2) {
 
-		legacy_ACP_to_UTF8(gp->sbuf[0], argv[1], READ_FILE_PATH_MAX);
-		legacy_ACP_to_UTF8(gp->sbuf[1], argv[2], READ_FILE_PATH_MAX);
-
-		legacy_ConfigGRM(gp->rd, NULL, gp->sbuf[0], gp->sbuf[1], 0);
-	}
-	else
-#endif /* _WINDOWS */
-
-	if (argn == 2) {
-
-#ifdef _WINDOWS
-		legacy_ACP_to_UTF8(gp->tempfile, argv[1], READ_FILE_PATH_MAX);
-#else /* _WINDOWS */
-
-		if (strlen(argv[1]) < READ_FILE_PATH_MAX) {
-
-			strcpy(gp->tempfile, argv[1]);
-		}
-		else {
-			ERROR("Too long file name\n");
-
-			return 1;
-		}
-#endif
-
-		gpUnifiedFileOpen(gp, gp->tempfile, 0);
+		gpGetOPT(gp, argv);
 	}
 	else {
 		gpMakeHello(gp);

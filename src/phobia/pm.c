@@ -22,28 +22,21 @@ void pm_quick_build(pmc_t *pm)
 	pm->ts_skip = (int) (pm->dc_skip * (1.f / 1000000.f)
 			* pm->m_freq * (float) pm->dc_resolution);
 	pm->ts_bootstrap = PM_TSMS(pm, pm->dc_bootstrap);
-	pm->ts_clamped = (int) (pm->m_freq * pm->dc_clamped);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
-	pm->quick_iWb = (pm->const_lambda > M_EPS_F) ? 1.f / pm->const_lambda : 0.f;
+	pm->quick_iWb = (pm->const_lambda > M_EPSILON) ? 1.f / pm->const_lambda : 0.f;
 	pm->quick_iWb2 = pm->quick_iWb * pm->quick_iWb;
-	pm->quick_iL1 = (pm->const_im_L1 > M_EPS_F) ? 1.f / pm->const_im_L1 : 0.f;
-	pm->quick_iL2 = (pm->const_im_L2 > M_EPS_F) ? 1.f / pm->const_im_L2 : 0.f;
+	pm->quick_iL1 = (pm->const_im_L1 > M_EPSILON) ? 1.f / pm->const_im_L1 : 0.f;
+	pm->quick_iL2 = (pm->const_im_L2 > M_EPSILON) ? 1.f / pm->const_im_L2 : 0.f;
 
 	pm->quick_TiL1 = pm->m_dT * pm->quick_iL1;
 	pm->quick_TiL2 = pm->m_dT * pm->quick_iL2;
 
-	pm->quick_HFwS = 2.f * M_PI_F * pm->hfi_freq;
-	pm->quick_ZiEP = 2.f * M_PI_F * (float) (pm->const_Zp * pm->eabi_gear_Zs)
+	pm->quick_HFwS = 2.f * M_PIC * pm->hfi_freq;
+	pm->quick_ZiEP = 2.f * M_PIC * (float) (pm->const_Zp * pm->eabi_gear_Zs)
 		/ (float) (pm->eabi_gear_Zq * pm->eabi_EPPR);
 	pm->quick_ZiSQ = (float) (pm->const_Zp * pm->sincos_gear_Zs)
 		/ (float) pm->sincos_gear_Zq;
-
-	if (		pm->config_LU_LOCATION == PM_LOCATION_EABI
-			&& pm->config_LU_SENSOR == PM_SENSOR_EABI) {
-
-		pm->config_LU_LOCATION = PM_LOCATION_INHERITED;
-	}
 }
 
 static void
@@ -53,7 +46,6 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->dc_clearance = 5.0f;		/* (us) */
 	pm->dc_skip = 2.0f;			/* (us) */
 	pm->dc_bootstrap = 100.f;		/* (ms) */
-	pm->dc_clamped = 1.f;			/* (s)  */
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_IFB = PM_IFB_ABC_INLINE;
@@ -93,7 +85,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_LU_FORCED = PM_ENABLED;
 	pm->config_LU_ESTIMATE = PM_FLUX_ORTEGA;
 	pm->config_LU_SENSOR = PM_SENSOR_NONE;
-	pm->config_LU_LOCATION = PM_LOCATION_INHERITED;
+	pm->config_LU_LOCATION = PM_LOCATION_NONE;
 	pm->config_LU_DRIVE = PM_DRIVE_SPEED;
 	pm->config_HFI_WAVE = PM_HFI_NONE;
 	pm->config_HFI_POLARITY = PM_DISABLED;
@@ -251,14 +243,12 @@ pm_auto_config_default(pmc_t *pm)
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
 
-	pm->x_location_range[0] = - 600.f;
-	pm->x_location_range[1] = 600.f;
-	pm->x_location_home = 0.f;
-
-	pm->x_weak_zone = 1.f;
+	pm->x_maximal = 600.f;
+	pm->x_minimal = - pm->x_maximal;
+	pm->x_damping = 1.f;
 	pm->x_tolerance = 0.f;
 	pm->x_gain_P = 35.f;
-	pm->x_gain_N = 5.f;
+	pm->x_gain_D = 5.f;
 
 	pm->boost_gain_P = 1E-1f;
 	pm->boost_gain_I = 1E-3f;
@@ -333,7 +323,7 @@ pm_auto_maximal_current(pmc_t *pm)
 	 * */
 	maximal_A = pm->fault_current_halt * 0.8f;
 
-	if (pm->const_Rs > M_EPS_F) {
+	if (pm->const_Rs > M_EPSILON) {
 
 		/* Based on DC link voltage.
 		 * */
@@ -362,7 +352,7 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 {
 	float			probe_MAX, probe_MIN;
 
-	if (pm->const_lambda > M_EPS_F) {
+	if (pm->const_lambda > M_EPSILON) {
 
 		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 		probe_MIN = 1.5f * (pm->zone_speed_threshold + pm->zone_speed_noise);
@@ -384,8 +374,8 @@ pm_auto_zone_threshold(pmc_t *pm)
 {
 	float			thld_MAX, lamb_MAX, thld_MIN, thld_IRU, thld_DTU;
 
-	if (		   pm->const_Rs > M_EPS_F
-			&& pm->const_lambda > M_EPS_F) {
+	if (		   pm->const_Rs > M_EPSILON
+			&& pm->const_lambda > M_EPSILON) {
 
 		/* Allowable range of the noise threshold.
 		 * */
@@ -464,7 +454,7 @@ pm_auto_forced_accel(pmc_t *pm)
 {
 	float		hold_D, mQ;
 
-	if (pm->const_Ja > M_EPS_F) {
+	if (pm->const_Ja > 0.f) {
 
 		hold_D = pm->forced_hold_D;
 		mQ = pm_torque_equation(pm, hold_D, hold_D);
@@ -480,8 +470,8 @@ pm_auto_loop_current(pmc_t *pm)
 {
 	float		Lm, Df, Kp, Ki;
 
-	if (		   pm->const_im_L1 > M_EPS_F
-			&& pm->const_im_L1 > M_EPS_F) {
+	if (		   pm->const_im_L1 > M_EPSILON
+			&& pm->const_im_L1 > M_EPSILON) {
 
 		Lm = (pm->const_im_L1 < pm->const_im_L2)
 			? pm->const_im_L1 : pm->const_im_L2;
@@ -511,12 +501,12 @@ pm_auto_loop_speed(pmc_t *pm)
 {
 	float		Df = pm->s_damping;
 
-	if (pm->zone_speed_noise > M_EPS_F) {
+	if (pm->zone_speed_noise > M_EPSILON) {
 
 		/* Tune load torque estimate.
 		 * */
-		if (		pm->const_lambda > M_EPS_F
-				&& pm->const_Ja > M_EPS_F) {
+		if (		pm->const_lambda > M_EPSILON
+				&& pm->const_Ja > 0.f) {
 
 			pm->lu_gain_mq_LP = Df * pm->const_lambda * pm->m_dT
 				/ pm->const_Ja / pm->zone_speed_noise;
@@ -600,7 +590,7 @@ pm_torque_accel(pmc_t *pm, float iD, float iQ)
 {
 	float			mQ, accel = 0.f;
 
-	if (pm->const_Ja > M_EPS_F) {
+	if (pm->const_Ja > 0.f) {
 
 		mQ = pm_torque_equation(pm, pm->lu_iD, pm->lu_iQ);
 		accel = (mQ - pm->lu_mq_load) / pm->const_Ja;
@@ -614,7 +604,7 @@ pm_torque_do_MTPA(pmc_t *pm, float iQ)
 {
 	float		lambda, rel, MTPA_sine = 0.f;
 
-	if (m_fabsf(iQ) > M_EPS_F) {
+	if (m_fabsf(iQ) > M_EPSILON) {
 
 		lambda = pm->const_lambda;
 		rel = 4.f * (pm->const_im_L2 - pm->const_im_L1) * iQ;
@@ -637,7 +627,7 @@ pm_torque_approx(pmc_t *pm, float mQ)
 		/* TODO */
 	}
 	else {
-		if (pm->const_lambda > M_EPS_F) {
+		if (pm->const_lambda > M_EPSILON) {
 
 			iQ = mQ / (pm->k_KWAT * pm->const_lambda);
 		}
@@ -655,8 +645,8 @@ pm_forced(pmc_t *pm)
 	 * */
 	if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
-		wSP = (pm->i_setpoint_current < - M_EPS_F) ? - PM_MAX_F
-			: (pm->i_setpoint_current > M_EPS_F) ? PM_MAX_F : 0.f;
+		wSP = (pm->i_setpoint_current < - M_EPSILON) ? - PM_MAX_F
+			: (pm->i_setpoint_current > M_EPSILON) ? PM_MAX_F : 0.f;
 	}
 	else {
 		wSP = pm->s_setpoint_speed;
@@ -735,7 +725,7 @@ pm_flux_detached(pmc_t *pm)
 			A = uX * pm->flux_X[0] + uY * pm->flux_X[1];
 			B = uY * pm->flux_X[0] - uX * pm->flux_X[1];
 
-			if (A > M_EPS_F) {
+			if (A > M_EPSILON) {
 
 				lerp = U * pm->detach_trip_AP;
 				lerp = (lerp > 1.f) ? 1.f : lerp;
@@ -786,7 +776,7 @@ pm_flux_ortega(pmc_t *pm)
 	lX = pm->const_im_L2 * pm->lu_iX;
 	lY = pm->const_im_L2 * pm->lu_iY;
 
-	if (pm->const_lambda > M_EPS_F) {
+	if (pm->const_lambda > M_EPSILON) {
 
 		/* FLUX equations.
 		 * */
@@ -835,14 +825,14 @@ pm_flux_ortega(pmc_t *pm)
 
 	pm->flux_lambda = E;
 
-	if (E > M_EPS_F) {
+	if (E > M_EPSILON) {
 
 		A = 1.f / E;
 
 		EX *= A;
 		EY *= A;
 
-		if (pm->const_lambda > M_EPS_F) {
+		if (pm->const_lambda > M_EPSILON) {
 
 			/* Speed estimation (PLL).
 			 * */
@@ -851,12 +841,12 @@ pm_flux_ortega(pmc_t *pm)
 			A = EX * pm->flux_F[0] + EY * pm->flux_F[1];
 			B = EY * pm->flux_F[0] - EX * pm->flux_F[1];
 
-			if (A > M_EPS_F) {
+			if (A > M_EPSILON) {
 
 				pm->flux_wS += B * pm->m_freq * pm->flux_gain_SF;
 			}
 
-			if (pm->flux_gain_IF > M_EPS_F) {
+			if (pm->flux_gain_IF > M_EPSILON) {
 
 				A = pm_torque_accel(pm, pm->lu_iD, pm->lu_iQ);
 				pm->flux_wS += A * pm->m_dT * pm->flux_gain_IF;
@@ -1176,7 +1166,7 @@ pm_flux_kalman(pmc_t *pm)
 	eD = bF[0] * pm->lu_iX + bF[1] * pm->lu_iY - pm->flux_X[0];
 	eQ = bF[0] * pm->lu_iY - bF[1] * pm->lu_iX - pm->flux_X[1];
 
-	if (pm->const_lambda > M_EPS_F) {
+	if (pm->const_lambda > M_EPSILON) {
 
 		if (pm->vsi_IF == 0) {
 
@@ -1190,7 +1180,7 @@ pm_flux_kalman(pmc_t *pm)
 
 			pm->flux_wS += K[6] * eD + K[7] * eQ;
 
-			if (pm->flux_gain_IF > M_EPS_F) {
+			if (pm->flux_gain_IF > M_EPSILON) {
 
 				A = pm_torque_accel(pm, pm->flux_X[0], pm->flux_X[1]);
 				pm->flux_wS += A * pm->m_dT * pm->flux_gain_IF;
@@ -1417,13 +1407,13 @@ pm_hfi_on_kalman(pmc_t *pm)
 
 		/* HF random sequence.
 		 * */
-		if (pm->hfi_wave[1] > M_PI_F) {
+		if (pm->hfi_wave[1] > M_PIC) {
 
 			pm->hfi_wave[0] = (m_lf_randf(&pm->hfi_seed)
 					 + m_lf_randf(&pm->hfi_seed)
 					 + m_lf_randf(&pm->hfi_seed)) * .3f;
 
-			pm->hfi_wave[1] += - M_PI_F;
+			pm->hfi_wave[1] += - M_PIC;
 		}
 
 		pm->hfi_wave[1] += pm->quick_HFwS * pm->m_dT;
@@ -1462,7 +1452,7 @@ pm_sensor_hall(pmc_t *pm)
 
 		rel = m_atan2f(B, A);
 
-		if (m_fabsf(rel) > M_PI_F) {
+		if (m_fabsf(rel) > M_PIC) {
 
 			pm->hall_F[0] = hX;
 			pm->hall_F[1] = hY;
@@ -1482,7 +1472,7 @@ pm_sensor_hall(pmc_t *pm)
 			pm->hall_wS += rel * pm->m_freq * A;
 		}
 
-		if (pm->hall_gain_IF > M_EPS_F) {
+		if (pm->hall_gain_IF > M_EPSILON) {
 
 			A = pm_torque_accel(pm, pm->lu_iD, pm->lu_iQ);
 			pm->hall_wS += A * pm->m_dT * pm->hall_gain_IF;
@@ -1610,7 +1600,7 @@ pm_sensor_eabi(pmc_t *pm)
 
 	pm->eabi_wS += rel * pm->m_freq * A;
 
-	if (pm->eabi_gain_IF > M_EPS_F) {
+	if (pm->eabi_gain_IF > M_EPSILON) {
 
 		A = pm_torque_accel(pm, pm->lu_iD, pm->lu_iQ);
 		pm->eabi_wS += A * pm->m_dT * pm->eabi_gain_IF;
@@ -1690,13 +1680,13 @@ pm_sensor_sincos(pmc_t *pm)
 	}
 
 	scAN = m_atan2f(pm->sincos_SC[1], pm->sincos_SC[0])
-		+ (float) pm->sincos_revol * (2.f * M_PI_F);
+		+ (float) pm->sincos_revol * (2.f * M_PIC);
 
 	if (pm->config_LU_LOCATION == PM_LOCATION_SINCOS) {
 
 		float		scLOC;
 
-		scLOC = scAN + (float) pm->sincos_unwrap * (2.f * M_PI_F);
+		scLOC = scAN + (float) pm->sincos_unwrap * (2.f * M_PIC);
 
 		/* Take the electrical absolute LOCATION.
 		 * */
@@ -1834,7 +1824,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_wS = pm->forced_wS;
 
 		if (		pm->flux_ZONE == PM_ZONE_HIGH
-				&& pm->const_lambda > M_EPS_F) {
+				&& pm->const_lambda > M_EPSILON) {
 
 			pm->lu_MODE = PM_LU_ESTIMATE;
 			pm->hold_TIM = 0;
@@ -2003,11 +1993,11 @@ pm_lu_FSM(pmc_t *pm)
 	A = lu_F[0] * pm->lu_F[0] + lu_F[1] * pm->lu_F[1];
 	B = lu_F[1] * pm->lu_F[0] - lu_F[0] * pm->lu_F[1];
 
-	if (A > M_EPS_F && B < - hS) {
+	if (A > M_EPSILON && B < - hS) {
 
 		m_rotatef(pm->lu_F, - hS);
 	}
-	else if (A > M_EPS_F && B > hS) {
+	else if (A > M_EPSILON && B > hS) {
 
 		m_rotatef(pm->lu_F, hS);
 	}
@@ -2015,7 +2005,7 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_F[0] = lu_F[0];
 		pm->lu_F[1] = lu_F[1];
 
-		if (A < M_EPS_F) {
+		if (A < M_EPSILON) {
 
 			/* NOTE: We reset current loop integrals in
 			 * case of position flip.
@@ -2059,7 +2049,7 @@ pm_lu_FSM(pmc_t *pm)
 	if (pm->config_LU_LOCATION == PM_LOCATION_INHERITED) {
 
 		pm->lu_location = m_atan2f(pm->lu_F[1], pm->lu_F[0])
-			+ (float) pm->lu_revol * (2.f * M_PI_F);
+			+ (float) pm->lu_revol * (2.f * M_PIC);
 	}
 	else if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
 
@@ -2574,8 +2564,8 @@ pm_loop_current(pmc_t *pm)
 		track_D = 0.f;
 	}
 
-	if (		pm->forced_track_D > M_EPS_F
-			|| track_D > M_EPS_F) {
+	if (		pm->forced_track_D > M_EPSILON
+			|| track_D > M_EPSILON) {
 
 		/* Forced current slew rate limited tracking.
 		 * */
@@ -2620,7 +2610,7 @@ pm_loop_current(pmc_t *pm)
 
 				iREV = (pm->s_reverse < pm->s_maximal) ? 1.f : - 1.f;
 
-				if (track_Q * iREV < - M_EPS_F) {
+				if (track_Q * iREV < - M_EPSILON) {
 
 					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
 
@@ -2687,7 +2677,7 @@ pm_loop_current(pmc_t *pm)
 			pm->weak_D = (pm->weak_D < - pm->weak_maximal) ? - pm->weak_maximal
 				: (pm->weak_D > 0.f) ? 0.f : pm->weak_D;
 
-			if (pm->weak_D < - M_EPS_F) {
+			if (pm->weak_D < - M_EPSILON) {
 
 				DC_lack = pm->k_EMAX * pm->const_fb_U;
 				LS_abs = m_fabsf(pm->lu_wS) * pm->const_im_L2;
@@ -2709,7 +2699,7 @@ pm_loop_current(pmc_t *pm)
 	iMAX = pm->i_maximal;
 	iREV = - pm->i_reverse;
 
-	if (pm->weak_D > - M_EPS_F) {
+	if (pm->weak_D > - M_EPSILON) {
 
 		iMAX = (iMAX < pm->i_derate_on_PCB) ? iMAX : pm->i_derate_on_PCB;
 		iREV = (iREV > - pm->i_derate_on_PCB) ? iREV : - pm->i_derate_on_PCB;
@@ -2738,7 +2728,7 @@ pm_loop_current(pmc_t *pm)
 	wP = - pm->watt_wA_reverse * pm->const_fb_U;
 	wREV = (wP > wREV) ? wP : wREV;
 
-	if (pm->weak_D < - M_EPS_F) {
+	if (pm->weak_D < - M_EPSILON) {
 
 		/* Keep D-axis CURRENT in case of weakening.
 		 * */
@@ -2770,7 +2760,7 @@ pm_loop_current(pmc_t *pm)
 			wMAX -= wP;
 			wP = pm->k_KWAT * track_Q * pm->watt_lpf_Q;
 
-			if (wP > M_EPS_F) {
+			if (wP > M_EPSILON) {
 
 				track_Q *= wMAX / wP;
 			}
@@ -2789,7 +2779,7 @@ pm_loop_current(pmc_t *pm)
 			wREV -= wP;
 			wP = pm->k_KWAT * track_Q * pm->watt_lpf_Q;
 
-			if (wP < - M_EPS_F) {
+			if (wP < - M_EPSILON) {
 
 				track_Q *= wREV / wP;
 			}
@@ -2912,17 +2902,27 @@ pm_loop_speed(pmc_t *pm)
 static void
 pm_loop_location(pmc_t *pm)
 {
-	float		xSP, xER, xER_abs, wSP, lerp, gain;
+	float		xSP, xER, xEA, wSP, lerp, gain;
+
+	xSP = pm->x_setpoint_location;
+	wSP = pm->x_setpoint_speed;
 
 	/* Move location setpoint in accordance with speed setpoint.
 	 * */
-	pm->x_setpoint_location += pm->x_setpoint_speed * pm->m_dT;
+	xSP += wSP * pm->m_dT;
 
-	/* Get setpoint under limits.
+	/* Allowed location range constraints.
 	 * */
-	xSP = pm->x_setpoint_location;
-	xSP = (xSP < pm->x_location_range[0]) ? pm->x_location_range[0]
-		: (xSP > pm->x_location_range[1]) ? pm->x_location_range[1] : xSP;
+	if (xSP > pm->x_maximal) {
+
+		xSP = pm->x_maximal;
+		wSP = 0.f;
+	}
+	else if (xSP < pm->x_minimal) {
+
+		xSP = pm->x_minimal;
+		wSP = 0.f;
+	}
 
 	pm->x_setpoint_location = xSP;
 
@@ -2932,19 +2932,19 @@ pm_loop_location(pmc_t *pm)
 
 	/* Servo is based on constant acceleration formula.
 	 * */
-	xER_abs = m_fabsf(xER);
-	xER = (xER < 0.f) ? - m_sqrtf(xER_abs) : m_sqrtf(xER_abs);
+	xEA = m_fabsf(xER);
+	xER = (xER < 0.f) ? - m_sqrtf(xEA) : m_sqrtf(xEA);
 
 	/* There is a tolerance.
 	 * */
-	xER = (xER_abs > pm->x_tolerance) ? xER : 0.f;
+	xER = (xEA > pm->x_tolerance) ? xER : 0.f;
 
-	/* Slow down in NEAR zone.
+	/* Damping inside near zone.
 	 * */
-	lerp = (xER_abs < pm->x_weak_zone) ? xER_abs / pm->x_weak_zone : 1.f;
-	gain = pm->x_gain_P * lerp + pm->x_gain_N * (1.f - lerp);
+	lerp = (xEA < pm->x_damping) ? xEA / pm->x_damping : 1.f;
+	gain = pm->x_gain_P * lerp + pm->x_gain_D * (1.f - lerp);
 
-	wSP = gain * xER + pm->x_setpoint_speed;
+	wSP += gain * xER;
 
 	/* Update speed loop SETPOINT.
 	 * */
@@ -2958,7 +2958,7 @@ pm_mileage(pmc_t *pm)
 
 	/* Traveled distance (m).
 	 * */
-	pm->mi_traveled = (float) pm->lu_total_revol
+	pm->mile_traveled = (float) pm->lu_total_revol
 		* pm->const_ld_S / (float) pm->const_Zp;
 
 	dTiH = pm->m_dT * 0.00027777778f;
@@ -2970,22 +2970,22 @@ pm_mileage(pmc_t *pm)
 
 	if (Wh > 0.f) {
 
-		m_rsumf(&pm->mi_consumed_Wh, &pm->mi_rem[0], Wh);
-		m_rsumf(&pm->mi_consumed_Ah, &pm->mi_rem[1], Ah);
+		m_rsumf(&pm->mile_consumed_Wh, &pm->mile_rem[0], Wh);
+		m_rsumf(&pm->mile_consumed_Ah, &pm->mile_rem[1], Ah);
 	}
 	else {
-		m_rsumf(&pm->mi_reverted_Wh, &pm->mi_rem[2], - Wh);
-		m_rsumf(&pm->mi_reverted_Ah, &pm->mi_rem[3], - Ah);
+		m_rsumf(&pm->mile_reverted_Wh, &pm->mile_rem[2], - Wh);
+		m_rsumf(&pm->mile_reverted_Ah, &pm->mile_rem[3], - Ah);
 	}
 
 	/* Fuel gauge.
 	 * */
-	if (pm->mi_capacity_Ah > M_EPS_F) {
+	if (pm->mile_capacity_Ah > M_EPSILON) {
 
-		total_Ah = pm->mi_capacity_Ah - pm->mi_consumed_Ah + pm->mi_reverted_Ah;
-		fuel = total_Ah / pm->mi_capacity_Ah;
+		total_Ah = pm->mile_capacity_Ah - pm->mile_consumed_Ah + pm->mile_reverted_Ah;
+		fuel = total_Ah / pm->mile_capacity_Ah;
 
-		pm->mi_fuel_gauge = 100.f * fuel;
+		pm->mile_fuel_gauge = 100.f * fuel;
 	}
 }
 
@@ -3106,7 +3106,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		pm->quick_iUdc = 1.f / pm->const_fb_U;
 
 		if (		pm->const_fb_U > pm->fault_voltage_halt
-				&& pm->weak_D > - M_EPS_F) {
+				&& pm->weak_D > - M_EPSILON) {
 
 			pm->fsm_errno = PM_ERROR_DC_LINK_OVERVOLTAGE;
 			pm->fsm_req = PM_STATE_HALT;

@@ -96,12 +96,16 @@ typedef struct {
 	int			task_HX711;
 	int			task_MPU6050;
 
+	/* Button interface rpm table.
+	 * */
+	float			rpm_table[5];
+
 	/* ADC load cell (e.g. HX711).
 	 * */
 	float			adc_load_kg;
 	float			adc_load_scale[2];
 
-	/* Digital position encoder (e.g. AS5047).
+	/* SPI magnetic encoder (e.g. AS5047).
 	 * */
 	int			pulse_EP;
 }

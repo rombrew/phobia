@@ -25,6 +25,7 @@ SDL_RWops *TTF_RW_droid_sans_normal();
 
 enum {
 	POPUP_NONE			= 0,
+	POPUP_PHOBIA_ABOUT,
 	POPUP_LINK_PROGRESS,
 	POPUP_LINK_WARNING,
 	POPUP_RESET_DEFAULT,
@@ -169,12 +170,15 @@ pub_font_layout(struct public *pub)
 }
 
 static void
-pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
+pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds, int self)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
 	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
+	nk_style_push_vec2(ctx, &ctx->style.text.padding,
 			nk_vec2(pub->fe_base * 1.5f, 4.0f));
 
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
@@ -193,10 +197,16 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 
 		if (reg->mode & LINK_REG_CONFIG) {
 
-			/* nothing */
+			if (self != 0) {
+
+				sprintf(pub->lbuf, "* Self configured on probing");
+
+				nk_label_colored(ctx, pub->lbuf, NK_TEXT_LEFT,
+						nk->table[NK_COLOR_DESIGN]);
+			}
 		}
 		else {
-			sprintf(pub->lbuf, "Update \"%i\"", reg->update);
+			sprintf(pub->lbuf, "Update rate \"%i\"", reg->update);
 
 			if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
 
@@ -227,6 +237,7 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 	}
 
 	nk_style_pop_vec2(ctx);
+	nk_style_pop_vec2(ctx);
 }
 
 static void
@@ -238,17 +249,66 @@ pub_contextual_hidden(struct public *pub, const char *sym, struct nk_rect bounds
 	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
 			nk_vec2(pub->fe_base * 1.5f, 4.0f));
 
+	nk_style_push_vec2(ctx, &ctx->style.text.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
 	if (nk_contextual_begin(ctx, 0, nk_vec2(pub->fe_base * 22, 300), bounds)) {
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		sprintf(pub->lbuf, "Unknown \"%.77s\"", sym);
+		sprintf(pub->lbuf, "* Unknown \"%.77s\"", sym);
 
-		nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT);
+		nk_label_colored(ctx, pub->lbuf, NK_TEXT_LEFT,
+				nk->table[NK_COLOR_DESIGN]);
+
 		nk_contextual_end(ctx);
 	}
 
 	nk_style_pop_vec2(ctx);
+	nk_style_pop_vec2(ctx);
+}
+
+static int
+pub_self_reg(struct public *pub, struct link_reg *reg)
+{
+	const char	*self_map[] = {
+
+		"pm.fault_current_halt",
+		"pm.probe_speed_hold",
+		"pm.lu_gain_mq_LP",
+		"pm.forced_maximal",
+		"pm.forced_reverse",
+		"pm.forced_accel",
+		"pm.zone_speed_noise",
+		"pm.zone_speed_threshold",
+		"pm.i_maximal",
+		"pm.i_reverse",
+		"pm.i_slew_rate",
+		"pm.i_gain_P",
+		"pm.i_gain_I",
+		"pm.s_gain_P",
+		"pm.s_gain_D",
+
+		NULL
+	};
+
+	const char	**mp;
+	int		rc = 0;
+
+	mp = self_map;
+
+	while (*mp != NULL) {
+
+		if (strstr(reg->sym, *mp) != NULL) {
+
+			rc = 1;
+			break;
+		}
+
+		mp++;
+	}
+
+	return rc;
 }
 
 static void
@@ -258,18 +318,26 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 	struct nk_context		*ctx = &nk->ctx;
 
 	struct nk_rect			bounds;
+	struct nk_color			config;
+
+	int				self = 0;
 
 	bounds = nk_widget_bounds(ctx);
 
 	if (reg->mode & LINK_REG_CONFIG) {
 
-		nk_label_colored(ctx, name, NK_TEXT_LEFT, nk->table[NK_COLOR_CONFIG]);
+		self = pub_self_reg(pub, reg);
+
+		config = (self != 0) ?	  nk->table[NK_COLOR_ORANGE_HOVER]
+					: nk->table[NK_COLOR_CONFIG];
+
+		nk_label_colored(ctx, name, NK_TEXT_LEFT, config);
 	}
 	else {
 		nk_label(ctx, name, NK_TEXT_LEFT);
 	}
 
-	pub_contextual(pub, reg, bounds);
+	pub_contextual(pub, reg, bounds, self);
 }
 
 static void
@@ -364,6 +432,25 @@ pub_combo_linked(struct public *pub, struct link_reg *reg,
 }
 
 static struct nk_rect
+pub_get_popup_bounds_about(struct public *pub)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			win, popup;
+
+	win = nk_window_get_content_region(ctx);
+
+	popup.w = win.w * 0.8f;
+	popup.h = win.h * 0.8f;
+
+	popup.x = win.w / 2.0f - popup.w / 2.0f;
+	popup.y = win.h * 0.2f;
+
+	return popup;
+}
+
+static struct nk_rect
 pub_get_popup_bounds_tiny(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -374,9 +461,9 @@ pub_get_popup_bounds_tiny(struct public *pub)
 	win = nk_window_get_content_region(ctx);
 
 	popup.w = win.w * 0.8f;
-	popup.h = win.h * 0.5f;
+	popup.h = win.h * 0.8f;
 
-	popup.x = win.w / 2.f - popup.w / 2.f;
+	popup.x = win.w / 2.0f - popup.w / 2.0f;
 	popup.y = win.h * 0.4f;
 
 	return popup;
@@ -395,10 +482,83 @@ pub_get_popup_bounds_full(struct public *pub)
 	popup.w = win.w;
 	popup.h = win.h;
 
-	popup.x = win.w / 2.f - popup.w / 2.f;
-	popup.y = win.h / 2.f - popup.h / 2.f;
+	popup.x = win.w / 2.0f - popup.w / 2.0f;
+	popup.y = win.h / 2.0f - popup.h / 2.0f;
 
 	return popup;
+}
+
+static void
+pub_popup_about(struct public *pub, int popup)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			bounds;
+
+	if (pub->popup_enum != popup)
+		return ;
+
+	bounds = pub_get_popup_bounds_about(pub);
+
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ", NK_WINDOW_CLOSABLE
+				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
+
+		nk_layout_row_template_begin(ctx, pub->fe_font_h * 4);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+		nk_label_wrap(ctx, "Phobia graphical front-end software designed to"
+				" configure and control PMC through a serial port.");
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "License: GPLv3", NK_TEXT_LEFT);
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "Build: " __DATE__, NK_TEXT_LEFT);
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "[0] https://sourceforge.net/projects/phobia/", NK_TEXT_LEFT);
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "[1] https://github.com/rombrew/phobia", NK_TEXT_LEFT);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "OK")) {
+
+			nk_popup_close(ctx);
+
+			pub->popup_enum = 0;
+		}
+
+		nk_spacer(ctx);
+
+		nk_popup_end(ctx);
+	}
+	else {
+		pub->popup_enum = 0;
+	}
 }
 
 static void
@@ -934,7 +1094,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 }
 
 static void
-pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
+pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -943,7 +1103,7 @@ pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
 	struct nk_rect			space;
 
 	float				tfm[4], arrow[10], pbuf[10];
-	float				radius, thickness;
+	float				radius, thickness, len;
 	int				N, Zp = 0;
 
 	if (nk_widget(&space, ctx) == NK_WIDGET_INVALID)
@@ -957,7 +1117,7 @@ pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
 	space.w += - 2.f * thickness;
 	space.h += - 2.f * thickness;
 
-	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DRAWING_PEN]);
+	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DESIGN]);
 
 	space.x += thickness;
 	space.y += thickness;
@@ -1005,7 +1165,7 @@ pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
 		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
 		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
 
-		nk_fill_polygon(canvas, pbuf, 4, nk->table[NK_COLOR_DRAWING_PEN]);
+		nk_fill_polygon(canvas, pbuf, 4, nk->table[NK_COLOR_DESIGN]);
 	}
 
 	if (dtype == DRAWING_WITH_HALL) {
@@ -1057,8 +1217,17 @@ pub_drawing_machine_position(struct public *pub, float Fg, int dtype)
 		}
 	}
 
-	tfm[2] = cosf(Fg * (float) (M_PI / 180.));
-	tfm[3] = - sinf(Fg * (float) (M_PI / 180.));
+	len = sqrtf(fpos[0] * fpos[0] + fpos[1] * fpos[1]);
+
+	if (len != 0.f) {
+
+		tfm[2] = fpos[0] / len;
+		tfm[3] = - fpos[1] / len;
+	}
+	else {
+		tfm[2] = 1.f;
+		tfm[3] = 0.f;
+	}
 
 	arrow[0] = - .5f * thickness;
 	arrow[1] = - .5f * thickness;
@@ -1744,7 +1913,7 @@ reg_float_prog_by_ID(struct public *pub, int reg_ID, float fmin, float fmax)
 		nk_prog(ctx, pce, 1000, nk_false);
 		nk_spacer(ctx);
 
-		pub_contextual(pub, reg, bounds);
+		pub_contextual(pub, reg, bounds, 0);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
 				reg->val, 79, nk_filter_default);
@@ -1855,7 +2024,7 @@ reg_float_prog_um(struct public *pub, const char *sym, const char *name,
 		nk_prog(ctx, pce, 1000, nk_false);
 		nk_spacer(ctx);
 
-		pub_contextual(pub, reg, bounds);
+		pub_contextual(pub, reg, bounds, 0);
 
 		if (reg->mode & LINK_REG_READ_ONLY) {
 
@@ -2160,6 +2329,17 @@ page_serial(struct public *pub)
 	}
 
 	nk_spacer(ctx);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+
+	if (nk_button_label(ctx, "About")) {
+
+		pub->popup_enum = POPUP_PHOBIA_ABOUT;
+	}
+
+	nk_spacer(ctx);
+
+	pub_popup_about(pub, POPUP_PHOBIA_ABOUT);
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
@@ -2494,6 +2674,9 @@ page_probe(struct public *pub)
 
 	nk_spacer(ctx);
 
+	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
+	if (reg != NULL) { config_LU_DRIVE = reg->lval; }
+
 	if (nk_button_label(ctx, "Start FSM")) {
 
 		if (link_command(lp, "pm_fsm_startup") != 0) {
@@ -2529,9 +2712,6 @@ page_probe(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-
-	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
-	if (reg != NULL) { config_LU_DRIVE = reg->lval; }
 
 	if (		   config_LU_DRIVE == 0
 			|| config_LU_DRIVE == 1) {
@@ -2618,6 +2798,7 @@ page_hal(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 
 	reg_float(pub, "hal.USART_baud_rate", "USART baudrate");
+	reg_enum_combo(pub, "hal.USART_parity", "USART parity", 0);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3110,10 +3291,19 @@ page_apps(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	reg_enum_toggle(pub, "ap.task_BUTTON", "Two push-buttons control");
+	reg_enum_toggle(pub, "ap.task_BUTTON", "Button control");
 	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
 	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
-	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial sensor");
+	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial unit");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "ap.rpm_table0", "RPM entry 0");
+	reg_float(pub, "ap.rpm_table1", "RPM entry 1");
+	reg_float(pub, "ap.rpm_table2", "RPM entry 2");
+	reg_float(pub, "ap.rpm_table3", "RPM entry 3");
+	reg_float(pub, "ap.rpm_table4", "RPM entry 4");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3251,7 +3441,6 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.dc_clearance", "Clearance before ADC sample");
 	reg_float(pub, "pm.dc_skip", "Skip after ADC sample");
 	reg_float(pub, "pm.dc_bootstrap", "Bootstrap retention time");
-	reg_float(pub, "pm.dc_clamped", "Bootstrap recharge time");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3428,11 +3617,11 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.kalman_gain_Q0", "Kalman Q0 current D");
-	reg_float(pub, "pm.kalman_gain_Q1", "Kalman Q1 current Q");
-	reg_float(pub, "pm.kalman_gain_Q2", "Kalman Q2 position");
-	reg_float(pub, "pm.kalman_gain_Q3", "Kalman Q3 speed");
-	reg_float(pub, "pm.kalman_gain_Q4", "Kalman Q4 bias Q");
+	reg_float(pub, "pm.kalman_gain_Q0", "Kalman iD gain");
+	reg_float(pub, "pm.kalman_gain_Q1", "Kalman iQ gain");
+	reg_float(pub, "pm.kalman_gain_Q2", "Kalman position gain");
+	reg_float(pub, "pm.kalman_gain_Q3", "Kalman speed gain");
+	reg_float(pub, "pm.kalman_gain_Q4", "Kalman bias Q gain");
 	reg_float(pub, "pm.kalman_gain_R", "Kalman R gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3524,10 +3713,13 @@ page_lu_hfi(struct public *pub)
 		rate = (reg->lval != 0) ? 100 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(lp, "pm.flux_F_g");
+		reg = link_reg_lookup(lp, "pm.lu_F0");
 		if (reg != NULL) { reg->update = fast; }
 
-		reg = link_reg_lookup(lp, "pm.flux_wS");
+		reg = link_reg_lookup(lp, "pm.lu_F1");
+		if (reg != NULL) { reg->update = fast; }
+
+		reg = link_reg_lookup(lp, "pm.lu_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		reg = link_reg_lookup(lp, "pm.hfi_pole");
@@ -3535,8 +3727,9 @@ page_lu_hfi(struct public *pub)
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_float(pub, "pm.flux_F_g", "FLUX position");
-	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 1);
+	reg_float(pub, "pm.lu_F0", "LU position cosine");
+	reg_float(pub, "pm.lu_F1", "LU position sine");
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
 	reg_float(pub, "pm.hfi_pole", "HFI flux polarity");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3551,14 +3744,21 @@ page_lu_hfi(struct public *pub)
 
 	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
 
+		float		fpos[2] = { 0.f, 0.f };
+
 		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(lp, "pm.flux_F_g");
+		reg = link_reg_lookup(lp, "pm.lu_F0");
 
 		if (		reg != NULL
 				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
 
-			pub_drawing_machine_position(pub, reg->fval, DRAWING_EMPTY);
+			fpos[0] = reg->fval;
+
+			reg = link_reg_lookup(lp, "pm.lu_F1");
+			if (reg != NULL) { fpos[1] = reg->fval; }
+
+			pub_drawing_machine_position(pub, fpos, DRAWING_EMPTY);
 		}
 
 		nk_group_end(ctx);
@@ -3640,10 +3840,13 @@ page_lu_hall(struct public *pub)
 		rate = (reg->lval != 0) ? 400 : 0;
 		fast = (reg->lval != 0) ? 20  : 0;
 
-		reg = link_reg_lookup(lp, "pm.hall_F_g");
+		reg = link_reg_lookup(lp, "pm.lu_F0");
 		if (reg != NULL) { reg->update = fast; }
 
-		reg = link_reg_lookup(lp, "pm.hall_wS");
+		reg = link_reg_lookup(lp, "pm.lu_F1");
+		if (reg != NULL) { reg->update = fast; }
+
+		reg = link_reg_lookup(lp, "pm.lu_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		rate = (rate != 0) ? rate : 1000;
@@ -3653,8 +3856,9 @@ page_lu_hall(struct public *pub)
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
-	reg_float(pub, "pm.hall_F_g", "Hall position");
-	reg_float_um(pub, "pm.hall_wS", "Hall speed estimate", 1);
+	reg_float(pub, "pm.lu_F0", "LU position cosine");
+	reg_float(pub, "pm.lu_F1", "LU position sine");
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
 	reg_float(pub, "pm.fb_HS", "Hall feedback");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3669,14 +3873,21 @@ page_lu_hall(struct public *pub)
 
 	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
 
+		float		fpos[2] = { 0.f, 0.f };
+
 		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
 
-		reg = link_reg_lookup(lp, "pm.hall_F_g");
+		reg = link_reg_lookup(lp, "pm.lu_F0");
 
 		if (		reg != NULL
 				&& (reg->mode & LINK_REG_TYPE_FLOAT) != 0) {
 
-			pub_drawing_machine_position(pub, reg->fval, DRAWING_WITH_HALL);
+			fpos[0] = reg->fval;
+
+			reg = link_reg_lookup(lp, "pm.lu_F1");
+			if (reg != NULL) { fpos[1] = reg->fval; }
+
+			pub_drawing_machine_position(pub, fpos, DRAWING_WITH_HALL);
 		}
 
 		nk_group_end(ctx);
@@ -3756,16 +3967,16 @@ page_wattage(struct public *pub)
 		reg = link_reg_lookup(lp, "pm.lu_total_revol");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mi_traveled");
+		reg = link_reg_lookup(lp, "pm.mile_traveled");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mi_consumed_Wh");
+		reg = link_reg_lookup(lp, "pm.mile_consumed_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mi_reverted_Wh");
+		reg = link_reg_lookup(lp, "pm.mile_reverted_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mi_fuel_gauge");
+		reg = link_reg_lookup(lp, "pm.mile_fuel_gauge");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -3776,11 +3987,11 @@ page_wattage(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.lu_total_revol", "Total electrical revolutions");
-	reg_float_um(pub, "pm.mi_traveled", "Total distance traveled", 1);
-	reg_float_um(pub, "pm.mi_consumed", "Total consumed energy", 0);
-	reg_float_um(pub, "pm.mi_reverted", "Total reverted energy", 0);
-	reg_float(pub, "pm.mi_capacity_Ah", "Battery full capacity");
-	reg_float(pub, "pm.mi_fuel_gauge", "Fuel gauge");
+	reg_float_um(pub, "pm.mile_traveled", "Total distance traveled", 1);
+	reg_float_um(pub, "pm.mile_consumed", "Total consumed energy", 0);
+	reg_float_um(pub, "pm.mile_reverted", "Total reverted energy", 0);
+	reg_float(pub, "pm.mile_capacity_Ah", "Battery full capacity");
+	reg_float(pub, "pm.mlei_fuel_gauge", "Fuel gauge");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3808,7 +4019,7 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.i_damping", "Damping or performance");
+	reg_float(pub, "pm.i_damping", "Damping percentage");
 	reg_float(pub, "pm.i_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.i_gain_I", "Integral loop gain");
 
@@ -3875,7 +4086,7 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.s_damping", "Damping or performance");
+	reg_float(pub, "pm.s_damping", "Damping percentage");
 	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 	reg_float(pub, "pm.s_gain_P", "Proportional loop gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative loop gain");
@@ -4223,6 +4434,13 @@ page_flash(struct public *pub)
 
 				pub->popup_enum = POPUP_SYSTEM_REBOOT;
 			}
+		}
+
+		nk_spacer(ctx);
+
+		if (nk_menu_item_label(ctx, "Flash info", NK_TEXT_LEFT)) {
+
+			link_command(lp, "flash_info");
 		}
 
 		nk_menu_end(ctx);

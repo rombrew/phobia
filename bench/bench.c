@@ -254,6 +254,8 @@ tlm_proc_step(double dT)
 static void
 tlm_PWM_grab()
 {
+	double		usual_dT;
+
 	tlm.fd_pwm = fopen(PWM_FILE, "wb");
 
 	if (tlm.fd_pwm == NULL) {
@@ -264,6 +266,7 @@ tlm_PWM_grab()
 
 	tlm.y[0] = 0.f;
 
+	usual_dT = m.sol_dT;
 	m.sol_dT = 10.E-9;
 	m.proc_step = &tlm_proc_step;
 
@@ -273,7 +276,7 @@ tlm_PWM_grab()
 
 	fclose(tlm.fd_pwm);
 
-	m.sol_dT = 5.E-6;
+	m.sol_dT = usual_dT;
 	m.proc_step = NULL;
 }
 

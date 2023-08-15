@@ -74,7 +74,8 @@ enum {
 };
 
 enum {
-	PM_LOCATION_INHERITED			= 0,
+	PM_LOCATION_NONE			= 0,
+	PM_LOCATION_INHERITED,
 	PM_LOCATION_EABI,
 	PM_LOCATION_SINCOS
 };
@@ -216,7 +217,6 @@ typedef struct {
 	float		dc_clearance;
 	float		dc_skip;
 	float		dc_bootstrap;
-	float		dc_clamped;
 
 	float		k_UMAX;
 	float		k_EMAX;
@@ -226,7 +226,6 @@ typedef struct {
 	int		ts_clearance;
 	int		ts_skip;
 	int		ts_bootstrap;
-	int		ts_clamped;
 	float		ts_inverted;
 
 	float		self_BST[3];
@@ -558,25 +557,23 @@ typedef struct {
 	float		l_blend;
 	float		l_gain_LP;
 
-	float		x_location_range[2];
-	float		x_location_home;
-
 	float		x_setpoint_location;
 	float		x_setpoint_speed;
-	float		x_discrepancy;
-	float		x_weak_zone;
+	float		x_maximal;
+	float		x_minimal;
+	float		x_damping;
 	float		x_tolerance;
 	float		x_gain_P;
-	float		x_gain_N;
+	float		x_gain_D;
 
-	float		mi_traveled;
-	float		mi_consumed_Wh;
-	float		mi_consumed_Ah;
-	float		mi_reverted_Wh;
-	float		mi_reverted_Ah;
-	float		mi_capacity_Ah;
-	float		mi_fuel_gauge;
-	float		mi_rem[4];
+	float		mile_traveled;
+	float		mile_consumed_Wh;
+	float		mile_consumed_Ah;
+	float		mile_reverted_Wh;
+	float		mile_reverted_Ah;
+	float		mile_capacity_Ah;
+	float		mile_fuel_gauge;
+	float		mile_rem[4];
 
 	float		boost_gain_P;
 	float		boost_gain_I;

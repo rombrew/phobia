@@ -265,7 +265,7 @@ void task_TEMP(void *pData)
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
-		if (ap.heat_EXT_temp_derate > M_EPS_F) {
+		if (ap.heat_EXT_temp_derate > M_EPSILON) {
 
 			if (ap.temp_EXT > ap.heat_EXT_temp_derate) {
 
@@ -290,6 +290,33 @@ void task_TEMP(void *pData)
 			DRV_startup();
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
+	}
+	while (1);
+}
+
+void task_AUTO(void *pData)
+{
+	TickType_t		xWake;
+
+	do {
+		/* 10 Hz.
+		 * */
+		vTaskDelayUntil(&xWake, (TickType_t) 100);
+
+		if (ap.auto_ENABLED == PM_ENABLED) {
+
+			if (pm.lu_MODE == PM_LU_DISABLED) {
+
+				pm.fsm_req = PM_STATE_LU_STARTUP;
+
+				vTaskDelay((TickType_t) 10);
+
+				if (ap.auto_reg_ID != ID_NULL) {
+
+					reg_SET_F(ap.auto_reg_ID, ap.auto_reg_DATA);
+				}
+			}
+		}
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -301,50 +328,16 @@ void task_TEMP(void *pData)
 		}
 #endif /* GPIO_LED_MODE */
 
-		if (ap.auto_ENABLED == PM_ENABLED) {
+		if (		pm.fsm_errno != PM_OK
+				|| log_status() != 0) {
 
-			if (pm.lu_MODE == PM_LU_DISABLED) {
+			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 0xCCU) {
 
-				/* Keep running no matter what.
-				 * */
-				pm.fsm_req = PM_STATE_LU_STARTUP;
+				GPIO_set_HIGH(GPIO_LED_ALERT);
 			}
-			else if (ap.auto_reg_ID != ID_NULL) {
-
-				reg_SET_F(ap.auto_reg_ID, ap.auto_reg_DATA);
+			else {
+				GPIO_set_LOW(GPIO_LED_ALERT);
 			}
-		}
-	}
-	while (1);
-}
-
-void task_ALERT(void *pData)
-{
-	do {
-		if (pm.fsm_errno != PM_OK) {
-
-			GPIO_set_HIGH(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 100);
-
-			GPIO_set_LOW(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 900);
-		}
-		else if (log_status() != 0) {
-
-			GPIO_set_HIGH(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 100);
-
-			GPIO_set_LOW(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 400);
-
-			GPIO_set_HIGH(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 100);
-
-			GPIO_set_LOW(GPIO_LED_ALERT);
-			vTaskDelay((TickType_t) 900);
-		}
-		else {
-			vTaskDelay((TickType_t) 100);
 		}
 	}
 	while (1);
@@ -528,6 +521,7 @@ default_flash_load()
 	float			volt_D, halt_I, halt_U;
 
 	hal.USART_baud_rate = 57600;
+	hal.USART_parity = PARITY_EVEN;
 
 	hal.PWM_frequency = HW_PWM_FREQUENCY_HZ;
 	hal.PWM_deadtime = HW_PWM_DEADTIME_NS;
@@ -651,6 +645,12 @@ default_flash_load()
 	ap.heat_derated_PCB = 20.f;	/* (A) */
 	ap.heat_derated_EXT = 20.f;	/* (A) */
 	ap.heat_temp_recovery = 5.f;	/* (C) */
+
+	ap.rpm_table[0] = 1000.f;	/* (rpm) */
+	ap.rpm_table[1] = 2000.f;
+	ap.rpm_table[2] = 3000.f;
+	ap.rpm_table[3] = 4000.f;
+	ap.rpm_table[4] = 5000.f;
 
 	ap.adc_load_scale[0] = 0.f;
 	ap.adc_load_scale[1] = 4.65E-6f;
@@ -824,7 +824,7 @@ void task_INIT(void *pData)
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_ALERT, "ALERT", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(task_AUTO, "AUTO", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);

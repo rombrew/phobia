@@ -26,7 +26,7 @@ typedef struct {
 	const char	*global_appearance_menu;
 	const char	*global_data_menu;
 	const char	*global_lang_menu;
-	const char	*dataset_menu[5];
+	const char	*dataset_menu[7];
 
 	const char	*axis_menu;
 	const char	*axis_zoom_menu;
@@ -49,6 +49,7 @@ typedef struct {
 	const char	*length_edit;
 	const char	*figure_thickness_edit;
 	const char	*font_size_edit;
+	const char	*median_unwrap_edit;
 }
 lang_t;
 

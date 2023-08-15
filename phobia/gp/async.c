@@ -215,9 +215,9 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 		}
 		while (1);
 
-		if (eol != 0) {
+		afd->cached = rp;
 
-			afd->cached = rp;
+		if (eol != 0) {
 
 			*sbuf = 0;
 
@@ -225,13 +225,37 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 
 			return ASYNC_OK;
 		}
-		else {
-			afd->cached = rp;
 
-			return ASYNC_NO_DATA_READY;
-		}
+		return ASYNC_NO_DATA_READY;
 	}
 	else if (SDL_AtomicGet(&afd->flag_eof) != 0) {
+
+		if (rp != wp) {
+
+			nq = 0;
+
+			do {
+				if (rp == wp)
+					break;
+
+				c = (int) afd->stream[rp];
+
+				if (nq < n - 1) {
+
+					*sbuf++ = (char) c;
+					nq++;
+				}
+
+				rp = (rp < afd->preload - 1) ? rp + 1 : 0;
+			}
+			while (1);
+
+			*sbuf = 0;
+
+			SDL_AtomicSet(&afd->rp, rp);
+
+			return ASYNC_OK;
+		}
 
 		return ASYNC_END_OF_FILE;
 	}

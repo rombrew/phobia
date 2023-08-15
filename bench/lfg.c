@@ -1,5 +1,4 @@
-#include <stddef.h>
-#include <limits.h>
+#include <stdint.h>
 #include <math.h>
 
 #include "lfg.h"
@@ -13,8 +12,8 @@ lfg_t;
 
 static lfg_t		lfg;
 
-static unsigned int
-lfg_lcgu(unsigned int rseed)
+static uint32_t
+lfg_lcgu(uint32_t rseed)
 {
 	/* Linear Congruential generator.
 	 * */
@@ -22,17 +21,17 @@ lfg_lcgu(unsigned int rseed)
 	return rseed * 17317U + 1U;
 }
 
-void lfg_start(int rseed)
+void lfg_start(int seed)
 {
-	unsigned int	lcgu;
+	uint32_t	lcgu;
 	int		i;
 
-	lcgu = lfg_lcgu(rseed);
+	lcgu = lfg_lcgu(seed);
 	lcgu = lfg_lcgu(lcgu);
 
 	for (i = 0; i < 55; ++i) {
 
-		lfg.seed[i] = (double) (lcgu = lfg_lcgu(lcgu)) / (double) UINT_MAX;
+		lfg.seed[i] = (double) (lcgu = lfg_lcgu(lcgu)) / 4294967296.;
 	}
 
 	lfg.ra = 0;

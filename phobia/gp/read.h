@@ -38,18 +38,19 @@
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	9
+#define GP_CONFIG_VERSION	10
 
 enum {
 	FORMAT_NONE			= 0,
+	FORMAT_PLAIN_STDIN,
 	FORMAT_PLAIN_TEXT,
 	FORMAT_BINARY_FLOAT,
 	FORMAT_BINARY_DOUBLE,
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 	FORMAT_BINARY_LEGACY_V1,
 	FORMAT_BINARY_LEGACY_V2,
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 };
 
 enum {
@@ -70,11 +71,9 @@ markup_t;
 typedef struct {
 
 	int		busy;
-
 	int		column_2;
 
-	double		arg_1;
-	double		arg_2;
+	double		args[2];
 }
 subtract_t;
 
@@ -194,6 +193,11 @@ typedef struct {
 }
 read_t;
 
+char *stoi(const markup_t *mk, int *x, char *s);
+char *htoi(const markup_t *mk, int *x, char *s);
+char *otoi(const markup_t *mk, int *x, char *s);
+char *stod(const markup_t *mk, double *x, char *s);
+
 read_t *readAlloc(draw_t *dw, plot_t *pl);
 void readClean(read_t *rd);
 void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int fmt);
@@ -205,8 +209,11 @@ void legacy_ACP_to_UTF8(char *us, const char *text, int n);
 void legacy_OEM_to_UTF8(char *us, const char *text, int n);
 void legacy_UTF8_to_ACP(char *text, const char *us, int n);
 void legacy_UTF8_to_OEM(char *text, const char *us, int n);
-void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI);
 #endif /* _WINDOWS */
+
+#ifdef _LEGACY
+void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI);
+#endif /* _LEGACY */
 
 FILE *unified_fopen(const char *file, const char *mode);
 

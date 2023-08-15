@@ -1,19 +1,19 @@
 #ifndef _H_LIB_M_
 #define _H_LIB_M_
 
-#define M_EPS_F			1.19209E-7f
-#define M_PI_F			3.14159265f
-#define M_LOG2_F		0.69314718f
-#define M_LOG10_F		0.30103000f
+#define M_EPSILON		1.19209E-7f
+#define M_PIC			3.14159265f
+#define M_LOG_E 		0.69314718f
+#define M_LOG_10		0.30103000f
 
 inline float m_fabsf(float x) { return __builtin_fabsf(x); }
 inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 
 int m_isfinitef(float x);
 
-void m_rotatef(float x[2], float rval);
-float m_wrapf(float angle);
-void m_rsumf(float *sum, float *rem, float val);
+void m_rotatef(float x[2], float r);
+void m_rsumf(float *sum, float *rem, float x);
+float m_wrapf(float x);
 
 float m_atan2f(float y, float x);
 float m_sinf(float x);

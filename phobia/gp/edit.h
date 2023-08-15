@@ -74,6 +74,16 @@ enum {
 	EDIT_EVNO_TAB,
 };
 
+const char *utf8_go_next(const char *s);
+const char *utf8_go_prev(const char *s);
+char *utf8_remove_next(char *s);
+char *utf8_remove_prev(char *s);
+char *utf8_insert_prev(char *s, const char *i);
+char *utf8_backspace(char *s);
+int utf8_length(const char *s);
+const char *utf8_skip(const char *s, int n);
+const char *utf8_skip_b(const char *s, int n);
+
 edit_t *editAlloc(draw_t *dw, scheme_t *sch);
 void editClean(edit_t *ed);
 

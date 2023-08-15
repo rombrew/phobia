@@ -68,6 +68,7 @@ void langFill(lang_t *la, int lang)
 		la->global_data_menu =
 
 			"U   Reload all data files\0"
+			"J   Calculate all subtract\0"
 			"O   Open data file ...\0"
 			"    Dataset customization ...\0"
 			"    Edit configuration ...\0"
@@ -76,10 +77,12 @@ void langFill(lang_t *la, int lang)
 			"\0";
 
 		la->dataset_menu[0] = " Time column  [%3i]";
-		la->dataset_menu[1] = " Time unwrap  [ %s ]";
-		la->dataset_menu[2] = " Time scale   [%s]";
-		la->dataset_menu[3] = " Length       [%3i]  %iM (%i%%) cache %iM";
-		la->dataset_menu[4] = " Close file";
+		la->dataset_menu[1] = " Time median  [%s]";
+		la->dataset_menu[2] = " Time unwrap  [%s]";
+		la->dataset_menu[3] = " Data median  [%s]";
+		la->dataset_menu[4] = " Time scale   [%s]";
+		la->dataset_menu[5] = " Length       [%3i]  %iM (%i%%) cache %iM";
+		la->dataset_menu[6] = " Close file";
 
 		la->axis_menu =
 
@@ -144,10 +147,11 @@ void langFill(lang_t *la, int lang)
 		la->figure_operation_menu =
 
 			"    Duplicate figure\0"
-			"    Time unwrap\0"
+			"    Time median\0"
 			"    Resample all\0"
 			"    Scale on X ...\0"
 			"    Scale on Y ...\0"
+			"    Add P polynomial ...\0"
 			"R   Add B subtraction\0"
 			"    Add B addition\0"
 			"    Add B multiplication\0"
@@ -156,7 +160,7 @@ void langFill(lang_t *la, int lang)
 			"    Add F cumulative sum\0"
 			"    Add F bit field ...\0"
 			"    Add F low pass ...\0"
-			"    Add P polynomial ...\0"
+			"    Add F median ...\0"
 
 			"\0";
 
@@ -188,6 +192,7 @@ void langFill(lang_t *la, int lang)
 		la->length_edit = "Length";
 		la->figure_thickness_edit = "Thickness";
 		la->font_size_edit = "Font size";
+		la->median_unwrap_edit = "Median and unwrap";
 	}
 	else if (lang == LANG_RU) {
 
@@ -237,6 +242,7 @@ void langFill(lang_t *la, int lang)
 		la->global_data_menu =
 
 			"U   Перезагрузить все данные\0"
+			"J   Вычислить все операции\0"
 			"O   Открыть файл данных ...\0"
 			"    Настройка наборов данных ...\0"
 			"    Редактировать конфигурацию ...\0"
@@ -245,10 +251,12 @@ void langFill(lang_t *la, int lang)
 			"\0";
 
 		la->dataset_menu[0] = " Столбец времени   [%3i]";
-		la->dataset_menu[1] = " Развернуть время  [ %s ]";
-		la->dataset_menu[2] = " Масштаб времени   [%s]";
-		la->dataset_menu[3] = " Длина             [%3i]  %iM (%i%%) кэш %iM";
-		la->dataset_menu[4] = " Закрыть файл";
+		la->dataset_menu[1] = " Медиана времени   [%s]";
+		la->dataset_menu[2] = " Разворот времени  [%s]";
+		la->dataset_menu[3] = " Медиана данных    [%s]";
+		la->dataset_menu[4] = " Масштаб времени   [%s]";
+		la->dataset_menu[5] = " Длина             [%3i]  %iM (%i%%) кэш %iM";
+		la->dataset_menu[6] = " Закрыть файл";
 
 		la->axis_menu =
 
@@ -313,10 +321,11 @@ void langFill(lang_t *la, int lang)
 		la->figure_operation_menu =
 
 			"    Дублировать фигуру\0"
-			"    Развернуть время\0"
+			"    Медиана времени\0"
 			"    Передискретизация\0"
 			"    Масштаб по X ...\0"
 			"    Масштаб по Y ...\0"
+			"    Добавить P полином ...\0"
 			"R   Добавить B вычитание\0"
 			"    Добавить B сложение\0"
 			"    Добавить B умножение\0"
@@ -325,7 +334,7 @@ void langFill(lang_t *la, int lang)
 			"    Добавить F накопленная сумма\0"
 			"    Добавить F битовое поле ...\0"
 			"    Добавить F фильтр НЧ ...\0"
-			"    Добавить P полином ...\0"
+			"    Добавить F медиану ...\0"
 
 			"\0";
 
@@ -357,6 +366,7 @@ void langFill(lang_t *la, int lang)
 		la->length_edit = "Длина";
 		la->figure_thickness_edit = "Толщина";
 		la->font_size_edit = "Размер шрифта";
+		la->median_unwrap_edit = "Медиана и разворот";
 	}
 
 	la->figure_edit_color_menu =

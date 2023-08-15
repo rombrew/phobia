@@ -13,12 +13,27 @@ int m_isfinitef(float x)
 	return ((0xFFU & (u.i >> 23)) != 0xFFU) ? 1 : 0;
 }
 
-void m_rotatef(float x[2], float rval)
+static float
+m_fast_rsqrtf(float x)
+{
+	union {
+		float		f;
+		uint32_t	i;
+	}
+	u = { x };
+
+	u.i = 0x5F380000U - (u.i >> 1);
+
+	return u.f;
+}
+
+void m_rotatef(float x[2], float r)
 {
 	float           q, s, c, y[2];
 
-	q = rval * rval;
-	s = rval - q * rval * (1.6666667E-1f - 8.3333338E-3f * q);
+	q = r * r;
+
+	s = r * (1.f - q * (1.6666667E-1f - 8.3333338E-3f * q));
 	c = 1.f - q * (.5f - 4.1666668E-2f * q);
 
 	y[0] = c * x[0] - s * x[1];
@@ -26,45 +41,43 @@ void m_rotatef(float x[2], float rval)
 
 	q = y[0] * y[0] + y[1] * y[1];
 
-	s =	  (q < 2.f) ? (3.f - q) * .5f
-		: (q > 0.f) ? 1.f / m_sqrtf(q) : 1.f;
+	s = (q < 1.5f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
 
 	x[0] = y[0] * s;
 	x[1] = y[1] * s;
 }
 
-float m_wrapf(float angle)
+void m_rsumf(float *sum, float *rem, float x)
 {
-	float		half = (angle < 0.f) ? - .5f : .5f;
-	int		revol;
+	float		y, m;
 
-	revol = (int) (angle / (2.f * M_PI_F) + half);
-	angle += - (float) revol * (2.f * M_PI_F);
-
-	if (angle < - M_PI_F) {
-
-		angle += 2.f * M_PI_F;
-	}
-	else if (angle > M_PI_F) {
-
-		angle += - 2.f * M_PI_F;
-	}
-
-	return angle;
-}
-
-void m_rsumf(float *sum, float *rem, float val)
-{
-	float		fixed, newsum;
-
-	/* Kahan summation algorithm.
+	/* Kahan compensated summation.
 	 * */
 
-	fixed = val - *rem;
-	newsum = *sum + fixed;
+	y = x - *rem;
+	m = *sum + y;
 
-	*rem = (newsum - *sum) - fixed;
-	*sum = newsum;
+	*rem = (m - *sum) - y;
+	*sum = m;
+}
+
+float m_wrapf(float x)
+{
+	int		revol;
+
+	revol = (int) (x * (.5f / M_PIC));
+	x += - (float) revol * (2.f * M_PIC);
+
+	if (x < - M_PIC) {
+
+		x += 2.f * M_PIC;
+	}
+	else if (x > M_PIC) {
+
+		x += - 2.f * M_PIC;
+	}
+
+	return x;
 }
 
 static float
@@ -101,11 +114,11 @@ float m_atan2f(float y, float x)
 	if (m_fabsf(x) > m_fabsf(y)) {
 
 		u = m_atanf(y / x);
-		u += (x < 0.f) ? (y < 0.f) ? - M_PI_F : M_PI_F : 0.f;
+		u += (x < 0.f) ? (y < 0.f) ? - M_PIC : M_PIC : 0.f;
 	}
 	else {
 		u = - m_atanf(x / y);
-		u += (y < 0.f) ? - M_PI_F / 2.f : M_PI_F / 2.f;
+		u += (y < 0.f) ? - M_PIC / 2.f : M_PIC / 2.f;
 	}
 
 	return u;
@@ -142,14 +155,14 @@ m_sincosf(float x)
 
 float m_sinf(float x)
 {
-        float           x_abs, u;
+	float           y, u;
 
-	x_abs = m_fabsf(x);
+	y = m_fabsf(x);
 
-	if (x_abs > (M_PI_F / 2.f))
-		x_abs = M_PI_F - x_abs;
+	if (y > M_PIC / 2.f)
+		y = M_PIC - y;
 
-	u = m_sincosf(x_abs);
+	u = m_sincosf(y);
 	u = (x < 0.f) ? - u : u;
 
 	return u;
@@ -159,7 +172,7 @@ float m_cosf(float x)
 {
         float           u;
 
-	x = (M_PI_F / 2.f) - m_fabsf(x);
+	x = M_PIC / 2.f - m_fabsf(x);
 	u = (x < 0.f) ? - m_sincosf(- x) : m_sincosf(x);
 
 	return u;
@@ -203,12 +216,12 @@ float m_log2f(float x)
 
 float m_log10f(float x)
 {
-	return m_log2f(x) * M_LOG10_F;
+	return m_log2f(x) * M_LOG_10;
 }
 
 float m_logf(float x)
 {
-	return m_log2f(x) * M_LOG2_F;
+	return m_log2f(x) * M_LOG_E;
 }
 
 float m_exp2f(float x)
@@ -229,31 +242,32 @@ float m_exp2f(float x)
 		1.0000000E+0f,
 	};
 
-	float		r, q;
+	float		y, q;
 
 	m.i = (int) ((float) (1U << 23) * (x + 127.f));
-	r = x - (int) x + (int) (u.i >> 31);
+
+	y = x - (int) x + (int) (u.i >> 31);
 
 	q = lt_exp2f[0];
-        q = lt_exp2f[1] + q * r;
-        q = lt_exp2f[2] + q * r;
-        q = lt_exp2f[3] + q * r;
-	q = lt_exp2f[4] + q * r;
-	q = lt_exp2f[5] + q * r;
+	q = lt_exp2f[1] + q * y;
+	q = lt_exp2f[2] + q * y;
+	q = lt_exp2f[3] + q * y;
+	q = lt_exp2f[4] + q * y;
+	q = lt_exp2f[5] + q * y;
 
-	q *= m.f / (1.f + r);
+	q *= m.f / (1.f + y);
 
 	return q;
 }
 
 float m_exp10f(float x)
 {
-	return m_exp2f(x / M_LOG10_F);
+	return m_exp2f(x / M_LOG_10);
 }
 
 float m_expf(float x)
 {
-	return m_exp2f(x / M_LOG2_F);
+	return m_exp2f(x / M_LOG_E);
 }
 
 void m_la_eigf(const float a[3], float v[4], int m)
@@ -320,10 +334,10 @@ void m_lf_randseed(lf_seed_t *lf, int seed)
 	lcgu = m_lf_lcgu(seed);
 	lcgu = m_lf_lcgu(lcgu);
 
-	lf->seed[0] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
-	lf->seed[1] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
-	lf->seed[2] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
-	lf->seed[3] = (float) (lcgu = m_lf_lcgu(lcgu)) / 42949673.f;
+	lf->seed[0] = (float) (lcgu = m_lf_lcgu(lcgu)) / 4294967300.f;
+	lf->seed[1] = (float) (lcgu = m_lf_lcgu(lcgu)) / 4294967300.f;
+	lf->seed[2] = (float) (lcgu = m_lf_lcgu(lcgu)) / 4294967300.f;
+	lf->seed[3] = (float) (lcgu = m_lf_lcgu(lcgu)) / 4294967300.f;
 	lf->nb = 0;
 }
 

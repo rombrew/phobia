@@ -207,7 +207,7 @@ SH_DEF(pm_probe_spinup)
 
 		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
-		if (pm.const_lambda < M_EPS_F) {
+		if (pm.const_lambda < M_EPSILON) {
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -652,7 +652,7 @@ SH_DEF(pm_location_probe_const_inertia)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_minimal);
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
 
 		if (pm_wait_for_settle() != PM_OK)
@@ -662,11 +662,11 @@ SH_DEF(pm_location_probe_const_inertia)
 
 		vTaskDelay((TickType_t) 100);
 
-		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[1]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_maximal);
 
 		vTaskDelay((TickType_t) 300);
 
-		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_minimal);
 
 		vTaskDelay((TickType_t) 300);
 
@@ -697,7 +697,7 @@ SH_DEF(pm_location_adjust_range)
 	}
 
 	do {
-		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_location_range[0]);
+		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_minimal);
 		reg_SET_F(ID_PM_X_SETPOINT_SPEED, 0.f);
 
 		if (pm_wait_for_settle() != PM_OK)

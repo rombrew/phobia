@@ -7,7 +7,16 @@ GDB	= gdb
 MK	= mkdir -p
 RM      = rm -rf
 
-CFLAGS	= -std=gnu99 -pipe -Wall -Og -flto=auto -g3
+CFLAGS	= -std=gnu99 -Wall -O3 -flto=auto -g3 -pipe
+
+CFLAGS	+= -fno-math-errno \
+	   -ffinite-math-only \
+	   -fno-signed-zeros \
+	   -fno-trapping-math \
+	   -fno-associative-math \
+	   -fno-reciprocal-math \
+	   -ffp-contract=fast
+
 LFLAGS	= -lm
 
 OBJS	= blm.o lfg.o pm.o bench.o tsfunc.o

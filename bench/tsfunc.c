@@ -196,7 +196,7 @@ void ts_probe_spinup()
 		if (ts_wait_for_idle() != PM_OK)
 			break;
 
-		if (pm.const_lambda < M_EPS_F) {
+		if (pm.const_lambda < M_EPSILON) {
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -623,8 +623,6 @@ void ts_script_verify()
 
 	printf("\n---- Turnigy RotoMax 1.20 ----\n");
 
-	tlm_restart();
-
 	m.Rs = 14.E-3;
 	m.Ld = 10.E-6;
 	m.Lq = 15.E-6;
@@ -647,8 +645,6 @@ void ts_script_verify()
 	blm_restart(&m);
 
 	printf("\n---- E-scooter Hub Motor (250W) ----\n");
-
-	tlm_restart();
 
 	m.Rs = 0.24;
 	m.Ld = 520.E-6;

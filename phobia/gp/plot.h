@@ -44,10 +44,11 @@
 #define PLOT_RCACHE_SIZE			32
 #define PLOT_SLICE_SPAN				4
 #define PLOT_AXES_MAX				9
-#define PLOT_FIGURE_MAX				8
+#define PLOT_FIGURE_MAX 			8
 #define PLOT_DATA_BOX_MAX			8
+#define PLOT_MEDIAN_MAX 			31
 #define PLOT_POLYFIT_MAX			7
-#define PLOT_SUBTRACT				10
+#define PLOT_SUBTRACT				20
 #define PLOT_GROUP_MAX				40
 #define PLOT_MARK_MAX				50
 #define PLOT_SKETCH_CHUNK_SIZE			32768
@@ -86,8 +87,11 @@ enum {
 
 enum {
 	SUBTRACT_FREE			= 0,
-	SUBTRACT_TIME_UNWRAP,
+	SUBTRACT_TIME_MEDIAN,
+	SUBTRACT_DATA_MEDIAN,
 	SUBTRACT_SCALE,
+	SUBTRACT_RESAMPLE,
+	SUBTRACT_POLYFIT,
 	SUBTRACT_BINARY_SUBTRACTION,
 	SUBTRACT_BINARY_ADDITION,
 	SUBTRACT_BINARY_MULTIPLICATION,
@@ -96,8 +100,7 @@ enum {
 	SUBTRACT_FILTER_CUMULATIVE,
 	SUBTRACT_FILTER_BITMASK,
 	SUBTRACT_FILTER_LOW_PASS,
-	SUBTRACT_RESAMPLE,
-	SUBTRACT_POLYFIT
+	SUBTRACT_FILTER_MEDIAN
 };
 
 enum {
@@ -113,6 +116,13 @@ enum {
 };
 
 typedef double			fval_t;
+
+typedef struct {
+
+	int		X;
+	int		Y;
+}
+tuple_t;
 
 typedef struct {
 
@@ -166,12 +176,27 @@ typedef struct {
 				struct {
 
 					int	column_1;
+					int	column_2;
+					int	column_3;
 
-					double	unwrap;
-					double	prev;
-					double	prev2;
+					int	length;
+					int	unwrap;
+					int	opdata;
+
+					struct {
+
+						double	fval;
+						double	fpay;
+					}
+					window[PLOT_MEDIAN_MAX];
+
+					int	keep;
+					int	tail;
+
+					double	prev[2];
+					double	offset;
 				}
-				time;
+				median;
 
 				struct {
 
@@ -184,6 +209,29 @@ typedef struct {
 
 				struct {
 
+					int	column_X;
+
+					int	in_data_N;
+					int	in_column_X;
+					int	in_column_Y;
+				}
+				resample;
+
+				struct {
+
+					int	column_X;
+					int	column_Y;
+
+					int	poly_N0;
+					int	poly_N1;
+
+					double	coefs[PLOT_POLYFIT_MAX + 1];
+					double	std;
+				}
+				polyfit;
+
+				struct {
+
 					int	column_1;
 					int	column_2;
 				}
@@ -193,42 +241,17 @@ typedef struct {
 
 					int	column_1;
 
-					double	arg_1;
-					double	arg_2;
-
+					double	gain;
 					double	state;
 				}
 				filter;
-
-				struct {
-
-					int	column_X;
-					int	column_in_X;
-					int	column_in_Y;
-
-					int	in_data_N;
-				}
-				resample;
-
-				struct {
-
-					int	column_X;
-					int	column_Y;
-
-					int	poly_N1;
-					int	poly_N2;
-
-					double	coefs[PLOT_POLYFIT_MAX + 1];
-					double	std;
-				}
-				polyfit;
 			}
 			op;
 		}
 		sub[PLOT_SUBTRACT];
 
 		int		sub_N;
-		int		sub_postponed;
+		int		sub_paused;
 	}
 	data[PLOT_DATASET_MAX];
 
@@ -312,8 +335,13 @@ typedef struct {
 
 	struct {
 
+		int		op_time_median;
 		int		op_time_unwrap;
+		int		op_time_opdata;
 		int		op_scale;
+
+		int		length;
+		double		ungap;
 
 		double		scale;
 		double		offset;
@@ -420,6 +448,7 @@ typedef struct {
 	int			mark_N;
 
 	int			interpolation;
+	int			defungap;
 
 	int			default_drawing;
 	int			default_width;
@@ -452,7 +481,7 @@ void plotDataGrowUp(plot_t *pl, int dN);
 void plotDataSubtractCompute(plot_t *pl, int dN, int sN);
 void plotDataSubtractResidual(plot_t *pl, int dN);
 void plotDataSubtractClean(plot_t *pl);
-void plotDataSubtractPostponed(plot_t *pl);
+void plotDataSubtractPaused(plot_t *pl);
 void plotDataSubtractAlternate(plot_t *pl);
 void plotDataInsert(plot_t *pl, int dN, const fval_t *row);
 void plotDataClean(plot_t *pl, int dN);
@@ -488,21 +517,24 @@ void plotFigureMakeIndividualAxes(plot_t *pl, int fN);
 void plotFigureExchange(plot_t *pl, int fN_1, int fN_2);
 int plotFigureSelected(plot_t *pl);
 
-int plotGetSubtractTimeUnwrap(plot_t *pl, int dN, int cN);
+tuple_t plotGetSubtractTimeMedian(plot_t *pl, int dN, int cNX, int cNY,
+		int length, int unwrap, int opdata);
 int plotGetSubtractScale(plot_t *pl, int dN, int cN, double scale, double offset);
 int plotGetSubtractResample(plot_t *pl, int dN, int cN_X, int in_dN, int in_cN_X, int in_cN_Y);
 int plotGetSubtractBinary(plot_t *pl, int dN, int opSUB, int cN_1, int cN_2);
-int plotGetSubtractFilter(plot_t *pl, int dN, int cN, int opSUB, double arg_1, double arg_2);
+int plotGetSubtractFilter(plot_t *pl, int dN, int cN, int opSUB, double gain);
+int plotGetSubtractMedian(plot_t *pl, int dN, int cN, int opSUB, int length);
 int plotGetFreeFigure(plot_t *pl);
 
-void plotFigureSubtractTimeUnwrap(plot_t *pl, int fN_1);
+int plotFigureSubtractGetMedianConfig(plot_t *pl, int fN, int config[3]);
+void plotFigureSubtractTimeMedian(plot_t *pl, int fN_1, int length, int unwrap, int opdata);
 void plotFigureSubtractScale(plot_t *pl, int fN_1, int aBUSY, double scale, double offset);
-void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double arg_1, double arg_2);
+void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain);
 void plotFigureSubtractSwitch(plot_t *pl, int opSUB);
 void plotFigureSubtractResample(plot_t *pl, int fN);
 
 int plotDataBoxPolyfit(plot_t *pl, int fN);
-void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int poly_N1, int poly_N2);
+void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1);
 void plotFigureExportCSV(plot_t *pl, const char *file);
 void plotFigureClean(plot_t *pl);
 void plotSketchClean(plot_t *pl);
@@ -510,8 +542,8 @@ int plotGetSketchLength(plot_t *pl);
 
 void plotGroupAdd(plot_t *pl, int dN, int gN, int cN);
 void plotGroupLabel(plot_t *pl, int gN, const char *label);
-void plotGroupTimeUnwrap(plot_t *pl, int gN, int unwrap);
-void plotGroupScale(plot_t *pl, int gN, double scale, double offset);
+void plotGroupMedian(plot_t *pl, int gN, int length, int unwrap, int opdata);
+void plotGroupScale(plot_t *pl, int gN, int knob, double scale, double offset);
 
 void plotSliceSwitch(plot_t *pl);
 void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y);

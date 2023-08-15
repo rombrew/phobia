@@ -84,6 +84,10 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 				pm->fsm_errno = PM_ERROR_ZERO_DRIFT_FAULT;
 			}
 
+			pm->fsm_phase += 1;
+			break;
+
+		case 3:
 			lse_std(ls);
 
 			pm->self_STDi[0] = (pm->vsi_AF == 0) ? ls->std.m[0] : 0.f;
@@ -514,6 +518,11 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 
 		case 3:
 			lse_solve(ls);
+
+			pm->fsm_phase += 1;
+			break;
+
+		case 4:
 			lse_std(ls);
 
 			pm->self_RMSi[0] = m_sqrtf(ls->sol.m[0] * ls->sol.m[0] + ls->std.m[0] * ls->std.m[0]);
@@ -638,9 +647,9 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			if (		   m_isfinitef(ls->sol.m[1]) != 0
 					&& m_isfinitef(ls->sol.m[3]) != 0
 					&& m_isfinitef(ls->sol.m[5]) != 0
-					&& ls->sol.m[1] > M_EPS_F
-					&& ls->sol.m[3] > M_EPS_F
-					&& ls->sol.m[5] > M_EPS_F) {
+					&& ls->sol.m[1] > M_EPSILON
+					&& ls->sol.m[3] > M_EPSILON
+					&& ls->sol.m[5] > M_EPSILON) {
 
 				pm->scale_uA[0] += - ls->sol.m[0] / ls->sol.m[1];
 				pm->scale_uA[1] /= ls->sol.m[1];
@@ -806,6 +815,10 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm->tvm_FIR_C[1] = pm->probe_lse[2].sol.m[1];
 			pm->tvm_FIR_C[2] = pm->probe_lse[2].sol.m[2];
 
+			pm->fsm_phase += 1;
+			break;
+
+		case 7:
 			lse_std(&pm->probe_lse[0]);
 			lse_std(&pm->probe_lse[1]);
 			lse_std(&pm->probe_lse[2]);
@@ -1102,9 +1115,9 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 			if (		   m_isfinitef(lb->sol.m[0]) != 0
 					&& m_isfinitef(lb->sol.m[1]) != 0
 					&& m_isfinitef(lb->sol.m[2]) != 0
-					&& lb->sol.m[0] > M_EPS_F
-					&& lb->sol.m[1] > M_EPS_F
-					&& lb->sol.m[2] > M_EPS_F) {
+					&& lb->sol.m[0] > M_EPSILON
+					&& lb->sol.m[1] > M_EPSILON
+					&& lb->sol.m[2] > M_EPSILON) {
 
 				pm->scale_iA[1] /= lb->sol.m[0];
 				pm->scale_iB[1] /= lb->sol.m[1];
@@ -1153,7 +1166,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	 *
 	 * */
 
-	lse_construct(ls, /*LSE_CASCADE_MAX*/1, 4, 1);
+	lse_construct(ls, 1, 4, 1);
 
 	v[0] = DFT[0];
 	v[1] = DFT[1];
@@ -1161,7 +1174,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	v[3] = 0.f;
 	v[4] = DFT[2];
 
-	lse_reduce(ls, v);
+	lse_insert(ls, v);
 
 	v[0] = DFT[1];
 	v[1] = - DFT[0];
@@ -1169,7 +1182,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	v[3] = 0.f;
 	v[4] = DFT[3];
 
-	lse_reduce(ls, v);
+	lse_insert(ls, v);
 
 	v[0] = DFT[4];
 	v[1] = 0.f;
@@ -1177,7 +1190,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	v[3] = DFT[5];
 	v[4] = DFT[6];
 
-	lse_reduce(ls, v);
+	lse_insert(ls, v);
 
 	v[0] = DFT[5];
 	v[1] = 0.f;
@@ -1185,7 +1198,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	v[3] = - DFT[4];
 	v[4] = DFT[7];
 
-	lse_reduce(ls, v);
+	lse_insert(ls, v);
 	lse_solve(ls);
 
 	iW = 1.f / pm->quick_HFwS;
@@ -1222,7 +1235,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 
 	uMAX = pm->k_UMAX * pm->const_fb_U;
 
-	if (track_HF > M_EPS_F) {
+	if (track_HF > M_EPSILON) {
 
 		eHF = track_HF - m_sqrtf(eD * eD + eQ * eQ);
 
@@ -1259,7 +1272,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 		return ;
 	}
 
-	if (track_HF > M_EPS_F) {
+	if (track_HF > M_EPSILON) {
 
 		m_rotatef(pm->hfi_wave, pm->quick_HFwS * pm->m_dT);
 
@@ -1289,9 +1302,9 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			pm->probe_HF_lpf_track = 0.f;
 			pm->probe_HF_integral = 0.f;
 
-			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
-				(hold_A > M_PI_F) ? M_PI_F : hold_A;
+			hold_A = pm->probe_hold_angle * (M_PIC / 180.f);
+			hold_A = (hold_A < - M_PIC) ? - M_PIC :
+				(hold_A > M_PIC) ? M_PIC : hold_A;
 
 			pm->probe_TEMP[0] = m_cosf(hold_A);
 			pm->probe_TEMP[1] = m_sinf(hold_A);
@@ -1389,7 +1402,7 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			lse_solve(ls);
 
 			if (		m_isfinitef(ls->sol.m[0]) != 0
-					&& ls->sol.m[0] > M_EPS_F) {
+					&& ls->sol.m[0] > M_EPSILON) {
 
 				pm->const_im_R = ls->sol.m[0];
 			}
@@ -1433,7 +1446,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_REM[6] = 0.f;
 			pm->probe_REM[7] = 0.f;
 
-			pm->quick_HFwS = 2.f * M_PI_F * pm->probe_freq_sine;
+			pm->quick_HFwS = 2.f * M_PIC * pm->probe_freq_sine;
 			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * .5f);
 			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * .5f);
 
@@ -1444,9 +1457,9 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->hfi_wave[0] = 1.f;
 			pm->hfi_wave[1] = 0.f;
 
-			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
-				(hold_A > M_PI_F) ? M_PI_F : hold_A;
+			hold_A = pm->probe_hold_angle * (M_PIC / 180.f);
+			hold_A = (hold_A < - M_PIC) ? - M_PIC :
+				(hold_A > M_PIC) ? M_PIC : hold_A;
 
 			pm->i_track_D = m_cosf(hold_A) * pm->probe_current_bias;
 			pm->i_track_Q = m_sinf(hold_A) * pm->probe_current_bias;
@@ -1518,12 +1531,12 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 		case 4:
 			pm_fsm_probe_impedance_DFT(pm, la);
 
-			if (		   m_isfinitef(la[2]) != 0 && la[2] > M_EPS_F
-					&& m_isfinitef(la[3]) != 0 && la[3] > M_EPS_F) {
+			if (		   m_isfinitef(la[2]) != 0 && la[2] > M_EPSILON
+					&& m_isfinitef(la[3]) != 0 && la[3] > M_EPSILON) {
 
 				pm->const_im_L1 = la[2];
 				pm->const_im_L2 = la[3];
-				pm->const_im_B = m_atan2f(la[1], la[0]) * (180.f / M_PI_F);
+				pm->const_im_B = m_atan2f(la[1], la[0]) * (180.f / M_PIC);
 				pm->const_im_R = la[4];
 			}
 			else {
@@ -1544,8 +1557,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 		case 0:
 			if (		   m_isfinitef(pm->const_im_L1) != 0
 					&& m_isfinitef(pm->const_im_L2) != 0
-					&& pm->const_im_L1 > M_EPS_F
-					&& pm->const_im_L2 > M_EPS_F) {
+					&& pm->const_im_L1 > M_EPSILON
+					&& pm->const_im_L2 > M_EPSILON) {
 
 				pm->vsi_DC = 0.f;
 				pm->vsi_lpf_DC = 0.f;
@@ -1776,7 +1789,7 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 				lse_solve(ls);
 
 				if (		m_isfinitef(ls->sol.m[0]) != 0
-						&& ls->sol.m[0] > M_EPS_F) {
+						&& ls->sol.m[0] > M_EPSILON) {
 
 					pm->const_lambda = ls->sol.m[0];
 					pm->kalman_bias_Q = 0.f;
@@ -1855,7 +1868,7 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 			temp_Ja = pm->m_dT / ls->sol.m[0];
 
 			if (		m_isfinitef(temp_Ja) != 0
-					&& temp_Ja > M_EPS_F) {
+					&& temp_Ja > 0.f) {
 
 				pm->const_Ja = temp_Ja;
 			}
@@ -1906,7 +1919,7 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 			lse_std(ls);
 
 			if (		m_isfinitef(ls->std.m[0]) != 0
-					&& ls->std.m[0] > M_EPS_F) {
+					&& ls->std.m[0] > M_EPSILON) {
 
 				pm->zone_speed_noise = ls->std.m[0] * 5.f;
 			}
@@ -1923,12 +1936,11 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 static void
 pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 {
-	float			*num = pm->probe_lse[1].vm;
-	float			*rm1 = num + 8;
-	float			*rm2 = num + 16;
+	int			*dnum = (int *) pm->probe_lse[1].vm;
+	float			*rem0 = pm->probe_lse[1].vm + 10;
+	float			*rem1 = pm->probe_lse[1].vm + 18;
 
-	int			HS, N, mN;
-	float			D;
+	int			HS, N, thld;
 
 	switch (pm->fsm_phase) {
 
@@ -1942,9 +1954,9 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 					pm->hall_ST[N].X = 0.f;
 					pm->hall_ST[N].Y = 0.f;
 
-					num[N] = 0.f;
-					rm1[N] = 0.f;
-					rm2[N] = 0.f;
+					dnum[N] = 0;
+					rem0[N] = 0.f;
+					rem1[N] = 0.f;
 				}
 
 				pm->tm_value = 0;
@@ -1966,10 +1978,10 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 				pm->hall_ERN = 0;
 
-				num[HS] += 1.f;
+				dnum[HS] += 1;
 
-				m_rsumf(&pm->hall_ST[HS].X, &rm1[HS], pm->lu_F[0]);
-				m_rsumf(&pm->hall_ST[HS].Y, &rm2[HS], pm->lu_F[1]);
+				m_rsumf(&pm->hall_ST[HS].X, &rem0[HS], pm->lu_F[0]);
+				m_rsumf(&pm->hall_ST[HS].Y, &rem1[HS], pm->lu_F[1]);
 			}
 			else {
 				pm->hall_ERN++;
@@ -1994,25 +2006,25 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 			break;
 
 		case 2:
-			mN = pm->tm_end / 12;
 			N = 0;
+			thld = pm->tm_end / 12;
 
 			for (HS = 1; HS < 7; ++HS) {
 
-				if (num[HS] > (float) mN) {
+				if (dnum[HS] > thld) {
 
-					D = num[HS];
+					float		len;
 
-					pm->hall_ST[HS].X /= D;
-					pm->hall_ST[HS].Y /= D;
+					pm->hall_ST[HS].X /= (float) dnum[HS];
+					pm->hall_ST[HS].Y /= (float) dnum[HS];
 
-					D = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
-						  + pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
+					len = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
+						+ pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
 
-					if (D > .5f) {
+					if (len > .5f) {
 
-						pm->hall_ST[HS].X /= D;
-						pm->hall_ST[HS].Y /= D;
+						pm->hall_ST[HS].X /= len;
+						pm->hall_ST[HS].Y /= len;
 
 						N += 1;
 					}
@@ -2233,7 +2245,7 @@ void pm_FSM(pmc_t *pm)
 	}
 }
 
-#define PM_SFI_CASE(fsm_errno)	case fsm_errno: sym = PM_SFI(fsm_errno); break
+#define PM_SFI_CASE(errno)	case errno: sym = PM_SFI(fsm_errno); break
 
 const char *pm_strerror(int fsm_errno)
 {

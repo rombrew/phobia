@@ -16,16 +16,6 @@
  * */
 
 #define BUTTON_DEBOUNCE		5
-#define BUTTON_LIST_MAX		(sizeof(rpm_list) / sizeof(rpm_list[0]))
-
-static const float		rpm_list[] = {
-
-	3000.f,
-	4000.f,
-	5000.f,
-	6000.f,
-	7000.f
-};
 
 void app_BUTTON(void *pData)
 {
@@ -42,7 +32,7 @@ void app_BUTTON(void *pData)
 	int			pushed_A, value_A, count_A, event_A;
 	int			pushed_B, value_B, count_B, event_B;
 
-	int			rpm_N = 0, direction = 0;
+	int			reverse, rpm_knob;
 	float			total_rpm;
 
 	GPIO_set_mode_INPUT(gpio_A);
@@ -94,19 +84,33 @@ void app_BUTTON(void *pData)
 
 			if (pm.lu_MODE == PM_LU_DISABLED) {
 
-				rpm_N = 0;
-				direction = (pushed_B == 0) ? -1 : 1;
+				reverse = pushed_B;
+				rpm_knob = 0;
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
-				pm_wait_for_idle();
-			}
-			else {
-				rpm_N = (rpm_N < BUTTON_LIST_MAX) ? rpm_N + 1 : 0;
+
+				vTaskDelay((TickType_t) 10);
 			}
 
-			total_rpm = rpm_list[rpm_N] * (float) direction;
+			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-			reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, total_rpm);
+				rpm_knob = (rpm_knob < 4) ? rpm_knob + 1 : 0;
+
+				if (m_fabsf(ap.rpm_table[rpm_knob]) < M_EPSILON) {
+
+					rpm_knob = 0;
+				}
+
+				if (reverse != 0) {
+
+					total_rpm = - ap.rpm_table[rpm_knob];
+				}
+				else {
+					total_rpm = ap.rpm_table[rpm_knob];
+				}
+
+				reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, total_rpm);
+			}
 
 			event_A = 0;
 		}
@@ -138,10 +142,9 @@ void app_BUTTON(void *pData)
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				direction = 0;
-
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-				pm_wait_for_idle();
+
+				vTaskDelay((TickType_t) 10);
 			}
 
 			event_B = 0;

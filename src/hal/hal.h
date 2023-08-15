@@ -52,6 +52,12 @@ enum {
 };
 
 enum {
+	PARITY_NONE			= 0,
+	PARITY_EVEN,
+	PARITY_ODD
+};
+
+enum {
 	DPS_DISABLED			= 0,
 	DPS_DRIVE_HALL,
 	DPS_DRIVE_EABI,
@@ -64,11 +70,6 @@ enum {
 	PPM_OUTPULSE,
 	PPM_STEP_DIR,
 	PPM_BACKUP_EABI,
-};
-
-enum {
-	OPT_GPIO_1_ON		= 1U,
-	OPT_GPIO_2_ON		= 2U,
 };
 
 typedef struct {
@@ -84,6 +85,7 @@ FW_info_t;
 typedef struct {
 
 	int		USART_baud_rate;
+	int		USART_parity;
 
 	float		PWM_frequency;
 	int		PWM_resolution;

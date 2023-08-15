@@ -28,57 +28,50 @@
 #endif /* _WINDOWS */
 
 #include "async.h"
-#include "draw.h"
 #include "dirent.h"
+#include "draw.h"
+#include "edit.h"
 #include "lang.h"
 #include "plot.h"
 #include "read.h"
 
-int utf8_length(const char *s);
-const char *utf8_skip(const char *s, int n);
-const char *utf8_skip_b(const char *s, int n);
-
-static char *
-stoi(const markup_t *mk, int *x, char *s)
+char *stoi(const markup_t *mk, int *x, char *s)
 {
-	int		n, k, i;
+	int		n, d, i;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	i = 0;
 
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
-		k++;
-
-		if (k > 9) return NULL;
+		d += 1;
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 9) { return NULL; }
 
 	if (*s == 0 || strchr(mk->space, *s) != NULL
 			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = i;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
-static char *
-htoi(const markup_t *mk, int *x, char *s)
+char *htoi(const markup_t *mk, int *x, char *s)
 {
-	int		i, k, h;
+	int		i, d, h;
+
+	d = 0;
+	h = 0;
 
 	if (*s == '0' && *(s + 1) == 'x') { s += 2; }
-
-	k = 0;
-	h = 0;
 
 	do {
 		if (*s >= '0' && *s <= '9') { i = *s++ - '0'; }
@@ -87,30 +80,27 @@ htoi(const markup_t *mk, int *x, char *s)
 		else break;
 
 		h = 16 * h + i;
-		k++;
-
-		if (k > 8) return NULL;
+		d += 1;
 	}
 	while (1);
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 8) { return NULL; }
 
 	if (*s == 0 || strchr(mk->space, *s) != NULL
 			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = h;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
-static char *
-otoi(const markup_t *mk, int *x, char *s)
+char *otoi(const markup_t *mk, int *x, char *s)
 {
-	int		i, k, h;
+	int		i, d, h;
 
-	k = 0;
+	d = 0;
 	h = 0;
 
 	do {
@@ -118,42 +108,39 @@ otoi(const markup_t *mk, int *x, char *s)
 		else break;
 
 		h = 8 * h + i;
-		k++;
-
-		if (k > 11) return NULL;
+		d += 1;
 	}
 	while (1);
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 11) { return NULL; }
 
 	if (*s == 0 || strchr(mk->space, *s) != NULL
 			|| strchr(mk->lend, *s) != NULL) {
 
 		*x = h;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
-static char *
-stod(const markup_t *mk, double *x, char *s)
+char *stod(const markup_t *mk, double *x, char *s)
 {
-	int		n, k, v, e;
-	double		f = 0.;
+	int		n, d, v, e;
+	double		f;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	v = 0;
 	f = 0.;
 
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10. * f + (*s++ - '0') * n;
-		k++;
+		d += 1;
 	}
 
 	if (*s == mk->delim) {
@@ -163,11 +150,11 @@ stod(const markup_t *mk, double *x, char *s)
 		while (*s >= '0' && *s <= '9') {
 
 			f = 10. * f + (*s++ - '0') * n;
-			k++; v--;
+			d += 1; v -= 1;
 		}
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0) { return NULL; }
 
 	if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
@@ -180,18 +167,18 @@ stod(const markup_t *mk, double *x, char *s)
 		s = stoi(mk, &e, s + 1);
 
 		if (s != NULL) { v += e; }
-		else return NULL;
+		else { return NULL; }
 	}
 
 	if (*s == 0 || strchr(mk->space, *s) != NULL
 			|| strchr(mk->lend, *s) != NULL) {
 
-		while (v < 0) { f /= 10.; v++; }
-		while (v > 0) { f *= 10.; v--; }
+		while (v < 0) { f /= 10.; v += 1; }
+		while (v > 0) { f *= 10.; v -= 1; }
 
 		*x = f;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
@@ -210,8 +197,8 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->window_size_x = GP_MIN_SIZE_X;
 	rd->window_size_y = GP_MIN_SIZE_Y;
 	rd->timecol = -1;
-	rd->shortfilename = 0;
-	rd->fastdraw = 0;
+	rd->shortfilename = 1;
+	rd->fastdraw = 200;
 
 	rd->mk_config.delim = '.';
 	strcpy(rd->mk_config.space, " \t;");
@@ -222,7 +209,7 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	strcpy(rd->mk_text.lend, rd->mk_config.lend);
 
 #ifdef _WINDOWS
-	rd->legacy_label = 0;
+	rd->legacy_label = 1;
 #endif /* _WINDOWS */
 
 	rd->preload = 8388608;
@@ -358,7 +345,9 @@ legacy_fopen_from_UTF8(const char *file, const char *mode)
 
 	return _wfopen(wfile, wmode);
 }
+#endif /* _WINDOWS */
 
+#ifdef _LEGACY
 static int
 legacy_GetFreeData(read_t *rd)
 {
@@ -451,7 +440,8 @@ legacy_TextTrim(read_t *rd, char *s)
 	return s;
 }
 
-void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const char *file, int fromUI)
+void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile,
+		const char *file, int fromUI)
 {
 	FILE		*fd;
 
@@ -466,7 +456,7 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 	int		cX, cY, cYm, N;
 	double		scale, offset;
 
-	int		dN, cN, pN, fN, line_N, lbN, stub;
+	int		dN, cN, pN, fN, line_N, lbN, stub, len;
 	float		fpN;
 
 	dN = legacy_GetFreeData(rd);
@@ -485,7 +475,11 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 		pfile = pbuf;
 	}
 
+#ifdef _WINDOWS
 	fd = legacy_fopen_from_UTF8(pfile, "rb");
+#else /* _WINDOWS */
+	fd = fopen(pfile, "rb");
+#endif
 
 	if (fd == NULL) {
 
@@ -493,12 +487,13 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 		return ;
 	}
 	else {
-		fread(&stub, 2, 1, fd);
-		fread(&fpN, 4, 1, fd);
+		len = fread(&stub, 2, 1, fd);
+		len += fread(&fpN, 4, 1, fd);
 
 		cN = (int) fpN;
 
-		if (fpN == (float) cN && cN > 1 && cN < READ_COLUMN_MAX) {
+		if (		len != 0 && fpN == (float) cN
+				&& cN > 1 && cN < READ_COLUMN_MAX) {
 
 			fclose(fd);
 
@@ -506,11 +501,12 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 		}
 		else {
 			fseek(fd, 0UL, SEEK_SET);
-			fread(&fpN, 4, 1, fd);
+			len = fread(&fpN, 4, 1, fd);
 
 			cN = (int) fpN;
 
-			if (fpN == (float) cN && cN > 1 && cN < READ_COLUMN_MAX) {
+			if (		len != 0 && fpN == (float) cN
+					&& cN > 1 && cN < READ_COLUMN_MAX) {
 
 				fclose(fd);
 
@@ -533,7 +529,11 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 		pfile = pbuf;
 	}
 
+#ifdef _WINDOWS
 	fd = legacy_fopen_from_UTF8(pfile, "r");
+#else /* _WINDOWS */
+	fd = fopen(pfile, "r");
+#endif
 
 	if (fd == NULL) {
 
@@ -552,12 +552,13 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 
 			if (strncmp(tbuf, "LI", 2) == 0) {
 
-				fgets(tbuf, sizeof(rd->data[0].buf), fd);
+				if (fgets(tbuf, sizeof(rd->data[0].buf), fd) == NULL)
+					break;
 
 				line_N++;
-
+#ifdef _WINDOWS
 				legacy_OEM_to_UTF8(tbuf, tbuf, sizeof(rd->data[0].buf));
-
+#endif /* _WINDOWS */
 				if (pN < 0) {
 
 					pN = 1;
@@ -591,7 +592,8 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 
 				lbN = legacy_LabelExtract(lbuf, label);
 
-				fgets(tbuf, sizeof(rd->data[0].buf), fd);
+				if (fgets(tbuf, sizeof(rd->data[0].buf), fd) == NULL)
+					break;
 
 				line_N++;
 
@@ -609,17 +611,20 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 					cX = 0;
 				}
 
-				fgets(tbuf, sizeof(rd->data[0].buf), fd);
+				if (fgets(tbuf, sizeof(rd->data[0].buf), fd) == NULL)
+					break;
 
 				line_N++;
-
+#ifdef _WINDOWS
 				legacy_OEM_to_UTF8(tbuf, tbuf, sizeof(rd->data[0].buf));
+#endif /* _WINDOWS */
 				sprintf(rd->page[pN].ax[0].label, "%.20s", legacy_TextTrim(rd, tbuf));
 
 				fN = 0;
 
 				do {
-					fgets(tbuf, sizeof(rd->data[0].buf), fd);
+					if (fgets(tbuf, sizeof(rd->data[0].buf), fd) == NULL)
+						break;
 
 					line_N++;
 
@@ -668,8 +673,8 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 						if (scale != 1. || offset != 0.) {
 
 							rd->page[pN].fig[fN].bY[N].busy = SUBTRACT_SCALE;
-							rd->page[pN].fig[fN].bY[N].arg_1 = scale;
-							rd->page[pN].fig[fN].bY[N].arg_2 = offset;
+							rd->page[pN].fig[fN].bY[N].args[0] = scale;
+							rd->page[pN].fig[fN].bY[N].args[1] = offset;
 						}
 
 						fN++;
@@ -710,7 +715,7 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile, const c
 		}
 	}
 }
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 FILE *unified_fopen(const char *file, const char *mode)
 {
@@ -722,7 +727,7 @@ FILE *unified_fopen(const char *file, const char *mode)
 }
 
 static char *
-readTimeGetSbuf(char *s, int len, FILE *fd, int timeout)
+readTimeGetBuf(char *s, int len, FILE *fd, int timeout)
 {
 	int		c, eol, nq, waiting;
 
@@ -762,6 +767,7 @@ readTimeGetSbuf(char *s, int len, FILE *fd, int timeout)
 					waiting += 10;
 				}
 				else {
+					eol = 1;
 					break;
 				}
 			}
@@ -795,7 +801,8 @@ readTEXTGetRow(read_t *rd, int dN)
 
 	while (*s != 0) {
 
-		if (strchr(rd->mk_text.space, *s) != NULL || strchr(rd->mk_text.lend, *s) != NULL) {
+		if (		strchr(rd->mk_text.space, *s) != NULL
+				|| strchr(rd->mk_text.lend, *s) != NULL) {
 
 			m = 0;
 		}
@@ -937,31 +944,36 @@ readTEXTGetLabel(read_t *rd, int dN)
 }
 
 static int
-readTEXTWipeBOM(read_t *rd, int dN)
+readTEXTSkipBOM(read_t *rd, FILE *fd)
 {
-	char		*tbuf = rd->data[dN].buf;
-	int		nBOM = 1;
+	char		tbuf[8];
+	int		len, bom = 0;
 
-	if (		   memcmp(tbuf, "\x00\x00\xFE\xFF", 4) == 0
-			|| memcmp(tbuf, "\xFF\xFE\x00\x00", 4) == 0) {
+	len = fread(tbuf, 4, 1, fd);
 
-		ERROR("UTF-32 signature detected\n");
-		nBOM = 0;
+	fseek(fd, 0UL, SEEK_SET);
+
+	if (len != 0) {
+
+		if (		   memcmp(tbuf, "\x00\x00\xFE\xFF", 4) == 0
+				|| memcmp(tbuf, "\xFF\xFE\x00\x00", 4) == 0) {
+
+			ERROR("UTF-32 signature detected\n");
+			bom = 1;
+		}
+		else if (	   memcmp(tbuf, "\xFE\xFF", 2) == 0
+				|| memcmp(tbuf, "\xFF\xFE", 2) == 0) {
+
+			ERROR("UTF-16 signature detected\n");
+			bom = 1;
+		}
+		else if (memcmp(tbuf, "\xEF\xBB\xBF", 3) == 0) {
+
+			fseek(fd, 3UL, SEEK_SET);
+		}
 	}
-	else if (	   memcmp(tbuf, "\xFE\xFF", 2) == 0
-			|| memcmp(tbuf, "\xFF\xFE", 2) == 0) {
 
-		ERROR("UTF-16 signature detected\n");
-		nBOM = 0;
-	}
-	else if (memcmp(tbuf, "\xEF\xBB\xBF", 3) == 0) {
-
-		/* Wipe UTF-8 BOM.
-		 * */
-		memcpy(tbuf, "   ", 3);
-	}
-
-	return nBOM;
+	return bom;
 }
 
 static int
@@ -977,24 +989,15 @@ readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 	fixed_N = 0;
 	total_N = 0;
 
-	timeout = 0;
+	timeout = 100;
 
 	do {
-		r = readTimeGetSbuf(rd->data[dN].buf, sizeof(rd->data[0].buf), fd, timeout);
+		r = readTimeGetBuf(rd->data[dN].buf, sizeof(rd->data[0].buf), fd, timeout);
 
 		total_N++;
 
 		if (r == NULL)
 			break;
-
-		if (total_N == 1) {
-
-			if (readTEXTWipeBOM(rd, dN) == 0) {
-
-				cN = 0;
-				break;
-			}
-		}
 
 		if (label_cN < 1) {
 
@@ -1011,8 +1014,10 @@ readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 					fixed_N = 0;
 				}
 				else {
-					for (N = 0; N < cN; ++N)
+					for (N = 0; N < cN; ++N) {
+
 						rbuf[fixed_N * READ_COLUMN_MAX + N] = rd->data[dN].row[N];
+					}
 
 					fixed_N++;
 
@@ -1067,8 +1072,7 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 		readClose(rd, dN);
 	}
 
-	if (		strcmp(file, "stdin") == 0
-			&& fmt == FORMAT_PLAIN_TEXT) {
+	if (fmt == FORMAT_PLAIN_STDIN) {
 
 		fd = stdin;
 	}
@@ -1081,14 +1085,24 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 		ERROR("fopen(\"%s\"): %s\n", file, strerror(errno));
 	}
 	else {
-		if (fd != stdin) {
+		if (fmt != FORMAT_PLAIN_STDIN) {
 
 			file_stat(file, &bF);
 		}
 
 		rd->data[dN].length_N = lN;
 
-		if (fmt == FORMAT_PLAIN_TEXT) {
+		if (		fmt == FORMAT_PLAIN_STDIN
+				|| fmt == FORMAT_PLAIN_TEXT) {
+
+			if (fmt != FORMAT_PLAIN_STDIN) {
+
+				if (readTEXTSkipBOM(rd, fd) != 0) {
+
+					fclose(fd);
+					return ;
+				}
+			}
 
 			cN = readTEXTGetCN(rd, dN, fd, rbuf, &rbuf_N);
 
@@ -1123,7 +1137,7 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 			rd->data[dN].line_N = 1;
 		}
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 		else if (fmt == FORMAT_BINARY_LEGACY_V1) {
 
 			lN = (lN < 1) ? (bF - 6) / (cN * 6) : lN;
@@ -1138,11 +1152,12 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 
 			fseek(fd, 4UL, SEEK_SET);
 		}
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 		plotDataAlloc(rd->pl, dN, cN, lN + 1);
 
-		if (fmt == FORMAT_PLAIN_TEXT) {
+		if (		fmt == FORMAT_PLAIN_STDIN
+				|| fmt == FORMAT_PLAIN_TEXT) {
 
 			for (N = 0; N < rbuf_N; ++N) {
 
@@ -1286,7 +1301,7 @@ readDOUBLE(read_t *rd, int dN)
 	return 0;
 }
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 static int
 readLEGACY(read_t *rd, int dN)
 {
@@ -1324,7 +1339,7 @@ readLEGACY(read_t *rd, int dN)
 
 	return 0;
 }
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 int readUpdate(read_t *rd)
 {
@@ -1343,7 +1358,8 @@ int readUpdate(read_t *rd)
 			tTOP = SDL_GetTicks() + 20;
 
 			do {
-				if (rd->data[dN].format == FORMAT_PLAIN_TEXT) {
+				if (		rd->data[dN].format == FORMAT_PLAIN_STDIN
+						|| rd->data[dN].format == FORMAT_PLAIN_TEXT) {
 
 					if (readTEXTCSV(rd, dN) != 0) {
 
@@ -1374,7 +1390,7 @@ int readUpdate(read_t *rd)
 					}
 				}
 
-#ifdef _WINDOWS
+#ifdef _LEGACY
 				else if (rd->data[dN].format == FORMAT_BINARY_LEGACY_V1
 					|| rd->data[dN].format == FORMAT_BINARY_LEGACY_V2) {
 
@@ -1386,7 +1402,7 @@ int readUpdate(read_t *rd)
 						break;
 					}
 				}
-#endif /* _WINDOWS */
+#endif /* _LEGACY */
 
 				rd->data[dN].line_N++;
 				bN++;
@@ -1411,30 +1427,30 @@ int readUpdate(read_t *rd)
 static int
 configGetC(parse_t *pa)
 {
-	int		r;
+	int		rc;
 
 	if (pa->unchar < 0) {
 
 		if (pa->fd != NULL) {
 
-			r = fgetc(pa->fd);
-			r = (r == EOF) ? -1 : r;
+			rc = fgetc(pa->fd);
+			rc = (rc == EOF) ? -1 : rc;
 		}
 		else if (pa->in != NULL) {
 
-			r = *pa->in++;
-			r = (r == 0) ? -1 : r;
+			rc = *pa->in++;
+			rc = (rc == 0) ? -1 : rc;
 		}
 		else {
-			r = -1;
+			rc = -1;
 		}
 	}
 	else {
-		r = pa->unchar;
+		rc = pa->unchar;
 		pa->unchar = -1;
 	}
 
-	return r;
+	return rc;
 }
 
 static int
@@ -1449,14 +1465,14 @@ static int
 configToken(read_t *rd, parse_t *pa)
 {
 	char		*p = pa->tbuf;
-	int		c, n = 0, r = 0;
+	int		c, n, rc = 0;
 
 	do { c = configGetC(pa); }
 	while (strchr(rd->mk_config.space, c) != NULL);
 
 	if (c < 0) {
 
-		r = -1;
+		rc = -1;
 	}
 	else if (c == '"') {
 
@@ -1481,11 +1497,14 @@ configToken(read_t *rd, parse_t *pa)
 	}
 	else if (strchr(rd->mk_config.lend, c) != NULL) {
 
-		r = 1;
 		pa->line_N++;
 		pa->newline = 1;
+
+		rc = 1;
 	}
 	else {
+		n = 0;
+
 		do {
 			if (n < READ_TOKEN_MAX) {
 
@@ -1495,8 +1514,8 @@ configToken(read_t *rd, parse_t *pa)
 
 			c = configGetC(pa);
 		}
-		while (c != -1 && strchr(rd->mk_config.space, c) == NULL
-			&& strchr(rd->mk_config.lend, c) == NULL);
+		while (c != -1  && strchr(rd->mk_config.space, c) == NULL
+				&& strchr(rd->mk_config.lend, c) == NULL);
 
 		if (strchr(rd->mk_config.lend, c) != NULL)
 			configUngetC(pa, c);
@@ -1504,7 +1523,7 @@ configToken(read_t *rd, parse_t *pa)
 		*p = 0;
 	}
 
-	return r;
+	return rc;
 }
 
 static void
@@ -1794,23 +1813,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "batch") == 0) {
-
-				failed = 1;
-
-				do {
-					r = configToken(rd, pa);
-
-					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
-
-					if (argi[0] > 0) {
-
-						failed = 0;
-					}
-				}
-				while (0);
-			}
 			else if (strcmp(tbuf, "length") == 0) {
 
 				failed = 1;
@@ -2086,6 +2088,27 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
+			else if (strcmp(tbuf, "defungap") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] >= 0.) {
+
+						failed = 0;
+						rd->pl->defungap = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid defungap %i", argi[0]);
+					}
+				}
+				while (0);
+			}
 			else if (strcmp(tbuf, "precision") == 0) {
 
 				failed = 1;
@@ -2198,7 +2221,11 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					if (r == 0) {
 
-						if (strcmp(tbuf, "text") == 0) {
+						if (strcmp(tbuf, "stdin") == 0) {
+
+							argi[2] = FORMAT_PLAIN_STDIN;
+						}
+						else if (strcmp(tbuf, "text") == 0) {
 
 							argi[2] = FORMAT_PLAIN_TEXT;
 						}
@@ -2217,7 +2244,24 @@ configParseFSM(read_t *rd, parse_t *pa)
 					}
 					else break;
 
-					if (		argi[2] == FORMAT_BINARY_FLOAT
+					if (argi[2] == FORMAT_PLAIN_STDIN) {
+
+						int		dN_remap;
+
+						dN_remap = pa->dmap[argi[0]];
+
+						if (dN_remap < 0) {
+
+							sprintf(msg_tbuf, "no free dataset to remap %i", argi[0]);
+							break;
+						}
+
+						readOpenUnified(rd, dN_remap, argi[3], argi[1], "", argi[2]);
+
+						failed = 0;
+						break;
+					}
+					else if (	argi[2] == FORMAT_BINARY_FLOAT
 							|| argi[2] == FORMAT_BINARY_DOUBLE) {
 
 						r = configToken(rd, pa);
@@ -2318,27 +2362,25 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					failed = 0;
-
 					do {
 						r = configToken(rd, pa);
 
-						if (r != 0)
-							break;
+						if (r != 0) {
 
-						if (stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
-						else {
-							failed = 1;
+							failed = 0;
 							break;
 						}
 
+						if (stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
+						else break;
+
 						if (argi[1] >= -1 && argi[1] < rd->pl->data[rd->bind_N].column_N) {
+
+							failed = 0;
 
 							plotGroupAdd(rd->pl, rd->bind_N, argi[0], argi[1]);
 						}
 						else {
-							failed = 1;
-
 							sprintf(msg_tbuf, "column number %i is out of range", argi[1]);
 							break;
 						}
@@ -2372,7 +2414,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "defunwrap") == 0) {
+			else if (strcmp(tbuf, "defmedian") == 0) {
 
 				failed = 1;
 
@@ -2382,11 +2424,39 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
 					else break;
 
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
+					else break;
+
+					if (argi[1] < 1 || argi[1] > PLOT_MEDIAN_MAX) {
+
+						sprintf(msg_tbuf, "median length %i is out of range", argi[1]);
+						break;
+					}
+
+					argi[2] = 0;
+					argi[3] = 0;
+
+					r = configToken(rd, pa);
+
+					if (r == 0) {
+
+						stoi(&rd->mk_config, &argi[2], tbuf);
+
+						r = configToken(rd, pa);
+
+						if (r == 0) {
+
+							stoi(&rd->mk_config, &argi[3], tbuf);
+						}
+					}
+
 					if (argi[0] >= 0 && argi[0] < PLOT_GROUP_MAX) {
 
 						failed = 0;
 
-						plotGroupTimeUnwrap(rd->pl, argi[0], 1);
+						plotGroupMedian(rd->pl, argi[0], argi[1], argi[2], argi[3]);
 					}
 					else {
 						sprintf(msg_tbuf, "group number %i is out of range", argi[0]);
@@ -2407,19 +2477,19 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					r = configToken(rd, pa);
 
-					if (r == 0 && stod(&rd->mk_config, argd + 0, tbuf) != NULL) ;
+					if (r == 0 && stod(&rd->mk_config, &argd[0], tbuf) != NULL) ;
 					else break;
 
 					r = configToken(rd, pa);
 
-					if (r == 0 && stod(&rd->mk_config, argd + 1, tbuf) != NULL) ;
+					if (r == 0 && stod(&rd->mk_config, &argd[1], tbuf) != NULL) ;
 					else break;
 
 					if (argi[0] >= 0 && argi[0] < PLOT_GROUP_MAX) {
 
 						failed = 0;
 
-						plotGroupScale(rd->pl, argi[0], argd[0], argd[1]);
+						plotGroupScale(rd->pl, argi[0], 1, argd[0], argd[1]);
 					}
 					else {
 						sprintf(msg_tbuf, "group number %i is out of range", argi[0]);
@@ -2560,12 +2630,12 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					r = configToken(rd, pa);
 
-					if (r == 0 && stod(&rd->mk_config, argd + 0, tbuf) != NULL) ;
+					if (r == 0 && stod(&rd->mk_config, &argd[0], tbuf) != NULL) ;
 					else break;
 
 					r = configToken(rd, pa);
 
-					if (r == 0 && stod(&rd->mk_config, argd + 1, tbuf) != NULL) ;
+					if (r == 0 && stod(&rd->mk_config, &argd[1], tbuf) != NULL) ;
 					else break;
 
 					if (rd->page_N < 0) {
@@ -2721,8 +2791,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 							failed = 0;
 
 							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = SUBTRACT_SCALE;
-							rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argd[0];
-							rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_2 = argd[1];
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argd[0];
+							rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[1] = argd[1];
 						}
 					}
 					else if (argi[0] == 1) {
@@ -2737,8 +2807,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 							failed = 0;
 
 							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = SUBTRACT_SCALE;
-							rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argd[0];
-							rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_2 = argd[1];
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argd[0];
+							rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[1] = argd[1];
 						}
 					}
 					else {
@@ -2852,7 +2922,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							argi[1] = SUBTRACT_FILTER_CUMULATIVE;
 						}
-						else if (strcmp(tbuf, "bit") == 0) {
+						else if (strcmp(tbuf, "bf") == 0) {
 
 							argi[1] = SUBTRACT_FILTER_BITMASK;
 
@@ -2863,10 +2933,16 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							r = configToken(rd, pa);
 
-							if (r == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
-							else break;
+							if (r != 0) {
+
+								if (stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
+								else break;
+							}
+							else {
+								argi[3] = argi[2];
+							}
 						}
-						else if (strcmp(tbuf, "lpf") == 0) {
+						else if (strcmp(tbuf, "low") == 0) {
 
 							argi[1] = SUBTRACT_FILTER_LOW_PASS;
 
@@ -2874,6 +2950,21 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							if (r == 0 && stod(&rd->mk_config, &argd[0], tbuf) != NULL) ;
 							else break;
+						}
+						else if (strcmp(tbuf, "med") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_MEDIAN;
+
+							r = configToken(rd, pa);
+
+							if (r == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else break;
+
+							if (argi[2] < 3 || argi[2] > PLOT_MEDIAN_MAX) {
+
+								sprintf(msg_tbuf, "median length %i is out of range", argi[2]);
+								break;
+							}
 						}
 						else {
 							sprintf(msg_tbuf, "invalid filter operation \"%.80s\"", tbuf);
@@ -2902,12 +2993,16 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
 
-								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argi[2];
-								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_2 = argi[3];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[1] = argi[3];
 							}
 							else if (argi[1] == SUBTRACT_FILTER_LOW_PASS) {
 
-								rd->page[rd->page_N].fig[rd->figure_N].bX[N].arg_1 = argd[0];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argd[0];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_MEDIAN) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argi[2];
 							}
 						}
 					}
@@ -2926,12 +3021,16 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
 
-								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argi[2];
-								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_2 = argi[3];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[1] = argi[3];
 							}
 							else if (argi[1] == SUBTRACT_FILTER_LOW_PASS) {
 
-								rd->page[rd->page_N].fig[rd->figure_N].bY[N].arg_1 = argd[0];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argd[0];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_MEDIAN) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[2];
 							}
 						}
 					}
@@ -3079,6 +3178,12 @@ void readConfigGP(read_t *rd, const char *file, int fromUI)
 		ERROR("fopen(\"%s\"): %s\n", file, strerror(errno));
 	}
 	else {
+		if (readTEXTSkipBOM(rd, fd) != 0) {
+
+			fclose(fd);
+			return ;
+		}
+
 		strcpy(pa.file, file);
 		strcpy(lpath, file);
 
@@ -3400,46 +3505,56 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 	}
 }
 
-static int
-readTimeDataMap(plot_t *pl, int dN, int cN)
+static tuple_t
+readTimeDataMap(plot_t *pl, int dN, int cNX, int cNY)
 {
-	int		gN, cMAP;
+	tuple_t		uMAP, uN = { cNX, cNY };
+	int		gN;
 
 	if (dN < 0 || dN >= PLOT_DATASET_MAX) {
 
 		ERROR("Dataset number is out of range\n");
-		return cN;
+		return uN;
 	}
 
-	if (cN < -1 || cN >= pl->data[dN].column_N + PLOT_SUBTRACT) {
+	if (cNX < -1 || cNX >= pl->data[dN].column_N + PLOT_SUBTRACT) {
 
-		ERROR("Column number %i is out of range\n", cN);
-		return cN;
+		ERROR("Column number %i is out of range\n", cNX);
+		return uN;
+	}
+
+	if (cNY < -1 || cNY >= pl->data[dN].column_N + PLOT_SUBTRACT) {
+
+		ERROR("Column number %i is out of range\n", cNY);
+		return uN;
 	}
 
 	if (pl->data[dN].map == NULL) {
 
 		ERROR("Dataset number %i was not allocated\n", dN);
-		return cN;
+		return uN;
 	}
 
-	gN = pl->data[dN].map[cN];
+	gN = pl->data[dN].map[cNX];
 
 	if (gN != -1) {
 
-		if (pl->group[gN].op_time_unwrap != 0) {
+		if (pl->group[gN].op_time_median != 0) {
 
-			cMAP = plotGetSubtractTimeUnwrap(pl, dN, cN);
+			uMAP = plotGetSubtractTimeMedian(pl, dN, cNX, cNY,
+					pl->group[gN].length, pl->group[gN].op_time_unwrap,
+					pl->group[gN].op_time_opdata);
 
-			if (cMAP != -1) {
+			if (uMAP.X != -1) {
 
-				pl->data[dN].map[cMAP] = gN;
-				cN = cMAP;
+				pl->data[dN].map[uMAP.X] = gN;
+
+				uN = uMAP;
 			}
 		}
 	}
 
-	return cN;
+	return uN;
 }
 
 static int
@@ -3488,7 +3603,7 @@ readScaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
 		if (sb[N].busy == SUBTRACT_SCALE) {
 
 			cMAP = plotGetSubtractScale(pl, dN, cN,
-					sb[N].arg_1, sb[N].arg_2);
+					sb[N].args[0], sb[N].args[1]);
 
 			if (cMAP != -1) {
 
@@ -3510,11 +3625,30 @@ readScaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
 		}
 		else if (	sb[N].busy == SUBTRACT_FILTER_DIFFERENCE
 				|| sb[N].busy == SUBTRACT_FILTER_CUMULATIVE
-				|| sb[N].busy == SUBTRACT_FILTER_BITMASK
 				|| sb[N].busy == SUBTRACT_FILTER_LOW_PASS) {
 
+			cMAP = plotGetSubtractFilter(pl, dN, cN,
+					sb[N].busy, sb[N].args[0]);
+
+			if (cMAP != -1) {
+
+				cN = cMAP;
+			}
+		}
+		else if (sb[N].busy == SUBTRACT_FILTER_BITMASK) {
+
 			cMAP = plotGetSubtractFilter(pl, dN, cN, sb[N].busy,
-					sb[N].arg_1, sb[N].arg_2);
+					sb[N].args[0] + sb[N].args[1] * (double) 0x100U);
+
+			if (cMAP != -1) {
+
+				cN = cMAP;
+			}
+		}
+		else if (sb[N].busy == SUBTRACT_FILTER_MEDIAN) {
+
+			cMAP = plotGetSubtractMedian(pl, dN, cN,
+					sb[N].busy, sb[N].args[0]);
 
 			if (cMAP != -1) {
 
@@ -3530,6 +3664,8 @@ void readSelectPage(read_t *rd, int pN)
 {
 	plot_t		*pl = rd->pl;
 	page_t		*pg;
+
+	tuple_t		uN;
 	int		N, cX, cY;
 
 	if (pN < 0 || pN >= READ_PAGE_MAX) {
@@ -3549,14 +3685,16 @@ void readSelectPage(read_t *rd, int pN)
 
 	plotDataRangeCacheSubtractClean(pl);
 	plotDataSubtractClean(pl);
-	plotDataSubtractPostponed(pl);
+	plotDataSubtractPaused(pl);
 
 	for (N = 0; N < PLOT_FIGURE_MAX; ++N) {
 
 		if (pg->fig[N].busy != 0) {
 
-			cX = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
-			cY = pg->fig[N].cY;
+			uN = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX, pg->fig[N].cY);
+
+			cX = uN.X;
+			cY = uN.Y;
 
 			cX = readScaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
 			cY = readScaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);
@@ -3621,7 +3759,7 @@ readCombineGetFreeAxis(plot_t *pl, int *map)
 }
 
 static int
-readCombineGetMappedAxis(plot_t *pl, int dN, int cN)
+readCombineGetMappedAxis(plot_t *pl, int dN, int cN, int aBUSY)
 {
 	int		N, aN = -1;
 	int		gN, *map;
@@ -3644,12 +3782,14 @@ readCombineGetMappedAxis(plot_t *pl, int dN, int cN)
 
 			if (pl->figure[N].data_N == dN) {
 
-				if (pl->figure[N].column_X == cN) {
+				if (		aBUSY == AXIS_BUSY_X
+						&& pl->figure[N].column_X == cN) {
 
 					aN = pl->figure[N].axis_X;
 					break;
 				}
-				else if (pl->figure[N].column_Y == cN) {
+				else if (	aBUSY == AXIS_BUSY_Y
+						&& pl->figure[N].column_Y == cN) {
 
 					aN = pl->figure[N].axis_Y;
 					break;
@@ -3662,12 +3802,14 @@ readCombineGetMappedAxis(plot_t *pl, int dN, int cN)
 
 				map = pl->data[pl->figure[N].data_N].map;
 
-				if (gN == map[pl->figure[N].column_X]) {
+				if (		aBUSY == AXIS_BUSY_X
+						&& gN == map[pl->figure[N].column_X]) {
 
 					aN = pl->figure[N].axis_X;
 					break;
 				}
-				else if (gN == map[pl->figure[N].column_Y]) {
+				else if (	aBUSY == AXIS_BUSY_Y
+						&& gN == map[pl->figure[N].column_Y]) {
 
 					aN = pl->figure[N].axis_Y;
 					break;
@@ -3683,6 +3825,8 @@ void readCombinePage(read_t *rd, int pN, int remap)
 {
 	plot_t		*pl = rd->pl;
 	page_t		*pg;
+
+	tuple_t		uN;
 	int		N, fN, bN, cX, cY, aX, aY;
 	int		map[PLOT_AXES_MAX];
 
@@ -3700,7 +3844,7 @@ void readCombinePage(read_t *rd, int pN, int remap)
 	if (pg->busy == 0)
 		return;
 
-	plotDataSubtractPostponed(pl);
+	plotDataSubtractPaused(pl);
 
 	for (N = 0; N < PLOT_AXES_MAX; ++N)
 		map[N] = -1;
@@ -3717,14 +3861,18 @@ void readCombinePage(read_t *rd, int pN, int remap)
 
 				if (map[pg->fig[N].aX] < 0) {
 
-					aX = readCombineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cX);
+					aX = readCombineGetMappedAxis(pl, pg->fig[N].dN,
+							pg->fig[N].cX, AXIS_BUSY_X);
+
 					aX = (aX < 0) ? readCombineGetFreeAxis(pl, map) : aX;
 					map[pg->fig[N].aX] = aX;
 				}
 
 				if (map[pg->fig[N].aY] < 0) {
 
-					aY = readCombineGetMappedAxis(pl, pg->fig[N].dN, pg->fig[N].cY);
+					aY = readCombineGetMappedAxis(pl, pg->fig[N].dN,
+							pg->fig[N].cY, AXIS_BUSY_Y);
+
 					aY = (aY < 0) ? readCombineGetFreeAxis(pl, map) : aY;
 					map[pg->fig[N].aY] = aY;
 				}
@@ -3747,8 +3895,10 @@ void readCombinePage(read_t *rd, int pN, int remap)
 			aX = (map[pg->fig[N].aX] != -1) ? map[pg->fig[N].aX] : pg->fig[N].aX;
 			aY = (map[pg->fig[N].aY] != -1) ? map[pg->fig[N].aY] : pg->fig[N].aY;
 
-			cX = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX);
-			cY = pg->fig[N].cY;
+			uN = readTimeDataMap(pl, pg->fig[N].dN, pg->fig[N].cX, pg->fig[N].cY);
+
+			cX = uN.X;
+			cY = uN.Y;
 
 			cX = readScaleDataMap(pl, pg->fig[N].dN, cX, pg->fig[N].bX);
 			cY = readScaleDataMap(pl, pg->fig[N].dN, cY, pg->fig[N].bY);

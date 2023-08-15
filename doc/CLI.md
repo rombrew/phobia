@@ -46,8 +46,8 @@ to restore the configuration.
 	(pmc) plain_reg
 
 To save the values of the configuration registers in the flash storage there is
-a `flash_prog` command. Register values from the flash are loaded
-automatically at startup.
+a `flash_prog` command. Register values from the flash are loaded automatically
+at startup.
 
 	(pmc) flash_prog
 

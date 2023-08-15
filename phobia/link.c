@@ -687,7 +687,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		const char	*command;
 		int		mode;
 	}
-	const link_map[] = {
+	const	link_map[] = {
 
 		{ "rtos_version",	LINK_MODE_HWINFO },
 		{ "rtos_uptime",	LINK_MODE_UPTIME },
@@ -705,7 +705,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "net_assign",		LINK_MODE_UNABLE_WARNING },
 		{ "net_revoke",		LINK_MODE_UNABLE_WARNING },
 
-		{ NULL, 0 }	/* END */
+		{ NULL, 0 }		/* END */
 	},
 	*mp;
 
@@ -750,7 +750,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 				while (mp->command != NULL) {
 
-					if (strstr(priv->lbuf, mp->command)) {
+					if (strstr(priv->lbuf, mp->command) != NULL) {
 
 						priv->link_mode = mp->mode;
 						break;

@@ -261,6 +261,14 @@ void serial_enumerate(struct serial_list *ls)
 	}
 
 	free(lpPath);
+
+	if (ls->dnum == 0) {
+
+		ls->mbflow[0] = 0;
+		ls->name[0] = ls->mbflow;
+
+		ls->dnum = 1;
+	}
 }
 
 static struct serial_fd *
@@ -470,6 +478,20 @@ void serial_enumerate(struct serial_list *ls)
 	serial_port_pattern(ls, "ttyUSB");
 	serial_port_pattern(ls, "rfcomm");
 	serial_port_pattern(ls, "ttyS");
+
+#ifdef _MACOS
+	serial_port_pattern(ls, "tty.BT");
+	serial_port_pattern(ls, "tty.Bluetooth");
+	serial_port_pattern(ls, "tty.usbmodem");
+#endif /* _MACOS */
+
+	if (ls->dnum == 0) {
+
+		ls->mbflow[0] = 0;
+		ls->name[0] = ls->mbflow;
+
+		ls->dnum = 1;
+	}
 }
 
 static struct serial_fd	*
