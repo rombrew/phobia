@@ -31,9 +31,8 @@ typedef struct {
 
 	struct {
 
-		int	type;
-
-		rval_t	*lnk;
+		int		type;
+		const reg_t	*reg;
 	}
 	layout[TLM_INPUT_MAX];
 

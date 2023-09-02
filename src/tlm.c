@@ -75,13 +75,15 @@ void tlm_reg_grab(tlm_t *tlm)
 
 		for (N = 0; N < TLM_INPUT_MAX; ++N) {
 
+			rval_t	*link = tlm->layout[N].reg->link;
+
 			if (tlm->layout[N].type == TLM_TYPE_FLOAT) {
 
-				vm[N] = tlm_fp_half(tlm->layout[N].lnk->f);
+				vm[N] = tlm_fp_half(link->f);
 			}
 			else if (tlm->layout[N].type == TLM_TYPE_INT) {
 
-				vm[N] = (uint16_t) tlm->layout[N].lnk->i;
+				vm[N] = (uint16_t) link->i;
 			}
 		}
 	}
@@ -130,12 +132,12 @@ void tlm_startup(tlm_t *tlm, float freq, int mode)
 					|| reg->fmt[2] == 'x') {
 
 				tlm->layout[N].type = TLM_TYPE_INT;
-				tlm->layout[N].lnk = reg->link;
 			}
 			else {
 				tlm->layout[N].type = TLM_TYPE_FLOAT;
-				tlm->layout[N].lnk = reg->link;
 			}
+
+			tlm->layout[N].reg = reg;
 		}
 		else {
 			tlm->layout[N].type = TLM_TYPE_NONE;
@@ -191,7 +193,6 @@ SH_DEF(tlm_stop)
 static void
 tlm_reg_label(tlm_t *tlm)
 {
-	const reg_t		*reg;
 	const char		*su;
 	int			N;
 
@@ -199,9 +200,9 @@ tlm_reg_label(tlm_t *tlm)
 
 	for (N = 0; N < TLM_INPUT_MAX; ++N) {
 
-		if (tlm->reg_ID[N] != ID_NULL) {
+		if (tlm->layout[N].type != TLM_TYPE_NONE) {
 
-			reg = &regfile[tlm->reg_ID[N]];
+			const reg_t	*reg = tlm->layout[N].reg;
 
 			puts(reg->sym);
 
@@ -229,11 +230,10 @@ tlm_reg_flush_line(tlm_t *tlm, int line)
 
 		if (tlm->layout[N].type != TLM_TYPE_NONE) {
 
-			const reg_t	*reg = &regfile[tlm->reg_ID[N]];
+			const reg_t	*reg = tlm->layout[N].reg;
 			rval_t		rval;
 
-			if (		   reg->fmt[2] == 'i'
-					|| reg->fmt[2] == 'x') {
+			if (tlm->layout[N].type == TLM_TYPE_INT) {
 
 				rval.i = (int) vm[N];
 			}
@@ -243,9 +243,9 @@ tlm_reg_flush_line(tlm_t *tlm, int line)
 
 			if (reg->proc != NULL) {
 
-				reg_t		xreg = { .link = &rval };
+				reg_t		lreg = { .link = &rval };
 
-				reg->proc(&xreg, &rval, NULL);
+				reg->proc(&lreg, &rval, NULL);
 			}
 
 			reg_format_rval(reg, &rval);

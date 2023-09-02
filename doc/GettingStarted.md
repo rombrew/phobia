@@ -111,7 +111,7 @@ baudrate is 57600 with 8-bits data 1-bit even parity and 1-bit stop.
 If MCU was already flashed with PMC firmware you are able to activate ST
 embedded bootloader without BOOT pin. Just run the command in the CLI.
 
-	(pmc) rtos_bootload
+	(pmc) os_bootload
 
 Read the following documentation for setting PMC up.
 

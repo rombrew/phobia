@@ -155,6 +155,7 @@ tlm_plot_grab()
 	fmt_GP(pm.tvm_Y0, "V");
 
 	fmt_GP(pm.lu_MODE, 0);
+	fmk_GP(pm.lu_mq_produce, pm.const_Zp, "Nm");
 	fmk_GP(pm.lu_mq_load, pm.const_Zp, "Nm");
 
 	fmt_GP(pm.base_TIM, 0);
@@ -193,11 +194,14 @@ tlm_plot_grab()
 	fmt_GP(pm.i_setpoint_current, "A");
 	fmt_GP(pm.i_track_D, "A");
 	fmt_GP(pm.i_track_Q, "A");
+	fmt_GP(pm.i_integral_D, "V");
+	fmt_GP(pm.i_integral_Q, "V");
 
 	fmt_GP(pm.weak_D, "A");
 
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
+	fmt_GP(pm.s_integral, "A");
 
 	if (tlm.fd_gp != NULL) { fclose(tlm.fd_gp); tlm.fd_gp = NULL; }
 
@@ -361,43 +365,60 @@ void bench_script()
 {
 	blm_enable(&m);
 	blm_restart(&m);
+
 	tlm_restart();
 
-	/*m.Rs = 0.202;
-	m.Ld = 700E-6;
-	m.Lq = 700E-6;
-	m.Udc = 22.;
-	m.Rdc = 0.1;
-	m.Zp = 1;
-	m.lambda = blm_Kv_lambda(&m, 71.);
-	m.Jm = 3.E-4;*/
-
 	m.Rs = 14.E-3;
-	m.Ld = 10.E-6;
-	m.Lq = 15.E-6;
-	m.Udc = 25.;
+	m.Ld = 90.E-6;
+	m.Lq = 20.E-6;
+	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
         m.lambda = blm_Kv_lambda(&m, 270.);
-	m.Jm = 3.E-4;
+	m.Jm = 5.E-4;
 
 	ts_script_base();
-
 	blm_restart(&m);
-	//tlm_restart();
-
-	//pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
-
-	sim_runtime(.1);
 
 	pm.s_setpoint_speed = 800.f;
 	sim_runtime(1.);
 
 	pm.s_setpoint_speed = 2000.f;
-	sim_runtime(1.);
+	sim_runtime(2.);
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	ts_wait_for_idle();
+
+	blm_restart(&m);
+
+	m.Mq[0] = 0.E-3;
+	m.Mq[1] = 5.E-5;
+	m.Mq[2] = 5.E-5;
+	m.Mq[3] = 5.E-5;
+
+	pm.config_HFI_WAVE = PM_HFI_SINE;
+	pm.config_RELUCTANCE = PM_ENABLED;
+	//pm.config_WEAKENING = PM_ENABLED;
+
+	pm.weak_maximal = 100.f;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	ts_wait_for_idle();
+
+	pm.s_setpoint_speed = 2000.f;
+	sim_runtime(2.);
+
+	pm.s_setpoint_speed = 7000.f;
+	sim_runtime(2.);
+
+	pm.s_setpoint_speed = 1000.f;
+	sim_runtime(2.);
+
+	pm.s_setpoint_speed = -1000.f;
+	sim_runtime(2.);
 
 	tlm_PWM_grab();
 }

@@ -45,9 +45,6 @@ automatically. You may need to enable appropriate control mode explicitly.
 
 	(pmc) reg pm.config_LU_DRIVE 1
 
-* 0 - Current loop.
-* 1 - Speed loop.
-
 Select the control variable range. So the input pulse width range will be
 converted to this control range.
 

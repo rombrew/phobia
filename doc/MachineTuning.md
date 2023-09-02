@@ -25,8 +25,8 @@ at low speed range.
 
 ## Current loop
 
-Automatically tune current loop PI regulator gains based on performance
-percentage. Reasonable values are from 50 to 150.
+Automatically tune current loop PI regulator gains based on damping percentage.
+Reasonable values are from 50 to 150.
 
 	(pmc) reg pm.i_damping <pc>
 
@@ -89,8 +89,8 @@ transient rate and noise level.
 
 ## Speed loop
 
-Automatically tune speed loop PD regulator gains based on performance
-percentage. Reasonable values are from 10 to 200.
+Automatically tune speed loop PD regulator gains based on damping percentage.
+Reasonable values are from 20 to 200.
 
 	(pmc) reg pm.s_damping <pc>
 

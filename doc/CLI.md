@@ -40,10 +40,10 @@ Almost all of the configuration process is to change the value of the
 registers.
 
 You can also export all of configuration registers in plain text using a
-`plain_reg` command. The output of this command can be fed back into the CLI
+`config_reg` command. The output of this command can be fed back into the CLI
 to restore the configuration.
 
-	(pmc) plain_reg
+	(pmc) config_reg
 
 To save the values of the configuration registers in the flash storage there is
 a `flash_prog` command. Register values from the flash are loaded automatically
@@ -78,7 +78,7 @@ need to be captured.
 	(pmc) reg tlm.reg_ID1 pm.tvm_B
 	(pmc) reg tlm.reg_ID2 ...
 
-Telemetry grab (to fill the memory buffer) and flush textual dump.
+Telemetry grab into RAM and flush textual dump.
 
 	(pmc) tlm_grab <freq>
 	(pmc) tlm_flush_sync
@@ -118,23 +118,24 @@ Assign the value of 700 to the register with ID 377.
 There are some commands that you can use to get started. Basic informational
 commands.
 
-	(pmc) rtos_uptime
-	(pmc) rtos_cpu_usage
+	(pmc) os_task_info
+	(pmc) os_heap_info
 
 Get firmware version info.
 
-    (pmc) rtos_version
+	(pmc) os_version
 
 Manual PWM DC control for testing.
 
 	(pmc) hal_PWM_set_DC <DC>
 	(pmc) hal_PWM_set_Z <Z>
 
-Show instant analog input values.
+Show instant analog knob input voltages.
 
-	(pmc) reg hal.ADC_get_knob_ANG
+	(pmc) reg ap.knob_in_ANG
+	(pmc) reg ap.knob_in_BRK
 
-Enable the HX711 helper application.
+Enable the HX711 helper task.
 
 	(pmc) reg ap.task_HX711 1
 

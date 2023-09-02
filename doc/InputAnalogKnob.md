@@ -23,7 +23,7 @@ to 5v) is fed to `BRK` pin. Unconnected inputs are pulled to `GND` inside PMC.
 ## Configuration
 
 First you need to figure out how the controller receives analog signals. Use
-these registers to view analog values from knob inputs.
+these registers to view analog voltages on interface inputs.
 
 	(pmc) reg ap.knob_in_ANG
 	(pmc) reg ap.knob_in_BRK
@@ -79,9 +79,6 @@ Note that setting the control variable does not enable appropriate control loop
 automatically. You may need to enable appropriate control mode explicitly.
 
 	(pmc) reg pm.config_LU_DRIVE 0
-
-* 0 - Current loop.
-* 1 - Speed loop.
 
 Select the control variable range. So the input voltage range will be converted
 to this control range.

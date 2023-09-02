@@ -83,7 +83,7 @@ void USART_startup()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baud_rate;
+	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baudrate;
 
 #if defined(STM32F4)
 	if (hal.USART_parity == PARITY_EVEN) {

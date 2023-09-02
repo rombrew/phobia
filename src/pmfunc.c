@@ -73,7 +73,7 @@ int pm_wait_for_spinup()
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
-				&& pm.vsi_lpf_DC > pm.forced_maximal_DC)
+				&& pm.vsi_lpf_DC > pm.forced_stop_DC)
 			break;
 
 		if (xTIME > (TickType_t) 10000) {
@@ -222,16 +222,16 @@ SH_DEF(pm_probe_spinup)
 				break;
 
 			reg_format(&regfile[ID_PM_CONST_LAMBDA_KV]);
-
-			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
-			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
-			pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
-
-			reg_format(&regfile[ID_PM_ZONE_SPEED_NOISE]);
-			reg_format(&regfile[ID_PM_ZONE_SPEED_THRESHOLD]);
-			reg_format(&regfile[ID_PM_PROBE_SPEED_HOLD]);
-			reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 		}
+
+		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
+
+		reg_format(&regfile[ID_PM_ZONE_SPEED_NOISE]);
+		reg_format(&regfile[ID_PM_ZONE_SPEED_THRESHOLD]);
+		reg_format(&regfile[ID_PM_PROBE_SPEED_HOLD]);
+		reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -287,12 +287,14 @@ SH_DEF(pm_probe_spinup)
 
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
+		pm_auto(&pm, PM_AUTO_MQ_LOAD_TORQUE);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 		reg_format(&regfile[ID_PM_FORCED_MAXIMAL]);
 		reg_format(&regfile[ID_PM_FORCED_ACCEL]);
 		reg_format(&regfile[ID_PM_LU_GAIN_MQ_LP]);
 		reg_format(&regfile[ID_PM_S_GAIN_P]);
+		reg_format(&regfile[ID_PM_S_GAIN_D]);
 	}
 	while (0);
 

@@ -154,6 +154,7 @@ enum {
 	PM_AUTO_FORCED_MAXIMAL,
 	PM_AUTO_FORCED_ACCEL,
 	PM_AUTO_LOOP_CURRENT,
+	PM_AUTO_MQ_LOAD_TORQUE,
 	PM_AUTO_LOOP_SPEED
 };
 
@@ -254,7 +255,6 @@ typedef struct {
 	int		config_SPEED_LIMITED;
 	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
-	int		config_MILEAGE_INFO;
 	int		config_BOOST_CHARGE;		/* TODO */
 
 	int		fsm_req;
@@ -378,6 +378,7 @@ typedef struct {
 	int		lu_revob;
 	int		lu_total_revol;
 	float		lu_rate;
+	float		lu_mq_produce;
 	float		lu_mq_load;
 	float		lu_wS0;
 	float		lu_gain_mq_LP;
@@ -393,7 +394,7 @@ typedef struct {
 	float		forced_accel;
 	float		forced_slew_rate;
 	float		forced_track_D;
-	float		forced_maximal_DC;
+	float		forced_stop_DC;
 
 	int		detach_TIM;
 	float		detach_threshold;
@@ -457,7 +458,7 @@ typedef struct {
 	float		hall_gain_IF;
 
 	int		eabi_USEABLE;
-	int		eabi_ENABLED;
+	int		eabi_RECENT;
 	int		eabi_bEP;
 	int		eabi_lEP;
 	int		eabi_unwrap;
@@ -475,7 +476,7 @@ typedef struct {
 	float		eabi_gain_IF;
 
 	int		sincos_USEABLE;
-	int		sincos_ENABLED;
+	int		sincos_RECENT;
 	float		sincos_FIR[20];
 	float		sincos_SC[3];
 	int		sincos_revol;
@@ -509,6 +510,7 @@ typedef struct {
 	float		quick_HFwS;
 	float		quick_ZiEP;
 	float		quick_ZiSQ;
+	float		quick_WiL4;
 
 	float		watt_wP_maximal;
 	float		watt_wA_maximal;
@@ -520,6 +522,14 @@ typedef struct {
 	float		watt_lpf_Q;
 	float		watt_drain_wP;
 	float		watt_drain_wA;
+	float		watt_traveled;
+	float		watt_consumed_Wh;
+	float		watt_consumed_Ah;
+	float		watt_reverted_Wh;
+	float		watt_reverted_Ah;
+	float		watt_capacity_Ah;
+	float		watt_fuel_gauge;
+	float		watt_rem[4];
 	float		watt_gain_LP;
 
 	float		i_derate_on_HFI;
@@ -548,9 +558,12 @@ typedef struct {
 	float		s_maximal;
 	float		s_reverse;
 	float		s_track;
+	float		s_integral;
 	float		s_accel;
 	float		s_damping;
 	float		s_gain_P;
+	float		s_gain_I;
+	float		s_gain_F;
 	float		s_gain_D;
 
 	float		l_track_tol;
@@ -566,15 +579,6 @@ typedef struct {
 	float		x_gain_P;
 	float		x_gain_D;
 
-	float		mile_traveled;
-	float		mile_consumed_Wh;
-	float		mile_consumed_Ah;
-	float		mile_reverted_Wh;
-	float		mile_reverted_Ah;
-	float		mile_capacity_Ah;
-	float		mile_fuel_gauge;
-	float		mile_rem[4];
-
 	float		boost_gain_P;
 	float		boost_gain_I;
 
@@ -587,6 +591,7 @@ void pm_quick_build(pmc_t *pm);
 void pm_auto(pmc_t *pm, int req);
 
 float pm_torque_equation(pmc_t *pm, float iD, float iQ);
+float pm_torque_feasible(pmc_t *pm, float iQ);
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC);
 void pm_voltage(pmc_t *pm, float uX, float uY);

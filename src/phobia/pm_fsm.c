@@ -1574,8 +1574,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->vsi_BT = 0;
 				pm->vsi_CT = 0;
 
-				pm->lu_MODE = PM_LU_DETACHED;
-
 				pm->lu_iX = 0.f;
 				pm->lu_iY = 0.f;
 				pm->lu_iD = 0.f;
@@ -1589,6 +1587,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->lu_location = 0.f;
 				pm->lu_revol = 0;
 				pm->lu_revob = 0;
+				pm->lu_mq_produce = 0.f;
 				pm->lu_mq_load = 0.f;
 				pm->lu_wS0 = 0.f;
 
@@ -1626,13 +1625,13 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->hall_F[1] = 0.f;
 				pm->hall_wS = 0.f;
 
-				pm->eabi_ENABLED = PM_DISABLED;
+				pm->eabi_RECENT = PM_DISABLED;
 				pm->eabi_F[0] = 1.f;
 				pm->eabi_F[1] = 0.f;
 				pm->eabi_wS = 0.f;
 				pm->eabi_location = 0.f;
 
-				pm->sincos_ENABLED = PM_DISABLED;
+				pm->sincos_RECENT = PM_DISABLED;
 				pm->sincos_revol = 0;
 				pm->sincos_unwrap = 0;
 				pm->sincos_F[0] = 1.f;
@@ -1657,6 +1656,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
+				pm->s_integral = 0.f;
+
 				pm->l_blend = 0.f;
 
 				pm->x_setpoint_location = 0.f;
@@ -1664,11 +1665,14 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
+					pm->lu_MODE = PM_LU_DETACHED;
+
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(PM_Z_ABC);
 				}
 				else {
 					pm->lu_MODE = PM_LU_ESTIMATE;
+					pm->lu_MODE = PM_LU_FORCED;
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(PM_Z_NONE);
@@ -2245,7 +2249,7 @@ void pm_FSM(pmc_t *pm)
 	}
 }
 
-#define PM_SFI_CASE(errno)	case errno: sym = PM_SFI(fsm_errno); break
+#define PM_SFI_CASE(errno)	case errno: sym = PM_SFI(errno); break
 
 const char *pm_strerror(int fsm_errno)
 {

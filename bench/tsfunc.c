@@ -82,7 +82,7 @@ int ts_wait_for_spinup()
 			break;
 
 		if (		pm.lu_MODE == PM_LU_FORCED
-				&& pm.vsi_lpf_DC > pm.forced_maximal_DC)
+				&& pm.vsi_lpf_DC > pm.forced_stop_DC)
 			break;
 
 		if (xTIME > 10000) {
@@ -213,22 +213,22 @@ void ts_probe_spinup()
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
 			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
-
-			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
-			pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
-			pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
-
-			printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
-					pm.zone_speed_noise,
-					pm.zone_speed_noise * pm.const_lambda);
-
-			printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
-					pm.zone_speed_threshold,
-					pm.zone_speed_threshold * pm.const_lambda);
-
-			printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
-			printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		}
+
+		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
+
+		printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_speed_noise,
+				pm.zone_speed_noise * pm.const_lambda);
+
+		printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_speed_threshold,
+				pm.zone_speed_threshold * pm.const_lambda);
+
+		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -296,12 +296,14 @@ void ts_probe_spinup()
 
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
+		pm_auto(&pm, PM_AUTO_MQ_LOAD_TORQUE);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
 		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
 		printf("s_gain_P = %.2E\n", pm.s_gain_P);
+		printf("s_gain_D = %.2E\n", pm.s_gain_D);
 	}
 	while (0);
 }

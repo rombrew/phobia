@@ -81,9 +81,21 @@ void config_read(struct config_phobia *fe)
 
 				/* Skip empty lines */
 			}
+			else if (strcmp(name, "version") == 0) {
+
+				fe->version = strtol(value, NULL, 10);
+			}
 			else if (strcmp(name, "serialport") == 0) {
 
 				strcpy(fe->serialport, value);
+			}
+			else if (strcmp(name, "baudrate") == 0) {
+
+				fe->baudrate = strtol(value, NULL, 10);
+			}
+			else if (strcmp(name, "parity") == 0) {
+
+				fe->parity = strtol(value, NULL, 10);
 			}
 			else if (strcmp(name, "windowsize") == 0) {
 
@@ -97,14 +109,14 @@ void config_read(struct config_phobia *fe)
 
 				strcpy(fe->fuzzy, value);
 			}
-			else if (strcmp(name, "tlmrate") == 0) {
+			else if (strcmp(name, "lograte") == 0) {
 
-				fe->tlmrate = strtol(value, NULL, 10);
-				sprintf(fe->tlmrate_lbuf, "%i", fe->tlmrate);
+				fe->lograte = strtol(value, NULL, 10);
+				sprintf(fe->lograte_lbuf, "%i", fe->lograte);
 			}
-			else if (strcmp(name, "regmaxn") == 0) {
+			else if (strcmp(name, "regfile") == 0) {
 
-				fe->regmaxn = strtol(value, NULL, 10);
+				fe->regfile = strtol(value, NULL, 10);
 			}
 		}
 
@@ -168,6 +180,17 @@ void config_open(struct config_phobia *fe)
 			config_read(fe);
 		}
 	}
+
+	if (fe->version != CONFIG_VERSION) {
+
+		if (config_rcfiletry(fe) != 0) {
+
+			fe->version = CONFIG_VERSION;
+
+			config_write(fe);
+			config_read(fe);
+		}
+	}
 }
 
 void config_write(struct config_phobia *fe)
@@ -178,12 +201,15 @@ void config_write(struct config_phobia *fe)
 
 	if (fd != NULL) {
 
+		fprintf(fd, "version %i\n", fe->version);
 		fprintf(fd, "serialport %s\n", fe->serialport);
+		fprintf(fd, "baudrate %i\n", fe->baudrate);
+		fprintf(fd, "parity %i\n", fe->parity);
 		fprintf(fd, "windowsize %i\n", fe->windowsize);
 		fprintf(fd, "storage %s\n", fe->storage);
 		fprintf(fd, "fuzzy %s\n", fe->fuzzy);
-		fprintf(fd, "tlmrate %i\n", fe->tlmrate);
-		fprintf(fd, "regmaxn %i\n", fe->regmaxn);
+		fprintf(fd, "lograte %i\n", fe->lograte);
+		fprintf(fd, "regfile %i\n", fe->regfile);
 
 		fclose(fd);
 	}
@@ -195,7 +221,13 @@ void config_default(struct config_phobia *fe)
 	char		lptemp[PHOBIA_PATH_MAX];
 #endif /* _WINDOWS */
 
-	fe->serialport[0] = 0;
+	fe->version = CONFIG_VERSION;
+
+	strcpy(fe->serialport, "none");
+
+	fe->baudrate = 2;
+	fe->parity = 1;
+
 	fe->windowsize = 1;
 
 #ifdef _WINDOWS
@@ -213,7 +245,7 @@ void config_default(struct config_phobia *fe)
 
 	strcpy(fe->fuzzy, "setpoint");
 
-	fe->tlmrate = 1000;
-	fe->regmaxn = 426;
+	fe->lograte = 1000;
+	fe->regfile = 421;
 }
 

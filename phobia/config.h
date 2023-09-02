@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define CONFIG_VERSION		4
+
 #define FILE_HOME_CONFIG	"phobia"
 #define FILE_LINK_LOG		"phobia.log"
 #define FILE_TELEMETRY_GRAB	"tlmgrab.csv"
@@ -17,16 +19,21 @@
 
 struct config_phobia {
 
+	int			version;
+
 	char			rcfile[PHOBIA_PATH_MAX];
 	int			local;
 
 	char			serialport[PHOBIA_NAME_MAX];
+	int			baudrate;
+	int			parity;
+
 	int			windowsize;
 	char			storage[PHOBIA_PATH_MAX];
 	char			fuzzy[PHOBIA_NAME_MAX];
-	int			tlmrate;
-	char			tlmrate_lbuf[PHOBIA_NAME_MAX];
-	int			regmaxn;
+	int			lograte;
+	char			lograte_lbuf[PHOBIA_NAME_MAX];
+	int			regfile;
 };
 
 FILE *fopen_from_UTF8(const char *file, const char *mode);

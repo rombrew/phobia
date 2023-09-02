@@ -84,7 +84,7 @@ FW_info_t;
 
 typedef struct {
 
-	int		USART_baud_rate;
+	int		USART_baudrate;
 	int		USART_parity;
 
 	float		PWM_frequency;

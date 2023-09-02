@@ -35,7 +35,7 @@ void blm_DQ_ABC(double theta, double D, double Q, double *A, double *B, double *
 
 double blm_Kv_lambda(blm_t *m, double Kv)
 {
-	/* Convert the total machine Kv (rpm/Volt) to the flux linkage (Weber)
+	/* Convert the total machine Kv (rpm/v) to the flux linkage (Weber)
 	 * */
 	return (60. / 2. / M_PI) / sqrt(3.) / (Kv * m->Zp);
 }
@@ -221,7 +221,7 @@ blm_equation(const blm_t *m, const double state[7], double y[7])
 
 	/* Torque production.
 	 * */
-	mP = 1.5 * m->Zp * (lambda - (m->Lq - m->Ld) * state[0]) * state[1];
+	mP = 1.5 * m->Zp * (lambda + (m->Ld - m->Lq) * state[0]) * state[1];
 
 	/* Mechanical load torque.
 	 * */

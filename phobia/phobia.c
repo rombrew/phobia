@@ -74,6 +74,7 @@ struct public {
 
 		int			selected;
 		int			baudrate;
+		int			parity;
 	}
 	serial;
 
@@ -1343,8 +1344,8 @@ reg_enum_toggle(struct public *pub, const char *sym, const char *name)
 				pub->lbuf, 79, nk_filter_default);
 
 		nk_spacer(ctx);
-		nk_spacer(ctx);
 		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
+		nk_spacer(ctx);
 	}
 
 	ctx->style.selectable = select;
@@ -2098,9 +2099,14 @@ page_serial(struct public *pub)
 
 	struct nk_style_button		orange;
 
-	const char			*ls_baudrates[] = {
+	const char			*ls_baudrate[] = {
 
 		"9600", "19200", "57600", "115200"
+	};
+
+	const char			*ls_parity[] = {
+
+		"None", "Even", "Odd"
 	};
 
 	const char			*ls_windowsize[] = {
@@ -2132,7 +2138,14 @@ page_serial(struct public *pub)
 			serial_enumerate(&pub->serial.list);
 
 			pub->serial.started = 1;
-			pub->serial.baudrate = 2;
+			pub->serial.baudrate = fe->baudrate;
+			pub->serial.parity = fe->parity;
+
+			pub->serial.baudrate = (pub->serial.baudrate < 0) ? 0 :
+				(pub->serial.baudrate > 3) ? 3 : pub->serial.baudrate;
+
+			pub->serial.parity = (pub->serial.parity < 0) ? 0 :
+				(pub->serial.parity > 2) ? 2 : pub->serial.parity;
 
 			for (N = 0; N < pub->serial.list.dnum; ++N) {
 
@@ -2161,21 +2174,29 @@ page_serial(struct public *pub)
 		nk_spacer(ctx);
 
 		nk_label(ctx, "Baudrate", NK_TEXT_LEFT);
-		pub->serial.baudrate = nk_combo(ctx, ls_baudrates, 4,
+		pub->serial.baudrate = nk_combo(ctx, ls_baudrate, 4,
 				pub->serial.baudrate, pub->fe_font_h + 10,
 				nk_vec2(pub->fe_base * 13, 400));
+
+		if (pub->serial.baudrate != fe->baudrate) {
+
+			fe->baudrate = pub->serial.baudrate;
+		}
 
 		nk_spacer(ctx);
 
 		if (nk_button_label_styled(ctx, &orange, "Connect")) {
 
-			const char		*portname;
+			const char		*portname, *mode;
 			int			baudrate = 0;
 
 			portname = pub->serial.list.name[pub->serial.selected];
-			lk_stoi(&baudrate, ls_baudrates[pub->serial.baudrate]);
+			lk_stoi(&baudrate, ls_baudrate[pub->serial.baudrate]);
 
-			link_open(lp, pub->fe, portname, baudrate, SERIAL_DEFAULT);
+			mode = (pub->serial.parity == 1) ? "8E1"
+				: (pub->serial.parity == 2) ? "8O1" : "8N1";
+
+			link_open(lp, pub->fe, portname, baudrate, mode);
 
 			if (lp->linked != 0) {
 
@@ -2186,6 +2207,7 @@ page_serial(struct public *pub)
 				link_log_file_open(lp, pub->lbuf);
 
 				strcpy(fe->serialport, portname);
+
 				config_write(pub->fe);
 
 				pub->popup_enum = POPUP_LINK_PROGRESS;
@@ -2194,10 +2216,15 @@ page_serial(struct public *pub)
 
 		nk_spacer(ctx);
 
-		nk_label(ctx, "Data bits", NK_TEXT_LEFT);
-		sprintf(pub->lbuf, "%s", SERIAL_DEFAULT);
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-			pub->lbuf, sizeof(pub->lbuf), nk_filter_default);
+		nk_label(ctx, "Data parity", NK_TEXT_LEFT);
+		pub->serial.parity = nk_combo(ctx, ls_parity, 3,
+				pub->serial.parity, pub->fe_font_h + 10,
+				nk_vec2(pub->fe_base * 13, 400));
+
+		if (pub->serial.parity != fe->parity) {
+
+			fe->parity = pub->serial.parity;
+		}
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -2224,7 +2251,7 @@ page_serial(struct public *pub)
 			if (		lp->reg_MAX_N > 300
 					&& lp->reg_MAX_N < LINK_REGS_MAX) {
 
-				fe->regmaxn = lp->reg_MAX_N;
+				fe->regfile = lp->reg_MAX_N;
 			}
 
 			config_write(pub->fe);
@@ -2233,10 +2260,8 @@ page_serial(struct public *pub)
 
 		nk_spacer(ctx);
 
-		nk_label(ctx, "Data bits", NK_TEXT_LEFT);
-		sprintf(pub->lbuf, "%s", SERIAL_DEFAULT);
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-			pub->lbuf, sizeof(pub->lbuf), nk_filter_default);
+		nk_label(ctx, "Data parity", NK_TEXT_LEFT);
+		nk_label(ctx, ls_parity[pub->serial.parity], NK_TEXT_LEFT);
 
 		nk_spacer(ctx);
 		nk_spacer(ctx);
@@ -2255,6 +2280,9 @@ page_serial(struct public *pub)
 
 	nk_label(ctx, "Window resolution", NK_TEXT_LEFT);
 
+	fe->windowsize = (fe->windowsize < 0) ? 0 :
+		(fe->windowsize > 2) ? 2 : fe->windowsize;
+
 	select = nk_combo(ctx, ls_windowsize, 3, fe->windowsize,
 			pub->fe_font_h + 10, nk_vec2(pub->fe_base * 22, 400));
 
@@ -2268,7 +2296,7 @@ page_serial(struct public *pub)
 
 	nk_spacer(ctx);
 
-	nk_label(ctx, "Storage PATH", NK_TEXT_LEFT);
+	nk_label(ctx, "Storage directory", NK_TEXT_LEFT);
 
 	rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
 			| NK_EDIT_SIG_ENTER, fe->storage,
@@ -2297,12 +2325,12 @@ page_serial(struct public *pub)
 	nk_label(ctx, "Telemetry logging rate", NK_TEXT_LEFT);
 
 	rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
-			| NK_EDIT_SIG_ENTER, fe->tlmrate_lbuf,
-			sizeof(fe->tlmrate_lbuf), nk_filter_default);
+			| NK_EDIT_SIG_ENTER, fe->lograte_lbuf,
+			sizeof(fe->lograte_lbuf), nk_filter_default);
 
 	if (rc & (NK_EDIT_DEACTIVATED | NK_EDIT_COMMITED)) {
 
-		lk_stoi(&pub->fe->tlmrate, fe->tlmrate_lbuf);
+		lk_stoi(&pub->fe->lograte, fe->lograte_lbuf);
 		config_write(pub->fe);
 	}
 
@@ -2356,7 +2384,7 @@ page_serial(struct public *pub)
 
 		int 		link_pce;
 
-		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regmaxn);
+		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regfile);
 
 		if (lp->active + 500 < lp->clock) {
 
@@ -2365,7 +2393,7 @@ page_serial(struct public *pub)
 			if (		lp->reg_MAX_N > 300
 					&& lp->reg_MAX_N < LINK_REGS_MAX) {
 
-				fe->regmaxn = lp->reg_MAX_N;
+				fe->regfile = lp->reg_MAX_N;
 			}
 
 			config_write(pub->fe);
@@ -2410,7 +2438,7 @@ page_diagnose(struct public *pub)
 			link_command(lp, "pm_self_adjust");
 		}
 
-		if (nk_menu_item_label(ctx, "Default scale & offset", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Default adjustment", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -2621,7 +2649,17 @@ page_probe(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Default machine constants", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Save machine", NK_TEXT_LEFT)) {
+
+			/* TODO */
+		}
+
+		if (nk_menu_item_label(ctx, "Load machine", NK_TEXT_LEFT)) {
+
+			/* TODO */
+		}
+
+		if (nk_menu_item_label(ctx, "Default machine", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -2735,6 +2773,9 @@ page_probe(struct public *pub)
 			reg = link_reg_lookup(lp, "pm.lu_wS");
 			if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
+			reg = link_reg_lookup(lp, "pm.lu_mq_produce");
+			if (reg != NULL) { reg->update = rate; }
+
 			reg = link_reg_lookup(lp, "pm.lu_mq_load");
 			if (reg != NULL) { reg->update = rate; }
 		}
@@ -2742,6 +2783,7 @@ page_probe(struct public *pub)
 		reg_float(pub, "pm.lu_iD", "LU current D");
 		reg_float(pub, "pm.lu_iQ", "LU current Q");
 		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+		reg_float(pub, "pm.lu_mq_produce", "LU torque production");
 		reg_float(pub, "pm.lu_mq_load", "LU torque estimate");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
@@ -2797,7 +2839,7 @@ page_hal(struct public *pub)
 	struct nk_sdl			*nk = pub->nk;
 	struct nk_context		*ctx = &nk->ctx;
 
-	reg_float(pub, "hal.USART_baud_rate", "USART baudrate");
+	reg_float(pub, "hal.USART_baudrate", "USART baudrate");
 	reg_enum_combo(pub, "hal.USART_parity", "USART parity", 0);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3103,7 +3145,7 @@ page_in_network(struct public *pub)
 
 		int 		link_pce;
 
-		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regmaxn);
+		link_pce = (int) (1000.f * lp->reg_MAX_N / (float) fe->regfile);
 
 		if (lp->active + 500 < lp->clock) {
 
@@ -3112,7 +3154,7 @@ page_in_network(struct public *pub)
 			if (		lp->reg_MAX_N > 300
 					&& lp->reg_MAX_N < LINK_REGS_MAX) {
 
-				fe->regmaxn = lp->reg_MAX_N;
+				fe->regfile = lp->reg_MAX_N;
 			}
 
 			config_write(pub->fe);
@@ -3419,6 +3461,16 @@ page_config(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
+		if (nk_menu_item_label(ctx, "Save configuration", NK_TEXT_LEFT)) {
+
+			/* TODO */
+		}
+
+		if (nk_menu_item_label(ctx, "Load configuration", NK_TEXT_LEFT)) {
+
+			/* TODO */
+		}
+
 		if (nk_menu_item_label(ctx, "Default configuration", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
@@ -3498,7 +3550,6 @@ page_config(struct public *pub)
 
 	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
 	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
-	reg_enum_toggle(pub, "pm.config_MILEAGE_INFO", "Mileage info");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3586,7 +3637,7 @@ page_lu_forced(struct public *pub)
 	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.forced_accel", "Forced acceleration", 0);
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
-	reg_float(pub, "pm.forced_maximal_DC", "Maximal DC usage");
+	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3967,16 +4018,16 @@ page_wattage(struct public *pub)
 		reg = link_reg_lookup(lp, "pm.lu_total_revol");
 		if (reg != NULL) { reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mile_traveled");
+		reg = link_reg_lookup(lp, "pm.watt_traveled");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mile_consumed_Wh");
+		reg = link_reg_lookup(lp, "pm.watt_consumed_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mile_reverted_Wh");
+		reg = link_reg_lookup(lp, "pm.watt_reverted_Wh");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.mile_fuel_gauge");
+		reg = link_reg_lookup(lp, "pm.watt_fuel_gauge");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
@@ -3987,10 +4038,10 @@ page_wattage(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.lu_total_revol", "Total electrical revolutions");
-	reg_float_um(pub, "pm.mile_traveled", "Total distance traveled", 1);
-	reg_float_um(pub, "pm.mile_consumed", "Total consumed energy", 0);
-	reg_float_um(pub, "pm.mile_reverted", "Total reverted energy", 0);
-	reg_float(pub, "pm.mile_capacity_Ah", "Battery full capacity");
+	reg_float_um(pub, "pm.watt_traveled", "Total distance traveled", 1);
+	reg_float_um(pub, "pm.watt_consumed", "Total consumed energy", 0);
+	reg_float_um(pub, "pm.watt_reverted", "Total reverted energy", 0);
+	reg_float(pub, "pm.watt_capacity_Ah", "Battery full capacity");
 	reg_float(pub, "pm.mlei_fuel_gauge", "Fuel gauge");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -4020,8 +4071,8 @@ page_lp_current(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.i_damping", "Damping percentage");
-	reg_float(pub, "pm.i_gain_P", "Proportional loop gain");
-	reg_float(pub, "pm.i_gain_I", "Integral loop gain");
+	reg_float(pub, "pm.i_gain_P", "Proportional gain");
+	reg_float(pub, "pm.i_gain_I", "Integral gain");
 
 	reg = link_reg_lookup(lp, "pm.i_maximal");
 
@@ -4088,8 +4139,10 @@ page_lp_speed(struct public *pub)
 
 	reg_float(pub, "pm.s_damping", "Damping percentage");
 	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
-	reg_float(pub, "pm.s_gain_P", "Proportional loop gain");
-	reg_float(pub, "pm.s_gain_D", "Derivative loop gain");
+	reg_float(pub, "pm.s_gain_P", "Proportional gain");
+	reg_float(pub, "pm.s_gain_I", "Integral gain");
+	reg_float(pub, "pm.s_gain_F", "Forward percentage");
+	reg_float(pub, "pm.s_gain_D", "Derivative gain");
 
 	reg = link_reg_lookup(lp, "pm.s_damping");
 
@@ -4100,6 +4153,12 @@ page_lp_speed(struct public *pub)
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(lp, "pm.s_gain_P");
+		if (reg != NULL) { reg->onefetch = 1; }
+
+		reg = link_reg_lookup(lp, "pm.s_gain_I");
+		if (reg != NULL) { reg->onefetch = 1; }
+
+		reg = link_reg_lookup(lp, "pm.s_gain_F");
 		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(lp, "pm.s_gain_D");
@@ -4208,7 +4267,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4226,7 +4285,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4244,7 +4303,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4262,7 +4321,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4280,7 +4339,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4298,7 +4357,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4316,7 +4375,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4334,7 +4393,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4352,7 +4411,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4370,7 +4429,7 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->tlmrate : 0;
+				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4461,7 +4520,7 @@ page_flash(struct public *pub)
 				"Please confirm that you really"
 				" want to reboot PMC.") != 0) {
 
-		if (link_command(lp, "rtos_reboot")) {
+		if (link_command(lp, "os_reboot")) {
 
 			link_reg_fetch_all_shown(lp);
 
@@ -4568,7 +4627,7 @@ page_upgrade(struct public *pub)
 				" reboot into embedded bootloader. Note"
 				" that PMC connection will be closed.") != 0) {
 
-		if (link_command(lp, "rtos_bootload") != 0) {
+		if (link_command(lp, "os_bootload") != 0) {
 
 			config_write(pub->fe);
 			link_close(lp);

@@ -520,7 +520,7 @@ default_flash_load()
 {
 	float			volt_D, halt_I, halt_U;
 
-	hal.USART_baud_rate = 57600;
+	hal.USART_baudrate = 57600;
 	hal.USART_parity = PARITY_EVEN;
 
 	hal.PWM_frequency = HW_PWM_FREQUENCY_HZ;
@@ -617,7 +617,7 @@ default_flash_load()
 	ap.disarm_timeout = 1.f;	/* (s) */
 
 	ap.auto_reg_DATA = 0.f;
-	ap.auto_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
+	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_RPM;
 	ap.auto_ENABLED = PM_DISABLED;
 
 #ifdef HW_HAVE_NTC_ON_PCB
@@ -1087,7 +1087,7 @@ void app_halt()
 #endif /* GPIO_GATE_EN */
 }
 
-SH_DEF(rtos_version)
+SH_DEF(os_version)
 {
 	uint32_t	flash_sizeof, flash_crc32;
 	int		verified;
@@ -1104,12 +1104,12 @@ SH_DEF(rtos_version)
 	printf("FW_crc32 %8x (%s)" EOL, flash_crc32, (verified != 0) ? "verified" : "corrupted");
 }
 
-SH_DEF(rtos_uptime)
+SH_DEF(os_clock)
 {
-	printf("Watch %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
+	printf("Clock %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
-SH_DEF(rtos_task_info)
+SH_DEF(os_task_info)
 {
 	TaskStatus_t		*list;
 	int			len, symStat, n;
@@ -1166,7 +1166,7 @@ SH_DEF(rtos_task_info)
 	}
 }
 
-SH_DEF(rtos_heap_info)
+SH_DEF(os_heap_info)
 {
 	HeapStats_t	heapinfo;
 
@@ -1187,7 +1187,7 @@ SH_DEF(rtos_heap_info)
 			heapinfo.xNumberOfSuccessfulFrees);
 }
 
-SH_DEF(rtos_log_flush)
+SH_DEF(os_log_flush)
 {
 	if (log.textbuf[0] != 0) {
 
@@ -1196,7 +1196,7 @@ SH_DEF(rtos_log_flush)
 	}
 }
 
-SH_DEF(rtos_log_clean)
+SH_DEF(os_log_clean)
 {
 	if (log.textbuf[0] != 0) {
 
@@ -1206,7 +1206,7 @@ SH_DEF(rtos_log_clean)
 	}
 }
 
-SH_DEF(rtos_hexdump)
+SH_DEF(os_hexdump)
 {
 	uint8_t			*m;
 	int			n, i, ascii, line = 4;
@@ -1245,7 +1245,7 @@ SH_DEF(rtos_hexdump)
 	}
 }
 
-SH_DEF(rtos_reboot)
+SH_DEF(os_reboot)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -1257,7 +1257,7 @@ SH_DEF(rtos_reboot)
 	hal_system_reset();
 }
 
-SH_DEF(rtos_bootload)
+SH_DEF(os_bootload)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
