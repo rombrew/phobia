@@ -166,7 +166,9 @@ tlm_plot_grab()
 
 	fmt_GP(pm.detach_TIM, 0);
 
+	fmt_GP(pm.flux_LINKAGE, 0);
 	fmt_GP(pm.flux_ZONE, 0);
+
 	fmt_GP(pm.flux_X[0], "Wb");
 	fmt_GP(pm.flux_X[1], "Wb");
 	fmt_GP(pm.flux_lambda, "Wb");
@@ -180,7 +182,6 @@ tlm_plot_grab()
 
 	fmt_GP(pm.hfi_wave[0], 0);
 	fmt_GP(pm.hfi_wave[1], 0);
-	fmt_GP(pm.hfi_pole, 0);
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
@@ -197,6 +198,7 @@ tlm_plot_grab()
 	fmt_GP(pm.i_integral_D, "V");
 	fmt_GP(pm.i_integral_Q, "V");
 
+	fmt_GP(pm.mtpa_D, "A");
 	fmt_GP(pm.weak_D, "A");
 
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
@@ -374,11 +376,28 @@ void bench_script()
 	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
-        m.lambda = blm_Kv_lambda(&m, 270.);
+        m.lambda = 0*blm_Kv_lambda(&m, 270.);
 	m.Jm = 5.E-4;
+
+	ts_script_default();
+
+	pm.config_LU_FORCED = PM_DISABLED;
+	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+	pm.config_EXCITATION = PM_EXCITATION_NONE;
+	pm.config_SALIENCY = PM_SALIENCY_POSITIVE;
+	pm.config_RELUCTANCE = PM_ENABLED;
+
+	//pm.s_damping = 5.f;
 
 	ts_script_base();
 	blm_restart(&m);
+
+	pm.config_HFI_PERMANENT = PM_ENABLED;
+	pm.config_WEAKENING = PM_ENABLED;
+
+	pm.hfi_freq = 400.f;
+	pm.hfi_sine = 1.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
@@ -389,36 +408,14 @@ void bench_script()
 	pm.s_setpoint_speed = 2000.f;
 	sim_runtime(2.);
 
-	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
-
-	blm_restart(&m);
-
-	m.Mq[0] = 0.E-3;
-	m.Mq[1] = 5.E-5;
-	m.Mq[2] = 5.E-5;
-	m.Mq[3] = 5.E-5;
-
-	pm.config_HFI_WAVE = PM_HFI_SINE;
-	pm.config_RELUCTANCE = PM_ENABLED;
-	//pm.config_WEAKENING = PM_ENABLED;
-
-	pm.weak_maximal = 100.f;
-
-	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
-
-	pm.s_setpoint_speed = 2000.f;
+	pm.s_setpoint_speed = 800.f;
 	sim_runtime(2.);
 
-	pm.s_setpoint_speed = 7000.f;
+	pm.s_setpoint_speed = 9000.f;
 	sim_runtime(2.);
 
-	pm.s_setpoint_speed = 1000.f;
-	sim_runtime(2.);
-
-	pm.s_setpoint_speed = -1000.f;
-	sim_runtime(2.);
+	pm.s_setpoint_speed = 200.f;
+	sim_runtime(3.);
 
 	tlm_PWM_grab();
 }

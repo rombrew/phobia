@@ -118,12 +118,12 @@ Assign the value of 700 to the register with ID 377.
 There are some commands that you can use to get started. Basic informational
 commands.
 
-	(pmc) os_task_info
-	(pmc) os_heap_info
+	(pmc) ap_task_info
+	(pmc) ap_heap_info
 
 Get firmware version info.
 
-	(pmc) os_version
+	(pmc) ap_version
 
 Manual PWM DC control for testing.
 

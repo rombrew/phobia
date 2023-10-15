@@ -3,7 +3,7 @@
 
 void lfg_start(int rseed);
 
-double lfg_rand();
+double lfg_urand();
 double lfg_gauss();
 
 #endif /* _H_LFG_ */

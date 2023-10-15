@@ -88,28 +88,28 @@ FLASH_erase_on_IWDG(int N)
 
 void *FLASH_erase(void *flash)
 {
-	int		N, sector_N = 0;
+	int		N, xN = 0;
 
-	for (N = 0; N < FLASH_config.s_total; ++N) {
+	for (N = 0; N < FLASH_config.total; ++N) {
 
 		if (		(uint32_t) flash >= FLASH_map[N]
 				&& (uint32_t) flash < FLASH_map[N + 1]) {
 
 			flash = (void *) FLASH_map[N];
-			sector_N = N + FLASH_config.s_first;
+			xN = N + FLASH_config.first;
 
 			break;
 		}
 	}
 
-	if (sector_N != 0) {
+	if (xN != 0) {
 
 		FLASH_unlock();
 		FLASH_wait_BSY();
 
 		/* Call the func from RAM because flash will busy.
 		 * */
-		FLASH_erase_on_IWDG(sector_N);
+		FLASH_erase_on_IWDG(xN);
 
 		FLASH_lock();
 
@@ -126,7 +126,7 @@ void *FLASH_erase(void *flash)
 
 		/* Invalidate D-Cache on the erased sector.
 		 * */
-		SCB_InvalidateDCacheByAddr((void *) FLASH_map[N],
+		SCB_InvalidateDCacheByAddr((uint32_t *) FLASH_map[N],
 				FLASH_map[N + 1] - FLASH_map[N]);
 
 #endif /* STM32Fx */
@@ -140,7 +140,7 @@ void FLASH_prog(void *flash, uint32_t value)
 	uint32_t			*long_flash = flash;
 
 	if (		(uint32_t) long_flash >= fw.ld_end
-			&& (uint32_t) long_flash < FLASH_map[FLASH_config.s_total]) {
+			&& (uint32_t) long_flash < FLASH_map[FLASH_config.total]) {
 
 		FLASH_unlock();
 		FLASH_wait_BSY();

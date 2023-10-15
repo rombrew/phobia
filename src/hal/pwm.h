@@ -7,12 +7,15 @@
 #define GPIO_TIM1_CH1			XGPIO_DEF4('A', 8, 0, 1)
 #define GPIO_TIM1_CH2			XGPIO_DEF4('A', 9, 0, 1)
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
+#define GPIO_TIM1_BKIN			XGPIO_DEF4('B', 12, 0, 1)
 
 void PWM_startup();
 void PWM_configure();
 
 void PWM_set_DC(int A, int B, int C);
 void PWM_set_Z(int Z);
+
+int PWM_fault();
 
 #endif /* _H_PWM_ */
 

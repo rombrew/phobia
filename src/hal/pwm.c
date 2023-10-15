@@ -6,17 +6,17 @@ void irq_TIM1_UP_TIM10() { }
 static int
 PWM_build()
 {
-	int		resolution, dtu;
+	int		resolution, DTG;
 
 	resolution = (int) ((float) (CLOCK_TIM1_HZ / 2U) / hal.PWM_frequency + .5f);
-	dtu = (int) ((float) CLOCK_TIM1_HZ * hal.PWM_deadtime / 1000000000.f + .5f);
-	dtu = (dtu < 127) ? dtu : 127;
+	DTG = (int) ((float) CLOCK_TIM1_HZ * hal.PWM_deadtime / 1000000000.f + .5f);
+	DTG = (DTG < 127) ? DTG : 127;
 
 	hal.PWM_frequency = (float) (CLOCK_TIM1_HZ / 2U) / (float) resolution;
 	hal.PWM_resolution = resolution;
-	hal.PWM_deadtime = (float) dtu * 1000000000.f / (float) CLOCK_TIM1_HZ;
+	hal.PWM_deadtime = (float) DTG * 1000000000.f / (float) CLOCK_TIM1_HZ;
 
-	return dtu;
+	return DTG;
 }
 
 void PWM_startup()
@@ -48,7 +48,11 @@ void PWM_startup()
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sample_advance;
-	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_OSSR | DTG;
+	TIM1->BDTR = TIM_BDTR_MOE
+#ifdef HW_HAVE_PWM_BKIN
+		| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE
+#endif /* HW_HAVE_PWM_BKIN */
+		| TIM_BDTR_OSSR | (DTG << TIM_BDTR_DTG_Pos);
 
 	/* Start TIM1.
 	 * */
@@ -71,6 +75,10 @@ void PWM_startup()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH1);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
+
+#ifdef HW_HAVE_PWM_BKIN
+	GPIO_set_mode_FUNCTION(GPIO_TIM1_BKIN);
+#endif /* HW_HAVE_PWM_BKIN */
 }
 
 void PWM_configure()
@@ -134,5 +142,19 @@ void PWM_set_Z(int Z)
 	}
 
 	TIM1->EGR |= TIM_EGR_COMG;
+}
+
+int PWM_fault()
+{
+	int		fault = 0;
+
+	if (TIM1->SR & TIM_SR_BIF) {
+
+		TIM1->SR &= ~TIM_SR_BIF;
+
+		fault = 1;
+	}
+
+	return fault;
 }
 

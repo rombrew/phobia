@@ -5,8 +5,8 @@
 
 typedef struct {
 
-	int		s_first;
-	int		s_total;
+	int		first;
+	int		total;
 }
 FLASH_config_t;
 

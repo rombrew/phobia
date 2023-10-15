@@ -246,12 +246,6 @@ blm_ode_step(blm_t *m, double dT)
 	double		x2[7], y1[7], y2[7];
 	double		iA, iB, iC, uA, uB, uC, kA, kB, uMIN;
 
-	if (m->pwm_Z == BLM_Z_DETACHED) {
-
-		m->state[0] = 0.;
-		m->state[1] = 0.;
-	}
-
 	/* Second-order ODE solver.
 	 * */
 
@@ -261,6 +255,10 @@ blm_ode_step(blm_t *m, double dT)
 
 		x2[0] = m->state[0] + y1[0] * dT;
 		x2[1] = m->state[1] + y1[1] * dT;
+	}
+	else {
+		x2[0] = 0.;
+		x2[1] = 0.;
 	}
 
 	x2[2] = m->state[2] + y1[2] * dT;
@@ -275,6 +273,10 @@ blm_ode_step(blm_t *m, double dT)
 
 		m->state[0] += (y1[0] + y2[0]) * dT / 2.;
 		m->state[1] += (y1[1] + y2[1]) * dT / 2.;
+	}
+	else {
+		m->state[0] = 0.;
+		m->state[1] = 0.;
 	}
 
 	m->state[2] += (y1[2] + y2[2]) * dT / 2.;
@@ -404,13 +406,14 @@ blm_solve(blm_t *m, double dT)
 }
 
 static double
-blm_ADC(double vinp, double vmin, double vmax)
+blm_ADC(double vconv, double vmin, double vmax)
 {
+	double		rel;
 	int		ADC;
 
-	vinp = (vinp - vmin) / (vmax - vmin);
+	rel = (vconv - vmin) / (vmax - vmin);
 
-	ADC = (int) (vinp * 4096. + lfg_gauss() * 2.);
+	ADC = (int) (rel * 4096. + lfg_gauss() * 2.);
 	ADC = ADC < 0 ? 0 : ADC > 4095 ? 4095 : ADC;
 
 	return (double) ADC / 4096. * (vmax - vmin) + vmin;

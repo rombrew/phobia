@@ -17,6 +17,13 @@ void irq_NMI()
 {
 	log_TRACE("IRQ: NMI" EOL);
 
+	if (RCC->CIR & RCC_CIR_CSSF) {
+
+		RCC->CIR |= RCC_CIR_CSSC;
+
+		log_TRACE("HSE fault" EOL);
+	}
+
 	hal_system_reset();
 }
 
@@ -116,7 +123,6 @@ clock_startup()
 	}
 	while (HSE == 0);
 
-
 	/* Enable power interface clock.
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
@@ -137,18 +143,22 @@ clock_startup()
 
 		CLOCK = HW_CLOCK_CRYSTAL_HZ;
 
-		/* From HSE.
+		/* Clock from HSE.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
+
+		/* Enable CSS.
+		 * */
+		RCC->CR |= RCC_CR_CSSON;
 	}
 	else {
 		CLOCK = 16000000U;
 
-		/* From HSI.
+		/* Clock from HSI.
 		 * */
 		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
 
-		log_TRACE("HSE failed" EOL);
+		log_TRACE("HSE not ready" EOL);
 	}
 
 #if defined(STM32F4)
@@ -167,9 +177,10 @@ clock_startup()
 
 	PLLQ = (CLOCK + 47999999U) / 48000000U;
 
-	RCC->PLLCFGR |= (PLLQ << 24)
-		| ((PLLP / 2U - 1U) << 16)
-		| (PLLN << 6) | (PLLM << 0);
+	RCC->PLLCFGR |= (PLLQ << RCC_PLLCFGR_PLLQ_Pos)
+		| ((PLLP / 2U - 1U) << RCC_PLLCFGR_PLLP_Pos)
+		| (PLLN << RCC_PLLCFGR_PLLN_Pos)
+		| (PLLM << RCC_PLLCFGR_PLLM_Pos);
 
 	/* Update clock frequency.
 	 * */
@@ -215,8 +226,7 @@ periph_startup()
 
 	/* Enable GPIO clock.
 	 * */
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN
-		| RCC_AHB1ENR_GPIOCEN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
 	/* Check for reset reason.
 	 * */

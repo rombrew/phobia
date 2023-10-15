@@ -34,20 +34,26 @@ typedef struct {
 
 	/* Analog interface knob.
 	 * */
+#ifdef HW_HAVE_ANALOG_KNOB
 	float			knob_in_ANG;
 	float			knob_in_BRK;
 	float			knob_reg_DATA;
 	int			knob_reg_ID;
 	int			knob_ENABLED;
+#ifdef HW_HAVE_BRAKE_KNOB
 	int			knob_BRAKE;
+#endif /* HW_HAVE_BRAKE_KNOB */
 	int			knob_STARTUP;
 	int			knob_ACTIVE;
 	int			knob_DISARM;
 	float			knob_range_ANG[3];
+#ifdef HW_HAVE_BRAKE_KNOB
 	float			knob_range_BRK[2];
+#endif /* HW_HAVE_BRAKE_KNOB */
 	float			knob_range_LST[2];
 	float			knob_control_ANG[3];
 	float			knob_control_BRK;
+#endif /* HW_HAVE_ANALOG_KNOB */
 
 	/* IDLE function.
 	 * */
@@ -96,18 +102,13 @@ typedef struct {
 	int			task_HX711;
 	int			task_MPU6050;
 
-	/* Button interface rpm table.
-	 * */
-	float			rpm_table[5];
-
 	/* ADC load cell (e.g. HX711).
 	 * */
-	float			adc_load_kg;
-	float			adc_load_scale[2];
+	int			load_HX711;
 
 	/* SPI magnetic encoder (e.g. AS5047).
 	 * */
-	int			pulse_EP;
+	int 			(* proc_get_EP) ();
 }
 app_main_t;
 

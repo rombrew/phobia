@@ -25,11 +25,11 @@ SH_DEF(pm_self_test)
 
 		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
-		reg_format(&regfile[ID_PM_SCALE_IA0]);
-		reg_format(&regfile[ID_PM_SCALE_IB0]);
-		reg_format(&regfile[ID_PM_SCALE_IC0]);
-		reg_format(&regfile[ID_PM_SELF_STDI]);
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SCALE_IA0);
+		reg_OUTP(ID_PM_SCALE_IB0);
+		reg_OUTP(ID_PM_SCALE_IC0);
+		reg_OUTP(ID_PM_SELF_STDI);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -39,14 +39,14 @@ SH_DEF(pm_self_test)
 			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_SELF_BST]);
-			reg_format(&regfile[ID_PM_FSM_ERRNO]);
+			reg_OUTP(ID_PM_SELF_BST);
+			reg_OUTP(ID_PM_FSM_ERRNO);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_SELF_IST]);
-			reg_format(&regfile[ID_PM_FSM_ERRNO]);
+			reg_OUTP(ID_PM_SELF_IST);
+			reg_OUTP(ID_PM_FSM_ERRNO);
 		}
 
 		xDC = pm.dc_resolution - pm.ts_clearance;
@@ -69,12 +69,12 @@ SH_DEF(pm_self_test)
 			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_SELF_RMSI]);
-			reg_format(&regfile[ID_PM_FSM_ERRNO]);
+			reg_OUTP(ID_PM_SELF_RMSI);
+			reg_OUTP(ID_PM_FSM_ERRNO);
 
 			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-				reg_format(&regfile[ID_PM_SELF_RMSU]);
+				reg_OUTP(ID_PM_SELF_RMSU);
 			}
 		}
 	}
@@ -97,11 +97,11 @@ SH_DEF(pm_self_adjust)
 
 		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
-		reg_format(&regfile[ID_PM_CONST_FB_U]);
-		reg_format(&regfile[ID_PM_SCALE_IA0]);
-		reg_format(&regfile[ID_PM_SCALE_IB0]);
-		reg_format(&regfile[ID_PM_SCALE_IC0]);
-		reg_format(&regfile[ID_PM_SELF_STDI]);
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SCALE_IA0);
+		reg_OUTP(ID_PM_SCALE_IB0);
+		reg_OUTP(ID_PM_SCALE_IC0);
+		reg_OUTP(ID_PM_SELF_STDI);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -111,19 +111,19 @@ SH_DEF(pm_self_adjust)
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
 			pm_wait_for_idle();
 
-			reg_format(&regfile[ID_PM_SCALE_UA0]);
-			reg_format(&regfile[ID_PM_SCALE_UA1]);
-			reg_format(&regfile[ID_PM_SCALE_UB0]);
-			reg_format(&regfile[ID_PM_SCALE_UB1]);
-			reg_format(&regfile[ID_PM_SCALE_UC0]);
-			reg_format(&regfile[ID_PM_SCALE_UC1]);
+			reg_OUTP(ID_PM_SCALE_UA0);
+			reg_OUTP(ID_PM_SCALE_UA1);
+			reg_OUTP(ID_PM_SCALE_UB0);
+			reg_OUTP(ID_PM_SCALE_UB1);
+			reg_OUTP(ID_PM_SCALE_UC0);
+			reg_OUTP(ID_PM_SCALE_UC1);
 
-			reg_format(&regfile[ID_PM_TVM_USEABLE]);
-			reg_format(&regfile[ID_PM_TVM_FIR_A_TAU]);
-			reg_format(&regfile[ID_PM_TVM_FIR_B_TAU]);
-			reg_format(&regfile[ID_PM_TVM_FIR_C_TAU]);
+			reg_OUTP(ID_PM_TVM_ACTIVE);
+			reg_OUTP(ID_PM_TVM_FIR_A_TAU);
+			reg_OUTP(ID_PM_TVM_FIR_B_TAU);
+			reg_OUTP(ID_PM_TVM_FIR_C_TAU);
 
-			reg_format(&regfile[ID_PM_SELF_RMSU]);
+			reg_OUTP(ID_PM_SELF_RMSU);
 
 			if (pm.fsm_errno != PM_OK)
 				break;
@@ -132,19 +132,19 @@ SH_DEF(pm_self_adjust)
 		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
 		pm_wait_for_idle();
 
-		reg_format(&regfile[ID_PM_SCALE_IA1]);
-		reg_format(&regfile[ID_PM_SCALE_IB1]);
-		reg_format(&regfile[ID_PM_SCALE_IC1]);
-		reg_format(&regfile[ID_PM_SELF_RMSI]);
+		reg_OUTP(ID_PM_SCALE_IA1);
+		reg_OUTP(ID_PM_SCALE_IB1);
+		reg_OUTP(ID_PM_SCALE_IC1);
+		reg_OUTP(ID_PM_SELF_RMSI);
 	}
 	while (0);
 
-	reg_format(&regfile[ID_PM_FSM_ERRNO]);
+	reg_OUTP(ID_PM_FSM_ERRNO);
 
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_self_tvm_ramp)
+SH_DEF(pm_self_tvm_curve)
 {
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
@@ -156,7 +156,7 @@ SH_DEF(pm_self_tvm_ramp)
 	}
 
 	if (		PM_CONFIG_TVM(&pm) != PM_ENABLED
-			|| pm.tvm_USEABLE != PM_ENABLED) {
+			|| pm.tvm_ACTIVE != PM_ENABLED) {
 
 		printf("Unable with TVM disabled" EOL);
 		return;
@@ -176,6 +176,15 @@ SH_DEF(pm_self_tvm_ramp)
 	xWake = xTaskGetTickCount();
 	xTim0 = xWake;
 
+	/*
+	tlm.reg_ID[0] = ID_PM_VSI_X;
+	tlm.reg_ID[1] = ID_PM_TVM_A;
+	tlm.reg_ID[2] = ID_PM_TVM_B;
+	tlm.reg_ID[3] = ID_PM_TVM_C;
+	*/
+
+	/* NOTE: It is up to USER to adjust the GRAB frequency about 4000 Hz.
+	 * */
 	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_GRAB);
 
 	do {
@@ -183,13 +192,16 @@ SH_DEF(pm_self_tvm_ramp)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 1);
 
+		if (pm.fsm_errno != PM_OK)
+			break;
+
 		xDC = (xDC < xMAX) ? xDC + 1 : xMIN;
 
 		PWM_set_DC(xDC, xDC, xDC);
 
 		pm_clearance(&pm, xDC, xDC, xDC);
 
-		/* Reference voltage.
+		/* Get reference VOLTAGE.
 		 * */
 		pm.vsi_X = xDC * pm.const_fb_U * pm.ts_inverted;
 
@@ -201,14 +213,82 @@ SH_DEF(pm_self_tvm_ramp)
 			pm.fsm_errno = PM_ERROR_TIMEOUT;
 			break;
 		}
-
-		if (pm.fsm_errno != PM_OK)
-			break;
 	}
 	while (1);
 
 	PWM_set_DC(0, 0, 0);
 	PWM_set_Z(PM_Z_ABC);
+
+	tlm_halt(&tlm);
+}
+
+SH_DEF(pm_self_freq_curve)
+{
+	float		usual_freq, walk_freq, stop_freq;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	pm.fsm_req = PM_STATE_ZERO_DRIFT;
+	pm_wait_for_idle();
+
+	reg_OUTP(ID_PM_CONST_FB_U);
+	reg_OUTP(ID_PM_SCALE_IA0);
+	reg_OUTP(ID_PM_SCALE_IB0);
+	reg_OUTP(ID_PM_SCALE_IC0);
+	reg_OUTP(ID_PM_SELF_STDI);
+
+	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+		pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+		pm_wait_for_idle();
+	}
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	/*
+	tlm.reg_ID[0] = ID_PM_PROBE_FREQ_SINE;
+	tlm.reg_ID[1] = ID_PM_CONST_IM_L1;
+	tlm.reg_ID[2] = ID_PM_CONST_IM_L2;
+	tlm.reg_ID[3] = ID_PM_CONST_IM_B;
+	tlm.reg_ID[4] = ID_PM_CONST_IM_R;
+	*/
+
+	tlm_startup(&tlm, tlm.livefreq, TLM_MODE_WATCH);
+
+	usual_freq = pm.probe_freq_sine;
+	pm.probe_freq_sine = pm.m_freq / 6.f;
+
+	stop_freq = 400.f;
+	walk_freq = (float) (int) ((pm.probe_freq_sine - stop_freq) / 90.f);
+
+	printf("Fq@Hz     L1@H   L2@H   Rz@Ohm" EOL);
+
+	do {
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
+		pm_wait_for_idle();
+
+		printf("%4g    %4g %4g %4g" EOL, &pm.probe_freq_sine,
+				&pm.const_im_L1, &pm.const_im_L2, &pm.const_im_R);
+
+		pm.probe_freq_sine += - walk_freq;
+
+		if (pm.probe_freq_sine < stop_freq)
+			break;
+	}
+	while (1);
+
+	pm.probe_freq_sine = usual_freq;
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(hal_ADC_scan_CH)
@@ -276,9 +356,9 @@ SH_DEF(hal_PWM_set_Z)
 SH_DEF(hal_SPI_startup)
 {
 	float		freq;
-	int		bus_ID, mode;
+	int		bus, mode;
 
-	if (stoi(&bus_ID, s) != NULL) {
+	if (stoi(&bus, s) != NULL) {
 
 		freq = 1000000.f;
 		mode = 0;
@@ -286,29 +366,29 @@ SH_DEF(hal_SPI_startup)
 		stof(&freq, s = sh_next_arg(s));
 		stoi(&mode, s = sh_next_arg(s));
 
-		SPI_startup(bus_ID, (int) freq, mode);
+		SPI_startup(bus, (int) freq, mode);
 	}
 }
 
 SH_DEF(hal_SPI_halt)
 {
-	int		bus_ID;
+	int		bus;
 
-	if (stoi(&bus_ID, s) != NULL) {
+	if (stoi(&bus, s) != NULL) {
 
-		SPI_halt(bus_ID);
+		SPI_halt(bus);
 	}
 }
 
 SH_DEF(hal_SPI_transfer)
 {
-	int		bus_ID, txbuf, rxbuf;
+	int		bus, txbuf, rxbuf;
 
-	if (stoi(&bus_ID, s) != NULL) {
+	if (stoi(&bus, s) != NULL) {
 
 		while (htoi(&txbuf, s = sh_next_arg(s)) != NULL) {
 
-			rxbuf = SPI_transfer(bus_ID, txbuf, 500);
+			rxbuf = SPI_transfer(bus, txbuf);
 
 			printf("%4x ", rxbuf);
 		}

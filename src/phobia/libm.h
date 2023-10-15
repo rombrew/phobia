@@ -2,7 +2,8 @@
 #define _H_LIB_M_
 
 #define M_EPSILON		1.19209E-7f
-#define M_PIC			3.14159265f
+#define M_PI_F			3.14159265f
+#define M_2PI_F 		6.28318531f
 #define M_LOG_E 		0.69314718f
 #define M_LOG_10		0.30103000f
 
@@ -32,10 +33,11 @@ typedef struct {
 	float		seed[4];
 	int		nb;
 }
-lf_seed_t;
+m_seed_t;
 
-void m_lf_randseed(lf_seed_t *lf, int seed);
-float m_lf_randf(lf_seed_t *lf);
+void m_lf_randseed(m_seed_t *lf, int seed);
+float m_lf_urandf(m_seed_t *lf);
+float m_lf_gaussf(m_seed_t *lf);
 
 #endif /* _H_LIB_M_ */
 

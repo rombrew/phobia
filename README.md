@@ -142,7 +142,6 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 ## TODO
 
 * Make a detailed documentation.
-* Introduce MTPA control.
 * Add pulse output signal.
 * Make a drawing of the heatsink case for REV5A.
 * Design the new hardware for 120v battery voltage.

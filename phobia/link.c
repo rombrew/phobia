@@ -360,19 +360,20 @@ link_fetch_hwinfo(struct link_pmc *lp)
 
 	tok = lk_token(&sp);
 
-	if (strcmp(tok, "HW_revision") == 0) {
+	if (strcmp(tok, "Revision") == 0) {
 
 		sprintf(priv->hw_revision, "%.16s", lk_token(&sp));
 	}
-	else if (strcmp(tok, "FW_build") == 0) {
+	else if (strcmp(tok, "Build") == 0) {
 
 		sprintf(priv->hw_build, "%.16s", lk_token(&sp));
 	}
-	else if (strcmp(tok, "FW_crc32") == 0) {
+	else if (strcmp(tok, "CRC32") == 0) {
 
-		sprintf(priv->hw_crc32, "%.9s %.16s", lk_token(&sp), lk_token(&sp));
+		sprintf(priv->hw_crc32, "%.9s", lk_token(&sp));
+		sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " %.16s", lk_token(&sp));
 
-		sprintf(lp->hwinfo, "%.16s %.16s %.26s", priv->hw_revision,
+		sprintf(lp->hwinfo, "%.16s / %.16s / %.36s", priv->hw_revision,
 				priv->hw_build, priv->hw_crc32);
 	}
 }
@@ -594,7 +595,7 @@ void link_remote(struct link_pmc *lp)
 
 	serial_fputs(priv->fd, LINK_EOL);
 
-	sprintf(priv->lbuf, "os_version" LINK_EOL);
+	sprintf(priv->lbuf, "ap_version" LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
 
 	sprintf(priv->lbuf, "flash_info" LINK_EOL);
@@ -689,10 +690,10 @@ int link_fetch(struct link_pmc *lp, int clock)
 	}
 	const	link_map[] = {
 
-		{ "os_version",		LINK_MODE_HWINFO },
-		{ "os_clock",		LINK_MODE_CLOCK },
-		{ "os_reboot",		LINK_MODE_UNABLE_WARNING },
-		{ "os_bootload",	LINK_MODE_UNABLE_WARNING },
+		{ "ap_version",		LINK_MODE_HWINFO },
+		{ "ap_clock",		LINK_MODE_CLOCK },
+		{ "ap_reboot",		LINK_MODE_UNABLE_WARNING },
+		{ "ap_bootload",	LINK_MODE_UNABLE_WARNING },
 		{ "flash_info",		LINK_MODE_FLASH_MAP },
 		{ "flash_prog",		LINK_MODE_UNABLE_WARNING },
 		{ "flash_wipe",		LINK_MODE_UNABLE_WARNING },
@@ -810,7 +811,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 				link_close(lp);
 			}
 			else {
-				sprintf(priv->lbuf, "os_clock" LINK_EOL);
+				sprintf(priv->lbuf, "ap_clock" LINK_EOL);
 				serial_fputs(priv->fd, priv->lbuf);
 			}
 

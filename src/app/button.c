@@ -19,9 +19,14 @@
 
 void app_BUTTON(void *pData)
 {
-	volatile int		*enabled = (volatile int *) pData;
+	volatile int		*knob = (volatile int *) pData;
 
 	TickType_t		xWake;
+
+	const float		rpm_table[] = {
+
+		1000.f, 2000.f, 3000.f, 4000.f, 5000.f
+	};
 
 	const int		gpio_A = GPIO_HALL_A;
 	const int		gpio_B = GPIO_HALL_B;
@@ -46,6 +51,9 @@ void app_BUTTON(void *pData)
 
 	event_A = 0;
 	event_B = 0;
+
+	reverse = 0;
+	rpm_knob = 0;
 
 	xWake = xTaskGetTickCount();
 
@@ -96,17 +104,12 @@ void app_BUTTON(void *pData)
 
 				rpm_knob = (rpm_knob < 4) ? rpm_knob + 1 : 0;
 
-				if (m_fabsf(ap.rpm_table[rpm_knob]) < M_EPSILON) {
-
-					rpm_knob = 0;
-				}
-
 				if (reverse != 0) {
 
-					total_rpm = - ap.rpm_table[rpm_knob];
+					total_rpm = - rpm_table[rpm_knob];
 				}
 				else {
-					total_rpm = ap.rpm_table[rpm_knob];
+					total_rpm = rpm_table[rpm_knob];
 				}
 
 				reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, total_rpm);
@@ -150,7 +153,7 @@ void app_BUTTON(void *pData)
 			event_B = 0;
 		}
 	}
-	while (*enabled != 0);
+	while (*knob != 0);
 
 	vTaskDelete(NULL);
 }

@@ -422,8 +422,8 @@ void lse_solve(lse_t *ls)
 
 	lse_merge(ls);
 
-	mq = rm->m + (ls->n_len_of_x - 1) * (rm->len - 1)
-		- (ls->n_len_of_x - 1) * (ls->n_len_of_x - 2) / 2;
+	mq = rm->m + (ls->n_len_of_x - 1) * rm->len
+		- ls->n_len_of_x * (ls->n_len_of_x - 1) / 2;
 
 	/* We calculate solution \b with backward substitution.
 	 * */

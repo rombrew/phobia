@@ -651,17 +651,17 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 					&& ls->sol.m[3] > M_EPSILON
 					&& ls->sol.m[5] > M_EPSILON) {
 
-				pm->scale_uA[0] += - ls->sol.m[0] / ls->sol.m[1];
-				pm->scale_uA[1] /= ls->sol.m[1];
+				ls->sol.m[0] = pm->scale_uA[0] - ls->sol.m[0] / ls->sol.m[1];
+				ls->sol.m[1] = pm->scale_uA[1] / ls->sol.m[1];
 
-				pm->scale_uB[0] += - ls->sol.m[2] / ls->sol.m[3];
-				pm->scale_uB[1] /= ls->sol.m[3];
+				ls->sol.m[2] = pm->scale_uB[0] - ls->sol.m[2] / ls->sol.m[3];
+				ls->sol.m[3] = pm->scale_uB[1] / ls->sol.m[3];
 
-				pm->scale_uC[0] += - ls->sol.m[4] / ls->sol.m[5];
-				pm->scale_uC[1] /= ls->sol.m[5];
+				ls->sol.m[4] = pm->scale_uC[0] - ls->sol.m[4] / ls->sol.m[5];
+				ls->sol.m[5] = pm->scale_uC[1] / ls->sol.m[5];
 			}
 			else {
-				pm->tvm_USEABLE = PM_DISABLED;
+				pm->tvm_ACTIVE = PM_DISABLED;
 
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
 				pm->fsm_state = PM_STATE_HALT;
@@ -669,11 +669,23 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 				break;
 			}
 
-			if (		   m_fabsf(pm->scale_uA[0]) > pm->fault_voltage_tol
-					|| m_fabsf(pm->scale_uB[0]) > pm->fault_voltage_tol
-					|| m_fabsf(pm->scale_uC[0]) > pm->fault_voltage_tol) {
+			if (		   m_fabsf(ls->sol.m[0]) > pm->fault_voltage_tol
+					|| m_fabsf(ls->sol.m[2]) > pm->fault_voltage_tol
+					|| m_fabsf(ls->sol.m[4]) > pm->fault_voltage_tol) {
 
-				pm->tvm_USEABLE = PM_DISABLED;
+				pm->tvm_ACTIVE = PM_DISABLED;
+
+				pm->fsm_errno = PM_ERROR_INSUFFICIENT_ACCURACY;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			if (		   m_fabsf(ls->sol.m[1] - 1.f) > pm->fault_accuracy_tol
+					|| m_fabsf(ls->sol.m[3] - 1.f) > pm->fault_accuracy_tol
+					|| m_fabsf(ls->sol.m[5] - 1.f) > pm->fault_accuracy_tol) {
+
+				pm->tvm_ACTIVE = PM_DISABLED;
 
 				pm->fsm_errno = PM_ERROR_INSUFFICIENT_ACCURACY;
 				pm->fsm_state = PM_STATE_HALT;
@@ -681,17 +693,12 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 				break;
 			}
 
-			if (		   m_fabsf(pm->scale_uA[1] - 1.f) > pm->fault_accuracy_tol
-					|| m_fabsf(pm->scale_uB[1] - 1.f) > pm->fault_accuracy_tol
-					|| m_fabsf(pm->scale_uC[1] - 1.f) > pm->fault_accuracy_tol) {
-
-				pm->tvm_USEABLE = PM_DISABLED;
-
-				pm->fsm_errno = PM_ERROR_INSUFFICIENT_ACCURACY;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
+			pm->scale_uA[0] = ls->sol.m[0];
+			pm->scale_uA[1] = ls->sol.m[1];
+			pm->scale_uB[0] = ls->sol.m[2];
+			pm->scale_uB[1] = ls->sol.m[3];
+			pm->scale_uC[0] = ls->sol.m[4];
+			pm->scale_uC[1] = ls->sol.m[5];
 
 			lse_construct(&pm->probe_lse[0], LSE_CASCADE_MAX, 3, 1);
 			lse_construct(&pm->probe_lse[1], LSE_CASCADE_MAX, 3, 1);
@@ -841,14 +848,14 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 						&& pm->self_RMSu[2] < pm->fault_terminal_tol
 						&& pm->self_RMSu[3] < pm->fault_terminal_tol) {
 
-					pm->tvm_USEABLE = PM_ENABLED;
+					pm->tvm_ACTIVE = PM_ENABLED;
 				}
 				else {
-					pm->tvm_USEABLE = PM_DISABLED;
+					pm->tvm_ACTIVE = PM_DISABLED;
 				}
 			}
 			else {
-				pm->tvm_USEABLE = PM_DISABLED;
+				pm->tvm_ACTIVE = PM_DISABLED;
 
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
 			}
@@ -1233,7 +1240,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 	eD = pm->i_track_D - pm->lu_iX;
 	eQ = pm->i_track_Q - pm->lu_iY;
 
-	uMAX = pm->k_UMAX * pm->const_fb_U;
+	uMAX = pm->k_EMAX * pm->const_fb_U;
 
 	if (track_HF > M_EPSILON) {
 
@@ -1302,9 +1309,9 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			pm->probe_HF_lpf_track = 0.f;
 			pm->probe_HF_integral = 0.f;
 
-			hold_A = pm->probe_hold_angle * (M_PIC / 180.f);
-			hold_A = (hold_A < - M_PIC) ? - M_PIC :
-				(hold_A > M_PIC) ? M_PIC : hold_A;
+			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
+			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
+				(hold_A > M_PI_F) ? M_PI_F : hold_A;
 
 			pm->probe_TEMP[0] = m_cosf(hold_A);
 			pm->probe_TEMP[1] = m_sinf(hold_A);
@@ -1446,7 +1453,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_REM[6] = 0.f;
 			pm->probe_REM[7] = 0.f;
 
-			pm->quick_HFwS = 2.f * M_PIC * pm->probe_freq_sine;
+			pm->quick_HFwS = M_2PI_F * pm->probe_freq_sine;
 			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * .5f);
 			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * .5f);
 
@@ -1457,9 +1464,9 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->hfi_wave[0] = 1.f;
 			pm->hfi_wave[1] = 0.f;
 
-			hold_A = pm->probe_hold_angle * (M_PIC / 180.f);
-			hold_A = (hold_A < - M_PIC) ? - M_PIC :
-				(hold_A > M_PIC) ? M_PIC : hold_A;
+			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
+			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
+				(hold_A > M_PI_F) ? M_PI_F : hold_A;
 
 			pm->i_track_D = m_cosf(hold_A) * pm->probe_current_bias;
 			pm->i_track_Q = m_sinf(hold_A) * pm->probe_current_bias;
@@ -1536,7 +1543,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 
 				pm->const_im_L1 = la[2];
 				pm->const_im_L2 = la[3];
-				pm->const_im_B = m_atan2f(la[1], la[0]) * (180.f / M_PIC);
+				pm->const_im_B = m_atan2f(la[1], la[0]) * (180.f / M_PI_F);
 				pm->const_im_R = la[4];
 			}
 			else {
@@ -1601,8 +1608,21 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->detach_TIM = 0;
 
+				pm->flux_LINKAGE = PM_ENABLED;
 				pm->flux_TYPE = PM_FLUX_NONE;
 				pm->flux_ZONE = in_ZONE;
+
+				if (		pm->config_LU_FORCED == PM_ENABLED
+						&& pm->const_lambda < M_EPSILON) {
+
+					if (pm->config_EXCITATION == PM_EXCITATION_CONST) {
+
+						/* We indicate that flux linkage
+						 * is to be estimated.
+						 * */
+						pm->flux_LINKAGE = PM_DISABLED;
+					}
+				}
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
@@ -1616,10 +1636,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->zone_lpf_wS = 0.f;
 
-				pm->hfi_INJECT = PM_DISABLED;
 				pm->hfi_wave[0] = 0.f;
 				pm->hfi_wave[1] = 1.f;
-				pm->hfi_pole = 0.f;
 
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
@@ -1652,6 +1670,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
+				pm->mtpa_approx = 0.f;
+				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 
 				pm->s_setpoint_speed = 0.f;
@@ -1672,7 +1692,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				}
 				else {
 					pm->lu_MODE = PM_LU_ESTIMATE;
-					pm->lu_MODE = PM_LU_FORCED;
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(PM_Z_NONE);
@@ -1799,6 +1818,11 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 					pm->kalman_bias_Q = 0.f;
 
 					pm_quick_build(pm);
+
+					if (pm->flux_LINKAGE != PM_ENABLED) {
+
+						pm->flux_LINKAGE = PM_ENABLED;
+					}
 				}
 				else {
 					pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -1992,8 +2016,6 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 				if (pm->hall_ERN >= 10) {
 
-					pm->hall_USEABLE = PM_DISABLED;
-
 					pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
 					pm->fsm_state = PM_STATE_HALT;
 					pm->fsm_phase = 0;
@@ -2037,16 +2059,12 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 			if (N < 6) {
 
-				pm->hall_USEABLE = PM_DISABLED;
-
 				pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
 			}
 			else {
-				pm->hall_USEABLE = PM_ENABLED;
-
 				pm->fsm_state = PM_STATE_IDLE;
 				pm->fsm_phase = 0;
 			}

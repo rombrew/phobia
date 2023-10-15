@@ -41,6 +41,7 @@ const reg_t *reg_search_fuzzy(const char *sym);
 
 void reg_GET(int reg_ID, rval_t *lval);
 void reg_SET(int reg_ID, const rval_t *rval);
+void reg_OUTP(int reg_ID);
 
 int reg_GET_I(int reg_ID);
 float reg_GET_F(int reg_ID);

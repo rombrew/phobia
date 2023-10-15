@@ -11,6 +11,7 @@ int ts_wait_for_idle();
 int ts_wait_for_motion();
 int ts_wait_for_spinup();
 
+void ts_script_default();
 void ts_script_base();
 void ts_script_verify();
 

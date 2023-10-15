@@ -286,6 +286,10 @@ void task_TEMP(void *pData)
 		if (		hal.DRV.auto_RESET == PM_ENABLED
 				&& DRV_fault() != 0) {
 
+			DRV_status();
+
+			log_TRACE("DRV fault %4x" EOL, hal.DRV.status_raw);
+
 			DRV_halt();
 			DRV_startup();
 		}
@@ -297,6 +301,8 @@ void task_TEMP(void *pData)
 void task_AUTO(void *pData)
 {
 	TickType_t		xWake;
+
+	xWake = xTaskGetTickCount();
 
 	do {
 		/* 10 Hz.
@@ -551,7 +557,7 @@ default_flash_load()
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	hal.DRV.part = HW_DRV_PARTNO;
-	hal.DRV.auto_RESET = PM_DISABLED;
+	hal.DRV.auto_RESET = PM_ENABLED;
 	hal.DRV.gpio_GATE_EN = GPIO_DRV_GATE_EN;
 	hal.DRV.gpio_FAULT = GPIO_DRV_FAULT;
 	hal.DRV.gate_current = HW_DRV_GATE_CURRENT;
@@ -597,14 +603,18 @@ default_flash_load()
 #ifdef HW_HAVE_ANALOG_KNOB
 	ap.knob_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
 	ap.knob_ENABLED = PM_DISABLED;
+#ifdef HW_HAVE_BRAKE_KNOB
 	ap.knob_BRAKE = PM_DISABLED;
+#endif /* HW_HAVE_BRAKE_KNOB */
 	ap.knob_STARTUP = PM_DISABLED;
 	ap.knob_DISARM = PM_ENABLED;
 	ap.knob_range_ANG[0] = 1.0f;	/* (V) */
 	ap.knob_range_ANG[1] = 2.5f;	/* (V) */
 	ap.knob_range_ANG[2] = 4.0f;	/* (V) */
+#ifdef HW_HAVE_BRAKE_KNOB
 	ap.knob_range_BRK[0] = 2.0f;	/* (V) */
 	ap.knob_range_BRK[1] = 4.0f;	/* (V) */
+#endif /* HW_HAVE_BRAKE_KNOB */
 	ap.knob_range_LST[0] = 0.2f;	/* (V) */
 	ap.knob_range_LST[1] = 4.8f;	/* (V) */
 	ap.knob_control_ANG[0] = 0.f;
@@ -645,15 +655,6 @@ default_flash_load()
 	ap.heat_derated_PCB = 20.f;	/* (A) */
 	ap.heat_derated_EXT = 20.f;	/* (A) */
 	ap.heat_temp_recovery = 5.f;	/* (C) */
-
-	ap.rpm_table[0] = 1000.f;	/* (rpm) */
-	ap.rpm_table[1] = 2000.f;
-	ap.rpm_table[2] = 3000.f;
-	ap.rpm_table[3] = 4000.f;
-	ap.rpm_table[4] = 5000.f;
-
-	ap.adc_load_scale[0] = 0.f;
-	ap.adc_load_scale[1] = 4.65E-6f;
 
 	pm.m_freq = hal.PWM_frequency;
 	pm.m_dT = 1.f / pm.m_freq;
@@ -1009,9 +1010,10 @@ void ADC_IRQ()
 
 		fb.pulse_EP = DPS_get_EP();
 	}
-	else if (hal.DPS_mode == DPS_DRIVE_SOFTWARE) {
+	else if (	hal.DPS_mode == DPS_DRIVE_ON_SPI
+			&& ap.proc_get_EP != NULL) {
 
-		fb.pulse_EP = ap.pulse_EP;
+		fb.pulse_EP = ap.proc_get_EP();
 	}
 
 	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
@@ -1032,6 +1034,14 @@ void ADC_IRQ()
 		pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
 		pm.fsm_req = PM_STATE_HALT;
 	}
+
+#ifdef HW_HAVE_PWM_BKIN
+	if (PWM_fault() != 0) {
+
+		pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
+		pm.fsm_req = PM_STATE_HALT;
+	}
+#endif /* HW_HAVE_PWM_BKIN */
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	if (		pm.lu_MODE != PM_LU_DISABLED
@@ -1087,29 +1097,28 @@ void app_halt()
 #endif /* GPIO_GATE_EN */
 }
 
-SH_DEF(os_version)
+SH_DEF(ap_version)
 {
 	uint32_t	flash_sizeof, flash_crc32;
-	int		verified;
+	int		rc;
 
-	printf("HW_revision \"%s\"" EOL, fw.hwrevision);
-	printf("FW_build \"%s\"" EOL, fw.build);
+	printf("Revision \"%s\"" EOL, fw.hwrevision);
+	printf("Build \"%s\"" EOL, fw.build);
 
 	flash_sizeof = fw.ld_end - fw.ld_begin;
 	flash_crc32 = * (uint32_t *) fw.ld_end;
 
-	verified = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
+	rc = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
 
-	printf("FW_sizeof %i" EOL, flash_sizeof);
-	printf("FW_crc32 %8x (%s)" EOL, flash_crc32, (verified != 0) ? "verified" : "corrupted");
+	printf("CRC32 %8x \"%s\"" EOL, flash_crc32, (rc != 0) ? "OK" : "does NOT match");
 }
 
-SH_DEF(os_clock)
+SH_DEF(ap_clock)
 {
 	printf("Clock %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
-SH_DEF(os_task_info)
+SH_DEF(ap_task_info)
 {
 	TaskStatus_t		*list;
 	int			len, symStat, n;
@@ -1166,28 +1175,28 @@ SH_DEF(os_task_info)
 	}
 }
 
-SH_DEF(os_heap_info)
+SH_DEF(ap_heap_info)
 {
-	HeapStats_t	heapinfo;
+	HeapStats_t	info;
 
-	vPortGetHeapStats(&heapinfo);
+	vPortGetHeapStats(&info);
 
 	printf("RAM      Total  Free   Minimum" EOL);
 
 	printf("%8x %6i %6i %6i" EOL,
-			configTOTAL_HEAP_SIZE,
-			heapinfo.xAvailableHeapSpaceInBytes,
-			heapinfo.xMinimumEverFreeBytesRemaining);
+			(uint32_t) ucHeap, configTOTAL_HEAP_SIZE,
+			info.xAvailableHeapSpaceInBytes,
+			info.xMinimumEverFreeBytesRemaining);
 
 	printf("         %6i %6i %2i %2i %2i" EOL,
-			heapinfo.xSizeOfLargestFreeBlockInBytes,
-			heapinfo.xSizeOfSmallestFreeBlockInBytes,
-			heapinfo.xNumberOfFreeBlocks,
-			heapinfo.xNumberOfSuccessfulAllocations,
-			heapinfo.xNumberOfSuccessfulFrees);
+			info.xSizeOfLargestFreeBlockInBytes,
+			info.xSizeOfSmallestFreeBlockInBytes,
+			info.xNumberOfFreeBlocks,
+			info.xNumberOfSuccessfulAllocations,
+			info.xNumberOfSuccessfulFrees);
 }
 
-SH_DEF(os_log_flush)
+SH_DEF(ap_log_flush)
 {
 	if (log.textbuf[0] != 0) {
 
@@ -1196,7 +1205,7 @@ SH_DEF(os_log_flush)
 	}
 }
 
-SH_DEF(os_log_clean)
+SH_DEF(ap_log_clean)
 {
 	if (log.textbuf[0] != 0) {
 
@@ -1206,7 +1215,7 @@ SH_DEF(os_log_clean)
 	}
 }
 
-SH_DEF(os_hexdump)
+SH_DEF(ap_hexdump)
 {
 	uint8_t			*m;
 	int			n, i, ascii, line = 4;
@@ -1245,7 +1254,7 @@ SH_DEF(os_hexdump)
 	}
 }
 
-SH_DEF(os_reboot)
+SH_DEF(ap_reboot)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -1257,7 +1266,7 @@ SH_DEF(os_reboot)
 	hal_system_reset();
 }
 
-SH_DEF(os_bootload)
+SH_DEF(ap_bootload)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 

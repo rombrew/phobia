@@ -41,7 +41,7 @@ void m_rotatef(float x[2], float r)
 
 	q = y[0] * y[0] + y[1] * y[1];
 
-	s = (q < 1.5f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
+	s = (q < 2.f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
 
 	x[0] = y[0] * s;
 	x[1] = y[1] * s;
@@ -65,16 +65,16 @@ float m_wrapf(float x)
 {
 	int		revol;
 
-	revol = (int) (x * (.5f / M_PIC));
-	x += - (float) revol * (2.f * M_PIC);
+	revol = (int) (x * (1.f / M_2PI_F));
+	x += - (float) revol * M_2PI_F;
 
-	if (x < - M_PIC) {
+	if (x < - M_PI_F) {
 
-		x += 2.f * M_PIC;
+		x += M_2PI_F;
 	}
-	else if (x > M_PIC) {
+	else if (x > M_PI_F) {
 
-		x += - 2.f * M_PIC;
+		x += - M_2PI_F;
 	}
 
 	return x;
@@ -114,11 +114,11 @@ float m_atan2f(float y, float x)
 	if (m_fabsf(x) > m_fabsf(y)) {
 
 		u = m_atanf(y / x);
-		u += (x < 0.f) ? (y < 0.f) ? - M_PIC : M_PIC : 0.f;
+		u += (x < 0.f) ? (y < 0.f) ? - M_PI_F : M_PI_F : 0.f;
 	}
 	else {
 		u = - m_atanf(x / y);
-		u += (y < 0.f) ? - M_PIC / 2.f : M_PIC / 2.f;
+		u += (y < 0.f) ? - M_PI_F / 2.f : M_PI_F / 2.f;
 	}
 
 	return u;
@@ -159,8 +159,8 @@ float m_sinf(float x)
 
 	y = m_fabsf(x);
 
-	if (y > M_PIC / 2.f)
-		y = M_PIC - y;
+	if (y > M_PI_F / 2.f)
+		y = M_PI_F - y;
 
 	u = m_sincosf(y);
 	u = (x < 0.f) ? - u : u;
@@ -172,7 +172,7 @@ float m_cosf(float x)
 {
         float           u;
 
-	x = M_PIC / 2.f - m_fabsf(x);
+	x = M_PI_F / 2.f - m_fabsf(x);
 	u = (x < 0.f) ? - m_sincosf(- x) : m_sincosf(x);
 
 	return u;
@@ -327,7 +327,7 @@ m_lf_lcgu(uint32_t rseed)
 	return rseed * 17317U + 1U;
 }
 
-void m_lf_randseed(lf_seed_t *lf, int seed)
+void m_lf_randseed(m_seed_t *lf, int seed)
 {
 	uint32_t	lcgu;
 
@@ -341,7 +341,7 @@ void m_lf_randseed(lf_seed_t *lf, int seed)
 	lf->nb = 0;
 }
 
-float m_lf_randf(lf_seed_t *lf)
+float m_lf_urandf(m_seed_t *lf)
 {
 	float		y, a, b;
 	int		n, k;
@@ -361,5 +361,17 @@ float m_lf_randf(lf_seed_t *lf)
 	lf->nb = k;
 
 	return y;
+}
+
+float m_lf_gaussf(m_seed_t *lf)
+{
+	float		x;
+
+	/* Normal distribution fast approximation.
+	 * */
+
+	x = m_lf_urandf(lf) + m_lf_urandf(lf) + m_lf_urandf(lf);
+
+	return x;
 }
 

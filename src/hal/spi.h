@@ -3,8 +3,12 @@
 
 #include "libc.h"
 
+#ifndef HW_SPI_EXT_ID
+#define HW_SPI_EXT_ID			BUS_ID_SPI1
+#endif /* HW_SPI_EXT_ID */
+
 #ifndef GPIO_SPI1_NSS
-#define GPIO_SPI1_NSS			XGPIO_DEF2('A', 15)
+#define GPIO_SPI1_NSS			XGPIO_DEF2('A', 4)
 #endif /* GPIO_SPI1_NSS */
 
 #ifndef GPIO_SPI1_SCK
@@ -24,7 +28,7 @@
 #endif /* GPIO_SPI2_SCK */
 
 #ifndef GPIO_SPI3_NSS
-#define GPIO_SPI3_NSS			XGPIO_DEF2('A', 15)
+#define GPIO_SPI3_NSS			XGPIO_DEF2('C', 9)
 #endif /* GPIO_SPI3_NSS */
 
 #ifndef GPIO_SPI3_SCK
@@ -39,13 +43,21 @@ enum {
 	SPI_LOW_FALLING,
 	SPI_HIGH_RISING,
 
-	SPI_SIZE_16		= 4,
+	SPI_DMA			= 4,
+	SPI_SIZE_8		= 8
 };
 
-void SPI_startup(int bus_ID, int freq_hz, int mode);
-void SPI_halt(int bus_ID);
+enum {
+	BUS_ID_SPI1		= 0,
+	BUS_ID_SPI2,
+	BUS_ID_SPI3
+};
 
-uint16_t SPI_transfer(int bus_ID, uint16_t txbuf, int nss_hold);
+void SPI_startup(int bus, int freq_hz, int mode);
+void SPI_halt(int bus);
+
+uint16_t SPI_transfer(int bus, uint16_t txbuf);
+void SPI_transfer_dma(int bus, const uint16_t *txbuf, uint16_t *rxbuf, int len);
 
 #endif /* _H_SPI_ */
 

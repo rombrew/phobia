@@ -93,6 +93,11 @@ enum {
 };
 
 enum {
+	PM_EXCITATION_NONE			= 0,
+	PM_EXCITATION_CONST
+};
+
+enum {
 	PM_EABI_INCREMENTAL			= 0,
 	PM_EABI_ABSOLUTE
 };
@@ -246,8 +251,9 @@ typedef struct {
 	int		config_LU_SENSOR;
 	int		config_LU_LOCATION;
 	int		config_LU_DRIVE;
-	int		config_HFI_WAVE;
-	int		config_HFI_POLARITY;
+	int		config_HFI_WAVETYPE;
+	int		config_HFI_PERMANENT;
+	int		config_EXCITATION;
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
 	int		config_WEAKENING;
@@ -352,7 +358,7 @@ typedef struct {
 	int		vsi_BQ;
 	int		vsi_CQ;
 
-	int		tvm_USEABLE;
+	int		tvm_ACTIVE;
 	float		tvm_clean_zone;
 	float		tvm_A;
 	float		tvm_B;
@@ -401,6 +407,7 @@ typedef struct {
 	float		detach_trip_AP;
 	float		detach_gain_SF;
 
+	int		flux_LINKAGE;
 	int		flux_TYPE;
 	int		flux_ZONE;
 
@@ -431,15 +438,11 @@ typedef struct {
 	float		zone_gain_TH;
 	float		zone_gain_LP;
 
-	int		hfi_INJECT;
-
 	float		hfi_freq;
 	float		hfi_sine;
 	float		hfi_wave[2];
-	float		hfi_pole;
-	float		hfi_gain_DP;
 
-	lf_seed_t	hfi_seed;
+	m_seed_t	hfi_seed;
 
 	struct {
 
@@ -448,7 +451,6 @@ typedef struct {
 	}
 	hall_ST[8];
 
-	int		hall_USEABLE;
 	int		hall_ERN;
 	float		hall_F[2];
 	float		hall_wS;
@@ -457,7 +459,6 @@ typedef struct {
 	float		hall_gain_SF;
 	float		hall_gain_IF;
 
-	int		eabi_USEABLE;
 	int		eabi_RECENT;
 	int		eabi_bEP;
 	int		eabi_lEP;
@@ -475,7 +476,6 @@ typedef struct {
 	float		eabi_gain_SF;
 	float		eabi_gain_IF;
 
-	int		sincos_USEABLE;
 	int		sincos_RECENT;
 	float		sincos_FIR[20];
 	float		sincos_SC[3];
@@ -546,6 +546,10 @@ typedef struct {
 	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
+
+	float		mtpa_approx;
+	float		mtpa_D;
+	float		mtpa_gain_LP;
 
 	float		weak_maximal;
 	float		weak_D;

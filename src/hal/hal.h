@@ -29,11 +29,13 @@
 #define LD_CCRAM			__attribute__ ((section(".ccram")))
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
+#define LD_DMA				__attribute__ ((aligned(32)))
 
 #define CLOCK_APB1_HZ			(clock_cpu_hz / 4U)
 #define CLOCK_APB2_HZ			(clock_cpu_hz / 2U)
 
 #define CLOCK_TIM1_HZ			(CLOCK_APB2_HZ * 2U)
+#define CLOCK_TIM8_HZ			(CLOCK_APB2_HZ * 2U)
 #define CLOCK_TIM4_HZ			(CLOCK_APB1_HZ * 2U)
 #define CLOCK_TIM7_HZ			(CLOCK_APB1_HZ * 2U)
 
@@ -61,7 +63,7 @@ enum {
 	DPS_DISABLED			= 0,
 	DPS_DRIVE_HALL,
 	DPS_DRIVE_EABI,
-	DPS_DRIVE_SOFTWARE,
+	DPS_DRIVE_ON_SPI,
 };
 
 enum {

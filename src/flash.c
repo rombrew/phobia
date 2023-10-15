@@ -127,7 +127,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
 			break;
 	}
 	while (1);
@@ -297,7 +297,7 @@ flash_block_prog()
 		number = block->number + 1;
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
 			block = (void *) FLASH_map[0];
 	}
 	else {
@@ -311,7 +311,7 @@ flash_block_prog()
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
 			block = (void *) FLASH_map[0];
 
 		if (block == origin) {
@@ -386,7 +386,7 @@ SH_DEF(flash_info)
 
 			N += 1;
 
-			if (N >= FLASH_config.s_total)
+			if (N >= FLASH_config.total)
 				break;
 		}
 	}
@@ -414,7 +414,7 @@ SH_DEF(flash_wipe)
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.s_total])
+		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
 			break;
 	}
 	while (1);

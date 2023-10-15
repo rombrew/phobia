@@ -38,7 +38,7 @@ void lfg_start(int seed)
 	lfg.rb = 31;
 }
 
-double lfg_rand()
+double lfg_urand()
 {
 	double		x, a, b;
 
@@ -60,23 +60,12 @@ double lfg_rand()
 
 double lfg_gauss()
 {
-	double		x, s;
+	double		x;
 
-	/* Box-Muller transform.
+	/* Normal distribution fast approximation.
 	 * */
 
-	do {
-		s = lfg_rand();
-		x = lfg_rand();
-
-		s = s * s + x * x;
-
-		if (s > 0. && s < 1.)
-			break;
-	}
-	while (1);
-
-	x *= sqrt(- 2. * log(s) / s);
+	x = lfg_urand() + lfg_urand() + lfg_urand();
 
 	return x;
 }

@@ -196,7 +196,7 @@ void ts_probe_spinup()
 		if (ts_wait_for_idle() != PM_OK)
 			break;
 
-		if (pm.const_lambda < M_EPSILON) {
+		if (pm.flux_LINKAGE != PM_ENABLED) {
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -243,16 +243,19 @@ void ts_probe_spinup()
 			break;
 		}
 
-		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
+		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
-		if (ts_wait_for_idle() != PM_OK)
-			break;
+			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
-		Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
+			if (ts_wait_for_idle() != PM_OK)
+				break;
 
-		printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
+			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
-		TS_assert_relative(pm.const_lambda, m.lambda);
+			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
+
+			TS_assert_relative(pm.const_lambda, m.lambda);
+		}
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -310,8 +313,7 @@ void ts_probe_spinup()
 
 void ts_adjust_sensor_hall()
 {
-	int		N, ACTIVE = 0;
-	double		ST;
+	int		N, STARTUP = PM_DISABLED;
 
 	do {
 		if (pm.lu_MODE == PM_LU_DISABLED) {
@@ -326,7 +328,7 @@ void ts_adjust_sensor_hall()
 			if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
 				break;
 
-			ACTIVE = 1;
+			STARTUP = PM_ENABLED;
 		}
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
@@ -336,12 +338,14 @@ void ts_adjust_sensor_hall()
 
 		for (N = 1; N < 7; ++N) {
 
-			ST = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * (180. / M_PI);
+			double		STg;
 
-			printf("hall_ST[%i] = %.1f (g)\n", N, ST);
+			STg = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * (180. / M_PI);
+
+			printf("hall_ST[%i] = %.1f (g)\n", N, STg);
 		}
 
-		if (ACTIVE != 0) {
+		if (STARTUP == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
@@ -366,7 +370,7 @@ blm_proc_Z(int Z)
 	m.pwm_Z = (Z != PM_Z_ABC) ? BLM_Z_NONE : BLM_Z_DETACHED;
 }
 
-void ts_script_base()
+void ts_script_default()
 {
 	pm.m_freq = (float) (1. / m.pwm_dT);
 	pm.m_dT = 1.f / pm.m_freq;
@@ -376,7 +380,10 @@ void ts_script_base()
 
 	pm_auto(&pm, PM_AUTO_BASIC_DEFAULT);
 	pm_auto(&pm, PM_AUTO_CONFIG_DEFAULT);
+}
 
+void ts_script_base()
+{
 	pm.const_Zp = m.Zp;
 
 	ts_self_adjust();
@@ -430,7 +437,7 @@ ts_script_hfi()
 {
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
-	pm.config_HFI_WAVE = PM_HFI_SINE;
+	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
@@ -460,7 +467,7 @@ ts_script_hfi()
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	ts_wait_for_idle();
 
-	pm.config_HFI_WAVE = PM_HFI_NONE;
+	pm.config_HFI_WAVETYPE = PM_HFI_NONE;
 }
 
 static void
@@ -512,7 +519,9 @@ ts_script_hall()
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
 
-	pm.s_gain_P *= .5f;
+	pm.s_damping = .5f;
+
+	pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
@@ -553,7 +562,6 @@ static void
 ts_script_eabi()
 {
 	/*ts_adjust_sensor_eabi();*/
-	pm.eabi_USEABLE = PM_ENABLED;
 
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_EABI;
@@ -614,6 +622,7 @@ void ts_script_verify()
         m.lambda = blm_Kv_lambda(&m, 525.);
 	m.Jm = 2.E-4;
 
+	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 
@@ -634,6 +643,7 @@ void ts_script_verify()
         m.lambda = blm_Kv_lambda(&m, 270.);
 	m.Jm = 3.E-4;
 
+	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 
@@ -646,7 +656,7 @@ void ts_script_verify()
 	ts_script_eabi();
 	blm_restart(&m);
 
-	printf("\n---- E-scooter Hub Motor (250W) ----\n");
+	printf("\n---- 8-inch Hub Motor (350W) ----\n");
 
 	m.Rs = 0.24;
 	m.Ld = 520.E-6;
@@ -657,6 +667,7 @@ void ts_script_verify()
         m.lambda = blm_Kv_lambda(&m, 15.7);
 	m.Jm = 6.E-3;
 
+	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 

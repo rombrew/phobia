@@ -119,7 +119,7 @@ void CAN_configure()
 	CAN1->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP;
 	CAN1->IER = CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
 
-	/* Bit timing (1 Mbit/s).
+	/* Bit timing (1 Mb/s).
 	 * */
 	CAN1->BTR = (5U << 20) | (6U << 16) | (2U);
 

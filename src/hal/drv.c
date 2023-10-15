@@ -7,10 +7,6 @@
 #define HW_DRV_FREQUENCY		4000000U	/* (Hz) */
 #endif /* HW_DRV_FREQUENCY */
 
-#ifndef HW_DRV_NSS_HOLD
-#define HW_DRV_NSS_HOLD			200U		/* (ns) */
-#endif /* HW_DRV_NSS_HOLD */
-
 static int
 DRV_read_reg(int addr)
 {
@@ -19,8 +15,8 @@ DRV_read_reg(int addr)
 
 	txbuf = 0x8000U | ((addr & 0xFU) << 11);
 
-	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
-	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
+	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf);
+	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U);
 
 	fault = (rxbuf & 0x8000U) ? 1 : 0;
 	raddr = (rxbuf & 0x7800U) >> 11;
@@ -43,8 +39,8 @@ DRV_write_reg(int addr, int data)
 
 	txbuf = ((addr & 0xFU) << 11) | (data & 0x7FFU);
 
-	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf, HW_DRV_NSS_HOLD);
-	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U, HW_DRV_NSS_HOLD);
+	SPI_transfer(HW_DRV_ID_ON_PCB, txbuf);
+	rxbuf = SPI_transfer(HW_DRV_ID_ON_PCB, 0x8000U);
 
 	fault = (rxbuf & 0x8000U) ? 1 : 0;
 
@@ -78,7 +74,7 @@ DRV8303_configure()
 
 	if (hal.DRV.status_raw != 0) {
 
-		log_TRACE("DRV8303 status %4x" EOL, hal.DRV.status_raw);
+		log_TRACE("DRV8303 fault %4x" EOL, hal.DRV.status_raw);
 	}
 }
 
@@ -93,11 +89,11 @@ DRV8303_startup()
 
 	vTaskDelay((TickType_t) 20);
 
-	SPI_startup(HW_DRV_ID_ON_PCB, HW_DRV_FREQUENCY, SPI_LOW_FALLING | SPI_SIZE_16);
+	SPI_startup(HW_DRV_ID_ON_PCB, HW_DRV_FREQUENCY, SPI_LOW_FALLING);
 
 	DRV8303_configure();
 
-	hal.DRV.device_ON = 1;
+	hal.DRV.gate_ON = 1;
 }
 
 void DRV_startup()
@@ -114,9 +110,9 @@ void DRV_startup()
 
 void DRV_halt()
 {
-	if (hal.DRV.device_ON != 0) {
+	if (hal.DRV.gate_ON != 0) {
 
-		hal.DRV.device_ON = 0;
+		hal.DRV.gate_ON = 0;
 
 		SPI_halt(HW_DRV_ID_ON_PCB);
 
@@ -129,7 +125,7 @@ void DRV_configure()
 {
 	if (hal.DRV.part == DRV_PART_DRV8303) {
 
-		if (hal.DRV.device_ON != 0) {
+		if (hal.DRV.gate_ON != 0) {
 
 			DRV8303_configure();
 		}
@@ -144,7 +140,7 @@ void DRV_status()
 {
 	if (hal.DRV.part == DRV_PART_DRV8303) {
 
-		if (hal.DRV.device_ON != 0) {
+		if (hal.DRV.gate_ON != 0) {
 
 			hal.DRV.status_raw = DRV_read_reg(0);
 		}
@@ -159,7 +155,7 @@ int DRV_fault()
 {
 	int		fault = 0;
 
-	if (hal.DRV.device_ON != 0) {
+	if (hal.DRV.gate_ON != 0) {
 
 		fault = (GPIO_get_STATE(hal.DRV.gpio_FAULT) != 0) ? 0 : 1;
 	}

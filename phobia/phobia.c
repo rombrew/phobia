@@ -288,6 +288,8 @@ pub_self_reg(struct public *pub, struct link_reg *reg)
 		"pm.i_gain_P",
 		"pm.i_gain_I",
 		"pm.s_gain_P",
+		"pm.s_gain_I",
+		"pm.s_gain_F",
 		"pm.s_gain_D",
 
 		NULL
@@ -329,7 +331,7 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 
 		self = pub_self_reg(pub, reg);
 
-		config = (self != 0) ?	  nk->table[NK_COLOR_ORANGE_HOVER]
+		config = (self != 0) ?	  nk->table[NK_COLOR_CONFIG_AUTO]
 					: nk->table[NK_COLOR_CONFIG];
 
 		nk_label_colored(ctx, name, NK_TEXT_LEFT, config);
@@ -531,11 +533,11 @@ pub_popup_about(struct public *pub, int popup)
 		nk_spacer(ctx);
 
 		nk_spacer(ctx);
-		nk_label(ctx, "[0] https://sourceforge.net/projects/phobia/", NK_TEXT_LEFT);
+		nk_label(ctx, "* https://sourceforge.net/projects/phobia", NK_TEXT_LEFT);
 		nk_spacer(ctx);
 
 		nk_spacer(ctx);
-		nk_label(ctx, "[1] https://github.com/rombrew/phobia", NK_TEXT_LEFT);
+		nk_label(ctx, "* https://github.com/rombrew/phobia", NK_TEXT_LEFT);
 		nk_spacer(ctx);
 
 		nk_layout_row_template_begin(ctx, 0);
@@ -2515,7 +2517,7 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM has useable tau");
+	reg_enum_toggle(pub, "pm.tvm_ACTIVE", "TVM is active");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
@@ -3341,15 +3343,6 @@ page_apps(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.rpm_table0", "RPM entry 0");
-	reg_float(pub, "ap.rpm_table1", "RPM entry 1");
-	reg_float(pub, "ap.rpm_table2", "RPM entry 2");
-	reg_float(pub, "ap.rpm_table3", "RPM entry 3");
-	reg_float(pub, "ap.rpm_table4", "RPM entry 4");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
 	reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
 	reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
 	reg_enum_toggle(pub, "ap.auto_ENABLED", "Auto startup function");
@@ -3361,9 +3354,7 @@ page_apps(struct public *pub)
 
 	if (reg != NULL && reg->lval != 0) {
 
-		reg_float(pub, "ap.adc_load_kg", "HX711 measurement");
-		reg_float(pub, "ap.adc_load_scale0", "HX711 load offset");
-		reg_float(pub, "ap.adc_load_scale1", "HX711 load scale");
+		reg_float(pub, "ap.load_HX711", "HX711 measurement");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -3516,23 +3507,28 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo location source", 1);
 	reg_enum_combo(pub, "pm.config_LU_DRIVE", "Drive control loop", 0);
 
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg = link_reg_lookup(lp, "pm.config_LU_ESTIMATE");
 
 	if (		reg != NULL
 			&& reg->lval == 2) {
 
-		reg_enum_combo(pub, "pm.config_HFI_WAVE", "HFI waveform type", 1);
-		reg_enum_toggle(pub, "pm.config_HFI_POLARITY", "HFI flux polarity");
-	}
-	else {
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-		nk_spacer(ctx);
+		reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
+		reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
 	}
 
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "pm.config_EXCITATION", "Machine excitation", 0);
 	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine saliency", 0);
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 
 	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
 
@@ -3542,11 +3538,9 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_HOLDING_BRAKE", "Holding brake");
 		reg_enum_toggle(pub, "pm.config_SPEED_LIMITED", "Speed limited");
 	}
-	else {
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-		nk_spacer(ctx);
-	}
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 
 	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
 	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
@@ -3601,7 +3595,7 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_USEABLE", "TVM has useable ta tauu");
+	reg_enum_toggle(pub, "pm.tvm_ACTIVE", "TVM is active");
 	reg_float(pub, "pm.tvm_clean_zone", "TVM clean zone");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3748,7 +3742,6 @@ page_lu_hfi(struct public *pub)
 
 	reg_float(pub, "pm.hfi_freq", "HF injection frequency");
 	reg_float(pub, "pm.hfi_sine", "HF injection current");
-	reg_float(pub, "pm.hfi_gain_DP", "Flux polarity gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3772,16 +3765,12 @@ page_lu_hfi(struct public *pub)
 
 		reg = link_reg_lookup(lp, "pm.lu_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
-
-		reg = link_reg_lookup(lp, "pm.hfi_pole");
-		if (reg != NULL) { reg->update = rate; }
 	}
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_float(pub, "pm.lu_F0", "LU position cosine");
 	reg_float(pub, "pm.lu_F1", "LU position sine");
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
-	reg_float(pub, "pm.hfi_pole", "HFI flux polarity");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3871,7 +3860,6 @@ page_lu_hall(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.hall_USEABLE", "Hall is useable");
 	reg_float(pub, "pm.hall_trip_AP", "Hall speed trip point");
 	reg_float(pub, "pm.hall_gain_LO", "Hall speed gain LO");
 	reg_float(pub, "pm.hall_gain_SF", "Hall speed loop gain");
@@ -4101,6 +4089,7 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.mtpa_gain_LP", "MTPA regulation gain");
 	reg_float(pub, "pm.weak_maximal", "Maximal weakening");
 	reg_float(pub, "pm.weak_gain_EU", "Weak regulation gain");
 
@@ -4141,7 +4130,7 @@ page_lp_speed(struct public *pub)
 	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 	reg_float(pub, "pm.s_gain_P", "Proportional gain");
 	reg_float(pub, "pm.s_gain_I", "Integral gain");
-	reg_float(pub, "pm.s_gain_F", "Forward percentage");
+	reg_float(pub, "pm.s_gain_F", "Feed forward gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative gain");
 
 	reg = link_reg_lookup(lp, "pm.s_damping");
@@ -4520,7 +4509,7 @@ page_flash(struct public *pub)
 				"Please confirm that you really"
 				" want to reboot PMC.") != 0) {
 
-		if (link_command(lp, "os_reboot")) {
+		if (link_command(lp, "ap_reboot")) {
 
 			link_reg_fetch_all_shown(lp);
 
@@ -4627,7 +4616,7 @@ page_upgrade(struct public *pub)
 				" reboot into embedded bootloader. Note"
 				" that PMC connection will be closed.") != 0) {
 
-		if (link_command(lp, "os_bootload") != 0) {
+		if (link_command(lp, "ap_bootload") != 0) {
 
 			config_write(pub->fe);
 			link_close(lp);
@@ -4881,16 +4870,27 @@ int main(int argc, char **argv)
 
 			if (lp->hwinfo[0] != 0) {
 
-				nk->ctx.style.window.header.active =
-					nk_style_item_color(nk->table[NK_COLOR_ENABLED]);
+				struct nk_color		header;
+
+				if (strstr(lp->hwinfo, "does NOT match") == NULL) {
+
+					header = nk->table[NK_COLOR_ENABLED];
+				}
+				else {
+					header = nk->table[NK_COLOR_FLICKER_ALERT];
+				}
+
+				nk->ctx.style.window.header.active = nk_style_item_color(header);
 
 				sprintf(pub->lbuf, " %.77s", lp->hwinfo);
 
 				if (lp->network[0] != 0) {
 
 					sprintf(pub->lbuf + strlen(pub->lbuf),
-							" [%.32s]", lp->network);
+							" / %.16s", lp->network);
 				}
+
+				nk->idled = 0;
 			}
 			else {
 				nk->ctx.style.window.header.active =

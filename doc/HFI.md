@@ -28,7 +28,7 @@ observer that can appreciate machine saliency.
 
 Select injection waveform type. The usual type is SINE wave.
 
-	(pmc) reg pm.config_HFI_WAVE 1
+	(pmc) reg pm.config_HFI_WAVETYPE 1
 
 The main parameters of injection is a frequency and amplitude. It is usually
 large frequency and amplitude makes HFI operation is more stable. Beware of
@@ -42,12 +42,12 @@ current on HFI operation mode.
 
 	(pmc) reg pm.i_derate_on_HFI <A>
 
-## Flux polarity detection
+Note that in HFI operation it is possible to detect only direction of the rotor
+flux axis but not its orientation or flux polarity.
 
-In HFI operation it is possible to detect only direction of the rotor flux axis
-but not its orientation or flux polarity. But we can use iron saturation effect
-to estimate flux polarity.
-
-	(pmc) reg pm.config_HFI_POLARITY 1
+## Permanent injection
 
 TODO
+
+	(pmc) reg pm.config_HFI_PERMANENT 1
+

@@ -13,7 +13,7 @@
 
 void app_HX711(void *pData)
 {
-	volatile int		*enabled = (volatile int *) pData;
+	volatile int		*knob = (volatile int *) pData;
 
 	const int		gpio_DOUT = GPIO_SPI1_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI1_SCK;
@@ -67,37 +67,16 @@ void app_HX711(void *pData)
 				TIM_wait_ns(500);
 			}
 
-			/* Convert the ADC code into KG.
+			/* Store the ADC code in a register.
 			 * */
-			ap.adc_load_kg = (float) ADC * ap.adc_load_scale[1]
-				+ ap.adc_load_scale[0];
+			ap.load_HX711 = ADC;
 		}
 	}
-	while (*enabled != 0);
+	while (*knob != 0);
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_INPUT(gpio_PD_SCK);
 
 	vTaskDelete(NULL);
-}
-
-SH_DEF(hx711_adjust_offset)
-{
-	float			avgkg = 0.f;
-	int			N;
-
-	/* Adjust ZERO offset.
-	 * */
-
-	for (N = 0; N < 10; ++N) {
-
-		vTaskDelay((TickType_t) 100);
-
-		avgkg += ap.adc_load_kg;
-	}
-
-	ap.adc_load_scale[0] += - avgkg / (float) N;
-
-	reg_format(&regfile[ID_AP_ADC_LOAD_SCALE0]);
 }
 

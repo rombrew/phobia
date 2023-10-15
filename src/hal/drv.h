@@ -19,7 +19,7 @@ typedef struct {
 	int		gate_current;
 	int		ocp_level;
 
-	int		device_ON;
+	int		gate_ON;
 }
 DRV_config_t;
 
