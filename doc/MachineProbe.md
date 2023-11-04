@@ -116,7 +116,7 @@ manually in this case.
 
 	(pmc) pm_probe_detached
 
-PMC will wait for the machine to reach at least `pm.zone_speed_threshold`
+PMC will wait for the machine to reach at least `pm.zone_threshold`
 speed.
 
 ## Speed noise threshold
@@ -124,8 +124,8 @@ speed.
 After flux linkage we estimate speed noise to know the lower bound of flux
 observer operation. As a result these threshold values are calculated.
 
-	# reg pm.zone_speed_noise
-	# reg pm.zone_speed_threshold
+	# reg pm.zone_noise
+	# reg pm.zone_threshold
 
 ## Moment of inertia
 

@@ -144,7 +144,7 @@ SH_DEF(pm_self_adjust)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_self_tvm_curve)
+SH_DEF(pm_self_TVM)
 {
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
@@ -183,8 +183,6 @@ SH_DEF(pm_self_tvm_curve)
 	tlm.reg_ID[3] = ID_PM_TVM_C;
 	*/
 
-	/* NOTE: It is up to USER to adjust the GRAB frequency about 4000 Hz.
-	 * */
 	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_GRAB);
 
 	do {
@@ -222,7 +220,7 @@ SH_DEF(pm_self_tvm_curve)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_self_freq_curve)
+SH_DEF(pm_self_impedance)
 {
 	float		usual_freq, walk_freq, stop_freq;
 
@@ -291,7 +289,7 @@ SH_DEF(pm_self_freq_curve)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(hal_ADC_scan_CH)
+SH_DEF(hal_ADC_scan)
 {
 	int			xCH, xGPIO;
 	float			fvoltage;
@@ -350,50 +348,6 @@ SH_DEF(hal_PWM_set_Z)
 	if (stoi(&xZ, s) != NULL) {
 
 		PWM_set_Z(xZ);
-	}
-}
-
-SH_DEF(hal_SPI_startup)
-{
-	float		freq;
-	int		bus, mode;
-
-	if (stoi(&bus, s) != NULL) {
-
-		freq = 1000000.f;
-		mode = 0;
-
-		stof(&freq, s = sh_next_arg(s));
-		stoi(&mode, s = sh_next_arg(s));
-
-		SPI_startup(bus, (int) freq, mode);
-	}
-}
-
-SH_DEF(hal_SPI_halt)
-{
-	int		bus;
-
-	if (stoi(&bus, s) != NULL) {
-
-		SPI_halt(bus);
-	}
-}
-
-SH_DEF(hal_SPI_transfer)
-{
-	int		bus, txbuf, rxbuf;
-
-	if (stoi(&bus, s) != NULL) {
-
-		while (htoi(&txbuf, s = sh_next_arg(s)) != NULL) {
-
-			rxbuf = SPI_transfer(bus, txbuf);
-
-			printf("%4x ", rxbuf);
-		}
-
-		puts(EOL);
 	}
 }
 

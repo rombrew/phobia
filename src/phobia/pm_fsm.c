@@ -1453,7 +1453,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_REM[6] = 0.f;
 			pm->probe_REM[7] = 0.f;
 
-			pm->quick_HFwS = M_2PI_F * pm->probe_freq_sine;
+			pm->quick_HFwS = M_2_PI_F * pm->probe_freq_sine;
 			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * .5f);
 			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * .5f);
 
@@ -1788,7 +1788,7 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 			}
 			else if (pm->flux_TYPE == PM_FLUX_KALMAN) {
 
-				if (m_fabsf(pm->flux_wS) > pm->zone_speed_threshold) {
+				if (m_fabsf(pm->flux_wS) > pm->zone_threshold) {
 
 					v[0] = 1.f;
 					v[1] = pm->const_lambda
@@ -1949,7 +1949,7 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 			if (		m_isfinitef(ls->std.m[0]) != 0
 					&& ls->std.m[0] > M_EPSILON) {
 
-				pm->zone_speed_noise = ls->std.m[0] * 5.f;
+				pm->zone_noise = ls->std.m[0] * 5.f;
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -1973,30 +1973,23 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->lu_MODE == PM_LU_ESTIMATE) {
+			pm->hall_ERN = 0;
 
-				pm->hall_ERN = 0;
+			for (N = 0; N < 8; ++N) {
 
-				for (N = 0; N < 8; ++N) {
+				pm->hall_ST[N].X = 0.f;
+				pm->hall_ST[N].Y = 0.f;
 
-					pm->hall_ST[N].X = 0.f;
-					pm->hall_ST[N].Y = 0.f;
-
-					dnum[N] = 0;
-					rem0[N] = 0.f;
-					rem1[N] = 0.f;
-				}
-
-				pm->tm_value = 0;
-				pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
-
-				pm->fsm_errno = PM_OK;
-				pm->fsm_phase = 1;
+				dnum[N] = 0;
+				rem0[N] = 0.f;
+				rem1[N] = 0.f;
 			}
-			else {
-				pm->fsm_state = PM_STATE_IDLE;
-				pm->fsm_phase = 0;
-			}
+
+			pm->tm_value = 0;
+			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
+
+			pm->fsm_errno = PM_OK;
+			pm->fsm_phase = 1;
 			break;
 
 		case 1:
@@ -2032,8 +2025,8 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 			break;
 
 		case 2:
-			N = 0;
 			thld = pm->tm_end / 12;
+			N = 0;
 
 			for (HS = 1; HS < 7; ++HS) {
 
@@ -2075,10 +2068,102 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 static void
 pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 {
+	lse_t			*ls = &pm->probe_lse[0];
+	lse_float_t		v[4];
+
+	float			lPOS;
+	int			relEP, WRAP;
+
 	switch (pm->fsm_phase) {
 
 		case 0:
-			/* TODO */
+			pm->eabi_bEP = pm->fb_EP;
+			pm->eabi_lEP = 0;
+
+			pm->lu_revol = 0;
+
+			lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+
+			pm->tm_value = 0;
+			pm->tm_end = PM_TSMS(pm, 10.f * pm->tm_average_probe);
+
+			pm->fsm_errno = PM_OK;
+			pm->fsm_phase = 1;
+			break;
+
+		case 1:
+			if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
+
+				WRAP = 0x10000;
+
+				relEP = pm->fb_EP - pm->eabi_bEP;
+				relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
+					: (relEP < - WRAP / 2) ? WRAP : 0;
+
+				pm->eabi_bEP = pm->fb_EP;
+			}
+			else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+				WRAP = pm->eabi_EPPR;
+
+				relEP = pm->fb_EP - (pm->eabi_lEP % WRAP);
+				relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
+					: (relEP < - WRAP / 2) ? WRAP : 0;
+			}
+			else {
+				relEP = 0;
+			}
+
+			pm->eabi_lEP += relEP;
+
+			v[0] = 1.f;
+			v[1] = (float) pm->eabi_lEP * pm->quick_ZiEP;
+			v[2] = m_atan2f(pm->lu_F[1], pm->lu_F[0])
+				+ (float) pm->lu_revol * M_2_PI_F;
+
+			lse_insert(ls, v);
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->fsm_phase += 1;
+			}
+			break;
+
+		case 2:
+			lse_solve(ls);
+
+			if (		m_isfinitef(ls->sol.m[1]) != 0
+					&& ls->sol.m[1] > M_EPSILON) {
+
+				pm->eabi_EPPR = (int) (pm->eabi_EPPR / ls->sol.m[1] + .5f);
+			}
+			else {
+				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+			}
+
+			if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+				if (		m_isfinitef(ls->sol.m[0]) != 0
+						&& ls->sol.m[0] > M_EPSILON) {
+
+					lPOS = m_wrapf(ls->sol.m[0]);
+
+					pm->eabi_F0[0] = m_cosf(lPOS);
+					pm->eabi_F0[1] = m_sinf(lPOS);
+				}
+				else {
+					pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+					pm->fsm_state = PM_STATE_HALT;
+					pm->fsm_phase = 0;
+				}
+			}
+
+			pm->fsm_state = PM_STATE_IDLE;
+			pm->fsm_phase = 0;
 			break;
 	}
 }

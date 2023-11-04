@@ -42,7 +42,7 @@ int pm_wait_for_motion()
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_speed_threshold
+		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_threshold
 				&& pm.detach_TIM > PM_TSMS(&pm, pm.tm_transient_slow))
 			break;
 
@@ -227,8 +227,8 @@ SH_DEF(pm_probe_spinup)
 		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
-		reg_OUTP(ID_PM_ZONE_SPEED_NOISE);
-		reg_OUTP(ID_PM_ZONE_SPEED_THRESHOLD);
+		reg_OUTP(ID_PM_ZONE_NOISE);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD);
 		reg_OUTP(ID_PM_PROBE_SPEED_HOLD);
 		reg_OUTP(ID_PM_FORCED_MAXIMAL);
 
@@ -262,8 +262,8 @@ SH_DEF(pm_probe_spinup)
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 
-		reg_OUTP(ID_PM_ZONE_SPEED_NOISE);
-		reg_OUTP(ID_PM_ZONE_SPEED_THRESHOLD);
+		reg_OUTP(ID_PM_ZONE_NOISE);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -535,7 +535,7 @@ SH_DEF(pm_probe_noise_threshold)
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		reg_OUTP(ID_PM_ZONE_SPEED_NOISE);
+		reg_OUTP(ID_PM_ZONE_NOISE);
 	}
 	while (0);
 
@@ -551,6 +551,12 @@ SH_DEF(pm_adjust_sensor_hall)
 	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
 
 		printf("Unable when DRIVE is not SPEED" EOL);
+		return;
+	}
+
+	if (pm.config_LU_SENSOR == PM_SENSOR_HALL) {
+
+		printf("Unable when SENSOR is HALL selected" EOL);
 		return;
 	}
 
@@ -570,7 +576,7 @@ SH_DEF(pm_adjust_sensor_hall)
 			STARTUP = PM_ENABLED;
 		}
 
-		if (m_fabsf(pm.zone_lpf_wS) < pm.zone_speed_threshold) {
+		if (m_fabsf(pm.zone_lpf_wS) < pm.zone_threshold) {
 
 			printf("Unable at too LOW speed" EOL);
 			return;
@@ -615,11 +621,7 @@ SH_DEF(pm_adjust_sensor_hall)
 
 SH_DEF(pm_adjust_sensor_eabi)
 {
-	if (pm.lu_MODE != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
+	int		STARTUP = PM_DISABLED;
 
 	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
 
@@ -627,27 +629,59 @@ SH_DEF(pm_adjust_sensor_eabi)
 		return;
 	}
 
+	if (pm.config_LU_SENSOR == PM_SENSOR_EABI) {
+
+		printf("Unable when SENSOR is EABI selected" EOL);
+		return;
+	}
+
 	do {
-		pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (pm.lu_MODE == PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_LU_STARTUP;
+
+			if (pm_wait_for_idle() != PM_OK)
+				break;
+
+			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.zone_threshold);
+
+			if (pm_wait_for_spinup() != PM_OK)
+				break;
+
+			STARTUP = PM_ENABLED;
+		}
+
+		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+
+		pm.fsm_req = PM_STATE_ADJUST_SENSOR_EABI;
 
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
-		/* TODO */
+		reg_OUTP(ID_PM_EABI_F0);
+		reg_OUTP(ID_PM_EABI_EPPR);
 
-		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+		if (STARTUP == PM_ENABLED) {
 
-		if (pm_wait_for_idle() != PM_OK)
-			break;
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			if (pm_wait_for_idle() != PM_OK)
+				break;
+		}
 	}
 	while (0);
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
 
-	if (pm.lu_MODE != PM_LU_DISABLED) {
+	if (STARTUP == PM_ENABLED) {
 
-		pm.fsm_req = PM_STATE_HALT;
+		if (pm.lu_MODE != PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_HALT;
+		}
 	}
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_adjust_sensor_sincos)
@@ -698,7 +732,7 @@ SH_DEF(ld_probe_const_inertia)
 	reg_OUTP(ID_PM_FSM_ERRNO);
 }
 
-SH_DEF(ld_adjust_range)
+SH_DEF(ld_adjust_limit)
 {
 	float			wSP = 1.f;
 

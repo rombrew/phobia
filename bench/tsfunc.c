@@ -51,7 +51,7 @@ int ts_wait_for_motion()
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_speed_threshold
+		if (		m_fabsf(pm.zone_lpf_wS) > pm.zone_threshold
 				&& pm.detach_TIM > PM_TSMS(&pm, pm.tm_transient_slow))
 			break;
 
@@ -219,13 +219,13 @@ void ts_probe_spinup()
 		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
-		printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_speed_noise,
-				pm.zone_speed_noise * pm.const_lambda);
+		printf("zone_noise = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_noise,
+				pm.zone_noise * pm.const_lambda);
 
-		printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_speed_threshold,
-				pm.zone_speed_threshold * pm.const_lambda);
+		printf("zone_threshold = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_threshold,
+				pm.zone_threshold * pm.const_lambda);
 
 		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
 		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
@@ -264,13 +264,13 @@ void ts_probe_spinup()
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 
-		printf("zone_speed_noise = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_speed_noise,
-				pm.zone_speed_noise * pm.const_lambda);
+		printf("zone_noise = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_noise,
+				pm.zone_noise * pm.const_lambda);
 
-		printf("zone_speed_threshold = %.2f (rad/s) %.3f (V)\n",
-				pm.zone_speed_threshold,
-				pm.zone_speed_threshold * pm.const_lambda);
+		printf("zone_threshold = %.2f (rad/s) %.3f (V)\n",
+				pm.zone_threshold,
+				pm.zone_threshold * pm.const_lambda);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -344,6 +344,53 @@ void ts_adjust_sensor_hall()
 
 			printf("hall_ST[%i] = %.1f (g)\n", N, STg);
 		}
+
+		if (STARTUP == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			if (ts_wait_for_idle() != PM_OK)
+				break;
+		}
+	}
+	while (0);
+}
+
+void ts_adjust_sensor_eabi()
+{
+	int		STARTUP = PM_DISABLED;
+
+	do {
+		if (pm.lu_MODE == PM_LU_DISABLED) {
+
+			pm.fsm_req = PM_STATE_LU_STARTUP;
+
+			if (ts_wait_for_idle() != PM_OK)
+				break;
+
+			pm.s_setpoint_speed = pm.zone_threshold;
+
+			if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+				break;
+
+			STARTUP = PM_ENABLED;
+		}
+
+		pm.fsm_req = PM_STATE_ADJUST_SENSOR_EABI;
+
+		if (ts_wait_for_idle() != PM_OK)
+			break;
+
+		if (pm.config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+			double		F0g;
+
+			F0g = atan2(pm.eabi_F0[1], pm.eabi_F0[0]) * (180. / M_PI);
+
+			printf("eabi_F0 = %.1f (g)\n", F0g);
+		}
+
+		printf("eabi_EPPR = %i\n", pm.eabi_EPPR);
 
 		if (STARTUP == PM_ENABLED) {
 
@@ -515,6 +562,7 @@ static void
 ts_script_hall()
 {
 	ts_adjust_sensor_hall();
+	blm_restart(&m);
 
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
@@ -561,7 +609,8 @@ ts_script_hall()
 static void
 ts_script_eabi()
 {
-	/*ts_adjust_sensor_eabi();*/
+	ts_adjust_sensor_eabi();
+	blm_restart(&m);
 
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_EABI;

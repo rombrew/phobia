@@ -24,19 +24,38 @@ void pm_quick_build(pmc_t *pm)
 	pm->ts_bootstrap = PM_TSMS(pm, pm->dc_bootstrap);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
-	pm->quick_iWb = (pm->const_lambda > M_EPSILON) ? 1.f / pm->const_lambda : 0.f;
-	pm->quick_iWb2 = pm->quick_iWb * pm->quick_iWb;
-	pm->quick_iL1 = (pm->const_im_L1 > M_EPSILON) ? 1.f / pm->const_im_L1 : 0.f;
-	pm->quick_iL2 = (pm->const_im_L2 > M_EPSILON) ? 1.f / pm->const_im_L2 : 0.f;
+	if (pm->const_lambda > M_EPSILON) {
 
-	pm->quick_TiL1 = pm->m_dT * pm->quick_iL1;
-	pm->quick_TiL2 = pm->m_dT * pm->quick_iL2;
+		pm->quick_iWb = 1.f / pm->const_lambda;
+		pm->quick_iWb2 = pm->quick_iWb * pm->quick_iWb;
+	}
 
-	pm->quick_HFwS = M_2PI_F * pm->hfi_freq;
-	pm->quick_ZiEP = M_2PI_F * (float) (pm->const_Zp * pm->eabi_gear_Zs)
-		/ (float) (pm->eabi_gear_Zq * pm->eabi_EPPR);
-	pm->quick_ZiSQ = (float) (pm->const_Zp * pm->sincos_gear_Zs)
-		/ (float) pm->sincos_gear_Zq;
+	if (pm->const_im_L1 > M_EPSILON) {
+
+		pm->quick_iL1 = 1.f / pm->const_im_L1;
+		pm->quick_TiL1 = pm->m_dT * pm->quick_iL1;
+	}
+
+	if (pm->const_im_L2 > M_EPSILON) {
+
+		pm->quick_iL2 = 1.f / pm->const_im_L2;
+		pm->quick_TiL2 = pm->m_dT * pm->quick_iL2;
+	}
+
+	pm->quick_HFwS = M_2_PI_F * pm->hfi_freq;
+
+	if (		pm->eabi_const_Zq != 0
+			&& pm->eabi_EPPR != 0) {
+
+		pm->quick_ZiEP = M_2_PI_F * (float) (pm->const_Zp * pm->eabi_const_Zs)
+			/ (float) (pm->eabi_const_Zq * pm->eabi_EPPR);
+	}
+
+	if (pm->sincos_const_Zq != 0) {
+
+		pm->quick_ZiSQ = (float) (pm->const_Zp * pm->sincos_const_Zs)
+			/ (float) pm->sincos_const_Zq;
+	}
 
 	pm->quick_WiL4 = pm->const_lambda / (4.f * (pm->const_im_L1 - pm->const_im_L2));
 }
@@ -184,8 +203,9 @@ pm_auto_config_default(pmc_t *pm)
 	pm->kalman_gain_Q[4] = 5E-5f;
 	pm->kalman_gain_R = 5E-1f;
 
-	pm->zone_speed_noise = 50.f;
-	pm->zone_speed_threshold = 90.f;
+	pm->zone_budget = 1.f;
+	pm->zone_noise = 50.f;
+	pm->zone_threshold = 90.f;
 	pm->zone_gain_TH = .7f;
 	pm->zone_gain_LP = 5E-3f;
 
@@ -198,15 +218,15 @@ pm_auto_config_default(pmc_t *pm)
 	pm->hall_gain_IF = .9f;
 
 	pm->eabi_EPPR = 2400;
-	pm->eabi_gear_Zs = 1;
-	pm->eabi_gear_Zq = 1;
+	pm->eabi_const_Zs = 1;
+	pm->eabi_const_Zq = 1;
 	pm->eabi_trip_AP = 5E-2f;
 	pm->eabi_gain_LO = 5E-3f;
 	pm->eabi_gain_SF = 5E-2f;
 	pm->eabi_gain_IF = .1f;
 
-	pm->sincos_gear_Zs = 1;
-	pm->sincos_gear_Zq = 1;
+	pm->sincos_const_Zs = 1;
+	pm->sincos_const_Zq = 1;
 
 	pm->const_lambda = 0.f;
 	pm->const_Rs = 0.f;
@@ -240,7 +260,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_I = 0.f;
 	pm->s_gain_F = 1.f;
-	pm->s_gain_D = 7E-5f;
+	pm->s_gain_D = 5E-5f;
 
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
@@ -264,8 +284,8 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;
 
-	pm->zone_speed_noise = 50.f;
-	pm->zone_speed_threshold = 90.f;
+	pm->zone_noise = 50.f;
+	pm->zone_threshold = 90.f;
 
 	pm->const_lambda = 0.f;
 	pm->const_Rs = 0.f;
@@ -282,7 +302,7 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_I = 0.f;
 	pm->s_gain_F = 1.f;
-	pm->s_gain_D = 7E-5f;
+	pm->s_gain_D = 5E-5f;
 }
 
 static void
@@ -348,37 +368,21 @@ pm_auto_maximal_current(pmc_t *pm)
 	}
 }
 
-static float
-pm_auto_lambda_generic(pmc_t *pm)
-{
-	float			lambda = pm->const_lambda;
-
-	if (pm->config_RELUCTANCE == PM_ENABLED) {
-
-		/* Add reluctance EMF at the half rated current.
-		 * */
-		lambda += 0.5f * m_fabsf(pm->const_im_L1 - pm->const_im_L2) * pm->i_maximal;
-	}
-
-	return lambda;
-}
-
 static void
 pm_auto_probe_speed_hold(pmc_t *pm)
 {
-	float			lambda, probe_MAX, probe_MIN;
+	float			probe_MAX, probe_MIN;
 
-	lambda = pm_auto_lambda_generic(pm);
+	probe_MIN = 1.5f * (pm->zone_threshold + pm->zone_noise);
 
-	if (lambda > M_EPSILON) {
+	if (pm->probe_speed_hold < probe_MIN) {
 
-		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / lambda;
-		probe_MIN = 1.5f * (pm->zone_speed_threshold + pm->zone_speed_noise);
+		pm->probe_speed_hold = probe_MIN;
+	}
 
-		if (pm->probe_speed_hold < probe_MIN) {
+	if (pm->const_lambda > M_EPSILON) {
 
-			pm->probe_speed_hold = probe_MIN;
-		}
+		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 
 		if (pm->probe_speed_hold > probe_MAX) {
 
@@ -390,29 +394,33 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 static void
 pm_auto_zone_threshold(pmc_t *pm)
 {
-	float			lambda, thld_MAX, bemf_MAX, thld_MIN, thld_IRU, thld_DTU;
+	float			Bf, thld_MAX, thld_MIN, thld_IRU;
 
-	lambda = pm_auto_lambda_generic(pm);
-
-	if (		pm->const_Rs > M_EPSILON
-			&& lambda > M_EPSILON) {
+	if (pm->const_Rs > M_EPSILON) {
 
 		/* Allowable range of the noise threshold.
 		 * */
 		thld_MAX = 0.4f * pm->forced_maximal;
-		bemf_MAX = 10.f / lambda;
-
-		thld_MAX = (bemf_MAX < thld_MAX) ? bemf_MAX : thld_MAX;
 		thld_MIN = 10.f;
 
-		if (pm->zone_speed_noise > thld_MAX) {
+		if (pm->zone_noise > thld_MAX) {
 
-			pm->zone_speed_noise = thld_MAX;
+			pm->zone_noise = thld_MAX;
 		}
 
-		if (pm->zone_speed_noise < thld_MIN) {
+		if (pm->const_lambda > M_EPSILON) {
 
-			pm->zone_speed_noise = thld_MIN;
+			thld_MAX = 10.f / pm->const_lambda;
+
+			if (pm->zone_noise > thld_MAX) {
+
+				pm->zone_noise = thld_MAX;
+			}
+		}
+
+		if (pm->zone_noise < thld_MIN) {
+
+			pm->zone_noise = thld_MIN;
 		}
 
 		/* Based on uncertainty due to resistance thermal drift.
@@ -421,29 +429,36 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 		if (pm->tvm_ACTIVE == PM_ENABLED) {
 
-			thld_DTU = 0.1f;
+			/* Based on TVM extreme accuracy.
+			 * */
+			thld_IRU += pm->fault_terminal_tol;
 		}
 		else {
 			/* Based on voltage uncertainty on deadtime.
 			 * */
-			thld_DTU = pm->dc_minimal * (2.f / 1000000.f)
+			thld_IRU += pm->dc_minimal * (2.f / 1000000.f)
 				* pm->m_freq * pm->const_fb_U;
 		}
 
-		/* Total zone threshold.
-		 * */
-		pm->zone_speed_threshold = (thld_IRU + thld_DTU) / lambda;
+		if (pm->const_lambda > M_EPSILON) {
 
-		thld_MAX = 0.8f * pm->forced_maximal - pm->zone_speed_noise;
+			Bf = pm->zone_budget;
 
-		if (pm->zone_speed_threshold > thld_MAX) {
-
-			pm->zone_speed_threshold = thld_MAX;
+			/* Total zone threshold.
+			 * */
+			pm->zone_threshold = Bf * thld_IRU / pm->const_lambda;
 		}
 
-		if (pm->zone_speed_threshold < thld_MIN) {
+		thld_MAX = 0.8f * pm->forced_maximal - pm->zone_noise;
 
-			pm->zone_speed_threshold = thld_MIN;
+		if (pm->zone_threshold > thld_MAX) {
+
+			pm->zone_threshold = thld_MAX;
+		}
+
+		if (pm->zone_threshold < thld_MIN) {
+
+			pm->zone_threshold = thld_MIN;
 		}
 	}
 }
@@ -451,26 +466,25 @@ pm_auto_zone_threshold(pmc_t *pm)
 static void
 pm_auto_forced_maximal(pmc_t *pm)
 {
-	float		lambda, forced_MAX, forced_MIN;
+	float		forced_MAX, forced_MIN;
 
-	lambda = pm_auto_lambda_generic(pm);
+	forced_MIN = pm->probe_speed_hold;
 
-	if (lambda > M_EPSILON) {
+	if (pm->forced_maximal < forced_MIN) {
 
-		forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / lambda;
-		forced_MIN = pm->probe_speed_hold;
+		pm->forced_maximal = forced_MIN;
+		pm->forced_reverse = pm->forced_maximal;
+	}
 
-		if (pm->forced_maximal < forced_MIN) {
+	if (pm->const_lambda > M_EPSILON) {
 
-			pm->forced_maximal = forced_MIN;
-		}
+		forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U / pm->const_lambda;
 
 		if (pm->forced_maximal > forced_MAX) {
 
 			pm->forced_maximal = forced_MAX;
+			pm->forced_reverse = pm->forced_maximal;
 		}
-
-		pm->forced_reverse = pm->forced_maximal;
 	}
 }
 
@@ -521,18 +535,24 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_mq_load_torque(pmc_t *pm)
 {
-	float		lambda, Df;
+	float		rel, Df;
 
-	lambda = pm_auto_lambda_generic(pm);
-
-	if (		pm->zone_speed_noise > M_EPSILON
-			&& pm->const_Ja > 0.f
-			&& lambda > M_EPSILON) {
+	if (		pm->zone_noise > M_EPSILON
+			&& pm->const_Ja > 0.f) {
 
 		Df = pm->s_damping;
 
-		pm->lu_gain_mq_LP = Df * 2.f * lambda * pm->m_dT
-			/ pm->const_Ja / pm->zone_speed_noise;
+		if (pm->const_lambda > M_EPSILON) {
+
+			pm->lu_gain_mq_LP = 2.f * Df * pm->const_lambda * pm->m_dT
+				/ (pm->const_Ja * pm->zone_noise);
+		}
+		else {
+			rel = (pm->const_im_L1 - pm->const_im_L2) * pm->i_maximal;
+
+			pm->lu_gain_mq_LP = 1.f * Df * rel * pm->m_dT
+				/ (pm->const_Ja * pm->zone_noise);
+		}
 	}
 }
 
@@ -541,12 +561,12 @@ pm_auto_loop_speed(pmc_t *pm)
 {
 	float		Df;
 
-	if (pm->zone_speed_noise > M_EPSILON) {
+	if (pm->zone_noise > M_EPSILON) {
 
 		Df = pm->s_damping;
 
-		pm->s_gain_P = Df * 2.f / pm->zone_speed_noise;
-		pm->s_gain_D = Df * 7E-4f / pm->zone_speed_noise;
+		pm->s_gain_P = 2.f * Df / pm->zone_noise;
+		pm->s_gain_D = 5.E-4f * Df / pm->zone_noise;
 
 		pm->s_gain_I = 0.f;
 		pm->s_gain_F = 1.f;
@@ -1179,7 +1199,7 @@ pm_kalman_lockout_guard(pmc_t *pm, float A)
 	if (		   pm->flux_ZONE == PM_ZONE_NONE
 			|| pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
-		thld_wS = pm->zone_speed_threshold * pm->zone_gain_TH;
+		thld_wS = pm->zone_threshold * pm->zone_gain_TH;
 
 		if (		pm->kalman_lpf_wS < - thld_wS
 				&& pm->flux_wS > thld_wS) {
@@ -1298,7 +1318,7 @@ pm_flux_zone(pmc_t *pm)
 	if (		   pm->flux_ZONE == PM_ZONE_NONE
 			|| pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
-		thld_wS = pm->zone_speed_threshold + pm->zone_speed_noise;
+		thld_wS = pm->zone_threshold + pm->zone_noise;
 
 		if (pm->lu_MODE == PM_LU_DETACHED) {
 
@@ -1325,7 +1345,7 @@ pm_flux_zone(pmc_t *pm)
 	}
 	else if (pm->flux_ZONE == PM_ZONE_HIGH) {
 
-		thld_wS = pm->zone_speed_threshold * pm->zone_gain_TH;
+		thld_wS = pm->zone_threshold * pm->zone_gain_TH;
 
 		if (pm->lu_MODE == PM_LU_DETACHED) {
 
@@ -1453,10 +1473,10 @@ pm_hfi_wave(pmc_t *pm)
 static void
 pm_sensor_hall(pmc_t *pm)
 {
-	float		hX, hY, A, B, blend, rel;
+	float		F[2], A, B, blend, rel;
 	int		HS;
 
-	const float	halftol = .6f;		/* ~34 degrees */
+	const float	tol = .6f;		/* ~34 degrees */
 
 	HS = pm->fb_HS;
 
@@ -1464,22 +1484,17 @@ pm_sensor_hall(pmc_t *pm)
 
 		pm->hall_ERN = 0;
 
-		hX = pm->hall_ST[HS].X;
-		hY = pm->hall_ST[HS].Y;
+		F[0] = pm->hall_ST[HS].X;
+		F[1] = pm->hall_ST[HS].Y;
 
-		A = hX * pm->hall_F[0] + hY * pm->hall_F[1];
-		B = hY * pm->hall_F[0] - hX * pm->hall_F[1];
+		A = F[0] * pm->hall_F[0] + F[1] * pm->hall_F[1];
+		B = F[1] * pm->hall_F[0] - F[0] * pm->hall_F[1];
 
 		rel = m_atan2f(B, A);
 
-		if (m_fabsf(rel) > M_PI_F) {
+		if (m_fabsf(rel) > tol) {
 
-			pm->hall_F[0] = hX;
-			pm->hall_F[1] = hY;
-		}
-		else if (m_fabsf(rel) > halftol) {
-
-			rel += (rel < 0.f) ? halftol : - halftol;
+			rel += (rel < 0.f) ? tol : - tol;
 
 			m_rotatef(pm->hall_F, rel);
 
@@ -1514,10 +1529,10 @@ pm_sensor_hall(pmc_t *pm)
 static void
 pm_sensor_eabi(pmc_t *pm)
 {
-	float		F[2], A, blend, rel;
+	float		F[2], lPOS, A, blend, rel;
 	int		relEP, WRAP;
 
-	const float	halftol = pm->quick_ZiEP * .6f;
+	const float	tol = pm->quick_ZiEP * .6f;
 
 	if (pm->eabi_RECENT != PM_ENABLED) {
 
@@ -1526,22 +1541,25 @@ pm_sensor_eabi(pmc_t *pm)
 		pm->eabi_unwrap = 0;
 		pm->eabi_interp = 0.f;
 
-		if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
-
-			pm->eabi_F0[0] = pm->lu_F[0];
-			pm->eabi_F0[1] = pm->lu_F[1];
-		}
-
 		pm->eabi_F[0] = pm->lu_F[0];
 		pm->eabi_F[1] = pm->lu_F[1];
 		pm->eabi_wS = pm->lu_wS;
+
+		if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
+
+			/* In case of incremental operation we need to update
+			 * the position of zero DQ-frame.
+			 * */
+			pm->eabi_F0[0] = pm->lu_F[0];
+			pm->eabi_F0[1] = pm->lu_F[1];
+		}
 
 		pm->eabi_RECENT = PM_ENABLED;
 	}
 
 	if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
-		WRAP = 0x10000U;
+		WRAP = 0x10000;
 
 		relEP = pm->fb_EP - pm->eabi_bEP;
 		relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
@@ -1553,10 +1571,7 @@ pm_sensor_eabi(pmc_t *pm)
 
 		WRAP = pm->eabi_EPPR;
 
-		pm->eabi_bEP = (pm->eabi_gear_Zq > 1)
-			? pm->eabi_lEP % WRAP : pm->eabi_lEP;
-
-		relEP = pm->fb_EP - pm->eabi_bEP;
+		relEP = pm->fb_EP - (pm->eabi_lEP % WRAP);
 		relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
 			: (relEP < - WRAP / 2) ? WRAP : 0;
 	}
@@ -1569,46 +1584,24 @@ pm_sensor_eabi(pmc_t *pm)
 		pm->eabi_lEP += relEP;
 		pm->eabi_interp += - (float) relEP * pm->quick_ZiEP;
 
-		WRAP = pm->eabi_EPPR * pm->eabi_gear_Zq;
+		WRAP = pm->eabi_EPPR * pm->eabi_const_Zq;
 
 		if (pm->eabi_lEP < - WRAP) {
 
-			pm->eabi_unwrap += - pm->eabi_gear_Zq;
+			pm->eabi_unwrap += - pm->eabi_const_Zq;
 			pm->eabi_lEP += WRAP;
 		}
 		else if (pm->eabi_lEP > WRAP) {
 
-			pm->eabi_unwrap += pm->eabi_gear_Zq;
+			pm->eabi_unwrap += pm->eabi_const_Zq;
 			pm->eabi_lEP += - WRAP;
 		}
 	}
 
-	rel = (pm->eabi_interp > halftol) ? halftol - pm->eabi_interp
-		: (pm->eabi_interp < - halftol) ? - halftol - pm->eabi_interp : 0.f;
+	rel = (pm->eabi_interp > tol) ? tol - pm->eabi_interp
+		: (pm->eabi_interp < - tol) ? - tol - pm->eabi_interp : 0.f;
 
-	pm->eabi_interp += rel + pm->eabi_wS * pm->m_dT;
-
-	if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
-
-		float		lEP;
-
-		/* Take the electrical absolute LOCATION.
-		 * */
-		lEP = (float) pm->eabi_unwrap * (float) pm->eabi_EPPR
-			+ (float) pm->eabi_lEP;
-
-		pm->eabi_location = lEP * pm->quick_ZiEP + pm->eabi_interp;
-	}
-
-	/* Take the electrical position.
-	 * */
-	A = m_wrapf((float) pm->eabi_lEP * pm->quick_ZiEP + pm->eabi_interp);
-
-	F[0] = m_cosf(A);
-	F[1] = m_sinf(A);
-
-	pm->eabi_F[0] = F[0] * pm->eabi_F0[0] - F[1] * pm->eabi_F0[1];
-	pm->eabi_F[1] = F[1] * pm->eabi_F0[0] + F[0] * pm->eabi_F0[1];
+	pm->eabi_interp += rel;
 
 	blend = m_fabsf(pm->eabi_wS) * pm->eabi_trip_AP;
 	blend = (blend > 1.f) ? 1.f : blend;
@@ -1622,6 +1615,28 @@ pm_sensor_eabi(pmc_t *pm)
 
 		A = pm_torque_get_accel(pm);
 		pm->eabi_wS += A * pm->m_dT * pm->eabi_gain_IF;
+	}
+
+	pm->eabi_interp += pm->eabi_wS * pm->m_dT;
+
+	/* Take the electrical position.
+	 * */
+	lPOS = m_wrapf((float) pm->eabi_lEP * pm->quick_ZiEP + pm->eabi_interp);
+
+	F[0] = m_cosf(lPOS);
+	F[1] = m_sinf(lPOS);
+
+	pm->eabi_F[0] = F[0] * pm->eabi_F0[0] - F[1] * pm->eabi_F0[1];
+	pm->eabi_F[1] = F[1] * pm->eabi_F0[0] + F[0] * pm->eabi_F0[1];
+
+	if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
+
+		/* Take the electrical absolute LOCATION.
+		 * */
+		lPOS = (float) pm->eabi_EPPR * (float) pm->eabi_unwrap
+			+ (float) pm->eabi_lEP;
+
+		pm->eabi_location = lPOS * pm->quick_ZiEP + pm->eabi_interp;
 	}
 }
 
@@ -1684,7 +1699,7 @@ pm_sensor_sincos(pmc_t *pm)
 
 	pm->sincos_SC[2] = pm->sincos_SC[1];
 
-	WRAP = pm->sincos_gear_Zq;
+	WRAP = pm->sincos_const_Zq;
 
 	if (pm->sincos_revol < - WRAP) {
 
@@ -1698,13 +1713,13 @@ pm_sensor_sincos(pmc_t *pm)
 	}
 
 	scAN = m_atan2f(pm->sincos_SC[1], pm->sincos_SC[0])
-		+ (float) pm->sincos_revol * M_2PI_F;
+		+ (float) pm->sincos_revol * M_2_PI_F;
 
 	if (pm->config_LU_LOCATION == PM_LOCATION_SINCOS) {
 
 		float		scLOC;
 
-		scLOC = scAN + (float) pm->sincos_unwrap * M_2PI_F;
+		scLOC = scAN + (float) pm->sincos_unwrap * M_2_PI_F;
 
 		/* Take the electrical absolute LOCATION.
 		 * */
@@ -2063,7 +2078,7 @@ pm_lu_FSM(pmc_t *pm)
 	if (pm->config_LU_LOCATION == PM_LOCATION_INHERITED) {
 
 		pm->lu_location = m_atan2f(pm->lu_F[1], pm->lu_F[0])
-			+ (float) pm->lu_revol * M_2PI_F;
+			+ (float) pm->lu_revol * M_2_PI_F;
 	}
 	else if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
 

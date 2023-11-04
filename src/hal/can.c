@@ -6,22 +6,22 @@ void irq_CAN1_TX() { }
 static void
 irq_CAN1_RX(int mb)
 {
-	uint32_t			xLO, xHI;
+	uint32_t			xRDLR, xRDHR;
 
 	hal.CAN_msg.ID = (uint16_t) (CAN1->sFIFOMailBox[mb].RIR >> 21);
 	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & 0xFU);
 
-	xLO = CAN1->sFIFOMailBox[mb].RDLR;
-	xHI = CAN1->sFIFOMailBox[mb].RDHR;
+	xRDLR = CAN1->sFIFOMailBox[mb].RDLR;
+	xRDHR = CAN1->sFIFOMailBox[mb].RDHR;
 
-	hal.CAN_msg.payload[0] = (uint8_t) (xLO & 0xFFU);
-	hal.CAN_msg.payload[1] = (uint8_t) ((xLO >> 8) & 0xFFU);
-	hal.CAN_msg.payload[2] = (uint8_t) ((xLO >> 16) & 0xFFU);
-	hal.CAN_msg.payload[3] = (uint8_t) ((xLO >> 24) & 0xFFU);
-	hal.CAN_msg.payload[4] = (uint8_t) (xHI & 0xFFU);
-	hal.CAN_msg.payload[5] = (uint8_t) ((xHI >> 8) & 0xFFU);
-	hal.CAN_msg.payload[6] = (uint8_t) ((xHI >> 16) & 0xFFU);
-	hal.CAN_msg.payload[7] = (uint8_t) ((xHI >> 24) & 0xFFU);
+	hal.CAN_msg.payload[0] = (uint8_t) ((xRDLR >> 0)  & 0xFFU);
+	hal.CAN_msg.payload[1] = (uint8_t) ((xRDLR >> 8)  & 0xFFU);
+	hal.CAN_msg.payload[2] = (uint8_t) ((xRDLR >> 16) & 0xFFU);
+	hal.CAN_msg.payload[3] = (uint8_t) ((xRDLR >> 24) & 0xFFU);
+	hal.CAN_msg.payload[4] = (uint8_t) ((xRDHR >> 0)  & 0xFFU);
+	hal.CAN_msg.payload[5] = (uint8_t) ((xRDHR >> 8)  & 0xFFU);
+	hal.CAN_msg.payload[6] = (uint8_t) ((xRDHR >> 16) & 0xFFU);
+	hal.CAN_msg.payload[7] = (uint8_t) ((xRDHR >> 24) & 0xFFU);
 }
 
 void irq_CAN1_RX0()
@@ -77,7 +77,7 @@ static int
 CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
 {
 	uint32_t		xMSR;
-	int		wait_N = 0;
+	int			wait_N = 0;
 
 	do {
 		xMSR = CAN1->MSR & xBITS;
@@ -168,7 +168,7 @@ void CAN_filter_ID(int fs, int mb, int ID, int mID)
 int CAN_send_msg(const CAN_msg_t *msg)
 {
 	uint32_t		xTSR;
-	int		mb, irq;
+	int			mb, irq;
 
 	irq = hal_lock_irq();
 

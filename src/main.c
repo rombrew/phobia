@@ -586,7 +586,7 @@ default_flash_load()
 	net.ep[7].rate = net.ep[0].rate;
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
-	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_PC;
+	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
 	ap.ppm_STARTUP = PM_DISABLED;
 	ap.ppm_DISARM = PM_ENABLED;
 	ap.ppm_range_pulse[0] = 1.0f;	/* (ms) */
@@ -601,7 +601,7 @@ default_flash_load()
 	ap.step_const_ld_EP = 0.f;
 
 #ifdef HW_HAVE_ANALOG_KNOB
-	ap.knob_reg_ID = ID_PM_I_SETPOINT_CURRENT_PC;
+	ap.knob_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
 	ap.knob_ENABLED = PM_DISABLED;
 #ifdef HW_HAVE_BRAKE_KNOB
 	ap.knob_BRAKE = PM_DISABLED;
@@ -627,7 +627,7 @@ default_flash_load()
 	ap.disarm_timeout = 1.f;	/* (s) */
 
 	ap.auto_reg_DATA = 0.f;
-	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_RPM;
+	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
 	ap.auto_ENABLED = PM_DISABLED;
 
 #ifdef HW_HAVE_NTC_ON_PCB
@@ -1110,7 +1110,7 @@ SH_DEF(ap_version)
 
 	rc = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
 
-	printf("CRC32 %8x \"%s\"" EOL, flash_crc32, (rc != 0) ? "OK" : "does NOT match");
+	printf("CRC32 %8x (%s)" EOL, flash_crc32, (rc != 0) ? "OK" : "does NOT match");
 }
 
 SH_DEF(ap_clock)

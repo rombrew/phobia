@@ -3,7 +3,7 @@
 
 #define M_EPSILON		1.19209E-7f
 #define M_PI_F			3.14159265f
-#define M_2PI_F 		6.28318531f
+#define M_2_PI_F 		6.28318531f
 #define M_LOG_E 		0.69314718f
 #define M_LOG_10		0.30103000f
 

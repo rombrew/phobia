@@ -65,16 +65,16 @@ float m_wrapf(float x)
 {
 	int		revol;
 
-	revol = (int) (x * (1.f / M_2PI_F));
-	x += - (float) revol * M_2PI_F;
+	revol = (int) (x * (1.f / M_2_PI_F));
+	x += - (float) revol * M_2_PI_F;
 
 	if (x < - M_PI_F) {
 
-		x += M_2PI_F;
+		x += M_2_PI_F;
 	}
 	else if (x > M_PI_F) {
 
-		x += - M_2PI_F;
+		x += - M_2_PI_F;
 	}
 
 	return x;

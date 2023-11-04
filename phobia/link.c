@@ -315,8 +315,6 @@ link_fetch_reg_format(struct link_pmc *lp)
 
 		struct link_reg		*reg = lp->reg + reg_ID;
 
-		reg->mode = reg_mode;
-
 		sym = lk_token(&sp);
 		tok = lk_token(&sp);
 
@@ -325,6 +323,8 @@ link_fetch_reg_format(struct link_pmc *lp)
 			char		vbuf[80];
 
 			sprintf(vbuf, "%.77s", lk_space(&sp));
+
+			reg->mode = reg_mode;
 
 			sprintf(reg->sym, "%.77s", sym);
 			sprintf(reg->val, "%.77s", lk_token(&sp));
@@ -370,8 +370,14 @@ link_fetch_hwinfo(struct link_pmc *lp)
 	}
 	else if (strcmp(tok, "CRC32") == 0) {
 
-		sprintf(priv->hw_crc32, "%.9s", lk_token(&sp));
-		sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " %.16s", lk_token(&sp));
+		sprintf(priv->hw_crc32, "%.10s", lk_token(&sp));
+
+		tok = lk_token(&sp);
+
+		if (strcmp(tok, "OK") != 0) {
+
+			sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " (%.16s)", tok);
+		}
 
 		sprintf(lp->hwinfo, "%.16s / %.16s / %.36s", priv->hw_revision,
 				priv->hw_build, priv->hw_crc32);
@@ -580,6 +586,7 @@ void link_remote(struct link_pmc *lp)
 		priv->fd_grab = NULL;
 	}
 
+	lp->uptime = 0;
 	lp->fetched_N = 0;
 
 	lp->locked = lp->clock + 1000;

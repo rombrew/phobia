@@ -263,8 +263,7 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 	nk->table[NK_COLOR_BACKGROUND] = nk_rgba(40, 40, 45, 255);
 	nk->table[NK_COLOR_HIDDEN] = nk_rgba(50, 50, 55, 255);
 	nk->table[NK_COLOR_CONFIG] = nk_rgba(210, 190, 120, 255);
-	nk->table[NK_COLOR_CONFIG_AUTO] = nk_rgba(210, 160, 95, 255);
-	nk->table[NK_COLOR_DESIGN] = nk_rgba(90, 90, 95, 255);
+	nk->table[NK_COLOR_DESIGN] = nk_rgba(90, 90, 105, 255);
 	nk->table[NK_COLOR_FLICKER_LIGHT] = nk_rgba(75, 75, 85, 255);
 	nk->table[NK_COLOR_FLICKER_ALERT] = nk_rgba(175, 45, 55, 255);
 	nk->table[NK_COLOR_ENABLED] = nk_rgba(45, 155, 55, 255);

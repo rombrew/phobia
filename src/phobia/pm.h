@@ -432,8 +432,9 @@ typedef struct {
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 
-	float		zone_speed_noise;
-	float		zone_speed_threshold;
+	float		zone_budget;
+	float		zone_noise;
+	float		zone_threshold;
 	float		zone_lpf_wS;
 	float		zone_gain_TH;
 	float		zone_gain_LP;
@@ -466,8 +467,8 @@ typedef struct {
 	float		eabi_interp;
 	float		eabi_F0[2];
 	int		eabi_EPPR;
-	int		eabi_gear_Zs;
-	int		eabi_gear_Zq;
+	int		eabi_const_Zs;
+	int		eabi_const_Zq;
 	float		eabi_F[2];
 	float		eabi_wS;
 	float		eabi_location;
@@ -481,8 +482,8 @@ typedef struct {
 	float		sincos_SC[3];
 	int		sincos_revol;
 	int		sincos_unwrap;
-	int		sincos_gear_Zs;
-	int		sincos_gear_Zq;
+	int		sincos_const_Zs;
+	int		sincos_const_Zq;
 	float		sincos_F[2];
 	float		sincos_wS;
 	float		sincos_location;
