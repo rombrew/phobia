@@ -114,8 +114,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
-	pm->config_HOLDING_BRAKE = PM_DISABLED;
-	pm->config_SPEED_LIMITED = PM_ENABLED;
+	pm->config_REVERSE_BRAKE = PM_DISABLED;
+	pm->config_SPEED_MAXIMAL = PM_ENABLED;
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
 	pm->config_BOOST_CHARGE = PM_DISABLED;
@@ -265,7 +265,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
 
-	pm->x_maximal = 600.f;
+	pm->x_maximal = 200.f;
 	pm->x_minimal = - pm->x_maximal;
 	pm->x_damping = 1.f;
 	pm->x_tolerance = 0.f;
@@ -2653,7 +2653,7 @@ pm_loop_current(pmc_t *pm)
 	if (pm->lu_MODE == PM_LU_FORCED) {
 
 		if (		pm->config_LU_DRIVE == PM_DRIVE_CURRENT
-				&& pm->config_SPEED_LIMITED == PM_ENABLED) {
+				&& pm->config_SPEED_MAXIMAL == PM_ENABLED) {
 
 			pm->s_track = pm->lu_wS;
 		}
@@ -2662,7 +2662,7 @@ pm_loop_current(pmc_t *pm)
 			&& pm->flux_ZONE != PM_ZONE_HIGH) {
 
 		if (		pm->config_LU_DRIVE == PM_DRIVE_CURRENT
-				&& pm->config_SPEED_LIMITED == PM_ENABLED) {
+				&& pm->config_SPEED_MAXIMAL == PM_ENABLED) {
 
 			pm->s_track = pm->lu_wS;
 		}
@@ -2672,11 +2672,9 @@ pm_loop_current(pmc_t *pm)
 
 		if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
-			if (pm->config_HOLDING_BRAKE == PM_ENABLED) {
+			if (pm->config_REVERSE_BRAKE == PM_ENABLED) {
 
-				iREV = (pm->s_reverse < pm->s_maximal) ? 1.f : - 1.f;
-
-				if (track_Q * iREV < - M_EPSILON) {
+				if (track_Q < - M_EPSILON) {
 
 					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
 
@@ -2687,7 +2685,7 @@ pm_loop_current(pmc_t *pm)
 				}
 			}
 
-			if (pm->config_SPEED_LIMITED == PM_ENABLED) {
+			if (pm->config_SPEED_MAXIMAL == PM_ENABLED) {
 
 				float		wSP, eSP, blend;
 

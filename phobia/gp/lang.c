@@ -169,8 +169,9 @@ void langFill(lang_t *la, int lang)
 			"    Drawing primitive ...\0"
 			"    Scale on X ...\0"
 			"    Scale on Y ...\0"
+			"    Bake figures to CSV ...\0"
 			"    Transparency mode   [ %s ]\0"
-			"    Compact legend      [ %s ]\0"
+			"    Hidden legend       [ %s ]\0"
 
 			"\0";
 
@@ -192,7 +193,7 @@ void langFill(lang_t *la, int lang)
 		la->length_edit = "Length";
 		la->figure_thickness_edit = "Thickness";
 		la->font_size_edit = "Font size";
-		la->median_unwrap_edit = "Median and unwrap";
+		la->median_unwrap_edit = "Median and unwrap flags";
 	}
 	else if (lang == LANG_RU) {
 
@@ -343,8 +344,9 @@ void langFill(lang_t *la, int lang)
 			"    Примитив рисования ...\0"
 			"    Масштаб по X ...\0"
 			"    Масштаб по Y ...\0"
+			"    Запечь фигуры в CSV ...\0"
 			"    Режим прозрачности   [ %s ]\0"
-			"    Компактная легенда   [ %s ]\0"
+			"    Скрытая легенда      [ %s ]\0"
 
 			"\0";
 
@@ -366,7 +368,7 @@ void langFill(lang_t *la, int lang)
 		la->length_edit = "Длина";
 		la->figure_thickness_edit = "Толщина";
 		la->font_size_edit = "Размер шрифта";
-		la->median_unwrap_edit = "Медиана и разворот";
+		la->median_unwrap_edit = "Медиана и флаги разворота";
 	}
 
 	la->figure_edit_color_menu =

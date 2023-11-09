@@ -46,7 +46,7 @@
 #define PLOT_AXES_MAX				9
 #define PLOT_FIGURE_MAX 			8
 #define PLOT_DATA_BOX_MAX			8
-#define PLOT_MEDIAN_MAX 			31
+#define PLOT_MEDIAN_MAX 			91
 #define PLOT_POLYFIT_MAX			7
 #define PLOT_SUBTRACT				20
 #define PLOT_GROUP_MAX				40
@@ -361,7 +361,7 @@ typedef struct {
 	int			rcache_wipe_data_N;
 	int			rcache_wipe_chunk_N;
 
-	int			legend_compact;
+	int			legend_hidden;
 	int			legend_X;
 	int			legend_Y;
 	int			legend_size_X;

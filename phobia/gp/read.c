@@ -2753,15 +2753,12 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "scale") == 0) {
+			else if (strcmp(tbuf, "xscale") == 0 || strcmp(tbuf, "yscale") == 0) {
 
 				failed = 1;
 
 				do {
-					r = configToken(rd, pa);
-
-					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					argi[0] = (int) tbuf[0];
 
 					r = configToken(rd, pa);
 
@@ -2779,7 +2776,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					if (argi[0] == 0) {
+					if (argi[0] == 'x') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
 
@@ -2795,7 +2792,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[1] = argd[1];
 						}
 					}
-					else if (argi[0] == 1) {
+					else if (argi[0] == 'y') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
 
@@ -2811,21 +2808,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[1] = argd[1];
 						}
 					}
-					else {
-						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
-					}
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "subtract") == 0) {
+			else if (strcmp(tbuf, "xsubtract") == 0 || strcmp(tbuf, "ysubtract") == 0) {
 
 				failed = 1;
 
 				do {
-					r = configToken(rd, pa);
-
-					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					argi[0] = (int) tbuf[0];
 
 					r = configToken(rd, pa);
 
@@ -2864,7 +2855,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					if (argi[0] == 0) {
+					if (argi[0] == 'x') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
 
@@ -2879,7 +2870,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_2 = argi[2];
 						}
 					}
-					else if (argi[0] == 1) {
+					else if (argi[0] == 'y') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
 
@@ -2894,21 +2885,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_2 = argi[2];
 						}
 					}
-					else {
-						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
-					}
 				}
 				while (0);
 			}
-			else if (strcmp(tbuf, "filter") == 0) {
+			else if (strcmp(tbuf, "xfilter") == 0 || strcmp(tbuf, "yfilter") == 0) {
 
 				failed = 1;
 
 				do {
-					r = configToken(rd, pa);
-
-					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					argi[0] = (int) tbuf[0];
 
 					r = configToken(rd, pa);
 
@@ -2978,7 +2963,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					if (argi[0] == 0) {
+					if (argi[0] == 'x') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 0);
 
@@ -3006,7 +2991,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 							}
 						}
 					}
-					else if (argi[0] == 1) {
+					else if (argi[0] == 'y') {
 
 						N = configGetSubtract(rd, rd->page_N, rd->figure_N, 1);
 
@@ -3033,9 +3018,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[2];
 							}
 						}
-					}
-					else {
-						sprintf(msg_tbuf, "axis number %i is out of range", argi[0]);
 					}
 				}
 				while (0);
@@ -3609,6 +3591,10 @@ readScaleDataMap(plot_t *pl, int dN, int cN, subtract_t *sb)
 
 				cN = cMAP;
 			}
+		}
+		else if (sb[N].busy == SUBTRACT_RESAMPLE) {
+
+			/* TODO */
 		}
 		else if (	sb[N].busy == SUBTRACT_BINARY_SUBTRACTION
 				|| sb[N].busy == SUBTRACT_BINARY_ADDITION

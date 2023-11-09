@@ -38,7 +38,7 @@
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	10
+#define GP_CONFIG_VERSION	11
 
 enum {
 	FORMAT_NONE			= 0,

@@ -169,7 +169,7 @@ void ts_probe_impedance()
 
 		printf("const_im_L1 = %.4E (H)\n", pm.const_im_L1);
 		printf("const_im_L2 = %.4E (H)\n", pm.const_im_L2);
-		printf("const_im_B = %.2f (g)\n", pm.const_im_B);
+		printf("const_im_B = %.2f (deg)\n", pm.const_im_B);
 		printf("const_im_R = %.4E (Ohm)\n", pm.const_im_R);
 
 		TS_assert_relative(pm.const_im_L1, m.Ld);
@@ -342,7 +342,7 @@ void ts_adjust_sensor_hall()
 
 			STg = atan2(pm.hall_ST[N].Y, pm.hall_ST[N].X) * (180. / M_PI);
 
-			printf("hall_ST[%i] = %.1f (g)\n", N, STg);
+			printf("hall_ST[%i] = %.1f (deg)\n", N, STg);
 		}
 
 		if (STARTUP == PM_ENABLED) {
@@ -387,7 +387,7 @@ void ts_adjust_sensor_eabi()
 
 			F0g = atan2(pm.eabi_F0[1], pm.eabi_F0[0]) * (180. / M_PI);
 
-			printf("eabi_F0 = %.1f (g)\n", F0g);
+			printf("eabi_F0 = %.1f (deg)\n", F0g);
 		}
 
 		printf("eabi_EPPR = %i\n", pm.eabi_EPPR);

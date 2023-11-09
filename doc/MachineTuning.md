@@ -89,7 +89,7 @@ transient rate and noise level.
 
 ## Speed loop
 
-Automatically tune speed loop PD regulator gains based on damping percentage.
+Automatically tune speed loop PIFD regulator gains based on damping percentage.
 Reasonable values are from 20 to 200.
 
 	(pmc) reg pm.s_damping <pc>
@@ -111,30 +111,32 @@ limits actual parameters but limit input setpoint to comply it with
 constraints.
 
 Quite different in the case of current control. You should enable
-`SPEED_LIMITED` feature to apply above speed loop constraints to actual speed
+`SPEED_MAXIMAL` feature to apply above speed loop constraints to actual speed
 and acceleration.
 
-    (pmc) reg pm.config_SPEED_LIMITED 1
+    (pmc) reg pm.config_SPEED_MAXIMAL 1
 
 Here trackpoint is driven by actual speed estimate with acceleration
 constraint. For system stability we have introduced a linear regulation region
 `pm.l_track_tol` and blending gain `pm.l_gain_LP`. So there may be some
 backlash in case of direction change.
 
-Also you can tune PD regulator gains manually.
+Also you can tune PIFD regulator and load torque gains manually.
 
     (pmc) reg pm.lu_gain_mq_LP <x>
 	(pmc) reg pm.s_gain_P <x>
+	(pmc) reg pm.s_gain_I <x>
+	(pmc) reg pm.s_gain_F <x>
 	(pmc) reg pm.s_gain_D <x>
 
 ## Brake function
 
-If you need a holding brake function in combination with current control then
-enable `HOLDING_BRAKE` feature. It is activated when current setpoint is
+If you need a reverse brake function in combination with current control then
+enable `REVERSE_BRAKE` feature. It is activated when current setpoint is
 negative. Brake current is limited by absolute value of setpoint so brake is
 proportional.
 
-	(pmc) reg pm.config_HOLDING_BRAKE 1
+	(pmc) reg pm.config_REVERSE_BRAKE 1
 
 Note that speed control loop should be fine tuned to use this feature.
 

@@ -257,8 +257,8 @@ typedef struct {
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
 	int		config_WEAKENING;
-	int		config_HOLDING_BRAKE;
-	int		config_SPEED_LIMITED;
+	int		config_REVERSE_BRAKE;
+	int		config_SPEED_MAXIMAL;
 	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
 	int		config_BOOST_CHARGE;		/* TODO */
