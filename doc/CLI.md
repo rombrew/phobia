@@ -89,7 +89,7 @@ Or live telemetry printout.
 
 Using CAN data pipes you are able to link register across CAN network. You can
 easily control many machines from single input. Build a traction control by
-exchange the speed signals across machines.
+exchange the speed signals across PMC instances.
 
 ## Examples
 

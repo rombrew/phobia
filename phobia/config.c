@@ -246,6 +246,6 @@ void config_default(struct config_phobia *fe)
 	strcpy(fe->fuzzy, "setpoint");
 
 	fe->lograte = 1000;
-	fe->regfile = 463;
+	fe->regfile = 468;
 }
 

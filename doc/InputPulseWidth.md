@@ -35,13 +35,14 @@ width to the control value.
 	(pmc) reg ap.ppm_range_pulse2 <ms>
 
 Choose what parameter you want to control. You can choose any of the registers
-available for writing. By default the speed control is selected as a percentage
-of maximal no load speed. There is a variable `pm.s_setpoint_pc`.
+available for writing. By default the `pm.s_setpoint_speed_knob` register is
+selected that mapped on current or speed percentage depending on control loop
+enabled.
 
 	(pmc) reg ap.ppm_reg_ID <reg>
 
 Note that setting the control variable does not enable appropriate control loop
-automatically. You may need to enable appropriate control mode explicitly.
+automatically. You can select control loop if you need.
 
 	(pmc) reg pm.config_LU_DRIVE 1
 

@@ -7,8 +7,8 @@
 #define M_LOG_E 		0.69314718f
 #define M_LOG_10		0.30103000f
 
-inline float m_fabsf(float x) { return __builtin_fabsf(x); }
-inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
+static inline float m_fabsf(float x) { return __builtin_fabsf(x); }
+static inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 
 int m_isfinitef(float x);
 

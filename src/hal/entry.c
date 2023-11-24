@@ -1,8 +1,8 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
+#define LD_VECTORS		__attribute__ ((section(".vectors"), used))
 #define LD_IRQ_WEAK		__attribute__ ((weak, alias("irq_Weak")))
-#define LD_IRQ_VECTORS		__attribute__ ((section(".vectors"), used))
 
 extern uint32_t ld_stack;
 extern uint32_t ld_begin_text;
@@ -48,7 +48,7 @@ const FW_info_t		fw = {
 	_HW_REV, __DATE__
 };
 
-LD_IRQ_VECTORS void *VECTORS[] = {
+LD_VECTORS void *VECTORS[] = {
 
 	(void *) &ld_stack,
 
@@ -153,13 +153,13 @@ LD_IRQ_VECTORS void *VECTORS[] = {
 };
 
 static void
-init_data(const uint32_t *long_s, uint32_t *long_d, uint32_t *long_e)
+init_data(const uint32_t *long_s, uint32_t *long_d, const uint32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = *long_s++; }
 }
 
 static void
-init_bss(uint32_t *long_d, uint32_t *long_e)
+init_bss(uint32_t *long_d, const uint32_t *long_e)
 {
 	while (long_d < long_e) { *long_d++ = 0; }
 }

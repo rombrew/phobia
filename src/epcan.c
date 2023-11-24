@@ -378,7 +378,7 @@ local_node_random_ID()
 	return found_ID;
 }
 
-void task_EPCAN_LOG(void *pData)
+LD_TASK void task_EPCAN_LOG(void *pData)
 {
 	char			xbyte;
 
@@ -473,7 +473,7 @@ EPCAN_send_msg(CAN_msg_t *msg)
 	return rc;
 }
 
-void task_EPCAN_NET(void *pData)
+LD_TASK void task_EPCAN_NET(void *pData)
 {
 	CAN_msg_t		msg;
 	int			node_ACK, node_ID;
@@ -634,7 +634,7 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 	}
 }
 
-void task_EPCAN_IN(void *pData)
+LD_TASK void task_EPCAN_IN(void *pData)
 {
 	CAN_msg_t		msg;
 
@@ -652,7 +652,7 @@ void task_EPCAN_IN(void *pData)
 	while (1);
 }
 
-void task_EPCAN_TX(void *pData)
+LD_TASK void task_EPCAN_TX(void *pData)
 {
 	CAN_msg_t		msg;
 	char			xbyte;
@@ -893,7 +893,7 @@ SH_DEF(net_revoke)
 	}
 }
 
-void task_epcan_REMOTE(void *pData)
+LD_TASK void task_epcan_REMOTE(void *pData)
 {
 	CAN_msg_t		msg;
 	int			xbyte;

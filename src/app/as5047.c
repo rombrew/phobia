@@ -75,7 +75,7 @@ int AS5047_get_EP()
 	return priv_AS5047.EP;
 }
 
-void app_AS5047(void *pData)
+LD_TASK void app_AS5047(void *pData)
 {
 	volatile int		*knob = (volatile int *) pData;
 

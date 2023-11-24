@@ -1,6 +1,6 @@
 ## Overview
 
-This page describes how to verify the integrity of PMC.
+This page describes how to verify the electrical integrity of PMC.
 
 ## Automated Self Test
 
@@ -21,4 +21,7 @@ abnormal deviations in measuring circuits.
 
 In case of motor connected you also check the current sensing circuit. Above
 two procedures are must do in case of new hardware first powerup.
+
+Also look into [Trouble Shooting](TroubleShooting.md) page in case of you
+getting any error codes in `pm.fsm_errno`.
 

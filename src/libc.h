@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define LD_LIBC			__attribute__ ((noinline, used))
+#define LD_TASK			__attribute__ ((noinline))
+
 #define EOL			"\r\n"
 
 #define	IODEF_TO_USART()	if (iodef != &io_USART) { iodef = &io_USART; }
@@ -34,8 +37,8 @@ extern io_ops_t		*iodef;
  * */
 extern uint32_t		rseed;
 
-void *memset(void *d, int c, size_t n);
-void *memcpy(void *restrict d, const void *restrict s, size_t n);
+void *memset(void *d, int c, size_t n) LD_LIBC;
+void *memcpy(void *restrict d, const void *restrict s, size_t n) LD_LIBC;
 
 int strcmp(const char *s, const char *p);
 int strcmpe(const char *s, const char *p);

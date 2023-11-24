@@ -26,8 +26,10 @@
 #endif /* HW_HAVE_USB_CDC_ACM */
 #include "wd.h"
 
+#define LD_RAMFUNC			__attribute__ ((section(".ramfunc")))	\
+					__attribute__ ((noinline, used))
+
 #define LD_CCRAM			__attribute__ ((section(".ccram")))
-#define LD_RAMFUNC			__attribute__ ((section(".ramfunc"), noinline, used))
 #define LD_NOINIT			__attribute__ ((section(".noinit")))
 #define LD_DMA				__attribute__ ((aligned(32)))
 

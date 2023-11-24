@@ -2010,6 +2010,13 @@ pm_lu_FSM(pmc_t *pm)
 			pm->eabi_RECENT = PM_DISABLED;
 		}
 	}
+	else if (pm->lu_MODE == PM_LU_SENSOR_SINCOS) {
+
+		pm_estimate(pm);
+		pm_sensor_sincos(pm);
+
+		/* TODO */
+	}
 	else {
 		lu_F[0] = pm->lu_F[0];
 		lu_F[1] = pm->lu_F[1];

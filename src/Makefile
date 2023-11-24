@@ -18,10 +18,13 @@ GDB	= $(CROSS)-gdb
 MK	= mkdir -p
 RM	= rm -rf
 
-#CROSS	= armv7m-none-eabi
-#CC	= clang -target $(CROSS)
+CFLAGS	= -std=gnu99 -g3 -pipe
 
-CFLAGS	= -std=gnu99 -O3 -flto=auto -g3 -pipe
+LTO		= -O3 -flto=auto
+OPTIMIZE	= -Os
+
+$(BUILD)/phobia/%: OPTIMIZE = $(LTO)
+$(BUILD)/main.o:   OPTIMIZE = $(LTO)
 
 ifeq ($(HWMCU), STM32F405)
 CFLAGS	+= -mcpu=cortex-m4 -mthumb \
@@ -39,8 +42,8 @@ CFLAGS	+= -Wall -Wdouble-promotion \
 CFLAGS	+= -fno-hosted \
 	   -fno-stack-protector
 
-CFLAGS	+= -fno-math-errno \
-	   -ffinite-math-only \
+CFLAGS	+= -ffinite-math-only \
+	   -fno-math-errno \
 	   -fno-signed-zeros \
 	   -fno-trapping-math \
 	   -fno-associative-math \
@@ -51,16 +54,16 @@ CFLAGS	+= -I.
 CFLAGS	+= -D_HW_REV=\"$(HWREV)\" \
 	   -D_HW_INCLUDE=\"hal/hw/$(HWREV).h\"
 
-LDFLAGS	= -nostdlib
+LDFLAGS = -nostdlib
 LDFLAGS += -Wl,--no-warn-rwx-segments \
 	   -Wl,--print-memory-usage
 
 ifeq ($(HWMCU), STM32F405)
-LDFLAGS	+= -Wl,-T,hal/link_f405.ld
+LDFLAGS += -Wl,-T,hal/link_f405.ld
 endif
 
 ifeq ($(HWMCU), STM32F722)
-LDFLAGS	+= -Wl,-T,hal/link_f722.ld
+LDFLAGS += -Wl,-T,hal/link_f722.ld
 endif
 
 OBJS	=  app/as5047.o \
@@ -126,18 +129,18 @@ OBJS	+= flash.o \
 	   shell.o \
 	   tlm.o
 
-PMC_OBJS = $(addprefix $(BUILD)/, $(OBJS))
+BUILD_OBJS	= $(addprefix $(BUILD)/, $(OBJS))
 
 all: $(IMAGE)
 
 $(BUILD)/%.o: %.c
 	@ echo "  CC    " $<
 	@ $(MK) $(dir $@)
-	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
+	@ $(CC) -c $(OPTIMIZE) $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET): $(PMC_OBJS)
+$(TARGET): $(BUILD_OBJS)
 	@ echo "  LD    " $(notdir $@)
-	@ $(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@ $(CC) $(LTO) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(IMAGE): $(TARGET)
 	@ echo "  OC    " $(notdir $@)

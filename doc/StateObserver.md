@@ -5,6 +5,8 @@ into [porting guide](PortingGuide.md).
 
 ## Control loop
 
+TODO
+
 ADC is sampled at the begin of PWM period. The values obtained are processed by
 software. The new value of duty cycle is loaded to the hardware timer. This
 value is used at next PWM period. ADC samples are made using two ADCs in order

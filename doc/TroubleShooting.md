@@ -14,24 +14,25 @@ If something goes wrong PMC stops and gives the error code in `pm.fsm_errno`.
 `PM_ERROR_ZERO_DRIFT_FAULT` - Zero drift of current sensor is above the fault
 threshold. This may happen if current sensing circuit is damaged.
 
-`PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are ok but no motor detected at
-the output terminals.
+`PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are ok but no machine detected at
+the output terminals. Ignore this error if you know that.
 
 `PM_ERROR_BOOTSTRAP_FAULT` - Actual bootstrap retention time is lower that
-configured.
+configured. An extremely low value may indicate that power stages are
+completely inoperable.
 
 `PM_ERROR_POWER_STAGE_DAMAGED` - No appropriate voltage response detected at
-the output terminals. Power stages or terminal voltage sensors may be
+the output terminals. Power stages or terminal voltage sensors are definitely
 damaged.
 
 `PM_ERROR_INSUFFICIENT_ACCURACY` - Result of adjustment shows the parameter
 deviation is above the fault threshold. Check the voltage and current
-measurement accuracy.
+measurement circuit.
 
 `PM_ERROR_CURRENT_LOOP_FAULT` - This means that we apply the full voltage but
 actual current is still near zero. If current sensing circuit is ok this may be
-caused by open circuit in motor phases or in its connection. Also a common
-cause of this error is a low level of DC link voltage in combine with large
+caused by open circuit in machine phases or in its wiring. Also a common cause
+of this error is a low level of DC link voltage in combine with large machine
 stator resistance.
 
 `PM_ERROR_INSTANT_OVERCURRENT` - Overcurrent accident detected. Check for
@@ -39,7 +40,7 @@ current regulation transient and noise level. The most likely reason is an
 unstable sensorless estimate causes a current burst.
 
 `PM_ERROR_DC_LINK_OVERVOLTAGE` - DC link overvoltage accident detected. Check
-for the motor speed does not rises uncontrolled.
+for the machine speed does not rises uncontrolled.
 
 `PM_ERROR_UNCERTAIN_RESULT` - Result of adjustment is uncertain or
 ill-conditioned. The observability conditions may not have been met. For
@@ -54,7 +55,7 @@ result of Hall adjustment shows an inadequacy of sensor measurements.
 ## Application level
 
 `PM_ERROR_TIMEOUT` - Timeout has occured because of no event happen we waiting
-for. This typically happens when PMC cannot reach the speed setpoint in motor
+for. This typically happens when PMC cannot reach the speed setpoint in machine
 probing procedures.
 
 `PM_ERROR_NO_FLUX_CAUGHT` - Flux observer has not caught the rotor position for
@@ -63,8 +64,8 @@ some unknown reason. Maybe speed is too low or spinup was failed at all.
 `PM_ERROR_SYNC_FAULT` - Position estimate discrepancy is out of range. This
 erorr code can only come from bench model.
 
-`PM_ERROR_KNOB_CONTROL_FAULT` - Knob signal was lost. Check the reliability of
-wiring.
+`PM_ERROR_KNOB_CONTROL_FAULT` - Knob signal is in lost condition. Check the
+reliability of wiring.
 
 ## Arise by hardware
 

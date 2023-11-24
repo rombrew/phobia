@@ -14,9 +14,9 @@ needs.
 	(pmc) reg pm.forced_hold_D <A>
 	(pmc) reg pm.forced_accel <rad/s2>
 
-For more reliable start increase hold current and decrease acceleration. Keep
-in mind that hold current is applied constantly (like in stepper motor) so it
-causes significant heating.
+To get more reliable start increase hold current and decrease acceleration.
+Keep in mind that hold current is applied constantly (like in stepper motor) so
+it causes significant heating.
 
 You have an option to disable forced control. The machine will be freewheeling
 at low speed range.
@@ -38,9 +38,9 @@ can set reverse limit of negative Q current.
 	(pmc) reg pm.i_reverse <A>
 
 Derated current constraint in case of PCB overheat (also look into other
-`ap.oh` regs). Applicable to both D and Q axes.
+`ap.heat` regs). Applicable to both D and Q axes.
 
-	(pmc) reg ap.oh_derated_PCB <A>
+	(pmc) reg ap.heat_derated_PCB <A>
 
 ## Wattage
 
@@ -74,7 +74,7 @@ transient rate and noise level.
 
 	(pmc) reg pm.flux_gain_SF <x>
 
-You have an option to completely disable sensorless estimation if you use
+Also you have an option to completely disable sensorless estimation if you use
 position sensors.
 
 	(pmc) reg pm.config_ESTIMATE 0

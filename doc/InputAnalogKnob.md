@@ -30,35 +30,8 @@ these registers to view analog voltages on interface inputs.
 
 If signals do not change when you turn the knobs then check the wiring.
 
-	               ^           // mapping //
-	               |
-	 control_ANG2  |<---------------------------------o
-	               |                                / |
-	               |                              /   |
-	               |                            /     |
-	               |                          /       |
-	               |                        /         |
-	               |                      /           |
-	               |                    /             |
-	               |                  /               |
-	               |                /                 |
-	 control_ANG1  |<--------------o                  |
-	               |              /|                  |
-	               |             / |                  |
-	               |            /  |                  |
-	               |           /   |                  |
-	               |          /    |                  |
-	               |         /     |                  |
-	               |        /      |                  |
-	               |       /       |                  |
-	               |      /        |                  |
-	 control_ANG0  |<----o         |                  |
-	               |     |         |                  |      (V)
-	               +-----+---------+------------------+--------------->
-	                range_ANG0  range_ANG1        range_ANG2
-
 Select the `ANG` signal range in which you want to work. We use three point
-conversion from input voltage to the control value. Look at the diagram above.
+conversion from input voltage to the control value.
 
 	(pmc) reg ap.knob_range_ANG0 <V>
 	(pmc) reg ap.knob_range_ANG1 <V>
@@ -70,13 +43,14 @@ The same for `BRK` signal but we use two point conversion here.
 	(pmc) reg ap.knob_range_BRK1 <V>
 
 Choose what parameter you want to control. You can choose any of the registers
-available for writing. By default the current control is selected as a
-percentage of maximal current. There is a variable `pm.i_setpoint_current_pc`.
+available for writing. By default the `pm.s_setpoint_speed_knob` register is
+selected that mapped on current or speed percentage depending on control loop
+enabled.
 
 	(pmc) reg ap.knob_reg_ID <reg>
 
 Note that setting the control variable does not enable appropriate control loop
-automatically. You may need to enable appropriate control mode explicitly.
+automatically. You can select control loop if you need.
 
 	(pmc) reg pm.config_LU_DRIVE 0
 
@@ -93,15 +67,19 @@ the control variable will be interpolated to this value.
 	(pmc) reg ap.knob_control_BRK <x>
 
 If you need you can change input lost range. If signal goes beyond this range
-it is considered lost and output forced to `ap.knob_control_ANG0`.
+it is considered lost and halt happens with `PM_ERROR_SENSOR_HALL_FAULT` reason.
 
 	(pmc) reg ap.knob_range_LST0 <V>
 	(pmc) reg ap.knob_range_LST1 <V>
 
-Now enable machine startup control. Each time when `ANG` signal is in range the
+Enable machine startup control. Each time when `ANG` signal is in range the
 startup is requested.
 
 	(pmc) reg ap.knob_STARTUP 1
+
+Enable brake signal usage if you need it.
+
+	(pmc) reg ap.knob_BRAKE 1
 
 Now you are ready to enable the analog knob interface.
 

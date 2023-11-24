@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_BOOT_SIGNATURE	0x3C34EB12U
+#define HAL_BOOT_SIGNATURE	0x1A7CEA63U
 
 uint32_t			clock_cpu_hz;
 
@@ -63,11 +63,11 @@ void irq_Default()
 }
 
 static void
-base_startup()
+core_startup()
 {
-	/* Enable FPU.
-	 * */
-	SCB->CPACR |= (15U << 20);
+	uint32_t	CLOCK, PLLQ, PLLP, PLLN, PLLM;
+
+	int		HSE, N = 0;
 
 	/* Vector table offset.
 	 * */
@@ -76,18 +76,6 @@ base_startup()
 	/* Configure priority grouping.
 	 * */
 	NVIC_SetPriorityGrouping(0U);
-
-#ifdef STM32F7
-	SCB_EnableICache();
-	SCB_EnableDCache();
-#endif /* STM32F7 */
-}
-
-static void
-clock_startup()
-{
-	uint32_t	CLOCK, PLLQ, PLLP, PLLN, PLLM;
-	int		HSE, N = 0;
 
 	/* Enable HSI.
 	 * */
@@ -182,7 +170,7 @@ clock_startup()
 		| (PLLN << RCC_PLLCFGR_PLLN_Pos)
 		| (PLLM << RCC_PLLCFGR_PLLM_Pos);
 
-	/* Update clock frequency.
+	/* Get actual clock frequency.
 	 * */
 	clock_cpu_hz = CLOCK / PLLP;
 
@@ -200,7 +188,8 @@ clock_startup()
 	/* Configure Flash.
 	 * */
 #if defined(STM32F4)
-	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
+	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN
+		| FLASH_ACR_LATENCY_5WS;
 #elif defined(STM32F7)
 	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
 #endif /* STM32Fx */
@@ -215,6 +204,13 @@ clock_startup()
 
 		__NOP();
 	}
+
+	/* Enable caching on Cortex-M7.
+	 * */
+#ifdef STM32F7
+	SCB_EnableICache();
+	SCB_EnableDCache();
+#endif /* STM32F7 */
 }
 
 static void
@@ -267,16 +263,23 @@ flash_verify()
 
 void hal_bootload()
 {
-	uint32_t	*sysmem;
+	const uint32_t		*sysmem;
+
+	/* Enable FPU early.
+	 * */
+	SCB->CPACR |= (0xFU << 20);
+
+	__DSB();
+	__ISB();
 
 	if (bootload_jump == HAL_BOOT_SIGNATURE) {
 
 		bootload_jump = 0U;
 
 #if defined(STM32F4)
-		sysmem = (uint32_t *) 0x1FFF0000U;
+		sysmem = (const uint32_t *) 0x1FFF0000U;
 #elif defined(STM32F7)
-		sysmem = (uint32_t *) 0x1FF00000U;
+		sysmem = (const uint32_t *) 0x1FF00000U;
 #endif /* STM32Fx */
 
 		/* Load MSP.
@@ -291,8 +294,7 @@ void hal_bootload()
 
 void hal_startup()
 {
-	base_startup();
-	clock_startup();
+	core_startup();
 	periph_startup();
 	flash_verify();
 }

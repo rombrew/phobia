@@ -180,7 +180,7 @@ elapsed_DISARM()
 	return elapsed;
 }
 
-void task_TEMP(void *pData)
+LD_TASK void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
 	float			x_PCB, x_EXT, lock_PCB;
@@ -298,7 +298,7 @@ void task_TEMP(void *pData)
 	while (1);
 }
 
-void task_AUTO(void *pData)
+LD_TASK void task_AUTO(void *pData)
 {
 	TickType_t		xWake;
 
@@ -478,7 +478,7 @@ inner_KNOB()
 	}
 }
 
-void task_KNOB(void *pData)
+LD_TASK void task_KNOB(void *pData)
 {
 	TickType_t		xWake;
 
@@ -723,7 +723,7 @@ default_flash_load()
 	flash_block_regs_load();
 }
 
-void task_INIT(void *pData)
+LD_TASK void task_INIT(void *pData)
 {
 	uint32_t		seed[3];
 

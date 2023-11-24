@@ -17,7 +17,7 @@
 
 #define BUTTON_DEBOUNCE		5
 
-void app_BUTTON(void *pData)
+LD_TASK void app_BUTTON(void *pData)
 {
 	volatile int		*knob = (volatile int *) pData;
 

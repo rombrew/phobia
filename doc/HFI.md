@@ -26,7 +26,7 @@ observer that can appreciate machine saliency.
 
 	(pmc) reg pm.config_LU_ESTIMATE 2
 
-Select injection waveform type. The usual type is SINE wave.
+Select injection waveform type. The usual type is SINE waveform.
 
 	(pmc) reg pm.config_HFI_WAVETYPE 1
 
@@ -38,16 +38,23 @@ sine degeneracy at frequencies close to the PWM frequency.
 	(pmc) reg pm.hfi_sine <A>
 
 If the machine loses its magnetic anisotropy at high current you can limit that
-current on HFI operation mode.
+current on HFI operation mode. This gives reliable operation at the cost of
+reduced torque production.
 
 	(pmc) reg pm.i_derate_on_HFI <A>
+
+If you are concerned about increased levels of acoustic noise and vibration you
+can select RANDOM waveform and adjust amplitude.
+
+	(pmc) reg pm.config_HFI_WAVETYPE 2
 
 Note that in HFI operation it is possible to detect only direction of the rotor
 flux axis but not its orientation or flux polarity.
 
 ## Permanent injection
 
-TODO
+In case of salient pole machine (IPM, SynRM) with MTPA control could be useful
+to enable permanent HF injection.
 
 	(pmc) reg pm.config_HFI_PERMANENT 1
 

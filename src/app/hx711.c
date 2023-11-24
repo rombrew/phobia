@@ -11,7 +11,7 @@
 /* This is the helper task that reads HX711 ADC.
  * */
 
-void app_HX711(void *pData)
+LD_TASK void app_HX711(void *pData)
 {
 	volatile int		*knob = (volatile int *) pData;
 

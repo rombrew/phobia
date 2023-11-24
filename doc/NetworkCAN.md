@@ -5,6 +5,8 @@ networking functions.
 
 ## Hardware
 
+TODO
+
 conventional two wire bus
 uses a linear bus terminated at each end
 
@@ -27,5 +29,5 @@ We use base frame format with 11-bit identifier.
 
 ## Flexible data pipes
 
-**TODO**
+TODO
 

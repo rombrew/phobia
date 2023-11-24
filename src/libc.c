@@ -22,18 +22,20 @@ void *memset(void *d, int c, size_t n)
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		for (; n >= 4; n -= 4) {
+		while (n >= 4U) {
 
 			*ld++ = fill;
+			n -= 4U;
 		}
 	}
 
 	{
-		uint8_t		*bd = (uint8_t *) ld;
+		uint8_t		*xd = (uint8_t *) ld;
 
-		for (; n >= 1; n -= 1) {
+		while (n >= 1U) {
 
-			*bd++ = (uint8_t) c;
+			*xd++ = (uint8_t) c;
+			n -= 1U;
 		}
 	}
 
@@ -47,19 +49,21 @@ void *memcpy(void *restrict d, const void *restrict s, size_t n)
 
 	if (((uint32_t) ld & 3U) == 0 && ((uint32_t) ls & 3U) == 0) {
 
-		for (; n >= 4; n -= 4) {
+		while (n >= 4U) {
 
 			*ld++ = *ls++;
+			n -= 4U;
 		}
 	}
 
 	{
-		uint8_t		*restrict bd = (uint8_t * restrict) ld;
-		const uint8_t	*restrict bs = (const uint8_t * restrict) ls;
+		uint8_t		*restrict xd = (uint8_t * restrict) ld;
+		const uint8_t	*restrict xs = (const uint8_t * restrict) ls;
 
-		for (; n >= 1; n -= 1) {
+		while (n >= 1U) {
 
-			*bd++ = *bs++;
+			*xd++ = *xs++;
+			n -= 1U;
 		}
 	}
 

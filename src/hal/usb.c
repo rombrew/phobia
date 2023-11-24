@@ -157,7 +157,7 @@ task_cdc_acm_flag_poll()
 	}
 }
 
-void task_USB_IN(void *pData)
+LD_TASK void task_USB_IN(void *pData)
 {
 	do {
 		if (usb_device_is_configured()) {

@@ -7,8 +7,8 @@ the PMC should be identified before run in closed control loop.
 ## Preparation
 
 You may need to adjust some parameters in accordance with the capabilities of
-the machine to not burn it. Default is acceptable for most RC motors but be
-aware. These parameters are used to probe the machine.
+the machine to not burn it. Default is acceptable for most large RC motors but
+be aware. These parameters are used to probe the machine.
 
 	(pmc) reg pm.probe
 
@@ -116,8 +116,7 @@ manually in this case.
 
 	(pmc) pm_probe_detached
 
-PMC will wait for the machine to reach at least `pm.zone_threshold`
-speed.
+PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 
 ## Speed noise threshold
 
@@ -135,4 +134,7 @@ so your power supply must tolerate this. Either limit maximal regeneration.
 
 This constant is used to tune speed control loop. Also it is used in operation
 to predict the speed changes from an applied current.
+
+Also look into [Trouble Shooting](TroubleShooting.md) page in case of you
+getting any error codes in `pm.fsm_errno`.
 
