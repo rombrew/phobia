@@ -1,6 +1,7 @@
 #define HW_MCU_STM32F405
 
-/* Tested on FLIPSKY FSESC 6.7 (with Button)
+/* Tested on FLIPSKY FSESC 6.7
+ * Tested on Makerbase VESC 60100 V2
  * */
 
 #define HW_HAVE_DRV_ON_PCB
@@ -14,16 +15,16 @@
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
 #define HW_PWM_FREQUENCY_HZ		30000.f
-#define HW_PWM_DEADTIME_NS		200.f		/* IRF7749 */
+#define HW_PWM_DEADTIME_NS		200.f		/* IRF7749 HYG015N10NS1TA */
 
 #define HW_PWM_MINIMAL_PULSE		0.2f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
 #define HW_PWM_SKIP_ZONE		2.0f
-#define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* DRV8303 */
+#define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* DRV8301 */
 
 #define HW_DRV_ID_ON_PCB		BUS_ID_SPI3
 
-#define HW_DRV_PARTNO			DRV_PART_DRV8303
+#define HW_DRV_PARTNO			DRV_PART_DRV8301
 #define HW_DRV_GATE_CURRENT		0
 #define HW_DRV_OCP_LEVEL		11		/* ~ 0.22v */
 

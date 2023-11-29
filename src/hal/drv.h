@@ -3,7 +3,7 @@
 
 enum {
 	DRV_NONE		= 0,
-	DRV_PART_DRV8303,
+	DRV_PART_DRV8301,
 	DRV_PART_DRV8305
 };
 

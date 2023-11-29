@@ -981,7 +981,7 @@ reg_format_enum(const reg_t *reg)
 			switch (val) {
 
 				PM_SFI_CASE(DRV_NONE);
-				PM_SFI_CASE(DRV_PART_DRV8303);
+				PM_SFI_CASE(DRV_PART_DRV8301);
 				PM_SFI_CASE(DRV_PART_DRV8305);
 
 				default: break;
