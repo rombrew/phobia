@@ -45,10 +45,10 @@ void pm_quick_build(pmc_t *pm)
 	pm->quick_HFwS = M_2_PI_F * pm->hfi_freq;
 
 	if (		pm->eabi_const_Zq != 0
-			&& pm->eabi_EPPR != 0) {
+			&& pm->eabi_const_EP != 0) {
 
 		pm->quick_ZiEP = M_2_PI_F * (float) (pm->const_Zp * pm->eabi_const_Zs)
-			/ (float) (pm->eabi_const_Zq * pm->eabi_EPPR);
+			/ (float) (pm->eabi_const_Zq * pm->eabi_const_EP);
 	}
 
 	if (pm->sincos_const_Zq != 0) {
@@ -71,6 +71,7 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_IFB = PM_IFB_ABC_INLINE;
 	pm->config_TVM = PM_ENABLED;
+	pm->config_DBG = PM_DISABLED;
 
 	pm->fault_voltage_tol = 4.f;		/* (V) */
 	pm->fault_current_tol = 4.f;		/* (A) */
@@ -217,7 +218,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->hall_gain_SF = 7E-3f;
 	pm->hall_gain_IF = .9f;
 
-	pm->eabi_EPPR = 2400;
+	pm->eabi_const_EP = 2400;
 	pm->eabi_const_Zs = 1;
 	pm->eabi_const_Zq = 1;
 	pm->eabi_trip_AP = 5E-2f;
@@ -270,7 +271,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->x_damping = 1.f;
 	pm->x_tolerance = 0.f;
 	pm->x_gain_P = 35.f;
-	pm->x_gain_D = 5.f;
+	pm->x_gain_D = 10.f;
 }
 
 static void
@@ -695,15 +696,15 @@ pm_torque_get_current(pmc_t *pm, float mQ)
 	if (pm->config_RELUCTANCE == PM_ENABLED) {
 
 		if (		pm->const_lambda < M_EPSILON
-				&& pm->mtpa_approx < 1.f) {
+				&& pm->mtpa_approx_Q < 1.f) {
 
-			pm->mtpa_approx = 1.f;
+			pm->mtpa_approx_Q = 1.f;
 		}
 
-		rel = (pm->const_im_L1 - pm->const_im_L2) * pm->mtpa_approx;
+		rel = (pm->const_im_L1 - pm->const_im_L2) * pm->mtpa_approx_Q;
 		iQ = mQ / (pm->k_KWAT * (pm->const_lambda + rel));
 
-		pm->mtpa_approx = pm_torque_approx_MTPA(pm, pm->mtpa_approx, iQ);
+		pm->mtpa_approx_Q = pm_torque_approx_MTPA(pm, pm->mtpa_approx_Q, iQ);
 	}
 	else {
 		if (pm->const_lambda > M_EPSILON) {
@@ -1221,7 +1222,7 @@ pm_kalman_lockout_guard(pmc_t *pm, float A)
 
 		if (flux_RESET == PM_ENABLED) {
 
-			/* Restart Kalman and flip DQ-frame.
+			/* Restart Kalman and flip DQ-axes.
 			 * */
 			pm->flux_TYPE = PM_FLUX_NONE;
 
@@ -1301,7 +1302,7 @@ pm_flux_kalman(pmc_t *pm)
 	 * */
 	pm_kalman_solve(pm, pm->flux_X, pm->flux_F, pm->flux_wS);
 
-	/* Guard against lockout of DQ-frame in reverse position.
+	/* Guard against lockout of DQ-axes in reverse position.
 	 * */
 	pm_kalman_lockout_guard(pm, bF[0] * pm->flux_F[1] - bF[1] * pm->flux_F[0]);
 }
@@ -1311,7 +1312,7 @@ pm_flux_zone(pmc_t *pm)
 {
 	float			thld_wS;
 
-	/* Get filtered speed with low noise.
+	/* Get FLUX speed filtered to switch ZONE.
 	 * */
 	pm->zone_lpf_wS += (pm->flux_wS - pm->zone_lpf_wS) * pm->zone_gain_LP;
 
@@ -1383,6 +1384,7 @@ pm_estimate(pmc_t *pm)
 		}
 
 		pm_flux_ortega(pm);
+		pm_flux_zone(pm);
 	}
 	else if (pm->config_LU_ESTIMATE == PM_FLUX_KALMAN) {
 
@@ -1424,6 +1426,7 @@ pm_estimate(pmc_t *pm)
 		}
 
 		pm_flux_kalman(pm);
+		pm_flux_zone(pm);
 	}
 	else {
 		/* NOTE: No sensorless observer selected. It is ok when you
@@ -1433,11 +1436,6 @@ pm_estimate(pmc_t *pm)
 
 			pm->flux_TYPE = PM_FLUX_NONE;
 		}
-	}
-
-	if (pm->flux_TYPE != PM_FLUX_NONE) {
-
-		pm_flux_zone(pm);
 	}
 }
 
@@ -1529,29 +1527,31 @@ pm_sensor_hall(pmc_t *pm)
 static void
 pm_sensor_eabi(pmc_t *pm)
 {
-	float		F[2], lPOS, A, blend, rel;
+	float		F[2], A, blend, ANG, rel;
 	int		relEP, WRAP;
 
-	const float	tol = pm->quick_ZiEP * .6f;
+	const float	tol = m_fabsf(pm->quick_ZiEP) * .6f;
 
 	if (pm->eabi_RECENT != PM_ENABLED) {
 
 		pm->eabi_bEP = pm->fb_EP;
-		pm->eabi_lEP = 0;
 		pm->eabi_unwrap = 0;
 		pm->eabi_interp = 0.f;
 
-		pm->eabi_F[0] = pm->lu_F[0];
-		pm->eabi_F[1] = pm->lu_F[1];
-		pm->eabi_wS = pm->lu_wS;
-
 		if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
-			/* In case of incremental operation we need to update
-			 * the position of zero DQ-frame.
-			 * */
-			pm->eabi_F0[0] = pm->lu_F[0];
-			pm->eabi_F0[1] = pm->lu_F[1];
+			pm->eabi_lEP = 0;
+		}
+		else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+			pm->eabi_lEP = pm->fb_EP;
+		}
+
+		if (pm->config_LU_SENSOR == PM_SENSOR_EABI) {
+
+			pm->eabi_F[0] = pm->lu_F[0];
+			pm->eabi_F[1] = pm->lu_F[1];
+			pm->eabi_wS = pm->lu_wS;
 		}
 
 		pm->eabi_RECENT = PM_ENABLED;
@@ -1569,9 +1569,12 @@ pm_sensor_eabi(pmc_t *pm)
 	}
 	else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
 
-		WRAP = pm->eabi_EPPR;
+		WRAP = pm->eabi_const_EP;
 
-		relEP = pm->fb_EP - (pm->eabi_lEP % WRAP);
+		pm->eabi_bEP = pm->eabi_lEP - (pm->eabi_lEP / WRAP) * WRAP;
+		pm->eabi_bEP += (pm->eabi_bEP < 0) ? WRAP : 0;
+
+		relEP = pm->fb_EP - pm->eabi_bEP;
 		relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
 			: (relEP < - WRAP / 2) ? WRAP : 0;
 	}
@@ -1584,7 +1587,7 @@ pm_sensor_eabi(pmc_t *pm)
 		pm->eabi_lEP += relEP;
 		pm->eabi_interp += - (float) relEP * pm->quick_ZiEP;
 
-		WRAP = pm->eabi_EPPR * pm->eabi_const_Zq;
+		WRAP = pm->eabi_const_EP * pm->eabi_const_Zq;
 
 		if (pm->eabi_lEP < - WRAP) {
 
@@ -1598,6 +1601,8 @@ pm_sensor_eabi(pmc_t *pm)
 		}
 	}
 
+	/* We get residual when interp goes out of tolerance.
+	 * */
 	rel = (pm->eabi_interp > tol) ? tol - pm->eabi_interp
 		: (pm->eabi_interp < - tol) ? - tol - pm->eabi_interp : 0.f;
 
@@ -1619,24 +1624,36 @@ pm_sensor_eabi(pmc_t *pm)
 
 	pm->eabi_interp += pm->eabi_wS * pm->m_dT;
 
-	/* Take the electrical position.
-	 * */
-	lPOS = m_wrapf((float) pm->eabi_lEP * pm->quick_ZiEP + pm->eabi_interp);
+	if (pm->config_LU_SENSOR == PM_SENSOR_EABI) {
 
-	F[0] = m_cosf(lPOS);
-	F[1] = m_sinf(lPOS);
+		/* Take the electrical position DQ-axes.
+		 * */
+		ANG = (float) pm->eabi_lEP * pm->quick_ZiEP + pm->eabi_interp;
 
-	pm->eabi_F[0] = F[0] * pm->eabi_F0[0] - F[1] * pm->eabi_F0[1];
-	pm->eabi_F[1] = F[1] * pm->eabi_F0[0] + F[0] * pm->eabi_F0[1];
+		ANG = m_wrapf(ANG);
+
+		F[0] = m_cosf(ANG);
+		F[1] = m_sinf(ANG);
+
+		if (pm->eabi_ADJUST != PM_ENABLED) {
+
+			pm->eabi_F0[0] = F[0] * pm->lu_F[0] + F[1] * pm->lu_F[1];
+			pm->eabi_F0[1] = F[0] * pm->lu_F[1] - F[1] * pm->lu_F[0];
+
+			pm->eabi_ADJUST = PM_ENABLED;
+		}
+
+		pm->eabi_F[0] = F[0] * pm->eabi_F0[0] - F[1] * pm->eabi_F0[1];
+		pm->eabi_F[1] = F[1] * pm->eabi_F0[0] + F[0] * pm->eabi_F0[1];
+	}
 
 	if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
 
 		/* Take the electrical absolute LOCATION.
 		 * */
-		lPOS = (float) pm->eabi_EPPR * (float) pm->eabi_unwrap
-			+ (float) pm->eabi_lEP;
+		ANG = (float) pm->eabi_lEP + (float) pm->eabi_const_EP * pm->eabi_unwrap;
 
-		pm->eabi_location = lPOS * pm->quick_ZiEP + pm->eabi_interp;
+		pm->eabi_location = ANG * pm->quick_ZiEP + pm->eabi_interp;
 	}
 }
 
@@ -1741,6 +1758,8 @@ pm_lu_FSM(pmc_t *pm)
 {
 	float			lu_F[2], hS, A, B;
 
+	int			lu_EABI = PM_DISABLED;
+
 	/* Get the current on DQ-axes.
 	 * */
 	pm->lu_iD = pm->lu_F[0] * pm->lu_iX + pm->lu_F[1] * pm->lu_iY;
@@ -1764,8 +1783,8 @@ pm_lu_FSM(pmc_t *pm)
 
 	if (pm->vsi_IF != 0) {
 
-		/* We transform DQ current back to XY-axes throught apriori
-		 * DQ-frame if there are no clean measurements available.
+		/* We transform DQ-axes current back to XY-axes throught
+		 * apriori DQ-axes if there are no clean measurements available.
 		 * */
 		pm->lu_iX = pm->lu_F[0] * pm->lu_iD - pm->lu_F[1] * pm->lu_iQ;
 		pm->lu_iY = pm->lu_F[1] * pm->lu_iD + pm->lu_F[0] * pm->lu_iQ;
@@ -1819,7 +1838,7 @@ pm_lu_FSM(pmc_t *pm)
 			pm->proc_set_Z(PM_Z_NONE);
 		}
 		else if (	pm->config_LU_SENSOR == PM_SENSOR_EABI
-				&& pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+				&& pm->eabi_ADJUST == PM_ENABLED) {
 
 			pm->lu_MODE = PM_LU_SENSOR_EABI;
 
@@ -1828,6 +1847,8 @@ pm_lu_FSM(pmc_t *pm)
 		else if (pm->config_LU_FORCED == PM_ENABLED) {
 
 			pm->lu_MODE = PM_LU_FORCED;
+
+			pm->hold_TIM = 0;
 
 			pm->forced_F[0] = pm->lu_F[0];
 			pm->forced_F[1] = pm->lu_F[1];
@@ -1839,6 +1860,8 @@ pm_lu_FSM(pmc_t *pm)
 				&& pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
 
 			pm->lu_MODE = PM_LU_ON_HFI;
+
+			pm->hold_TIM = 0;
 
 			pm->proc_set_Z(PM_Z_NONE);
 		}
@@ -1853,7 +1876,8 @@ pm_lu_FSM(pmc_t *pm)
 
 		pm->lu_wS = pm->forced_wS;
 
-		if (pm->flux_LINKAGE != PM_ENABLED) {
+		if (		pm->flux_TYPE != PM_FLUX_NONE
+				&& pm->flux_LINKAGE != PM_ENABLED) {
 
 			/* Hold on until flux linkage is estimated.
 			 * */
@@ -1861,7 +1885,6 @@ pm_lu_FSM(pmc_t *pm)
 		else if (pm->flux_ZONE == PM_ZONE_HIGH) {
 
 			pm->lu_MODE = PM_LU_ESTIMATE;
-			pm->hold_TIM = 0;
 		}
 		else {
 			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_pause_forced)) {
@@ -1871,13 +1894,11 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->config_LU_SENSOR == PM_SENSOR_EABI) {
 
 				pm->lu_MODE = PM_LU_SENSOR_EABI;
-				pm->hold_TIM = 0;
 			}
 			else if (	pm->config_LU_ESTIMATE == PM_FLUX_KALMAN
 					&& pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
 
 				pm->lu_MODE = PM_LU_ON_HFI;
-				pm->hold_TIM = 0;
 			}
 		}
 	}
@@ -1909,7 +1930,12 @@ pm_lu_FSM(pmc_t *pm)
 				pm->hall_wS = pm->lu_wS;
 			}
 			else if (	pm->config_LU_SENSOR == PM_SENSOR_EABI
-					&& pm->flux_ZONE != PM_ZONE_NONE) {
+					&& pm->eabi_ADJUST == PM_ENABLED) {
+
+				pm->lu_MODE = PM_LU_SENSOR_EABI;
+			}
+			else if (	pm->config_LU_SENSOR == PM_SENSOR_EABI
+					&& pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
 				pm->lu_MODE = PM_LU_SENSOR_EABI;
 			}
@@ -1917,10 +1943,14 @@ pm_lu_FSM(pmc_t *pm)
 					&& pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
 
 				pm->lu_MODE = PM_LU_ON_HFI;
+
+				pm->hold_TIM = 0;
 			}
 			else if (pm->config_LU_FORCED == PM_ENABLED) {
 
 				pm->lu_MODE = PM_LU_FORCED;
+
+				pm->hold_TIM = 0;
 
 				pm->forced_F[0] = pm->lu_F[0];
 				pm->forced_F[1] = pm->lu_F[1];
@@ -1965,7 +1995,6 @@ pm_lu_FSM(pmc_t *pm)
 				|| pm->config_HFI_WAVETYPE == PM_HFI_NONE) {
 
 			pm->lu_MODE = PM_LU_ESTIMATE;
-			pm->hold_TIM = 0;
 		}
 		else {
 			if (pm->hold_TIM < PM_TSMS(pm, pm->tm_pause_startup)) {
@@ -1975,7 +2004,6 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->config_LU_SENSOR == PM_SENSOR_EABI) {
 
 				pm->lu_MODE = PM_LU_SENSOR_EABI;
-				pm->hold_TIM = 0;
 			}
 		}
 	}
@@ -2002,12 +2030,13 @@ pm_lu_FSM(pmc_t *pm)
 		lu_F[0] = pm->eabi_F[0];
 		lu_F[1] = pm->eabi_F[1];
 
+		lu_EABI = PM_ENABLED;
+
 		pm->lu_wS = pm->eabi_wS;
 
 		if (pm->flux_ZONE == PM_ZONE_HIGH) {
 
 			pm->lu_MODE = PM_LU_ESTIMATE;
-			pm->eabi_RECENT = PM_DISABLED;
 		}
 	}
 	else if (pm->lu_MODE == PM_LU_SENSOR_SINCOS) {
@@ -2089,7 +2118,12 @@ pm_lu_FSM(pmc_t *pm)
 	}
 	else if (pm->config_LU_LOCATION == PM_LOCATION_EABI) {
 
-		pm_sensor_eabi(pm);
+		if (lu_EABI != PM_ENABLED) {
+
+			pm_sensor_eabi(pm);
+
+			lu_EABI = PM_ENABLED;
+		}
 
 		pm->lu_wS = pm->eabi_wS;
 		pm->lu_location = pm->eabi_location;
@@ -2097,6 +2131,17 @@ pm_lu_FSM(pmc_t *pm)
 	else if (pm->config_LU_LOCATION == PM_LOCATION_SINCOS) {
 
 		/* TODO */
+	}
+
+	if (		pm->eabi_RECENT == PM_ENABLED
+			&& lu_EABI != PM_ENABLED) {
+
+		pm->eabi_RECENT = PM_DISABLED;
+
+		if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
+
+			pm->eabi_ADJUST = PM_DISABLED;
+		}
 	}
 
 	if (		pm->flux_TYPE == PM_FLUX_KALMAN
@@ -2663,6 +2708,7 @@ pm_loop_current(pmc_t *pm)
 				&& pm->config_SPEED_MAXIMAL == PM_ENABLED) {
 
 			pm->s_track = pm->lu_wS;
+			pm->l_blend = 0.f;
 		}
 	}
 	else if (	pm->lu_MODE == PM_LU_ESTIMATE
@@ -2672,6 +2718,7 @@ pm_loop_current(pmc_t *pm)
 				&& pm->config_SPEED_MAXIMAL == PM_ENABLED) {
 
 			pm->s_track = pm->lu_wS;
+			pm->l_blend = 0.f;
 		}
 	}
 	else {
@@ -3253,6 +3300,16 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			/* Wattage information.
 			 * */
 			pm_wattage(pm);
+		}
+
+		if (PM_CONFIG_DBG(pm) == PM_ENABLED) {
+
+			float		A, B;
+
+			A = pm->lu_F[0] * pm->flux_F[0] + pm->lu_F[1] * pm->flux_F[1];
+			B = pm->lu_F[1] * pm->flux_F[0] - pm->lu_F[0] * pm->flux_F[1];
+
+			pm->dbg[0] = m_atan2f(B, A) * (180.f / M_PI_F);
 		}
 
 		if (m_isfinitef(pm->lu_F[0]) == 0) {

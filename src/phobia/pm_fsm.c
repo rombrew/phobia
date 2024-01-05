@@ -1608,21 +1608,21 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->detach_TIM = 0;
 
-				pm->flux_LINKAGE = PM_ENABLED;
-				pm->flux_TYPE = PM_FLUX_NONE;
-				pm->flux_ZONE = in_ZONE;
-
-				if (		pm->config_LU_FORCED == PM_ENABLED
+				if (		pm->config_LU_ESTIMATE != PM_FLUX_NONE
+						&& pm->config_EXCITATION == PM_EXCITATION_CONST
 						&& pm->const_lambda < M_EPSILON) {
 
-					if (pm->config_EXCITATION == PM_EXCITATION_CONST) {
-
-						/* We indicate that flux linkage
-						 * is to be estimated.
-						 * */
-						pm->flux_LINKAGE = PM_DISABLED;
-					}
+					/* Here we indicate that flux linkage
+					 * is to be estimated further.
+					 * */
+					pm->flux_LINKAGE = PM_DISABLED;
 				}
+				else {
+					pm->flux_LINKAGE = PM_ENABLED;
+				}
+
+				pm->flux_TYPE = PM_FLUX_NONE;
+				pm->flux_ZONE = in_ZONE;
 
 				pm->flux_X[0] = 0.f;
 				pm->flux_X[1] = 0.f;
@@ -1644,6 +1644,12 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->hall_wS = 0.f;
 
 				pm->eabi_RECENT = PM_DISABLED;
+
+				if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
+
+					pm->eabi_ADJUST = PM_DISABLED;
+				}
+
 				pm->eabi_F[0] = 1.f;
 				pm->eabi_F[1] = 0.f;
 				pm->eabi_wS = 0.f;
@@ -1670,7 +1676,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
-				pm->mtpa_approx = 0.f;
+				pm->mtpa_approx_Q = 0.f;
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 
@@ -2055,7 +2061,6 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 				pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
-				break;
 			}
 			else {
 				pm->fsm_state = PM_STATE_IDLE;
@@ -2071,8 +2076,9 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 	lse_t			*ls = &pm->probe_lse[0];
 	lse_float_t		v[4];
 
-	float			lPOS;
-	int			relEP, WRAP;
+	int			*range_bEP = (int *) pm->probe_lse[1].vm;
+
+	int			relEP, WRAP, N;
 
 	switch (pm->fsm_phase) {
 
@@ -2080,9 +2086,8 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 			pm->eabi_bEP = pm->fb_EP;
 			pm->eabi_lEP = 0;
 
-			pm->lu_revol = 0;
-
-			lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+			range_bEP[0] = pm->fb_EP;
+			range_bEP[1] = pm->fb_EP;
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, 10.f * pm->tm_average_probe);
@@ -2092,6 +2097,70 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 			break;
 
 		case 1:
+			range_bEP[0] = (pm->fb_EP < range_bEP[0])
+				? pm->fb_EP : range_bEP[0];
+
+			range_bEP[1] = (pm->fb_EP > range_bEP[1])
+				? pm->fb_EP : range_bEP[1];
+
+			relEP = pm->fb_EP - pm->eabi_bEP;
+
+			pm->eabi_lEP += (relEP < 0) ? - 1 : (relEP > 0) ? 1 : 0;
+			pm->eabi_bEP = pm->fb_EP;
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->eabi_const_Zs = (pm->eabi_lEP < 0) ? - 1 : 1;
+
+				if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
+
+					pm->eabi_const_EP = 1;
+
+					pm->eabi_bEP = pm->fb_EP;
+					pm->eabi_lEP = 0;
+				}
+				else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+					if (		range_bEP[1] - range_bEP[0] > 100
+							&& range_bEP[0] < 100) {
+
+						for (N = 0; N < 32; ++N) {
+
+							if ((range_bEP[1] & 0x1FU) == 0)
+								break;
+
+							range_bEP[1]++;
+						}
+					}
+					else {
+						pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
+						pm->fsm_state = PM_STATE_HALT;
+						pm->fsm_phase = 0;
+						break;
+					}
+
+					pm->eabi_const_EP = range_bEP[1];
+
+					pm->eabi_bEP = pm->fb_EP;
+					pm->eabi_lEP = pm->fb_EP;
+				}
+
+				pm_quick_build(pm);
+
+				lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+
+				pm->lu_revol = 0;
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, 10.f * pm->tm_average_probe);
+
+				pm->fsm_phase += 1;
+			}
+			break;
+
+		case 2:
 			if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
 				WRAP = 0x10000;
@@ -2101,20 +2170,21 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 					: (relEP < - WRAP / 2) ? WRAP : 0;
 
 				pm->eabi_bEP = pm->fb_EP;
+				pm->eabi_lEP += relEP;
 			}
 			else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
 
-				WRAP = pm->eabi_EPPR;
+				WRAP = pm->eabi_const_EP;
 
-				relEP = pm->fb_EP - (pm->eabi_lEP % WRAP);
+				pm->eabi_bEP = pm->eabi_lEP - (pm->eabi_lEP / WRAP) * WRAP;
+				pm->eabi_bEP += (pm->eabi_bEP < 0) ? WRAP : 0;
+
+				relEP = pm->fb_EP - pm->eabi_bEP;
 				relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
 					: (relEP < - WRAP / 2) ? WRAP : 0;
-			}
-			else {
-				relEP = 0;
-			}
 
-			pm->eabi_lEP += relEP;
+				pm->eabi_lEP += relEP;
+			}
 
 			v[0] = 1.f;
 			v[1] = (float) pm->eabi_lEP * pm->quick_ZiEP;
@@ -2131,32 +2201,55 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 			}
 			break;
 
-		case 2:
+		case 3:
 			lse_solve(ls);
 
-			if (		m_isfinitef(ls->sol.m[1]) != 0
-					&& ls->sol.m[1] > M_EPSILON) {
+			if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
-				pm->eabi_EPPR = (int) (pm->eabi_EPPR / ls->sol.m[1] + .5f);
-			}
-			else {
-				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-			}
+				if (		m_isfinitef(ls->sol.m[1]) != 0
+						&& ls->sol.m[1] > M_EPSILON) {
 
-			if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+					v[0] = pm->eabi_const_EP / ls->sol.m[1];
 
-				if (		m_isfinitef(ls->sol.m[0]) != 0
-						&& ls->sol.m[0] > M_EPSILON) {
+					pm->eabi_const_EP = (int) (v[0] + .5f);
 
-					lPOS = m_wrapf(ls->sol.m[0]);
-
-					pm->eabi_F0[0] = m_cosf(lPOS);
-					pm->eabi_F0[1] = m_sinf(lPOS);
+					pm_quick_build(pm);
 				}
 				else {
-					pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+					pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
+					pm->fsm_state = PM_STATE_HALT;
+					pm->fsm_phase = 0;
+				}
+			}
+			else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+
+				if (		m_isfinitef(ls->sol.m[1]) != 0
+						&& ls->sol.m[1] > M_EPSILON) {
+
+					v[0] = pm->eabi_const_Zs * ls->sol.m[1];
+
+					if (pm->eabi_const_Zs < 0) {
+
+						pm->eabi_const_Zs = (int) (v[0] - .5f);
+					}
+					else {
+						pm->eabi_const_Zs = (int) (v[0] + .5f);
+					}
+
+					pm_quick_build(pm);
+
+					if (m_isfinitef(ls->sol.m[0]) != 0) {
+
+						v[0] = m_wrapf(ls->sol.m[0]);
+
+						pm->eabi_F0[0] = m_cosf(v[0]);
+						pm->eabi_F0[1] = m_sinf(v[0]);
+
+						pm->eabi_ADJUST = PM_ENABLED;
+					}
+				}
+				else {
+					pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
 					pm->fsm_state = PM_STATE_HALT;
 					pm->fsm_phase = 0;
 				}
@@ -2373,11 +2466,13 @@ const char *pm_strerror(int fsm_errno)
 		PM_SFI_CASE(PM_ERROR_UNCERTAIN_RESULT);
 		PM_SFI_CASE(PM_ERROR_INVALID_OPERATION);
 		PM_SFI_CASE(PM_ERROR_SENSOR_HALL_FAULT);
+		PM_SFI_CASE(PM_ERROR_SENSOR_EABI_FAULT);
 
 		PM_SFI_CASE(PM_ERROR_TIMEOUT);
 		PM_SFI_CASE(PM_ERROR_NO_FLUX_CAUGHT);
-		PM_SFI_CASE(PM_ERROR_SYNC_FAULT);
+		PM_SFI_CASE(PM_ERROR_NO_SYNC_FAULT);
 		PM_SFI_CASE(PM_ERROR_KNOB_CONTROL_FAULT);
+		PM_SFI_CASE(PM_ERROR_SPI_DATA_FAULT);
 
 		PM_SFI_CASE(PM_ERROR_HW_UNMANAGED_IRQ);
 		PM_SFI_CASE(PM_ERROR_HW_OVERCURRENT);

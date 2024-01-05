@@ -38,7 +38,7 @@
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	11
+#define GP_CONFIG_VERSION	14
 
 enum {
 	FORMAT_NONE			= 0,
@@ -140,6 +140,7 @@ typedef struct {
 	plot_t		*pl;
 
 	char		screenpath[READ_FILE_PATH_MAX];
+	char		ttfname[READ_FILE_PATH_MAX];
 
 	int		config_version;
 	int		window_size_x;

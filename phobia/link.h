@@ -45,7 +45,6 @@ struct link_reg {
 
 	int		started;
 	int		update;
-	int		always;
 	int		onefetch;
 
 	char		*combo[LINK_COMBO_MAX];
@@ -92,7 +91,6 @@ struct link_pmc {
 	int			uptime_warning;
 
 	int			grab_N;
-	int			tlm_N;
 
 	struct link_reg		reg[LINK_REGS_MAX];
 
@@ -117,8 +115,6 @@ void link_reg_fetch_all_shown(struct link_pmc *lp);
 void link_reg_clean_all_always(struct link_pmc *lp);
 
 int link_log_file_open(struct link_pmc *lp, const char *file);
-int link_tlm_file_open(struct link_pmc *lp, const char *file);
-void link_tlm_file_close(struct link_pmc *lp);
 int link_grab_file_open(struct link_pmc *lp, const char *file);
 void link_grab_file_close(struct link_pmc *lp);
 

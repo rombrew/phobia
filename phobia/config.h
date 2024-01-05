@@ -4,18 +4,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define CONFIG_VERSION		4
+#define CONFIG_PHOBIA_VERSION		5
 
-#define FILE_HOME_CONFIG	"phobia"
-#define FILE_LINK_LOG		"phobia.log"
-#define FILE_TELEMETRY_GRAB	"tlmgrab.csv"
-#define FILE_TELEMETRY_LOG	"tlmlog.csv"
-#define FILE_TELEMETRY_FILTER	".csv"
-#define FILE_CONFIG_DEFAULT	"config.txt"
-#define FILE_CONFIG_FILTER	".txt"
+#define FILE_HOME_CONFIG		"phobia"
+#define FILE_LINK_LOG			"phobia.log"
+#define FILE_DEBUG_LOG			"debug.log"
+#define FILE_TLM_DEFAULT		"tlmgrab.csv"
+#define FILE_CONFIG_DEFAULT		"config.txt"
 
-#define PHOBIA_PATH_MAX		400
-#define PHOBIA_NAME_MAX		80
+#define FILE_TLM_EXT			".csv"
+#define FILE_CONFIG_EXT			".txt"
+
+#define PHOBIA_PATH_MAX			400
+#define PHOBIA_NAME_MAX			80
 
 struct config_phobia {
 
@@ -31,8 +32,6 @@ struct config_phobia {
 	int			windowsize;
 	char			storage[PHOBIA_PATH_MAX];
 	char			fuzzy[PHOBIA_NAME_MAX];
-	int			lograte;
-	char			lograte_lbuf[PHOBIA_NAME_MAX];
 	int			regfile;
 };
 

@@ -200,7 +200,7 @@ void ts_probe_spinup()
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
-			if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+			if (ts_wait_for_spinup() != PM_OK)
 				break;
 
 			printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
@@ -232,7 +232,7 @@ void ts_probe_spinup()
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
-		if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
+		if (ts_wait_for_spinup() != PM_OK)
 			break;
 
 		printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
@@ -313,23 +313,21 @@ void ts_probe_spinup()
 
 void ts_adjust_sensor_hall()
 {
-	int		N, STARTUP = PM_DISABLED;
+	int		backup_LU_SENSOR, N;
+
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 
 	do {
-		if (pm.lu_MODE == PM_LU_DISABLED) {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (ts_wait_for_idle() != PM_OK)
+			break;
 
-			if (ts_wait_for_idle() != PM_OK)
-				break;
+		pm.s_setpoint_speed = pm.probe_speed_hold;
 
-			pm.s_setpoint_speed = pm.probe_speed_hold;
-
-			if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
-				break;
-
-			STARTUP = PM_ENABLED;
-		}
+		if (ts_wait_for_spinup() != PM_OK)
+			break;
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
 
@@ -345,62 +343,55 @@ void ts_adjust_sensor_hall()
 			printf("hall_ST[%i] = %.1f (deg)\n", N, STg);
 		}
 
-		if (STARTUP == PM_ENABLED) {
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-			if (ts_wait_for_idle() != PM_OK)
-				break;
-		}
+		if (ts_wait_for_idle() != PM_OK)
+			break;
 	}
 	while (0);
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
 }
 
 void ts_adjust_sensor_eabi()
 {
-	int		STARTUP = PM_DISABLED;
+	int		backup_LU_SENSOR;
+
+	double		F0g;
+
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 
 	do {
-		if (pm.lu_MODE == PM_LU_DISABLED) {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (ts_wait_for_idle() != PM_OK)
+			break;
 
-			if (ts_wait_for_idle() != PM_OK)
-				break;
+		pm.s_setpoint_speed = pm.zone_threshold;
 
-			pm.s_setpoint_speed = pm.zone_threshold;
-
-			if (ts_wait_for_spinup(pm.probe_speed_hold) != PM_OK)
-				break;
-
-			STARTUP = PM_ENABLED;
-		}
+		if (ts_wait_for_spinup() != PM_OK)
+			break;
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_EABI;
 
 		if (ts_wait_for_idle() != PM_OK)
 			break;
 
-		if (pm.config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
+		F0g = atan2(pm.eabi_F0[1], pm.eabi_F0[0]) * (180. / M_PI);
 
-			double		F0g;
+		printf("eabi_const_EP = %i\n", pm.eabi_const_EP);
+		printf("eabi_const_Zs = %i\n", pm.eabi_const_Zs);
+		printf("eabi_F0 = %.1f (deg)\n", F0g);
 
-			F0g = atan2(pm.eabi_F0[1], pm.eabi_F0[0]) * (180. / M_PI);
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-			printf("eabi_F0 = %.1f (deg)\n", F0g);
-		}
-
-		printf("eabi_EPPR = %i\n", pm.eabi_EPPR);
-
-		if (STARTUP == PM_ENABLED) {
-
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-			if (ts_wait_for_idle() != PM_OK)
-				break;
-		}
+		if (ts_wait_for_idle() != PM_OK)
+			break;
 	}
 	while (0);
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
 }
 
 static void
@@ -452,7 +443,7 @@ ts_script_speed()
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
@@ -468,7 +459,7 @@ ts_script_speed()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -531,7 +522,7 @@ ts_script_weakening()
 	pm.s_setpoint_speed = 200.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
@@ -547,7 +538,7 @@ ts_script_weakening()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -561,8 +552,12 @@ ts_script_weakening()
 static void
 ts_script_hall()
 {
+	int		backup_LU_ESTIMATE;
+
 	ts_adjust_sensor_hall();
 	blm_restart(&m);
+
+	backup_LU_ESTIMATE = pm.config_LU_ESTIMATE;
 
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
@@ -579,7 +574,7 @@ ts_script_hall()
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_SENSOR_HALL);
@@ -595,7 +590,7 @@ ts_script_hall()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -604,17 +599,40 @@ ts_script_hall()
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	ts_wait_for_idle();
+
+	pm.config_LU_ESTIMATE = backup_LU_ESTIMATE;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 }
 
 static void
-ts_script_eabi()
+ts_script_eabi(int knob_EABI)
 {
+	int		backup_LU_ESTIMATE;
+
+	if (knob_EABI == PM_EABI_INCREMENTAL) {
+
+		m.eabi_ERES = 2400;
+		m.eabi_WRAP = 65536;
+
+		pm.config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
+	}
+	else if (knob_EABI == PM_EABI_ABSOLUTE) {
+
+		m.eabi_ERES = 16384;
+		m.eabi_WRAP = 16384;
+
+		pm.config_EABI_FRONTEND = PM_EABI_ABSOLUTE;
+	}
+
+	pm.eabi_ADJUST = PM_DISABLED;
+
 	ts_adjust_sensor_eabi();
 	blm_restart(&m);
 
+	backup_LU_ESTIMATE = pm.config_LU_ESTIMATE;
+
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_EABI;
-	pm.config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
@@ -624,7 +642,7 @@ ts_script_eabi()
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
@@ -639,7 +657,7 @@ ts_script_eabi()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup(pm.s_setpoint_speed);
+	ts_wait_for_spinup();
 	sim_runtime(.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -649,7 +667,7 @@ ts_script_eabi()
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	ts_wait_for_idle();
 
-	pm.config_LU_ESTIMATE = PM_FLUX_ORTEGA;
+	pm.config_LU_ESTIMATE = backup_LU_ESTIMATE;
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 }
 
@@ -702,7 +720,10 @@ void ts_script_verify()
 	ts_script_hfi();
 	blm_restart(&m);
 
-	ts_script_eabi();
+	ts_script_eabi(PM_EABI_INCREMENTAL);
+	blm_restart(&m);
+
+	ts_script_eabi(PM_EABI_ABSOLUTE);
 	blm_restart(&m);
 
 	printf("\n---- 8-inch Hub Motor (350W) ----\n");

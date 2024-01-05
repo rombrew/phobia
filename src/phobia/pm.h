@@ -7,6 +7,7 @@
 #define PM_CONFIG_NOP(pm)	(pm)->config_NOP
 #define PM_CONFIG_IFB(pm)	(pm)->config_IFB
 #define PM_CONFIG_TVM(pm)	(pm)->config_TVM
+#define PM_CONFIG_DBG(pm)	(pm)->config_DBG
 
 #define PM_TSMS(pm, ms)		(int) ((pm)->m_freq * (ms) * 0.001f)
 
@@ -179,13 +180,15 @@ enum {
 	PM_ERROR_UNCERTAIN_RESULT,
 	PM_ERROR_INVALID_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
+	PM_ERROR_SENSOR_EABI_FAULT,
 
 	/* Application level.
 	 * */
 	PM_ERROR_TIMEOUT,
 	PM_ERROR_NO_FLUX_CAUGHT,
-	PM_ERROR_SYNC_FAULT,
+	PM_ERROR_NO_SYNC_FAULT,
 	PM_ERROR_KNOB_CONTROL_FAULT,
+	PM_ERROR_SPI_DATA_FAULT,
 
 	/* Arise by hardware.
 	 * */
@@ -243,6 +246,7 @@ typedef struct {
 	int		config_NOP;
 	int		config_IFB;
 	int		config_TVM;
+	int		config_DBG;
 
 	int		config_VSI_ZERO;
 	int		config_VSI_CLAMP;
@@ -461,12 +465,13 @@ typedef struct {
 	float		hall_gain_IF;
 
 	int		eabi_RECENT;
+	int		eabi_ADJUST;
 	int		eabi_bEP;
 	int		eabi_lEP;
 	int		eabi_unwrap;
 	float		eabi_interp;
 	float		eabi_F0[2];
-	int		eabi_EPPR;
+	int		eabi_const_EP;
 	int		eabi_const_Zs;
 	int		eabi_const_Zq;
 	float		eabi_F[2];
@@ -548,7 +553,7 @@ typedef struct {
 	float		i_gain_P;
 	float		i_gain_I;
 
-	float		mtpa_approx;
+	float		mtpa_approx_Q;
 	float		mtpa_D;
 	float		mtpa_gain_LP;
 
@@ -584,8 +589,7 @@ typedef struct {
 	float		x_gain_P;
 	float		x_gain_D;
 
-	float		boost_gain_P;
-	float		boost_gain_I;
+	float		dbg[2];
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

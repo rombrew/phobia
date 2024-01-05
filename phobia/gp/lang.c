@@ -62,6 +62,8 @@ void langFill(lang_t *la, int lang)
 			"    Solid font            [ %s ]\0"
 			"    Grid thickness        [ %s ]\0"
 			"    Font size             [ %s ]\0"
+			"    Gamma correction      [ %s ]\0"
+			"    Marker layout         [ %s ]\0"
 
 			"\0";
 
@@ -72,6 +74,7 @@ void langFill(lang_t *la, int lang)
 			"O   Open data file ...\0"
 			"    Dataset customization ...\0"
 			"    Edit configuration ...\0"
+			"    Write configuration\0"
 			"    Default configuration\0"
 
 			"\0";
@@ -185,7 +188,7 @@ void langFill(lang_t *la, int lang)
 		la->page_label_edit = "Page Label";
 		la->figure_label_edit = "Figure Label";
 		la->axis_label_edit = "Axis Label";
-		la->scale_offset_edit = "Scale and offset";
+		la->scale_offset_edit = "Scale and Offset";
 		la->file_name_edit = "File Name";
 		la->bit_number_edit = "Bit Range";
 		la->low_pass_edit = "Low Pass Gain";
@@ -194,6 +197,8 @@ void langFill(lang_t *la, int lang)
 		la->figure_thickness_edit = "Thickness";
 		la->font_size_edit = "Font size";
 		la->median_unwrap_edit = "Median and unwrap flags";
+		la->marker_density_edit = "Density and Size";
+		la->gamma_edit = "Gamma";
 	}
 	else if (lang == LANG_RU) {
 
@@ -237,6 +242,8 @@ void langFill(lang_t *la, int lang)
 			"    Сплошной шрифт          [ %s ]\0"
 			"    Толщина сетки           [ %s ]\0"
 			"    Размер шрифта           [ %s ]\0"
+			"    Гамма коррекция         [ %s ]\0"
+			"    Разметка маркеров       [ %s ]\0"
 
 			"\0";
 
@@ -247,6 +254,7 @@ void langFill(lang_t *la, int lang)
 			"O   Открыть файл данных ...\0"
 			"    Настройка наборов данных ...\0"
 			"    Редактировать конфигурацию ...\0"
+			"    Записать конфигурацию\0"
 			"    Сбросить конфигурацию\0"
 
 			"\0";
@@ -360,7 +368,7 @@ void langFill(lang_t *la, int lang)
 		la->page_label_edit = "Текст Заголовка";
 		la->figure_label_edit = "Текст Фигуры";
 		la->axis_label_edit = "Текст Оси";
-		la->scale_offset_edit = "Масштаб и смещение";
+		la->scale_offset_edit = "Масштаб и Смещение";
 		la->file_name_edit = "Имя Файла";
 		la->bit_number_edit = "Дипазон Разрядов";
 		la->low_pass_edit = "Коэффициент НЧ фильтра";
@@ -369,6 +377,8 @@ void langFill(lang_t *la, int lang)
 		la->figure_thickness_edit = "Толщина";
 		la->font_size_edit = "Размер шрифта";
 		la->median_unwrap_edit = "Медиана и флаги разворота";
+		la->marker_density_edit = "Плотность и Размер";
+		la->gamma_edit = "Гамма";
 	}
 
 	la->figure_edit_color_menu =

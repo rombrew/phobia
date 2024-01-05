@@ -50,6 +50,8 @@ typedef struct {
 	const char	*figure_thickness_edit;
 	const char	*font_size_edit;
 	const char	*median_unwrap_edit;
+	const char	*marker_density_edit;
+	const char	*gamma_edit;
 }
 lang_t;
 

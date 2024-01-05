@@ -30,6 +30,7 @@ enum {
 	POPUP_LINK_WARNING,
 	POPUP_RESET_DEFAULT,
 	POPUP_PROBE_DETACHED,
+	POPUP_DEBUG_LOG,
 	POPUP_UNABLE_WARNING,
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
@@ -102,6 +103,22 @@ struct public {
 
 	struct {
 
+		int			log_flush;
+		char			log_message[2048];
+
+		char			file_snap[PHOBIA_PATH_MAX];
+	}
+	debug;
+
+	struct {
+
+		char			file_snap[PHOBIA_PATH_MAX];
+		char			file_grab[PHOBIA_NAME_MAX];
+	}
+	config;
+
+	struct {
+
 		int			wait_GP;
 
 		char			file_snap[PHOBIA_PATH_MAX];
@@ -112,13 +129,6 @@ struct public {
 	gp_t			*gp;
 
 	int			gp_ID;
-
-	struct {
-
-		char			file_snap[PHOBIA_PATH_MAX];
-		char			file_grab[PHOBIA_NAME_MAX];
-	}
-	config;
 
 	char			popup_msg[LINK_MESSAGE_MAX];
 	int			popup_enum;
@@ -624,6 +634,58 @@ pub_popup_message(struct public *pub, int popup, const char *msg)
 }
 
 static void
+pub_popup_debug(struct public *pub, int popup, const char *title)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			bounds;
+
+	if (pub->popup_enum != popup)
+		return ;
+
+	bounds = pub_get_popup_bounds_about(pub);
+
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, title, NK_WINDOW_CLOSABLE
+				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
+
+		nk_layout_row_template_begin(ctx, pub->fe_font_h * 12);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE,
+				pub->debug.log_message, sizeof(pub->debug.log_message),
+				nk_filter_default);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "OK")) {
+
+			nk_popup_close(ctx);
+
+			pub->popup_enum = 0;
+		}
+
+		nk_spacer(ctx);
+
+		nk_popup_end(ctx);
+	}
+	else {
+		pub->popup_enum = 0;
+	}
+}
+
+static void
 pub_popup_progress(struct public *pub, int popup, const char *title, int pce)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -882,7 +944,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 						pub->telemetry.wait_GP = 1;
 					}
 
-					pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+					pub_directory_scan(pub, FILE_TLM_EXT);
 				}
 			}
 		}
@@ -926,7 +988,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 					reg_tlm->lval = 1;
 				}
 
-				pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+				pub_directory_scan(pub, FILE_TLM_EXT);
 			}
 		}
 
@@ -1037,7 +1099,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		if (nk_button_label(ctx, "Scan")) {
 
-			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+			pub_directory_scan(pub, FILE_TLM_EXT);
 		}
 
 		nk_spacer(ctx);
@@ -1065,7 +1127,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 				file_remove(pub->lbuf);
 
-				pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
+				pub_directory_scan(pub, FILE_TLM_EXT);
 			}
 		}
 		else {
@@ -1086,7 +1148,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 		nk_spacer(ctx);
 
 		if (		pub->telemetry.wait_GP != 0
-				&& lp->grab_N >= 4) {
+				&& lp->grab_N >= 5) {
 
 			pub->telemetry.wait_GP = 0;
 
@@ -2352,20 +2414,6 @@ page_serial(struct public *pub)
 
 	nk_spacer(ctx);
 
-	nk_label(ctx, "Telemetry logging rate", NK_TEXT_LEFT);
-
-	rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
-			| NK_EDIT_SIG_ENTER, fe->lograte_lbuf,
-			sizeof(fe->lograte_lbuf), nk_filter_default);
-
-	if (rc & (NK_EDIT_DEACTIVATED | NK_EDIT_COMMITED)) {
-
-		lk_stoi(&pub->fe->lograte, fe->lograte_lbuf);
-		config_write(pub->fe);
-	}
-
-	nk_spacer(ctx);
-
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
@@ -2484,6 +2532,22 @@ page_diagnose(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
+		if (nk_menu_item_label(ctx, "RAM log flush", NK_TEXT_LEFT)) {
+
+			strcpy(pub->lbuf, pub->fe->storage);
+			strcat(pub->lbuf, DIRSEP FILE_DEBUG_LOG);
+			strcpy(pub->debug.file_snap, pub->lbuf);
+
+			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
+
+				if (link_command(lp,	"ap_log_flush" "\r\n"
+							"ap_log_clean") != 0) {
+
+					pub->debug.log_flush = 1;
+				}
+			}
+		}
+
 		if (nk_menu_item_label(ctx, "Set PWM to GND", NK_TEXT_LEFT)) {
 
 			link_command(lp,	"hal_PWM_set_Z 0" "\r\n"
@@ -2514,6 +2578,33 @@ page_diagnose(struct public *pub)
 
 	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
+
+	if (		pub->debug.log_flush != 0
+			&& lp->grab_N == 0) {
+
+		pub->debug.log_flush = 0;
+
+		if (lp->linked != 0) {
+
+			FILE		*fd;
+			int		len;
+
+			fd = fopen_from_UTF8(pub->debug.file_snap, "rb");
+
+			if (fd != NULL) {
+
+				len = fread(pub->debug.log_message, 1, 2048, fd);
+
+				if (len != 0) {
+
+					pub->debug.log_message[len] = 0;
+					pub->popup_enum = POPUP_DEBUG_LOG;
+				}
+
+				fclose(fd);
+			}
+		}
+	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2582,6 +2673,8 @@ page_diagnose(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	pub_popup_debug(pub, POPUP_DEBUG_LOG, "RAM log");
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
@@ -3537,6 +3630,7 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
 	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
+	reg_enum_toggle(pub, "pm.config_DBG", "Debug facilities");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3694,6 +3788,34 @@ page_lu_flux(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+
+	if (nk_menu_begin_label(ctx, "Probe", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 800)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "JA inertia probing", NK_TEXT_LEFT)) {
+
+			link_command(lp, "pm_probe_const_inertia");
+		}
+
+		if (nk_menu_item_label(ctx, "NT noise threshold", NK_TEXT_LEFT)) {
+
+			link_command(lp, "pm_probe_noise_threshold");
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	nk_style_pop_vec2(ctx);
+	nk_menubar_end(ctx);
+
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
@@ -3732,6 +3854,18 @@ page_lu_flux(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "pm.zone_budget");
+
+	if (		reg != NULL
+			&& reg->fetched == lp->clock) {
+
+		reg = link_reg_lookup(lp, "pm.zone_noise");
+		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+		reg = link_reg_lookup(lp, "pm.zone_threshold");
+		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+	}
 
 	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
@@ -3772,11 +3906,23 @@ page_lu_flux(struct public *pub)
 		}
 	}
 
+	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
+
 	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
 	reg_float(pub, "pm.flux_lambda", "Flux linkage estimate");
 	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
+
+	if (lp->unable_warning[0] != 0) {
+
+		strcpy(pub->popup_msg, lp->unable_warning);
+		pub->popup_enum = POPUP_UNABLE_WARNING;
+
+		lp->unable_warning[0] = 0;
+	}
+
+	pub_popup_message(pub, POPUP_UNABLE_WARNING, pub->popup_msg);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3949,7 +4095,9 @@ page_lu_hall(struct public *pub)
 		if (reg != NULL) { reg->update = rate; }
 	}
 
+	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+
 	reg_float(pub, "pm.lu_F0", "LU position cosine");
 	reg_float(pub, "pm.lu_F1", "LU position sine");
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
@@ -4028,6 +4176,15 @@ page_lu_eabi(struct public *pub)
 			link_command(lp, "pm_adjust_sensor_eabi");
 		}
 
+		if (nk_menu_item_label(ctx, "EABI position discard", NK_TEXT_LEFT)) {
+
+			if (link_command(lp, "reg pm.eabi_ADJUST 0") != 0) {
+
+				reg = link_reg_lookup(lp, "pm.eabi_F0");
+				if (reg != NULL) { reg->onefetch = 1; }
+			}
+		}
+
 		if (nk_menu_item_label(ctx, "Default configuration", NK_TEXT_LEFT)) {
 
 			/* TODO */
@@ -4042,8 +4199,8 @@ page_lu_eabi(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.eabi_F0", "EABI alignment position");
-	reg_float(pub, "pm.eabi_EPPR", "EABI pulses per revolution");
+	reg_float(pub, "pm.eabi_F0", "EABI adjustment position");
+	reg_float(pub, "pm.eabi_const_EP", "EABI pulse resolution");
 	reg_float(pub, "pm.eabi_const_Zs", "Gear teeth number S");
 	reg_float(pub, "pm.eabi_const_Zq", "Gear teeth number Q");
 	reg_float(pub, "pm.eabi_trip_AP", "EABI speed trip point");
@@ -4066,18 +4223,23 @@ page_lu_eabi(struct public *pub)
 		fast = (reg->lval != 0) ? 20  : 0;
 
 		reg = link_reg_lookup(lp, "pm.lu_location");
-		if (reg != NULL) { reg += reg->um_sel; reg->update = fast; }
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(lp, "pm.lu_location");
+		if (reg != NULL) { reg->shown = lp->clock; reg->update = fast; }
 
 		reg = link_reg_lookup(lp, "pm.lu_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
 		rate = (rate != 0) ? rate : 1000;
 
-		reg = link_reg_lookup(lp, "pm.fb_HS");
+		reg = link_reg_lookup(lp, "pm.fb_EP");
 		if (reg != NULL) { reg->update = rate; }
 	}
 
+	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+
 	reg_float_um(pub, "pm.lu_location", "LU location", 1);
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
 	reg_float(pub, "pm.fb_EP", "EP feedback");
@@ -4493,7 +4655,9 @@ page_lp_location(struct public *pub)
 		if (reg != NULL) { reg->update = rate; }
 	}
 
+	reg_enum_errno(pub, "pm.fsm_errno", "FSM errno", 1);
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+
 	reg_float(pub, "pm.lu_iD", "LU current D");
 	reg_float(pub, "pm.lu_iQ", "LU current Q");
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", um_def);
@@ -4576,24 +4740,8 @@ page_telemetry(struct public *pub)
 			pub->popup_enum = POPUP_TELEMETRY_GRAB;
 			pub->telemetry.wait_GP = 0;
 
-			strcpy(pub->telemetry.file_grab, FILE_TELEMETRY_GRAB);
-			pub_directory_scan(pub, FILE_TELEMETRY_FILTER);
-		}
-
-		if (nk_menu_item_label(ctx, "Background logging", NK_TEXT_LEFT)) {
-
-			if (lp->linked != 0) {
-
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, FILE_TELEMETRY_LOG);
-				strcpy(pub->telemetry.file_snap, pub->lbuf);
-
-				if (link_tlm_file_open(lp, pub->telemetry.file_snap) != 0) {
-
-					pub_open_GP(pub, pub->telemetry.file_snap);
-				}
-			}
+			strcpy(pub->telemetry.file_grab, FILE_TLM_DEFAULT);
+			pub_directory_scan(pub, FILE_TLM_EXT);
 		}
 
 		if (nk_menu_item_label(ctx, "Default telemetry", NK_TEXT_LEFT)) {
@@ -4620,8 +4768,6 @@ page_telemetry(struct public *pub)
 		reg_float(pub, "tlm.grabfreq", "Grab into RAM frequency");
 		reg_float(pub, "tlm.livefreq", "Live frequency");
 
-		link_reg_clean_all_always(lp);
-
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
@@ -4639,7 +4785,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4657,7 +4802,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4675,7 +4819,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4693,7 +4836,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4711,7 +4853,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4729,7 +4870,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4747,7 +4887,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4765,7 +4904,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4783,7 +4921,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -4801,7 +4938,6 @@ page_telemetry(struct public *pub)
 			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
 				reg->update = 1000;
-				reg->always = (lp->tlm_N > 0) ? pub->fe->lograte : 0;
 			}
 		}
 
@@ -5136,9 +5272,9 @@ menu_group_layout(struct public *pub)
 		}
 
 		if (pub_popup_ok_cancel(pub, POPUP_LINK_WARNING,
-					"A sudden reset was detected so we suggest"
-					" you drop this link and connect to PMC again"
-					" to read actual info") != 0) {
+					"A sudden reset was detected so we must drop"
+					" this link and connect to PMC again to read"
+					" actual information.") != 0) {
 
 			config_write(pub->fe);
 			link_close(lp);
@@ -5326,11 +5462,6 @@ int main(int argc, char **argv)
 				if (lp->grab_N != 0) {
 
 					link_grab_file_close(lp);
-				}
-
-				if (lp->tlm_N != 0) {
-
-					link_tlm_file_close(lp);
 				}
 
 				link_command(lp, "\r\n");

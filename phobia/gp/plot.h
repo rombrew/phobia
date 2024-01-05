@@ -50,7 +50,7 @@
 #define PLOT_POLYFIT_MAX			7
 #define PLOT_SUBTRACT				20
 #define PLOT_GROUP_MAX				40
-#define PLOT_MARK_MAX				50
+#define PLOT_MARK_MAX				80
 #define PLOT_SKETCH_CHUNK_SIZE			32768
 #define PLOT_SKETCH_MAX				800
 #define PLOT_STRING_MAX				200
@@ -423,6 +423,7 @@ typedef struct {
 	int			layout_font_pt;
 	int			layout_font_height;
 	int			layout_font_long;
+	int			layout_font_space;
 	int			layout_border;
 	int			layout_axis_box;
 	int			layout_label_box;
@@ -431,7 +432,7 @@ typedef struct {
 	int			layout_grid_space;
 	int			layout_drawing_dash;
 	int			layout_drawing_space;
-	int			layout_mark;
+	int			layout_mark_size;
 	int			layout_fence_dash;
 	int			layout_fence_space;
 	int			layout_fence_point;
@@ -445,7 +446,9 @@ typedef struct {
 	int			hover_axis;
 
 	int			mark_on;
-	int			mark_N;
+	int			mark_count;
+	int			mark_size;
+	int			mark_density;
 
 	int			interpolation;
 	int			defungap;
@@ -468,7 +471,7 @@ plot_t *plotAlloc(draw_t *dw, scheme_t *sch);
 void plotClean(plot_t *pl);
 
 void plotFontDefault(plot_t *pl, int ttfnum, int ptsize, int style);
-void plotFontOpen(plot_t *pl, const char *file, int ptsize, int style);
+int plotFontOpen(plot_t *pl, const char *ttf, int ptsize, int style);
 
 unsigned long long plotDataMemoryUsage(plot_t *pl, int dN);
 unsigned long long plotDataMemoryUncompressed(plot_t *pl, int dN);

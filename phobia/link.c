@@ -32,17 +32,13 @@ struct link_priv {
 	int			reg_push_ID;
 
 	char			lbuf[LINK_MESSAGE_MAX];
-	char			pbuf[LINK_MESSAGE_MAX];
 
 	FILE			*fd_log;
-	FILE			*fd_tlm;
 	FILE			*fd_grab;
 
 	char			hw_revision[LINK_NAME_MAX];
 	char			hw_build[LINK_NAME_MAX];
 	char			hw_crc32[LINK_NAME_MAX];
-
-	int			tlm_clock;
 
 	char			mb[81920];
 	char			*mbflow;
@@ -281,7 +277,7 @@ static void
 link_fetch_reg_format(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
-	char			ldup[sizeof(priv->lbuf)], *sp = ldup;
+	char			ldup[LINK_MESSAGE_MAX], *sp = ldup;
 	const char		*tok, *sym;
 	int			reg_mode, reg_ID, eol, n;
 
@@ -545,11 +541,6 @@ void link_close(struct link_pmc *lp)
 			fclose(priv->fd_log);
 		}
 
-		if (priv->fd_tlm != NULL) {
-
-			fclose(priv->fd_tlm);
-		}
-
 		if (priv->fd_grab != NULL) {
 
 			fclose(priv->fd_grab);
@@ -574,12 +565,6 @@ void link_remote(struct link_pmc *lp)
 	priv->reg_push_ID = 0;
 	priv->mbflow = priv->mb;
 
-	if (priv->fd_tlm != NULL) {
-
-		fclose(priv->fd_tlm);
-		priv->fd_tlm = NULL;
-	}
-
 	if (priv->fd_grab != NULL) {
 
 		fclose(priv->fd_grab);
@@ -594,7 +579,6 @@ void link_remote(struct link_pmc *lp)
 	lp->keep = lp->clock;
 
 	lp->grab_N = 0;
-	lp->tlm_N = 0;
 
 	memset(lp->reg, 0, sizeof(lp->reg));
 
@@ -612,82 +596,9 @@ void link_remote(struct link_pmc *lp)
 	serial_fputs(priv->fd, priv->lbuf);
 }
 
-static void
-link_tlm_label(struct link_pmc *lp)
-{
-	struct link_priv	*priv = lp->priv;
-	FILE			*fd = priv->fd_tlm;
-	struct link_reg		*reg;
-
-	char			sym[40];
-	int			N, reg_ID;
-
-	fprintf(fd, "time@s;");
-
-	for (N = 0; N < 10; ++N) {
-
-		sprintf(sym, "tlm.reg_ID%i", N);
-
-		reg = link_reg_lookup(lp, sym);
-		reg_ID = (reg != NULL) ? reg->lval : 0;
-
-		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
-
-			reg = &lp->reg[reg_ID];
-
-			fprintf(fd, "%s", reg->sym);
-
-			if (reg->um[0] != 0) {
-
-				fprintf(fd, "@%s", reg->um);
-			}
-
-			fprintf(fd, ";");
-		}
-	}
-
-	fprintf(fd, "\n");
-	fflush(fd);
-}
-
-static void
-link_tlm_flush(struct link_pmc *lp)
-{
-	struct link_priv	*priv = lp->priv;
-	struct config_phobia	*fe = lp->fe;
-	FILE			*fd = priv->fd_tlm;
-	struct link_reg		*reg;
-
-	char			sym[40];
-	int			N, reg_ID;
-
-	fprintf(fd, "%.3f;", (double) lp->tlm_N * (fe->lograte / 1000.));
-
-	for (N = 0; N < 10; ++N) {
-
-		sprintf(sym, "tlm.reg_ID%i", N);
-
-		reg = link_reg_lookup(lp, sym);
-		reg_ID = (reg != NULL) ? reg->lval : 0;
-
-		if (reg_ID > 0 && reg_ID < lp->reg_MAX_N) {
-
-			reg = &lp->reg[reg_ID];
-
-			fprintf(fd, "%s;", reg->val);
-		}
-	}
-
-	fprintf(fd, "\n");
-	fflush(fd);
-
-	lp->tlm_N++;
-}
-
 int link_fetch(struct link_pmc *lp, int clock)
 {
 	struct link_priv	*priv = lp->priv;
-	struct config_phobia	*fe = lp->fe;
 	int			rc_local, N = 0;
 
 	struct {
@@ -699,6 +610,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 		{ "ap_version",		LINK_MODE_HWINFO },
 		{ "ap_clock",		LINK_MODE_CLOCK },
+		{ "ap_log_flush",	LINK_MODE_DATA_GRAB },
 		{ "ap_reboot",		LINK_MODE_UNABLE_WARNING },
 		{ "ap_bootload",	LINK_MODE_UNABLE_WARNING },
 		{ "flash_info",		LINK_MODE_FLASH_MAP },
@@ -832,14 +744,6 @@ int link_fetch(struct link_pmc *lp, int clock)
 		}
 	}
 
-	if (		priv->fd_tlm != NULL
-			&& priv->tlm_clock < lp->clock) {
-
-		priv->tlm_clock += fe->lograte;
-
-		link_tlm_flush(lp);
-	}
-
 	lp->fetched_N += N;
 
 	return N;
@@ -872,12 +776,6 @@ void link_push(struct link_pmc *lp)
 			if (reg->update != 0) {
 
 				if (reg->fetched + reg->update < reg->shown)
-					dofetch = 1;
-			}
-
-			if (reg->always != 0) {
-
-				if (reg->fetched + reg->always < lp->clock)
 					dofetch = 1;
 			}
 
@@ -1024,19 +922,72 @@ void link_reg_fetch_all_shown(struct link_pmc *lp)
 	}
 }
 
-void link_reg_clean_all_always(struct link_pmc *lp)
+void link_config_write(struct link_pmc *lp, const char *file)
 {
-	struct link_reg			*reg = NULL;
-	int				reg_ID;
+	struct link_reg		*reg;
+	FILE			*fd;
+	int			reg_ID;
 
-	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+	if (lp->linked == 0)
+		return ;
 
-		if (lp->reg[reg_ID].sym[0] != 0) {
+	fd = fopen_from_UTF8(file, "w");
 
-			reg = &lp->reg[reg_ID];
+	if (fd != NULL) {
 
-			reg->always = 0;
+		for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+
+			if (lp->reg[reg_ID].sym[0] != 0) {
+
+				reg = &lp->reg[reg_ID];
+
+				if (reg->mode & LINK_REG_LINKED) {
+
+					fprintf(fd, "%s %s\n", reg->sym, reg->um);
+				}
+				else {
+					fprintf(fd, "%s %s\n", reg->sym, reg->val);
+				}
+			}
 		}
+
+		fclose(fd);
+	}
+}
+
+void link_config_read(struct link_pmc *lp, const char *file)
+{
+	struct link_priv	*priv = lp->priv;
+	struct link_reg		*reg;
+	const char		*sym, *val;
+
+	FILE			*fd;
+
+	if (lp->linked == 0)
+		return ;
+
+	fd = fopen_from_UTF8(file, "r");
+
+	if (fd != NULL) {
+
+		while (fgets(priv->lbuf, sizeof(priv->lbuf), fd) != NULL) {
+
+			char	*sp = priv->lbuf;
+
+			sym = lk_token(&sp);
+			val = lk_token(&sp);
+
+			reg = link_reg_lookup(lp, sym);
+
+			if (reg != NULL) {
+
+				sprintf(reg->val, "%.70s", val);
+
+				reg->modified = lp->clock;
+			}
+		}
+
+		fclose(fd);
 	}
 }
 
@@ -1069,54 +1020,6 @@ int link_log_file_open(struct link_pmc *lp, const char *file)
 	return rc;
 }
 
-int link_tlm_file_open(struct link_pmc *lp, const char *file)
-{
-	struct link_priv	*priv = lp->priv;
-	FILE			*fd;
-	int			rc = 0;
-
-	if (lp->linked == 0)
-		return 0;
-
-	if (priv->fd_tlm == NULL) {
-
-		fd = fopen_from_UTF8(file, "w");
-
-		if (fd != NULL) {
-
-			priv->fd_tlm = fd;
-			priv->tlm_clock = lp->clock;
-
-			lp->tlm_N = 0;
-
-			link_tlm_label(lp);
-			link_tlm_flush(lp);
-			link_tlm_flush(lp);
-			link_tlm_flush(lp);
-
-			rc = 1;
-		}
-	}
-
-	return rc;
-}
-
-void link_tlm_file_close(struct link_pmc *lp)
-{
-	struct link_priv	*priv = lp->priv;
-
-	if (lp->linked == 0)
-		return;
-
-	if (priv->fd_tlm != NULL) {
-
-		fclose(priv->fd_tlm);
-		priv->fd_tlm = NULL;
-	}
-
-	lp->tlm_N = 0;
-}
-
 int link_grab_file_open(struct link_pmc *lp, const char *file)
 {
 	struct link_priv	*priv = lp->priv;
@@ -1124,9 +1027,6 @@ int link_grab_file_open(struct link_pmc *lp, const char *file)
 	int			rc = 0;
 
 	if (lp->linked == 0)
-		return 0;
-
-	if (priv->fd_tlm != NULL)
 		return 0;
 
 	if (priv->fd_grab == NULL) {
@@ -1137,7 +1037,7 @@ int link_grab_file_open(struct link_pmc *lp, const char *file)
 
 			priv->fd_grab = fd;
 
-			lp->grab_N = 0;
+			lp->grab_N = 1;
 
 			rc = 1;
 		}
@@ -1151,7 +1051,7 @@ void link_grab_file_close(struct link_pmc *lp)
 	struct link_priv	*priv = lp->priv;
 
 	if (lp->linked == 0)
-		return;
+		return ;
 
 	if (priv->fd_grab != NULL) {
 

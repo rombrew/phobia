@@ -27,7 +27,7 @@
 
 #define MENU_FUZZY_SIZE			80
 #define MENU_STRING_MAX			200
-#define MENU_OPTION_MAX			8
+#define MENU_OPTION_MAX			10
 
 typedef struct {
 

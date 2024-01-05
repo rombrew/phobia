@@ -81,6 +81,7 @@ plot_t *plotAlloc(draw_t *dw, scheme_t *sch)
 		pl->draw[N].list_self = -1;
 
 	pl->layout_font_long = 11;
+	pl->layout_font_space = 16;
 	pl->layout_border = 5;
 	pl->layout_tick_tooth = 5;
 	pl->layout_grid_dash = 2;
@@ -93,6 +94,9 @@ plot_t *plotAlloc(draw_t *dw, scheme_t *sch)
 
 	pl->interpolation = 1;
 	pl->defungap = 10;
+
+	pl->mark_size = 40;
+	pl->mark_density = 40;
 
 	pl->default_drawing = FIGURE_DRAWING_LINE;
 	pl->default_width = 2;
@@ -145,9 +149,12 @@ plotFontLayout(plot_t *pl)
 
 	pl->layout_font_height = TTF_FontHeight(pl->font);
 
+	pl->layout_font_space = pl->layout_font_long * 14 / 10;
 	pl->layout_axis_box = pl->layout_tick_tooth + pl->layout_font_height;
 	pl->layout_label_box = pl->layout_font_height;
-	pl->layout_mark = pl->layout_font_height / 4;
+
+	pl->layout_mark_size = pl->layout_font_height * pl->mark_size / 200;
+	pl->layout_mark_size = (pl->layout_mark_size < 1) ? 1 : pl->layout_mark_size;
 }
 
 void plotFontDefault(plot_t *pl, int ttfnum, int ptsize, int style)
@@ -181,7 +188,7 @@ void plotFontDefault(plot_t *pl, int ttfnum, int ptsize, int style)
 	plotFontLayout(pl);
 }
 
-void plotFontOpen(plot_t *pl, const char *file, int ptsize, int style)
+int plotFontOpen(plot_t *pl, const char *ttf, int ptsize, int style)
 {
 	if (pl->font != NULL) {
 
@@ -190,12 +197,12 @@ void plotFontOpen(plot_t *pl, const char *file, int ptsize, int style)
 		pl->font = NULL;
 	}
 
-	pl->font = TTF_OpenFont(file, ptsize);
+	pl->font = TTF_OpenFont(ttf, ptsize);
 
 	if (pl->font == NULL) {
 
 		ERROR("TTF_OpenFont: \"%s\"\n", TTF_GetError());
-		return ;
+		return -1;
 	}
 
 	TTF_SetFontStyle(pl->font, style);
@@ -204,6 +211,8 @@ void plotFontOpen(plot_t *pl, const char *file, int ptsize, int style)
 	pl->layout_font_pt = ptsize;
 
 	plotFontLayout(pl);
+
+	return 0;
 }
 
 static void
@@ -1069,34 +1078,90 @@ plotDataPolyfit(plot_t *pl, int dN, int cNX, int cNY,
 }
 
 static void
-plotDataFileCSV(plot_t *pl, int dN, int list_cN[16], int len_N, FILE *fd_csv)
+plotDataFileCSV(plot_t *pl, int *list_dN, int *list_cN, int len_N, FILE *fd_csv)
 {
-	const fval_t	*row;
-	fval_t		fval;
-	int		N, rN, id_N;
+	char		numfmt[PLOT_STRING_MAX];
 
-	rN = pl->data[dN].head_N;
-	id_N = pl->data[dN].id_N;
+	fval_t		fval;
+	int		N, dN, job;
+
+	struct {
+
+		const fval_t	*row;
+
+		int		rN;
+		int		id_N;
+	}
+	local[PLOT_DATASET_MAX];
+
+	for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
+
+		job = 0;
+
+		if (pl->data[dN].column_N != 0) {
+
+			for (N = 0; N < len_N; ++N) {
+
+				if (list_dN[N] == dN) {
+
+					job = 1;
+					break;
+				}
+			}
+		}
+
+		if (job != 0) {
+
+			local[dN].row = (const fval_t *) 1;
+			local[dN].rN = pl->data[dN].head_N;
+			local[dN].id_N = pl->data[dN].id_N;
+		}
+		else {
+			local[dN].row = NULL;
+		}
+	}
 
 	do {
-		row = plotDataGet(pl, dN, &rN);
+		job = 0;
 
-		if (row == NULL)
+		for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
+
+			if (local[dN].row != NULL) {
+
+				local[dN].row = plotDataGet(pl, dN, &local[dN].rN);
+			}
+
+			if (local[dN].row != NULL)
+				job = 1;
+		}
+
+		if (job == 0)
 			break;
 
 		for (N = 0; N < len_N; ++N) {
 
-			char		sfmt[PLOT_STRING_MAX];
+			dN = list_dN[N];
 
-			fval = (list_cN[N] < 0) ? id_N : row[list_cN[N]];
+			if (local[dN].row != NULL) {
 
-			sprintf(sfmt, "%%.%iE;", pl->fprecision - 1);
-			fprintf(fd_csv, sfmt, fval);
+				fval = (list_cN[N] < 0) ? local[dN].id_N
+					: local[dN].row[list_cN[N]];
+
+				sprintf(numfmt, "%%.%iE;", pl->fprecision - 1);
+				fprintf(fd_csv, numfmt, fval);
+			}
+			else {
+				fprintf(fd_csv, "NAN;");
+			}
 		}
 
 		fprintf(fd_csv, "\n");
 
-		id_N++;
+		for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
+
+			if (local[dN].row != NULL)
+				local[dN].id_N++;
+		}
 	}
 	while (1);
 }
@@ -2680,15 +2745,15 @@ void plotAxisScaleAuto(plot_t *pl, int aN)
 
 		if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-			fmin = plotAxisConvBackward(pl, aN, pl->viewport.min_x - pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, pl->viewport.max_x + pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, pl->viewport.min_x - pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, pl->viewport.max_x + pl->layout_mark_size);
 
 			plotAxisScaleManual(pl, aN, fmin, fmax);
 		}
 		else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-			fmin = plotAxisConvBackward(pl, aN, pl->viewport.max_y + pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, pl->viewport.min_y - pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, pl->viewport.max_y + pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, pl->viewport.min_y - pl->layout_mark_size);
 
 			plotAxisScaleManual(pl, aN, fmin, fmax);
 		}
@@ -2732,15 +2797,15 @@ void plotAxisScaleAutoCond(plot_t *pl, int aN, int bN)
 
 		if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-			fmin = plotAxisConvBackward(pl, aN, pl->viewport.min_x - pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, pl->viewport.max_x + pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, pl->viewport.min_x - pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, pl->viewport.max_x + pl->layout_mark_size);
 
 			plotAxisScaleManual(pl, aN, fmin, fmax);
 		}
 		else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-			fmin = plotAxisConvBackward(pl, aN, pl->viewport.max_y + pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, pl->viewport.min_y - pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, pl->viewport.max_y + pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, pl->viewport.min_y - pl->layout_mark_size);
 
 			plotAxisScaleManual(pl, aN, fmin, fmax);
 		}
@@ -2947,7 +3012,7 @@ void plotAxisScaleGridLock(plot_t *pl, int aN)
 	ymin = - offset / scale;
 	ymax = 1. / scale + ymin;
 
-	if (plotAxisRangeGet(pl, aN, &fmin, &fmax) != 0) {
+	if (plotAxisRangeCond(pl, aN, -1, &fmin, &fmax) != 0) {
 
 		if (fmin == fmax) {
 
@@ -2957,17 +3022,17 @@ void plotAxisScaleGridLock(plot_t *pl, int aN)
 
 		if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-			fmin = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmin) - pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmax) + pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmin) - pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmax) + pl->layout_mark_size);
 		}
 		else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-			fmin = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmin) + pl->layout_mark);
-			fmax = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmax) - pl->layout_mark);
+			fmin = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmin) + pl->layout_mark_size);
+			fmax = plotAxisConvBackward(pl, aN, plotAxisConvForward(pl, aN, fmax) - pl->layout_mark_size);
 		}
 
-		ymin = (ymin < fmin) ? fmin : ymin;
-		ymax = (ymax > fmax) ? fmax : ymax;
+		ymin = (ymin < fmin) ? (fmin < ymax) ? fmin : ymax : ymin;
+		ymax = (ymax > fmax) ? (fmax > ymin) ? fmax : ymin : ymax;
 	}
 
 	pl->axis[aN].lock_tick = 1;
@@ -3070,7 +3135,7 @@ void plotAxisScaleStacked(plot_t *pl, int bN)
 				ymap[N].fmax += (double) + 1.;
 			}
 
-			ypad = (double) pl->layout_mark / (double)
+			ypad = (double) pl->layout_mark_size / (double)
 				(pl->viewport.max_y - pl->viewport.min_y);
 
 			ypad *= (ymap[N].fmax - ymap[N].fmin) / (scale - ypad * 2.);
@@ -5020,10 +5085,13 @@ plotLabelFusedCSV(plot_t *pl, char *label, const char *name, const char *unit)
 			break;
 	}
 
-	*l++ = '@';
-
 	s = unit;
 	n = 0;
+
+	if (*s != 0) {
+
+		*l++ = '@';
+	}
 
 	while (*s != 0) {
 
@@ -5044,114 +5112,73 @@ plotLabelFusedCSV(plot_t *pl, char *label, const char *name, const char *unit)
 
 void plotFigureExportCSV(plot_t *pl, const char *file)
 {
-	FILE		*fd_csv;
-	int		list_cN[16], list_fN[16], len_N;
-	int		N, fN, fN_common, dN, dN_common, cNX, cNY, aN, job;
-
-	fd_csv = unified_fopen(file, "w");
-
-	if (fd_csv == NULL) {
-
-		ERROR("fopen(\"%s\"): %s\n", file, strerror(errno));
-		return ;
-	}
-
-	len_N = 0;
-
-	fN_common = -1;
-	dN_common = -1;
+	int		list_dN[16], list_cN[16], list_fN[16];
+	int		N, fN, aN, job, len_N = 0;
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
 		if (		pl->figure[fN].busy != 0
 				&& pl->figure[fN].hidden == 0) {
 
-			dN = pl->figure[fN].data_N;
-			aN = pl->figure[fN].axis_X;
+			job = 1;
 
-			if (fN_common < 0) {
+			for (N = 0; N < len_N; ++N) {
 
-				fN_common = fN;
-				dN_common = dN;
-			}
+				if (		list_dN[N] == pl->figure[fN].data_N
+						&& list_cN[N] == pl->figure[fN].column_X) {
 
-			if (		dN != dN_common
-					&& aN == pl->figure[fN_common].axis_X) {
-
-				cNX = pl->figure[fN_common].column_X;
-
-				cNY = plotGetSubtractResample(pl, dN_common, cNX,
-						pl->figure[fN].data_N,
-						pl->figure[fN].column_X,
-						pl->figure[fN].column_Y);
-
-				if (cNY < 0) {
-
-					ERROR("Unable to get resample subtract\n");
-				}
-				else {
-					pl->figure[fN].data_N = dN_common;
-					pl->figure[fN].column_X = cNX;
-					pl->figure[fN].column_Y = cNY;
-
-					dN = pl->figure[fN].data_N;
-
-					ERROR("Figure %i was resampled\n", fN);
+					job = 0;
+					break;
 				}
 			}
 
-			if (dN == dN_common) {
+			if (job != 0) {
 
-				job = 1;
+				list_dN[len_N] = pl->figure[fN].data_N;
+				list_cN[len_N] = pl->figure[fN].column_X;
+				list_fN[len_N] = fN;
 
-				for (N = 0; N < len_N; ++N) {
+				len_N++;
+			}
 
-					if (list_cN[N] == pl->figure[fN].column_X) {
+			job = 1;
 
-						job = 0;
-						break;
-					}
-				}
+			for (N = 0; N < len_N; ++N) {
 
-				if (job != 0) {
+				if (		list_dN[N] == pl->figure[fN].data_N
+						&& list_cN[N] == pl->figure[fN].column_Y) {
 
-					list_cN[len_N] = pl->figure[fN].column_X;
-					list_fN[len_N] = fN;
-
-					len_N++;
-				}
-
-				job = 1;
-
-				for (N = 0; N < len_N; ++N) {
-
-					if (list_cN[N] == pl->figure[fN].column_Y) {
-
-						job = 0;
-						break;
-					}
-				}
-
-				if (job != 0) {
-
-					list_cN[len_N] = pl->figure[fN].column_Y;
-					list_fN[len_N] = fN;
-
-					len_N++;
+					job = 0;
+					break;
 				}
 			}
-			else {
-				ERROR("Figure %i from another dataset\n", fN);
+
+			if (job != 0) {
+
+				list_dN[len_N] = pl->figure[fN].data_N;
+				list_cN[len_N] = pl->figure[fN].column_Y;
+				list_fN[len_N] = fN;
+
+				len_N++;
 			}
 		}
 	}
 
 	if (len_N >= 2) {
 
+		FILE		*fd_csv;
 #ifdef _WINDOWS
 		read_t		*rd = (read_t *) pl->ld;
 #endif /* _WINDOWS */
 		char		labelbuf[PLOT_STRING_MAX];
+
+		fd_csv = unified_fopen(file, "w");
+
+		if (fd_csv == NULL) {
+
+			ERROR("fopen(\"%s\"): %s\n", file, strerror(errno));
+			return ;
+		}
 
 		for (N = 0; N < len_N; ++N) {
 
@@ -5170,7 +5197,6 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 				plotLabelFusedCSV(pl, labelbuf,
 						pl->figure[fN].label,
 						pl->axis[aN].label);
-
 			}
 
 #ifdef _WINDOWS
@@ -5189,10 +5215,10 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 
 		fprintf(fd_csv, "\n");
 
-		plotDataFileCSV(pl, dN_common, list_cN, len_N, fd_csv);
-	}
+		plotDataFileCSV(pl, list_dN, list_cN, len_N, fd_csv);
 
-	fclose(fd_csv);
+		fclose(fd_csv);
+	}
 }
 
 void plotFigureClean(plot_t *pl)
@@ -5242,33 +5268,42 @@ static void
 plotMarkLayout(plot_t *pl)
 {
 	const fval_t	*row;
-	double		scale, offset, fval_X, fval_Y, base, span;
-	int		fN, vN, aN, bN, cX, cY, cZ, N, id_N, mN = 0;
+	double		shuffle, total, scale, offset, fval_X, fval_Y;
+	int		fN, vN, aN, bN, cX, cY, cZ, N, id_N, fMAX = 0;
+
+	const int	ltdense[PLOT_FIGURE_MAX] = {
+
+		250, 353, 433, 500, 559, 612, 661, 707		/* 250 * sqrt(N) */
+	};
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
-		if (pl->figure[fN].busy != 0 && pl->figure[fN].hidden == 0) {
+		if (		pl->figure[fN].busy != 0
+				&& pl->figure[fN].hidden == 0) {
 
-			mN++;
+			fMAX++;
 		}
 	}
 
-	if (mN == 0)
+	if (fMAX == 0)
 		return ;
 
-	scale = (double) pl->layout_mark * sqrt(mN) * 4.;
+	pl->layout_mark_size = pl->layout_font_height * pl->mark_size / 200;
+	pl->layout_mark_size = (pl->layout_mark_size < 1) ? 1 : pl->layout_mark_size;
 
-	pl->mark_N = (int) ((pl->viewport.max_x - pl->viewport.min_x) / scale);
+	pl->mark_count = (pl->viewport.max_x - pl->viewport.min_x)
+		* pl->mark_density / (pl->layout_mark_size * ltdense[fMAX - 1]);
 
-	pl->mark_N = (pl->mark_N < 1) ? 1 : pl->mark_N;
-	pl->mark_N = (pl->mark_N > PLOT_MARK_MAX) ? PLOT_MARK_MAX : pl->mark_N;
+	pl->mark_count = (pl->mark_count > PLOT_MARK_MAX) ? PLOT_MARK_MAX
+		: (pl->mark_count < 4) ? 4 : pl->mark_count;
 
-	base = (double) (SDL_GetTicks() % 100) / (pl->mark_N * 100.);
-	span = (double) (pl->mark_N * mN);
+	shuffle = (double) (SDL_GetTicks() % 100) / (double) (pl->mark_count * 100);
+	total = (double) (pl->mark_count * fMAX);
 
 	for (fN = 0, vN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
-		if (pl->figure[fN].busy != 0 && pl->figure[fN].hidden == 0) {
+		if (		pl->figure[fN].busy != 0
+				&& pl->figure[fN].hidden == 0) {
 
 			aN = pl->figure[fN].axis_X;
 			cZ = pl->figure[fN].column_X;
@@ -5285,9 +5320,9 @@ plotMarkLayout(plot_t *pl)
 					+ pl->axis[bN].offset;
 			}
 
-			for (N = 0; N < pl->mark_N; ++N) {
+			for (N = 0; N < pl->mark_count; ++N) {
 
-				fval_X = base + (double) (N * mN + vN) / span;
+				fval_X = shuffle + (double) (N * fMAX + vN) / total;
 				fval_X = (fval_X > 1.) ? fval_X - 1. : fval_X;
 
 				fval_X = (fval_X - offset) / scale;
@@ -5329,7 +5364,8 @@ plotMarkDraw(plot_t *pl, SDL_Surface *surface)
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
-		if (pl->figure[fN].busy != 0 && pl->figure[fN].hidden == 0) {
+		if (		pl->figure[fN].busy != 0
+				&& pl->figure[fN].hidden == 0) {
 
 			ncolor = (pl->figure[fN].hidden != 0) ? 9 : fN + 1;
 
@@ -5370,7 +5406,7 @@ plotMarkDraw(plot_t *pl, SDL_Surface *surface)
 			scale_Y *= Y;
 			offset_Y = offset_Y * Y + pl->viewport.max_y;
 
-			for (N = 0; N < pl->mark_N; ++N) {
+			for (N = 0; N < pl->mark_count; ++N) {
 
 				X = pl->figure[fN].mark_X[N] * scale_X + offset_X;
 				Y = pl->figure[fN].mark_Y[N] * scale_Y + offset_Y;
@@ -5378,7 +5414,7 @@ plotMarkDraw(plot_t *pl, SDL_Surface *surface)
 				if (fp_isfinite(X) && fp_isfinite(Y)) {
 
 					drawMarkCanvas(pl->dw, surface, &pl->viewport, X, Y,
-							pl->layout_mark, fN, ncolor, fwidth);
+							pl->layout_mark_size, fN, ncolor, fwidth);
 				}
 			}
 		}
@@ -6400,7 +6436,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 	char		numbuf[PLOT_STRING_MAX];
 
 	double		scale, offset, fmin, fmax, fpow, tih, tis, tik, la;
-	int		fN, bN, texp, lpos, tpos, tmpi, onhover;
+	int		fN, bN, texp, lpos, tpos, tdec, hovered;
 
 	Uint32		axCol = pl->sch->plot_hidden;
 
@@ -6445,21 +6481,6 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 		}
 	}
 
-	texp = (int) ceil(log10((fmax - fmin) / 10.));
-	tih = pow(10., (double) texp);
-
-	if ((fmax - fmin) / tih < 2.) {
-
-		tih /= 5.;
-		texp--;
-	}
-
-	if ((fmax - fmin) / tih < 4.) {
-
-		tih /= 2.;
-		texp--;
-	}
-
 	if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
 		la = (double) (pl->viewport.max_x - pl->viewport.min_x);
@@ -6469,17 +6490,49 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 		la = (double) (pl->viewport.max_y - pl->viewport.min_y);
 	}
 
-	tik = (int) (tih * scale * la);
-	lpos = pl->layout_font_long * (abs(texp) + 2);
+	if (fmin < fmax) {
 
-	if (tik < lpos) {
+		texp = (int) ceil(log10((fmax - fmin) / 10.));
+		tih = pow(10., (double) texp);
 
-		tih *= 2.;
+		if ((fmax - fmin) / tih < 2.) {
+
+			tdec = (int) (tih * scale * la / 5.);
+
+			if (tdec > pl->layout_font_height) {
+
+				tih /= 5.;
+				texp--;
+			}
+		}
+
+		if ((fmax - fmin) / tih < 4.) {
+
+			tdec = (int) (tih * scale * la / 2.);
+
+			if (tdec > pl->layout_font_height) {
+
+				tih /= 2.;
+				texp--;
+			}
+		}
+
+		tdec = (int) (tih * scale * la);
+
+		if (tdec < pl->layout_font_height) {
+
+			tih *= 2.;
+		}
+
+		tis = floor(fmin / tih) * tih;
+		tis += (tis < fmin) ? tih : 0.;
+		tih = (tis + tih == tis) ? fmax - tis : tih;
 	}
-
-	tis = floor(fmin / tih) * tih;
-	tis += (tis < fmin) ? tih : 0.;
-	tih = (tis + tih == tis) ? fmax - tis : tih;
+	else {
+		texp = 0;
+		tis = fmax;
+		tih = fmax;
+	}
 
 	pl->axis[aN].ruler_tih = tih * scale;
 	pl->axis[aN].ruler_tis = tis * scale + offset;
@@ -6504,23 +6557,23 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 	if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
 		lpos = pl->viewport.max_y + pl->layout_border + pl->axis[aN].layout_pos;
-		onhover = (pl->hover_axis == aN) ? 1 : 0;
+		hovered = (pl->hover_axis == aN) ? 1 : 0;
 
 		if (pl->hover_figure != -1 && pl->shift_on != 0) {
 
 			fN = pl->hover_figure;
 
-			onhover = (pl->figure[fN].axis_X == aN) ? 1 : onhover;
-			onhover = (pl->figure[fN].axis_Y == aN) ? 1 : onhover;
+			hovered = (pl->figure[fN].axis_X == aN) ? 1 : hovered;
+			hovered = (pl->figure[fN].axis_Y == aN) ? 1 : hovered;
 		}
 
-		if (onhover != 0) {
+		if (hovered != 0) {
 
-			tmpi = pl->layout_axis_box;
-			tmpi += (pl->axis[aN].compact == 0) ? pl->layout_label_box : 0;
+			tdec = pl->layout_axis_box;
+			tdec += (pl->axis[aN].compact == 0) ? pl->layout_label_box : 0;
 
 			drawFillRect(surface, pl->viewport.min_x, lpos, pl->viewport.max_x,
-					lpos + tmpi, pl->sch->plot_hovered);
+					lpos + tdec, pl->sch->plot_hovered);
 		}
 
 		drawLine(pl->dw, surface, &pl->screen, pl->viewport.min_x, lpos,
@@ -6557,30 +6610,29 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 		if (pl->axis[aN].slave != 0) {
 
 			drawLine(pl->dw, surface, &pl->screen, pl->viewport.min_x,
-					lpos + pl->layout_tick_tooth,
-					pl->viewport.max_x, lpos + pl->layout_tick_tooth,
-					pl->sch->plot_axis);
+					lpos + pl->layout_tick_tooth, pl->viewport.max_x,
+					lpos + pl->layout_tick_tooth, pl->sch->plot_axis);
 		}
 	}
 	else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
 		lpos = pl->viewport.min_x - pl->layout_border - pl->axis[aN].layout_pos;
-		onhover = (pl->hover_axis == aN) ? 1 : 0;
+		hovered = (pl->hover_axis == aN) ? 1 : 0;
 
 		if (pl->hover_figure != -1 && pl->shift_on != 0) {
 
 			fN = pl->hover_figure;
 
-			onhover = (pl->figure[fN].axis_X == aN) ? 1 : onhover;
-			onhover = (pl->figure[fN].axis_Y == aN) ? 1 : onhover;
+			hovered = (pl->figure[fN].axis_X == aN) ? 1 : hovered;
+			hovered = (pl->figure[fN].axis_Y == aN) ? 1 : hovered;
 		}
 
-		if (onhover != 0) {
+		if (hovered != 0) {
 
-			tmpi = pl->layout_axis_box;
-			tmpi += (pl->axis[aN].compact == 0) ? pl->layout_label_box : 0;
+			tdec = pl->layout_axis_box;
+			tdec += (pl->axis[aN].compact == 0) ? pl->layout_label_box : 0;
 
-			drawFillRect(surface, lpos - tmpi, pl->viewport.min_y, lpos,
+			drawFillRect(surface, lpos - tdec, pl->viewport.min_y, lpos,
 					pl->viewport.max_y, pl->sch->plot_hovered);
 		}
 
@@ -6620,8 +6672,7 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 		if (pl->axis[aN].slave != 0) {
 
 			drawLine(pl->dw, surface, &pl->screen, lpos - pl->layout_tick_tooth,
-					pl->viewport.min_y,
-					lpos - pl->layout_tick_tooth,
+					pl->viewport.min_y, lpos - pl->layout_tick_tooth,
 					pl->viewport.max_y, pl->sch->plot_axis);
 		}
 	}
@@ -6630,22 +6681,23 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 	if (pl->axis[aN].busy == AXIS_BUSY_X) {
 
-		int		tmove, tfar, tleft, tright, txlen;
+		int		tmove, taway, tleft, tright, txlen;
 
 		lpos = pl->viewport.max_y + pl->layout_border + pl->axis[aN].layout_pos;
 		tmove = pl->screen.min_x;
-		tfar = pl->viewport.max_x;
+		taway = pl->viewport.max_x;
 
-		if (pl->axis[aN].exponential != 0) {
+		if (		pl->axis[aN].exponential != 0
+				|| abs(texp) > 16) {
 
-			tmpi = 3 * (- texp / 3);
+			tdec = 3 * (- texp / 3);
 
-			if (tmpi != 0) {
+			if (tdec != 0) {
 
-				texp += tmpi;
-				fpow *= pow(10., (double) tmpi);
+				texp += tdec;
+				fpow *= pow(10., (double) tdec);
 
-				sprintf(numbuf, "E%+i", - tmpi);
+				sprintf(numbuf, "E%+i", - tdec);
 
 				tpos = (pl->axis[aN].compact == 0) ?
 					lpos + pl->layout_axis_box :
@@ -6653,22 +6705,28 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 				tpos += pl->layout_font_height / 2;
 
-				TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
-				drawText(pl->dw, surface, pl->font, tfar - txlen, tpos,
+				TTF_SizeUTF8(pl->font, numbuf, &txlen, &tdec);
+
+				drawText(pl->dw, surface, pl->font, taway - txlen, tpos,
 						numbuf, TEXT_CENTERED_ON_Y, axCol);
 
 				if (pl->axis[aN].compact != 0)
-					tfar += - (txlen + pl->layout_font_long);
+					taway += - (txlen + pl->layout_font_space);
+
+				if (pl->axis[aN].exponential == 0)
+					pl->axis[aN].exponential = 1;
 			}
 		}
 
-		if (pl->axis[aN].label[0] != 0 && pl->axis[aN].compact != 0) {
+		if (		pl->axis[aN].label[0] != 0
+				&& pl->axis[aN].compact != 0) {
 
-			TTF_SizeUTF8(pl->font, pl->axis[aN].label, &txlen, &tmpi);
-			tfar += - (txlen + pl->layout_font_long);
+			TTF_SizeUTF8(pl->font, pl->axis[aN].label, &txlen, &tdec);
+
+			taway += - (txlen + pl->layout_font_space);
 		}
 
-		if (abs(texp) < 100) {
+		if (abs(texp) < 170) {
 
 			sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
 		}
@@ -6685,11 +6743,12 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 			sprintf(numbuf, numfmt, tik * fpow);
 
-			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
+			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tdec);
+
 			tleft = tpos - txlen / 2 - pl->layout_font_long;
 			tright = tpos + (txlen - txlen / 2);
 
-			if (tmove < tleft && tright < tfar) {
+			if (tmove < tleft && tright < taway) {
 
 				drawText(pl->dw, surface, pl->font, tpos,
 						lpos + pl->layout_tick_tooth
@@ -6702,37 +6761,47 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 		if (pl->axis[aN].compact != 0) {
 
-			tpos = tfar + pl->layout_font_height / 2;
+			tpos = taway + pl->layout_font_height / 2;
 			lpos = lpos + pl->layout_tick_tooth + pl->layout_font_height / 2;
-			tmpi = TEXT_CENTERED_ON_Y;
+
+			if (pl->axis[aN].label[0] != 0) {
+
+				drawText(pl->dw, surface, pl->font, tpos, lpos,
+						pl->axis[aN].label,
+						TEXT_CENTERED_ON_Y, axCol);
+			}
 		}
 		else {
 			tpos = (pl->viewport.min_x + pl->viewport.max_x) / 2;
 			lpos = lpos + pl->layout_axis_box + pl->layout_font_height / 2;
-			tmpi = TEXT_CENTERED;
-		}
 
-		drawText(pl->dw, surface, pl->font, tpos, lpos,
-				pl->axis[aN].label, tmpi, axCol);
+			if (pl->axis[aN].label[0] != 0) {
+
+				drawText(pl->dw, surface, pl->font, tpos, lpos,
+						pl->axis[aN].label,
+						TEXT_CENTERED, axCol);
+			}
+		}
 	}
 	else if (pl->axis[aN].busy == AXIS_BUSY_Y) {
 
-		int		tmove, tfar, tfarb, tleft, tright, txlen;
+		int		tmove, taway, tawayb, tleft, tright, txlen;
 
 		lpos = pl->viewport.min_x - pl->layout_border - pl->axis[aN].layout_pos;
 		tmove = pl->screen.max_y;
-		tfar = pl->viewport.min_y;
+		taway = pl->viewport.min_y;
 
-		if (pl->axis[aN].exponential != 0) {
+		if (		pl->axis[aN].exponential != 0
+				|| abs(texp) > 16) {
 
-			tmpi = 3 * (- texp / 3);
+			tdec = 3 * (- texp / 3);
 
-			if (tmpi != 0) {
+			if (tdec != 0) {
 
-				texp += tmpi;
-				fpow *= pow(10., (double) tmpi);
+				texp += tdec;
+				fpow *= pow(10., (double) tdec);
 
-				sprintf(numbuf, "E%+i", - tmpi);
+				sprintf(numbuf, "E%+i", - tdec);
 
 				tpos = (pl->axis[aN].compact == 0) ?
 					lpos - pl->layout_axis_box :
@@ -6740,24 +6809,30 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 				tpos -= pl->layout_font_height / 2;
 
-				TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
-				drawText(pl->dw, surface, pl->font, tpos, tfar, numbuf,
+				TTF_SizeUTF8(pl->font, numbuf, &txlen, &tdec);
+
+				drawText(pl->dw, surface, pl->font, tpos, taway, numbuf,
 						TEXT_CENTERED_ON_X | TEXT_VERTICAL, axCol);
 
 				if (pl->axis[aN].compact != 0)
-					tfar += txlen + pl->layout_font_long / 2;
+					taway += txlen + pl->layout_font_space;
+
+				if (pl->axis[aN].exponential == 0)
+					pl->axis[aN].exponential = 1;
 			}
 		}
 
-		tfarb = tfar;
+		tawayb = taway;
 
-		if (pl->axis[aN].label[0] != 0 && pl->axis[aN].compact != 0) {
+		if (		pl->axis[aN].label[0] != 0
+				&& pl->axis[aN].compact != 0) {
 
-			TTF_SizeUTF8(pl->font, pl->axis[aN].label, &txlen, &tmpi);
-			tfar += txlen + pl->layout_font_long / 2;
+			TTF_SizeUTF8(pl->font, pl->axis[aN].label, &txlen, &tdec);
+
+			taway += txlen + pl->layout_font_space;
 		}
 
-		if (abs(texp) < 100) {
+		if (abs(texp) < 170) {
 
 			sprintf(numfmt, "%%.%df", (texp < 0) ? - texp : 0);
 		}
@@ -6774,11 +6849,12 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 
 			sprintf(numbuf, numfmt, tik * fpow);
 
-			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tmpi);
+			TTF_SizeUTF8(pl->font, numbuf, &txlen, &tdec);
+
 			tleft = tpos + txlen / 2 + pl->layout_font_long;
 			tright = tpos - (txlen - txlen / 2);
 
-			if (tmove > tleft && tright > tfar) {
+			if (tmove > tleft && tright > taway) {
 
 				drawText(pl->dw, surface, pl->font,
 						lpos - pl->layout_tick_tooth
@@ -6792,17 +6868,26 @@ plotDrawAxis(plot_t *pl, SDL_Surface *surface, int aN)
 		if (pl->axis[aN].compact != 0) {
 
 			lpos = lpos - pl->layout_tick_tooth - pl->layout_font_height / 2;
-			tpos = tfarb;
-			tmpi = TEXT_CENTERED_ON_X | TEXT_VERTICAL;
+			tpos = tawayb;
+
+			if (pl->axis[aN].label[0] != 0) {
+
+				drawText(pl->dw, surface, pl->font, lpos, tpos,
+						pl->axis[aN].label,
+						TEXT_CENTERED_ON_X | TEXT_VERTICAL, axCol);
+			}
 		}
 		else {
 			lpos = lpos - pl->layout_axis_box - pl->layout_font_height / 2;
 			tpos = (pl->viewport.min_y + pl->viewport.max_y) / 2;
-			tmpi = TEXT_CENTERED | TEXT_VERTICAL;
-		}
 
-		drawText(pl->dw, surface, pl->font, lpos, tpos,
-				pl->axis[aN].label, tmpi, axCol);
+			if (pl->axis[aN].label[0] != 0) {
+
+				drawText(pl->dw, surface, pl->font, lpos, tpos,
+						pl->axis[aN].label,
+						TEXT_CENTERED | TEXT_VERTICAL, axCol);
+			}
+		}
 	}
 }
 
@@ -6843,7 +6928,7 @@ static void
 plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 {
 	int		boxX, boxY, size_X, size_Y;
-	int		fN, legX, legY, ncolor, fwidth, fhover;
+	int		fN, legX, legY, ncolor, fwidth, hovered;
 
 	legX = pl->legend_X;
 	legY = pl->legend_Y;
@@ -6858,7 +6943,8 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 		drawFillRect(surface, legX, legY, legX + size_X,
 				legY + size_Y, pl->sch->plot_hovered);
 	}
-	else if (pl->transparency == 0) {
+	else if (	pl->transparency == 0
+			&& pl->legend_hidden == 0) {
 
 		drawFillRect(surface, legX, legY, legX + size_X,
 				legY + size_Y, pl->sch->plot_background);
@@ -6873,15 +6959,15 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 			SDL_LockSurface(surface);
 
 			ncolor = (pl->figure[fN].hidden != 0) ? 9 : fN + 1;
-			fhover = (pl->hover_figure == fN) ? 1 : 0;
+			hovered = (pl->hover_figure == fN) ? 1 : 0;
 
 			if (pl->shift_on != 0) {
 
-				fhover = (pl->figure[fN].axis_X == pl->hover_axis) ? 1 : fhover;
-				fhover = (pl->figure[fN].axis_Y == pl->hover_axis) ? 1 : fhover;
+				hovered = (pl->figure[fN].axis_X == pl->hover_axis) ? 1 : hovered;
+				hovered = (pl->figure[fN].axis_Y == pl->hover_axis) ? 1 : hovered;
 			}
 
-			if (fhover != 0) {
+			if (hovered != 0) {
 
 				boxX = legX + pl->layout_font_height * 2;
 				size_X = pl->legend_size_X;
@@ -6933,8 +7019,8 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 					boxX = legX + pl->layout_font_height;
 
 					drawMarkCanvas(pl->dw, surface, &pl->viewport, boxX,
-							boxY + padY, pl->layout_mark, fN, ncolor,
-							(fwidth < 1) ? 1 : fwidth);
+							boxY + padY, pl->layout_mark_size,
+							fN, ncolor, (fwidth < 1) ? 1 : fwidth);
 				}
 			}
 
@@ -7174,13 +7260,13 @@ void plotLayout(plot_t *pl)
 
 	if (pl->mark_on != 0) {
 
-		if (pl->mark_N == 0) {
+		if (pl->mark_count == 0) {
 
 			plotMarkLayout(pl);
 		}
 	}
 	else {
-		pl->mark_N = 0;
+		pl->mark_count = 0;
 	}
 }
 

@@ -91,6 +91,17 @@ LD_TASK void app_AS5047(void *pData)
 		if (		   priv_AS5047.EF_errcnt != 0
 				|| priv_AS5047.PA_errcnt != 0) {
 
+			if (		hal.DPS_mode == DPS_DRIVE_ON_SPI
+					&& pm.lu_MODE != PM_LU_DISABLED) {
+
+				if (		   priv_AS5047.EF_errcnt >= 10
+						|| priv_AS5047.PA_errcnt >= 10) {
+
+					pm.fsm_errno = PM_ERROR_SPI_DATA_FAULT;
+					pm.fsm_req = PM_STATE_HALT;
+				}
+			}
+
 			log_TRACE("AS5047 -- EF %i PA %i" EOL,
 					priv_AS5047.EF_errcnt,
 					priv_AS5047.PA_errcnt);

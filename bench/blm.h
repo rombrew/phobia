@@ -64,7 +64,8 @@ typedef struct {
 
 	double		hall[3];
 
-	int		eabi_EPPR;
+	int		eabi_ERES;
+	int		eabi_WRAP;
 	double		eabi_Zq;
 
 	double		analog_Zq;

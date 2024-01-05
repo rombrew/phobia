@@ -546,7 +546,13 @@ SH_DEF(pm_probe_noise_threshold)
 
 SH_DEF(pm_adjust_sensor_hall)
 {
-	int		STARTUP = PM_DISABLED;
+	int		backup_LU_SENSOR;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
 
 	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
 
@@ -554,33 +560,19 @@ SH_DEF(pm_adjust_sensor_hall)
 		return;
 	}
 
-	if (pm.config_LU_SENSOR == PM_SENSOR_HALL) {
-
-		printf("Unable when SENSOR is HALL selected" EOL);
-		return;
-	}
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 
 	do {
-		if (pm.lu_MODE == PM_LU_DISABLED) {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (pm_wait_for_idle() != PM_OK)
+			break;
 
-			if (pm_wait_for_idle() != PM_OK)
-				break;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
-
-			if (pm_wait_for_spinup() != PM_OK)
-				break;
-
-			STARTUP = PM_ENABLED;
-		}
-
-		if (m_fabsf(pm.zone_lpf_wS) < pm.zone_threshold) {
-
-			printf("Unable at too LOW speed" EOL);
-			return;
-		}
+		if (pm_wait_for_spinup() != PM_OK)
+			break;
 
 		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
@@ -596,32 +588,34 @@ SH_DEF(pm_adjust_sensor_hall)
 		reg_OUTP(ID_PM_HALL_ST5);
 		reg_OUTP(ID_PM_HALL_ST6);
 
-		if (STARTUP == PM_ENABLED) {
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-			if (pm_wait_for_idle() != PM_OK)
-				break;
-		}
+		if (pm_wait_for_idle() != PM_OK)
+			break;
 	}
 	while (0);
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
 
-	if (STARTUP == PM_ENABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
-		if (pm.lu_MODE != PM_LU_DISABLED) {
-
-			pm.fsm_req = PM_STATE_HALT;
-		}
+		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
 
 	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_adjust_sensor_eabi)
 {
-	int		STARTUP = PM_DISABLED;
+	int		backup_LU_SENSOR;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
 
 	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
 
@@ -629,27 +623,19 @@ SH_DEF(pm_adjust_sensor_eabi)
 		return;
 	}
 
-	if (pm.config_LU_SENSOR == PM_SENSOR_EABI) {
-
-		printf("Unable when SENSOR is EABI selected" EOL);
-		return;
-	}
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 
 	do {
-		if (pm.lu_MODE == PM_LU_DISABLED) {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-			pm.fsm_req = PM_STATE_LU_STARTUP;
+		if (pm_wait_for_idle() != PM_OK)
+			break;
 
-			if (pm_wait_for_idle() != PM_OK)
-				break;
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.zone_threshold);
 
-			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.zone_threshold);
-
-			if (pm_wait_for_spinup() != PM_OK)
-				break;
-
-			STARTUP = PM_ENABLED;
-		}
+		if (pm_wait_for_spinup() != PM_OK)
+			break;
 
 		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
 
@@ -658,28 +644,25 @@ SH_DEF(pm_adjust_sensor_eabi)
 		if (pm_wait_for_idle() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_EABI_CONST_EP);
+		reg_OUTP(ID_PM_EABI_CONST_ZS);
 		reg_OUTP(ID_PM_EABI_F0);
-		reg_OUTP(ID_PM_EABI_EPPR);
 
-		if (STARTUP == PM_ENABLED) {
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-			if (pm_wait_for_idle() != PM_OK)
-				break;
-		}
+		if (pm_wait_for_idle() != PM_OK)
+			break;
 	}
 	while (0);
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
 
-	if (STARTUP == PM_ENABLED) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
-		if (pm.lu_MODE != PM_LU_DISABLED) {
-
-			pm.fsm_req = PM_STATE_HALT;
-		}
+		pm.fsm_req = PM_STATE_HALT;
 	}
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
 
 	tlm_halt(&tlm);
 }

@@ -50,7 +50,10 @@ example there was no speed maneuver during the moment of inertia probing.
 deliberately invalid operation was requested.
 
 `PM_ERROR_SENSOR_HALL_FAULT` - Forbidden value of Hall code was detected. Or
-result of Hall adjustment shows an inadequacy of sensor measurements.
+result of Hall self-adjustment shows an inadequacy of sensor measurements.
+
+`PM_ERROR_SENSOR_EABI_FAULT` - Result of EABI self-adjustment shows an
+inadequacy of sensor measurements.
 
 ## Application level
 
@@ -61,11 +64,14 @@ probing procedures.
 `PM_ERROR_NO_FLUX_CAUGHT` - Flux observer has not caught the rotor position for
 some unknown reason. Maybe speed is too low or spinup was failed at all.
 
-`PM_ERROR_SYNC_FAULT` - Position estimate discrepancy is out of range. This
+`PM_ERROR_NO_SYNC_FAULT` - Position estimate discrepancy is out of range. This
 erorr code can only come from bench model.
 
-`PM_ERROR_KNOB_CONTROL_FAULT` - Knob signal is in lost condition. Check the
-reliability of wiring.
+`PM_ERROR_KNOB_CONTROL_FAULT` - Knob control signal was lost. Check the
+reliability and noise immunity of wiring.
+
+`PM_ERROR_SPI_DATA_FAULT` - SPI data transfer was failed frequently. Check the
+reliability and noise immunity of wiring.
 
 ## Arise by hardware
 

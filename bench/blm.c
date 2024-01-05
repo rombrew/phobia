@@ -131,9 +131,10 @@ void blm_enable(blm_t *m)
 	m->hall[1] = 150.1;
 	m->hall[2] = 270.5;
 
-	/* AB Incremental encoder.
+	/* EABI incremental (absolute) encoder.
 	 * */
-	m->eabi_EPPR = 2400;	/* Mechanical resolution  */
+	m->eabi_ERES = 2400;	/* Mechanical resolution  */
+	m->eabi_WRAP = 65536;	/* Wrap constant          */
 	m->eabi_Zq = 1.0;	/* Reduction ratio        */
 
 	/* Resolver SIN/COS.
@@ -455,9 +456,12 @@ blm_sample_eabi(blm_t *m)
 	location = m->state[3] + (2. * M_PI) * (double) m->revol;
 	angle = location * m->eabi_Zq / m->Zp;
 
-	EP = (int) (angle / (2. * M_PI) * (double) m->eabi_EPPR);
+	EP = (int) (angle / (2. * M_PI) * (double) m->eabi_ERES);
 
-	m->pulse_EP = EP & 0xFFFFU;
+	EP = EP - (EP / m->eabi_WRAP) * m->eabi_WRAP;
+	EP += (EP < 0) ? m->eabi_WRAP : 0;
+
+	m->pulse_EP = EP;
 }
 
 static void

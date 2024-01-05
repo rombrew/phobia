@@ -1136,6 +1136,7 @@ reg_format_enum(const reg_t *reg)
 			break;
 
 		case ID_PM_CONFIG_TVM:
+		case ID_PM_CONFIG_DBG:
 		case ID_PM_CONFIG_VSI_CLAMP:
 		case ID_PM_CONFIG_LU_FORCED:
 		case ID_PM_CONFIG_HFI_PERMANENT:
@@ -1327,6 +1328,17 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(PM_ZONE_UNCERTAIN);
 				PM_SFI_CASE(PM_ZONE_HIGH);
 				PM_SFI_CASE(PM_ZONE_LOCKED_IN_DETACH);
+
+				default: break;
+			}
+			break;
+
+		case ID_PM_EABI_ADJUST:
+
+			switch (val) {
+
+				PM_SFI_CASE(PM_DISABLED);
+				PM_SFI_CASE(PM_ENABLED);
 
 				default: break;
 			}
@@ -1548,6 +1560,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_NOP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_IFB,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_TVM,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_DBG,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 
 	REG_DEF(pm.config_VSI_ZERO,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_VSI_CLAMP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1721,7 +1734,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.kalman_bias_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.kalman_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 0, [0],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 1, [1],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 2, [2],	"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1769,10 +1781,11 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
+	REG_DEF(pm.eabi_ADJUST,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.eabi_F0, _X, [0],		"",	"%3f",	REG_READ_ONLY | REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_F0, _Y, [1],		"",	"%3f",	REG_READ_ONLY | REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_F0,,,			"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.eabi_EPPR,,,			"",	"%0i",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_const_EP,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_const_Zs,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_const_Zq,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
@@ -1866,7 +1879,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.l_blend,,,			"",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.l_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_setpoint_location,,,	"rad",	"%4f",	0, NULL, NULL),
@@ -1889,6 +1901,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P, _accel,,	"rad/s2",	"%1f",	0, &reg_proc_x_accel, NULL),
 	REG_DEF(pm.x_gain_P, _accel_mm,,"mm/s2",	"%1f",	0, &reg_proc_x_accel_mm, NULL),
 	REG_DEF(pm.x_gain_D,,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
+
+	REG_DEF(pm.dbg, 0, [0],			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dbg, 1, [1],			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(tlm.grabfreq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(tlm.livefreq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),

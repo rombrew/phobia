@@ -91,7 +91,7 @@ tlm_plot_grab()
 
 		/* Throw an ERROR if position estimate deviation is too large.
 		 * */
-		pm.fsm_errno = PM_ERROR_SYNC_FAULT;
+		pm.fsm_errno = PM_ERROR_NO_SYNC_FAULT;
 	}
 
 	tlm.y[14] = rel * kDEG;
@@ -185,6 +185,8 @@ tlm_plot_grab()
 
 	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
+
+	fmt_GP(pm.eabi_ADJUST, 0);
 
 	sym_GP(atan2(pm.eabi_F[1], pm.eabi_F[0]) * kDEG, "pm.eabi_F", "°");
 	fmk_GP(pm.eabi_wS, kRPM, "rpm");
@@ -371,51 +373,40 @@ void bench_script()
 	tlm_restart();
 
 	m.Rs = 14.E-3;
-	m.Ld = 90.E-6;
-	m.Lq = 20.E-6;
+	m.Ld = 10.E-6;
+	m.Lq = 15.E-6;
 	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
-        m.lambda = 0*blm_Kv_lambda(&m, 270.);
-	m.Jm = 5.E-4;
+	m.lambda = blm_Kv_lambda(&m, 270.);
+	m.Jm = 3.E-4;
+
+	m.eabi_ERES = 16384;
+	m.eabi_WRAP = 16384;
 
 	ts_script_default();
-
-	pm.config_LU_FORCED = PM_DISABLED;
-	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
-	pm.config_EXCITATION = PM_EXCITATION_NONE;
-	pm.config_SALIENCY = PM_SALIENCY_POSITIVE;
-	pm.config_RELUCTANCE = PM_ENABLED;
-
-	//pm.s_damping = 5.f;
-
 	ts_script_base();
 	blm_restart(&m);
 
-	pm.config_HFI_PERMANENT = PM_ENABLED;
-	pm.config_WEAKENING = PM_ENABLED;
+	pm.config_EABI_FRONTEND = PM_EABI_ABSOLUTE;
 
-	pm.hfi_freq = 400.f;
-	pm.hfi_sine = 1.f;
+	ts_adjust_sensor_eabi();
+	blm_restart(&m);
+
+	//pm.config_LU_ESTIMATE = PM_FLUX_NONE;
+	pm.config_LU_SENSOR = PM_SENSOR_EABI;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
-	pm.s_setpoint_speed = 800.f;
+	pm.s_setpoint_speed = 40.f;
 	sim_runtime(1.);
 
-	pm.s_setpoint_speed = 2000.f;
-	sim_runtime(2.);
-
-	pm.s_setpoint_speed = 800.f;
-	sim_runtime(2.);
-
-	pm.s_setpoint_speed = 9000.f;
-	sim_runtime(2.);
-
 	pm.s_setpoint_speed = 200.f;
-	sim_runtime(3.);
+	sim_runtime(2.);
+
+	pm.s_setpoint_speed = -50.f;
+	sim_runtime(2.);
 
 	tlm_PWM_grab();
 }

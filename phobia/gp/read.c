@@ -194,6 +194,8 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 
 	strcpy(rd->screenpath, ".");
 
+	rd->ttfname[0] = 0;
+
 	rd->window_size_x = GP_MIN_SIZE_X;
 	rd->window_size_y = GP_MIN_SIZE_Y;
 	rd->timecol = -1;
@@ -1720,7 +1722,16 @@ configParseFSM(read_t *rd, parse_t *pa)
 									argi[0], TTF_STYLE_ITALIC);
 						}
 						else {
-							plotFontOpen(rd->pl, tbuf, argi[0], TTF_STYLE_NORMAL);
+							r = plotFontOpen(rd->pl, tbuf, argi[0], TTF_STYLE_NORMAL);
+
+							if (r == 0) {
+
+								strcpy(rd->ttfname, tbuf);
+							}
+							else {
+								plotFontDefault(rd->pl, TTF_ID_ROBOTO_MONO_NORMAL,
+										argi[0], TTF_STYLE_NORMAL);
+							}
 						}
 
 						if (rd->pl->font != NULL) {
@@ -2098,13 +2109,55 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
 					else break;
 
-					if (argi[0] >= 0.) {
+					if (argi[0] >= 0) {
 
 						failed = 0;
 						rd->pl->defungap = argi[0];
 					}
 					else {
 						sprintf(msg_tbuf, "invalid defungap %i", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "density") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] > 0 && argi[0] < 100) {
+
+						failed = 0;
+						rd->pl->mark_density = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid density %i", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "marker") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] > 0 && argi[0] < 100) {
+
+						failed = 0;
+						rd->pl->mark_size = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid marker %i", argi[0]);
 					}
 				}
 				while (0);
