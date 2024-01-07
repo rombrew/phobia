@@ -1069,7 +1069,6 @@ reg_format_enum(const reg_t *reg)
 #endif /* HW_HAVE_BRAKE_KNOB */
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
-		case ID_AP_AUTO_ENABLED:
 
 			switch (val) {
 
@@ -1504,10 +1503,6 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.idle_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.disarm_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_auto),
-	REG_DEF(ap.auto_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(ap.auto_ENABLED,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-
 #ifdef HW_HAVE_NTC_ON_PCB
 	REG_DEF(ap.ntc_PCB.type,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.ntc_PCB.balance,,,		"Ohm",	"%1f",	REG_CONFIG, NULL, NULL),
@@ -1538,10 +1533,14 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_derated_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_temp_recovery,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_BUTTON,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_AS5047,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+
+	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_auto),
+	REG_DEF(ap.auto_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
 	REG_DEF(ap.load_HX711,,,		"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 

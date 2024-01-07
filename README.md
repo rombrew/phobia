@@ -55,7 +55,7 @@ electric transport.
 	* High Frequency Injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
 	* AB incremental encoder (EABI).
-	* Absolute position sensor with SPI interface (**TODO**).
+	* Absolute encoder on SPI interface (AS5047).
 	* Analog Hall sensors and resolver decoder (**TODO**).
 
 * Control loops:

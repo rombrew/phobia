@@ -2550,8 +2550,7 @@ page_diagnose(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Set PWM to GND", NK_TEXT_LEFT)) {
 
-			link_command(lp,	"hal_PWM_set_Z 0" "\r\n"
-						"hal_PWM_set_DC 0");
+			link_command(lp, "hal_PWM_set_DC 0");
 		}
 
 		if (nk_menu_item_label(ctx, "Set PWM to 50%", NK_TEXT_LEFT)) {
@@ -2562,8 +2561,7 @@ page_diagnose(struct public *pub)
 			reg = link_reg_lookup(lp, "pm.dc_resolution");
 			if (reg != NULL) { dc_resolution = reg->lval; }
 
-			sprintf(pub->lbuf,	"hal_PWM_set_Z 0" "\r\n"
-						"hal_PWM_set_DC %i", dc_resolution / 2);
+			sprintf(pub->lbuf, "hal_PWM_set_DC %i", dc_resolution / 2);
 
 			link_command(lp, pub->lbuf);
 		}
@@ -3461,7 +3459,7 @@ page_in_knob(struct public *pub)
 }
 
 static void
-page_apps(struct public *pub)
+page_application(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -3471,6 +3469,7 @@ page_apps(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup permanently");
 	reg_enum_toggle(pub, "ap.task_BUTTON", "Button control");
 	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
 	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
@@ -3479,12 +3478,16 @@ page_apps(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
-	reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
-	reg_enum_toggle(pub, "ap.auto_ENABLED", "Auto startup function");
+	reg = link_reg_lookup(lp, "ap.task_AUTOSTART");
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+	if (reg != NULL && reg->lval != 0) {
+
+		reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
+		reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg = link_reg_lookup(lp, "ap.task_HX711");
 
@@ -4984,18 +4987,8 @@ page_flash(struct public *pub)
 
                 if (nk_menu_item_label(ctx, "Flash program", NK_TEXT_LEFT)) {
 
-			reg = link_reg_lookup(lp, "pm.lu_MODE");
-
-			if (reg != NULL && reg->lval != 0) {
-
-				link_command(lp, "pm_fsm_shutdown" "\r\n"
-						 "flash_prog" "\r\n"
-						 "flash_info");
-			}
-			else {
-				link_command(lp, "flash_prog" "\r\n"
-						 "flash_info");
-			}
+			link_command(lp, "flash_prog" "\r\n"
+					 "flash_info");
 		}
 
 		if (nk_menu_item_label(ctx, "Flash wipe", NK_TEXT_LEFT)) {
@@ -5224,7 +5217,7 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "in STEP/DIR", &page_in_stepdir);
 		menu_select_button(pub, "in PWM", &page_in_pwm);
 		menu_select_button(pub, "in Knob", &page_in_knob);
-		menu_select_button(pub, "Apps", &page_apps);
+		menu_select_button(pub, "Application", &page_application);
 		menu_select_button(pub, "Thermal", &page_thermal);
 		menu_select_button(pub, "Config", &page_config);
 		menu_select_button(pub, "lu Forced", &page_lu_forced);

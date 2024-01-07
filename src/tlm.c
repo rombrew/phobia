@@ -147,7 +147,7 @@ void tlm_startup(tlm_t *tlm, float freq, int mode)
 	tlm->clock = 0;
 	tlm->count = 0;
 
-	tlm->span = (freq >= 1.f && freq <= hal.PWM_frequency)
+	tlm->span = (freq >= 0.1f && freq <= hal.PWM_frequency)
 		? (int) (hal.PWM_frequency / freq + .5f) : 1;
 
 	hal_memory_fence();

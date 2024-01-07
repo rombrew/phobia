@@ -176,6 +176,9 @@ elapsed_DISARM()
 			elapsed = PM_ENABLED;
 		}
 	}
+	else {
+		elapsed = PM_ENABLED;
+	}
 
 	return elapsed;
 }
@@ -294,35 +297,6 @@ LD_TASK void task_TEMP(void *pData)
 			DRV_startup();
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
-	}
-	while (1);
-}
-
-LD_TASK void task_AUTO(void *pData)
-{
-	TickType_t		xWake;
-
-	xWake = xTaskGetTickCount();
-
-	do {
-		/* 10 Hz.
-		 * */
-		vTaskDelayUntil(&xWake, (TickType_t) 100);
-
-		if (ap.auto_ENABLED == PM_ENABLED) {
-
-			if (pm.lu_MODE == PM_LU_DISABLED) {
-
-				pm.fsm_req = PM_STATE_LU_STARTUP;
-
-				vTaskDelay((TickType_t) 10);
-
-				if (ap.auto_reg_ID != ID_NULL) {
-
-					reg_SET_F(ap.auto_reg_ID, ap.auto_reg_DATA);
-				}
-			}
-		}
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -337,7 +311,7 @@ LD_TASK void task_AUTO(void *pData)
 		if (		pm.fsm_errno != PM_OK
 				|| log_status() != 0) {
 
-			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 0xCCU) {
+			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 205) {
 
 				GPIO_set_HIGH(GPIO_LED_ALERT);
 			}
@@ -628,7 +602,6 @@ default_flash_load()
 
 	ap.auto_reg_DATA = 0.f;
 	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
-	ap.auto_ENABLED = PM_DISABLED;
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
@@ -825,7 +798,6 @@ LD_TASK void task_INIT(void *pData)
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-	xTaskCreate(task_AUTO, "AUTO", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);

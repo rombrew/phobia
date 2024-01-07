@@ -36,8 +36,7 @@ CFLAGS	+= -mcpu=cortex-m7 -mthumb \
 	   -mfloat-abi=hard -mfpu=fpv5-sp-d16
 endif
 
-CFLAGS	+= -Wall -Wdouble-promotion \
-	   -Wno-stringop-overflow
+CFLAGS	+= -Wall -Wdouble-promotion
 
 CFLAGS	+= -fno-hosted \
 	   -fno-stack-protector
@@ -67,6 +66,7 @@ LDFLAGS += -Wl,-T,hal/link_f722.ld
 endif
 
 OBJS	=  app/as5047.o \
+	   app/autostart.o \
 	   app/button.o \
 	   app/hx711.o \
 	   app/mpu6050.o

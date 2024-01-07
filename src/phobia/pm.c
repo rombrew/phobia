@@ -1045,7 +1045,7 @@ pm_kalman_jacobian(pmc_t *pm, const float X[2], const float F[2], float wS)
 }
 
 static void
-pm_kalman_predict(pmc_t *pm)
+pm_kalman_forecast(pmc_t *pm)
 {
 	float		*P = pm->kalman_P;
 	const float	*A = pm->kalman_A;
@@ -3287,7 +3287,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				 * values are output to the PWM. This allows
 				 * efficient use of CPU.
 				 * */
-				pm_kalman_predict(pm);
+				pm_kalman_forecast(pm);
 
 				if (pm->vsi_IF == 0) {
 

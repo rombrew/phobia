@@ -128,7 +128,6 @@ Get firmware version info.
 Manual PWM DC control for testing.
 
 	(pmc) hal_PWM_set_DC <DC>
-	(pmc) hal_PWM_set_Z <Z>
 
 Show instant analog knob input voltages.
 

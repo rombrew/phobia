@@ -337,17 +337,8 @@ SH_DEF(hal_PWM_set_DC)
 		xMAX = hal.PWM_resolution;
 		xDC = (xDC < 0) ? 0 : (xDC > xMAX) ? xMAX : xDC;
 
+		PWM_set_Z(0);
 		PWM_set_DC(xDC, xDC, xDC);
-	}
-}
-
-SH_DEF(hal_PWM_set_Z)
-{
-	int			xZ;
-
-	if (stoi(&xZ, s) != NULL) {
-
-		PWM_set_Z(xZ);
 	}
 }
 

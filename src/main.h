@@ -68,12 +68,6 @@ typedef struct {
 	int			disarm_RESET;
 	int			disarm_INVOKE;
 
-	/* Autostart function.
-	 * */
-	float			auto_reg_DATA;
-	int			auto_reg_ID;
-	int			auto_ENABLED;
-
 	/* NTC constants.
 	 * */
 	ntc_t			ntc_PCB;
@@ -97,16 +91,22 @@ typedef struct {
 
 	/* App enable knobs.
 	 * */
+	int			task_AUTOSTART;
 	int			task_BUTTON;
 	int			task_AS5047;
 	int			task_HX711;
 	int			task_MPU6050;
 
+	/* Autostart application.
+	 * */
+	float			auto_reg_DATA;
+	int			auto_reg_ID;
+
 	/* ADC load cell (e.g. HX711).
 	 * */
 	int			load_HX711;
 
-	/* SPI magnetic encoder (e.g. AS5047).
+	/* SPI absolute encoder (e.g. AS5047).
 	 * */
 	int 			(* proc_get_EP) ();
 }
