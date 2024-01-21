@@ -1,12 +1,31 @@
 /*
- * Copyright (c) 2022, sakumisu
+ * Copyright (c) 2022-2023, sakumisu
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef USB_UTIL_H
 #define USB_UTIL_H
 
-#if defined(__GNUC__)
+#if defined(__CC_ARM)
+#ifndef __USED
+#define __USED __attribute__((used))
+#endif
+#ifndef __WEAK
+#define __WEAK __attribute__((weak))
+#endif
+#ifndef __PACKED
+#define __PACKED __attribute__((packed))
+#endif
+#ifndef __PACKED_STRUCT
+#define __PACKED_STRUCT __packed struct
+#endif
+#ifndef __PACKED_UNION
+#define __PACKED_UNION __packed union
+#endif
+#ifndef __ALIGNED
+#define __ALIGNED(x) __attribute__((aligned(x)))
+#endif
+#elif defined(__GNUC__)
 #ifndef __USED
 #define __USED __attribute__((used))
 #endif
@@ -25,6 +44,62 @@
 #ifndef __ALIGNED
 #define __ALIGNED(x) __attribute__((aligned(x)))
 #endif
+#elif defined(__ICCARM__) || defined(__ICCRX__) || defined(__ICCRISCV__)
+#ifndef __USED
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __USED __attribute__((used))
+#else
+#define __USED __root
+#endif
+#endif
+
+#ifndef __WEAK
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __WEAK __attribute__((weak))
+#else
+#define __WEAK _Pragma("__weak")
+#endif
+#endif
+
+#ifndef __PACKED
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __PACKED __attribute__((packed, aligned(1)))
+#else
+/* Needs IAR language extensions */
+#define __PACKED __packed
+#endif
+#endif
+
+#ifndef __PACKED_STRUCT
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __PACKED_STRUCT struct __attribute__((packed, aligned(1)))
+#else
+/* Needs IAR language extensions */
+#define __PACKED_STRUCT __packed struct
+#endif
+#endif
+
+#ifndef __PACKED_UNION
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __PACKED_UNION union __attribute__((packed, aligned(1)))
+#else
+/* Needs IAR language extensions */
+#define __PACKED_UNION __packed union
+#endif
+#endif
+
+#ifndef __ALIGNED
+#if defined(__ICCARM_V8) || defined (__ICCRISCV__)
+#define __ALIGNED(x) __attribute__((aligned(x)))
+#elif (__VER__ >= 7080000)
+/* Needs IAR language extensions */
+#define __ALIGNED(x) __attribute__((aligned(x)))
+#else
+#warning No compiler specific solution for __ALIGNED.__ALIGNED is ignored.
+#define __ALIGNED(x)
+#endif
+#endif
+
 #endif
 
 #ifndef __ALIGN_BEGIN
@@ -128,5 +203,6 @@
         19, 18, 17, 16, 15, 14, 13, 12, 11, 10, \
         9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
-#endif /* USB_UTIL_H */
+#define USB_MEM_ALIGNX __attribute__((aligned(CONFIG_USB_ALIGN_SIZE)))
 
+#endif /* USB_UTIL_H */

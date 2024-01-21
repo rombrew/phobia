@@ -788,9 +788,16 @@ void link_push(struct link_pmc *lp)
 				}
 			}
 
-			if (dofetch != 0) {
+			if ((reg->mode & LINK_REG_CONFIG) == 0) {
 
-				sprintf(priv->lbuf, "reg %i" LINK_EOL, reg_ID);
+				if (reg->fetched + 10000 < reg->shown)
+					dofetch = 1;
+			}
+
+			if (reg->modified > reg->fetched) {
+
+				sprintf(priv->lbuf, "reg %i %.77s" LINK_EOL,
+						reg_ID, reg->val);
 
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
@@ -800,11 +807,9 @@ void link_push(struct link_pmc *lp)
 
 				break;
 			}
+			else if (dofetch != 0) {
 
-			if (reg->modified > reg->fetched) {
-
-				sprintf(priv->lbuf, "reg %i %.77s" LINK_EOL,
-						reg_ID, reg->val);
+				sprintf(priv->lbuf, "reg %i" LINK_EOL, reg_ID);
 
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 

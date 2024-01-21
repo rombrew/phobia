@@ -9,8 +9,7 @@
 #include "regfile.h"
 #include "shell.h"
 
-static uint16_t
-tlm_fp_half(float x)
+uint16_t tlm_fp_half(float x)
 {
 	union {
 		float		f;
@@ -22,8 +21,7 @@ tlm_fp_half(float x)
 		| ((u.l >> 14) & 0x3FFFU);
 }
 
-static float
-tlm_fp_float(uint16_t x)
+float tlm_fp_float(uint16_t x)
 {
 	union {
 		uint32_t	l;
@@ -47,7 +45,7 @@ tlm_fp_float(uint16_t x)
 
 void tlm_reg_default(tlm_t *tlm)
 {
-	tlm->grabfreq = 0.f;
+	tlm->grabfreq = 4000.f;
 	tlm->livefreq = 20.f;
 
 	tlm->reg_ID[0] = ID_PM_LU_IX;
@@ -66,7 +64,7 @@ void tlm_reg_grab(tlm_t *tlm)
 {
 	int			N;
 
-	if (tlm->mode == TLM_MODE_DISABLED)
+	if (unlikely(tlm->mode == TLM_MODE_DISABLED))
 		return ;
 
 	if (tlm->count == 0) {
@@ -77,11 +75,11 @@ void tlm_reg_grab(tlm_t *tlm)
 
 			rval_t	*link = tlm->layout[N].reg->link;
 
-			if (tlm->layout[N].type == TLM_TYPE_FLOAT) {
+			if (likely(tlm->layout[N].type == TLM_TYPE_FLOAT)) {
 
 				vm[N] = tlm_fp_half(link->f);
 			}
-			else if (tlm->layout[N].type == TLM_TYPE_INT) {
+			else if (unlikely(tlm->layout[N].type == TLM_TYPE_INT)) {
 
 				vm[N] = (uint16_t) link->i;
 			}

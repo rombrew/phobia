@@ -4,14 +4,22 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef likely
+#define likely(x)		__builtin_expect((x), 1)
+#endif
+
+#ifndef unlikely
+#define unlikely(x)		__builtin_expect((x), 0)
+#endif
+
 #define LD_LIBC			__attribute__ ((noinline, used))
 #define LD_TASK			__attribute__ ((noinline))
 
 #define EOL			"\r\n"
 
-#define	IODEF_TO_USART()	if (iodef != &io_USART) { iodef = &io_USART; }
-#define	IODEF_TO_USB()		if (iodef != &io_USB) { iodef = &io_USB; }
-#define	IODEF_TO_CAN()		if (iodef != &io_CAN) { iodef = &io_CAN; }
+#define	IODEF_TO_USART()	if (unlikely(iodef != &io_USART)) { iodef = &io_USART; }
+#define	IODEF_TO_USB()		if (unlikely(iodef != &io_USB)) { iodef = &io_USB; }
+#define	IODEF_TO_CAN()		if (unlikely(iodef != &io_CAN)) { iodef = &io_CAN; }
 
 #define URAND_MAX		65535U
 

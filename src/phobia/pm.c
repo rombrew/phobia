@@ -3,7 +3,7 @@
 
 void pm_quick_build(pmc_t *pm)
 {
-	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+	if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 		pm->k_UMAX = .66666667f;	/* 2 / NOP */
 		pm->k_EMAX = .57735027f;	/* 1 / sqrt(NOP) */
@@ -158,6 +158,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_speed_hold = 900.f;
 	pm->probe_speed_tol = 50.f;
 	pm->probe_location_tol = .10f;
+	pm->probe_loss_maximal = 400.f;
 	pm->probe_gain_P = 1E-2f;
 	pm->probe_gain_I = 1E-3f;
 
@@ -210,7 +211,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->zone_gain_TH = .7f;
 	pm->zone_gain_LP = 5E-3f;
 
-	pm->hfi_freq = 2100.f;
+	pm->hfi_freq = 2380.f;
 	pm->hfi_sine = 5.f;
 
 	pm->hall_trip_AP = 5E-3f;
@@ -245,6 +246,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->i_damping = 1.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
+	pm->i_gain_Q = 1.f;
 
 	pm->mtpa_gain_LP = 5E-2f;
 
@@ -260,15 +262,15 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_damping = 1.f;
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_F = 1.f;
 	pm->s_gain_D = 5E-5f;
+	pm->s_gain_Q = 1.f;
 
 	pm->l_track_tol = 50.f;
 	pm->l_gain_LP = 5E-3f;
 
-	pm->x_maximal = 200.f;
+	pm->x_maximal = 100.f;
 	pm->x_minimal = - pm->x_maximal;
-	pm->x_damping = 1.f;
+	pm->x_damping = .10f;
 	pm->x_tolerance = 0.f;
 	pm->x_gain_P = 35.f;
 	pm->x_gain_D = 10.f;
@@ -299,11 +301,12 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->i_slew_rate = 7000.f;
 	pm->i_gain_P = 2E-1f;
 	pm->i_gain_I = 5E-3f;
+	pm->i_gain_Q = 1.f;
 
 	pm->s_gain_P = 4E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_F = 1.f;
 	pm->s_gain_D = 5E-5f;
+	pm->s_gain_Q = 1.f;
 }
 
 static void
@@ -339,7 +342,7 @@ pm_auto_scale_default(pmc_t *pm)
 static void
 pm_auto_maximal_current(pmc_t *pm)
 {
-	float			maximal_A, new_A;
+	float			maximal_A, few_A;
 
 	/* Get the maximal inline current.
 	 * */
@@ -349,13 +352,13 @@ pm_auto_maximal_current(pmc_t *pm)
 
 		/* Based on DC link voltage.
 		 * */
-		new_A = pm->k_UMAX * pm->const_fb_U / pm->const_Rs;
-		maximal_A = (new_A < maximal_A) ? new_A : maximal_A;
+		few_A = pm->k_UMAX * pm->const_fb_U / pm->const_Rs;
+		maximal_A = (few_A < maximal_A) ? few_A : maximal_A;
 
 		/* Based on resistive LOSSES.
 		 * */
-		new_A = m_sqrtf(400.f / pm->const_Rs);
-		maximal_A = (new_A < maximal_A) ? new_A : maximal_A;
+		few_A = m_sqrtf(pm->k_UMAX * pm->probe_loss_maximal / pm->const_Rs);
+		maximal_A = (few_A < maximal_A) ? few_A : maximal_A;
 
 		if (maximal_A < pm->i_maximal) {
 
@@ -528,6 +531,7 @@ pm_auto_loop_current(pmc_t *pm)
 
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
+		pm->i_gain_Q = 1.f;
 
 		pm->i_slew_rate = 0.05f * Df * pm->const_fb_U / Lmin;
 	}
@@ -570,7 +574,7 @@ pm_auto_loop_speed(pmc_t *pm)
 		pm->s_gain_D = 5.E-4f * Df / pm->zone_noise;
 
 		pm->s_gain_I = 0.f;
-		pm->s_gain_F = 1.f;
+		pm->s_gain_Q = 1.f;
 	}
 }
 
@@ -783,7 +787,7 @@ pm_flux_detached(pmc_t *pm)
 	uB = pm->fb_uB;
 	uC = pm->fb_uC;
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+	if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 		U = .33333333f * (uA + uB + uC);
 
@@ -1478,7 +1482,7 @@ pm_sensor_hall(pmc_t *pm)
 
 	HS = pm->fb_HS;
 
-	if (HS >= 1 && HS <= 6) {
+	if (likely(HS >= 1 && HS <= 6)) {
 
 		pm->hall_ERN = 0;
 
@@ -1516,7 +1520,7 @@ pm_sensor_hall(pmc_t *pm)
 	else {
 		pm->hall_ERN++;
 
-		if (pm->hall_ERN >= 10) {
+		if (unlikely(pm->hall_ERN >= 10)) {
 
 			pm->fsm_errno = PM_ERROR_SENSOR_HALL_FAULT;
 			pm->fsm_req = PM_STATE_HALT;
@@ -1562,8 +1566,8 @@ pm_sensor_eabi(pmc_t *pm)
 		WRAP = 0x10000;
 
 		relEP = pm->fb_EP - pm->eabi_bEP;
-		relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
-			: (relEP < - WRAP / 2) ? WRAP : 0;
+		relEP +=  unlikely(relEP > WRAP / 2 - 1) ? - WRAP
+			: unlikely(relEP < - WRAP / 2) ? WRAP : 0;
 
 		pm->eabi_bEP = pm->fb_EP;
 	}
@@ -1575,8 +1579,8 @@ pm_sensor_eabi(pmc_t *pm)
 		pm->eabi_bEP += (pm->eabi_bEP < 0) ? WRAP : 0;
 
 		relEP = pm->fb_EP - pm->eabi_bEP;
-		relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
-			: (relEP < - WRAP / 2) ? WRAP : 0;
+		relEP +=  unlikely(relEP > WRAP / 2 - 1) ? - WRAP
+			: unlikely(relEP < - WRAP / 2) ? WRAP : 0;
 	}
 	else {
 		relEP = 0;
@@ -2184,15 +2188,11 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	/* Check if there are PWM edges within clearance zone. The CURRENT
 	 * measurements will be used or rejected based on this flags.
 	 *
-	 * NOTE: In case of current sensors placement is inline you can try to
-	 * clamp voltages to the TOP to get more valid samples.
+	 * NOTE: In case of inline current sensors placement we can sometimes
+	 * clamp voltage to the TOP level to get more valid samples.
 	 *
 	 * NOTE: To get the best result you should have a current sensor with a
 	 * fast transient that allows you to specify narrow clearance zone.
-	 *
-	 *                   1 - sqrt(3) / 2
-	 * 	clearance < -----------------
-	 *                       m_freq
 	 *
 	 * */
 	if (PM_CONFIG_IFB(pm) == PM_IFB_AB_INLINE) {
@@ -2220,7 +2220,8 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 		pm->vsi_CF = (pm->vsi_CQ < xZONE) ? 0 : 1;
 	}
 
-	/* You can mask a specific channel for some reasons.
+	/* NOTE: You can mask a specific current measurement channel on your
+	 * own considerations.
 	 * */
 	pm->vsi_AF = (pm->vsi_mask_XF == PM_MASK_A) ? 1 : pm->vsi_AF;
 	pm->vsi_BF = (pm->vsi_mask_XF == PM_MASK_B) ? 1 : pm->vsi_BF;
@@ -2229,7 +2230,7 @@ void pm_clearance(pmc_t *pm, int xA, int xB, int xC)
 	/* Chech if at least TWO samples are clean so they can be used in
 	 * control loops.
 	 * */
-	pm->vsi_IF = (pm->vsi_AF + pm->vsi_BF + pm->vsi_CF < 2) ? 0 : 1;
+	pm->vsi_IF = likely(pm->vsi_AF + pm->vsi_BF + pm->vsi_CF < 2) ? 0 : 1;
 
 	/* Check if there are PWM edges within clearance zone. The DC link
 	 * voltage measurement will be used or rejected based on this flag.
@@ -2289,13 +2290,15 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	if (		pm->config_VSI_CLAMP == PM_ENABLED
 			&& uDC > pm->k_EMAX) {
 
+		/* CLAMP voltage along an inscribed circle.
+		 * */
 		uDC = pm->k_EMAX / uDC;
 
 		uX *= uDC;
 		uY *= uDC;
 	}
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+	if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 		uA = uX;
 		uB = - .5f * uX + .8660254f * uY;
@@ -2321,6 +2324,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 	if (uDC > 1.f) {
 
+		/* CLAMP voltage along an hexagon sides.
+		 * */
 		uDC = 1.f / uDC;
 
 		uA *= uDC;
@@ -2343,7 +2348,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 		float	bA, bB, bC, bMIN, bMAX;
 
-		if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+		if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 			bA = m_fabsf(pm->lu_iX);
 			bB = m_fabsf(.5f * pm->lu_iX - .8660254f * pm->lu_iY);
@@ -2402,6 +2407,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMIN > 0) {
 
+					/* Forced clamp to GND.
+					 * */
 					xA -= xMIN;
 					xB -= xMIN;
 					xC -= xMIN;
@@ -2421,6 +2428,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMAX < pm->dc_resolution) {
 
+					/* Forced clamp to TOP.
+					 * */
 					xA += pm->dc_resolution - xMAX;
 					xB += pm->dc_resolution - xMAX;
 					xC += pm->dc_resolution - xMAX;
@@ -2445,6 +2454,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMIN > 0) {
 
+					/* Forced clamp to GND.
+					 * */
 					xA -= xMIN;
 					xB -= xMIN;
 					xC -= xMIN;
@@ -2474,6 +2485,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMIN > 0) {
 
+					/* Forced clamp to GND.
+					 * */
 					xA -= xMIN;
 					xB -= xMIN;
 					xC -= xMIN;
@@ -2494,6 +2507,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMAX < pm->dc_resolution) {
 
+					/* Forced clamp to TOP.
+					 * */
 					xA += pm->dc_resolution - xMAX;
 					xB += pm->dc_resolution - xMAX;
 					xC += pm->dc_resolution - xMAX;
@@ -2522,6 +2537,8 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 
 				if (xMIN > 0) {
 
+					/* Forced clamp to GND.
+					 * */
 					xA -= xMIN;
 					xB -= xMIN;
 					xC -= xMIN;
@@ -2556,9 +2573,9 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		pm->vsi_BT = (xB == pm->dc_resolution) ? pm->vsi_BT + 1 : 0;
 		pm->vsi_CT = (xC == pm->dc_resolution) ? pm->vsi_CT + 1 : 0;
 
-		if (		   pm->vsi_AT > pm->ts_bootstrap
-				|| pm->vsi_BT > pm->ts_bootstrap
-				|| pm->vsi_CT > pm->ts_bootstrap) {
+		if (unlikely(		   pm->vsi_AT > pm->ts_bootstrap
+					|| pm->vsi_BT > pm->ts_bootstrap
+					|| pm->vsi_CT > pm->ts_bootstrap)) {
 
 			pm->fsm_errno = PM_ERROR_BOOTSTRAP_FAULT;
 			pm->fsm_state = PM_STATE_HALT;
@@ -2572,7 +2589,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	pm->vsi_X0 = pm->vsi_X;
 	pm->vsi_Y0 = pm->vsi_Y;
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+	if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 		uDC = .33333333f * (xA + xB + xC);
 
@@ -2604,27 +2621,18 @@ pm_form_SP(pmc_t *pm, float eS)
 	 * */
 	iSP = pm->s_gain_P * eS + pm->s_integral;
 
-	if (pm->s_gain_F > M_EPSILON) {
+	/* Add an load torque estimate as feed forward term.
+	 * */
+	iSP += pm->s_gain_Q * pm_torque_get_current(pm, pm->lu_mq_load);
 
-		/* Add an load torque estimate as feed forward term.
-		 * */
-		iSP += pm->s_gain_F * pm_torque_get_current(pm, pm->lu_mq_load);
-	}
+	/* Add derivative term based on the estimated acceleration.
+	 * */
+	iSP += - pm->s_gain_D * pm_torque_get_accel(pm);
 
-	if (pm->s_gain_D > M_EPSILON) {
+	if (		(iSP < pm->i_maximal || eS < 0.f)
+			&& (iSP > - pm->i_reverse || eS > 0.f)) {
 
-		/* Add derivative term based on the estimated acceleration.
-		 * */
-		iSP += - pm->s_gain_D * pm_torque_get_accel(pm);
-	}
-
-	if (pm->s_gain_I > M_EPSILON) {
-
-		if (		(iSP < pm->i_maximal || eS < 0.f)
-				&& (iSP > - pm->i_reverse || eS > 0.f)) {
-
-			pm->s_integral += pm->s_gain_I * eS;
-		}
+		pm->s_integral += pm->s_gain_I * eS;
 	}
 
 	return iSP;
@@ -2642,7 +2650,7 @@ pm_wattage(pmc_t *pm)
 	pm->watt_drain_wP += (wP - pm->watt_drain_wP) * pm->watt_gain_LP;
 	pm->watt_drain_wA = pm->watt_drain_wP * pm->quick_iUdc;
 
-	/* Traveled distance (m).
+	/* Traveled distance.
 	 * */
 	pm->watt_traveled = (float) pm->lu_total_revol
 		* pm->const_ld_S / (float) pm->const_Zp;
@@ -2654,7 +2662,7 @@ pm_wattage(pmc_t *pm)
 	Wh = pm->watt_drain_wP * dTiH;
 	Ah = pm->watt_drain_wA * dTiH;
 
-	if (Wh > 0.f) {
+	if (likely(Wh > 0.f)) {
 
 		m_rsumf(&pm->watt_consumed_Wh, &pm->watt_rem[0], Wh);
 		m_rsumf(&pm->watt_consumed_Ah, &pm->watt_rem[1], Ah);
@@ -2856,14 +2864,14 @@ pm_loop_current(pmc_t *pm)
 
 	/* Prevent DC link OVERVOLTAGE and UNDERVOLTAGE.
 	 * */
-	wREV = (pm->const_fb_U > pm->watt_uDC_maximal) ? wP : wREV;
-	wMAX = (pm->const_fb_U < pm->watt_uDC_minimal) ? wP : wMAX;
+	wREV = unlikely(pm->const_fb_U > pm->watt_uDC_maximal) ? wP : wREV;
+	wMAX = unlikely(pm->const_fb_U < pm->watt_uDC_minimal) ? wP : wMAX;
 
 	/* Apply POWER constraints (with D-axis priority).
 	 * */
 	wP = pm->k_KWAT * (track_D * pm->watt_lpf_D + track_Q * pm->watt_lpf_Q);
 
-	if (wP > wMAX) {
+	if (unlikely(wP > wMAX)) {
 
 		wP = pm->k_KWAT * track_D * pm->watt_lpf_D;
 
@@ -2882,7 +2890,7 @@ pm_loop_current(pmc_t *pm)
 			}
 		}
 	}
-	else if (wP < wREV) {
+	else if (unlikely(wP < wREV)) {
 
 		wP = pm->k_KWAT * track_D * pm->watt_lpf_D;
 
@@ -2923,13 +2931,14 @@ pm_loop_current(pmc_t *pm)
 
 	/* Feed forward compensation (R).
 	 * */
-	uD += pm->const_Rs * pm->i_track_D;
-	uQ += pm->const_Rs * pm->i_track_Q;
+	uD += pm->i_gain_Q * pm->const_Rs * pm->i_track_D;
+	uQ += pm->i_gain_Q * pm->const_Rs * pm->i_track_Q;
 
 	/* Feed forward compensation (L).
 	 * */
-	uD += - pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
-	uQ += pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_lambda);
+	uD += - pm->i_gain_Q * pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
+	uQ += pm->i_gain_Q * pm->lu_wS
+		* (pm->const_im_L1 * pm->i_track_D + pm->const_lambda);
 
 	uMAX = pm->k_UMAX * pm->const_fb_U;
 
@@ -3061,7 +3070,7 @@ pm_loop_location(pmc_t *pm)
 	 * */
 	xER = (xEA > pm->x_tolerance) ? xER : 0.f;
 
-	/* Damping inside near zone.
+	/* Damping inside NEAR zone.
 	 * */
 	blend = (xEA < pm->x_damping) ? xEA / pm->x_damping : 1.f;
 	gain = pm->x_gain_P * blend + pm->x_gain_D * (1.f - blend);
@@ -3077,46 +3086,46 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 {
 	float		vA, vB, vC, Q;
 
-	if (pm->vsi_AF == 0) {
+	if (likely(pm->vsi_AF == 0)) {
 
 		/* Get inline current A.
 		 * */
 		pm->fb_iA = pm->scale_iA[1] * fb->current_A + pm->scale_iA[0];
 
-		if (m_fabsf(pm->fb_iA) > pm->fault_current_halt) {
+		if (unlikely(m_fabsf(pm->fb_iA) > pm->fault_current_halt)) {
 
 			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
 			pm->fsm_req = PM_STATE_HALT;
 		}
 	}
 
-	if (pm->vsi_BF == 0) {
+	if (likely(pm->vsi_BF == 0)) {
 
 		/* Get inline current B.
 		 * */
 		pm->fb_iB = pm->scale_iB[1] * fb->current_B + pm->scale_iB[0];
 
-		if (m_fabsf(pm->fb_iB) > pm->fault_current_halt) {
+		if (unlikely(m_fabsf(pm->fb_iB) > pm->fault_current_halt)) {
 
 			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
 			pm->fsm_req = PM_STATE_HALT;
 		}
 	}
 
-	if (pm->vsi_CF == 0) {
+	if (likely(pm->vsi_CF == 0)) {
 
 		/* Get inline current C.
 		 * */
 		pm->fb_iC = pm->scale_iC[1] * fb->current_C + pm->scale_iC[0];
 
-		if (m_fabsf(pm->fb_iC) > pm->fault_current_halt) {
+		if (unlikely(m_fabsf(pm->fb_iC) > pm->fault_current_halt)) {
 
 			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
 			pm->fsm_req = PM_STATE_HALT;
 		}
 	}
 
-	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+	if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 		if (		   pm->vsi_AF == 0
 				&& pm->vsi_BF == 0
@@ -3182,15 +3191,15 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		}
 	}
 
-	if (pm->vsi_SF == 0) {
+	if (likely(pm->vsi_SF == 0)) {
 
 		/* Get DC link voltage.
 		 * */
 		pm->const_fb_U = pm->scale_uS[1] * fb->voltage_U + pm->scale_uS[0];
 		pm->quick_iUdc = 1.f / pm->const_fb_U;
 
-		if (		pm->const_fb_U > pm->fault_voltage_halt
-				&& pm->weak_D > - M_EPSILON) {
+		if (unlikely(		pm->const_fb_U > pm->fault_voltage_halt
+					&& pm->weak_D > - M_EPSILON)) {
 
 			pm->fsm_errno = PM_ERROR_DC_LINK_OVERVOLTAGE;
 			pm->fsm_req = PM_STATE_HALT;
@@ -3231,7 +3240,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm->tvm_B = vB;
 			pm->tvm_C = vC;
 
-			if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
+			if (likely(PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE)) {
 
 				Q = .33333333f * (vA + vB + vC);
 
@@ -3281,7 +3290,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			 * */
 			pm_loop_current(pm);
 
-			if (pm->kalman_POSTPONED == PM_ENABLED) {
+			if (likely(pm->kalman_POSTPONED == PM_ENABLED)) {
 
 				/* We have to do most expensive work after DC
 				 * values are output to the PWM. This allows
@@ -3289,7 +3298,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 				 * */
 				pm_kalman_forecast(pm);
 
-				if (pm->vsi_IF == 0) {
+				if (likely(pm->vsi_IF == 0)) {
 
 					pm_kalman_update(pm, pm->flux_X);
 				}
@@ -3302,7 +3311,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm_wattage(pm);
 		}
 
-		if (PM_CONFIG_DBG(pm) == PM_ENABLED) {
+		if (unlikely(PM_CONFIG_DBG(pm) == PM_ENABLED)) {
 
 			float		A, B;
 
@@ -3312,7 +3321,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			pm->dbg[0] = m_atan2f(B, A) * (180.f / M_PI_F);
 		}
 
-		if (m_isfinitef(pm->lu_F[0]) == 0) {
+		if (unlikely(m_isfinitef(pm->lu_F[0]) == 0)) {
 
 			pm->fsm_errno = PM_ERROR_INVALID_OPERATION;
 			pm->fsm_state = PM_STATE_HALT;

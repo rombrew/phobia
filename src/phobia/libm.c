@@ -41,7 +41,7 @@ void m_rotatef(float x[2], float r)
 
 	q = y[0] * y[0] + y[1] * y[1];
 
-	s = (q < 2.f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
+	s = likely(q < 2.f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
 
 	x[0] = y[0] * s;
 	x[1] = y[1] * s;
@@ -68,11 +68,11 @@ float m_wrapf(float x)
 	revol = (int) (x * (1.f / M_2_PI_F));
 	x += - (float) revol * M_2_PI_F;
 
-	if (x < - M_PI_F) {
+	if (unlikely(x < - M_PI_F)) {
 
 		x += M_2_PI_F;
 	}
-	else if (x > M_PI_F) {
+	else if (unlikely(x > M_PI_F)) {
 
 		x += - M_2_PI_F;
 	}

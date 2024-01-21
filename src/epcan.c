@@ -8,6 +8,7 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
+#include "tlm.h"
 
 typedef struct {
 
@@ -61,18 +62,29 @@ static epcan_local_t		local;
 static void
 EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 {
-	float			lerp;
+	float			val;
 
 	switch (ep->PAYLOAD) {
 
-		case EPCAN_PAYLOAD_FLOAT:
+		case EPCAN_PAYLOAD_FLOAT_32:
 
 			if (msg->len == 4) {
 
-				lerp = * (float *) &msg->payload[0];
+				val = * (float *) &msg->payload[0];
 
-				ep->reg_DATA = (ep->range[1] == 0.f) ? lerp
-					: ep->range[1] * lerp + ep->range[0];
+				ep->reg_DATA = (ep->range[1] == 0.f) ? val
+					: ep->range[1] * val + ep->range[0];
+			}
+			break;
+
+		case EPCAN_PAYLOAD_FLOAT_16:
+
+			if (msg->len == 2) {
+
+				val = tlm_fp_float(* (uint16_t *) &msg->payload[0]);
+
+				ep->reg_DATA = (ep->range[1] == 0.f) ? val
+					: ep->range[1] * val + ep->range[0];
 			}
 			break;
 
@@ -80,9 +92,9 @@ EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 
 			if (msg->len == 2) {
 
-				lerp = (float) * (uint16_t *) &msg->payload[0] * (1.f / 65535.f);
+				val = (float) * (uint16_t *) &msg->payload[0] * (1.f / 65535.f);
 
-				ep->reg_DATA = ep->range[0] + lerp * (ep->range[1] - ep->range[0]);
+				ep->reg_DATA = ep->range[0] + val * (ep->range[1] - ep->range[0]);
 			}
 			break;
 
@@ -99,7 +111,7 @@ static void
 EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 {
 	CAN_msg_t		msg;
-	float			lerp;
+	float			val;
 
 	if (ep->reg_ID != ID_NULL) {
 
@@ -110,24 +122,34 @@ EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 
 	switch (ep->PAYLOAD) {
 
-		case EPCAN_PAYLOAD_FLOAT:
+		case EPCAN_PAYLOAD_FLOAT_32:
 
 			msg.len = 4;
 
-			lerp = (ep->range[1] == 0.f) ? ep->reg_DATA
+			val = (ep->range[1] == 0.f) ? ep->reg_DATA
 				: ep->range[1] * ep->reg_DATA + ep->range[0];
 
-			* (float *) &msg.payload[0] = lerp;
+			* (float *) &msg.payload[0] = val;
+			break;
+
+		case EPCAN_PAYLOAD_FLOAT_16:
+
+			msg.len = 2;
+
+			val = (ep->range[1] == 0.f) ? ep->reg_DATA
+				: ep->range[1] * ep->reg_DATA + ep->range[0];
+
+			* (uint16_t *) &msg.payload[0] = tlm_fp_half(val);
 			break;
 
 		case EPCAN_PAYLOAD_INT_16:
 
 			msg.len = 2;
 
-			lerp = (ep->reg_DATA - ep->range[0]) / (ep->range[1] - ep->range[0]);
-			lerp = (lerp < 0.f) ? 0.f : (lerp > 1.f) ? 1.f : lerp;
+			val = (ep->reg_DATA - ep->range[0]) / (ep->range[1] - ep->range[0]);
+			val = (val < 0.f) ? 0.f : (val > 1.f) ? 1.f : val;
 
-			* (uint16_t *) &msg.payload[0] = (uint16_t) (lerp * 65535.f);
+			* (uint16_t *) &msg.payload[0] = (uint16_t) (val * 65535.f);
 			break;
 
 		default: break;
@@ -442,7 +464,7 @@ EPCAN_log_msg(CAN_msg_t *msg, const char *label)
 static int
 EPCAN_send_msg(CAN_msg_t *msg)
 {
-	int			rc, N = 0;
+	int			rc, try_N = 0;
 
 	do {
 		rc = CAN_send_msg(msg);
@@ -457,9 +479,9 @@ EPCAN_send_msg(CAN_msg_t *msg)
 			break;
 		}
 
-		N++;
+		try_N++;
 
-		if (N >= 20) {
+		if (try_N >= 20) {
 
 			break;
 		}

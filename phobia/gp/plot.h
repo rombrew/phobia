@@ -373,9 +373,10 @@ typedef struct {
 	int			data_box_size_X;
 	int			data_box_N;
 	char			data_box_text[PLOT_DATA_BOX_MAX][PLOT_STRING_MAX];
+	char			data_box_clipboard[PLOT_DATA_BOX_MAX * PLOT_STRING_MAX];
 
 	int			slice_on;
-	int			slice_range_on;
+	int			slice_mode_N;
 	int			slice_axis_N;
 
 	struct {
@@ -554,6 +555,7 @@ void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y);
 int plotLegendGetByClick(plot_t *pl, int cur_X, int cur_Y);
 int plotLegendBoxGetByClick(plot_t *pl, int cur_X, int cur_Y);
 int plotDataBoxGetByClick(plot_t *pl, int cur_X, int cur_Y);
+void plotDataBoxCopyClipboard(plot_t *pl);
 
 void plotLayout(plot_t *pl);
 void plotDraw(plot_t *pl, SDL_Surface *surface);

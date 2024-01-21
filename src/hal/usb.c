@@ -25,8 +25,8 @@ typedef struct {
 	struct usbd_interface	iface0;
 	struct usbd_interface	iface1;
 
-	USB_MEM_ALIGN uint8_t	rx_buf[CDC_DATA_SZ];
-	USB_MEM_ALIGN uint8_t	tx_buf[CDC_DATA_SZ];
+	LD_DMA uint8_t		rx_buf[CDC_DATA_SZ];
+	LD_DMA uint8_t		tx_buf[CDC_DATA_SZ];
 
 	int			rx_flag;
 	int			tx_flag;
@@ -38,8 +38,9 @@ static priv_USB_t		priv_USB;
 static const uint8_t		cdc_acm_descriptor[] = {
 
 	USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xEF, 0x02, 0x01, USBD_VID, USBD_PID, 0x0100, 0x01),
-	USB_CONFIG_DESCRIPTOR_INIT(0x09 + CDC_ACM_DESCRIPTOR_LEN, 0x02, 0x01, USB_CONFIG_SELF_POWERED, 100),
-	CDC_ACM_DESCRIPTOR_INIT(0x00, CDC_INT_EP, CDC_OUT_EP, CDC_IN_EP, 0x02),
+	USB_CONFIG_DESCRIPTOR_INIT((0x09 + CDC_ACM_DESCRIPTOR_LEN), 0x02, 0x01, USB_CONFIG_SELF_POWERED, 100),
+
+	CDC_ACM_DESCRIPTOR_INIT(0x00, CDC_INT_EP, CDC_OUT_EP, CDC_IN_EP, 0x40, 0x02),
 
 	USB_LANGID_INIT(USBD_LANGID_STRING),
 	0x26,					/* bLength */
@@ -53,9 +54,10 @@ static const uint8_t		cdc_acm_descriptor[] = {
 	'a', 0, 'l', 0, ' ', 0, 'C', 0, 'O', 0, 'M', 0, ' ', 0, 'P', 0, 'o', 0,
 	'r', 0, 't', 0,
 
-	0x12,					/* bLength */
+	0x1A,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
-	'4', 0, 'C', 0, 'E', 0, '2', 0, '4', 0, '6', 0, '6', 0, '8', 0,
+	'3', 0, '5', 0, '7', 0, '0', 0, '3', 0, '7', 0, '7', 0, '4', 0, '3', 0,
+	'1', 0, '3', 0, '1', 0,
 
 	0x00
 };
@@ -120,6 +122,19 @@ usbd_cdc_acm_bulk_in(uint8_t ep, uint32_t nbytes)
 	}
 
 	portYIELD_FROM_ISR(xWoken);
+}
+
+void usbd_cdc_acm_set_line_coding(uint8_t intf, struct cdc_line_coding *line_coding)
+{
+	/* NOTE: Do nothing */
+}
+
+void usbd_cdc_acm_get_line_coding(uint8_t intf, struct cdc_line_coding *line_coding)
+{
+	line_coding->dwDTERate = hal.USART_baudrate;
+	line_coding->bDataBits = 8;
+	line_coding->bParityType = hal.USART_parity;
+	line_coding->bCharFormat = 0;
 }
 
 static void
@@ -213,10 +228,11 @@ void USB_startup()
 	/* Startup USB stack.
 	 * */
 	usbd_desc_register(cdc_acm_descriptor);
-	usbd_add_interface(usbd_cdc_acm_init_iface(&priv_USB.iface0));
-	usbd_add_interface(usbd_cdc_acm_init_iface(&priv_USB.iface1));
+	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.iface0));
+	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.iface1));
 	usbd_add_endpoint(&cdc_in_ep);
 	usbd_add_endpoint(&cdc_out_ep);
+
 	usbd_initialize();
 
 	/* Enable IRQ.

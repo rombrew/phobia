@@ -166,7 +166,8 @@ void SPI_startup(int bus, int freq, int mode)
 
 	if (mode & SPI_DMA) {
 
-		RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+		/* Enable TIM8 clock.
+		 * */
 		RCC->APB2ENR |= RCC_APB2ENR_TIM8EN;
 
 		TIM8->CR1 = TIM_CR1_OPM;
@@ -237,6 +238,8 @@ void SPI_startup(int bus, int freq, int mode)
 		__ISB();
 #endif /* STM32F7 */
 
+		/* Enable DMA2.
+		 * */
 		DMA2_Stream2->CR |= DMA_SxCR_EN;
 		DMA2_Stream7->CR |= DMA_SxCR_EN;
 	}
@@ -283,9 +286,13 @@ void SPI_halt(int bus)
 
 		int		N = 0;
 
+		/* Disable TIM8.
+		 * */
 		TIM8->CR1 = 0;
 		TIM8->CR2 = 0;
 
+		/* Disable DMA2.
+		 * */
 		DMA2_Stream4->CR = 0;
 		DMA2_Stream3->CR = 0;
 		DMA2_Stream2->CR = 0;
@@ -305,7 +312,8 @@ void SPI_halt(int bus)
 			N++;
 		}
 
-		RCC->AHB1ENR &= ~RCC_AHB1ENR_DMA2EN;
+		/* Disable TIM8 clock.
+		 * */
 		RCC->APB2ENR &= ~RCC_APB2ENR_TIM8EN;
 
 		priv_SPI[bus].dmabuf[0] = 0U;
@@ -410,12 +418,16 @@ void SPI_transfer_dma(int bus, const uint16_t *txbuf, uint16_t *rxbuf, int len)
 	DMA2->LIFCR = DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3 | DMA_LIFCR_CFEIF3;
 	DMA2->HIFCR = DMA_HIFCR_CTCIF4 | DMA_HIFCR_CHTIF4 | DMA_HIFCR_CTEIF4 | DMA_HIFCR_CFEIF4;
 
+	/* Enable DMA2.
+	 * */
 	DMA2_Stream4->CR |= DMA_SxCR_EN;
 	DMA2_Stream3->CR |= DMA_SxCR_EN;
 
 	TIM8->CNT = 0;
 	TIM8->RCR = len - 1U;
 
+	/* Start TIM8.
+	 * */
 	TIM8->CR1 |= TIM_CR1_CEN;
 }
 

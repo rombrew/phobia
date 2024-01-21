@@ -2249,8 +2249,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 			}
 			else if (strcmp(tbuf, "load") == 0) {
 
-				int		flag_stub = 0;
-
 				failed = 1;
 
 				do {
@@ -2311,6 +2309,11 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						readOpenUnified(rd, dN_remap, argi[3], argi[1], "", argi[2]);
 
+						if (rd->data[dN_remap].fd == NULL) {
+
+							rd->bind_N = -1;
+						}
+
 						failed = 0;
 						break;
 					}
@@ -2321,8 +2324,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						if (r == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
 						else break;
-
-						flag_stub = 1;
 					}
 
 					r = configToken(rd, pa);
@@ -2349,10 +2350,17 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						readOpenUnified(rd, dN_remap, argi[3], argi[1], lbuf, argi[2]);
 
-						if (		rd->data[dN_remap].fd == NULL
-								&& flag_stub != 0) {
+						if (rd->data[dN_remap].fd == NULL) {
 
-							readOpenStub(rd, dN_remap, argi[3], argi[1], lbuf, argi[2]);
+							if (		argi[2] == FORMAT_BINARY_FLOAT
+									|| argi[2] == FORMAT_BINARY_DOUBLE) {
+
+								readOpenStub(rd, dN_remap, argi[3],
+										argi[1], lbuf, argi[2]);
+							}
+							else {
+								rd->bind_N = -1;
+							}
 						}
 
 						failed = 0;

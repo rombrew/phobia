@@ -13,7 +13,7 @@ static priv_ADC_t		priv_ADC;
 
 void irq_ADC()
 {
-	if (ADC3->SR & ADC_SR_JEOC) {
+	if (likely(ADC3->SR & ADC_SR_JEOC)) {
 
 		ADC1->SR = ~ADC_SR_JEOC;
 		ADC2->SR = ~ADC_SR_JEOC;

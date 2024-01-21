@@ -297,8 +297,13 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 	style->contextual_button.text_hover = nk->table[NK_COLOR_TEXT_HOVER];
 	style->contextual_button.padding = nk_vec2(4.0f, 4.0f);
 
-	style->checkbox.padding = nk_vec2(4.0f, 4.0f);
-	style->checkbox.spacing = 4.0f;
+	style->selectable.normal = nk_style_item_color(nk->table[NK_COLOR_SELECT]);
+	style->selectable.hover = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
+	style->selectable.pressed = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
+	style->selectable.normal_active = nk_style_item_color(nk->table[NK_COLOR_SELECT_ACTIVE]);
+	style->selectable.hover_active = nk_style_item_color(nk->table[NK_COLOR_ACTIVE_HOVER]);
+	style->selectable.pressed_active = nk_style_item_color(nk->table[NK_COLOR_ACTIVE_HOVER]);
+	style->selectable.rounding = 2.0f;
 
 	style->combo.hover = nk_style_item_color(nk->table[NK_COLOR_COMBO_HOVER]);
 	style->combo.button.hover = style->combo.hover;

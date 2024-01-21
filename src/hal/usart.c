@@ -25,9 +25,9 @@ void irq_USART3()
 #endif /* STM32Fx */
 
 #if defined(STM32F4)
-	if (SR & USART_SR_RXNE) {
+	if (likely(SR & USART_SR_RXNE)) {
 #elif defined(STM32F7)
-	if (SR & USART_ISR_RXNE) {
+	if (likely(SR & USART_ISR_RXNE)) {
 #endif /* STM32Fx */
 
 #if defined(STM32F4)
@@ -42,9 +42,9 @@ void irq_USART3()
 	}
 
 #if defined(STM32F4)
-	if (SR & USART_SR_TXE) {
+	if (likely(SR & USART_SR_TXE)) {
 #elif defined(STM32F7)
-	if (SR & USART_ISR_TXE) {
+	if (likely(SR & USART_ISR_TXE)) {
 #endif /* STM32Fx */
 
 		if (xQueueReceiveFromISR(priv_USART.tx_queue, &xbyte, &xWoken) == pdTRUE) {

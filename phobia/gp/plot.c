@@ -5249,7 +5249,7 @@ void plotFigureClean(plot_t *pl)
 	pl->data_box_Y = 0;
 
 	pl->slice_on = 0;
-	pl->slice_range_on = 0;
+	pl->slice_mode_N = 0;
 
 	pl->on_X = -1;
 	pl->on_Y = -1;
@@ -5493,9 +5493,9 @@ void plotSliceSwitch(plot_t *pl)
 {
 	int		fN;
 
-	if (pl->slice_range_on == 0) {
+	if (pl->slice_mode_N == 0) {
 
-		pl->slice_range_on = 1;
+		pl->slice_mode_N = 1;
 
 		for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
@@ -5506,13 +5506,13 @@ void plotSliceSwitch(plot_t *pl)
 			}
 		}
 	}
-	else if (pl->slice_range_on == 1) {
+	else if (pl->slice_mode_N == 1) {
 
-		pl->slice_range_on = 2;
+		pl->slice_mode_N = 2;
 	}
-	else if (pl->slice_range_on == 2) {
+	else if (pl->slice_mode_N == 2) {
 
-		pl->slice_range_on = 0;
+		pl->slice_mode_N = 0;
 	}
 }
 
@@ -5523,7 +5523,7 @@ void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y)
 	int		fN, aN, bN, dN, cX, cY, id_N;
 	int		dN_s, aN_s, cX_s, job;
 
-	if (pl->slice_range_on == 2)
+	if (pl->slice_mode_N == 2)
 		return ;
 
 	if (pl->slice_axis_N < 0) {
@@ -5640,7 +5640,7 @@ void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y)
 
 		if (pl->figure[fN].slice_busy != 0) {
 
-			if (pl->slice_range_on != 0) {
+			if (pl->slice_mode_N != 0) {
 
 				fval_X = pl->figure[fN].slice_base_X;
 				fval_Y = pl->figure[fN].slice_base_Y;
@@ -5740,7 +5740,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 			aN = pl->figure[fN].axis_X;
 			bN = pl->figure[fN].axis_Y;
 
-			if (pl->slice_range_on != 0) {
+			if (pl->slice_mode_N != 0) {
 
 				base_X = plotAxisConvForward(pl, aN, pl->figure[fN].slice_base_X);
 				base_Y = plotAxisConvForward(pl, bN, pl->figure[fN].slice_base_Y);
@@ -5753,7 +5753,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 
 			if (pl->axis[pl->slice_axis_N].busy == AXIS_BUSY_X) {
 
-				if (pl->slice_range_on != 0) {
+				if (pl->slice_mode_N != 0) {
 
 					if (fp_isfinite(base_X)) {
 
@@ -5780,7 +5780,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 			}
 			else if (pl->axis[pl->slice_axis_N].busy == AXIS_BUSY_Y) {
 
-				if (pl->slice_range_on != 0) {
+				if (pl->slice_mode_N != 0) {
 
 					if (fp_isfinite(base_Y)) {
 
@@ -5806,7 +5806,7 @@ plotSliceDraw(plot_t *pl, SDL_Surface *surface)
 				}
 			}
 
-			if (pl->slice_range_on != 0) {
+			if (pl->slice_mode_N != 0) {
 
 				if (fp_isfinite(base_X) && fp_isfinite(base_Y)) {
 
@@ -7041,8 +7041,8 @@ plotLegendDraw(plot_t *pl, SDL_Surface *surface)
 
 int plotLegendGetByClick(plot_t *pl, int cur_X, int cur_Y)
 {
-	int		fN, rN = -1;
 	int		legX, legY, relX, relY;
+	int		fN, rN = -1;
 
 	legX = pl->legend_X;
 	legY = pl->legend_Y;
@@ -7054,7 +7054,7 @@ int plotLegendGetByClick(plot_t *pl, int cur_X, int cur_Y)
 			relX = cur_X - (legX + pl->layout_font_height * 2);
 			relY = cur_Y - legY;
 
-			if (relX > 0 && relX < pl->legend_size_X
+			if (		relX > 0 && relX < pl->legend_size_X
 					&& relY > 0 && relY < pl->layout_font_height) {
 
 				rN = fN;
@@ -7072,14 +7072,18 @@ int plotLegendGetByClick(plot_t *pl, int cur_X, int cur_Y)
 
 int plotLegendBoxGetByClick(plot_t *pl, int cur_X, int cur_Y)
 {
-	int		rN = -1;
+	int		relX, relY, lenY, rN = -1;
 
-	cur_X = cur_X - pl->legend_X;
-	cur_Y = cur_Y - pl->legend_Y;
+	relX = cur_X - pl->legend_X;
+	relY = cur_Y - pl->legend_Y;
 
-	if (cur_X > 0 && cur_X < pl->layout_font_height * 2
-			&& cur_Y > 0 && cur_Y < pl->layout_font_height * pl->legend_N)
+	lenY = pl->layout_font_height * pl->legend_N;
+
+	if (		relX > 0 && relX < pl->layout_font_height * 2
+			&& relY > 0 && relY < lenY) {
+
 		rN = 0;
+	}
 
 	pl->hover_legend = rN;
 
@@ -7200,18 +7204,49 @@ plotDataBoxDraw(plot_t *pl, SDL_Surface *surface)
 
 int plotDataBoxGetByClick(plot_t *pl, int cur_X, int cur_Y)
 {
-	int		rN = -1;
+	int		relX, relY, lenY, rN = -1;
 
-	cur_X = cur_X - pl->data_box_X;
-	cur_Y = cur_Y - pl->data_box_Y;
+	if (pl->data_box_on != DATA_BOX_FREE) {
 
-	if (cur_X > 0 && cur_X < pl->data_box_size_X
-			&& cur_Y > 0 && cur_Y < pl->layout_font_height * pl->data_box_N)
-		rN = 0;
+		relX = cur_X - pl->data_box_X;
+		relY = cur_Y - pl->data_box_Y;
+
+		lenY = pl->layout_font_height * pl->data_box_N;
+
+		if (		relX > 0 && relX < pl->data_box_size_X
+				&& relY > 0 && relY < lenY) {
+
+			rN = 0;
+		}
+	}
 
 	pl->hover_data_box = rN;
 
 	return rN;
+}
+
+void plotDataBoxCopyClipboard(plot_t *pl)
+{
+	int		N;
+
+	if (pl->data_box_on != DATA_BOX_FREE) {
+
+		pl->data_box_clipboard[0] = 0;
+
+		for (N = 0; N < PLOT_DATA_BOX_MAX; ++N) {
+
+			if (pl->data_box_text[N][0] != 0) {
+
+				strcat(pl->data_box_clipboard, pl->data_box_text[N]);
+				strcat(pl->data_box_clipboard, "\r\n");
+			}
+		}
+
+		if (pl->data_box_clipboard[0] != 0) {
+
+			SDL_SetClipboardText(pl->data_box_clipboard);
+		}
+	}
 }
 
 void plotLayout(plot_t *pl)
@@ -7368,7 +7403,7 @@ plotDrawAxisAll(plot_t *pl, SDL_Surface *surface)
 
 void plotDraw(plot_t *pl, SDL_Surface *surface)
 {
-	if (pl->slice_range_on != 0) {
+	if (pl->slice_mode_N != 0) {
 
 		plotSliceLightDraw(pl, surface);
 	}

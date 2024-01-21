@@ -4,10 +4,9 @@
 static void
 pm_fsm_state_idle(pmc_t *pm)
 {
-	/* TODO
-	 * */
+	/* TODO */
 
-	if (		pm->lu_MODE == PM_LU_DISABLED
+	/*if (		pm->lu_MODE == PM_LU_DISABLED
 			&& pm->config_BOOST_CHARGE == PM_ENABLED) {
 
 		switch (pm->fsm_phase) {
@@ -27,7 +26,7 @@ pm_fsm_state_idle(pmc_t *pm)
 				}
 				break;
 		}
-	}
+	}*/
 }
 
 static void
@@ -445,7 +444,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 				pm->fsm_errno = PM_ERROR_NO_MOTOR_CONNECTED;
 			}
 			else {
-				pm->fsm_errno = PM_ERROR_POWER_STAGE_DAMAGED;
+				pm->fsm_errno = PM_ERROR_POWER_STAGE_BROKEN;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -2166,8 +2165,8 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				WRAP = 0x10000;
 
 				relEP = pm->fb_EP - pm->eabi_bEP;
-				relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
-					: (relEP < - WRAP / 2) ? WRAP : 0;
+				relEP +=  unlikely(relEP > WRAP / 2 - 1) ? - WRAP
+					: unlikely(relEP < - WRAP / 2) ? WRAP : 0;
 
 				pm->eabi_bEP = pm->fb_EP;
 				pm->eabi_lEP += relEP;
@@ -2180,8 +2179,8 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				pm->eabi_bEP += (pm->eabi_bEP < 0) ? WRAP : 0;
 
 				relEP = pm->fb_EP - pm->eabi_bEP;
-				relEP +=  (relEP > WRAP / 2 - 1) ? - WRAP
-					: (relEP < - WRAP / 2) ? WRAP : 0;
+				relEP +=  unlikely(relEP > WRAP / 2 - 1) ? - WRAP
+					: unlikely(relEP < - WRAP / 2) ? WRAP : 0;
 
 				pm->eabi_lEP += relEP;
 			}
@@ -2458,7 +2457,7 @@ const char *pm_strerror(int fsm_errno)
 		PM_SFI_CASE(PM_ERROR_ZERO_DRIFT_FAULT);
 		PM_SFI_CASE(PM_ERROR_NO_MOTOR_CONNECTED);
 		PM_SFI_CASE(PM_ERROR_BOOTSTRAP_FAULT);
-		PM_SFI_CASE(PM_ERROR_POWER_STAGE_DAMAGED);
+		PM_SFI_CASE(PM_ERROR_POWER_STAGE_BROKEN);
 		PM_SFI_CASE(PM_ERROR_INSUFFICIENT_ACCURACY);
 		PM_SFI_CASE(PM_ERROR_CURRENT_LOOP_FAULT);
 		PM_SFI_CASE(PM_ERROR_INSTANT_OVERCURRENT);

@@ -38,7 +38,7 @@ void langFill(lang_t *la, int lang)
 			"T   Data slice (on X)\0"
 			"K   Compact axes mode\0"
 			"E   Exponential mode\0"
-			"Y   Yank to clipboard\0"
+			"Y   Copy to clipboard\0"
 			"    Language ...\0"
 			"    About ...\0"
 			"    Quit\0"
@@ -178,6 +178,13 @@ void langFill(lang_t *la, int lang)
 
 			"\0";
 
+		la->databox_menu =
+
+			"    Close data window\0"
+			"    Copy to clipboard\0"
+
+			"\0";
+
 		la->cancel_menu =
 
 			"    Cancel\0"
@@ -218,7 +225,7 @@ void langFill(lang_t *la, int lang)
 			"T   Нарезка данных (по X)\0"
 			"K   Режим компактных осей\0"
 			"E   Экспонентный режим\0"
-			"Y   Копировать в буфер\0"
+			"Y   Копировать в буфер обмена\0"
 			"    Язык ...\0"
 			"    О программе ...\0"
 			"    Выход\0"
@@ -355,6 +362,13 @@ void langFill(lang_t *la, int lang)
 			"    Запечь фигуры в CSV ...\0"
 			"    Режим прозрачности   [ %s ]\0"
 			"    Скрытая легенда      [ %s ]\0"
+
+			"\0";
+
+		la->databox_menu =
+
+			"    Закрыть окно данных\0"
+			"    Копировать в буфер обмена\0"
 
 			"\0";
 

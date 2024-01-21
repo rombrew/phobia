@@ -172,7 +172,7 @@ enum {
 	PM_ERROR_ZERO_DRIFT_FAULT,
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERROR_BOOTSTRAP_FAULT,
-	PM_ERROR_POWER_STAGE_DAMAGED,
+	PM_ERROR_POWER_STAGE_BROKEN,
 	PM_ERROR_INSUFFICIENT_ACCURACY,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INSTANT_OVERCURRENT,
@@ -317,6 +317,7 @@ typedef struct {
 	float		probe_speed_hold;
 	float		probe_speed_tol;
 	float		probe_location_tol;
+	float		probe_loss_maximal;
 	float		probe_gain_P;
 	float		probe_gain_I;
 
@@ -552,6 +553,7 @@ typedef struct {
 	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
+	float		i_gain_Q;
 
 	float		mtpa_approx_Q;
 	float		mtpa_D;
@@ -573,8 +575,8 @@ typedef struct {
 	float		s_damping;
 	float		s_gain_P;
 	float		s_gain_I;
-	float		s_gain_F;
 	float		s_gain_D;
+	float		s_gain_Q;
 
 	float		l_track_tol;
 	float		l_blend;

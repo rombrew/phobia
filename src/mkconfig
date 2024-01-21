@@ -14,15 +14,18 @@ def mkdefs(hw):
             g.write('HWMCU = STM32F722\n')
 
         elif 'HW_HAVE_DRV_ON_PCB' in s:
-            g.write('OBJ_HAL_DRV = INCLUDE\n')
+            g.write('OBJ_HAL_DRV = 1\n')
 
-        elif 'HW_HAVE_USB_CDC_ACM' in s:
-            g.write('OBJ_HAL_USB = INCLUDE\n')
-            g.write('OBJ_LIB_CHERRY = INCLUDE\n')
+        elif 'HW_HAVE_STEP_DIR_KNOB' in s:
+            g.write('OBJ_HAL_STEP = 1\n')
 
         elif 'HW_HAVE_NETWORK_EPCAN' in s:
-            g.write('OBJ_HAL_CAN = INCLUDE\n')
-            g.write('OBJ_EPCAN = INCLUDE\n')
+            g.write('OBJ_HAL_CAN = 1\n')
+            g.write('OBJ_EPCAN = 1\n')
+
+        elif 'HW_HAVE_USB_CDC_ACM' in s:
+            g.write('OBJ_HAL_USB = 1\n')
+            g.write('OBJ_LIB_CHERRY = 1\n')
 
     f.close()
     g.close()

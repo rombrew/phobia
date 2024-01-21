@@ -21,7 +21,7 @@ copper foil thickness. To improve heat dissipation it is necessary to mount an
 aluminium heatsink at bottom side through thermal interface.
 
 You can also try to use third-party hardware like VESC or its clones. Look into
-"src/hal/hw/..." directory to get the actual list of supported hardware.
+`src/hal/hw/...` directory to get the actual list of supported hardware.
 
 ## Basic wiring
 
@@ -59,7 +59,7 @@ There are a few parts of software:
 
 2. Phobia graphical frontend application (`phobia/...`). It is a user tool to
    configure and diagnose PMC in visual way. This frontend communicates with
-   PMC using the CLI via serial port.
+   PMC using the CLI via serial port or USB.
 
 3. Firmware code for onboard MCU (`src/...`). All of control algorithms are
    implemented here.
@@ -115,13 +115,24 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 
 Read the following documentation for setting PMC up.
 
-* [Command Line Interface](CLI.md)
-* [Hardware Self Test](SelfTest.md)
+* [Command Line Interface](CommandLineInterface.md)
+* [Integrity Self Test](IntegritySelfTest.md)
 * [Machine Probe](MachineProbe.md)
 * [Machine Tuning](MachineTuning.md)
-* [High Frequency Injection](HFI.md)
+* [High Frequency Injection](HighFrequencyInjection.md)
 * [Input Analog Knob](InputAnalogKnob.md)
 * [Input Pulse Width](InputPulseWidth.md)
+* [Input STEP/DIR Interface](InputStepDirection.md)
 * [Network CAN](NetworkCAN.md)
 * [Trouble Shooting](TroubleShooting.md)
+
+* [Hardware Design](HardwareDesign.md)
+* [Hardware VESC](HardwareVESC.md)
+
+## Feedback and support
+
+Yuo can contact me on [sourceforge](https://sourceforge.net/projects/phobia/)
+[github](https://github.com/rombrew/phobia) or by email.
+
+Roman Belov <romblv@gmail.com>
 

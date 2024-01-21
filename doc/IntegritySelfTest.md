@@ -1,6 +1,6 @@
 ## Overview
 
-This page describes how to verify the electrical integrity of PMC.
+This page describes how to verify the electrical integrity of PMC hardware.
 
 ## Automated Self Test
 

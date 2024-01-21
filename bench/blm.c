@@ -50,10 +50,10 @@ void blm_enable(blm_t *m)
 	m->time = 0.;		/* Simulation TIME (Second) */
 	m->sol_dT = 5.E-6;	/* ODE solver step (Second) */
 
-	m->pwm_dT = 1. / 30000.;	/* PWM period (Second)   */
+	m->pwm_dT = 35.E-6;		/* PWM cycle (Second)    */
 	m->pwm_deadtime = 170.E-9;	/* PWM deadtime (Second) */
 	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
-	m->pwm_resolution = 2800;	/* PWM resolution        */
+	m->pwm_resolution = 2940;	/* PWM resolution        */
 
 	/* Threshold about deadtime (Ampere).
 	 * */

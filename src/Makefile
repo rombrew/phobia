@@ -77,12 +77,16 @@ OBJS	+= freertos/heap_4.o \
 	   freertos/queue.o \
 	   freertos/tasks.o
 
-ifeq ($(OBJ_HAL_CAN), INCLUDE)
+ifeq ($(OBJ_HAL_CAN), 1)
 OBJS	+= hal/can.o
 endif
 
-ifeq ($(OBJ_HAL_DRV), INCLUDE)
+ifeq ($(OBJ_HAL_DRV), 1)
 OBJS	+= hal/drv.o
+endif
+
+ifeq ($(OBJ_HAL_STEP), 1)
+OBJS	+= hal/step.o
 endif
 
 OBJS	+= hal/adc.o \
@@ -100,11 +104,11 @@ OBJS	+= hal/adc.o \
 	   hal/usart.o \
 	   hal/wd.o
 
-ifeq ($(OBJ_HAL_USB), INCLUDE)
+ifeq ($(OBJ_HAL_USB), 1)
 OBJS	+= hal/usb.o
 endif
 
-ifeq ($(OBJ_LIB_CHERRY), INCLUDE)
+ifeq ($(OBJ_LIB_CHERRY), 1)
 OBJS	+= cherry/usb_dc_dwc2.o \
 	   cherry/usbd_cdc.o \
 	   cherry/usbd_core.o
@@ -115,7 +119,7 @@ OBJS	+= phobia/libm.o \
 	   phobia/pm.o \
 	   phobia/pm_fsm.o
 
-ifeq ($(OBJ_EPCAN), INCLUDE)
+ifeq ($(OBJ_EPCAN), 1)
 OBJS	+= epcan.o
 endif
 

@@ -1654,8 +1654,9 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				}
 				else {
 					pl->data_box_on = DATA_BOX_FREE;
+
 					pl->slice_on = 0;
-					pl->slice_range_on = 0;
+					pl->slice_mode_N = 0;
 				}
 				break;
 
@@ -2684,6 +2685,22 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 			}
 		}
 	}
+	else if (menu_N == 5) {
+
+		switch (item_N) {
+
+			case 0:
+				pl->data_box_on = DATA_BOX_FREE;
+
+				pl->slice_on = 0;
+				pl->slice_mode_N = 0;
+				break;
+
+			case 1:
+				plotDataBoxCopyClipboard(pl);
+				break;
+		}
+	}
 	else if (menu_N == 9) {
 
 		N = item_N + 1;
@@ -3344,8 +3361,7 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 					if (N >= 0) {
 
-						pl->figure[N].hidden = pl->figure[N].hidden
-							? 0 : 1;
+						pl->figure[N].hidden = pl->figure[N].hidden ? 0 : 1;
 
 						break;
 					}
@@ -3356,6 +3372,7 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 						gp->box_X = ev->button.x - pl->legend_X;
 						gp->box_Y = ev->button.y - pl->legend_Y;
+
 						gp->stat = GP_MOVING;
 						gp->legend_drag = 1;
 						break;
@@ -3367,6 +3384,7 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 						gp->box_X = ev->button.x - pl->data_box_X;
 						gp->box_Y = ev->button.y - pl->data_box_Y;
+
 						gp->stat = GP_MOVING;
 						gp->data_box_drag = 1;
 						break;
@@ -3379,17 +3397,19 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						if (pl->axis[N].busy == AXIS_BUSY_X
 								&& pl->axis[N].slave == 0) {
 
-							gp->stat = GP_MOVING;
 							pl->on_X = N;
 							gp->ax_N = N;
+
+							gp->stat = GP_MOVING;
 							break;
 						}
 						else if (pl->axis[N].busy == AXIS_BUSY_Y
 								&& pl->axis[N].slave == 0) {
 
-							gp->stat = GP_MOVING;
 							pl->on_Y = N;
 							gp->ax_N = N;
+
+							gp->stat = GP_MOVING;
 							break;
 						}
 					}
@@ -3397,6 +3417,7 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 						gp->box_X = ev->button.x;
 						gp->box_Y = ev->button.y;
 						gp->ax_N = -1;
+
 						gp->stat = GP_MOVING;
 						break;
 					}
@@ -3437,6 +3458,7 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 						menuRaise(mu, 3, gp->la->figure_menu,
 								gp->cur_X, gp->cur_Y);
+
 						gp->stat = GP_MENU;
 						break;
 					}
@@ -3462,8 +3484,10 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 					if (N == 0) {
 
-						pl->data_box_X = pl->viewport.max_x;
-						pl->data_box_Y = 0;
+						menuRaise(mu, 5, gp->la->databox_menu,
+								gp->cur_X, gp->cur_Y);
+
+						gp->stat = GP_MENU;
 						break;
 					}
 
@@ -3513,8 +3537,8 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 
 							gp->box_X = ev->button.x;
 							gp->box_Y = ev->button.y;
-							gp->stat = GP_BOX_SELECT;
 
+							gp->stat = GP_BOX_SELECT;
 							break;
 						}
 						break;
@@ -4624,7 +4648,7 @@ gpGetOPT(gp_t *gp, char *argv[])
 				}
 			}
 			else {
-				ERROR("unknown option \"%s\"\n", argv[op]);
+				ERROR("Unknown option \"%s\"\n", argv[op]);
 			}
 		}
 		else {

@@ -48,6 +48,9 @@ typedef struct {
 }
 tlm_t;
 
+uint16_t tlm_fp_half(float x);
+float tlm_fp_float(uint16_t x);
+
 void tlm_reg_default(tlm_t *tlm);
 void tlm_reg_grab(tlm_t *tlm);
 void tlm_startup(tlm_t *tlm, float freq, int mode);

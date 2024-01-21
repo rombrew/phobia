@@ -30,9 +30,9 @@ Select injection waveform type. The usual type is SINE waveform.
 
 	(pmc) reg pm.config_HFI_WAVETYPE 1
 
-The main parameters of injection is a frequency and amplitude. It is usually
-large frequency and amplitude makes HFI operation is more stable. Beware of
-sine degeneracy at frequencies close to the PWM frequency.
+The main parameters of injection is a frequency and amplitude. It is usually a
+high frequency and amplitude makes HFI operation is more stable. Beware of sine
+degeneracy at frequencies close to the PWM frequency.
 
 	(pmc) reg pm.hfi_freq <Hz>
 	(pmc) reg pm.hfi_sine <A>
@@ -44,7 +44,7 @@ reduced torque production.
 	(pmc) reg pm.i_derate_on_HFI <A>
 
 If you are concerned about increased levels of acoustic noise and vibration you
-can select RANDOM waveform and adjust amplitude.
+can select RANDOM waveform and adjust an amplitude.
 
 	(pmc) reg pm.config_HFI_WAVETYPE 2
 

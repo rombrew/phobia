@@ -8,12 +8,12 @@
 
 /* ================ USB common Configuration ==================== */
 
-#ifndef CONFIG_USB_DBG_LEVEL
-#define CONFIG_USB_DBG_LEVEL		-1
+#ifndef CONFIG_USB_PRINTF
+#define CONFIG_USB_PRINTF(...)		log_TRACE(__VA_ARGS__)
 #endif
 
-#ifndef CONFIG_USB_PRINTF
-#define CONFIG_USB_PRINTF		log_TRACE
+#ifndef CONFIG_USB_DBG_LEVEL
+#define CONFIG_USB_DBG_LEVEL		-1
 #endif
 
 #ifndef CONFIG_USB_ALIGN_SIZE
@@ -29,14 +29,10 @@
 
 /* ================ USB Device Port Configuration ================*/
 
-#define CONFIG_USB_DWC2_PORT		FS_PORT
 #define USBD_IRQHandler			irq_OTG_FS
+#define USBD_BASE			0x50000000UL
 
-#include "hal/hwdefs.h"
-
-#if defined(HW_MCU_STM32F722) && !defined(STM32F7)
-#define STM32F7
-#endif /* HW_MCU_STM32F722 */
+#define CONFIG_USB_DWC2_RAM_SIZE	1280
 
 extern void log_TRACE(const char *fmt, ...);
 

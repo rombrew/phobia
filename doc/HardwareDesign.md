@@ -155,8 +155,8 @@ value will be used at next PWM period.
 	  ---*--*--*-----------------------------+-------------*--*--*--------
 	     |  |  |                             |             |  |  |
 	     iA uS uC         preload DC         |             iA uS uC
-	     iB uA uX          to hw timer -->  TIM            iB uA uX
-         iC uB uX                                          iC uB uX
+	     iB uA u?          to hw timer -->  TIM            iB uA u?
+         iC uB u?                                          iC uB u?
 	             \                          /                      \ ...
 	              pm_feedback()            /
 	                proc_set_DC(xA, xB, xC)
@@ -165,7 +165,7 @@ value will be used at next PWM period.
 ## Clean zones
 
 We typically need about 5us before current samples to be clean. If MOSFETs
-switching occur at this time then the result is discarded.
+switching occur at this time then ADC result is discarded.
 
 	                // ADC sample clean zones //
 	

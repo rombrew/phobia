@@ -25,8 +25,8 @@ at low speed range.
 
 ## Current loop
 
-Automatically tune current loop PI regulator gains based on damping percentage.
-Reasonable values are from 50 to 150.
+You can automatically tune current loop PI regulator gains based on damping
+percentage. Reasonable values are from 50 to 150.
 
 	(pmc) reg pm.i_damping <pc>
 
@@ -89,8 +89,8 @@ transient rate and noise level.
 
 ## Speed loop
 
-Automatically tune speed loop PIFD regulator gains based on damping percentage.
-Reasonable values are from 20 to 200.
+You can automatically tune speed loop PID regulator gains based on damping
+percentage. Reasonable values are from 50 to 200.
 
 	(pmc) reg pm.s_damping <pc>
 
@@ -121,13 +121,13 @@ constraint. For system stability we have introduced a linear regulation region
 `pm.l_track_tol` and blending gain `pm.l_gain_LP`. So there may be some
 backlash in case of direction change.
 
-Also you can tune PIFD regulator and load torque gains manually.
+Also you can tune PID regulator and load torque gains manually.
 
     (pmc) reg pm.lu_gain_mq_LP <x>
 	(pmc) reg pm.s_gain_P <x>
 	(pmc) reg pm.s_gain_I <x>
-	(pmc) reg pm.s_gain_F <x>
 	(pmc) reg pm.s_gain_D <x>
+    (pmc) reg pm.s_gain_Q <x>
 
 ## Brake function
 

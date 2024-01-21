@@ -224,6 +224,10 @@ periph_startup()
 	 * */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
+	/* Enable DMA clock.
+	 * */
+	RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+
 	/* Check for reset reason.
 	 * */
 #if defined(STM32F4)

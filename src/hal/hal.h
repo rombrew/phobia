@@ -19,6 +19,9 @@
 #include "pwm.h"
 #include "rng.h"
 #include "spi.h"
+#ifdef HW_HAVE_STEP_DIR_KNOB
+#include "step.h"
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 #include "tim.h"
 #include "usart.h"
 #ifdef HW_HAVE_USB_CDC_ACM
@@ -65,16 +68,22 @@ enum {
 	DPS_DISABLED			= 0,
 	DPS_DRIVE_HALL,
 	DPS_DRIVE_EABI,
-	DPS_DRIVE_ON_SPI,
+	DPS_DRIVE_ON_SPI
 };
 
 enum {
 	PPM_DISABLED			= 0,
 	PPM_PULSE_WIDTH,
-	PPM_OUTPULSE,
-	PPM_STEP_DIR,
-	PPM_BACKUP_EABI,
+	PPM_PULSE_OUTPUT
 };
+
+#ifdef HW_HAVE_STEP_DIR_KNOB
+enum {
+	STEP_DISABLED			= 0,
+	STEP_ON_STEP_DIR,
+	STEP_ON_CW_CCW
+};
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 typedef struct {
 
@@ -125,7 +134,9 @@ typedef struct {
 
 	int		PPM_mode;
 	int		PPM_frequency;
-	int		PPM_caught;
+
+	int		STEP_mode;
+	int		STEP_frequency;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	DRV_config_t	DRV;

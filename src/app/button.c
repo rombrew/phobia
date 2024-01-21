@@ -31,9 +31,6 @@ LD_TASK void app_BUTTON(void *pData)
 	const int		gpio_A = GPIO_HALL_A;
 	const int		gpio_B = GPIO_HALL_B;
 
-	/*const int		gpio_A = GPIO_PPM;
-	const int		gpio_B = GPIO_DIR;*/
-
 	int			pushed_A, value_A, count_A, event_A;
 	int			pushed_B, value_B, count_B, event_B;
 

@@ -122,7 +122,6 @@ static int
 elapsed_IDLE()
 {
 	TickType_t		xIDLE, xNOW;
-	int			elapsed = PM_DISABLED;
 
 	xIDLE = (TickType_t) (ap.idle_timeout * (float) configTICK_RATE_HZ);
 
@@ -145,18 +144,17 @@ elapsed_IDLE()
 
 		if (xNOW - (TickType_t) ap.idle_RESET > xIDLE) {
 
-			elapsed = PM_ENABLED;
+			return PM_ENABLED;
 		}
 	}
 
-	return elapsed;
+	return PM_DISABLED;
 }
 
 static int
 elapsed_DISARM()
 {
 	TickType_t		xDISARM, xNOW;
-	int			elapsed = PM_DISABLED;
 
 	xDISARM = (TickType_t) (ap.disarm_timeout * (float) configTICK_RATE_HZ);
 
@@ -173,14 +171,14 @@ elapsed_DISARM()
 
 		if (xNOW - (TickType_t) ap.disarm_RESET > xDISARM) {
 
-			elapsed = PM_ENABLED;
+			return PM_ENABLED;
 		}
 	}
 	else {
-		elapsed = PM_ENABLED;
+		return PM_ENABLED;
 	}
 
-	return elapsed;
+	return PM_DISABLED;
 }
 
 LD_TASK void task_TEMP(void *pData)
@@ -325,7 +323,7 @@ LD_TASK void task_TEMP(void *pData)
 
 #ifdef HW_HAVE_ANALOG_KNOB
 static void
-inner_KNOB()
+conv_KNOB()
 {
 	float			control, range, scaled;
 
@@ -373,7 +371,7 @@ inner_KNOB()
 
 			if (ap.knob_ACTIVE == PM_ENABLED) {
 
-				if (elapsed_IDLE() != 0) {
+				if (elapsed_IDLE() == PM_ENABLED) {
 
 					if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -477,7 +475,7 @@ LD_TASK void task_KNOB(void *pData)
 			ap.knob_in_BRK = ADC_get_knob_BRK();
 #endif /* HW_HAVE_BRAKE_KNOB */
 
-			inner_KNOB();
+			conv_KNOB();
 		}
 		else {
 			/* 10 Hz.
@@ -527,7 +525,12 @@ default_flash_load()
 
 	hal.DPS_mode = DPS_DISABLED;
 	hal.PPM_mode = PPM_DISABLED;
-	hal.PPM_frequency = 2000000U;
+	hal.PPM_frequency = 2000000;	/* (Hz) */
+
+#ifdef HW_HAVE_STEP_DIR_KNOB
+	hal.STEP_mode = STEP_DISABLED;
+	hal.STEP_frequency = 500000;	/* (Hz) */
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	hal.DRV.part = HW_DRV_PARTNO;
@@ -563,16 +566,18 @@ default_flash_load()
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
 	ap.ppm_STARTUP = PM_DISABLED;
 	ap.ppm_DISARM = PM_ENABLED;
-	ap.ppm_range_pulse[0] = 1.0f;	/* (ms) */
-	ap.ppm_range_pulse[1] = 1.5f;	/* (ms) */
-	ap.ppm_range_pulse[2] = 2.0f;	/* (ms) */
-	ap.ppm_range_control[0] = 0.f;
-	ap.ppm_range_control[1] = 50.f;
-	ap.ppm_range_control[2] = 100.f;
+	ap.ppm_range[0] = 1.0f;		/* (ms) */
+	ap.ppm_range[1] = 1.5f;		/* (ms) */
+	ap.ppm_range[2] = 2.0f;		/* (ms) */
+	ap.ppm_control[0] = 0.f;
+	ap.ppm_control[1] = 50.f;
+	ap.ppm_control[2] = 100.f;
 
-	ap.step_reg_ID = ID_PM_X_SETPOINT_LOCATION_MM;
+#ifdef HW_HAVE_STEP_DIR_KNOB
+	ap.step_reg_ID = ID_PM_X_SETPOINT_LOCATION;
 	ap.step_STARTUP = PM_DISABLED;
-	ap.step_const_ld_EP = 0.f;
+	ap.step_const_S = 0.f;
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	ap.knob_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
@@ -815,7 +820,7 @@ LD_TASK void task_INIT(void *pData)
 }
 
 static void
-inner_PULSE_WIDTH()
+conv_PULSE_WIDTH()
 {
 	float		control, range, scaled;
 
@@ -826,14 +831,14 @@ inner_PULSE_WIDTH()
 		ap.ppm_DISARM = PM_ENABLED;
 	}
 
-	if (ap.ppm_in_pulse < ap.ppm_range_pulse[1]) {
+	if (ap.ppm_PULSE < ap.ppm_range[1]) {
 
-		range = ap.ppm_range_pulse[0] - ap.ppm_range_pulse[1];
-		scaled = (ap.ppm_range_pulse[1] - ap.ppm_in_pulse) / range;
+		range = ap.ppm_range[0] - ap.ppm_range[1];
+		scaled = (ap.ppm_range[1] - ap.ppm_PULSE) / range;
 	}
 	else {
-		range = ap.ppm_range_pulse[2] - ap.ppm_range_pulse[1];
-		scaled = (ap.ppm_in_pulse - ap.ppm_range_pulse[1]) / range;
+		range = ap.ppm_range[2] - ap.ppm_range[1];
+		scaled = (ap.ppm_PULSE - ap.ppm_range[1]) / range;
 	}
 
 	if (scaled < - 1.f) {
@@ -842,7 +847,7 @@ inner_PULSE_WIDTH()
 
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
-			if (elapsed_IDLE() != 0) {
+			if (elapsed_IDLE() == PM_ENABLED) {
 
 				if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -854,7 +859,7 @@ inner_PULSE_WIDTH()
 		}
 		else if (ap.ppm_DISARM == PM_ENABLED) {
 
-			if (elapsed_DISARM() != 0) {
+			if (elapsed_DISARM() == PM_ENABLED) {
 
 				ap.ppm_DISARM = PM_DISABLED;
 			}
@@ -883,12 +888,12 @@ inner_PULSE_WIDTH()
 
 	if (scaled < 0.f) {
 
-		range = ap.ppm_range_control[1] - ap.ppm_range_control[0];
-		control = ap.ppm_range_control[1] + range * scaled;
+		range = ap.ppm_control[1] - ap.ppm_control[0];
+		control = ap.ppm_control[1] + range * scaled;
 	}
 	else {
-		range = ap.ppm_range_control[2] - ap.ppm_range_control[1];
-		control = ap.ppm_range_control[1] + range * scaled;
+		range = ap.ppm_control[2] - ap.ppm_control[1];
+		control = ap.ppm_control[1] + range * scaled;
 	}
 
 	if (ap.ppm_reg_DATA != control) {
@@ -905,12 +910,12 @@ inner_PULSE_WIDTH()
 static void
 in_PULSE_WIDTH()
 {
-	ap.ppm_in_pulse = PPM_get_PULSE() * 1000.f;	/* (ms) */
-	ap.ppm_in_freq = PPM_get_PERIOD();
+	ap.ppm_PULSE = PPM_get_PULSE() * 1000.f;	/* (ms) */
+	ap.ppm_FREQ = PPM_get_PERIOD();
 
-	if (hal.PPM_caught != 0) {
+	if (ap.ppm_FREQ > M_EPSILON) {
 
-		inner_PULSE_WIDTH();
+		conv_PULSE_WIDTH();
 	}
 	else {
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
@@ -928,36 +933,48 @@ in_PULSE_WIDTH()
 	}
 }
 
+#ifdef HW_HAVE_STEP_DIR_KNOB
 static void
 in_STEP_DIR()
 {
-	int		relEP;
+	int		EP, relEP;
+	float		xSP;
 
-	ap.step_in_EP = PPM_get_STEP_DIR();
+	EP = STEP_get_POSITION();
 
-	relEP = (ap.step_in_EP - ap.step_prev_EP) & 0xFFFFU;
-	ap.step_prev_EP = ap.step_in_EP;
+	relEP = EP - ap.step_bEP;
+	relEP +=  unlikely(relEP > 0x10000 / 2 - 1) ? - 0x10000
+		: unlikely(relEP < - 0x10000 / 2) ? 0x10000 : 0;
+
+	ap.step_bEP = EP;
 
 	if (relEP != 0) {
 
-		ap.step_accu_EP += relEP;
-		ap.step_reg_DATA = ap.step_accu_EP * ap.step_const_ld_EP;
+		ap.step_POS += relEP;
 
-		if (ap.step_reg_ID != ID_NULL) {
+		xSP = ap.step_POS * ap.step_const_S;
 
-			reg_SET_F(ap.step_reg_ID, ap.step_reg_DATA);
+		if (ap.step_reg_DATA != xSP) {
+
+			ap.step_reg_DATA = xSP;
+
+			if (ap.step_reg_ID != ID_NULL) {
+
+				reg_SET_F(ap.step_reg_ID, ap.step_reg_DATA);
+			}
 		}
 
 		if (ap.step_STARTUP == PM_ENABLED) {
 
-			if (pm.lu_MODE == PM_LU_DISABLED) {
+			if (		pm.lu_MODE == PM_LU_DISABLED
+					&& pm.fsm_errno == PM_OK) {
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
-				ap.step_ACTIVE = PM_ENABLED;
 			}
 		}
 	}
 }
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 void ADC_IRQ()
 {
@@ -992,23 +1009,23 @@ void ADC_IRQ()
 
 		in_PULSE_WIDTH();
 	}
-	else if (hal.PPM_mode == PPM_STEP_DIR) {
+
+#ifdef HW_HAVE_STEP_DIR_KNOB
+	if (		hal.STEP_mode == STEP_ON_STEP_DIR
+			|| hal.STEP_mode == STEP_ON_CW_CCW) {
 
 		in_STEP_DIR();
 	}
-	else if (hal.PPM_mode == PPM_BACKUP_EABI) {
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
-		fb.pulse_EP = PPM_get_backup_EP();
-	}
-
-	if (hal.CNT_diag[1] >= pm.m_dT) {
+	if (unlikely(hal.CNT_diag[1] >= pm.m_dT)) {
 
 		pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
 		pm.fsm_req = PM_STATE_HALT;
 	}
 
 #ifdef HW_HAVE_PWM_BKIN
-	if (PWM_fault() != 0) {
+	if (unlikely(PWM_fault() != 0)) {
 
 		pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
 		pm.fsm_req = PM_STATE_HALT;
@@ -1016,8 +1033,8 @@ void ADC_IRQ()
 #endif /* HW_HAVE_PWM_BKIN */
 
 #ifdef HW_HAVE_DRV_ON_PCB
-	if (		pm.lu_MODE != PM_LU_DISABLED
-			&& DRV_fault() != 0) {
+	if (unlikely(		pm.lu_MODE != PM_LU_DISABLED
+				&& DRV_fault() != 0)) {
 
 		pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
 		pm.fsm_req = PM_STATE_HALT;
@@ -1189,39 +1206,40 @@ SH_DEF(ap_log_clean)
 
 SH_DEF(ap_hexdump)
 {
-	uint8_t			*m;
-	int			n, i, ascii, line = 4;
+	uint8_t		*maddr, mdata[16];
+	int		sym, n, i, count = 4;
 
-	if (htoi((int *) &m, s) != NULL) {
+	if (htoi((int *) &maddr, s) != NULL) {
 
-		stoi(&line, sh_next_arg(s));
+		stoi(&count, sh_next_arg(s));
 
-		for (n = 0; n < line; ++n) {
+		for (n = 0; n < count; ++n) {
 
-			printf("%8x  ", (uint32_t) m);
+			memcpy(mdata, maddr, 16);
+
+			printf("%8x  ", (uint32_t) maddr);
 
 			for (i = 0; i < 8; ++i)
-				printf("%2x ", m[i]);
+				printf("%2x ", mdata[i]);
 
 			puts(" ");
 
 			for (i = 8; i < 16; ++i)
-				printf("%2x ", m[i]);
+				printf("%2x ", mdata[i]);
 
 			puts(" |");
 
 			for (i = 0; i < 16; ++i) {
 
-				ascii = m[i];
-				ascii = (ascii >= 0x20 && ascii <= 0x7E)
-					? ascii : '.';
+				sym = mdata[i];
+				sym = (sym >= 0x20 && sym <= 0x7E) ? sym : '.';
 
-				putc(ascii);
+				putc(sym);
 			}
 
 			puts("|" EOL);
 
-			m += 16;
+			maddr += 16;
 		}
 	}
 }

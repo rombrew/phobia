@@ -114,7 +114,6 @@ void *FLASH_erase(void *flash)
 		FLASH_lock();
 
 #if defined(STM32F4)
-
 		/* Reset D-Cache.
 		 * */
 		FLASH->ACR &= ~FLASH_ACR_DCEN;
@@ -123,12 +122,10 @@ void *FLASH_erase(void *flash)
 		FLASH->ACR |= FLASH_ACR_DCEN;
 
 #elif defined(STM32F7)
-
-		/* Invalidate D-Cache on the erased sector.
+		/* Invalidate D-Cache.
 		 * */
 		SCB_InvalidateDCacheByAddr((uint32_t *) FLASH_map[N],
 				FLASH_map[N + 1] - FLASH_map[N]);
-
 #endif /* STM32Fx */
 	}
 

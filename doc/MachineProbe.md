@@ -17,7 +17,8 @@ we believe that they will need a change only in a complicated case. Most likely
 you will need to decrease probe currents for a small machine.
 
 * `pm.probe_current_hold`, `pm.probe_current_weak` - Two current setpoints that
-  is used to estimate stator resistance. They must be significantly different.
+  is used to estimate stator resistance. Please note they must be significantly
+  different to get accurate estimate.
 * `pm.probe_freq_sine`, `pm.probe_current_sine` - Sine wave frequency and
   amplitude that is used to estimate stator impedance.
 * `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
@@ -55,7 +56,7 @@ machine is connected.
 	(pmc) pm_self_adjust
 
 This is enough to do it once and save the values in the flash. But we recommend
-to do it again after you radically change DC link voltage.
+to do it again if you radically change DC link voltage.
 
 ## Number of the rotor pole pairs
 
@@ -74,7 +75,7 @@ it later.
 
 We measure the resistance `pm.const_Rs` by difference of voltage drop on two
 values of holding current. For more accuracy you need to increase the probe
-current or reduce DC link voltage.
+currents or reduce DC link voltage.
 
 Then we use a high frequency sinusoidal signal to measure the full impedance
 and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
@@ -130,7 +131,8 @@ observer operation. As a result these threshold values are calculated.
 
 Final estimate is a moment of inertia `pm.const_Ja`. To do this possible a
 speed maneuver will be performed. Note that this may result energy regeneration
-so your power supply must tolerate this. Either limit maximal regeneration.
+so your power supply must tolerate this. Either you should limit maximal DC
+link current reverse.
 
 This constant is used to tune speed control loop. Also it is used in operation
 to predict the speed changes from an applied current.

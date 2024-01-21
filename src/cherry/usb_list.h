@@ -456,4 +456,3 @@ static inline unsigned int usb_dlist_len(const usb_dlist_t *l)
 #endif
 
 #endif /* USB_LIST_H */
-

@@ -16,7 +16,7 @@ void *memset(void *d, int c, size_t n)
 {
 	uint32_t	fill, *ld = (uint32_t *) d;
 
-	if (((uint32_t) ld & 3U) == 0) {
+	if (likely(((uint32_t) ld & 3U) == 0)) {
 
 		fill = (uint8_t) c;
 		fill |= (fill << 8);
@@ -47,7 +47,7 @@ void *memcpy(void *restrict d, const void *restrict s, size_t n)
 	uint32_t	*restrict ld = (uint32_t * restrict) d;
 	const uint32_t	*restrict ls = (const uint32_t * restrict) s;
 
-	if (((uint32_t) ld & 3U) == 0 && ((uint32_t) ls & 3U) == 0) {
+	if (likely(((uint32_t) ld & 3U) == 0 && ((uint32_t) ls & 3U) == 0)) {
 
 		while (n >= 4U) {
 

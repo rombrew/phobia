@@ -174,7 +174,7 @@ int CAN_send_msg(const CAN_msg_t *msg)
 
 	xTSR = CAN1->TSR;
 
-	if (xTSR & CAN_TSR_TME_Msk) {
+	if (likely(xTSR & CAN_TSR_TME_Msk)) {
 
 		mb = (xTSR & CAN_TSR_CODE_Msk) >> CAN_TSR_CODE_Pos;
 	}

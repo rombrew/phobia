@@ -5,6 +5,7 @@
 
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_BRAKE_KNOB
+#define HW_HAVE_STEP_DIR_KNOB
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_USB_CDC_ACM
@@ -12,7 +13,7 @@
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
-#define HW_PWM_FREQUENCY_HZ		30000.f
+#define HW_PWM_FREQUENCY_HZ		28571.f
 #define HW_PWM_DEADTIME_NS		900.f		/* IRF7759 */
 
 #define HW_PWM_MINIMAL_PULSE		0.9f
@@ -52,6 +53,9 @@
 #define GPIO_ADC_NTC_EXT		XGPIO_DEF3('C', 4, 14)
 #define GPIO_ADC_KNOB_ANG		XGPIO_DEF3('A', 5, 5)
 #define GPIO_ADC_KNOB_BRK		XGPIO_DEF3('A', 6, 6)
+
+#define GPIO_STEP			XGPIO_DEF2('A', 5)
+#define GPIO_DIR			XGPIO_DEF2('A', 6)
 
 #define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
 #define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)

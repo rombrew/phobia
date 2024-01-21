@@ -12,10 +12,6 @@
 #define USB_DBG_INFO    2
 #define USB_DBG_LOG     3
 
-#ifndef CONFIG_USB_DBG_LEVEL
-#define CONFIG_USB_DBG_LEVEL USB_DBG_INFO
-#endif
-
 #ifndef USB_DBG_TAG
 #define USB_DBG_TAG "USB"
 #endif
@@ -30,9 +26,6 @@
  * CYAN     36
  * WHITE    37
  */
-#ifndef CONFIG_USB_PRINTF
-#define CONFIG_USB_PRINTF printf
-#endif
 
 #ifdef  CONFIG_USB_PRINTF_COLOR_ENABLE
 #define _USB_DBG_COLOR(n) CONFIG_USB_PRINTF("\033[" #n "m")
@@ -57,28 +50,28 @@
 #if (CONFIG_USB_DBG_LEVEL >= USB_DBG_LOG)
 #define USB_LOG_DBG(fmt, ...) usb_dbg_log_line("D", 0, fmt, ##__VA_ARGS__)
 #else
-#define USB_LOG_DBG(...)
+#define USB_LOG_DBG(...)  {}
 #endif
 
 #if (CONFIG_USB_DBG_LEVEL >= USB_DBG_INFO)
 #define USB_LOG_INFO(fmt, ...) usb_dbg_log_line("I", 32, fmt, ##__VA_ARGS__)
 #else
-#define USB_LOG_INFO(...)
+#define USB_LOG_INFO(...) {}
 #endif
 
 #if (CONFIG_USB_DBG_LEVEL >= USB_DBG_WARNING)
 #define USB_LOG_WRN(fmt, ...) usb_dbg_log_line("W", 33, fmt, ##__VA_ARGS__)
 #else
-#define USB_LOG_WRN(...)
+#define USB_LOG_WRN(...) {}
 #endif
 
 #if (CONFIG_USB_DBG_LEVEL >= USB_DBG_ERROR)
 #define USB_LOG_ERR(fmt, ...) usb_dbg_log_line("E", 31, fmt, ##__VA_ARGS__)
 #else
-#define USB_LOG_ERR(...)
+#define USB_LOG_ERR(...) {}
 #endif
 
-#define USB_LOG_RAW CONFIG_USB_PRINTF
+#define USB_LOG_RAW(...) CONFIG_USB_PRINTF(__VA_ARGS__)
 
 void usb_assert(const char *filename, int linenum);
 #define USB_ASSERT(f)                       \
@@ -88,4 +81,3 @@ void usb_assert(const char *filename, int linenum);
     } while (0)
 
 #endif /* USB_LOG_H */
-

@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 #include <stddef.h>
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "libc.h"
@@ -38,6 +37,8 @@ enum usbd_event_type {
     USBD_EVENT_SET_INTERFACE,     /** USB interface selected */
     USBD_EVENT_SET_REMOTE_WAKEUP, /** USB set remote wakeup */
     USBD_EVENT_CLR_REMOTE_WAKEUP, /** USB clear remote wakeup */
+    USBD_EVENT_INIT,              /** USB init done when call usbd_initialize */
+    USBD_EVENT_DEINIT,            /** USB deinit done when call usbd_deinitialize */
     USBD_EVENT_UNKNOWN
 };
 
@@ -45,15 +46,12 @@ typedef int (*usbd_request_handler)(struct usb_setup_packet *setup, uint8_t **da
 typedef void (*usbd_endpoint_callback)(uint8_t ep, uint32_t nbytes);
 typedef void (*usbd_notify_handler)(uint8_t event, void *arg);
 
-extern usb_slist_t usbd_intf_head;
-
 struct usbd_endpoint {
     uint8_t ep_addr;
     usbd_endpoint_callback ep_cb;
 };
 
 struct usbd_interface {
-    usb_slist_t list;
     usbd_request_handler class_interface_handler;
     usbd_request_handler class_endpoint_handler;
     usbd_request_handler vendor_handler;
@@ -63,13 +61,31 @@ struct usbd_interface {
     uint8_t intf_num;
 };
 
+struct usb_descriptor {
+    const uint8_t *(*device_descriptor_callback)(uint8_t speed);
+    const uint8_t *(*config_descriptor_callback)(uint8_t speed);
+    const uint8_t *(*device_quality_descriptor_callback)(uint8_t speed);
+    const uint8_t *(*other_speed_descriptor_callback)(uint8_t speed);
+    const uint8_t *(*string_descriptor_callback)(uint8_t speed, uint8_t index);
+    const struct usb_msosv1_descriptor *msosv1_descriptor;
+    const struct usb_msosv2_descriptor *msosv2_descriptor;
+    const struct usb_webusb_url_ex_descriptor *webusb_url_descriptor;
+    const struct usb_bos_descriptor *bos_descriptor;
+};
+
+#ifdef CONFIG_USBDEV_ADVANCE_DESC
+void usbd_desc_register(const struct usb_descriptor *desc);
+#else
 void usbd_desc_register(const uint8_t *desc);
+void usbd_msosv1_desc_register(struct usb_msosv1_descriptor *desc);
+void usbd_msosv2_desc_register(struct usb_msosv2_descriptor *desc);
+void usbd_bos_desc_register(struct usb_bos_descriptor *desc);
+#endif
 
 void usbd_add_interface(struct usbd_interface *intf);
 void usbd_add_endpoint(const struct usbd_endpoint *ep);
 
-bool usb_device_is_configured(void);
-void usbd_configure_done_callback(void);
+int usb_device_is_configured(void);
 int usbd_initialize(void);
 int usbd_deinitialize(void);
 
@@ -80,4 +96,3 @@ void usbd_event_handler(uint8_t event);
 #endif
 
 #endif /* USBD_CORE_H */
-

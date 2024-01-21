@@ -1,4 +1,4 @@
-# Phobia Motor Controller
+# Phobia Machine Controller
 
 PMC is an open project that aims to build the quality permanent magnet
 synchronous machine (PMSM) controller for use in a variety of scopes like RC or
@@ -10,7 +10,7 @@ electric transport.
 * Robust ORTEGA observer with gain scheduling against speed.
 * Accurate KALMAN observer having convergence at HF injection.
 * Flux weakening and MTPA control (**EXPERIMENTAL**).
-* Two and three phase machine support.
+* Three and two phase machine support.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
 * Various controller boards are supported (including VESC clones).
 * Regular Command Line Interface (CLI) with autocompletion and history.
@@ -38,15 +38,18 @@ electric transport.
 * Terminal voltage measurements (TVM):
 	* Compensation of the voltage distortion caused by Dead-Time insertion.
 	* Back EMF voltage tracking to catch an already running machine.
-	* Self-test of the power stages integrity and machine connection.
+	* Self-test of the power stages integrity and machine wiring.
 	* Self-test of bootstrap retention time.
 
-* Automated machine parameters identification with no additional tools:
+* Automated machine parameters identification (with no external tools):
 	* Stator DC resistance (Rs).
 	* Stator AC impedance in DQ frame (L1, L2, R).
 	* Rotor flux linkage constant (lambda).
 	* Mechanical moment of inertia (Ja).
-	* Discrete Hall signals recognition.
+
+* Automated configuration of external measurements:
+	* Discrete Hall sensors installation angles recognition.
+	* EABI resolution and direction adjustment.
 
 * Operation at low or zero speed:
 	* Forced control that applies a current vector without feedback to
@@ -54,27 +57,30 @@ electric transport.
 	* Freewheeling.
 	* High Frequency Injection (HFI) based on magnetic saliency.
 	* Discrete Hall sensors.
-	* AB incremental encoder (EABI).
+	* AB quadrature incremental encoder (EABI).
 	* Absolute encoder on SPI interface (AS5047).
 	* Analog Hall sensors and resolver decoder (**TODO**).
 
-* Control loops:
-	* Current control is always enabled.
-	* Speed control loop.
-	* Location control loop.
+* Nested control loops:
+	* Detached voltage monitoring.
+	* Current control PI regulator with feedforward compensation.
+	* Speed control PID regulator with load torque compensation.
+	* Location control with constant acceleration regulator.
 
 * Adjustable constraints:
-	* Phase current with derate on PCB overheat.
-	* Motor voltage applied from VSI.
+	* Phase current (forward and reverse, on HFI current, weakening D current,
+	  with derate on PCB overheat or machine overheat).
+	* Machine voltage applied from VSI.
 	* DC link current consumption and regeneration.
 	* DC link overvoltage and undervoltage.
 	* Maximal speed and acceleration.
+	* Absolute location limits.
 
-* Input interfaces:
+* Input control interfaces:
 	* Analog input knob with brake signal.
-	* RC servo pulse width.
-	* CAN bus flexible configurable data pipes.
-	* STEP/DIR interface (**EXPERIMENTAL**).
+	* RC servo pulse width modulation.
+	* CAN bus flexible configurable data transfers.
+	* STEP/DIR (or CW/CCW) interface (**EXPERIMENTAL**).
 	* Manual control through CLI or graphical front-end.
 	* Custom embedded application can implement any control strategy.
 
@@ -83,14 +89,17 @@ electric transport.
 	* Network survey on request (no heartbeat messages).
 	* Automated node address assignment.
 	* IO forwarding to log in to the remote node CLI.
-	* Flexible configurable data pipes.
+	* Flexible configurable data transfers.
 
 * Available information:
+	* Machine state (electrical position, speed, load torque).
+	* DC link voltage and current consumption.
+	* Information from temperature sensors.
 	* Total distance traveled.
 	* Battery energy (Wh) and charge (Ah) consumed.
 	* Fuel gauge percentage.
 
-## Hardware specification (**REV5A**)
+## Hardware specification (`REV5A`)
 
 * Dimension: 82mm x 55mm x 35mm.
 * Weight: 40g (PCB) or about 400g (with wires and heatsink).
@@ -109,20 +118,19 @@ electric transport.
 	* Three terminal voltages from 0 to 60v.
 	* Temperature of PCB with NTC resistor.
 
-* Motor interfaces:
+* Machine interfaces:
 	* Discrete Hall sensors or EABI encoder (5v pull-up).
 	* External NTC resistor (e.g. machine temperature sensing).
 
 * Control interfaces:
 	* CAN transceiver with optional termination resistor on PCB (5v).
 	* USART to bootload and configure (3.3v).
-	* Pulse input: RC servo, STEP/DIR, backup EABI (5v pull-up).
+	* RC servo PWM or STEP/DIR (5v pull-up).
 	* Two analog input channels (from 0 to 6v).
 
 * Auxiliary interfaces:
-	* Combined port: SPI, ADC, DAC, GPIO (3.3v).
+	* SPI port with alternative functions: ADC, DAC, GPIO (3.3v).
 	* BOOT pin combined with SWDIO to use embedded bootloader.
-	* SWD to get hardware debug.
 	* External FAN control (5v, ~0.5A).
 
 * Power conversion:
@@ -132,8 +140,8 @@ electric transport.
 
 ## Current Status
 
-Now we can declare that PMC is ready to use in most applications. But it may be
-difficult to configure the PMC for some types of machine.
+Now we can declare that PMC is ready to use in most intended applications. But
+it may be difficult to configure the PMC for some types of machines.
 
 There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
@@ -142,7 +150,8 @@ Read further in [doc/GettingStarted](doc/GettingStarted.md).
 ## TODO
 
 * Make a detailed documentation.
+* Improve GUI front-end software.
 * Add pulse output signal.
-* Make a drawing of the heatsink case for REV5A.
+* Make a drawing of the heatsink case for `REV5A`.
 * Design the new hardware for 120v battery voltage.
 

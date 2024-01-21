@@ -11,26 +11,26 @@ typedef struct {
 
 	/* PPM interface knob.
 	 * */
-	float			ppm_in_pulse;
-	float			ppm_in_freq;
+	float			ppm_PULSE;
+	float			ppm_FREQ;
 	float			ppm_reg_DATA;
 	int			ppm_reg_ID;
 	int			ppm_STARTUP;
 	int			ppm_ACTIVE;
 	int			ppm_DISARM;
-	float			ppm_range_pulse[3];
-	float			ppm_range_control[3];
+	float			ppm_range[3];
+	float			ppm_control[3];
 
 	/* STEP/DIR interface knob.
 	 * */
-	int			step_in_EP;
+#ifdef HW_HAVE_STEP_DIR_KNOB
+	int			step_bEP;
+	int			step_POS;
 	float			step_reg_DATA;
 	int			step_reg_ID;
 	int			step_STARTUP;
-	int			step_ACTIVE;
-	int			step_prev_EP;
-	int			step_accu_EP;
-	float			step_const_ld_EP;
+	float			step_const_S;
+#endif /* HW_HAVE_STEP_DIR_KNOB */
 
 	/* Analog interface knob.
 	 * */

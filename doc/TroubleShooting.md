@@ -12,7 +12,7 @@ If something goes wrong PMC stops and gives the error code in `pm.fsm_errno`.
 ## Internal PMC codes
 
 `PM_ERROR_ZERO_DRIFT_FAULT` - Zero drift of current sensor is above the fault
-threshold. This may happen if current sensing circuit is damaged.
+threshold. This may happen if current sensing circuit is broken.
 
 `PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are ok but no machine detected at
 the output terminals. Ignore this error if you know that.
@@ -21,9 +21,9 @@ the output terminals. Ignore this error if you know that.
 configured. An extremely low value may indicate that power stages are
 completely inoperable.
 
-`PM_ERROR_POWER_STAGE_DAMAGED` - No appropriate voltage response detected at
+`PM_ERROR_POWER_STAGE_BROKEN` - No appropriate voltage response detected at
 the output terminals. Power stages or terminal voltage sensors are definitely
-damaged.
+broken.
 
 `PM_ERROR_INSUFFICIENT_ACCURACY` - Result of adjustment shows the parameter
 deviation is above the fault threshold. Check the voltage and current
@@ -32,7 +32,7 @@ measurement circuit.
 `PM_ERROR_CURRENT_LOOP_FAULT` - This means that we apply the full voltage but
 actual current is still near zero. If current sensing circuit is ok this may be
 caused by open circuit in machine phases or in its wiring. Also a common cause
-of this error is a low level of DC link voltage in combine with large machine
+of this error is a low level of DC link voltage in combine with high machine
 stator resistance.
 
 `PM_ERROR_INSTANT_OVERCURRENT` - Overcurrent accident detected. Check for

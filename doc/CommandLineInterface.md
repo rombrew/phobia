@@ -7,7 +7,7 @@ CLI with autocompletion and command history.
 
 These are the basic special keys that are used in the CLI:
 
-* `Return` - Run the command.
+* `Return` - Run the current line.
 * `Backspace` or `Delete` - Erase last typed character.
 * `Tab` or (@) - Automplete function.
 * `Shift` + `Tab` - Automplete function reverse.
