@@ -1,7 +1,7 @@
 # Phobia Motor Controller
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![CI](https://github.com/rombrew/phobia/actions/workflows/makefile.yml/badge.svg)](https://github.com/rombrew/phobia/actions/workflows/makefile.yml)
+[![Build](https://github.com/rombrew/phobia/actions/workflows/makefile.yml/badge.svg)](https://github.com/rombrew/phobia/actions/workflows/makefile.yml)
 
 PMC is an open project that aims to build the quality permanent magnet
 synchronous machine (PMSM) controller for use in a variety of scopes like RC or
