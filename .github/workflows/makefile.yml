@@ -32,7 +32,7 @@ jobs:
       run: make -C src HWREV=VESC6A
 
     - name: Set up SDL2
-    - uses: libsdl-org/setup-sdl@main
+      uses: libsdl-org/setup-sdl@main
       id: sdl
       with:
         version: 2-latest
