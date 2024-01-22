@@ -1,4 +1,4 @@
-name: Phobia
+name: CI
 
 on:
   push:
