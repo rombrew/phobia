@@ -17,7 +17,22 @@ jobs:
     - name: Run bench verify
       run: make -C bench verify
 
-    - uses: libsdl-org/setup-sdl@main
+    - name: Set up arm-none-eabi-gcc
+      uses: ryanwinter/arm-none-eabi-gcc@master
+      with:
+        release: '10.3-2021.10'
+
+    - name: Build REV5A firmware
+      run: make -C src HWREV=REV5A
+
+    - name: Build PESC1 firmware
+      run: make -C src HWREV=PESC1
+
+    - name: Build VESC6A firmware
+      run: make -C src HWREV=VESC6A
+
+    - name: Set up libsdl-org
+      uses: libsdl-org/setup-sdl@main
       id: sdl
       with:
         install-linux-dependencies: true
@@ -27,16 +42,4 @@ jobs:
 
     - name: Build GUI front-end software
       run: make -C phobia
-      
-    - name: arm-none-eabi-gcc
-      uses: ryanwinter/arm-none-eabi-gcc@master
 
-    - name: Build REV5A firmware
-      run: make -C src HWREV=REV5A
-      
-    - name: Build PESC1 firmware
-      run: make -C src HWREV=PESC1
-
-    - name: Build VESC6A firmware
-      run: make -C src HWREV=VESC6A
-      
