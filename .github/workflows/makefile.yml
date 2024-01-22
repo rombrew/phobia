@@ -18,9 +18,9 @@ jobs:
       run: make -C bench verify
 
     - name: Set up arm-none-eabi-gcc
-      uses: ryanwinter/arm-none-eabi-gcc@master
+      uses: carlosperate/arm-none-eabi-gcc-action@v1
       with:
-        release: '10.3-2021.10'
+        release: latest
 
     - name: Build REV5A firmware
       run: make -C src HWREV=REV5A
