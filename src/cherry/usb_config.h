@@ -30,7 +30,14 @@
 /* ================ USB Device Port Configuration ================*/
 
 #define USBD_IRQHandler			irq_OTG_FS
+
+#include "hal/hwdefs.h"
+
+#if defined(HW_MCU_STM32F405)
 #define USBD_BASE			0x50000000UL
+#elif defined(HW_MCU_STM32F722)
+#define USBD_BASE			0x50000000UL
+#endif /* HW_MCU_XX */
 
 #define CONFIG_USB_DWC2_RAM_SIZE	1280
 

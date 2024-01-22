@@ -146,7 +146,7 @@ int STEP_get_POSITION()
 #ifdef STM32F7
 	/* Invalidate D-Cache.
 	 * */
-	SCB_InvalidateDCacheByAddr((uint32_t *) priv_STEP.dmabuf,
+	SCB_InvalidateDCache_by_Addr((volatile void *) priv_STEP.dmabuf,
 			sizeof(uint16_t) * STEP_DMA_MAX);
 #endif /* STM32F7 */
 

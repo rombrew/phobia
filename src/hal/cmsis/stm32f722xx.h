@@ -7,18 +7,17 @@
   *          This file contains:
   *           - Data structures and the address mapping for all peripherals
   *           - Peripheral's registers declarations and bits definition
-  *           - Macros to access peripheral’s registers hardware
+  *           - Macros to access peripheral's registers hardware
   *
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2016 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
@@ -160,7 +159,7 @@ typedef enum
 #define __ICACHE_PRESENT          1U       /*!< CM7 instruction cache present                 */
 #define __DCACHE_PRESENT          1U       /*!< CM7 data cache present                        */
 
-#include "core_cm7.h"                     /*!< Cortex-M7 processor and core peripherals      */
+#include "core_cm7.h"                      /*!< Cortex-M7 processor and core peripherals      */
 
 /** @addtogroup Peripheral_registers_structures
   * @{
@@ -1163,6 +1162,15 @@ typedef struct
 /** @addtogroup Exported_constants
   * @{
   */
+
+  /** @addtogroup Hardware_Constant_Definition
+    * @{
+    */
+#define LSI_STARTUP_TIME 40U /*!< LSI Maximum startup time in us */
+
+  /**
+    * @}
+    */
 
   /** @addtogroup Peripheral_Registers_Bits_Definition
   * @{
@@ -15423,6 +15431,20 @@ typedef struct
 #define IS_HCD_ALL_INSTANCE(INSTANCE) (((INSTANCE) == USB_OTG_FS) || \
                                        ((INSTANCE) == USB_OTG_HS))
 
+/******************************************************************************/
+/*  For a painless codes migration between the STM32F7xx device product       */
+/*  lines, the aliases defined below are put in place to overcome the         */
+/*  differences in the interrupt handlers and IRQn definitions.               */
+/*  No need to update developed interrupt code when moving across             */
+/*  product lines within the same STM32F7 Family                              */
+/******************************************************************************/
+
+/* Aliases for __IRQn */
+#define HASH_RNG_IRQn              RNG_IRQn
+
+/* Aliases for __IRQHandler */
+#define HASH_RNG_IRQHandler        RNG_IRQHandler
+
 /**
   * @}
   */
@@ -15442,4 +15464,3 @@ typedef struct
 #endif /* __STM32F722xx_H */
 
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -124,7 +124,7 @@ void *FLASH_erase(void *flash)
 #elif defined(STM32F7)
 		/* Invalidate D-Cache.
 		 * */
-		SCB_InvalidateDCacheByAddr((uint32_t *) FLASH_map[N],
+		SCB_InvalidateDCache_by_Addr((volatile void *) FLASH_map[N],
 				FLASH_map[N + 1] - FLASH_map[N]);
 #endif /* STM32Fx */
 	}

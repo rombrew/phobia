@@ -36,10 +36,10 @@ void log_TRACE(const char *fmt, ...)
         va_end(ap);
 }
 
-void vAssertCalled(const char *file, int line)
+void vAssertHook(const char *file, int line)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Assert %s:%i" EOL, file, line);
+	log_TRACE("FreeRTOS: Assert in %s:%i" EOL, file, line);
 
 	hal_system_reset();
 }

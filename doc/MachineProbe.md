@@ -124,8 +124,8 @@ PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 After flux linkage we estimate speed noise to know the lower bound of flux
 observer operation. As a result these threshold values are calculated.
 
-	# reg pm.zone_noise
-	# reg pm.zone_threshold
+	(pmc) reg pm.zone_noise
+	(pmc) reg pm.zone_threshold
 
 ## Moment of inertia
 

@@ -62,6 +62,16 @@ static const uint8_t		cdc_acm_descriptor[] = {
 	0x00
 };
 
+void usb_dc_low_level_init(void)
+{
+#if defined(STM32F4)
+	USB_OTG_FS->GCCFG = USB_OTG_GCCFG_NOVBUSSENS | USB_OTG_GCCFG_PWRDWN;
+#elif defined(STM32F7)
+	USB_OTG_FS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOVAL | USB_OTG_GOTGCTL_BVALOEN;
+	USB_OTG_FS->GCCFG = USB_OTG_GCCFG_PWRDWN;
+#endif /* STM32Fx */
+}
+
 void usbd_configure_done_callback()
 {
 	priv_USB.rx_flag = 1;

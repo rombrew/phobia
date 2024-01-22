@@ -166,23 +166,6 @@ USB_NOCACHE_RAM_SECTION struct dwc2_udc {
     struct dwc2_ep_state out_ep[CONFIG_USBDEV_EP_NUM]; /*!< OUT endpoint parameters */
 } g_dwc2_udc;
 
-uint32_t usbd_get_dwc2_gccfg_conf(void)
-{
-#ifdef CONFIG_USB_HS
-    return 0;
-#else
-#if __has_include("stm32h7xx.h") || __has_include("stm32f7xx.h") || __has_include("stm32l4xx.h")
-#define USB_OTG_GLB ((USB_OTG_GlobalTypeDef *)(USBD_BASE))
-    /* B-peripheral session valid override enable */
-    USB_OTG_GLB->GOTGCTL |= USB_OTG_GOTGCTL_BVALOEN;
-    USB_OTG_GLB->GOTGCTL |= USB_OTG_GOTGCTL_BVALOVAL;
-    return (1 << 16);
-#else
-    return ((1 << 16) | (1 << 21));
-#endif
-#endif
-}
-
 static inline int dwc2_reset(void)
 {
     volatile uint32_t count = 0U;
@@ -532,8 +515,6 @@ int usb_dc_init(void)
 
     memset(&g_dwc2_udc, 0, sizeof(struct dwc2_udc));
 
-    usb_dc_low_level_init();
-
     /*
         Full-Speed PHY Interface Type (FSPhyType)
         2'b00: Full-speed interface not supported
@@ -583,7 +564,8 @@ int usb_dc_init(void)
     USB_OTG_GLB->GAHBCFG &= ~USB_OTG_GAHBCFG_GINT;
 
     /* This is vendor register */
-    USB_OTG_GLB->GCCFG = usbd_get_dwc2_gccfg_conf();
+    // USB_OTG_GLB->GCCFG = usbd_get_dwc2_gccfg_conf();
+    usb_dc_low_level_init();
 
     ret = dwc2_core_init();
 
