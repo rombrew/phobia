@@ -31,14 +31,12 @@ jobs:
     - name: Build VESC6A firmware
       run: make -C src HWREV=VESC6A
 
-    - name: Set up libsdl-org
-      uses: libsdl-org/setup-sdl@main
-      id: sdl
+    - name: Set up SDL2
+      uses: BrettDong/setup-sdl2-frameworks@main
       with:
-        install-linux-dependencies: true
-        version: 2-latest
-        version-sdl-image: 2-latest
-        version-sdl-ttf: 2-latest
+        sdl2: latest
+        sdl2-ttf: latest
+        sdl2-image: latest
 
     - name: Build GUI front-end software
       run: make -C phobia
