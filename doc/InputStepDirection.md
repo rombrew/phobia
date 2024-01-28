@@ -6,12 +6,14 @@ This page describes the configuration of STEP/DIR input interface.
 
 The step and direction signals are fed to STEP and DIR pins.
 
+```
 	           +---------------< STEP (or CW)
                |    +----------< DIR (or CCW)
 	           |    |    +-----> GND
 	           |    |    |
 	+----------+----+----+-------------------------+
 	|         STEP DIR GND                         |
+```
 
 ## Configuration
 

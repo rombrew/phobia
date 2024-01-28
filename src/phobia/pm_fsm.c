@@ -1453,8 +1453,8 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_REM[7] = 0.f;
 
 			pm->quick_HFwS = M_2_PI_F * pm->probe_freq_sine;
-			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * .5f);
-			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * .5f);
+			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * 0.5f);
+			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * 0.5f);
 
 			pm->probe_HF_lpf_track = 0.f;
 			pm->probe_HF_integral = 0.f;
@@ -2045,7 +2045,7 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 					len = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
 						+ pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
 
-					if (len > .5f) {
+					if (len > 0.5f) {
 
 						pm->hall_ST[HS].X /= len;
 						pm->hall_ST[HS].Y /= len;
@@ -2210,7 +2210,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 
 					v[0] = pm->eabi_const_EP / ls->sol.m[1];
 
-					pm->eabi_const_EP = (int) (v[0] + .5f);
+					pm->eabi_const_EP = (int) (v[0] + 0.5f);
 
 					pm_quick_build(pm);
 				}
@@ -2229,10 +2229,10 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 
 					if (pm->eabi_const_Zs < 0) {
 
-						pm->eabi_const_Zs = (int) (v[0] - .5f);
+						pm->eabi_const_Zs = (int) (v[0] - 0.5f);
 					}
 					else {
-						pm->eabi_const_Zs = (int) (v[0] + .5f);
+						pm->eabi_const_Zs = (int) (v[0] + 0.5f);
 					}
 
 					pm_quick_build(pm);

@@ -90,9 +90,11 @@ you machine.
 This parameter also known as `Kv` rating. Internal representation is
 `pm.const_lambda` that linked with `Kv` by following equation.
 
+```
 	                      60
 	lambda = ----------------------------
 	          2 * PI * sqrt(3) * Kv * Zp
+```
 
 To identify `lambda` you have to run the machine. Also the rotor should rotate
 at significant speed. We do a forced initial spinup to reach this condition.

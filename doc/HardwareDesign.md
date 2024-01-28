@@ -10,6 +10,7 @@ six metal–oxide–semiconductor field-effect transistors (MOSFET). The voltage
 each of the output terminals is measured. Phase current A and B (optionally
 C) is measured. The output terminals are connected to the machine.
 
+```
 	  (VCC) >---+--------+---------+---------+
 	            |        |         |         |
 	            |     --FET     --FET     --FET
@@ -19,13 +20,15 @@ C) is measured. The output terminals are connected to the machine.
 	            |     --FET     --FET     --FET
 	            |        |         |         |
 	  (GND) >---+--------+---------+---------+
-	
+
 	                // Three-phase VSI //
+```
 
 The three-phase bridge operates as three separate half-bridges. Each of which
 can be abstractly considered as controlled voltage source. We use a symmetric
 PWM scheme as shown in the diagram.
 
+```
 	  ---+    |    +-----------------------------+    |    +---
 	     |         |                             |         |
 	     |    |    |          A = 75\%           |    |    |
@@ -35,7 +38,7 @@ PWM scheme as shown in the diagram.
 	          |         |                   |         |
 	                    |     B = 50\%      |
 	  --------|---------+                   +---------|--------
-	
+
 	  ------+ | +-----------------------------------+ | +------
 	        |   |                                   |   |
 	        | | |             C = 90\%              | | |
@@ -44,12 +47,14 @@ PWM scheme as shown in the diagram.
 	           <---------------- dT ----------------->
 	          |                                       |
 	                // Output voltage waveform //
+```
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
 specified Dead-Time `DET`. Depending on the direction of the current flow
 during the Dead-Time the actual voltage on half-bridge may be different. The
 amount of uncertainty in the output voltage `dU` expressed as follows:
 
+```
 	       2 * DET * DC_link_voltage
 	 dU = ---------------------------
 	                  dT
@@ -80,6 +85,7 @@ amount of uncertainty in the output voltage `dU` expressed as follows:
 	           |
 	           |
 	          ---
+```
 
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC). This RC scheme forms an exponential integrator
@@ -91,6 +97,7 @@ To get acceptable accuracy you need to make sure that the RC scheme time
 constant is comparable to dT. Also make sure that your capacitors are stable
 over whole temperature and voltage range.
 
+```
 	                         +------< REF
 	                         |                 // Voltage measurement //
 	                         |
@@ -111,6 +118,7 @@ over whole temperature and voltage range.
 	                         |
 	                        ---
 	                        \ /  AGND
+```
 
 The current (iA, iB, iC) is measured in phases A and B (optionally C) using a
 shunt and amplifier. Typically the measurement is distorted for some time after
@@ -119,6 +127,7 @@ a switching of the MOSFETs.
 Note that we prefer to use in-line current measurement. To use low-side
 measurement you will need to configure the software appropriately.
 
+```
 	                   // Current measurement //
 	  >-----+
 	        |  (+) |\       R1 = 0.5 mOhm
@@ -132,6 +141,7 @@ measurement you will need to configure the software appropriately.
 	        |      |/
 	        |
 	        +---< Terminal
+```
 
 Also supply voltage (uS) is measured using a voltage divider.
 
@@ -145,8 +155,9 @@ The values obtained are passed to the main IRQ handler to process. The MCU
 software calculates a new value of duty cycle and load it to hw timer. This
 value will be used at next PWM period.
 
+```
 	                // Control loop diagram //
-	
+
 	  -->|<--------------------- dT ---------------------->|<-------------
 	     |                                                 |
 	     |  TIM update     +----+---+----+        PWM      |
@@ -160,15 +171,16 @@ value will be used at next PWM period.
 	             \                          /                      \ ...
 	              pm_feedback()            /
 	                proc_set_DC(xA, xB, xC)
-
+```
 
 ## Clean zones
 
 We typically need about 5us before current samples to be clean. If MOSFETs
 switching occur at this time then ADC result is discarded.
 
+```
 	                // ADC sample clean zones //
-	
+
 	  -->|<--------------------- dT ---------------------->|<-------------
 	     |                                                 |
 	     |    PWM      +--------+---+--------+             |
@@ -179,6 +191,7 @@ switching occur at this time then ADC result is discarded.
                                           -->|  clearence  |<--
                                                            |      |
                                                         -->| skip |<--
+```
 
 The diagram above shows `clearance` and `skip` parameters that is used in
 software to decide ADC samples further usage. Based on transient performance of
@@ -186,9 +199,11 @@ current measurements circuit you should specify clerance thresholds in board
 configuration. To get the best result you should have a current sensor with a
 fast transient that allows you to specify narrow clearance zone.
 
+```
 	               1 - sqrt(3) / 2
 	  clearance < -----------------
 	                  PWM_freq
+```
 
 ## TODO
 

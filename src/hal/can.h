@@ -3,11 +3,6 @@
 
 #include "libc.h"
 
-enum {
-	CAN_TX_OK			= 0,
-	CAN_TX_FAILED,
-};
-
 typedef struct {
 
 	uint16_t		ID;

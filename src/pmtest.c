@@ -23,7 +23,7 @@ SH_DEF(pm_self_test)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
-		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
 		reg_OUTP(ID_PM_SCALE_IA0);
@@ -95,7 +95,7 @@ SH_DEF(pm_self_adjust)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_for_idle();
 
-		tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
 		reg_OUTP(ID_PM_SCALE_IA0);
@@ -183,7 +183,7 @@ SH_DEF(pm_self_TVM)
 	tlm.reg_ID[3] = ID_PM_TVM_C;
 	*/
 
-	tlm_startup(&tlm, tlm.grabfreq, TLM_MODE_GRAB);
+	tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_GRAB);
 
 	do {
 		/* 1000 Hz.
@@ -255,7 +255,7 @@ SH_DEF(pm_self_impedance)
 	tlm.reg_ID[4] = ID_PM_CONST_IM_R;
 	*/
 
-	tlm_startup(&tlm, tlm.livefreq, TLM_MODE_WATCH);
+	tlm_startup(&tlm, tlm.rate_live, TLM_MODE_WATCH);
 
 	usual_freq = pm.probe_freq_sine;
 	pm.probe_freq_sine = pm.m_freq / 6.f;

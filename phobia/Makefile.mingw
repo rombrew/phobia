@@ -3,7 +3,7 @@ BUILD	?= /tmp/phobia/$(ARCH)
 TARGET	= $(BUILD)/phobia-$(ARCH).exe
 
 CROSS	= $(ARCH)-w64-mingw32
-SDLDIR	= ../mingw/$(ARCH)-w64-mingw32
+MINGW	= ../mingw/$(ARCH)-w64-mingw32
 
 CC	= $(CROSS)-gcc
 LD	= $(CROSS)-gcc
@@ -22,11 +22,11 @@ CFLAGS	+= -fno-math-errno \
 	   -ffp-contract=fast
 
 CFLAGS	+= -fno-stack-protector
-CFLAGS	+= -I$(SDLDIR)/include -I$(SDLDIR)/include/SDL2
+CFLAGS	+= -I$(MINGW)/include
 CFLAGS	+= -D_EMBED_GP -D_WINDOWS
 
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image -static -mwindows
-LFLAGS	+= -L$(SDLDIR)/lib
+LFLAGS	+= -L$(MINGW)/lib
 
 LFLAGS  += -Wl,--gc-sections -Wl,--no-undefined -lusp10 -ldinput8 -ldxguid \
 	   -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 \

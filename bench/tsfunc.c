@@ -444,15 +444,15 @@ ts_script_speed()
 			* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.Mq[0] = 0.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -460,7 +460,7 @@ ts_script_speed()
 		* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -488,17 +488,17 @@ ts_script_hfi()
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	pm.s_setpoint_speed = 0;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ON_HFI);
 
 	pm.s_setpoint_speed = - 1.f / m.lambda;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
 	pm.s_setpoint_speed = 0;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.unsync_flag = 0;
 
@@ -528,10 +528,10 @@ ts_script_weakening()
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 5.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.Mq[0] = 0.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -539,7 +539,7 @@ ts_script_weakening()
 		* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -562,7 +562,7 @@ ts_script_hall()
 	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
 
-	pm.s_damping = .5f;
+	pm.s_damping = 0.5f;
 
 	pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
@@ -575,15 +575,15 @@ ts_script_hall()
 			* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_SENSOR_HALL);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.Mq[0] = 0.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -591,7 +591,7 @@ ts_script_hall()
 		* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 
@@ -643,13 +643,13 @@ ts_script_eabi(int knob_EABI)
 			* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	m.Mq[0] = 0.f;
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_SENSOR_EABI);
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -658,7 +658,7 @@ ts_script_eabi(int knob_EABI)
 		* pm.const_fb_U / pm.const_lambda;
 
 	ts_wait_for_spinup();
-	sim_runtime(.5);
+	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
 

@@ -80,12 +80,12 @@ need to be captured.
 
 Telemetry grab into RAM and flush textual dump.
 
-	(pmc) tlm_grab <freq>
+	(pmc) tlm_grab <rate>
 	(pmc) tlm_flush_sync
 
 Or live telemetry printout.
 
-	(pmc) tlm_live_sync <freq>
+	(pmc) tlm_live_sync <rate>
 
 Using CAN data pipes you are able to link register across CAN network. You can
 easily control many machines from single input. Build a traction control by

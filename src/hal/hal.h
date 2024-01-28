@@ -85,6 +85,11 @@ enum {
 };
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
+enum {
+	HAL_OK				= 0,
+	HAL_FAULT
+};
+
 typedef struct {
 
 	uint32_t	ld_begin;
@@ -167,8 +172,8 @@ typedef struct {
 	uint32_t	boot_SIGNATURE;
 	uint32_t	boot_COUNT;
 
-	char		textbuf[1024];
-	int		len;
+	char		textbuf[2000];
+	int		textend;
 }
 LOG_t;
 

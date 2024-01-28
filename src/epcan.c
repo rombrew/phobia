@@ -8,7 +8,6 @@
 #include "main.h"
 #include "regfile.h"
 #include "shell.h"
-#include "tlm.h"
 
 typedef struct {
 
@@ -66,22 +65,11 @@ EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 
 	switch (ep->PAYLOAD) {
 
-		case EPCAN_PAYLOAD_FLOAT_32:
+		case EPCAN_PAYLOAD_FLOAT:
 
 			if (msg->len == 4) {
 
 				val = * (float *) &msg->payload[0];
-
-				ep->reg_DATA = (ep->range[1] == 0.f) ? val
-					: ep->range[1] * val + ep->range[0];
-			}
-			break;
-
-		case EPCAN_PAYLOAD_FLOAT_16:
-
-			if (msg->len == 2) {
-
-				val = tlm_fp_float(* (uint16_t *) &msg->payload[0]);
 
 				ep->reg_DATA = (ep->range[1] == 0.f) ? val
 					: ep->range[1] * val + ep->range[0];
@@ -122,7 +110,7 @@ EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 
 	switch (ep->PAYLOAD) {
 
-		case EPCAN_PAYLOAD_FLOAT_32:
+		case EPCAN_PAYLOAD_FLOAT:
 
 			msg.len = 4;
 
@@ -130,16 +118,6 @@ EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 				: ep->range[1] * ep->reg_DATA + ep->range[0];
 
 			* (float *) &msg.payload[0] = val;
-			break;
-
-		case EPCAN_PAYLOAD_FLOAT_16:
-
-			msg.len = 2;
-
-			val = (ep->range[1] == 0.f) ? ep->reg_DATA
-				: ep->range[1] * ep->reg_DATA + ep->range[0];
-
-			* (uint16_t *) &msg.payload[0] = tlm_fp_half(val);
 			break;
 
 		case EPCAN_PAYLOAD_INT_16:
@@ -155,7 +133,7 @@ EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 		default: break;
 	}
 
-	if (CAN_send_msg(&msg) == CAN_TX_OK) {
+	if (CAN_send_msg(&msg) == HAL_OK) {
 
 		ep->tx_flag = 0;
 	}
@@ -469,7 +447,7 @@ EPCAN_send_msg(CAN_msg_t *msg)
 	do {
 		rc = CAN_send_msg(msg);
 
-		if (rc == CAN_TX_OK) {
+		if (rc == HAL_OK) {
 
 			if (net.log_MODE != EPCAN_LOG_DISABLED) {
 

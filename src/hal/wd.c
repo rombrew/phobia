@@ -5,7 +5,7 @@ void WD_startup()
 {
 	IWDG->KR = 0x5555;
 
-	/* Configure timeout value (0.5 ms).
+	/* We configure timeout about 0.5 ms.
 	 * */
 	IWDG->PR = 0;
 	IWDG->RLR = 4;

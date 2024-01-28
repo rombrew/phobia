@@ -19,7 +19,7 @@ CFLAGS	+= -fno-math-errno \
 	   -ffp-contract=fast
 
 CFLAGS	+= -fno-stack-protector
-CFLAGS	+= -I/usr/include/SDL2 -D_REENTRANT
+CFLAGS	+= -I/usr/include -D_REENTRANT
 CFLAGS	+= -D_EMBED_GP
 
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image

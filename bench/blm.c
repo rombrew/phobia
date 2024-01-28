@@ -9,7 +9,7 @@ void blm_AB_DQ(double theta, double A, double B, double *D, double *Q)
 	double		X, Y, tS, tC;
 
 	X = A;
-	Y = .577350269189626 * A + 1.15470053837925 * B;
+	Y = 0.577350269189626 * A + 1.15470053837925 * B;
 
 	tS = sin(theta);
 	tC = cos(theta);
@@ -29,8 +29,8 @@ void blm_DQ_ABC(double theta, double D, double Q, double *A, double *B, double *
 	Y = tS * D + tC * Q;
 
 	*A = X;
-	*B = - .5 * X + .866025403784439 * Y;
-	*C = - .5 * X - .866025403784439 * Y;
+	*B = - 0.5 * X + 0.866025403784439 * Y;
+	*C = - 0.5 * X - 0.866025403784439 * Y;
 }
 
 double blm_Kv_lambda(blm_t *m, double Kv)

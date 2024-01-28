@@ -7,6 +7,7 @@ This page describes the configuration of analog knob interface.
 The analog signal (from 0 to 5v) is fed to `ANG` pin. The brake signal (from 0
 to 5v) is fed to `BRK` pin. Unconnected inputs are pulled to `GND` inside PMC.
 
+```
 	    +-------------------+
 	    |                   |
 	   | |   (analog)       |
@@ -18,7 +19,7 @@ to 5v) is fed to `BRK` pin. Unconnected inputs are pulled to `GND` inside PMC.
 	            |   |   |   |
 	+-----------+---+---+---+--------------------+
 	|          GND BRK ANG +5v                   |
-
+```
 
 ## Configuration
 

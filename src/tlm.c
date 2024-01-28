@@ -9,47 +9,13 @@
 #include "regfile.h"
 #include "shell.h"
 
-uint16_t tlm_fp_half(float x)
-{
-	union {
-		float		f;
-		uint32_t	l;
-	}
-	u = { x };
-
-	return    ((u.l >> 16) & 0xC000U)
-		| ((u.l >> 14) & 0x3FFFU);
-}
-
-float tlm_fp_float(uint16_t x)
-{
-	union {
-		uint32_t	l;
-		float		f;
-	}
-	u = { 		  ((x & 0xC000U) << 16)
-			| ((x & 0x3FFFU) << 14) };
-
-	if (		   (x & 0x4000U) == 0
-			&& (x & 0x3E00U) != 0) {
-
-		u.l |= 0x3000U << 16;
-	}
-	else if ((x & 0x7E00U) == 0x7E00U) {
-
-		u.l |= 0x3000U << 16;
-	}
-
-	return u.f;
-}
-
 void tlm_reg_default(tlm_t *tlm)
 {
-	tlm->grabfreq = 4000.f;
-	tlm->livefreq = 20.f;
+	tlm->rate_grab = 5;
+	tlm->rate_live = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
-	tlm->reg_ID[0] = ID_PM_LU_IX;
-	tlm->reg_ID[1] = ID_PM_LU_IY;
+	tlm->reg_ID[0] = ID_PM_FB_IA;
+	tlm->reg_ID[1] = ID_PM_FB_IB;
 	tlm->reg_ID[2] = ID_PM_LU_ID;
 	tlm->reg_ID[3] = ID_PM_LU_IQ;
 	tlm->reg_ID[4] = ID_PM_LU_WS_RPM;
@@ -67,37 +33,28 @@ void tlm_reg_grab(tlm_t *tlm)
 	if (unlikely(tlm->mode == TLM_MODE_DISABLED))
 		return ;
 
-	if (tlm->count == 0) {
+	if (tlm->skip == 0) {
 
-		uint16_t	*vm = tlm->vm[tlm->line];
+		rval_t		*rdata = tlm->rdata + tlm->layout_N * tlm->line;
 
-		for (N = 0; N < TLM_INPUT_MAX; ++N) {
+		for (N = 0; N < tlm->layout_N; ++N) {
 
-			rval_t	*link = tlm->layout[N].reg->link;
-
-			if (likely(tlm->layout[N].type == TLM_TYPE_FLOAT)) {
-
-				vm[N] = tlm_fp_half(link->f);
-			}
-			else if (unlikely(tlm->layout[N].type == TLM_TYPE_INT)) {
-
-				vm[N] = (uint16_t) link->i;
-			}
+			rdata[N] = *(tlm->layout_reg[N]->link);
 		}
 	}
 
-	tlm->count += 1;
+	tlm->skip += 1;
 
-	if (tlm->count >= tlm->span) {
+	if (tlm->skip >= tlm->rate) {
 
 		tlm->clock += 1;
-		tlm->count = 0;
+		tlm->skip = 0;
 
-		tlm->line = (tlm->line < (TLM_DATA_MAX - 1)) ? tlm->line + 1 : 0;
+		tlm->line = (tlm->line < (tlm->length_MAX - 1)) ? tlm->line + 1 : 0;
 
 		if (tlm->mode == TLM_MODE_GRAB) {
 
-			if (tlm->clock >= TLM_DATA_MAX) {
+			if (tlm->clock >= tlm->length_MAX) {
 
 				tlm->mode = TLM_MODE_DISABLED;
 			}
@@ -112,9 +69,9 @@ void tlm_reg_grab(tlm_t *tlm)
 	}
 }
 
-void tlm_startup(tlm_t *tlm, float freq, int mode)
+void tlm_startup(tlm_t *tlm, int rate, int mode)
 {
-	int			N;
+	int			N, layout_N = 0;
 
 	tlm->mode = TLM_MODE_DISABLED;
 
@@ -126,27 +83,17 @@ void tlm_startup(tlm_t *tlm, float freq, int mode)
 
 			const reg_t	*reg = &regfile[tlm->reg_ID[N]];
 
-			if (		   reg->fmt[2] == 'i'
-					|| reg->fmt[2] == 'x') {
-
-				tlm->layout[N].type = TLM_TYPE_INT;
-			}
-			else {
-				tlm->layout[N].type = TLM_TYPE_FLOAT;
-			}
-
-			tlm->layout[N].reg = reg;
-		}
-		else {
-			tlm->layout[N].type = TLM_TYPE_NONE;
+			tlm->layout_reg[layout_N++] = reg;
 		}
 	}
 
-	tlm->clock = 0;
-	tlm->count = 0;
+	tlm->layout_N = layout_N;
+	tlm->length_MAX = TLM_DATA_MAX / layout_N;
 
-	tlm->span = (freq >= 0.1f && freq <= hal.PWM_frequency)
-		? (int) (hal.PWM_frequency / freq + .5f) : 1;
+	tlm->clock = 0;
+	tlm->skip = 0;
+
+	tlm->rate = rate;
 
 	hal_memory_fence();
 
@@ -167,20 +114,20 @@ SH_DEF(tlm_default)
 
 SH_DEF(tlm_grab)
 {
-	float		freq = tlm.grabfreq;
+	int		rate = tlm.rate_grab;
 
-	stof(&freq, s);
+	stoi(&rate, s);
 
-	tlm_startup(&tlm, freq, TLM_MODE_GRAB);
+	tlm_startup(&tlm, rate, TLM_MODE_GRAB);
 }
 
 SH_DEF(tlm_watch)
 {
-	float		freq = tlm.grabfreq;
+	int		rate = tlm.rate_grab;
 
-	stof(&freq, s);
+	stoi(&rate, s);
 
-	tlm_startup(&tlm, freq, TLM_MODE_WATCH);
+	tlm_startup(&tlm, rate, TLM_MODE_WATCH);
 }
 
 SH_DEF(tlm_stop)
@@ -196,23 +143,20 @@ tlm_reg_label(tlm_t *tlm)
 
 	printf("time@s;");
 
-	for (N = 0; N < TLM_INPUT_MAX; ++N) {
+	for (N = 0; N < tlm->layout_N; ++N) {
 
-		if (tlm->layout[N].type != TLM_TYPE_NONE) {
+		const reg_t	*reg = tlm->layout_reg[N];
 
-			const reg_t	*reg = tlm->layout[N].reg;
+		puts(reg->sym);
 
-			puts(reg->sym);
+		su = reg->sym + strlen(reg->sym) + 1;
 
-			su = reg->sym + strlen(reg->sym) + 1;
+		if (*su != 0) {
 
-			if (*su != 0) {
-
-				printf("@%s", su);
-			}
-
-			puts(";");
+			printf("@%s", su);
 		}
+
+		puts(";");
 	}
 
 	puts(EOL);
@@ -221,35 +165,24 @@ tlm_reg_label(tlm_t *tlm)
 static void
 tlm_reg_flush_line(tlm_t *tlm, int line)
 {
-	const uint16_t		*vm = tlm->vm[line];
+	const rval_t		*rdata = tlm->rdata + tlm->layout_N * line;
 	int			N;
 
-	for (N = 0; N < TLM_INPUT_MAX; ++N) {
+	for (N = 0; N < tlm->layout_N; ++N) {
 
-		if (tlm->layout[N].type != TLM_TYPE_NONE) {
+		const reg_t	*reg = tlm->layout_reg[N];
+		rval_t		rval = rdata[N];
 
-			const reg_t	*reg = tlm->layout[N].reg;
-			rval_t		rval;
+		if (reg->proc != NULL) {
 
-			if (tlm->layout[N].type == TLM_TYPE_INT) {
+			reg_t		lreg = { .link = &rval };
 
-				rval.i = (int) vm[N];
-			}
-			else {
-				rval.f = tlm_fp_float(vm[N]);
-			}
-
-			if (reg->proc != NULL) {
-
-				reg_t		lreg = { .link = &rval };
-
-				reg->proc(&lreg, &rval, NULL);
-			}
-
-			reg_format_rval(reg, &rval);
-
-			puts(";");
+			reg->proc(&lreg, &rval, NULL);
 		}
+
+		reg_format_rval(reg, &rval);
+
+		puts(";");
 	}
 
 	puts(EOL);
@@ -266,7 +199,7 @@ SH_DEF(tlm_flush_sync)
 	line = tlm.line;
 	clock = 0;
 
-	dT = (float) tlm.span / hal.PWM_frequency;
+	dT = (float) tlm.rate / hal.PWM_frequency;
 
 	precision = (int) (2.9f - m_log10f(dT));
 	precision = (precision < 2) ? 2
@@ -281,7 +214,7 @@ SH_DEF(tlm_flush_sync)
 
 		tlm_reg_flush_line(&tlm, line);
 
-		line = (line < (TLM_DATA_MAX - 1)) ? line + 1 : 0;
+		line = (line < (tlm.length_MAX - 1)) ? line + 1 : 0;
 
 		clock += 1;
 
@@ -294,26 +227,28 @@ SH_DEF(tlm_flush_sync)
 
 SH_DEF(tlm_live_sync)
 {
-	float			time, freq, dT;
-	int			line, clock, precision;
+	float			time, dT;
+	int			line, clock, rate, precision;
 
 	if (tlm.mode != TLM_MODE_DISABLED)
 		return ;
 
-	freq = tlm.livefreq;
+	rate = tlm.rate_live;
 
-	if (stof(&freq, s) != NULL) {
+	if (stoi(&rate, s) != NULL) {
 
-		freq =    (freq < 1.f) ? 1.f
-			: (freq > tlm.livefreq) ? tlm.livefreq : freq;
+		int		rate_minimal = (int) (hal.PWM_frequency / 100.f + 0.5f);
+
+		rate =    (rate < rate_minimal) ? rate_minimal
+			: (rate > tlm.rate_live) ? tlm.rate_live : rate;
 	}
 
-	tlm_startup(&tlm, freq, TLM_MODE_LIVE);
+	tlm_startup(&tlm, rate, TLM_MODE_LIVE);
 
 	line = tlm.line;
 	clock = 0;
 
-	dT = (float) tlm.span / hal.PWM_frequency;
+	dT = (float) tlm.rate / hal.PWM_frequency;
 
 	precision = (int) (2.9f - m_log10f(dT));
 	precision = (precision < 2) ? 2
@@ -332,7 +267,7 @@ SH_DEF(tlm_live_sync)
 
 			tlm_reg_flush_line(&tlm, line);
 
-			line = (line < (TLM_DATA_MAX - 1)) ? line + 1 : 0;
+			line = (line < (tlm.length_MAX - 1)) ? line + 1 : 0;
 
 			clock += 1;
 

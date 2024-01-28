@@ -788,7 +788,7 @@ void link_push(struct link_pmc *lp)
 				}
 			}
 
-			if ((reg->mode & LINK_REG_CONFIG) == 0) {
+			if (reg->mode & LINK_REG_READ_ONLY) {
 
 				if (reg->fetched + 10000 < reg->shown)
 					dofetch = 1;

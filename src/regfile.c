@@ -82,7 +82,7 @@ reg_proc_net_rate(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		reg->link->i = (int) (hal.PWM_frequency / rval->f + .5f);
+		reg->link->i = (int) (hal.PWM_frequency / rval->f + 0.5f);
 	}
 }
 
@@ -112,7 +112,7 @@ reg_proc_net_timeout(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		reg->link->i = (int) (rval->f * hal.PWM_frequency / 1000.f + .5f);
+		reg->link->i = (int) (rval->f * hal.PWM_frequency / 1000.f + 0.5f);
 	}
 }
 #endif /* HW_HAVE_NETWORK_EPCAN */
@@ -537,19 +537,21 @@ reg_proc_auto_probe_speed_hold(const reg_t *reg, rval_t *lval, const rval_t *rva
 }
 
 static void
-reg_proc_auto_zone_budget(const reg_t *reg, rval_t *lval, const rval_t *rval)
+reg_proc_auto_zone_threshold(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
 
-		lval->f = reg->link->f * 100.f;
+		lval->f = reg->link->f;
 	}
 	else if (rval != NULL) {
 
-		reg->link->f = rval->f / 100.f;
+		if (rval->f < - M_EPSILON) {
 
-		hal_memory_fence();
-
-		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+		}
+		else {
+			reg->link->f = rval->f;
+		}
 	}
 }
 
@@ -846,6 +848,24 @@ reg_proc_watt_fuel(const reg_t *reg, rval_t *lval, const rval_t *rval)
 }
 
 static void
+reg_proc_tlm_rate(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	if (lval != NULL) {
+
+		lval->f = hal.PWM_frequency / (float) reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		int		rate;
+
+		rate = (rval->f >= 0.1f) ? (int) (hal.PWM_frequency / rval->f + 0.5f) : 1;
+		rate = (rate < 1) ? 1 : rate;
+
+		reg->link->i = rate;
+	}
+}
+
+static void
 reg_format_self_BST(const reg_t *reg)
 {
 	int		*BST = (void *) reg->link;
@@ -1057,7 +1077,7 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_HAL_DRV_AUTO_RESET:
+		case ID_HAL_DRV_AUTO_RESTART:
 
 			switch (val) {
 
@@ -1119,8 +1139,7 @@ reg_format_enum(const reg_t *reg)
 
 			switch (val) {
 
-				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT_32);
-				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT_16);
+				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
 				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
 
 				default: break;
@@ -1464,10 +1483,11 @@ const reg_t		regfile[] = {
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	REG_DEF(hal.DRV.part,,,		"",	"%0i",	REG_CONFIG, &reg_proc_DRV_part, &reg_format_enum),
-	REG_DEF(hal.DRV.auto_RESET,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(hal.DRV.auto_RESTART,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(hal.DRV.status_raw,,,	"",	"%4x",	REG_READ_ONLY, &reg_proc_DRV_status, NULL),
 	REG_DEF(hal.DRV.gate_current,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, NULL),
 	REG_DEF(hal.DRV.ocp_level,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, NULL),
+	REG_DEF(hal.DRV.fault_safety,,,	"",	"%0i",	REG_CONFIG, NULL, NULL),
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 	REG_DEF(hal.CNT_diag, 0, [0],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
@@ -1819,10 +1839,9 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.kalman_gain_Q, 4, [4],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_R,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.zone_budget,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_auto_zone_budget, NULL),
 	REG_DEF(pm.zone_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.zone_noise, _u,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
-	REG_DEF(pm.zone_threshold,,, 	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.zone_threshold,,, 	"rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_zone_threshold, NULL),
 	REG_DEF(pm.zone_threshold, _u,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
@@ -1984,8 +2003,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.dbg, 0, [0],			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.dbg, 1, [1],			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(tlm.grabfreq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(tlm.livefreq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
+	REG_DEF(tlm.rate_live,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.mode,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(tlm.reg_ID, 0, [0],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),

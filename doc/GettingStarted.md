@@ -1,7 +1,7 @@
 ## Overview
 
 This manual gives a basic info about Phobia Motor Controller (PMC). Look into
-other docs for specific issues.
+other documents for specific questions.
 
 ## Hardware
 
@@ -9,7 +9,6 @@ We do not assemble hardware for sales. You can get fabrication files from our
 [releases](https://sourceforge.net/projects/phobia/files/) or look into the PCB
 repos. You will have to order the fabrication and assembly yourself.
 
-	$ hg clone https://hg.code.sf.net/p/phobia/pcb phobia-pcb
 	$ git clone https://github.com/rombrew/phobia-pcb.git phobia-pcb
 
 The aim of our PCB design is to optimize electrical and thermal performance.
@@ -21,13 +20,15 @@ copper foil thickness. To improve heat dissipation it is necessary to mount an
 aluminium heatsink at bottom side through thermal interface.
 
 You can also try to use third-party hardware like VESC or its clones. Look into
-`src/hal/hw/...` directory to get the actual list of supported hardware.
+[Hardware VESC](HardwareVESC.md) document to get an overview of supported
+hardware.
 
 ## Basic wiring
 
 Plug PMC according to the diagram. If you need to run a bootloader (in case of
 erased MCU) then short BOOT pin to +3.3v before the power up.
 
+```
 	 +-----------+
 	 |           |               +---------------+
 	 |  Host PC  |-------//------| USART adapter |
@@ -45,6 +46,7 @@ erased MCU) then short BOOT pin to +3.3v before the power up.
 	                 +--------+------+--------------+
 	                          |      |
 	                          +--/ --+
+```
 
 ## Software
 
@@ -65,9 +67,9 @@ There are a few parts of software:
    implemented here.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
-[Clang](https://clang.llvm.org/) toolchain.
+[Clang](https://clang.llvm.org/) toolchain. For example, let us build the
+firmware for the `REV5A` hardware.
 
-	$ hg clone https://hg.code.sf.net/p/phobia/code phobia
 	$ git clone https://github.com/rombrew/phobia.git phobia
 	$ cd phobia/src
 	$ make HWREV=REV5A
@@ -116,6 +118,8 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 Read the following documentation for setting PMC up.
 
 * [Command Line Interface](CommandLineInterface.md)
+* [Hardware Design](HardwareDesign.md)
+* [Hardware VESC](HardwareVESC.md)
 * [Integrity Self Test](IntegritySelfTest.md)
 * [Machine Probe](MachineProbe.md)
 * [Machine Tuning](MachineTuning.md)
@@ -125,9 +129,6 @@ Read the following documentation for setting PMC up.
 * [Input STEP/DIR Interface](InputStepDirection.md)
 * [Network CAN](NetworkCAN.md)
 * [Trouble Shooting](TroubleShooting.md)
-
-* [Hardware Design](HardwareDesign.md)
-* [Hardware VESC](HardwareVESC.md)
 
 ## Feedback and support
 

@@ -8,8 +8,8 @@ PWM_build()
 {
 	int		resolution, DTG;
 
-	resolution = (int) ((float) (CLOCK_TIM1_HZ / 2U) / hal.PWM_frequency + .5f);
-	DTG = (int) ((float) CLOCK_TIM1_HZ * hal.PWM_deadtime / 1000000000.f + .5f);
+	resolution = (int) ((float) (CLOCK_TIM1_HZ / 2U) / hal.PWM_frequency + 0.5f);
+	DTG = (int) ((float) CLOCK_TIM1_HZ * hal.PWM_deadtime / 1000000000.f + 0.5f);
 	DTG = (DTG < 127) ? DTG : 127;
 
 	hal.PWM_frequency = (float) (CLOCK_TIM1_HZ / 2U) / (float) resolution;
@@ -49,9 +49,9 @@ void PWM_startup()
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sample_advance;
 	TIM1->BDTR = TIM_BDTR_MOE
-#ifdef HW_HAVE_PWM_BKIN
+#ifdef HW_HAVE_PWM_BREAK
 		| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE
-#endif /* HW_HAVE_PWM_BKIN */
+#endif /* HW_HAVE_PWM_BREAK */
 		| TIM_BDTR_OSSR | (DTG << TIM_BDTR_DTG_Pos);
 
 	/* Start TIM1.
@@ -76,9 +76,9 @@ void PWM_startup()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
 
-#ifdef HW_HAVE_PWM_BKIN
+#ifdef HW_HAVE_PWM_BREAK
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_BKIN);
-#endif /* HW_HAVE_PWM_BKIN */
+#endif /* HW_HAVE_PWM_BREAK */
 }
 
 void PWM_configure()
@@ -146,15 +146,13 @@ void PWM_set_Z(int Z)
 
 int PWM_fault()
 {
-	int		fault = 0;
-
 	if (TIM1->SR & TIM_SR_BIF) {
 
 		TIM1->SR &= ~TIM_SR_BIF;
 
-		fault = 1;
+		return HAL_FAULT;
 	}
 
-	return fault;
+	return HAL_OK;
 }
 

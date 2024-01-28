@@ -50,7 +50,7 @@ DRV_write_reg(int addr, int data)
 static void
 DRV8301_configure()
 {
-	int			config;
+	int			config, control;
 
 	config = (hal.DRV.gate_current & 0x3U);
 
@@ -65,16 +65,18 @@ DRV8301_configure()
 	DRV_write_reg(2, config);
 	DRV_write_reg(3, 0);
 
-	if (DRV_read_reg(2) != config) {
+	control = DRV_read_reg(2);
 
-		log_TRACE("DRV8301 unable to configure" EOL);
+	if (control != config) {
+
+		log_TRACE("DRV8301 configuration fault %4x" EOL, control);
 	}
 
 	hal.DRV.status_raw = DRV_read_reg(0);
 
 	if (hal.DRV.status_raw != 0) {
 
-		log_TRACE("DRV8301 fault %4x" EOL, hal.DRV.status_raw);
+		log_TRACE("DRV8301 status %4x" EOL, hal.DRV.status_raw);
 	}
 }
 
@@ -94,6 +96,7 @@ DRV8301_startup()
 	DRV8301_configure();
 
 	hal.DRV.gate_ON = 1;
+	hal.DRV.fault_CNT = 0;
 }
 
 void DRV_startup()
@@ -113,6 +116,7 @@ void DRV_halt()
 	if (hal.DRV.gate_ON != 0) {
 
 		hal.DRV.gate_ON = 0;
+		hal.DRV.fault_CNT = 0;
 
 		SPI_halt(HW_DRV_ID_ON_PCB);
 
@@ -153,13 +157,23 @@ void DRV_status()
 
 int DRV_fault()
 {
-	int		fault = 0;
-
 	if (hal.DRV.gate_ON != 0) {
 
-		fault = (GPIO_get_STATE(hal.DRV.gpio_FAULT) != 0) ? 0 : 1;
+		if (unlikely(hal.DRV.fault_CNT >= hal.DRV.fault_safety)) {
+
+			return HAL_FAULT;
+		}
+		else {
+			if (likely(GPIO_get_STATE(hal.DRV.gpio_FAULT) != 0)) {
+
+				hal.DRV.fault_CNT = 0;
+			}
+			else {
+				hal.DRV.fault_CNT += 1;
+			}
+		}
 	}
 
-	return fault;
+	return HAL_OK;
 }
 

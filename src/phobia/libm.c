@@ -34,14 +34,14 @@ void m_rotatef(float x[2], float r)
 	q = r * r;
 
 	s = r * (1.f - q * (1.6666667E-1f - 8.3333338E-3f * q));
-	c = 1.f - q * (.5f - 4.1666668E-2f * q);
+	c = 1.f - q * (0.5f - 4.1666668E-2f * q);
 
 	y[0] = c * x[0] - s * x[1];
 	y[1] = s * x[0] + c * x[1];
 
 	q = y[0] * y[0] + y[1] * y[1];
 
-	s = likely(q < 2.f) ? (3.f - q) * .5f : m_fast_rsqrtf(q);
+	s = likely(q < 2.f) ? (3.f - q) * 0.5f : m_fast_rsqrtf(q);
 
 	x[0] = y[0] * s;
 	x[1] = y[1] * s;
@@ -290,12 +290,12 @@ void m_la_eigf(const float a[3], float v[4], int m)
 
 	if (m == 0) {
 
-		v[2] = (b - la) * .5f;
-		v[3] = (b + la) * .5f;
+		v[2] = (b - la) * 0.5f;
+		v[3] = (b + la) * 0.5f;
 	}
 	else {
-		v[2] = (b + la) * .5f;
-		v[3] = (b - la) * .5f;
+		v[2] = (b + la) * 0.5f;
+		v[3] = (b - la) * 0.5f;
 	}
 
 	if (a[0] >= a[2]) {

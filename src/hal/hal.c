@@ -269,13 +269,6 @@ void hal_bootload()
 {
 	const uint32_t		*sysmem;
 
-	/* Enable FPU early.
-	 * */
-	SCB->CPACR |= (0xFU << 20);
-
-	__DSB();
-	__ISB();
-
 	if (bootload_jump == HAL_BOOT_SIGNATURE) {
 
 		bootload_jump = 0U;
@@ -294,6 +287,13 @@ void hal_bootload()
 		 * */
 		((void (*) (void)) (sysmem[1])) ();
 	}
+
+	/* Enable FPU early.
+	 * */
+	SCB->CPACR |= (0xFU << 20);
+
+	__DSB();
+	__ISB();
 }
 
 void hal_startup()
@@ -354,7 +354,7 @@ void hal_memory_fence()
 
 int log_status()
 {
-	return (log.textbuf[0] != 0) ? 1 : 0;
+	return (log.textbuf[0] != 0) ? HAL_FAULT : HAL_OK;
 }
 
 void log_bootup()
@@ -366,7 +366,7 @@ void log_bootup()
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		log.len = 0;
+		log.textend = 0;
 	}
 	else {
 		log.boot_COUNT += 1U;
@@ -377,22 +377,22 @@ void log_bootup()
 
 void log_putc(int c)
 {
-	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
+	if (unlikely(log.boot_SIGNATURE != HAL_BOOT_SIGNATURE)) {
 
 		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
 		log.boot_COUNT = 0U;
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		log.len = 0;
+		log.textend = 0;
 	}
-	else if (	   log.len < 0
-			|| log.len >= sizeof(log.textbuf) - 1U) {
+	else if (unlikely(	   log.textend < 0
+				|| log.textend >= sizeof(log.textbuf) - 1U)) {
 
-		log.len = 0;
+		log.textend = 0;
 	}
 
-	log.textbuf[log.len++] = (char) c;
+	log.textbuf[log.textend++] = (char) c;
 }
 
 void DBGMCU_mode_stop()

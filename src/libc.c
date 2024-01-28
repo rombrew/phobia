@@ -362,7 +362,7 @@ fmt_fp_fixed(io_ops_t *io, float x, int n)
 	}
 
 	v = 0;
-	h = .5f;
+	h = 0.5f;
 
 	for (i = 0; i < n; ++i)
 		h /= 10.f;
@@ -438,7 +438,7 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 	}
 
 	v = 0;
-	h = .5f;
+	h = 0.5f;
 
 	while (x > 0.f && x < 1.f) {
 
@@ -523,7 +523,7 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 	}
 
 	v = 0;
-	h = .5f;
+	h = 0.5f;
 
 	while (x > 0.f && x < 1.f) {
 

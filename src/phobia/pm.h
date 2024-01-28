@@ -437,7 +437,6 @@ typedef struct {
 	float		kalman_gain_Q[5];
 	float		kalman_gain_R;
 
-	float		zone_budget;
 	float		zone_noise;
 	float		zone_threshold;
 	float		zone_lpf_wS;

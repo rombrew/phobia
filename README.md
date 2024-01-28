@@ -15,7 +15,7 @@ electric transport.
 * Flux weakening and MTPA control (**EXPERIMENTAL**).
 * Three and two phase machine support.
 * Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
-* Various controller boards are supported (including VESC clones).
+* Various controller hardware are supported (including VESC clones).
 * Regular Command Line Interface (CLI) with autocompletion and history.
 * Graphical front-end software based on
   [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) and

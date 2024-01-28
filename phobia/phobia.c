@@ -4,8 +4,8 @@
 #include <math.h>
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "gp/dirent.h"
 #include "gp/gp.h"
@@ -104,7 +104,7 @@ struct public {
 	struct {
 
 		int			log_flush;
-		char			log_message[2048];
+		char			log_message[4000];
 
 		char			file_snap[PHOBIA_PATH_MAX];
 	}
@@ -190,7 +190,6 @@ pub_primal_reg(struct public *pub, const struct link_reg *reg)
 		"pm.probe_current_sine",
 		"pm.probe_loss_maximal",
 		"pm.forced_hold_D",
-		"pm.zone_budget",
 		"pm.eabi_const_Zq",
 		"pm.const_Zp",
 		"pm.const_ld_S",
@@ -336,40 +335,40 @@ pub_name_label(struct public *pub, const char *name, struct link_reg *reg)
 
 	bounds = nk_widget_bounds(ctx);
 
-	if (reg->mode & LINK_REG_CONFIG) {
+	if (pub_primal_reg(pub, reg) != 0) {
 
-		if (pub_primal_reg(pub, reg) != 0) {
+		background = nk->table[NK_COLOR_CONFIG];
+		text = nk->table[NK_COLOR_WINDOW];
 
-			background = nk->table[NK_COLOR_CONFIG];
-			text = nk->table[NK_COLOR_WINDOW];
+		select = ctx->style.selectable;
 
-			select = ctx->style.selectable;
+		ctx->style.selectable.normal  = nk_style_item_color(background);
+		ctx->style.selectable.hover   = nk_style_item_color(background);
+		ctx->style.selectable.pressed = nk_style_item_color(background);
+		ctx->style.selectable.normal_active  = nk_style_item_color(background);
+		ctx->style.selectable.hover_active   = nk_style_item_color(background);
+		ctx->style.selectable.pressed_active = nk_style_item_color(background);
+		ctx->style.selectable.text_normal  = text;
+		ctx->style.selectable.text_hover   = text;
+		ctx->style.selectable.text_pressed = text;
+		ctx->style.selectable.text_normal_active  = text;
+		ctx->style.selectable.text_hover_active   = text;
+		ctx->style.selectable.text_pressed_active = text;
 
-			ctx->style.selectable.normal  = nk_style_item_color(background);
-			ctx->style.selectable.hover   = nk_style_item_color(background);
-			ctx->style.selectable.pressed = nk_style_item_color(background);
-			ctx->style.selectable.normal_active  = nk_style_item_color(background);
-			ctx->style.selectable.hover_active   = nk_style_item_color(background);
-			ctx->style.selectable.pressed_active = nk_style_item_color(background);
-			ctx->style.selectable.text_normal  = text;
-			ctx->style.selectable.text_hover   = text;
-			ctx->style.selectable.text_pressed = text;
-			ctx->style.selectable.text_normal_active  = text;
-			ctx->style.selectable.text_hover_active   = text;
-			ctx->style.selectable.text_pressed_active = text;
+		nk_select_label(ctx, name, NK_TEXT_LEFT, 0);
 
-			nk_select_label(ctx, name, NK_TEXT_LEFT, 0);
+		ctx->style.selectable = select;
+	}
+	else {
+		if (reg->mode & LINK_REG_CONFIG) {
 
-			ctx->style.selectable = select;
-		}
-		else {
 			text = nk->table[NK_COLOR_CONFIG];
 
 			nk_label_colored(ctx, name, NK_TEXT_LEFT, text);
 		}
-	}
-	else {
-		nk_label(ctx, name, NK_TEXT_LEFT);
+		else {
+			nk_label(ctx, name, NK_TEXT_LEFT);
+		}
 	}
 
 	pub_contextual(pub, reg, bounds);
@@ -677,6 +676,8 @@ pub_popup_debug(struct public *pub, int popup, const char *title)
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_end(ctx);
 
@@ -687,6 +688,18 @@ pub_popup_debug(struct public *pub, int popup, const char *title)
 			nk_popup_close(ctx);
 
 			pub->popup_enum = 0;
+		}
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "Clean")) {
+
+			if (link_command(pub->lp, "ap_log_clean") != 0) {
+
+				nk_popup_close(ctx);
+
+				pub->popup_enum = 0;
+			}
 		}
 
 		nk_spacer(ctx);
@@ -2703,8 +2716,7 @@ page_diagnose(struct public *pub)
 
 			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
 
-				if (link_command(lp,	"ap_log_flush" "\r\n"
-							"ap_log_clean") != 0) {
+				if (link_command(lp, "ap_log_flush") != 0) {
 
 					pub->debug.log_flush = 1;
 				}
@@ -2754,7 +2766,8 @@ page_diagnose(struct public *pub)
 
 			if (fd != NULL) {
 
-				len = fread(pub->debug.log_message, 1, 2048, fd);
+				len = fread(pub->debug.log_message, 1,
+						sizeof(pub->debug.log_message) - 1, fd);
 
 				if (len != 0) {
 
@@ -2888,7 +2901,7 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	pub_popup_debug(pub, POPUP_DEBUG_LOG, "RAM log");
+	pub_popup_debug(pub, POPUP_DEBUG_LOG, "RAM log contents");
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
@@ -2986,12 +2999,7 @@ page_probe(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Save machine", NK_TEXT_LEFT)) {
-
-			/* TODO */
-		}
-
-		if (nk_menu_item_label(ctx, "Load machine", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Export machine", NK_TEXT_LEFT)) {
 
 			/* TODO */
 		}
@@ -3222,10 +3230,11 @@ page_hal(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_combo(pub, "hal.DRV.part", "DRV part", 1);
-	reg_enum_toggle(pub, "hal.DRV.auto_RESET", "DRV automatic reset");
+	reg_enum_toggle(pub, "hal.DRV.auto_RESTART", "DRV automatic restart");
 	reg_float(pub, "hal.DRV.status_raw", "DRV status raw");
 	reg_float(pub, "hal.DRV.gate_current", "DRV gate current");
 	reg_float(pub, "hal.DRV.ocp_level", "DRV OCP level");
+	reg_float(pub, "hal.DRV.fault_safety", "DRV fault safety");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3255,7 +3264,7 @@ page_in_network(struct public *pub)
 
 	reg_float(pub, "net.node_ID", "Node network ID");
 	reg_enum_combo(pub, "net.log_MODE", "Messages logging", 1);
-	reg_float(pub, "net.timeout_EP", "EP timeout");
+	reg_float(pub, "net.timeout_EP", "EP shutdown timeout");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3732,7 +3741,7 @@ page_application(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup permanently");
+	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup automatic");
 	reg_enum_toggle(pub, "ap.task_BUTTON", "Button control");
 	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
 	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
@@ -3843,12 +3852,7 @@ page_config(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Save configuration", NK_TEXT_LEFT)) {
-
-			/* TODO */
-		}
-
-		if (nk_menu_item_label(ctx, "Load configuration", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Export configuration", NK_TEXT_LEFT)) {
 
 			/* TODO */
 		}
@@ -4010,8 +4014,8 @@ page_lu_forced(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Forced self-adjustment", NK_TEXT_LEFT)) {
 
-			link_command(lp, "reg pm.forced_maximal 0" "\r\n"
-					 "reg pm.forced_accel 0");
+			link_command(lp, "reg pm.forced_maximal -1" "\r\n"
+					 "reg pm.forced_accel -1");
 		}
 
 		nk_menu_end(ctx);
@@ -4069,6 +4073,11 @@ page_lu_flux(struct public *pub)
 			link_command(lp, "pm_probe_noise_threshold");
 		}
 
+		if (nk_menu_item_label(ctx, "ZH threshold self-adjustment", NK_TEXT_LEFT)) {
+
+			link_command(lp, "reg pm.zone_threshold -1");
+		}
+
 		nk_menu_end(ctx);
 	}
 
@@ -4110,7 +4119,6 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.zone_budget", "Budget percentage");
 	reg_float_um(pub, "pm.zone_noise", "Noise threshold", 0);
 	reg_float_um(pub, "pm.zone_threshold", "Zone threshold", 0);
 	reg_float(pub, "pm.zone_gain_TH", "Zone hysteresis");
@@ -4118,18 +4126,6 @@ page_lu_flux(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
-
-	reg = link_reg_lookup(lp, "pm.zone_budget");
-
-	if (		reg != NULL
-			&& reg->fetched == lp->clock) {
-
-		reg = link_reg_lookup(lp, "pm.zone_noise");
-		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
-
-		reg = link_reg_lookup(lp, "pm.zone_threshold");
-		if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
-	}
 
 	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
@@ -5259,13 +5255,13 @@ page_flash(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-                if (nk_menu_item_label(ctx, "Flash program", NK_TEXT_LEFT)) {
+                if (nk_menu_item_label(ctx, "Flash programming", NK_TEXT_LEFT)) {
 
 			link_command(lp, "flash_prog" "\r\n"
 					 "flash_info");
 		}
 
-		if (nk_menu_item_label(ctx, "Flash wipe", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Flash storage wipe", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 
@@ -5279,13 +5275,6 @@ page_flash(struct public *pub)
 
 				pub->popup_enum = POPUP_SYSTEM_REBOOT;
 			}
-		}
-
-		nk_spacer(ctx);
-
-		if (nk_menu_item_label(ctx, "Flash info", NK_TEXT_LEFT)) {
-
-			link_command(lp, "flash_info");
 		}
 
 		nk_menu_end(ctx);

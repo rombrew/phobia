@@ -84,7 +84,7 @@ CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
 
 		if (xMSR == xVAL) {
 
-			return 1;
+			return HAL_OK;
 		}
 
 		__NOP();
@@ -93,7 +93,7 @@ CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
 	}
 	while (wait_N < 70000U);
 
-	return 0;
+	return HAL_FAULT;
 }
 
 void CAN_configure()
@@ -102,7 +102,7 @@ void CAN_configure()
 	 * */
 	CAN1->MCR &= ~CAN_MCR_SLEEP;
 
-	if (CAN_wait_for_MSR(CAN_MSR_SLAK, 0) == 0) {
+	if (CAN_wait_for_MSR(CAN_MSR_SLAK, 0) != HAL_OK) {
 
 		log_TRACE("CAN from SLEEP failed" EOL);
 	}
@@ -181,7 +181,7 @@ int CAN_send_msg(const CAN_msg_t *msg)
 	else {
 		hal_unlock_irq(irq);
 
-		return CAN_TX_FAILED;
+		return HAL_FAULT;
 	}
 
 	CAN1->sTxMailBox[mb].TIR = (uint32_t) msg->ID << 21;
@@ -203,6 +203,6 @@ int CAN_send_msg(const CAN_msg_t *msg)
 
 	hal_unlock_irq(irq);
 
-	return CAN_TX_OK;
+	return HAL_OK;
 }
 

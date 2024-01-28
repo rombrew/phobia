@@ -284,7 +284,7 @@ LD_TASK void task_TEMP(void *pData)
 		pm.i_derate_on_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
 
 #ifdef HW_HAVE_DRV_ON_PCB
-		if (		hal.DRV.auto_RESET == PM_ENABLED
+		if (		hal.DRV.auto_RESTART == PM_ENABLED
 				&& DRV_fault() != 0) {
 
 			DRV_status();
@@ -307,7 +307,7 @@ LD_TASK void task_TEMP(void *pData)
 #endif /* GPIO_LED_MODE */
 
 		if (		pm.fsm_errno != PM_OK
-				|| log_status() != 0) {
+				|| log_status() != HAL_OK) {
 
 			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 205) {
 
@@ -534,11 +534,12 @@ default_flash_load()
 
 #ifdef HW_HAVE_DRV_ON_PCB
 	hal.DRV.part = HW_DRV_PARTNO;
-	hal.DRV.auto_RESET = PM_ENABLED;
+	hal.DRV.auto_RESTART = PM_ENABLED;
 	hal.DRV.gpio_GATE_EN = GPIO_DRV_GATE_EN;
 	hal.DRV.gpio_FAULT = GPIO_DRV_FAULT;
 	hal.DRV.gate_current = HW_DRV_GATE_CURRENT;
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
+	hal.DRV.fault_safety = HW_DRV_FAULT_SAFETY;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
@@ -1018,28 +1019,30 @@ void ADC_IRQ()
 	}
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
-	if (unlikely(hal.CNT_diag[1] >= pm.m_dT)) {
+	if (pm.lu_MODE != PM_LU_DISABLED) {
 
-		pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
-		pm.fsm_req = PM_STATE_HALT;
-	}
+		if (unlikely(hal.CNT_diag[1] >= pm.m_dT)) {
 
-#ifdef HW_HAVE_PWM_BKIN
-	if (unlikely(PWM_fault() != 0)) {
+			pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
+			pm.fsm_req = PM_STATE_HALT;
+		}
 
-		pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
-		pm.fsm_req = PM_STATE_HALT;
-	}
-#endif /* HW_HAVE_PWM_BKIN */
+#ifdef HW_HAVE_PWM_BREAK
+		if (unlikely(PWM_fault() != HAL_OK)) {
+
+			pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
+			pm.fsm_req = PM_STATE_HALT;
+		}
+#endif /* HW_HAVE_PWM_BREAK */
 
 #ifdef HW_HAVE_DRV_ON_PCB
-	if (unlikely(		pm.lu_MODE != PM_LU_DISABLED
-				&& DRV_fault() != 0)) {
+		if (unlikely(DRV_fault() != HAL_OK)) {
 
-		pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
-		pm.fsm_req = PM_STATE_HALT;
-	}
+			pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
+			pm.fsm_req = PM_STATE_HALT;
+		}
 #endif /* HW_HAVE_DRV_ON_PCB */
+	}
 
 	pm_feedback(&pm, &fb);
 
@@ -1187,7 +1190,7 @@ SH_DEF(ap_heap_info)
 
 SH_DEF(ap_log_flush)
 {
-	if (log.textbuf[0] != 0) {
+	if (log_status() != HAL_OK) {
 
 		puts(log.textbuf);
 		puts(EOL);
@@ -1196,11 +1199,11 @@ SH_DEF(ap_log_flush)
 
 SH_DEF(ap_log_clean)
 {
-	if (log.textbuf[0] != 0) {
+	if (log_status() != HAL_OK) {
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
 
-		log.len = 0;
+		log.textend = 0;
 	}
 }
 
