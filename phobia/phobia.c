@@ -2716,7 +2716,7 @@ page_diagnose(struct public *pub)
 
 			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
 
-				if (link_command(lp, "ap_log_flush") != 0) {
+				if (link_command(lp, "ap_log_flush" "\r\n") != 0) {
 
 					pub->debug.log_flush = 1;
 				}
@@ -4073,7 +4073,7 @@ page_lu_flux(struct public *pub)
 			link_command(lp, "pm_probe_noise_threshold");
 		}
 
-		if (nk_menu_item_label(ctx, "ZH threshold self-adjustment", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "ZONE self-adjustment", NK_TEXT_LEFT)) {
 
 			link_command(lp, "reg pm.zone_threshold -1");
 		}
@@ -5039,8 +5039,8 @@ page_telemetry(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		reg_float(pub, "tlm.grabfreq", "Grab into RAM frequency");
-		reg_float(pub, "tlm.livefreq", "Live frequency");
+		reg_float(pub, "tlm.rate_grab", "Grab into RAM frequency");
+		reg_float(pub, "tlm.rate_live", "Live frequency");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);

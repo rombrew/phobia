@@ -74,7 +74,7 @@ void CAN_startup()
 }
 
 static int
-CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
+CAN_wait_for_MSR(uint32_t xBITS, uint32_t xSET)
 {
 	uint32_t		xMSR;
 	int			wait_N = 0;
@@ -82,7 +82,7 @@ CAN_wait_for_MSR(uint32_t xBITS, uint32_t xVAL)
 	do {
 		xMSR = CAN1->MSR & xBITS;
 
-		if (xMSR == xVAL) {
+		if (xMSR == xSET) {
 
 			return HAL_OK;
 		}
@@ -111,7 +111,7 @@ void CAN_configure()
 	 * */
 	CAN1->MCR |= CAN_MCR_INRQ;
 
-	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) == 0) {
+	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
 
 		log_TRACE("CAN to INIT failed" EOL);
 	}
@@ -135,7 +135,7 @@ void CAN_configure()
 	 * */
 	CAN1->MCR &= ~CAN_MCR_INRQ;
 
-	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) == 0) {
+	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
 
 		log_TRACE("CAN to NORMAL failed" EOL);
 	}
