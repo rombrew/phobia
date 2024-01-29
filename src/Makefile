@@ -71,6 +71,12 @@ OBJS	=  app/as5047.o \
 	   app/hx711.o \
 	   app/mpu6050.o
 
+ifeq ($(OBJ_LIB_CHERRY), 1)
+OBJS	+= cherry/usb_dc_dwc2.o \
+	   cherry/usbd_cdc.o \
+	   cherry/usbd_core.o
+endif
+
 OBJS	+= freertos/heap_4.o \
 	   freertos/list.o \
 	   freertos/port.o \
@@ -106,12 +112,6 @@ OBJS	+= hal/adc.o \
 
 ifeq ($(OBJ_HAL_USB), 1)
 OBJS	+= hal/usb.o
-endif
-
-ifeq ($(OBJ_LIB_CHERRY), 1)
-OBJS	+= cherry/usb_dc_dwc2.o \
-	   cherry/usbd_cdc.o \
-	   cherry/usbd_core.o
 endif
 
 OBJS	+= phobia/libm.o \

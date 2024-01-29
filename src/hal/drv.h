@@ -13,7 +13,7 @@ enum {
 
 typedef struct {
 
-	int		part;
+	int		partno;
 
 	int		gpio_GATE_EN;
 	int		gpio_FAULT;

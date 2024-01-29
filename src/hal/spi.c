@@ -18,7 +18,7 @@ static priv_SPI_t		priv_SPI[3];
 
 void SPI_startup(int bus, int freq, int mode)
 {
-	int			clock, baud, size, cpol, N;
+	int			clock, baud, dsize, cpol, N;
 
 	switch (bus) {
 
@@ -97,22 +97,22 @@ void SPI_startup(int bus, int freq, int mode)
 	}
 
 #if defined(STM32F4)
-	size = ((mode & SPI_SIZE_8) == 0) ? 1U : 0U;
+	dsize = (mode & SPI_SIZE_8) ? 0U : 1U;
 
 	/* Configure SPI.
 	 * */
-	priv_SPI[bus].SPI->CR1 = (size << SPI_CR1_DFF_Pos) | SPI_CR1_SSM
+	priv_SPI[bus].SPI->CR1 = (dsize << SPI_CR1_DFF_Pos) | SPI_CR1_SSM
 		| SPI_CR1_SSI | (baud << SPI_CR1_BR_Pos) | SPI_CR1_MSTR | cpol;
 	priv_SPI[bus].SPI->CR2 = 0;
 
 #elif defined(STM32F7)
-	size = ((mode & SPI_SIZE_8) == 0) ? 15U : 7U;
+	dsize = (mode & SPI_SIZE_8) ? 7U : 15U;
 
 	/* Configure SPI.
 	 * */
 	priv_SPI[bus].SPI->CR1 = SPI_CR1_SSM | SPI_CR1_SSI
 		| (baud << SPI_CR1_BR_Pos) | SPI_CR1_MSTR | cpol;
-	priv_SPI[bus].SPI->CR2 = size << SPI_CR2_DS_Pos;
+	priv_SPI[bus].SPI->CR2 = dsize << SPI_CR2_DS_Pos;
 #endif /* STM32Fx */
 
 	switch (bus) {
@@ -184,10 +184,12 @@ void SPI_startup(int bus, int freq, int mode)
 		TIM8->CCR3 = 42;	/* rxbuf = DR */
 		TIM8->CCR4 = 42;	/* NSS = 1 */
 
+		dsize = (mode & SPI_SIZE_8) ? 0U : 1U;
+
 		/* DMA on TIM8_CH3.
 		 * */
 		DMA2_Stream4->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
-			| (1U << DMA_SxCR_MSIZE_Pos) | (1U << DMA_SxCR_PSIZE_Pos)
+			| (dsize << DMA_SxCR_MSIZE_Pos) | (dsize << DMA_SxCR_PSIZE_Pos)
 			| DMA_SxCR_MINC;
 		DMA2_Stream4->PAR = (uint32_t) &priv_SPI[bus].SPI->DR;
 		DMA2_Stream4->FCR = DMA_SxFCR_DMDIS;
@@ -195,7 +197,7 @@ void SPI_startup(int bus, int freq, int mode)
 		/* DMA on TIM8_CH2.
 		 * */
 		DMA2_Stream3->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
-			| (1U << DMA_SxCR_MSIZE_Pos) | (1U << DMA_SxCR_PSIZE_Pos)
+			| (dsize << DMA_SxCR_MSIZE_Pos) | (dsize << DMA_SxCR_PSIZE_Pos)
 			| DMA_SxCR_MINC | DMA_SxCR_DIR_0;
 		DMA2_Stream3->PAR = (uint32_t) &priv_SPI[bus].SPI->DR;
 		DMA2_Stream3->FCR = DMA_SxFCR_DMDIS;

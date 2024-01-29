@@ -3229,7 +3229,7 @@ page_hal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "hal.DRV.part", "DRV part", 1);
+	reg_enum_combo(pub, "hal.DRV.partno", "DRV partno", 1);
 	reg_enum_toggle(pub, "hal.DRV.auto_RESTART", "DRV automatic restart");
 	reg_float(pub, "hal.DRV.status_raw", "DRV status raw");
 	reg_float(pub, "hal.DRV.gate_current", "DRV gate current");

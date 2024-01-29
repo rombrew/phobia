@@ -4,7 +4,7 @@
 #include "cmsis/stm32xx.h"
 
 #ifndef HW_DRV_FREQUENCY
-#define HW_DRV_FREQUENCY		4000000U	/* (Hz) */
+#define HW_DRV_FREQUENCY		2000000U	/* (Hz) */
 #endif /* HW_DRV_FREQUENCY */
 
 static int
@@ -56,7 +56,7 @@ DRV8301_configure()
 
 	if (hal.DRV.ocp_level < 32) {
 
-		config |= 0x010U | ((hal.DRV.ocp_level & 0x1FU) << 5);
+		config |= 0x010U | ((hal.DRV.ocp_level & 0x1FU) << 6);
 	}
 	else {
 		config |= 0x630U;
@@ -101,11 +101,11 @@ DRV8301_startup()
 
 void DRV_startup()
 {
-	if (hal.DRV.part == DRV_PART_DRV8301) {
+	if (hal.DRV.partno == DRV_PART_DRV8301) {
 
 		DRV8301_startup();
 	}
-	else if (hal.DRV.part == DRV_PART_DRV8305) {
+	else if (hal.DRV.partno == DRV_PART_DRV8305) {
 
 		/* TODO */
 	}
@@ -127,14 +127,14 @@ void DRV_halt()
 
 void DRV_configure()
 {
-	if (hal.DRV.part == DRV_PART_DRV8301) {
+	if (hal.DRV.partno == DRV_PART_DRV8301) {
 
 		if (hal.DRV.gate_ON != 0) {
 
 			DRV8301_configure();
 		}
 	}
-	else if (hal.DRV.part == DRV_PART_DRV8305) {
+	else if (hal.DRV.partno == DRV_PART_DRV8305) {
 
 		/* TODO */
 	}
@@ -142,14 +142,14 @@ void DRV_configure()
 
 void DRV_status()
 {
-	if (hal.DRV.part == DRV_PART_DRV8301) {
+	if (hal.DRV.partno == DRV_PART_DRV8301) {
 
 		if (hal.DRV.gate_ON != 0) {
 
 			hal.DRV.status_raw = DRV_read_reg(0);
 		}
 	}
-	else if (hal.DRV.part == DRV_PART_DRV8305) {
+	else if (hal.DRV.partno == DRV_PART_DRV8305) {
 
 		/* TODO */
 	}

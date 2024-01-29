@@ -285,6 +285,7 @@ LD_TASK void task_TEMP(void *pData)
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
+				&& pm.lu_MODE == PM_LU_DISABLED
 				&& DRV_fault() != 0) {
 
 			DRV_status();
@@ -533,7 +534,7 @@ default_flash_load()
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_DRV_ON_PCB
-	hal.DRV.part = HW_DRV_PARTNO;
+	hal.DRV.partno = HW_DRV_PARTNO;
 	hal.DRV.auto_RESTART = PM_ENABLED;
 	hal.DRV.gpio_GATE_EN = GPIO_DRV_GATE_EN;
 	hal.DRV.gpio_FAULT = GPIO_DRV_FAULT;

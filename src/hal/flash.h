@@ -5,13 +5,14 @@
 
 typedef struct {
 
-	int		first;
+	int		begin;
 	int		total;
+
+	uint32_t	map[6];
 }
 FLASH_config_t;
 
 extern const FLASH_config_t	FLASH_config;
-extern const uint32_t		FLASH_map[];
 
 void *FLASH_erase(void *flash);
 void FLASH_prog(void *flash, uint32_t value);

@@ -28,8 +28,8 @@ typedef struct {
 	}
 	packed;
 
-	int			bspin;
-	int			bleft;
+	int			index;
+	int			total;
 }
 flash_prog_t;
 
@@ -38,18 +38,18 @@ flash_prog_putc(flash_prog_t *pg, int c)
 {
 	int			rc = 0;
 
-	if (pg->bleft > 0) {
+	if (pg->total >= 4) {
 
-		pg->packed.b[pg->bspin++] = (uint8_t) c;
+		pg->packed.b[pg->index++] = (uint8_t) c;
 
-		if (pg->bspin >= 4) {
+		if (pg->index >= 4) {
 
 			FLASH_prog(pg->flash, pg->packed.l);
 
 			pg->flash += 1;
-			pg->bspin = 0;
+			pg->total -= 4;
 
-			pg->bleft -= 4;
+			pg->index = 0;
 		}
 
 		rc = 1;
@@ -109,7 +109,7 @@ flash_block_scan()
 {
 	flash_block_t		*block, *last;
 
-	block = (void *) FLASH_map[0];
+	block = (flash_block_t *) FLASH_config.map[0];
 	last = NULL;
 
 	do {
@@ -127,7 +127,7 @@ flash_block_scan()
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
+		if ((uint32_t) block >= FLASH_config.map[FLASH_config.total])
 			break;
 	}
 	while (1);
@@ -183,8 +183,6 @@ int flash_block_regs_load()
 
 			if (reg != NULL && reg->mode & REG_CONFIG) {
 
-				/* Load binary VALUE.
-				 * */
 				memcpy(reg->link, lsym + 1, sizeof(uint32_t));
 			}
 
@@ -240,8 +238,8 @@ flash_prog_config_regs(flash_block_t *block)
 	int			rc = 0;
 
 	pg.flash = block->content;
-	pg.bspin = 0;
-	pg.bleft = sizeof(block->content);
+	pg.index = 0;
+	pg.total = sizeof(block->content);
 
 	for (reg = regfile; reg->sym != NULL; ++reg) {
 
@@ -249,7 +247,7 @@ flash_prog_config_regs(flash_block_t *block)
 
 			lsym = reg->sym;
 
-			/* Store symbolic NAME of register.
+			/* Store symbolic NAME of the register.
 			 * */
 			while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
 
@@ -262,8 +260,6 @@ flash_prog_config_regs(flash_block_t *block)
 				while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
 			}
 			else {
-				/* Store binary VALUE.
-				 * */
 				flash_prog_putc(&pg, 0xFF);
 				flash_prog_long(&pg, reg->link->i);
 			}
@@ -275,7 +271,7 @@ flash_prog_config_regs(flash_block_t *block)
 
 	if (rc != 0) {
 
-		/* Fill the tail.
+		/* Fill the tail with 0xFF.
 		 * */
 		while (flash_prog_putc(&pg, 0xFF) != 0) ;
 	}
@@ -297,12 +293,12 @@ flash_block_prog()
 		number = block->number + 1;
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
-			block = (void *) FLASH_map[0];
+		if ((uint32_t) block >= FLASH_config.map[FLASH_config.total])
+			block = (flash_block_t *) FLASH_config.map[0];
 	}
 	else {
 		number = 1;
-		block = (void *) FLASH_map[0];
+		block = (flash_block_t *) FLASH_config.map[0];
 	}
 
 	origin = block;
@@ -311,12 +307,12 @@ flash_block_prog()
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
-			block = (void *) FLASH_map[0];
+		if ((uint32_t) block >= FLASH_config.map[FLASH_config.total])
+			block = (flash_block_t *) FLASH_config.map[0];
 
 		if (block == origin) {
 
-			/* All flash is dirty.
+			/* All flash storage is dirty.
 			 * */
 			block = FLASH_erase(block);
 			break;
@@ -359,7 +355,7 @@ SH_DEF(flash_info)
 	flash_block_t			*block;
 	int				N, info_sym;
 
-	block = (void *) FLASH_map[0];
+	block = (flash_block_t *) FLASH_config.map[0];
 	N = 0;
 
 	do {
@@ -380,7 +376,7 @@ SH_DEF(flash_info)
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[N + 1]) {
+		if ((uint32_t) block >= FLASH_config.map[N + 1]) {
 
 			puts(EOL);
 
@@ -404,7 +400,7 @@ SH_DEF(flash_wipe)
 		return ;
 	}
 
-	block = (void *) FLASH_map[0];
+	block = (flash_block_t *) FLASH_config.map[0];
 
 	do {
 		if (flash_block_crc32(block) == block->crc32) {
@@ -414,7 +410,7 @@ SH_DEF(flash_wipe)
 
 		block += 1;
 
-		if ((uint32_t) block >= FLASH_map[FLASH_config.total])
+		if ((uint32_t) block >= FLASH_config.map[FLASH_config.total])
 			break;
 	}
 	while (1);

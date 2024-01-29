@@ -206,7 +206,7 @@ reg_proc_DPS(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 #ifdef HW_HAVE_DRV_ON_PCB
 static void
-reg_proc_DRV_part(const reg_t *reg, rval_t *lval, const rval_t *rval)
+reg_proc_DRV_partno(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
 
@@ -1065,7 +1065,7 @@ reg_format_enum(const reg_t *reg)
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_DRV_ON_PCB
-		case ID_HAL_DRV_PART:
+		case ID_HAL_DRV_PARTNO:
 
 			switch (val) {
 
@@ -1482,7 +1482,7 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_DRV_ON_PCB
-	REG_DEF(hal.DRV.part,,,		"",	"%0i",	REG_CONFIG, &reg_proc_DRV_part, &reg_format_enum),
+	REG_DEF(hal.DRV.partno,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_partno, &reg_format_enum),
 	REG_DEF(hal.DRV.auto_RESTART,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(hal.DRV.status_raw,,,	"",	"%4x",	REG_READ_ONLY, &reg_proc_DRV_status, NULL),
 	REG_DEF(hal.DRV.gate_current,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, NULL),

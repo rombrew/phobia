@@ -8,11 +8,11 @@
 #endif /* HW_HAVE_NETWORK_EPCAN */
 #include "libc.h"
 
-#define SH_CLINE_SZ			84
-#define SH_HISTORY_SZ			240
+#define SH_CLINE_MAX			84
+#define SH_HISTORY_MAX			240
 
-#define SH_HIST_INC(n)                 	(((n) < (SH_HISTORY_SZ - 1)) ? (n) + 1 : 0)
-#define SH_HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_SZ - 1)
+#define SH_HIST_INC(n)                 	(((n) < (SH_HISTORY_MAX - 1)) ? (n) + 1 : 0)
+#define SH_HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_MAX - 1)
 
 static const char
 SH_ALLOWED[] = "+-_. ",
@@ -28,7 +28,7 @@ typedef struct {
 
 	/* Base SH data.
 	 * */
-	char		cline[SH_CLINE_SZ];
+	char		cline[SH_CLINE_MAX];
 	int		ceol, xesc;
 	char		*parg;
 
@@ -38,7 +38,7 @@ typedef struct {
 
 	/* History feature.
 	 * */
-	char		chist[SH_HISTORY_SZ];
+	char		chist[SH_HISTORY_MAX];
 	int		mhist, hhead, htail, hnum;
 }
 priv_sh_t;
@@ -131,7 +131,7 @@ sh_cyclic_match(priv_sh_t *sh, int xd)
 
 			/* Copy the command name.
 			 * */
-			strcpyn(sh->cline, id, SH_CLINE_SZ - 2);
+			strcpyn(sh->cline, id, SH_CLINE_MAX - 2);
 
 			break;
 		}
@@ -178,7 +178,7 @@ sh_common_match(priv_sh_t *sh)
 
 	if (sp != NULL) {
 
-		n = (n > SH_CLINE_SZ - 2) ? SH_CLINE_SZ - 2 : n;
+		n = (n > SH_CLINE_MAX - 2) ? SH_CLINE_MAX - 2 : n;
 
 		strcpyn(sh->cline, sp, n);
 		sh->ceon = n;
@@ -382,7 +382,7 @@ sh_complete(priv_sh_t *sh, int xd)
 			 * */
 			sh->ceol = sh->ceon;
 
-			if (sh->ceol < SH_CLINE_SZ - 2) {
+			if (sh->ceol < SH_CLINE_MAX - 2) {
 
 				/* Put trailing space since completion is done.
 				 * */
@@ -475,7 +475,7 @@ sh_history(priv_sh_t *sh, int xd)
 static void
 sh_line_putc(priv_sh_t *sh, char c)
 {
-	if (sh->ceol < SH_CLINE_SZ - 2) {
+	if (sh->ceol < SH_CLINE_MAX - 2) {
 
 		sh->cline[sh->ceol++] = c;
 		sh->cline[sh->ceol] = 0;
