@@ -5,11 +5,11 @@ conditions. We will consider the most important of them.
 
 ## Forced control
 
-If the machine is at low speed then FLUX observer is unable to provide reliable
-estimates. You need to use some sort of position sensor. If this is not
-possible the forced control is used. We apply a current vector without feedback
-to force rotor turn. You can adapt the current value and acceleration to your
-needs.
+If the machine is at low speed then sensorless flux observer is unable to
+provide reliable estimates. You need to use some sort of position sensor. If
+this is not possible the forced control is used. We apply a current vector
+without feedback to force rotor turn. You can adapt the current value and
+acceleration to your needs.
 
 	(pmc) reg pm.forced_hold_D <A>
 	(pmc) reg pm.forced_accel <rad/s2>

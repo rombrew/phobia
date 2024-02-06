@@ -18,6 +18,7 @@ typedef struct {
 	int			ppm_STARTUP;
 	int			ppm_ACTIVE;
 	int			ppm_DISARM;
+	int			ppm_FAULT;
 	float			ppm_range[3];
 	float			ppm_control[3];
 
@@ -46,11 +47,12 @@ typedef struct {
 	int			knob_STARTUP;
 	int			knob_ACTIVE;
 	int			knob_DISARM;
+	int			knob_FAULT;
 	float			knob_range_ANG[3];
 #ifdef HW_HAVE_BRAKE_KNOB
 	float			knob_range_BRK[2];
 #endif /* HW_HAVE_BRAKE_KNOB */
-	float			knob_range_LST[2];
+	float			knob_range_LOS[2];
 	float			knob_control_ANG[3];
 	float			knob_control_BRK;
 #endif /* HW_HAVE_ANALOG_KNOB */

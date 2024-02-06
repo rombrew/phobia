@@ -13,7 +13,7 @@ int ts_wait_for_spinup();
 
 void ts_script_default();
 void ts_script_base();
-void ts_script_verify();
+void ts_script_test();
 
 #endif /* _H_TSFUNC_ */
 

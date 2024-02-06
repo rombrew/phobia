@@ -506,7 +506,7 @@ typedef struct {
 	float		const_im_R;
 	float		const_ld_S;
 
-	float		quick_iUdc;
+	float		quick_iUDC;
 	float		quick_iWb;
 	float		quick_iWb2;
 	float		quick_iL1;
@@ -565,6 +565,14 @@ typedef struct {
 	float		v_maximal;
 	float		v_reverse;
 
+	int		v_DC_MAX;
+	int		v_DC_MIN;
+
+	float		v_uDC_tol;
+	float		v_integral;
+	float		v_gain_P;
+	float		v_gain_I;
+
 	float		s_setpoint_speed;
 	float		s_maximal;
 	float		s_reverse;
@@ -577,6 +585,8 @@ typedef struct {
 	float		s_gain_D;
 	float		s_gain_Q;
 
+	int		l_track_TIM;
+	float		l_track;
 	float		l_track_tol;
 	float		l_blend;
 	float		l_gain_LP;
@@ -586,11 +596,11 @@ typedef struct {
 	float		x_maximal;
 	float		x_minimal;
 	float		x_damping;
-	float		x_tolerance;
+	float		x_residual_tol;
 	float		x_gain_P;
 	float		x_gain_D;
 
-	float		dbg[2];
+	float		d_flux_rsu;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

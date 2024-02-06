@@ -125,7 +125,7 @@ void blm_enable(blm_t *m)
 	m->range_A = 165.;	/* (Ampere) */
 	m->range_B = 60.;	/* (Volt)   */
 
-	/* Hall sensor mount angles.
+	/* Hall sensor installation angles.
 	 * */
 	m->hall[0] = 30.7;
 	m->hall[1] = 150.1;

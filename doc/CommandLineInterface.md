@@ -1,7 +1,7 @@
 ## Overview
 
 This page introduces you to the Command Line Interface (CLI). We have a regular
-CLI with autocompletion and command history.
+CLI with autocompletion function and command history.
 
 ## Key mapping
 

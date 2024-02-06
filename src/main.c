@@ -47,7 +47,7 @@ void vAssertHook(const char *file, int line)
 void vApplicationMallocFailedHook()
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Heap Allocation Failed" EOL);
+	log_TRACE("FreeRTOS: Heap allocation fault" EOL);
 
 	hal_system_reset();
 }
@@ -55,7 +55,7 @@ void vApplicationMallocFailedHook()
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Stack Overflow in %8x task" EOL, (uint32_t) xTask);
+	log_TRACE("FreeRTOS: Stack overflow in %8x task" EOL, (uint32_t) xTask);
 
 	hal_system_reset();
 }
@@ -333,24 +333,32 @@ conv_KNOB()
 
 		ap.knob_ACTIVE = PM_DISABLED;
 		ap.knob_DISARM = PM_ENABLED;
+
+		ap.knob_FAULT = 0;
 	}
 
-	if (		   ap.knob_in_ANG < ap.knob_range_LST[0]
-			|| ap.knob_in_ANG > ap.knob_range_LST[1]) {
+	if (		   ap.knob_in_ANG < ap.knob_range_LOS[0]
+			|| ap.knob_in_ANG > ap.knob_range_LOS[1]) {
+
+		scaled = - 1.f;
 
 		/* Loss of KNOB signal.
 		 * */
-		scaled = - 1.f;
 
 		if (ap.knob_ACTIVE == PM_ENABLED) {
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-			}
+				ap.knob_FAULT++;
 
-			ap.knob_ACTIVE = PM_DISABLED;
+				if (unlikely(ap.knob_FAULT >= 10)) {
+
+					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+					ap.knob_ACTIVE = PM_DISABLED;
+				}
+			}
 		}
 
 		ap.knob_DISARM = PM_ENABLED;
@@ -410,6 +418,8 @@ conv_KNOB()
 				}
 			}
 		}
+
+		ap.knob_FAULT = 0;
 	}
 
 	if (scaled < 0.f) {
@@ -423,8 +433,8 @@ conv_KNOB()
 	}
 
 #ifdef HW_HAVE_BRAKE_KNOB
-	if (		   ap.knob_in_BRK < ap.knob_range_LST[0]
-			|| ap.knob_in_BRK > ap.knob_range_LST[1]) {
+	if (		   ap.knob_in_BRK < ap.knob_range_LOS[0]
+			|| ap.knob_in_BRK > ap.knob_range_LOS[1]) {
 
 		/* Loss of BRAKE signal.
 		 * */
@@ -524,6 +534,10 @@ default_flash_load()
 	hal.ADC_sample_time = ADC_SMP_28;
 	hal.ADC_sample_advance = ADC_SAMPLE_ADVANCE;
 
+#ifdef HW_HAVE_NETWORK_EPCAN
+	hal.CAN_bitfreq = CAN_BITFREQ_HZ;
+#endif /* HW_HAVE_NETWORK_EPCAN */
+
 	hal.DPS_mode = DPS_DISABLED;
 	hal.PPM_mode = PPM_DISABLED;
 	hal.PPM_frequency = 2000000;	/* (Hz) */
@@ -540,7 +554,6 @@ default_flash_load()
 	hal.DRV.gpio_FAULT = GPIO_DRV_FAULT;
 	hal.DRV.gate_current = HW_DRV_GATE_CURRENT;
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
-	hal.DRV.fault_safety = HW_DRV_FAULT_SAFETY;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
@@ -596,8 +609,8 @@ default_flash_load()
 	ap.knob_range_BRK[0] = 2.0f;	/* (V) */
 	ap.knob_range_BRK[1] = 4.0f;	/* (V) */
 #endif /* HW_HAVE_BRAKE_KNOB */
-	ap.knob_range_LST[0] = 0.2f;	/* (V) */
-	ap.knob_range_LST[1] = 4.8f;	/* (V) */
+	ap.knob_range_LOS[0] = 0.2f;	/* (V) */
+	ap.knob_range_LOS[1] = 4.8f;	/* (V) */
 	ap.knob_control_ANG[0] = 0.f;
 	ap.knob_control_ANG[1] = 50.f;
 	ap.knob_control_ANG[2] = 100.f;
@@ -728,9 +741,9 @@ LD_TASK void task_INIT(void *pData)
 	seed[1] = RNG_urand();
 	seed[2] = RNG_urand();
 
-	if (seed[1] == seed[2]) {
+	if (unlikely(seed[1] == seed[2])) {
 
-		log_TRACE("RNG failed" EOL);
+		log_TRACE("RNG fault %8x" EOL, seed[2]);
 	}
 
 	/* Initial SEED.
@@ -918,17 +931,24 @@ in_PULSE_WIDTH()
 	if (ap.ppm_FREQ > M_EPSILON) {
 
 		conv_PULSE_WIDTH();
+
+		ap.ppm_FAULT = 0;
 	}
 	else {
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
-				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-			}
+				ap.ppm_FAULT++;
 
-			ap.ppm_ACTIVE = PM_DISABLED;
+				if (unlikely(ap.ppm_FAULT >= 10)) {
+
+					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+					ap.ppm_ACTIVE = PM_DISABLED;
+				}
+			}
 		}
 
 		ap.ppm_DISARM = PM_ENABLED;

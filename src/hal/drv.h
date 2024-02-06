@@ -1,10 +1,6 @@
 #ifndef _H_DRV_
 #define _H_DRV_
 
-#ifndef HW_DRV_FAULT_SAFETY
-#define HW_DRV_FAULT_SAFETY		40
-#endif /* HW_DRV_FAULT_SAFETY */
-
 enum {
 	DRV_NONE		= 0,
 	DRV_PART_DRV8301,
@@ -22,9 +18,8 @@ typedef struct {
 	int		status_raw;
 	int		gate_current;
 	int		ocp_level;
-	int		fault_safety;
 
-	int		gate_ON;
+	int		partno_ENABLED;
 	int		fault_CNT;
 }
 DRV_config_t;
@@ -34,7 +29,11 @@ void DRV_halt();
 
 void DRV_configure();
 void DRV_status();
+
 int DRV_fault();
+
+float DRV_gate_current();
+float DRV_ocp_level();
 
 #endif /* _H_DRV_ */
 

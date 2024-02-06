@@ -7,8 +7,8 @@ PMC internals. Also this page will be useful for understanding.
 
 We have a three-phase Voltage Source Inverter (VSI) which consists of at least
 six metal–oxide–semiconductor field-effect transistors (MOSFET). The voltage at
-each of the output terminals is measured. Phase current A and B (optionally
-C) is measured. The output terminals are connected to the machine.
+each of the output terminals is measured. Phase current A and B (optionally C)
+is measured. The output terminals are connected to the machine.
 
 ```
 	  (VCC) >---+--------+---------+---------+
@@ -88,10 +88,11 @@ amount of uncertainty in the output voltage `dU` expressed as follows:
 ```
 
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
-terminal voltage (uA, uB, uC). This RC scheme forms an exponential integrator
-that allows us to restore the pulse width by measured voltage. Additional
-resistor R3 is used to bias the operating point into the linear region. You
-can skip voltage sensing if you do not need related features.
+terminal voltage (uA, uB, uC) and supply voltage (uS). This RC scheme forms an
+exponential integrator that allows us to restore the pulse width by measured
+voltage. Additional resistor R3 is used to bias the operating point into the
+linear region. You can skip the terminal voltage sensing if you do not need
+related features but supply voltage measuring is mandatory.
 
 To get acceptable accuracy you need to make sure that the RC scheme time
 constant is comparable to dT. Also make sure that your capacitors are stable
@@ -143,9 +144,7 @@ measurement you will need to configure the software appropriately.
 	        +---< Terminal
 ```
 
-Also supply voltage (uS) is measured using a voltage divider.
-
-## Control loop
+## Sampling scheme
 
 Currents are sampled strictly in the middle of PWM period simultaneously using
 three ADCs. Then the voltages and other signals are sampled depending on
@@ -188,9 +187,9 @@ switching occur at this time then ADC result is discarded.
 	     |             |        |   |        |             |
 	  ---*--*--*-------------------------------------------*--*--*--------
 	                                         |             |
-                                          -->|  clearence  |<--
-                                                           |      |
-                                                        -->| skip |<--
+	                                      -->|  clearence  |<--
+	                                                       |      |
+	                                                    -->| skip |<--
 ```
 
 The diagram above shows `clearance` and `skip` parameters that is used in

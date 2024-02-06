@@ -6,22 +6,22 @@ void irq_CAN1_TX() { }
 static void
 irq_CAN1_RX(int mb)
 {
-	uint32_t			xRDLR, xRDHR;
+	uint32_t			xLO, xHI;
 
-	hal.CAN_msg.ID = (uint16_t) (CAN1->sFIFOMailBox[mb].RIR >> 21);
-	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & 0xFU);
+	hal.CAN_msg.ID = (uint16_t) (CAN1->sFIFOMailBox[mb].RIR >> CAN_RI0R_STID_Pos);
+	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & CAN_RDT0R_DLC_Msk);
 
-	xRDLR = CAN1->sFIFOMailBox[mb].RDLR;
-	xRDHR = CAN1->sFIFOMailBox[mb].RDHR;
+	xLO = CAN1->sFIFOMailBox[mb].RDLR;
+	xHI = CAN1->sFIFOMailBox[mb].RDHR;
 
-	hal.CAN_msg.payload[0] = (uint8_t) ((xRDLR >> 0)  & 0xFFU);
-	hal.CAN_msg.payload[1] = (uint8_t) ((xRDLR >> 8)  & 0xFFU);
-	hal.CAN_msg.payload[2] = (uint8_t) ((xRDLR >> 16) & 0xFFU);
-	hal.CAN_msg.payload[3] = (uint8_t) ((xRDLR >> 24) & 0xFFU);
-	hal.CAN_msg.payload[4] = (uint8_t) ((xRDHR >> 0)  & 0xFFU);
-	hal.CAN_msg.payload[5] = (uint8_t) ((xRDHR >> 8)  & 0xFFU);
-	hal.CAN_msg.payload[6] = (uint8_t) ((xRDHR >> 16) & 0xFFU);
-	hal.CAN_msg.payload[7] = (uint8_t) ((xRDHR >> 24) & 0xFFU);
+	hal.CAN_msg.payload[0] = (uint8_t) ((xLO >> 0)  & 0xFFU);
+	hal.CAN_msg.payload[1] = (uint8_t) ((xLO >> 8)  & 0xFFU);
+	hal.CAN_msg.payload[2] = (uint8_t) ((xLO >> 16) & 0xFFU);
+	hal.CAN_msg.payload[3] = (uint8_t) ((xLO >> 24) & 0xFFU);
+	hal.CAN_msg.payload[4] = (uint8_t) ((xHI >> 0)  & 0xFFU);
+	hal.CAN_msg.payload[5] = (uint8_t) ((xHI >> 8)  & 0xFFU);
+	hal.CAN_msg.payload[6] = (uint8_t) ((xHI >> 16) & 0xFFU);
+	hal.CAN_msg.payload[7] = (uint8_t) ((xHI >> 24) & 0xFFU);
 }
 
 void irq_CAN1_RX0()
@@ -74,10 +74,10 @@ void CAN_startup()
 }
 
 static int
-CAN_wait_for_MSR(uint32_t xBITS, uint32_t xSET)
+CAN_wait_MSR(uint32_t xBITS, uint32_t xSET)
 {
 	uint32_t		xMSR;
-	int			wait_N = 0;
+	int			N = 0;
 
 	do {
 		xMSR = CAN1->MSR & xBITS;
@@ -89,45 +89,65 @@ CAN_wait_for_MSR(uint32_t xBITS, uint32_t xSET)
 
 		__NOP();
 
-		wait_N++;
+		N++;
 	}
-	while (wait_N < 70000U);
+	while (N < 70000U);
 
 	return HAL_FAULT;
 }
 
 void CAN_configure()
 {
-	/* No mode SLEEP.
+	int		BRP, TS1, TS2;
+
+	/* Exit mode SLEEP.
 	 * */
 	CAN1->MCR &= ~CAN_MCR_SLEEP;
 
-	if (CAN_wait_for_MSR(CAN_MSR_SLAK, 0) != HAL_OK) {
+	if (CAN_wait_MSR(CAN_MSR_SLAK, 0) != HAL_OK) {
 
-		log_TRACE("CAN from SLEEP failed" EOL);
+		log_TRACE("CAN no SLEEP fault" EOL);
 	}
 
 	/* Go to mode INIT.
 	 * */
 	CAN1->MCR |= CAN_MCR_INRQ;
 
-	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
+	if (CAN_wait_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
 
-		log_TRACE("CAN to INIT failed" EOL);
+		log_TRACE("CAN to INIT fault" EOL);
 	}
 
 	CAN1->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP;
+
+	/* Enable message pending IRQs.
+	 * */
 	CAN1->IER = CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
 
-	/* Bit timing (1 Mb/s).
-	 * */
-	CAN1->BTR = (5U << 20) | (6U << 16) | (2U);
+#if defined(STM32F4)
+	TS1 = 7;
+	TS2 = 6;
+#elif defined(STM32F7)
+	TS1 = 9;
+	TS2 = 8;
+#endif /* STM32Fx */
 
+	BRP = (CLOCK_APB1_HZ / hal.CAN_bitfreq + 5U) / (1U + TS1 + TS2);
+
+	/* Update bit timing.
+	 * */
+	CAN1->BTR = ((TS2 - 1U) << CAN_BTR_TS2_Pos)
+		| ((TS1 - 1U) << CAN_BTR_TS1_Pos) | (BRP - 1U);
+
+	hal.CAN_bitfreq = CLOCK_APB1_HZ / BRP / (1U + TS1 + TS2);
+
+#ifdef STM32F4
 	CAN1->FMR |= CAN_FMR_FINIT;
 
 	/* Enable all 28 filters to CAN1.
 	 * */
-	MODIFY_REG(CAN1->FMR, 0x3F00U, 28U << 8);
+	MODIFY_REG(CAN1->FMR, CAN_FMR_CAN2SB_Msk, 28U << CAN_FMR_CAN2SB_Pos);
+#endif /* STM32F4 */
 
 	CAN1->FMR &= ~CAN_FMR_FINIT;
 
@@ -135,13 +155,13 @@ void CAN_configure()
 	 * */
 	CAN1->MCR &= ~CAN_MCR_INRQ;
 
-	if (CAN_wait_for_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
+	if (CAN_wait_MSR(CAN_MSR_INAK, CAN_MSR_INAK) != HAL_OK) {
 
-		log_TRACE("CAN to NORMAL failed" EOL);
+		log_TRACE("CAN to NORMAL fault" EOL);
 	}
 }
 
-void CAN_filter_ID(int fs, int mb, int ID, int mID)
+void CAN_bind_ID(int fs, int mb, int ID, int mask_ID)
 {
 	uint32_t		BFS = (1U << fs);
 
@@ -156,8 +176,8 @@ void CAN_filter_ID(int fs, int mb, int ID, int mID)
 		CAN1->FFA1R &= ~BFS;
 		CAN1->FFA1R |= (mb == 1) ? BFS : 0U;
 
-		CAN1->sFilterRegister[fs].FR1 = (ID << 21);
-		CAN1->sFilterRegister[fs].FR2 = (mID << 21) + 6U;
+		CAN1->sFilterRegister[fs].FR1 = (ID << CAN_F0R1_FB21_Pos);
+		CAN1->sFilterRegister[fs].FR2 = (mask_ID << CAN_F0R2_FB21_Pos) + 6U;
 
 		CAN1->FA1R |= BFS;
 	}
@@ -184,7 +204,7 @@ int CAN_send_msg(const CAN_msg_t *msg)
 		return HAL_FAULT;
 	}
 
-	CAN1->sTxMailBox[mb].TIR = (uint32_t) msg->ID << 21;
+	CAN1->sTxMailBox[mb].TIR = (uint32_t) msg->ID << CAN_TI0R_STID_Pos;
 	CAN1->sTxMailBox[mb].TDTR = (uint32_t) msg->len;
 
 	CAN1->sTxMailBox[mb].TDLR =
@@ -204,5 +224,16 @@ int CAN_send_msg(const CAN_msg_t *msg)
 	hal_unlock_irq(irq);
 
 	return HAL_OK;
+}
+
+int CAN_errate()
+{
+	int		errate;
+
+	errate =  ((CAN1->ESR & CAN_ESR_REC_Msk) >> (CAN_ESR_REC_Pos - 8U))
+		| ((CAN1->ESR & CAN_ESR_TEC_Msk) >> (CAN_ESR_TEC_Pos - 3U))
+		| ((CAN1->ESR & CAN_ESR_LEC_Msk) >> CAN_ESR_LEC_Pos);
+
+	return errate;
 }
 

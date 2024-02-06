@@ -5,7 +5,7 @@
 
 #include "regfile.h"
 
-#define TLM_DATA_MAX		20000	/* memory to keep telemetry data */
+#define TLM_DATA_MAX		20000
 #define TLM_INPUT_MAX		10
 
 enum {
@@ -34,7 +34,7 @@ typedef struct {
 	int		rate;
 	int		line;
 
-	rval_t		rdata[TLM_DATA_MAX];
+	rval_t		rdata[TLM_DATA_MAX];	/* memory to keep telemetry data */
 }
 tlm_t;
 

@@ -70,8 +70,8 @@ the control variable will be interpolated to this value.
 If you need you can change input lost range. If signal goes beyond this range
 it is considered lost and halt happens with `PM_ERROR_SENSOR_HALL_FAULT` reason.
 
-	(pmc) reg ap.knob_range_LST0 <V>
-	(pmc) reg ap.knob_range_LST1 <V>
+	(pmc) reg ap.knob_range_LOS0 <V>
+	(pmc) reg ap.knob_range_LOS1 <V>
 
 Enable machine startup control. Each time when `ANG` signal is in range the
 startup is requested.

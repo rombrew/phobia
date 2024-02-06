@@ -7,7 +7,7 @@
 #include "main.h"
 #include "regfile.h"
 
-/* The application allows you to startup PMC permanently.
+/* The application allows you to startup PMC automatically.
  * */
 
 LD_TASK void app_AUTOSTART(void *pData)

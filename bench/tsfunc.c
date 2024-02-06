@@ -671,7 +671,7 @@ ts_script_eabi(int knob_EABI)
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 }
 
-void ts_script_verify()
+void ts_script_test()
 {
 	blm_enable(&m);
 	blm_restart(&m);
@@ -701,6 +701,8 @@ void ts_script_verify()
 
 	printf("\n---- Turnigy RotoMax 1.20 ----\n");
 
+	tlm_restart();
+
 	m.Rs = 14.E-3;
 	m.Ld = 10.E-6;
 	m.Lq = 15.E-6;
@@ -726,7 +728,9 @@ void ts_script_verify()
 	ts_script_eabi(PM_EABI_ABSOLUTE);
 	blm_restart(&m);
 
-	printf("\n---- 8-inch Hub Motor (350W) ----\n");
+	printf("\n---- Hub Motor (250W) ----\n");
+
+	tlm_restart();
 
 	m.Rs = 0.24;
 	m.Ld = 520.E-6;

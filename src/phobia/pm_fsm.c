@@ -1638,6 +1638,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->hfi_wave[0] = 0.f;
 				pm->hfi_wave[1] = 1.f;
 
+				pm->hall_ERN = 0;
 				pm->hall_F[0] = 1.f;
 				pm->hall_F[1] = 0.f;
 				pm->hall_wS = 0.f;
@@ -1679,10 +1680,15 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 
+				pm->v_DC_MAX = PM_DISABLED;
+				pm->v_DC_MIN = PM_DISABLED;
+				pm->v_integral = 0.f;
+
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
 				pm->s_integral = 0.f;
 
+				pm->l_track = 0.f;
 				pm->l_blend = 0.f;
 
 				pm->x_setpoint_location = 0.f;
@@ -1696,7 +1702,28 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 					pm->proc_set_Z(PM_Z_ABC);
 				}
 				else {
-					pm->lu_MODE = PM_LU_ESTIMATE;
+					if (pm->config_LU_ESTIMATE != PM_FLUX_NONE) {
+
+						pm->lu_MODE = PM_LU_ESTIMATE;
+					}
+					else if (pm->config_LU_SENSOR == PM_SENSOR_HALL) {
+
+						pm->lu_MODE = PM_LU_SENSOR_HALL;
+					}
+					else if (	pm->config_LU_SENSOR == PM_SENSOR_EABI
+							&& pm->eabi_ADJUST == PM_ENABLED) {
+
+						pm->lu_MODE = PM_LU_SENSOR_EABI;
+					}
+					else if (pm->config_LU_FORCED == PM_ENABLED) {
+
+						pm->lu_MODE = PM_LU_FORCED;
+					}
+					else {
+						pm->fsm_errno = PM_ERROR_INVALID_OPERATION;
+						pm->fsm_state = PM_STATE_HALT;
+						pm->fsm_phase = 0;
+					}
 
 					pm->proc_set_DC(0, 0, 0);
 					pm->proc_set_Z(PM_Z_NONE);

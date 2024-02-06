@@ -167,7 +167,7 @@ void ADC_startup()
 	GPIO_set_mode_ANALOG(GPIO_ADC_VOLTAGE_C);
 #endif /* GPIO_ADC_VOLTAGE_C */
 
-	/* Common configuration (overclocked 42 MHz).
+	/* Common configuration (ADC clock = CLOCK_APB2_HZ / 2U).
 	 * */
 	ADC->CCR = ADC_CCR_TSVREFE;
 

@@ -3,6 +3,8 @@
 
 #include "libc.h"
 
+#define CAN_BITFREQ_HZ		1000000U
+
 typedef struct {
 
 	uint16_t		ID;
@@ -14,8 +16,10 @@ CAN_msg_t;
 void CAN_startup();
 void CAN_configure();
 
-void CAN_filter_ID(int fs, int mb, int ID, int mID);
+void CAN_bind_ID(int fs, int mb, int ID, int mask_ID);
 int CAN_send_msg(const CAN_msg_t *msg);
+
+int CAN_errate();
 
 extern void CAN_IRQ();
 

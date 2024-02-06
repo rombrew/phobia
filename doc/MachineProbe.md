@@ -23,14 +23,16 @@ you will need to decrease probe currents for a small machine.
   amplitude that is used to estimate stator impedance.
 * `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
   flux linkage and noise threshold will be estimated.
+* `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
+  allows us to assume maximal machine current.
 
 Also pay attention to the forced control parameters which are used to achieve
 initial spinup.
 
 	(pmc) reg pm.forced
 
-* `pm.forced_hold_D` - Current setpoint which should be enough to hold rotor in
-  aligned position and force it turn.
+* `pm.forced_hold_D` - Forced current setpoint which should be enough to hold
+  rotor in aligned position and force it turn.
 * `pm.forced_accel` - Allowed acceleration of the forced control.
 
 If you use power supply that not tolerate reverse current then consider the

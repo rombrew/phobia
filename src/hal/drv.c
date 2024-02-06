@@ -7,6 +7,10 @@
 #define HW_DRV_FREQUENCY		2000000U	/* (Hz) */
 #endif /* HW_DRV_FREQUENCY */
 
+#ifndef HW_DRV_FAULT_SAFETY
+#define HW_DRV_FAULT_SAFETY		20
+#endif /* HW_DRV_FAULT_SAFETY */
+
 static int
 DRV_read_reg(int addr)
 {
@@ -50,7 +54,7 @@ DRV_write_reg(int addr, int data)
 static void
 DRV8301_configure()
 {
-	int			config, control;
+	int			config, check;
 
 	config = (hal.DRV.gate_current & 0x3U);
 
@@ -65,18 +69,18 @@ DRV8301_configure()
 	DRV_write_reg(2, config);
 	DRV_write_reg(3, 0);
 
-	control = DRV_read_reg(2);
+	check = DRV_read_reg(2);
 
-	if (control != config) {
+	if (check != config) {
 
-		log_TRACE("DRV8301 configuration fault %4x" EOL, control);
+		log_TRACE("DRV configuration fault %4x" EOL, check);
 	}
 
 	hal.DRV.status_raw = DRV_read_reg(0);
 
 	if (hal.DRV.status_raw != 0) {
 
-		log_TRACE("DRV8301 status %4x" EOL, hal.DRV.status_raw);
+		log_TRACE("DRV status %4x" EOL, hal.DRV.status_raw);
 	}
 }
 
@@ -94,9 +98,15 @@ DRV8301_startup()
 	SPI_startup(HW_DRV_ID_ON_PCB, HW_DRV_FREQUENCY, SPI_LOW_FALLING);
 
 	DRV8301_configure();
+}
 
-	hal.DRV.gate_ON = 1;
-	hal.DRV.fault_CNT = 0;
+static void
+DRV8301_halt()
+{
+	SPI_halt(HW_DRV_ID_ON_PCB);
+
+	GPIO_set_LOW(hal.DRV.gpio_GATE_EN);
+	vTaskDelay((TickType_t) 100);
 }
 
 void DRV_startup()
@@ -109,32 +119,32 @@ void DRV_startup()
 
 		/* TODO */
 	}
+
+	hal.DRV.partno_ENABLED = hal.DRV.partno;
 }
 
 void DRV_halt()
 {
-	if (hal.DRV.gate_ON != 0) {
+	if (hal.DRV.partno_ENABLED == DRV_PART_DRV8301) {
 
-		hal.DRV.gate_ON = 0;
-		hal.DRV.fault_CNT = 0;
-
-		SPI_halt(HW_DRV_ID_ON_PCB);
-
-		GPIO_set_LOW(hal.DRV.gpio_GATE_EN);
-		vTaskDelay((TickType_t) 100);
+		DRV8301_halt();
 	}
+	else if (hal.DRV.partno_ENABLED == DRV_PART_DRV8305) {
+
+		/* TODO */
+	}
+
+	hal.DRV.partno_ENABLED = DRV_NONE;
+	hal.DRV.fault_CNT = 0;
 }
 
 void DRV_configure()
 {
-	if (hal.DRV.partno == DRV_PART_DRV8301) {
+	if (hal.DRV.partno_ENABLED == DRV_PART_DRV8301) {
 
-		if (hal.DRV.gate_ON != 0) {
-
-			DRV8301_configure();
-		}
+		DRV8301_configure();
 	}
-	else if (hal.DRV.partno == DRV_PART_DRV8305) {
+	else if (hal.DRV.partno_ENABLED == DRV_PART_DRV8305) {
 
 		/* TODO */
 	}
@@ -142,14 +152,11 @@ void DRV_configure()
 
 void DRV_status()
 {
-	if (hal.DRV.partno == DRV_PART_DRV8301) {
+	if (hal.DRV.partno_ENABLED == DRV_PART_DRV8301) {
 
-		if (hal.DRV.gate_ON != 0) {
-
-			hal.DRV.status_raw = DRV_read_reg(0);
-		}
+		hal.DRV.status_raw = DRV_read_reg(0);
 	}
-	else if (hal.DRV.partno == DRV_PART_DRV8305) {
+	else if (hal.DRV.partno_ENABLED == DRV_PART_DRV8305) {
 
 		/* TODO */
 	}
@@ -157,9 +164,9 @@ void DRV_status()
 
 int DRV_fault()
 {
-	if (hal.DRV.gate_ON != 0) {
+	if (hal.DRV.partno_ENABLED != DRV_NONE) {
 
-		if (unlikely(hal.DRV.fault_CNT >= hal.DRV.fault_safety)) {
+		if (unlikely(hal.DRV.fault_CNT >= HW_DRV_FAULT_SAFETY)) {
 
 			return HAL_FAULT;
 		}
@@ -175,5 +182,59 @@ int DRV_fault()
 	}
 
 	return HAL_OK;
+}
+
+float DRV_gate_current()
+{
+	float		current = 0.f;
+
+	if (hal.DRV.partno_ENABLED == DRV_PART_DRV8301) {
+
+		switch (hal.DRV.gate_current) {
+
+			case 0:
+				current = 1.7f;
+				break;
+
+			case 1:
+				current = 0.7f;
+				break;
+
+			case 2:
+				current = 0.25f;
+				break;
+
+			default:
+				current = 0.f;
+				break;
+		}
+	}
+	else if (hal.DRV.partno_ENABLED == DRV_PART_DRV8305) {
+
+		/* TODO */
+	}
+
+	return current;
+}
+
+float DRV_ocp_level()
+{
+	extern float	m_expf(float x);
+
+	float		level = 0.f;
+
+	if (hal.DRV.partno_ENABLED == DRV_PART_DRV8301) {
+
+		if (hal.DRV.ocp_level < 32) {
+
+			level = 0.06f * m_expf(hal.DRV.ocp_level * 0.119f);
+		}
+	}
+	else if (hal.DRV.partno_ENABLED == DRV_PART_DRV8305) {
+
+		/* TODO */
+	}
+
+	return level;
 }
 

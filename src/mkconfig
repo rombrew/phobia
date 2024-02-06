@@ -20,12 +20,12 @@ def mkdefs(hw):
             g.write('OBJ_HAL_STEP = 1\n')
 
         elif 'HW_HAVE_NETWORK_EPCAN' in s:
-            g.write('OBJ_HAL_CAN = 1\n')
             g.write('OBJ_EPCAN = 1\n')
+            g.write('OBJ_HAL_CAN = 1\n')
 
         elif 'HW_HAVE_USB_CDC_ACM' in s:
+            g.write('OBJ_CHERRY = 1\n')
             g.write('OBJ_HAL_USB = 1\n')
-            g.write('OBJ_LIB_CHERRY = 1\n')
 
     f.close()
     g.close()

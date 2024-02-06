@@ -108,7 +108,7 @@ void EPCAN_pipe_REGULAR();
 void EPCAN_putc(int c);
 
 void EPCAN_startup();
-void EPCAN_filter_ID();
+void EPCAN_bind();
 
 #endif /* _H_EPCAN_ */
 

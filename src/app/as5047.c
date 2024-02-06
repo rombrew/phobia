@@ -102,7 +102,7 @@ LD_TASK void app_AS5047(void *pData)
 				}
 			}
 
-			log_TRACE("AS5047 -- EF %i PA %i" EOL,
+			log_TRACE("AS5047 errate EF %i PA %i" EOL,
 					priv_AS5047.EF_errcnt,
 					priv_AS5047.PA_errcnt);
 

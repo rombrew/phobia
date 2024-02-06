@@ -131,11 +131,14 @@ typedef struct {
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
 
-	int		DPS_mode;
-
 #ifdef HW_HAVE_NETWORK_EPCAN
+	int		CAN_bitfreq;
+	int		CAN_errate;
+
 	CAN_msg_t	CAN_msg;
 #endif /* HW_HAVE_NETWORK_EPCAN */
+
+	int		DPS_mode;
 
 	int		PPM_mode;
 	int		PPM_frequency;

@@ -576,7 +576,7 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 			 * */
 			net.node_ID = msg->payload[4];
 
-			EPCAN_filter_ID();
+			EPCAN_bind();
 		}
 		else {
 			local_node_insert(* (uint32_t *) &msg->payload[0], msg->payload[4]);
@@ -734,47 +734,47 @@ void EPCAN_startup()
 
 	CAN_startup();
 
-	EPCAN_filter_ID();
+	EPCAN_bind();
 }
 
-void EPCAN_filter_ID()
+void EPCAN_bind()
 {
 	int			N;
 
 	if (net.log_MODE == EPCAN_LOG_PROMISCUOUS) {
 
-		CAN_filter_ID(0, 0, 1, 0);
+		CAN_bind_ID(0, 0, 1, 0);
 	}
 	else {
-		CAN_filter_ID(0, 0, EPCAN_FILTER_NETWORK, EPCAN_FILTER_NETWORK);
+		CAN_bind_ID(0, 0, EPCAN_FILTER_NETWORK, EPCAN_FILTER_NETWORK);
 	}
 
 	if (net.node_ID != 0) {
 
-		CAN_filter_ID(1, 0, EPCAN_ID(net.node_ID, EPCAN_NODE_REQ), EPCAN_FILTER_MATCH);
-		CAN_filter_ID(2, 0, EPCAN_ID(0, EPCAN_NODE_ACK), EPCAN_ID(0, 31));
-		CAN_filter_ID(3, 0, EPCAN_ID(net.node_ID, EPCAN_NODE_RX), EPCAN_FILTER_MATCH);
-		CAN_filter_ID(4, 0, 0, 0);
+		CAN_bind_ID(1, 0, EPCAN_ID(net.node_ID, EPCAN_NODE_REQ), EPCAN_FILTER_MATCH);
+		CAN_bind_ID(2, 0, EPCAN_ID(0, EPCAN_NODE_ACK), EPCAN_ID(0, 31));
+		CAN_bind_ID(3, 0, EPCAN_ID(net.node_ID, EPCAN_NODE_RX), EPCAN_FILTER_MATCH);
+		CAN_bind_ID(4, 0, 0, 0);
 	}
 	else {
-		CAN_filter_ID(1, 0, 0, 0);
-		CAN_filter_ID(2, 0, EPCAN_ID(0, EPCAN_NODE_ACK), EPCAN_ID(0, 31));
-		CAN_filter_ID(3, 0, 0, 0);
-		CAN_filter_ID(4, 0, 0, 0);
+		CAN_bind_ID(1, 0, 0, 0);
+		CAN_bind_ID(2, 0, EPCAN_ID(0, EPCAN_NODE_ACK), EPCAN_ID(0, 31));
+		CAN_bind_ID(3, 0, 0, 0);
+		CAN_bind_ID(4, 0, 0, 0);
 	}
 
 	for (N = 0; N < EPCAN_PIPE_MAX; ++N) {
 
 		if (net.ep[N].MODE == EPCAN_PIPE_INCOMING) {
 
-			CAN_filter_ID(20 + N, 1, net.ep[N].ID, EPCAN_FILTER_MATCH);
+			CAN_bind_ID(20 + N, 1, net.ep[N].ID, EPCAN_FILTER_MATCH);
 		}
 		else if (net.ep[N].MODE == EPCAN_PIPE_OUTGOING_INJECTED) {
 
-			CAN_filter_ID(20 + N, 1, net.ep[N].clock_ID, EPCAN_FILTER_MATCH);
+			CAN_bind_ID(20 + N, 1, net.ep[N].clock_ID, EPCAN_FILTER_MATCH);
 		}
 		else {
-			CAN_filter_ID(20 + N, 1, 0, 0);
+			CAN_bind_ID(20 + N, 1, 0, 0);
 		}
 	}
 }
@@ -831,7 +831,7 @@ SH_DEF(net_assign)
 
 		net.node_ID = local_node_assign_ID();
 
-		EPCAN_filter_ID();
+		EPCAN_bind();
 
 		printf("local assigned to %i" EOL, net.node_ID);
 	}
@@ -955,7 +955,7 @@ SH_DEF(net_node_remote)
 
 		/* Do listen to incoming messages from remote node.
 		 * */
-		CAN_filter_ID(4, 0, EPCAN_ID(local.remote_node_ID, EPCAN_NODE_TX), EPCAN_FILTER_MATCH);
+		CAN_bind_ID(4, 0, EPCAN_ID(local.remote_node_ID, EPCAN_NODE_TX), EPCAN_FILTER_MATCH);
 
 		/* Create task to outgoing message packaging.
 		 * */
@@ -976,7 +976,7 @@ SH_DEF(net_node_remote)
 
 		/* Drop incoming connection immediately.
 		 * */
-		CAN_filter_ID(4, 0, 0, 0);
+		CAN_bind_ID(4, 0, 0, 0);
 
 		local.remote_node_ID = 0;
 

@@ -12,7 +12,7 @@ This page gives you an overview of VESC hardware supported by PMC.
 | VESC 6 MkVI                           | VESC6C    | Original          |
 | Holybro Mini FOC ESC Based on VESC6   | VESC6H    |                   |
 | FLIPSKY 75100 V202 ESC                | VESC75A   | Low side shunts   |
-| Makerbase VESC 75200 V2 84V 200A      | VESC75A   | Bad PCB design    |
+| Makerbase VESC 75200 V2 84V 200A      | VESC75A   |                   |
 | VESC 75/300 R3                        | VESC75B   | Original          |
 
 Note that some of VESC clone have bad PCB design that causes distorted current

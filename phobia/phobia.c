@@ -988,7 +988,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 				if (reg_tlm != NULL) {
 
-					reg_tlm->lval = 1;
+					reg_tlm->lval = 0;
 				}
 			}
 		}
@@ -3220,6 +3220,12 @@ page_hal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "hal.CAN_bitfreq", "CAN frequency");
+	reg_float(pub, "hal.CAN_errate", "CAN bus errate");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_enum_combo(pub, "hal.DPS_mode", "DPS operation mode", 0);
 	reg_enum_combo(pub, "hal.PPM_mode", "PPM operation mode", 0);
 	reg_float(pub, "hal.PPM_frequency", "PPM frequency");
@@ -3234,7 +3240,6 @@ page_hal(struct public *pub)
 	reg_float(pub, "hal.DRV.status_raw", "DRV status raw");
 	reg_float(pub, "hal.DRV.gate_current", "DRV gate current");
 	reg_float(pub, "hal.DRV.ocp_level", "DRV OCP level");
-	reg_float(pub, "hal.DRV.fault_safety", "DRV fault safety");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3693,8 +3698,8 @@ page_in_knob(struct public *pub)
 	reg_float(pub, "ap.knob_range_ANG2", "ANG range HIGH");
 	reg_float(pub, "ap.knob_range_BRK0", "BRK range LOW");
 	reg_float(pub, "ap.knob_range_BRK1", "BRK range HIGH");
-	reg_float(pub, "ap.knob_range_LST0", "Lost range LOW");
-	reg_float(pub, "ap.knob_range_LST1", "Lost range HIGH");
+	reg_float(pub, "ap.knob_range_LOS0", "LOST range LOW");
+	reg_float(pub, "ap.knob_range_LOS1", "LOST range HIGH");
 	reg_float(pub, "ap.knob_control_ANG0", "Control range LOW");
 	reg_float(pub, "ap.knob_control_ANG1", "Control range MID");
 	reg_float(pub, "ap.knob_control_ANG2", "Control range HIGH");
@@ -3886,7 +3891,7 @@ page_config(struct public *pub)
 	reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
 	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
-	reg_enum_toggle(pub, "pm.config_DBG", "Debug facilities");
+	reg_enum_toggle(pub, "pm.config_DBG", "Debug information gather");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3952,10 +3957,10 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.fault_voltage_tol", "Voltage tolerance");
-	reg_float(pub, "pm.fault_current_tol", "Current tolerance");
-	reg_float(pub, "pm.fault_accuracy_tol", "Accuracy tolerance");
-	reg_float(pub, "pm.fault_terminal_tol", "Terminal tolerance");
+	reg_float(pub, "pm.fault_voltage_tol", "Voltage fault tolerance");
+	reg_float(pub, "pm.fault_current_tol", "Current fault tolerance");
+	reg_float(pub, "pm.fault_accuracy_tol", "Accuracy fault tolerance");
+	reg_float(pub, "pm.fault_terminal_tol", "Terminal fault tolerance");
 	reg_float(pub, "pm.fault_current_halt", "Current halt threshold");
 	reg_float(pub, "pm.fault_voltage_halt", "Voltage halt threshold");
 
@@ -4586,6 +4591,13 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.v_uDC_tol", "DC regulation tolerance");
+	reg_float(pub, "pm.v_gain_P", "DC link proportional gain");
+	reg_float(pub, "pm.v_gain_I", "DC link integral gain");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg = link_reg_lookup(lp, "pm.lu_MODE");
 
 	if (reg != NULL) {
@@ -4821,8 +4833,8 @@ page_lp_location(struct public *pub)
 
 	reg_float_um(pub, "pm.x_maximal", "Maximal location limit", um_def);
 	reg_float_um(pub, "pm.x_minimal", "Minimal location limit", um_def);
-	reg_float_um(pub, "pm.x_damping", "Damping range", 0);
-	reg_float_um(pub, "pm.x_tolerance", "Tolerance", 0);
+	reg_float_um(pub, "pm.x_damping", "Damping distance", 0);
+	reg_float_um(pub, "pm.x_residual_tol", "Residual tolerance", 0);
 	reg_float_um(pub, "pm.x_gain_P", "Proportional gain", 0);
 	reg_float(pub, "pm.x_gain_D", "Damped gain");
 

@@ -203,6 +203,9 @@ tlm_plot_grab()
 	fmt_GP(pm.mtpa_D, "A");
 	fmt_GP(pm.weak_D, "A");
 
+	fmt_GP(pm.v_DC_MAX, 0);
+	fmt_GP(pm.v_DC_MIN, 0);
+
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
 	fmt_GP(pm.s_integral, "A");
@@ -372,41 +375,61 @@ void bench_script()
 
 	tlm_restart();
 
-	m.Rs = 14.E-3;
-	m.Ld = 10.E-6;
-	m.Lq = 15.E-6;
-	m.Udc = 22.;
+	m.Rs = 8.1E-3;
+	m.Ld = 3.2E-6;
+	m.Lq = 4.8E-6;
+	m.Udc = 48.;
+	m.Rdc = 0.1;
+	m.Zp = 21;
+	m.lambda = blm_Kv_lambda(&m, 109.);
+	m.Jm = 5.39E-3;
+
+	/*m.Rs = 28.E-3;
+	m.Ld = 14.E-6;
+	m.Lq = 22.E-6;
+	m.Udc = 48.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
-	m.lambda = blm_Kv_lambda(&m, 270.);
-	m.Jm = 3.E-4;
+	m.lambda = blm_Kv_lambda(&m, 87.);
+	m.Jm = 0.82E-3;*/
 
-	m.eabi_ERES = 16384;
-	m.eabi_WRAP = 16384;
+	/*m.Rs = 0.24;
+	m.Ld = 520.E-6;
+	m.Lq = 650.E-6;
+	m.Udc = 48.;
+	m.Rdc = 0.5;
+	m.Zp = 15;
+        m.lambda = blm_Kv_lambda(&m, 15.7);
+	m.Jm = 6.E-3;*/
 
 	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 
-	pm.config_EABI_FRONTEND = PM_EABI_ABSOLUTE;
+	//pm.config_LU_FORCED = PM_DISABLED;
+	pm.watt_uDC_maximal = 49.f;
+	pm.watt_uDC_minimal = 47.f;
+	//pm.zone_threshold = 5.0 / pm.const_lambda;
 
-	ts_adjust_sensor_eabi();
-	blm_restart(&m);
+	pm.s_accel = 500000.f;
 
-	//pm.config_LU_ESTIMATE = PM_FLUX_NONE;
-	pm.config_LU_SENSOR = PM_SENSOR_EABI;
+	//m.Udc = 10.;
+	m.Rdc = 0.5;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_for_idle();
 
-	pm.s_setpoint_speed = 40.f;
-	sim_runtime(1.);
+	pm.s_setpoint_speed = 2000.f;
+	sim_runtime(1.0);
 
-	pm.s_setpoint_speed = 200.f;
-	sim_runtime(2.);
+	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 10.f;
+	sim_runtime(1.0);
 
-	pm.s_setpoint_speed = -50.f;
-	sim_runtime(2.);
+	m.Mq[0] = 0.f;
+	sim_runtime(1.0);
+
+	pm.s_setpoint_speed = 100.f;
+	sim_runtime(2.0);
 
 	tlm_PWM_grab();
 }
@@ -420,9 +443,9 @@ int main(int argc, char *argv[])
 
 	lfg_start((int) time(NULL));
 
-	if (strcmp(argv[1], "verify") == 0) {
+	if (strcmp(argv[1], "test") == 0) {
 
-		ts_script_verify();
+		ts_script_test();
 	}
 	else if (strcmp(argv[1], "bench") == 0) {
 

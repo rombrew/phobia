@@ -34,9 +34,9 @@ $(TARGET): $(SIM_OBJS)
 	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
 
-verify: $(TARGET)
+test: $(TARGET)
 	@ echo "  TEST	" $(notdir $<)
-	@ $< verify
+	@ $< test
 
 run: $(TARGET)
 	@ echo "  RUN	" $(notdir $<)

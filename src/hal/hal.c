@@ -21,7 +21,7 @@ void irq_NMI()
 
 		RCC->CIR |= RCC_CIR_CSSC;
 
-		log_TRACE("HSE fault" EOL);
+		log_TRACE("HSE clock fault" EOL);
 	}
 
 	hal_system_reset();
@@ -188,8 +188,8 @@ core_startup()
 	/* Configure Flash.
 	 * */
 #if defined(STM32F4)
-	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN
-		| FLASH_ACR_LATENCY_5WS;
+	FLASH->ACR = FLASH_ACR_DCEN | FLASH_ACR_ICEN
+		| FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
 #elif defined(STM32F7)
 	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
 #endif /* STM32Fx */

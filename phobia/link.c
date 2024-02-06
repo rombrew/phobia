@@ -584,7 +584,8 @@ void link_remote(struct link_pmc *lp)
 
 	lp->reg_MAX_N = 0;
 
-	serial_fputs(priv->fd, LINK_EOL);
+	sprintf(priv->lbuf, "\x04\x04\x04\x04" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
 
 	sprintf(priv->lbuf, "ap_version" LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
