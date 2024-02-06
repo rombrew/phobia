@@ -14,8 +14,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Run bench verify
-      run: make -C bench verify
+    - name: Run bench test
+      run: make -C bench test
 
     - name: Set up arm-none-eabi-gcc
       uses: carlosperate/arm-none-eabi-gcc-action@v1
