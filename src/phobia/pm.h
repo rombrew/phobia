@@ -160,7 +160,6 @@ enum {
 	PM_AUTO_FORCED_MAXIMAL,
 	PM_AUTO_FORCED_ACCEL,
 	PM_AUTO_LOOP_CURRENT,
-	PM_AUTO_MQ_LOAD_TORQUE,
 	PM_AUTO_LOOP_SPEED
 };
 
@@ -388,10 +387,10 @@ typedef struct {
 	int		lu_revol;
 	int		lu_revob;
 	int		lu_total_revol;
-	float		lu_rate;
+	float		lu_transient;
 	float		lu_mq_produce;
 	float		lu_mq_load;
-	float		lu_wS0;
+	float		lu_wS_prev;
 	float		lu_gain_mq_LP;
 
 	int		base_TIM;
@@ -404,6 +403,7 @@ typedef struct {
 	float		forced_reverse;
 	float		forced_accel;
 	float		forced_slew_rate;
+	float		forced_fall_rate;
 	float		forced_track_D;
 	float		forced_stop_DC;
 
@@ -518,12 +518,16 @@ typedef struct {
 	float		quick_ZiSQ;
 	float		quick_WiL4;
 
+	int		watt_DC_MAX;
+	int		watt_DC_MIN;
+
 	float		watt_wP_maximal;
 	float		watt_wA_maximal;
 	float		watt_wP_reverse;
 	float		watt_wA_reverse;
 	float		watt_uDC_maximal;
 	float		watt_uDC_minimal;
+	float		watt_uDC_tol;
 	float		watt_lpf_D;
 	float		watt_lpf_Q;
 	float		watt_drain_wP;
@@ -536,13 +540,15 @@ typedef struct {
 	float		watt_capacity_Ah;
 	float		watt_fuel_gauge;
 	float		watt_rem[4];
+	float		watt_integral;
+	float		watt_gain_P;
+	float		watt_gain_I;
 	float		watt_gain_LP;
-
-	float		i_derate_on_HFI;
-	float		i_derate_on_PCB;
 
 	float		i_setpoint_current;
 	float		i_maximal;
+	float		i_maximal_on_HFI;
+	float		i_maximal_on_PCB;
 	float		i_reverse;
 	float		i_track_D;
 	float		i_track_Q;
@@ -552,7 +558,7 @@ typedef struct {
 	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
-	float		i_gain_Q;
+	float		i_gain_A;
 
 	float		mtpa_approx_Q;
 	float		mtpa_D;
@@ -565,14 +571,6 @@ typedef struct {
 	float		v_maximal;
 	float		v_reverse;
 
-	int		v_DC_MAX;
-	int		v_DC_MIN;
-
-	float		v_uDC_tol;
-	float		v_integral;
-	float		v_gain_P;
-	float		v_gain_I;
-
 	float		s_setpoint_speed;
 	float		s_maximal;
 	float		s_reverse;
@@ -583,9 +581,8 @@ typedef struct {
 	float		s_gain_P;
 	float		s_gain_I;
 	float		s_gain_D;
-	float		s_gain_Q;
+	float		s_gain_A;
 
-	int		l_track_TIM;
 	float		l_track;
 	float		l_track_tol;
 	float		l_blend;

@@ -72,19 +72,25 @@ void langFill(lang_t *la, int lang)
 			"U   Reload all data files\0"
 			"J   Calculate all subtract\0"
 			"O   Open data file ...\0"
-			"    Dataset customization ...\0"
-			"    Edit configuration ...\0"
-			"    Write configuration\0"
-			"    Default configuration\0"
+			"D   Dataset customization ...\0"
+			"    Configuration file ...\0"
 
 			"\0";
 
-		la->dataset_menu[0] = " Time column  [%3i]";
-		la->dataset_menu[1] = " Time median  [%s]";
-		la->dataset_menu[2] = " Time unwrap  [%s]";
-		la->dataset_menu[3] = " Data median  [%s]";
-		la->dataset_menu[4] = " Time scale   [%s]";
-		la->dataset_menu[5] = " Length       [%3i]  %iM (%i%%) cache %iM";
+		la->global_config_menu =
+
+			"    Write configuration\0"
+			"    Default configuration\0"
+			"    Edit configuration ...\0"
+
+			"\0";
+
+		la->dataset_menu[0] = " Time column  [ %3i ]";
+		la->dataset_menu[1] = " Time median  [ %s ]";
+		la->dataset_menu[2] = " Time unwrap  [ %s ]";
+		la->dataset_menu[3] = " Data median  [ %s ]";
+		la->dataset_menu[4] = " Time scale   [ %s ]";
+		la->dataset_menu[5] = " Length       [ %3i ]  %iM (%i%%) cache %iM";
 		la->dataset_menu[6] = " Close file";
 
 		la->axis_menu =
@@ -259,19 +265,25 @@ void langFill(lang_t *la, int lang)
 			"U   Перезагрузить все данные\0"
 			"J   Вычислить все операции\0"
 			"O   Открыть файл данных ...\0"
-			"    Настройка наборов данных ...\0"
-			"    Редактировать конфигурацию ...\0"
-			"    Записать конфигурацию\0"
-			"    Сбросить конфигурацию\0"
+			"D   Настройка наборов данных ...\0"
+			"    Файл конфигурации ...\0"
 
 			"\0";
 
-		la->dataset_menu[0] = " Столбец времени   [%3i]";
-		la->dataset_menu[1] = " Медиана времени   [%s]";
-		la->dataset_menu[2] = " Разворот времени  [%s]";
-		la->dataset_menu[3] = " Медиана данных    [%s]";
-		la->dataset_menu[4] = " Масштаб времени   [%s]";
-		la->dataset_menu[5] = " Длина             [%3i]  %iM (%i%%) кэш %iM";
+		la->global_config_menu =
+
+			"    Записать конфигурацию\0"
+			"    Сбросить конфигурацию\0"
+			"    Редактировать конфигурацию ...\0"
+
+			"\0";
+
+		la->dataset_menu[0] = " Столбец времени   [ %3i ]";
+		la->dataset_menu[1] = " Медиана времени   [ %s ]";
+		la->dataset_menu[2] = " Разворот времени  [ %s ]";
+		la->dataset_menu[3] = " Медиана данных    [ %s ]";
+		la->dataset_menu[4] = " Масштаб времени   [ %s ]";
+		la->dataset_menu[5] = " Длина             [ %3i ]  %iM (%i%%) кэш %iM";
 		la->dataset_menu[6] = " Закрыть файл";
 
 		la->axis_menu =

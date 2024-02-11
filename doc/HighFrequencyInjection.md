@@ -41,7 +41,7 @@ If the machine loses its magnetic anisotropy at high current you can limit that
 current on HFI operation mode. This gives reliable operation at the cost of
 reduced torque production.
 
-	(pmc) reg pm.i_derate_on_HFI <A>
+	(pmc) reg pm.i_maximal_on_HFI <A>
 
 If you are concerned about increased levels of acoustic noise and vibration you
 can select RANDOM waveform and adjust an amplitude.

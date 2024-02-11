@@ -25,6 +25,7 @@ typedef struct {
 	const char	*global_zoom_menu;
 	const char	*global_appearance_menu;
 	const char	*global_data_menu;
+	const char	*global_config_menu;
 	const char	*global_lang_menu;
 	const char	*dataset_menu[7];
 

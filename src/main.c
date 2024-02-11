@@ -281,7 +281,7 @@ LD_TASK void task_TEMP(void *pData)
 			}
 		}
 
-		pm.i_derate_on_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
+		pm.i_maximal_on_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
@@ -1276,6 +1276,8 @@ SH_DEF(ap_reboot)
 		return ;
 	}
 
+	vTaskDelay((TickType_t) 10);
+
 	app_halt();
 	hal_system_reset();
 }
@@ -1287,6 +1289,8 @@ SH_DEF(ap_bootload)
 		printf("Unable when PM is running" EOL);
 		return ;
 	}
+
+	vTaskDelay((TickType_t) 10);
 
 	app_halt();
 	hal_bootload_reset();

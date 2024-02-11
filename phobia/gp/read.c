@@ -1605,8 +1605,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 		}
 		else if (r == 0 && pa->newline != 0) {
 
-			pa->newline = 0;
-
 			sprintf(msg_tbuf, "unable to parse \"%.80s\"", tbuf);
 
 			if (tbuf[0] == '#') {
@@ -2158,6 +2156,27 @@ configParseFSM(read_t *rd, parse_t *pa)
 					}
 					else {
 						sprintf(msg_tbuf, "invalid marker %i", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "transparency") == 0) {
+
+				failed = 1;
+
+				do {
+					r = configToken(rd, pa);
+
+					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] >= 0 && argi[0] <= 1) {
+
+						failed = 0;
+						rd->pl->transparency = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid transparency %i", argi[0]);
 					}
 				}
 				while (0);
@@ -3140,12 +3159,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 				ERROR("%s:%i: %s\n", pa->file, pa->line_N, msg_tbuf);
 			}
-		}
-		else if (r == 0 && pa->newline == 0) {
 
-			sprintf(msg_tbuf, "extra token \"%.80s\"", tbuf);
-
-			ERROR("%s:%i: %s\n", pa->file, pa->line_N, msg_tbuf);
+			pa->newline = 0;
 		}
 	}
 	while (1);

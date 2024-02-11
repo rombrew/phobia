@@ -18,7 +18,7 @@
 #define TS_assert_absolute(x, r, a)	TS_assert(fabs((x) - (r)) < fabs(a))
 #define TS_assert_relative(x, r)	TS_assert(fabs((x) - (r)) < TS_TOL * fabs(r))
 
-int ts_wait_for_idle()
+int ts_wait_IDLE()
 {
 	int			xTIME = 0;
 
@@ -41,7 +41,7 @@ int ts_wait_for_idle()
 	return pm.fsm_errno;
 }
 
-int ts_wait_for_motion()
+int ts_wait_motion()
 {
 	int			xTIME = 0;
 
@@ -68,7 +68,7 @@ int ts_wait_for_motion()
 	return pm.fsm_errno;
 }
 
-int ts_wait_for_spinup()
+int ts_wait_spinup()
 {
 	int			xTIME = 0;
 
@@ -104,7 +104,7 @@ void ts_self_adjust()
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		ts_wait_for_idle();
+		ts_wait_IDLE();
 
 		printf("const_fb_U = %.3f (V)\n", pm.const_fb_U);
 
@@ -120,7 +120,7 @@ void ts_self_adjust()
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
-			ts_wait_for_idle();
+			ts_wait_IDLE();
 
 			printf("scale_uA = %.4E %.4f (V)\n", pm.scale_uA[1], pm.scale_uA[0]);
 			printf("scale_uB = %.4E %.4f (V)\n", pm.scale_uB[1], pm.scale_uB[0]);
@@ -153,7 +153,7 @@ void ts_probe_impedance()
 	do {
 		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm.const_Rs = pm.const_im_R;
@@ -164,7 +164,7 @@ void ts_probe_impedance()
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		printf("const_im_L1 = %.4E (H)\n", pm.const_im_L1);
@@ -193,21 +193,21 @@ void ts_probe_spinup()
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		if (pm.flux_LINKAGE != PM_ENABLED) {
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
-			if (ts_wait_for_spinup() != PM_OK)
+			if (ts_wait_spinup() != PM_OK)
 				break;
 
 			printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
-			if (ts_wait_for_idle() != PM_OK)
+			if (ts_wait_IDLE() != PM_OK)
 				break;
 
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
@@ -232,7 +232,7 @@ void ts_probe_spinup()
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
-		if (ts_wait_for_spinup() != PM_OK)
+		if (ts_wait_spinup() != PM_OK)
 			break;
 
 		printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
@@ -247,7 +247,7 @@ void ts_probe_spinup()
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
-			if (ts_wait_for_idle() != PM_OK)
+			if (ts_wait_IDLE() != PM_OK)
 				break;
 
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
@@ -259,7 +259,7 @@ void ts_probe_spinup()
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
@@ -285,7 +285,7 @@ void ts_probe_spinup()
 
 		sim_runtime(300 / (double) TS_TICK_RATE);
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		printf("const_Ja = %.4E (kgm2) \n", pm.const_Ja * pm.const_Zp * pm.const_Zp);
@@ -294,17 +294,15 @@ void ts_probe_spinup()
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
-		pm_auto(&pm, PM_AUTO_MQ_LOAD_TORQUE);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
-		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
 		printf("s_gain_P = %.2E\n", pm.s_gain_P);
 		printf("s_gain_D = %.2E\n", pm.s_gain_D);
 	}
@@ -321,17 +319,17 @@ void ts_adjust_sensor_hall()
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
-		if (ts_wait_for_spinup() != PM_OK)
+		if (ts_wait_spinup() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		for (N = 1; N < 7; ++N) {
@@ -345,7 +343,7 @@ void ts_adjust_sensor_hall()
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 	}
 	while (0);
@@ -365,17 +363,17 @@ void ts_adjust_sensor_eabi()
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm.s_setpoint_speed = pm.zone_threshold;
 
-		if (ts_wait_for_spinup() != PM_OK)
+		if (ts_wait_spinup() != PM_OK)
 			break;
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_EABI;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		F0g = atan2(pm.eabi_F0[1], pm.eabi_F0[0]) * (180. / M_PI);
@@ -386,7 +384,7 @@ void ts_adjust_sensor_eabi()
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-		if (ts_wait_for_idle() != PM_OK)
+		if (ts_wait_IDLE() != PM_OK)
 			break;
 	}
 	while (0);
@@ -436,14 +434,14 @@ ts_script_speed()
 	pm.s_accel = 300000.f;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	m.unsync_flag = 1;
 
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
@@ -459,7 +457,7 @@ ts_script_speed()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -467,7 +465,7 @@ ts_script_speed()
 	m.unsync_flag = 0;
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 }
 
 static void
@@ -478,7 +476,7 @@ ts_script_hfi()
 	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	m.unsync_flag = 1;
 
@@ -503,7 +501,7 @@ ts_script_hfi()
 	m.unsync_flag = 0;
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	pm.config_HFI_WAVETYPE = PM_HFI_NONE;
 }
@@ -515,14 +513,14 @@ ts_script_weakening()
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	m.unsync_flag = 1;
 
 	pm.s_setpoint_speed = 200.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_ESTIMATE);
@@ -538,7 +536,7 @@ ts_script_weakening()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -546,7 +544,7 @@ ts_script_weakening()
 	m.unsync_flag = 0;
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 }
 
 static void
@@ -567,14 +565,14 @@ ts_script_hall()
 	pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	m.unsync_flag = 1;
 
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert(pm.lu_MODE == PM_LU_SENSOR_HALL);
@@ -590,7 +588,7 @@ ts_script_hall()
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -598,7 +596,7 @@ ts_script_hall()
 	m.unsync_flag = 0;
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	pm.config_LU_ESTIMATE = backup_LU_ESTIMATE;
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
@@ -635,14 +633,14 @@ ts_script_eabi(int knob_EABI)
 	pm.config_LU_SENSOR = PM_SENSOR_EABI;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	m.unsync_flag = 1;
 
 	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
 			* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
@@ -657,7 +655,7 @@ ts_script_eabi(int knob_EABI)
 	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
 		* pm.const_fb_U / pm.const_lambda;
 
-	ts_wait_for_spinup();
+	ts_wait_spinup();
 	sim_runtime(0.5);
 
 	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
@@ -665,7 +663,7 @@ ts_script_eabi(int knob_EABI)
 	m.unsync_flag = 0;
 
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-	ts_wait_for_idle();
+	ts_wait_IDLE();
 
 	pm.config_LU_ESTIMATE = backup_LU_ESTIMATE;
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;

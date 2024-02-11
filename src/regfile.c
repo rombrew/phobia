@@ -624,25 +624,6 @@ reg_proc_auto_forced_accel(const reg_t *reg, rval_t *lval, const rval_t *rval)
 }
 
 static void
-reg_proc_auto_mq_load_torque(const reg_t *reg, rval_t *lval, const rval_t *rval)
-{
-	if (lval != NULL) {
-
-		lval->f = reg->link->f;
-	}
-	else if (rval != NULL) {
-
-		if (rval->f < - M_EPSILON) {
-
-			pm_auto(&pm, PM_AUTO_MQ_LOAD_TORQUE);
-		}
-		else {
-			reg->link->f = rval->f;
-		}
-	}
-}
-
-static void
 reg_proc_current_halt(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	float			halt_I;
@@ -708,7 +689,6 @@ reg_proc_auto_loop_speed(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 		hal_memory_fence();
 
-		pm_auto(&pm, PM_AUTO_MQ_LOAD_TORQUE);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 	}
 }
@@ -1480,8 +1460,8 @@ reg_format_enum(const reg_t *reg)
 			}
 			break;
 
-		case ID_PM_V_DC_MAX:
-		case ID_PM_V_DC_MIN:
+		case ID_PM_WATT_DC_MAX:
+		case ID_PM_WATT_DC_MIN:
 
 			switch (val) {
 
@@ -1862,10 +1842,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_location, _deg,,		"deg",	"%2f",	REG_READ_ONLY, &reg_proc_location_deg, NULL),
 	REG_DEF(pm.lu_location, _mm,,		"mm",	"%3f",	REG_READ_ONLY, &reg_proc_location_mm, NULL),
 	REG_DEF(pm.lu_total_revol,,,		"",	"%0i",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.lu_rate,,,		"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.lu_transient,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.lu_mq_produce,,,		"Nm",	"%3f",	REG_READ_ONLY, &reg_proc_load_nm, NULL),
 	REG_DEF(pm.lu_mq_load,,,		"Nm",	"%3f",	REG_READ_ONLY, &reg_proc_load_nm, NULL),
-	REG_DEF(pm.lu_gain_mq_LP,,,		"",	"%2e",	REG_CONFIG, &reg_proc_auto_mq_load_torque, NULL),
+	REG_DEF(pm.lu_gain_mq_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.forced_hold_D,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_maximal,,,	"rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_forced_maximal, NULL),
@@ -1876,6 +1856,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_accel, _rpm,,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
 	REG_DEF(pm.forced_accel, _mmps,,"mm/s2",	"%2f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.forced_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.forced_fall_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_stop_DC,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.detach_threshold,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1972,12 +1953,16 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.const_im_R,,,		"Ohm",	"%4g",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.const_ld_S,,,		"mm",	"%3f",	REG_CONFIG, &reg_proc_mm, NULL),
 
+	REG_DEF(pm.watt_DC_MAX,,,		"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
+	REG_DEF(pm.watt_DC_MIN,,,		"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
+
 	REG_DEF(pm.watt_wP_maximal,,,		"W",	"%1f",	REG_CONFIG, &reg_proc_wattage, NULL),
 	REG_DEF(pm.watt_wA_maximal,,,		"A",	"%3f",	REG_CONFIG, &reg_proc_wattage, NULL),
 	REG_DEF(pm.watt_wP_reverse,,,		"W",	"%1f",	REG_CONFIG, &reg_proc_wattage, NULL),
 	REG_DEF(pm.watt_wA_reverse,,,		"A",	"%3f",	REG_CONFIG, &reg_proc_wattage, NULL),
 	REG_DEF(pm.watt_uDC_maximal,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_uDC_minimal,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_uDC_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_lpf_D,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_lpf_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_drain_wP,,,		"W",	"%1f",	REG_READ_ONLY, NULL, NULL),
@@ -1990,13 +1975,14 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.watt_reverted_Ah,,,		"Ah",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.watt_capacity_Ah,,,		"Ah",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_fuel_gauge,,,		"%",	"%2f",	0, &reg_proc_watt_fuel, NULL),
+	REG_DEF(pm.watt_gain_P,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.watt_gain_I,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.watt_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
-
-	REG_DEF(pm.i_derate_on_HFI,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.i_setpoint_current,,,	"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_current, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
 	REG_DEF(pm.i_maximal,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
+	REG_DEF(pm.i_maximal_on_HFI,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_track_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_track_Q,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -2004,7 +1990,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_damping,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_gain_Q,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.i_gain_A,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.mtpa_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.mtpa_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -2015,13 +2001,6 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.v_maximal,,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.v_reverse,,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
-
-	REG_DEF(pm.v_DC_MAX,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
-	REG_DEF(pm.v_DC_MIN,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
-
-	REG_DEF(pm.v_uDC_tol,,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.v_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.v_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.s_setpoint_speed,,,	"rad/s",	"%2f",	0, NULL, NULL),
 	REG_DEF(pm.s_setpoint_speed, _rpm,,	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
@@ -2045,7 +2024,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_gain_Q,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_gain_A,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.l_track,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),

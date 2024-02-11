@@ -21,7 +21,7 @@ SH_DEF(pm_self_test)
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_for_idle();
+		pm_wait_IDLE();
 
 		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
 
@@ -37,13 +37,13 @@ SH_DEF(pm_self_test)
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
-			pm_wait_for_idle();
+			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SELF_BST);
 			reg_OUTP(ID_PM_FSM_ERRNO);
 
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
-			pm_wait_for_idle();
+			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SELF_IST);
 			reg_OUTP(ID_PM_FSM_ERRNO);
@@ -67,7 +67,7 @@ SH_DEF(pm_self_test)
 			}
 
 			pm.fsm_req = PM_STATE_SELF_TEST_CLEARANCE;
-			pm_wait_for_idle();
+			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SELF_RMSI);
 			reg_OUTP(ID_PM_FSM_ERRNO);
@@ -93,7 +93,7 @@ SH_DEF(pm_self_adjust)
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_for_idle();
+		pm_wait_IDLE();
 
 		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
 
@@ -109,7 +109,7 @@ SH_DEF(pm_self_adjust)
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
-			pm_wait_for_idle();
+			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SCALE_UA0);
 			reg_OUTP(ID_PM_SCALE_UA1);
@@ -130,7 +130,7 @@ SH_DEF(pm_self_adjust)
 		}
 
 		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
-		pm_wait_for_idle();
+		pm_wait_IDLE();
 
 		reg_OUTP(ID_PM_SCALE_IA1);
 		reg_OUTP(ID_PM_SCALE_IB1);
@@ -231,7 +231,7 @@ SH_DEF(pm_self_impedance)
 	}
 
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
-	pm_wait_for_idle();
+	pm_wait_IDLE();
 
 	reg_OUTP(ID_PM_CONST_FB_U);
 	reg_OUTP(ID_PM_SCALE_IA0);
@@ -242,7 +242,7 @@ SH_DEF(pm_self_impedance)
 	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 		pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
-		pm_wait_for_idle();
+		pm_wait_IDLE();
 	}
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
@@ -270,7 +270,7 @@ SH_DEF(pm_self_impedance)
 			break;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
-		pm_wait_for_idle();
+		pm_wait_IDLE();
 
 		printf("%4g    %4g %4g %4g" EOL, &pm.probe_freq_sine,
 				&pm.const_im_L1, &pm.const_im_L2, &pm.const_im_R);

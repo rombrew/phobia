@@ -280,12 +280,13 @@ gpDefaultFile(gp_t *gp)
 				"drawing line 2\n"
 				"marker 40\n"
 				"density 40\n"
+				"transparency 1\n"
+				"precision 9\n"
 				"timecol -1\n"
 				"shortfilename 1\n"
 				"fastdraw 200\n"
 				"interpolation 1\n"
 				"defungap 10\n"
-				"precision 9\n"
 				"lz4_compress 1\n");
 
 #ifdef _WINDOWS
@@ -340,12 +341,13 @@ gpWriteFile(gp_t *gp)
 		fprintf(fd, "drawing %s %i\n", drawing, pl->default_width);
 		fprintf(fd, "marker %i\n", pl->mark_size);
 		fprintf(fd, "density %i\n", pl->mark_density);
+		fprintf(fd, "transparency %i\n", pl->transparency);
+		fprintf(fd, "precision %i\n", pl->fprecision);
 		fprintf(fd, "timecol %i\n", rd->timecol);
 		fprintf(fd, "shortfilename %i\n", rd->shortfilename);
 		fprintf(fd, "fastdraw %i\n", rd->fastdraw);
 		fprintf(fd, "interpolation %i\n", pl->interpolation);
 		fprintf(fd, "defungap %i\n", pl->defungap);
-		fprintf(fd, "precision %i\n", pl->fprecision);
 		fprintf(fd, "lz4_compress %i\n", pl->lz4_compress);
 
 #ifdef _WINDOWS
@@ -1572,7 +1574,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				mu->mark[5].N = 5;
 				mu->mark[5].subs = gp->sbuf[2];
 
-				sprintf(gp->sbuf[2] + 40, "%2i E-2 ", dw->gamma);
+				sprintf(gp->sbuf[2] + 40, "%2i     ", dw->gamma);
 
 				mu->mark[6].N = 6;
 				mu->mark[6].subs = gp->sbuf[2] + 40;
@@ -1763,20 +1765,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 4:
-				gpMakeConfigurationMenu(gp);
-
-				menuRaise(mu, 1023, gp->la_menu, mu->box_X, mu->box_Y);
-				mu->hidden_N[0] = 0;
-				gp->stat = GP_MENU;
-				break;
-
-			case 5:
-				menuRaise(mu, 1025, gp->la->cancel_menu, mu->box_X, mu->box_Y);
-				gp->stat = GP_MENU;
-				break;
-
-			case 6:
-				menuRaise(mu, 1024, gp->la->cancel_menu, mu->box_X, mu->box_Y);
+				menuRaise(mu, 1023, gp->la->global_config_menu, mu->box_X, mu->box_Y);
 				gp->stat = GP_MENU;
 				break;
 		}
@@ -2037,29 +2026,60 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 	}
 	else if (menu_N == 1023) {
 
-		if (item_N != -1) {
+		switch (item_N) {
 
-			gp->line_N = item_N - 2;
+			case 0:
+				menuRaise(mu, 10231, gp->la->cancel_menu, mu->box_X, mu->box_Y);
+				gp->stat = GP_MENU;
+				break;
 
-			editRaise(ed, 10, gp->la_menu,
-					gp->d_names[gp->line_N],
-					mu->box_X, mu->box_Y);
+			case 1:
+				menuRaise(mu, 10232, gp->la->cancel_menu, mu->box_X, mu->box_Y);
+				gp->stat = GP_MENU;
+				break;
 
-			gp->stat = GP_EDIT;
+			case 2:
+				gpMakeConfigurationMenu(gp);
+
+				menuRaise(mu, 10234, gp->la_menu, mu->box_X, mu->box_Y);
+
+				mu->hidden_N[0] = 0;
+				gp->stat = GP_MENU;
+				break;
 		}
 	}
-	else if (menu_N == 1024) {
+	else if (menu_N == 10231) {
+
+		if (item_N == 1) {
+
+			gpWriteFile(gp);
+		}
+	}
+	else if (menu_N == 10232) {
 
 		if (item_N == 1) {
 
 			gpDefaultFile(gp);
 		}
 	}
-	else if (menu_N == 1025) {
+	else if (menu_N == 10234) {
 
-		if (item_N == 1) {
+		if (item_N != -1) {
 
-			gpWriteFile(gp);
+			if (item_N >= 2) {
+
+				gp->line_N = item_N - 2;
+
+				editRaise(ed, 10, gp->la_menu,
+						gp->d_names[gp->line_N],
+						mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
+			}
+			else {
+				menuResume(mu);
+				gp->stat = GP_MENU;
+			}
 		}
 	}
 	else if (menu_N == 103) {
@@ -2893,7 +2913,7 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 		gpWriteNewConfiguration(gp);
 		gpMakeConfigurationMenu(gp);
 
-		menuRaise(mu, 1023, gp->la_menu, mu->box_X, mu->box_Y);
+		menuRaise(mu, 10234, gp->la_menu, mu->box_X, mu->box_Y);
 		menuSelect(mu, gp->line_N + 2);
 
 		mu->hidden_N[0] = 0;
@@ -3099,7 +3119,7 @@ gpEditHandle(gp_t *gp, int edit_N, const char *text)
 				drawGamma(gp->dw);
 			}
 
-			sprintf(gp->sbuf[2] + 40, "%2i E-2 ", dw->gamma);
+			sprintf(gp->sbuf[2] + 40, "%2i     ", dw->gamma);
 
 			mu->mark[6].subs = gp->sbuf[2] + 40;
 		}
@@ -3231,6 +3251,13 @@ gpEventHandle(gp_t *gp, const SDL_Event *ev)
 				mu->clicked = 0;
 
 				gpMenuHandle(gp, 103, 0);
+			}
+			else if (ev->key.keysym.sym == SDLK_d) {
+
+				mu->box_X = -1;
+				mu->box_Y = -1;
+
+				gpMenuHandle(gp, 102, 3);
 			}
 			else if (ev->key.keysym.sym == SDLK_i) {
 

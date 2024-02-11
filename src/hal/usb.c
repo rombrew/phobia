@@ -72,11 +72,20 @@ void usb_dc_low_level_init(void)
 #endif /* STM32Fx */
 }
 
-void usbd_configure_done_callback()
+void usbd_event_handler(uint8_t event)
 {
-	priv_USB.rx_flag = 1;
+	switch (event) {
 
-	usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
+		case USBD_EVENT_CONFIGURED:
+
+			priv_USB.rx_flag = 1;
+
+			usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
+			break;
+
+		default:
+			break;
+	}
 }
 
 static void
@@ -136,7 +145,7 @@ usbd_cdc_acm_bulk_in(uint8_t ep, uint32_t nbytes)
 
 void usbd_cdc_acm_set_line_coding(uint8_t intf, struct cdc_line_coding *line_coding)
 {
-	/* NOTE: Do nothing */
+	/* NOTE: We do nothing */
 }
 
 void usbd_cdc_acm_get_line_coding(uint8_t intf, struct cdc_line_coding *line_coding)
@@ -231,7 +240,7 @@ void USB_startup()
 	priv_USB.rx_queue = USART_public_rx_queue();
 	priv_USB.tx_queue = xQueueCreate(320, sizeof(char));
 
-	/* Create USB task.
+	/* Create USB_IN task.
 	 * */
 	xTaskCreate(task_USB_IN, "USB_IN", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 

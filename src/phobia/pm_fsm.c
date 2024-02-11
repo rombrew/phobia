@@ -1595,7 +1595,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->lu_revob = 0;
 				pm->lu_mq_produce = 0.f;
 				pm->lu_mq_load = 0.f;
-				pm->lu_wS0 = 0.f;
+				pm->lu_wS_prev = 0.f;
 
 				pm->base_TIM = 0;
 				pm->hold_TIM = 0;
@@ -1663,14 +1663,17 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->sincos_wS = 0.f;
 				pm->sincos_location = 0.f;
 
+				pm->watt_DC_MAX = PM_DISABLED;
+				pm->watt_DC_MIN = PM_DISABLED;
+
 				pm->watt_lpf_D = 0.f;
 				pm->watt_lpf_Q = 0.f;
 				pm->watt_drain_wP = 0.f;
 				pm->watt_drain_wA = 0.f;
-
-				pm->i_derate_on_PCB = PM_MAX_F;
+				pm->watt_integral = 0.f;
 
 				pm->i_setpoint_current = 0.f;
+				pm->i_maximal_on_PCB = PM_MAX_F;
 				pm->i_track_D = 0.f;
 				pm->i_track_Q = 0.f;
 				pm->i_integral_D = 0.f;
@@ -1679,10 +1682,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->mtpa_approx_Q = 0.f;
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
-
-				pm->v_DC_MAX = PM_DISABLED;
-				pm->v_DC_MIN = PM_DISABLED;
-				pm->v_integral = 0.f;
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;
@@ -1754,7 +1753,7 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 			pm->fsm_phase = 1;
 
 		case 1:
-			pm->i_derate_on_PCB = 0.f;
+			pm->i_maximal_on_PCB = 0.f;
 
 			pm->tm_value++;
 

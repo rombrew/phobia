@@ -197,8 +197,6 @@ pub_primal_reg(struct public *pub, const struct link_reg *reg)
 		"pm.watt_wP_reverse",
 		"pm.watt_wA_maximal",
 		"pm.watt_wA_reverse",
-		"pm.watt_uDC_maximal",
-		"pm.watt_uDC_minimal",
 		"pm.watt_capacity_Ah",
 		"pm.i_maximal",
 		"pm.i_reverse",
@@ -3133,7 +3131,7 @@ page_probe(struct public *pub)
 		reg_float(pub, "pm.lu_iQ", "LU current Q");
 		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
 		reg_float(pub, "pm.lu_mq_produce", "LU torque production");
-		reg_float(pub, "pm.lu_mq_load", "LU torque estimate");
+		reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -3979,8 +3977,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.lu_rate", "LU transient rate");
-	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
+	reg_float(pub, "pm.lu_transient", "LU transient rate");
+	reg_float(pub, "pm.lu_gain_mq_LP", "LU load torque gain LPF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4042,6 +4040,7 @@ page_lu_forced(struct public *pub)
 	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.forced_accel", "Forced acceleration", 0);
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
+	reg_float(pub, "pm.forced_fall_rate", "Current fall rate");
 	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -4127,7 +4126,7 @@ page_lu_flux(struct public *pub)
 	reg_float_um(pub, "pm.zone_noise", "Noise threshold", 0);
 	reg_float_um(pub, "pm.zone_threshold", "Zone threshold", 0);
 	reg_float(pub, "pm.zone_gain_TH", "Zone hysteresis");
-	reg_float(pub, "pm.zone_gain_LP", "Zone gain LP");
+	reg_float(pub, "pm.zone_gain_LP", "Zone gain LPF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4586,14 +4585,14 @@ page_wattage(struct public *pub)
 	reg_float(pub, "pm.watt_wA_reverse", "Maximal DC link reverse");
 	reg_float(pub, "pm.watt_uDC_maximal", "DC link voltage HIGH");
 	reg_float(pub, "pm.watt_uDC_minimal", "DC link voltage LOW");
-	reg_float(pub, "pm.watt_gain_LP", "Wattage gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.v_uDC_tol", "DC regulation tolerance");
-	reg_float(pub, "pm.v_gain_P", "DC link proportional gain");
-	reg_float(pub, "pm.v_gain_I", "DC link integral gain");
+	reg_float(pub, "pm.watt_uDC_tol", "DC regulation tolerance");
+	reg_float(pub, "pm.watt_gain_P", "DC proportional gain");
+	reg_float(pub, "pm.watt_gain_I", "DC integral gain");
+	reg_float(pub, "pm.watt_gain_LP", "Wattage gain LPF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4662,7 +4661,7 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.i_derate_on_HFI", "Derate on HFI");
+	reg_float(pub, "pm.i_maximal_on_HFI", "Maximal current on HFI");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4677,7 +4676,7 @@ page_lp_current(struct public *pub)
 	reg_float(pub, "pm.i_damping", "Damping percentage");
 	reg_float(pub, "pm.i_gain_P", "Proportional gain");
 	reg_float(pub, "pm.i_gain_I", "Integral gain");
-	reg_float(pub, "pm.i_gain_Q", "Feed forward gain");
+	reg_float(pub, "pm.i_gain_A", "Feed forward gain");
 
 	reg = link_reg_lookup(lp, "pm.i_maximal");
 
@@ -4702,7 +4701,7 @@ page_lp_current(struct public *pub)
 		reg = link_reg_lookup(lp, "pm.i_gain_I");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(lp, "pm.i_gain_Q");
+		reg = link_reg_lookup(lp, "pm.i_gain_A");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -4743,25 +4742,21 @@ page_lp_speed(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.l_track_tol", "Tracking tolerance");
-	reg_float(pub, "pm.l_gain_LP", "Blend gain LP");
+	reg_float(pub, "pm.l_gain_LP", "Blend gain LPF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.s_damping", "Damping percentage");
-	reg_float(pub, "pm.lu_gain_mq_LP", "LU torque gain LP");
 	reg_float(pub, "pm.s_gain_P", "Proportional gain");
 	reg_float(pub, "pm.s_gain_I", "Integral gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative gain");
-	reg_float(pub, "pm.s_gain_Q", "Feed forward gain");
+	reg_float(pub, "pm.s_gain_A", "Feed forward gain");
 
 	reg = link_reg_lookup(lp, "pm.s_damping");
 
 	if (		reg != NULL
 			&& reg->fetched == lp->clock) {
-
-		reg = link_reg_lookup(lp, "pm.lu_gain_mq_LP");
-		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(lp, "pm.s_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }
@@ -4772,7 +4767,7 @@ page_lp_speed(struct public *pub)
 		reg = link_reg_lookup(lp, "pm.s_gain_D");
 		if (reg != NULL) { reg->onefetch = 1; }
 
-		reg = link_reg_lookup(lp, "pm.s_gain_Q");
+		reg = link_reg_lookup(lp, "pm.s_gain_A");
 		if (reg != NULL) { reg->onefetch = 1; }
 	}
 
@@ -4948,7 +4943,7 @@ page_lp_location(struct public *pub)
 	reg_float(pub, "pm.lu_iQ", "LU current Q");
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", um_def);
 	reg_float(pub, "pm.lu_mq_produce", "LU torque production");
-	reg_float(pub, "pm.lu_mq_load", "LU torque estimate");
+	reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);

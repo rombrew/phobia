@@ -300,7 +300,7 @@ menuItemHover(menu_t *mu)
 			}
 
 			if (mu->cur_X > mu->box_X && mu->cur_X < mu->box_X + baseX
-					&& mu->cur_Y > topY && mu->cur_Y < botY) {
+					&& mu->cur_Y >= topY && mu->cur_Y < botY) {
 
 				rN = N + mu->scroll_shift;
 				break;

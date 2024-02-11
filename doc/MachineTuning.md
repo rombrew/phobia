@@ -127,7 +127,7 @@ Also you can tune PID regulator and load torque gains manually.
 	(pmc) reg pm.s_gain_P <x>
 	(pmc) reg pm.s_gain_I <x>
 	(pmc) reg pm.s_gain_D <x>
-    (pmc) reg pm.s_gain_Q <x>
+	(pmc) reg pm.s_gain_A <x>
 
 ## Brake function
 
