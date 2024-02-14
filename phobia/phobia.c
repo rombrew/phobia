@@ -2499,7 +2499,7 @@ page_serial(struct public *pub)
 
 		nk_spacer(ctx);
 
-		sprintf(pub->lbuf, "# %i", lp->fetched_N);
+		sprintf(pub->lbuf, "# %i", lp->line_N);
 		nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 
 		nk_spacer(ctx);

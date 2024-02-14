@@ -517,9 +517,26 @@ void link_open(struct link_pmc *lp, struct config_phobia *fe,
 	if (priv->fd == NULL)
 		return ;
 
-	lp->linked = 1;
+	priv->link_mode = LINK_MODE_IDLE;
+	priv->mbflow = priv->mb;
 
-	link_remote(lp);
+	lp->locked = lp->clock + 1000;
+	lp->active = lp->clock;
+	lp->keep = lp->clock;
+
+	sprintf(priv->lbuf, "\x04\x04" LINK_EOL LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	sprintf(priv->lbuf, "ap_version" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	sprintf(priv->lbuf, "flash_info" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	sprintf(priv->lbuf, "reg" LINK_EOL);
+	serial_fputs(priv->fd, priv->lbuf);
+
+	lp->linked = 1;
 }
 
 void link_close(struct link_pmc *lp)
@@ -572,7 +589,6 @@ void link_remote(struct link_pmc *lp)
 	}
 
 	lp->uptime = 0;
-	lp->fetched_N = 0;
 
 	lp->locked = lp->clock + 1000;
 	lp->active = lp->clock;
@@ -584,7 +600,7 @@ void link_remote(struct link_pmc *lp)
 
 	lp->reg_MAX_N = 0;
 
-	sprintf(priv->lbuf, "\x04\x04\x04\x04" LINK_EOL);
+	sprintf(priv->lbuf, LINK_EOL LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
 
 	sprintf(priv->lbuf, "ap_version" LINK_EOL);
@@ -745,7 +761,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		}
 	}
 
-	lp->fetched_N += N;
+	lp->line_N += N;
 
 	return N;
 }
@@ -1067,9 +1083,9 @@ void link_grab_file_close(struct link_pmc *lp)
 
 	if (priv->link_mode == LINK_MODE_DATA_GRAB) {
 
-		lp->grab_N = 0;
-
 		priv->link_mode = LINK_MODE_IDLE;
+
+		lp->grab_N = 0;
 	}
 }
 

@@ -1,20 +1,31 @@
 #!/bin/bash
 
 export CROSS="armv7m-none-eabi"
-export MAKEOPTS="-j4"
+export MAKEOPTS="-j8"
 
 for hwfile in hal/hw/*; do
 
 	export HWREV=$(basename $hwfile .h)
-	make $MAKEOPTS $1 || exit
+	make $MAKEOPTS $1					|| exit
 done
 
-make -C ../phobia -f Makefile.mingw ARCH=i686   $MAKEOPTS $1 || exit
-make -C ../phobia -f Makefile.mingw ARCH=x86_64 $MAKEOPTS $1 || exit
+make -C ../phobia -f Makefile.mingw ARCH=i686   $MAKEOPTS $1	|| exit
+make -C ../phobia -f Makefile.mingw ARCH=x86_64 $MAKEOPTS $1	|| exit
 
-test -z $1 || exit
+export BUNDLE="pmc-bundle-$(hg id -n)"
 
-zip -j9 /tmp/pmc-bundle-$(hg id -n).zip	\
-	/tmp/phobia/*/phobia-*.exe \
-	/tmp/pmc-*/pmc-*.bin
+if [ -n "$1" ] && [ "$1" = "clean" ]; then
+
+	rm -r -f /tmp/$BUNDLE
+	rm -f /tmp/$BUNDLE.zip
+	exit
+fi
+
+install -D -t /tmp/$BUNDLE/ ../README.md 			|| exit
+install -D -t /tmp/$BUNDLE/doc ../doc/*.md 			|| exit
+
+install -D -t /tmp/$BUNDLE/bin /tmp/pmc-*/pmc-*.bin 		|| exit
+install -D -t /tmp/$BUNDLE/phobia /tmp/phobia/*/phobia-*.exe 	|| exit
+
+zip -rD -9 /tmp/$BUNDLE.zip /tmp/$BUNDLE
 

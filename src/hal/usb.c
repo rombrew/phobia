@@ -22,8 +22,8 @@ typedef struct {
 	QueueHandle_t		rx_queue;
 	QueueHandle_t		tx_queue;
 
-	struct usbd_interface	iface0;
-	struct usbd_interface	iface1;
+	struct usbd_interface	intf0;
+	struct usbd_interface	intf1;
 
 	LD_DMA uint8_t		rx_buf[CDC_DATA_SZ];
 	LD_DMA uint8_t		tx_buf[CDC_DATA_SZ];
@@ -79,6 +79,7 @@ void usbd_event_handler(uint8_t event)
 		case USBD_EVENT_CONFIGURED:
 
 			priv_USB.rx_flag = 1;
+			priv_USB.tx_flag = 0;
 
 			usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
 			break;
@@ -193,16 +194,13 @@ task_cdc_acm_flag_poll()
 
 LD_TASK void task_USB_IN(void *pData)
 {
+	priv_USB.rx_flag = 1;
+	priv_USB.tx_flag = 1;
+
 	do {
-		if (usb_device_is_configured()) {
-
-			task_cdc_acm_flag_poll();
-		}
-		else {
-			xQueueReset(priv_USB.tx_queue);
-		}
-
 		vTaskDelay((TickType_t) 10);
+
+		task_cdc_acm_flag_poll();
 	}
 	while (1);
 }
@@ -247,8 +245,8 @@ void USB_startup()
 	/* Startup USB stack.
 	 * */
 	usbd_desc_register(cdc_acm_descriptor);
-	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.iface0));
-	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.iface1));
+	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.intf0));
+	usbd_add_interface(usbd_cdc_acm_init_intf(&priv_USB.intf1));
 	usbd_add_endpoint(&cdc_in_ep);
 	usbd_add_endpoint(&cdc_out_ep);
 
@@ -266,7 +264,12 @@ void USB_putc(int c)
 
 	GPIO_set_HIGH(GPIO_LED_ALERT);
 
-	xQueueSendToBack(priv_USB.tx_queue, &xbyte, portMAX_DELAY);
+	if (xQueueSendToBack(priv_USB.tx_queue, &xbyte, (TickType_t) 100) != pdTRUE) {
+
+		log_TRACE("USB queue reset" EOL);
+
+		xQueueReset(priv_USB.tx_queue);
+	}
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }

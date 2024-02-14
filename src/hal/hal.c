@@ -15,7 +15,7 @@ volatile uint32_t		bootload_jump	LD_NOINIT;
 
 void irq_NMI()
 {
-	log_TRACE("IRQ: NMI" EOL);
+	log_TRACE("IRQ NMI" EOL);
 
 	if (RCC->CIR & RCC_CIR_CSSF) {
 
@@ -29,35 +29,35 @@ void irq_NMI()
 
 void irq_HardFault()
 {
-	log_TRACE("IRQ: HardFault" EOL);
+	log_TRACE("IRQ HardFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_MemoryFault()
 {
-	log_TRACE("IRQ: MemoryFault" EOL);
+	log_TRACE("IRQ MemoryFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_BusFault()
 {
-	log_TRACE("IRQ: BusFault" EOL);
+	log_TRACE("IRQ BusFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_UsageFault()
 {
-	log_TRACE("IRQ: UsageFault" EOL);
+	log_TRACE("IRQ UsageFault" EOL);
 
 	hal_system_reset();
 }
 
 void irq_Default()
 {
-	log_TRACE("IRQ: Default" EOL);
+	log_TRACE("IRQ Default" EOL);
 
 	hal_system_reset();
 }
@@ -261,7 +261,7 @@ flash_verify()
 
 	if (crc32b((const void *) fw.ld_begin, flash_sizeof) != *flash_crc32) {
 
-		log_TRACE("Flash CRC32 invalid" EOL);
+		log_TRACE("FLASH CRC32 invalid" EOL);
 	}
 }
 

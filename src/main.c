@@ -39,7 +39,7 @@ void log_TRACE(const char *fmt, ...)
 void vAssertHook(const char *file, int line)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Assert in %s:%i" EOL, file, line);
+	log_TRACE("FreeRTOS assert in %s:%i" EOL, file, line);
 
 	hal_system_reset();
 }
@@ -47,7 +47,7 @@ void vAssertHook(const char *file, int line)
 void vApplicationMallocFailedHook()
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Heap allocation fault" EOL);
+	log_TRACE("FreeRTOS heap allocation fault" EOL);
 
 	hal_system_reset();
 }
@@ -55,7 +55,7 @@ void vApplicationMallocFailedHook()
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 	taskDISABLE_INTERRUPTS();
-	log_TRACE("FreeRTOS: Stack overflow in %8x task" EOL, (uint32_t) xTask);
+	log_TRACE("FreeRTOS stack overflow in %8x task" EOL, (uint32_t) xTask);
 
 	hal_system_reset();
 }

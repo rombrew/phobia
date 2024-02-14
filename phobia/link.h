@@ -64,7 +64,6 @@ struct link_pmc {
 
 	int			linked;
 	int			uptime;
-	int			fetched_N;
 
 	int			clock;
 	int			locked;
@@ -90,6 +89,7 @@ struct link_pmc {
 	char			unable_warning[LINK_MESSAGE_MAX];
 	int			uptime_warning;
 
+	int			line_N;
 	int			grab_N;
 
 	struct link_reg		reg[LINK_REGS_MAX];

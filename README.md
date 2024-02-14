@@ -141,7 +141,7 @@ electric transport.
 	* 5v to 12v boost (~100 mA).
 	* 5v to 3.3v linear (~400 mA).
 
-## Current Status
+## Status
 
 Now we can declare that PMC is ready to use in most intended applications. But
 it may be difficult to configure the PMC for some types of machines.

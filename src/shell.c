@@ -15,7 +15,7 @@
 #define SH_HIST_DEC(n)                 	(((n) > 0) ? (n) - 1 : SH_HISTORY_MAX - 1)
 
 static const char
-SH_ALLOWED[] = "+-_. ",
+SH_ALLOWED[] = " +-_.",
 SH_PROMPT[] = "(pmc) ",
 SH_BACKSPACE[] = "\b \b";
 
@@ -26,11 +26,11 @@ enum {
 
 typedef struct {
 
-	/* Base SH data.
+	/* Command evaluate.
 	 * */
 	char		cline[SH_CLINE_MAX];
-	int		ceol, xesc;
-	char		*parg;
+	int		ceol, xESC;
+	char		*cargs;
 
 	/* Completion feature.
 	 * */
@@ -38,8 +38,8 @@ typedef struct {
 
 	/* History feature.
 	 * */
-	char		chist[SH_HISTORY_MAX];
-	int		mhist, hhead, htail, hnum;
+	char		cprev[SH_HISTORY_MAX];
+	int		mprev, head, tail, pnum;
 }
 priv_sh_t;
 
@@ -59,16 +59,16 @@ const sh_cmd_t		cmLIST[] = {
 #define cmLIST_END	(cmLIST + sizeof(cmLIST) / sizeof(sh_cmd_t) - 2)
 
 static int
-sh_byte_is_digit(int c)
-{
-	return (c >= '0') && (c <= '9');
-}
-
-static int
-sh_byte_is_char(int c)
+sh_byte_is_letter(int c)
 {
 	return ((c >= 'a') && (c <= 'z'))
 		|| ((c >= 'A') && (c <= 'Z'));
+}
+
+static int
+sh_byte_is_digit(int c)
+{
+	return (c >= '0') && (c <= '9');
 }
 
 static void
@@ -99,7 +99,7 @@ sh_exact_match_call(priv_sh_t *sh)
 
 			/* Call the function.
 			 * */
-			cmd->proc(sh->parg);
+			cmd->proc(sh->cargs);
 
 			break;
 		}
@@ -193,7 +193,7 @@ sh_history_move(priv_sh_t *sh, int xnum, int xd)
 {
 	if (xd == DIR_UP) {
 
-		if (xnum != sh->hhead) {
+		if (xnum != sh->head) {
 
 			/* Get previous line.
 			 * */
@@ -202,7 +202,7 @@ sh_history_move(priv_sh_t *sh, int xnum, int xd)
 			do {
 				xnum = SH_HIST_DEC(xnum);
 
-				if (sh->chist[xnum] == 0)
+				if (sh->cprev[xnum] == 0)
 					break;
 			}
 			while (1);
@@ -211,14 +211,14 @@ sh_history_move(priv_sh_t *sh, int xnum, int xd)
 		}
 	}
 	else {
-		if (xnum != sh->htail) {
+		if (xnum != sh->tail) {
 
 			/* Get next line.
 			 * */
 			do {
 				xnum = SH_HIST_INC(xnum);
 
-				if (sh->chist[xnum] == 0)
+				if (sh->cprev[xnum] == 0)
 					break;
 			}
 			while (1);
@@ -236,12 +236,12 @@ sh_history_put(priv_sh_t *sh, const char *s)
 	int			xnum, r;
 	const char		*q = s;
 
-	if (sh->hhead != sh->htail) {
+	if (sh->head != sh->tail) {
 
-		xnum = sh_history_move(sh, sh->htail, DIR_UP);
+		xnum = sh_history_move(sh, sh->tail, DIR_UP);
 
 		do {
-			r = sh->chist[xnum] - *q;
+			r = sh->cprev[xnum] - *q;
 
 			if (r || !*q)
 				break;
@@ -260,22 +260,22 @@ sh_history_put(priv_sh_t *sh, const char *s)
 	}
 
 	do {
-		sh->chist[sh->htail] = *s;
-		sh->htail = SH_HIST_INC(sh->htail);
+		sh->cprev[sh->tail] = *s;
+		sh->tail = SH_HIST_INC(sh->tail);
 
-		if (sh->htail == sh->hhead) {
+		if (sh->tail == sh->head) {
 
 			/* Forget old lines.
 			 * */
 			do {
-				sh->hhead = SH_HIST_INC(sh->hhead);
+				sh->head = SH_HIST_INC(sh->head);
 
-				if (sh->chist[sh->hhead] == 0)
+				if (sh->cprev[sh->head] == 0)
 					break;
 			}
 			while (1);
 
-			sh->hhead = SH_HIST_INC(sh->hhead);
+			sh->head = SH_HIST_INC(sh->head);
 		}
 
 		if (*s == 0)
@@ -348,7 +348,7 @@ sh_evaluate(priv_sh_t *sh)
 
 		/* Get the command line arguments.
 		 * */
-		sh->parg = sh_markup_args(s);
+		sh->cargs = sh_markup_args(s);
 
 		/* Search for specific command to execute.
 		 * */
@@ -420,7 +420,7 @@ sh_complete(priv_sh_t *sh, int xd)
 		puts(sh->cline + sh->ceon);
 	}
 
-	sh->mhist = 0;
+	sh->mprev = 0;
 }
 
 static void
@@ -429,31 +429,31 @@ sh_history(priv_sh_t *sh, int xd)
 	int			xnum;
 	char			*s;
 
-	if (sh->mhist == 0) {
+	if (sh->mprev == 0) {
 
 		/* Enter history mode.
 		 * */
-		sh->hnum = sh->htail;
-		sh->mhist = 1;
+		sh->pnum = sh->tail;
+		sh->mprev = 1;
 
-		xnum = sh->htail;
+		xnum = sh->tail;
 
 		/* Save current line.
 		 * */
 		sh_history_put(sh, sh->cline);
 
-		sh->htail = xnum;
+		sh->tail = xnum;
 	}
 
-	xnum = sh_history_move(sh, sh->hnum, xd);
+	xnum = sh_history_move(sh, sh->pnum, xd);
 
-	if (xnum != sh->hnum) {
+	if (xnum != sh->pnum) {
 
-		sh->hnum = xnum;
+		sh->pnum = xnum;
 		s = sh->cline;
 
 		do {
-			if ((*s = sh->chist[xnum]) == 0)
+			if ((*s = sh->cprev[xnum]) == 0)
 				break;
 
 			xnum = SH_HIST_INC(xnum);
@@ -485,7 +485,7 @@ sh_line_putc(priv_sh_t *sh, char c)
 		putc(c);
 
 		sh->mcomp = 0;
-		sh->mhist = 0;
+		sh->mprev = 0;
 	}
 }
 
@@ -501,7 +501,7 @@ sh_line_bs(priv_sh_t *sh)
 		puts(SH_BACKSPACE);
 
 		sh->mcomp = 0;
-		sh->mhist = 0;
+		sh->mprev = 0;
 	}
 }
 
@@ -527,7 +527,7 @@ sh_line_null(priv_sh_t *sh)
 	}
 
 	sh->mcomp = 0;
-	sh->mhist = 0;
+	sh->mprev = 0;
 }
 
 const char *sh_next_arg(const char *s)
@@ -550,9 +550,9 @@ LD_TASK void task_CMDSH(void *pData)
 	do {
 		c = getc();
 
-		if (sh->xesc == 0) {
+		if (sh->xESC == 0) {
 
-			if (sh_byte_is_char(c) || sh_byte_is_digit(c)
+			if (sh_byte_is_letter(c) || sh_byte_is_digit(c)
 					|| strchr(SH_ALLOWED, c) != NULL) {
 
 				sh_line_putc(sh, c);
@@ -600,20 +600,20 @@ LD_TASK void task_CMDSH(void *pData)
 			}
 			else if (c == K_ESC) {
 
-				sh->xesc = 1;
+				sh->xESC = 1;
 			}
 		}
 		else {
-			switch (sh->xesc) {
+			switch (sh->xESC) {
 
 				case 1:
-					sh->xesc = (c == '[') ? 2 : 0;
+					sh->xESC = (c == '[') ? 2 : 0;
 					break;
 
 				case 2:
 					if (c == '3') {
 
-						sh->xesc = 3;
+						sh->xESC = 3;
 					}
 					else if (c == 'A') {
 
@@ -621,7 +621,7 @@ LD_TASK void task_CMDSH(void *pData)
 						 * */
 						sh_history(sh, DIR_UP);
 
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					else if (c == 'B') {
 
@@ -629,7 +629,7 @@ LD_TASK void task_CMDSH(void *pData)
 						 * */
 						sh_history(sh, DIR_DOWN);
 
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					else if (c == 'Z') {
 
@@ -637,10 +637,10 @@ LD_TASK void task_CMDSH(void *pData)
 						 * */
 						sh_complete(sh, DIR_DOWN);
 
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					else {
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					break;
 
@@ -652,15 +652,15 @@ LD_TASK void task_CMDSH(void *pData)
 						puts(EOL);
 						sh_line_null(sh);
 
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					else {
-						sh->xesc = 0;
+						sh->xESC = 0;
 					}
 					break;
 
 				default:
-					sh->xesc = 0;
+					sh->xESC = 0;
 			}
 		}
 	}
