@@ -24,7 +24,7 @@ fi
 install -D -t /tmp/$BUNDLE/ ../README.md 			|| exit
 install -D -t /tmp/$BUNDLE/doc ../doc/*.md 			|| exit
 
-install -D -t /tmp/$BUNDLE/bin /tmp/pmc-*/pmc-*.bin 		|| exit
+install -D -t /tmp/$BUNDLE/firmware /tmp/pmc-*/pmc-*.bin 	|| exit
 install -D -t /tmp/$BUNDLE/phobia /tmp/phobia/*/phobia-*.exe 	|| exit
 
 zip -rD -9 /tmp/$BUNDLE.zip /tmp/$BUNDLE
