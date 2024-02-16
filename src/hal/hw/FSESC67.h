@@ -1,6 +1,6 @@
 #define HW_MCU_STM32F405
 
-/* Tested on VESC 6 MkVI
+/* Tested on FLIPSKY FSESC 6.7
  * */
 
 #define HW_HAVE_DRV_ON_PCB
@@ -15,17 +15,17 @@
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
 #define HW_PWM_FREQUENCY_HZ		28571.f
-#define HW_PWM_DEADTIME_NS		330.f		/* IRF7749 */
+#define HW_PWM_DEADTIME_NS		400.f		/* NVMFS5C612NL */
 
 #define HW_PWM_MINIMAL_PULSE		0.4f
-#define HW_PWM_CLEARANCE_ZONE		5.0f
+#define HW_PWM_CLEARANCE_ZONE		9.0f
 #define HW_PWM_SKIP_ZONE		2.0f
 #define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* DRV8301 */
 
 #define HW_DRV_ID_ON_PCB		BUS_ID_SPI3
 
 #define HW_DRV_PARTNO			DRV_PART_DRV8301
-#define HW_DRV_GATE_CURRENT		0
+#define HW_DRV_GATE_CURRENT		2
 #define HW_DRV_OCP_LEVEL		32
 
 #define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABC_UTT_TXX
@@ -83,10 +83,4 @@
 
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 1)
 #define GPIO_LED_MODE			XGPIO_DEF2('B', 0)
-
-#define HW_CONFIG_INLINE 	do {					\
-					DAC_startup(DAC_OUT1);		\
-					DAC_set_OUT1(2047);		\
-									\
-				} while (0)
 

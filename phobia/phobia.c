@@ -4562,9 +4562,6 @@ page_lu_eabi(struct public *pub)
 static void
 page_lu_sincos(struct public *pub)
 {
-	struct nk_sdl			*nk = pub->nk;
-	struct nk_context		*ctx = &nk->ctx;
-
 	/* TODO */
 }
 

@@ -1,9 +1,8 @@
 #define HW_MCU_STM32F405
 
-/* Tested on FLIPSKY MINI FSESC 6.7 PRO
+/* Tested on VESC 6 MkVI
  * */
 
-#define HW_HAVE_LOW_SIDE_SHUNT
 #define HW_HAVE_DRV_ON_PCB
 #define HW_HAVE_ANALOG_KNOB
 #define HW_HAVE_BRAKE_KNOB
@@ -16,7 +15,7 @@
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
 #define HW_PWM_FREQUENCY_HZ		28571.f
-#define HW_PWM_DEADTIME_NS		330.f		/* NVMFS5C612NL */
+#define HW_PWM_DEADTIME_NS		400.f		/* IRF7749 */
 
 #define HW_PWM_MINIMAL_PULSE		0.4f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
@@ -33,7 +32,7 @@
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
 #define HW_ADC_SHUNT_RESISTANCE		0.0005f
-#define HW_ADC_AMPLIFIER_GAIN		20.f		/* INA181A1 */
+#define HW_ADC_AMPLIFIER_GAIN		20.f		/* AD8418 */
 
 #define HW_ADC_VOLTAGE_R1		39000.f
 #define HW_ADC_VOLTAGE_R2		2200.f
@@ -84,4 +83,10 @@
 
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 1)
 #define GPIO_LED_MODE			XGPIO_DEF2('B', 0)
+
+#define HW_CONFIG_INLINE 	do {					\
+					DAC_startup(DAC_OUT1);		\
+					DAC_set_OUT1(2047);		\
+									\
+				} while (0)
 

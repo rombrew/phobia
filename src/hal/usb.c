@@ -266,7 +266,7 @@ void USB_putc(int c)
 
 	if (xQueueSendToBack(priv_USB.tx_queue, &xbyte, (TickType_t) 100) != pdTRUE) {
 
-		log_TRACE("USB queue reset" EOL);
+		log_TRACE("USB queue overflow" EOL);
 
 		xQueueReset(priv_USB.tx_queue);
 	}

@@ -676,8 +676,8 @@ LD_TASK void task_EPCAN_TX(void *pData)
 
 			EPCAN_send_msg(&msg);
 
-			/* Do not send messages too frequently especially if
-			 * you were asked to.
+			/* Do not send messages too frequently
+			 * especially if you were asked to.
 			 * */
 			if (local.flow_tx_paused != 0) {
 
@@ -719,7 +719,7 @@ void EPCAN_startup()
 	local.tx_queue = xQueueCreate(80, sizeof(char));
 	local.remote_queue = xQueueCreate(40, sizeof(char));
 	local.log_queue = xQueueCreate(320, sizeof(char));
-	local.net_queue = xQueueCreate(1, sizeof(int));
+	local.net_queue = xQueueCreate(10, sizeof(int));
 
 	/* Allocate semaphore.
 	 * */

@@ -13,7 +13,7 @@
 #endif
 
 #ifndef CONFIG_USB_DBG_LEVEL
-#define CONFIG_USB_DBG_LEVEL		-1
+#define CONFIG_USB_DBG_LEVEL		USB_DBG_ERROR
 #endif
 
 #ifndef CONFIG_USB_ALIGN_SIZE
