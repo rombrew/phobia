@@ -684,7 +684,7 @@ void ts_script_test()
 	m.Udc = 48.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
-        m.lambda = blm_Kv_lambda(&m, 525.);
+	m.lambda = blm_Kv_lambda(&m, 525.);
 	m.Jm = 2.E-4;
 
 	ts_script_default();
@@ -695,7 +695,7 @@ void ts_script_test()
 	blm_restart(&m);
 
 	/*ts_script_hfi();
-	blm_restart(&m);*/
+	  blm_restart(&m);*/
 
 	printf("\n---- Turnigy RotoMax 1.20 ----\n");
 
@@ -707,7 +707,7 @@ void ts_script_test()
 	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
-        m.lambda = blm_Kv_lambda(&m, 270.);
+	m.lambda = blm_Kv_lambda(&m, 270.);
 	m.Jm = 3.E-4;
 
 	ts_script_default();
@@ -736,7 +736,7 @@ void ts_script_test()
 	m.Udc = 48.;
 	m.Rdc = 0.5;
 	m.Zp = 15;
-        m.lambda = blm_Kv_lambda(&m, 15.7);
+	m.lambda = blm_Kv_lambda(&m, 15.);
 	m.Jm = 6.E-3;
 
 	ts_script_default();
@@ -748,6 +748,32 @@ void ts_script_test()
 
 	ts_script_weakening();
 	blm_restart(&m);
+
+	ts_script_hall();
+	blm_restart(&m);
+
+	printf("\n---- QS 138 (3000W) ----\n");
+
+	tlm_restart();
+
+	m.Rs = 4.E-3;
+	m.Ld = 31.E-6;
+	m.Lq = 44.E-6;
+	m.Udc = 48.;
+	m.Rdc = 0.1;
+	m.Zp = 5;
+	m.lambda = blm_Kv_lambda(&m, 58.);
+	m.Jm = 4.E-3;
+
+	ts_script_default();
+	ts_script_base();
+	blm_restart(&m);
+
+	ts_script_speed();
+	blm_restart(&m);
+
+	/*ts_script_weakening();
+	  blm_restart(&m);*/
 
 	ts_script_hall();
 	blm_restart(&m);

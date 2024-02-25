@@ -5,28 +5,6 @@ static void
 pm_fsm_state_idle(pmc_t *pm)
 {
 	/* TODO */
-
-	/*if (		pm->lu_MODE == PM_LU_DISABLED
-			&& pm->config_BOOST_CHARGE == PM_ENABLED) {
-
-		switch (pm->fsm_phase) {
-
-			case 0:
-				pm->proc_set_DC(0, 0, 0);
-				pm->proc_set_Z(5);
-
-				pm->fsm_phase = 1;
-				break;
-
-			case 1:
-				if (m_fabsf(pm->fb_iB) > pm->fault_current_tol) {
-
-					pm->fsm_state = PM_STATE_LOOP_BOOST;
-					pm->fsm_phase = 0;
-				}
-				break;
-		}
-	}*/
 }
 
 static void
@@ -1605,19 +1583,23 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->forced_wS = 0.f;
 				pm->forced_track_D = 0.f;
 
+				pm->flux_DETACH = PM_DISABLED;
 				pm->detach_TIM = 0;
 
-				if (		pm->config_LU_ESTIMATE != PM_FLUX_NONE
-						&& pm->config_EXCITATION == PM_EXCITATION_CONST
-						&& pm->const_lambda < M_EPSILON) {
+				if (pm->config_LU_ESTIMATE == PM_FLUX_NONE) {
+
+					pm->flux_LINKAGE = PM_ENABLED;
+				}
+				else if (pm->config_EXCITATION == PM_EXCITATION_NONE) {
+
+					pm->flux_LINKAGE = PM_ENABLED;
+				}
+				else if (pm->const_lambda < M_EPSILON) {
 
 					/* Here we indicate that flux linkage
 					 * is to be estimated further.
 					 * */
 					pm->flux_LINKAGE = PM_DISABLED;
-				}
-				else {
-					pm->flux_LINKAGE = PM_ENABLED;
 				}
 
 				pm->flux_TYPE = PM_FLUX_NONE;
@@ -1647,6 +1629,9 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
+					/* We need to adjust the position again
+					 * after loss of tracking.
+					 * */
 					pm->eabi_ADJUST = PM_DISABLED;
 				}
 

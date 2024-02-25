@@ -25,7 +25,8 @@ LD_TASK void app_AUTOSTART(void *pData)
 	do {
 		vTaskDelay((TickType_t) 100);
 
-		if (pm.lu_MODE == PM_LU_DISABLED) {
+		if (		pm.lu_MODE == PM_LU_DISABLED
+				&& pm.const_fb_U > pm.watt_uDC_minimal) {
 
 			pm.fsm_req = PM_STATE_LU_STARTUP;
 

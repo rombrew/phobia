@@ -1255,6 +1255,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_DBG:
 		case ID_PM_CONFIG_VSI_CLAMP:
 		case ID_PM_CONFIG_LU_FORCED:
+		case ID_PM_CONFIG_LU_FREEWHEEL:
 		case ID_PM_CONFIG_HFI_PERMANENT:
 		case ID_PM_CONFIG_RELUCTANCE:
 		case ID_PM_CONFIG_WEAKENING:
@@ -1642,8 +1643,8 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	REG_DEF(ap.idle_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.disarm_timeout,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_DISARM,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_IDLE,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	REG_DEF(ap.ntc_PCB.type,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1671,8 +1672,8 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.heat_PCB_temp_derate,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_PCB_temp_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_EXT_temp_derate,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_derated_PCB,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_derated_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_maximal_PCB,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.heat_maximal_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.heat_temp_recovery,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
@@ -1706,6 +1707,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_VSI_ZERO,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_VSI_CLAMP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_FORCED,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_LU_FREEWHEEL,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_ESTIMATE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_SENSOR,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_LOCATION,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1720,7 +1722,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_SPEED_MAXIMAL,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_EABI_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SINCOS_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_BOOST_CHARGE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 
 	REG_DEF(pm.fsm_req,,,			"",	"%0i",	0, NULL, NULL),
 	REG_DEF(pm.fsm_state,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),

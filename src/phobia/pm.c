@@ -105,6 +105,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_VSI_ZERO = PM_VSI_GND;
 	pm->config_VSI_CLAMP = PM_DISABLED;
 	pm->config_LU_FORCED = PM_ENABLED;
+	pm->config_LU_FREEWHEEL = PM_ENABLED;
 	pm->config_LU_ESTIMATE = PM_FLUX_ORTEGA;
 	pm->config_LU_SENSOR = PM_SENSOR_NONE;
 	pm->config_LU_LOCATION = PM_LOCATION_NONE;
@@ -119,7 +120,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_SPEED_MAXIMAL = PM_ENABLED;
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
-	pm->config_BOOST_CHARGE = PM_DISABLED;
 
 	pm->tm_transient_slow = 40.f;		/* (ms) */
 	pm->tm_transient_fast = 2.f;		/* (ms) */
@@ -714,16 +714,7 @@ pm_forced(pmc_t *pm)
 {
 	float		wSP, dSA, xRF;
 
-	/* Get the SETPOINT of forced speed.
-	 * */
-	if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
-
-		wSP = (pm->i_setpoint_current < - M_EPSILON) ? - PM_MAX_F
-			: (pm->i_setpoint_current > M_EPSILON) ? PM_MAX_F : 0.f;
-	}
-	else {
-		wSP = pm->s_setpoint_speed;
-	}
+	wSP = pm->s_setpoint_speed;
 
 	/* Maximal forced speed constraint.
 	 * */
@@ -1736,7 +1727,6 @@ static void
 pm_lu_FSM(pmc_t *pm)
 {
 	float			lu_F[2], hS, A, B;
-
 	int			lu_EABI = PM_DISABLED;
 
 	/* Get the current on DQ-axes.
@@ -1779,15 +1769,46 @@ pm_lu_FSM(pmc_t *pm)
 		pm->lu_mq_produce = 0.f;
 	}
 
+	if (		pm->config_LU_FORCED == PM_ENABLED
+			&& pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
+
+		float		wSP;
+
+		/* Derive the speed SETPOINT in case of current control.
+		 * */
+		wSP = (pm->i_setpoint_current < - M_EPSILON) ? - pm->forced_reverse
+			: (pm->i_setpoint_current > M_EPSILON) ? pm->forced_maximal : 0.f;
+
+		pm->s_setpoint_speed = wSP;
+	}
+
 	if (pm->lu_MODE == PM_LU_DETACHED) {
+
+		if (pm->flux_DETACH != PM_ENABLED) {
+
+			pm->base_TIM = - PM_TSMS(pm, pm->tm_transient_fast);
+			pm->detach_TIM = 0;
+
+			pm->watt_DC_MAX = PM_DISABLED;
+			pm->watt_DC_MIN = PM_DISABLED;
+
+			pm->watt_lpf_D = 0.f;
+			pm->watt_lpf_Q = 0.f;
+			pm->watt_drain_wP = 0.f;
+			pm->watt_drain_wA = 0.f;
+			pm->watt_integral = 0.f;
+
+			pm->i_track_D = 0.f;
+			pm->i_track_Q = 0.f;
+			pm->i_integral_D = 0.f;
+			pm->i_integral_Q = 0.f;
+
+			pm->flux_DETACH = PM_ENABLED;
+		}
 
 		if (pm->base_TIM >= 0) {
 
 			pm_flux_detached(pm);
-		}
-
-		if (pm->config_LU_ESTIMATE != PM_FLUX_NONE) {
-
 			pm_flux_zone(pm);
 		}
 
@@ -1836,7 +1857,9 @@ pm_lu_FSM(pmc_t *pm)
 
 			pm->proc_set_Z(PM_Z_NONE);
 		}
-		else if (pm->config_LU_FORCED == PM_ENABLED) {
+		else if (	pm->config_LU_FORCED == PM_ENABLED
+				&& (	pm->config_LU_FREEWHEEL != PM_ENABLED
+					|| m_fabsf(pm->s_setpoint_speed) > M_EPSILON)) {
 
 			pm->lu_MODE = PM_LU_FORCED;
 
@@ -1892,6 +1915,17 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_MODE = PM_LU_ON_HFI;
 			}
+			else if (	PM_CONFIG_TVM(pm) == PM_ENABLED
+					&& pm->config_LU_FREEWHEEL == PM_ENABLED
+					&& pm->forced_track_D < M_EPSILON) {
+
+				pm->lu_MODE = PM_LU_DETACHED;
+
+				pm->flux_DETACH = PM_DISABLED;
+				pm->flux_TYPE = PM_FLUX_NONE;
+
+				pm->proc_set_Z(PM_Z_ABC);
+			}
 		}
 	}
 	else if (pm->lu_MODE == PM_LU_ESTIMATE) {
@@ -1934,7 +1968,9 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->hold_TIM = 0;
 			}
-			else if (pm->config_LU_FORCED == PM_ENABLED) {
+			else if (	pm->config_LU_FORCED == PM_ENABLED
+					&& (	pm->config_LU_FREEWHEEL != PM_ENABLED
+						|| m_fabsf(pm->s_setpoint_speed) > M_EPSILON)) {
 
 				pm->lu_MODE = PM_LU_FORCED;
 
@@ -1948,25 +1984,8 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_MODE = PM_LU_DETACHED;
 
-				pm->base_TIM = - PM_TSMS(pm, pm->tm_transient_fast);
-				pm->detach_TIM = 0;
-
+				pm->flux_DETACH = PM_DISABLED;
 				pm->flux_TYPE = PM_FLUX_NONE;
-
-				pm->lu_uD = 0.f;
-				pm->lu_uQ = 0.f;
-
-				pm->watt_lpf_D = 0.f;
-				pm->watt_lpf_Q = 0.f;
-				pm->watt_drain_wP = 0.f;
-				pm->watt_drain_wA = 0.f;
-
-				pm->i_track_D = 0.f;
-				pm->i_track_Q = 0.f;
-				pm->i_integral_D = 0.f;
-				pm->i_integral_Q = 0.f;
-
-				pm->watt_integral = 0.f;
 
 				pm->proc_set_Z(PM_Z_ABC);
 			}
@@ -2130,6 +2149,9 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (pm->config_EABI_FRONTEND == PM_EABI_INCREMENTAL) {
 
+			/* We need to adjust the position again
+			 * after loss of tracking.
+			 * */
 			pm->eabi_ADJUST = PM_DISABLED;
 		}
 	}
@@ -2684,7 +2706,18 @@ pm_loop_current(pmc_t *pm)
 
 	if (pm->lu_MODE == PM_LU_FORCED) {
 
-		track_D = pm->forced_hold_D;
+		if (pm->config_LU_FREEWHEEL != PM_ENABLED) {
+
+			track_D = pm->forced_hold_D;
+		}
+		else if (	m_fabsf(pm->s_setpoint_speed) > M_EPSILON
+				|| m_fabsf(pm->forced_wS) > M_EPSILON) {
+
+			track_D = pm->forced_hold_D;
+		}
+		else {
+			track_D = 0.f;
+		}
 	}
 	else {
 		track_D = 0.f;

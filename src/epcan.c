@@ -155,7 +155,7 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 			ep->tx_N = 0;
 
 			if (		ep->ACTIVE == PM_ENABLED
-					&& pm.fsm_errno != PM_OK) {
+					&& pm.lu_MODE == PM_LU_DISABLED) {
 
 				ep->ACTIVE = PM_DISABLED;
 			}
@@ -164,7 +164,6 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 					&& ep->ACTIVE != PM_ENABLED
 					&& pm.lu_MODE == PM_LU_DISABLED) {
 
-				pm.fsm_errno = PM_OK;
 				pm.fsm_req = PM_STATE_LU_STARTUP;
 
 				ep->ACTIVE = PM_ENABLED;

@@ -670,15 +670,5 @@ LD_TASK void task_CMDSH(void *pData)
 #undef SH_DEF
 #define SH_DEF(name)		void name(const char *s)
 
-SH_DEF(sh_keycodes)
-{
-	int		c;
-
-	do {
-		c = getc();
-
-		printf("%2x" EOL, c);
-	}
-	while (c != K_EOT && c != 'D');
-}
+/* TODO */
 

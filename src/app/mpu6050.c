@@ -11,6 +11,13 @@
 
 LD_TASK void app_MPU6050(void *pData)
 {
-	/* TODO */
+	volatile int		*knob = (volatile int *) pData;
+
+	do {
+		/* TODO */
+	}
+	while (*knob != 0);
+
+	vTaskDelete(NULL);
 }
 

@@ -34,7 +34,6 @@ SH_DEF(tlm_watch)
 SH_DEF(tlm_stop)
 SH_DEF(tlm_flush_sync)
 SH_DEF(tlm_live_sync)
-SH_DEF(sh_keycodes)
 #ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_survey)
 SH_DEF(net_assign)

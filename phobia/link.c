@@ -192,7 +192,7 @@ link_fetch_network(struct link_pmc *lp)
 
 	if (strstr(lbuf, "(pmc)") == lbuf) {
 
-		sprintf(lp->network, "local");
+		sprintf(lp->network, "SERIAL");
 
 		rc = 1;
 	}
@@ -201,7 +201,7 @@ link_fetch_network(struct link_pmc *lp)
 
 		if (lk_stoi(&n, lbuf + 5) != NULL) {
 
-			sprintf(lp->network, "remote/%i", n);
+			sprintf(lp->network, "REMOTE/%i", n);
 		}
 		else {
 			lp->network[0] = 0;
@@ -370,10 +370,7 @@ link_fetch_hwinfo(struct link_pmc *lp)
 
 		tok = lk_token(&sp);
 
-		if (strcmp(tok, "OK") != 0) {
-
-			sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " (%.16s)", tok);
-		}
+		sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " (%.16s)", tok);
 
 		sprintf(lp->hwinfo, "%.16s / %.16s / %.36s", priv->hw_revision,
 				priv->hw_build, priv->hw_crc32);

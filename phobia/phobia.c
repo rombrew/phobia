@@ -185,6 +185,8 @@ pub_primal_reg(struct public *pub, const struct link_reg *reg)
 {
 	const char	*primal_map[] = {
 
+		"pm.scale_uS0",
+		"pm.scale_uS1",
 		"pm.probe_current_hold",
 		"pm.probe_current_weak",
 		"pm.probe_current_sine",
@@ -2812,6 +2814,12 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.scale_uS0", "DC link voltage offset");
+	reg_float(pub, "pm.scale_uS1", "DC link voltage scale");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_enum_toggle(pub, "pm.tvm_ACTIVE", "TVM is active");
 	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
 	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
@@ -3649,8 +3657,8 @@ page_in_pwm(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_timeout", "IDLE timeout");
-	reg_float(pub, "ap.disarm_timeout", "DISARM timeout");
+	reg_float(pub, "ap.timeout_DISARM", "Timeout DISARM ");
+	reg_float(pub, "ap.timeout_IDLE", "Timeout IDLE");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3727,8 +3735,8 @@ page_in_knob(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.idle_timeout", "IDLE timeout");
-	reg_float(pub, "ap.disarm_timeout", "DISARM timeout");
+	reg_float(pub, "ap.timeout_DISARM", "Timeout DISARM");
+	reg_float(pub, "ap.timeout_IDLE", "Timeout IDLE");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3739,27 +3747,49 @@ static void
 page_application(struct public *pub)
 {
 	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup automatic");
+
+	reg = link_reg_lookup(lp, "ap.task_AUTOSTART");
+
+	if (		reg != NULL
+			&& reg->lval != 0) {
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
+		reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
 	reg_enum_toggle(pub, "ap.task_BUTTON", "Button control");
 	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
 	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
+
+	reg = link_reg_lookup(lp, "ap.task_HX711");
+
+	if (		reg != NULL
+			&& reg->lval != 0) {
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_float(pub, "ap.load_HX711", "HX711 measurement");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
 	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial unit");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
-	reg_float(pub, "ap.auto_reg_DATA", "Auto register DATA");
-	reg_linked(pub, "ap.auto_reg_ID", "Auto register ID");
-
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
-
-	reg_float(pub, "ap.load_HX711", "HX711 measurement");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3827,8 +3857,8 @@ page_thermal(struct public *pub)
 	reg_float(pub, "ap.heat_PCB_temp_derate", "PCB derate threshold");
 	reg_float(pub, "ap.heat_PCB_temp_FAN", "PCB fan ON threshold");
 	reg_float(pub, "ap.heat_EXT_temp_derate", "EXT derate threshold");
-	reg_float(pub, "ap.heat_derated_PCB", "PCB derated current");
-	reg_float(pub, "ap.heat_derated_EXT", "EXT derated current");
+	reg_float(pub, "ap.heat_maximal_PCB", "PCB maximal current");
+	reg_float(pub, "ap.heat_maximal_EXT", "EXT maximal current");
 	reg_float(pub, "ap.heat_temp_recovery", "Recovery hysteresis");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3901,6 +3931,7 @@ page_config(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_toggle(pub, "pm.config_LU_FORCED", "Forced control");
+	reg_enum_toggle(pub, "pm.config_LU_FREEWHEEL", "Allow freewheeling");
 	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "Sensorless estimate", 1);
 	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position sensor type", 1);
 	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo location source", 1);
@@ -3914,8 +3945,8 @@ page_config(struct public *pub)
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux weakening control");
 
-	reg_enum_toggle(pub, "pm.config_REVERSE_BRAKE", "Reverse brake");
-	reg_enum_toggle(pub, "pm.config_SPEED_MAXIMAL", "Speed constraints");
+	reg_enum_toggle(pub, "pm.config_REVERSE_BRAKE", "Reverse brake function");
+	reg_enum_toggle(pub, "pm.config_SPEED_MAXIMAL", "Speed maximal function");
 
 	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
 	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);

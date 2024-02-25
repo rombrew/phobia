@@ -119,63 +119,60 @@ GPIO_set_state_FAN(int knob)
 #endif /* HW_HAVE_FAN_CONTROL */
 
 static int
-elapsed_IDLE()
+timeout_DISARM()
 {
-	TickType_t		xIDLE, xNOW;
+	TickType_t		xOUT, xNOW;
 
-	xIDLE = (TickType_t) (ap.idle_timeout * (float) configTICK_RATE_HZ);
+	xOUT = (TickType_t) (ap.timeout_DISARM * ((float) configTICK_RATE_HZ / 1000.f));
 
-	if (xIDLE > 0) {
+	if (xOUT != 0) {
 
 		xNOW = xTaskGetTickCount();
 
-		if (xNOW - (TickType_t) ap.idle_INVOKE > (TickType_t) 50) {
+		if (xNOW - (TickType_t) ap.disarm_INK > (TickType_t) 40) {
 
-			ap.idle_RESET = xNOW;
+			ap.disarm_RST = xNOW;
 		}
 
-		ap.idle_INVOKE = xNOW;
+		ap.disarm_INK = xNOW;
 
-		if (pm.lu_total_revol != ap.idle_revol_cached) {
+		if (xNOW - (TickType_t) ap.disarm_RST < xOUT) {
 
-			ap.idle_RESET = xNOW;
-			ap.idle_revol_cached = pm.lu_total_revol;
-		}
-
-		if (xNOW - (TickType_t) ap.idle_RESET > xIDLE) {
-
-			return PM_ENABLED;
+			return PM_DISABLED;
 		}
 	}
 
-	return PM_DISABLED;
+	return PM_ENABLED;
 }
 
 static int
-elapsed_DISARM()
+timeout_IDLE()
 {
-	TickType_t		xDISARM, xNOW;
+	TickType_t		xOUT, xNOW;
 
-	xDISARM = (TickType_t) (ap.disarm_timeout * (float) configTICK_RATE_HZ);
+	xOUT = (TickType_t) (ap.timeout_IDLE * ((float) configTICK_RATE_HZ / 1000.f));
 
-	if (xDISARM > 0) {
+	if (xOUT != 0) {
 
 		xNOW = xTaskGetTickCount();
 
-		if (xNOW - (TickType_t) ap.disarm_INVOKE > (TickType_t) 50) {
+		if (xNOW - (TickType_t) ap.idle_INK > (TickType_t) 40) {
 
-			ap.disarm_RESET = xNOW;
+			ap.idle_RST = xNOW;
 		}
 
-		ap.disarm_INVOKE = xNOW;
+		ap.idle_INK = xNOW;
 
-		if (xNOW - (TickType_t) ap.disarm_RESET > xDISARM) {
+		if (pm.lu_total_revol != ap.idle_revol) {
+
+			ap.idle_RST = xNOW;
+			ap.idle_revol = pm.lu_total_revol;
+		}
+
+		if (xNOW - (TickType_t) ap.idle_RST > xOUT) {
 
 			return PM_ENABLED;
 		}
-	}
-	else {
-		return PM_ENABLED;
 	}
 
 	return PM_DISABLED;
@@ -184,7 +181,9 @@ elapsed_DISARM()
 LD_TASK void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
-	float			x_PCB, x_EXT, lock_PCB;
+	
+	float			maximal_PCB, maximal_EXT, lock_PCB;
+	int			fsm_errno_last;
 
 	if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -198,10 +197,12 @@ LD_TASK void task_TEMP(void *pData)
 
 	xWake = xTaskGetTickCount();
 
-	x_PCB = PM_MAX_F;
-	x_EXT = PM_MAX_F;
+	maximal_PCB = PM_MAX_F;
+	maximal_EXT = PM_MAX_F;
 
 	lock_PCB = 0.f;
+
+	fsm_errno_last = PM_OK;
 
 	do {
 		/* 10 Hz.
@@ -228,7 +229,7 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (ap.temp_PCB > ap.heat_PCB_temp_halt - lock_PCB) {
 
-			x_PCB = 0.f;
+			maximal_PCB = 0.f;
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -243,11 +244,11 @@ LD_TASK void task_TEMP(void *pData)
 
 				/* Derate current in case of PCB thermal overload.
 				 * */
-				x_PCB = ap.heat_derated_PCB;
+				maximal_PCB = ap.heat_maximal_PCB;
 			}
 			else if (ap.temp_PCB < ap.heat_PCB_temp_derate - ap.heat_temp_recovery) {
 
-				x_PCB = PM_MAX_F;
+				maximal_PCB = PM_MAX_F;
 			}
 
 			lock_PCB = 0.f;
@@ -273,15 +274,15 @@ LD_TASK void task_TEMP(void *pData)
 				/* Derate current in case of external thermal
 				 * overload (machine overheat protection).
 				 * */
-				x_EXT = ap.heat_derated_EXT;
+				maximal_EXT = ap.heat_maximal_EXT;
 			}
 			else if (ap.temp_EXT < ap.heat_EXT_temp_derate - ap.heat_temp_recovery) {
 
-				x_EXT = PM_MAX_F;
+				maximal_EXT = PM_MAX_F;
 			}
 		}
 
-		pm.i_maximal_on_PCB = (x_PCB < x_EXT) ? x_PCB : x_EXT;
+		pm.i_maximal_on_PCB = (maximal_PCB < maximal_EXT) ? maximal_PCB : maximal_EXT;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
@@ -307,8 +308,12 @@ LD_TASK void task_TEMP(void *pData)
 		}
 #endif /* GPIO_LED_MODE */
 
-		if (		pm.fsm_errno != PM_OK
-				|| log_status() != HAL_OK) {
+		if (pm.fsm_errno != PM_OK) {
+
+			if (pm.fsm_errno != fsm_errno_last) {
+
+				log_TRACE("FSM errno %s" EOL, pm_strerror(pm.fsm_errno));
+			}
 
 			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 205) {
 
@@ -318,6 +323,8 @@ LD_TASK void task_TEMP(void *pData)
 				GPIO_set_LOW(GPIO_LED_ALERT);
 			}
 		}
+
+		fsm_errno_last = pm.fsm_errno;
 	}
 	while (1);
 }
@@ -328,13 +335,15 @@ conv_KNOB()
 {
 	float			control, range, scaled;
 
+	int			hold_FLAG = PM_DISABLED;
+
 	if (		ap.knob_ACTIVE == PM_ENABLED
 			&& pm.lu_MODE == PM_LU_DISABLED) {
 
 		ap.knob_ACTIVE = PM_DISABLED;
 		ap.knob_DISARM = PM_ENABLED;
 
-		ap.knob_FAULT = 0;
+		ap.knob_NFAULT = 0;
 	}
 
 	if (		   ap.knob_in_ANG < ap.knob_range_LOS[0]
@@ -349,9 +358,9 @@ conv_KNOB()
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				ap.knob_FAULT++;
+				ap.knob_NFAULT++;
 
-				if (unlikely(ap.knob_FAULT >= 10)) {
+				if (unlikely(ap.knob_NFAULT >= 10)) {
 
 					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
 					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -380,7 +389,7 @@ conv_KNOB()
 
 			if (ap.knob_ACTIVE == PM_ENABLED) {
 
-				if (elapsed_IDLE() == PM_ENABLED) {
+				if (timeout_IDLE() == PM_ENABLED) {
 
 					if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -392,13 +401,15 @@ conv_KNOB()
 			}
 			else if (ap.knob_DISARM == PM_ENABLED) {
 
-				if (elapsed_DISARM() == PM_ENABLED) {
+				if (timeout_DISARM() == PM_ENABLED) {
 
 					ap.knob_DISARM = PM_DISABLED;
 				}
 			}
 		}
 		else {
+			hold_FLAG = PM_ENABLED;
+
 			if (scaled > 1.f) {
 
 				scaled = 1.f;
@@ -419,7 +430,7 @@ conv_KNOB()
 			}
 		}
 
-		ap.knob_FAULT = 0;
+		ap.knob_NFAULT = 0;
 	}
 
 	if (scaled < 0.f) {
@@ -450,7 +461,8 @@ conv_KNOB()
 	}
 #endif /* HW_HAVE_BRAKE_KNOB */
 
-	if (ap.knob_reg_DATA != control) {
+	if (		ap.knob_reg_DATA != control
+			|| hold_FLAG == PM_ENABLED) {
 
 		ap.knob_reg_DATA = control;
 
@@ -568,14 +580,6 @@ default_flash_load()
 	net.ep[2].rate = net.ep[0].rate;
 	net.ep[3].ID = 40;
 	net.ep[3].rate = net.ep[0].rate;
-	net.ep[4].ID = 50;
-	net.ep[4].rate = net.ep[0].rate;
-	net.ep[5].ID = 60;
-	net.ep[5].rate = net.ep[0].rate;
-	net.ep[6].ID = 70;
-	net.ep[6].rate = net.ep[0].rate;
-	net.ep[7].ID = 80;
-	net.ep[7].rate = net.ep[0].rate;
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
@@ -617,11 +621,8 @@ default_flash_load()
 	ap.knob_control_BRK = - 100.f;
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	ap.idle_timeout = 2.f;		/* (s) */
-	ap.disarm_timeout = 1.f;	/* (s) */
-
-	ap.auto_reg_DATA = 0.f;
-	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
+	ap.timeout_DISARM = 1000.f;	/* (ms) */
+	ap.timeout_IDLE = 5000.f;	/* (ms) */
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	ap.ntc_PCB.type = HW_NTC_PCB_TYPE;
@@ -645,9 +646,12 @@ default_flash_load()
 	ap.heat_PCB_temp_derate = 90.f;	/* (C) */
 	ap.heat_PCB_temp_FAN = 60.f;	/* (C) */
 	ap.heat_EXT_temp_derate = 0.f;	/* (C) */
-	ap.heat_derated_PCB = 20.f;	/* (A) */
-	ap.heat_derated_EXT = 20.f;	/* (A) */
+	ap.heat_maximal_PCB = 10.f;	/* (A) */
+	ap.heat_maximal_EXT = 10.f;	/* (A) */
 	ap.heat_temp_recovery = 5.f;	/* (C) */
+
+	ap.auto_reg_DATA = 0.f;
+	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
 
 	pm.m_freq = hal.PWM_frequency;
 	pm.m_dT = 1.f / pm.m_freq;
@@ -839,6 +843,8 @@ conv_PULSE_WIDTH()
 {
 	float		control, range, scaled;
 
+	int		hold_FLAG = PM_DISABLED;
+
 	if (		ap.ppm_ACTIVE == PM_ENABLED
 			&& pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -862,7 +868,7 @@ conv_PULSE_WIDTH()
 
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
-			if (elapsed_IDLE() == PM_ENABLED) {
+			if (timeout_IDLE() == PM_ENABLED) {
 
 				if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -874,13 +880,15 @@ conv_PULSE_WIDTH()
 		}
 		else if (ap.ppm_DISARM == PM_ENABLED) {
 
-			if (elapsed_DISARM() == PM_ENABLED) {
+			if (timeout_DISARM() == PM_ENABLED) {
 
 				ap.ppm_DISARM = PM_DISABLED;
 			}
 		}
 	}
 	else {
+		hold_FLAG = PM_ENABLED;
+
 		if (scaled > 1.f) {
 
 			scaled = 1.f;
@@ -911,7 +919,8 @@ conv_PULSE_WIDTH()
 		control = ap.ppm_control[1] + range * scaled;
 	}
 
-	if (ap.ppm_reg_DATA != control) {
+	if (		ap.ppm_reg_DATA != control
+			|| hold_FLAG == PM_ENABLED) {
 
 		ap.ppm_reg_DATA = control;
 
@@ -932,16 +941,16 @@ in_PULSE_WIDTH()
 
 		conv_PULSE_WIDTH();
 
-		ap.ppm_FAULT = 0;
+		ap.ppm_NFAULT = 0;
 	}
 	else {
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				ap.ppm_FAULT++;
+				ap.ppm_NFAULT++;
 
-				if (unlikely(ap.ppm_FAULT >= 10)) {
+				if (unlikely(ap.ppm_NFAULT >= 10)) {
 
 					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
 					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -988,8 +997,7 @@ in_STEP_DIR()
 
 		if (ap.step_STARTUP == PM_ENABLED) {
 
-			if (		pm.lu_MODE == PM_LU_DISABLED
-					&& pm.fsm_errno == PM_OK) {
+			if (pm.lu_MODE == PM_LU_DISABLED) {
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
 			}

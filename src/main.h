@@ -18,7 +18,7 @@ typedef struct {
 	int			ppm_STARTUP;
 	int			ppm_ACTIVE;
 	int			ppm_DISARM;
-	int			ppm_FAULT;
+	int			ppm_NFAULT;
 	float			ppm_range[3];
 	float			ppm_control[3];
 
@@ -47,7 +47,7 @@ typedef struct {
 	int			knob_STARTUP;
 	int			knob_ACTIVE;
 	int			knob_DISARM;
-	int			knob_FAULT;
+	int			knob_NFAULT;
 	float			knob_range_ANG[3];
 #ifdef HW_HAVE_BRAKE_KNOB
 	float			knob_range_BRK[2];
@@ -57,25 +57,24 @@ typedef struct {
 	float			knob_control_BRK;
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	/* IDLE function.
+	/* Timeout functions.
 	 * */
-	float			idle_timeout;
-	int			idle_RESET;
-	int			idle_INVOKE;
-	int			idle_revol_cached;
+	float			timeout_DISARM;
+	float			timeout_IDLE;
 
-	/* Disarm function.
-	 * */
-	float			disarm_timeout;
-	int			disarm_RESET;
-	int			disarm_INVOKE;
+	uint32_t		disarm_RST;
+	uint32_t		disarm_INK;
+
+	uint32_t		idle_RST;
+	uint32_t		idle_INK;
+	int			idle_revol;
 
 	/* NTC constants.
 	 * */
 	ntc_t			ntc_PCB;
 	ntc_t			ntc_EXT;
 
-	/* Thermal info.
+	/* Thermal information.
 	 * */
 	float			temp_PCB;
 	float			temp_EXT;
@@ -87,11 +86,11 @@ typedef struct {
 	float			heat_PCB_temp_derate;
 	float			heat_PCB_temp_FAN;
 	float			heat_EXT_temp_derate;
-	float			heat_derated_PCB;
-	float			heat_derated_EXT;
+	float			heat_maximal_PCB;
+	float			heat_maximal_EXT;
 	float			heat_temp_recovery;
 
-	/* App enable knobs.
+	/* App enable/disable knobs.
 	 * */
 	int			task_AUTOSTART;
 	int			task_BUTTON;

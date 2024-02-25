@@ -250,6 +250,7 @@ typedef struct {
 	int		config_VSI_ZERO;
 	int		config_VSI_CLAMP;
 	int		config_LU_FORCED;
+	int		config_LU_FREEWHEEL;
 	int		config_LU_ESTIMATE;
 	int		config_LU_SENSOR;
 	int		config_LU_LOCATION;
@@ -264,7 +265,6 @@ typedef struct {
 	int		config_SPEED_MAXIMAL;
 	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
-	int		config_BOOST_CHARGE;		/* TODO */
 
 	int		fsm_req;
 	int		fsm_state;
@@ -406,6 +406,8 @@ typedef struct {
 	float		forced_fall_rate;
 	float		forced_track_D;
 	float		forced_stop_DC;
+
+	int		flux_DETACH;
 
 	int		detach_TIM;
 	float		detach_threshold;

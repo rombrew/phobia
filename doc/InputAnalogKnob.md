@@ -90,14 +90,14 @@ Now you are ready to enable the analog knob interface.
 
 To stop the control we check if machine is run or setpoint is high. If setpoint
 is out of input range and machine does not make full turns for
-`ap.idle_timeout` seconds the shutdown is requested.
+`ap.timeout_IDLE` seconds the shutdown is requested.
 
-	(pmc) reg ap.idle_timeout <s>
+	(pmc) reg ap.timeout_IDLE <s>
 
 # Disarm timeout
 
 To ensure a safe startup it is required to hold low `ANG` signal for
-`ap.disarm_timeout` seconds until disarmed state was reset.
+`ap.timeout_DISARM` seconds until disarmed state was reset.
 
-	(pmc) reg ap.disarm_timeout <s>
+	(pmc) reg ap.timeout_DISARM <s>
 
