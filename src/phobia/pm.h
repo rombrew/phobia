@@ -399,6 +399,7 @@ typedef struct {
 	float		forced_F[2];
 	float		forced_wS;
 	float		forced_hold_D;
+	float		forced_weak_D;
 	float		forced_maximal;
 	float		forced_reverse;
 	float		forced_accel;
@@ -562,7 +563,7 @@ typedef struct {
 	float		i_gain_I;
 	float		i_gain_A;
 
-	float		mtpa_approx_Q;
+	float		mtpa_approx_D;
 	float		mtpa_D;
 	float		mtpa_gain_LP;
 

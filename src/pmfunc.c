@@ -293,6 +293,7 @@ SH_DEF(pm_probe_spinup)
 
 		reg_OUTP(ID_PM_FORCED_MAXIMAL);
 		reg_OUTP(ID_PM_FORCED_ACCEL);
+		reg_OUTP(ID_PM_LU_GAIN_MQ_LP);
 		reg_OUTP(ID_PM_S_GAIN_P);
 		reg_OUTP(ID_PM_S_GAIN_D);
 	}

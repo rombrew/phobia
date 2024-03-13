@@ -181,6 +181,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->lu_gain_mq_LP = 5.E-4f;
 
 	pm->forced_hold_D = 20.f;		/* (A) */
+	pm->forced_weak_D = 0.f;		/* (A) */
 	pm->forced_maximal = 900.f;		/* (rad/s) */
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;		/* (rad/s2) */
@@ -263,9 +264,9 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_reverse = pm->s_maximal;		/* (rad/s) */
 	pm->s_accel = 10000.f;			/* (rad/s2) */
 	pm->s_damping = 1.f;
-	pm->s_gain_P = 5.E-2f;
+	pm->s_gain_P = 4.E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 5.E-4f;
+	pm->s_gain_D = 4.E-4f;
 	pm->s_gain_A = 1.f;
 
 	pm->l_track_tol = 50.f;			/* (rad/s) */
@@ -304,9 +305,9 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->i_gain_I = 5.E-3f;
 	pm->i_gain_A = 1.f;
 
-	pm->s_gain_P = 5.E-2f;
+	pm->s_gain_P = 4.E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 5.E-4f;
+	pm->s_gain_D = 4.E-4f;
 	pm->s_gain_A = 1.f;
 }
 
@@ -540,17 +541,30 @@ pm_auto_loop_current(pmc_t *pm)
 static void
 pm_auto_loop_speed(pmc_t *pm)
 {
-	float		Df;
+	float		Df, relu;
 
 	if (pm->zone_noise > M_EPSILON) {
 
 		Df = pm->s_damping;
 
-		pm->lu_gain_mq_LP = 4.E-3f * Df;
+		if (pm->const_Ja > 0.f) {
+
+			if (pm->config_RELUCTANCE == PM_ENABLED) {
+
+				relu = (pm->const_im_L1 - pm->const_im_L2) * pm->i_maximal;
+
+				pm->lu_gain_mq_LP = 4.f * Df * (pm->const_lambda + relu)
+					* pm->m_dT / (pm->const_Ja * pm->zone_noise);
+			}
+			else {
+				pm->lu_gain_mq_LP = 4.f * Df * pm->const_lambda
+					* pm->m_dT / (pm->const_Ja * pm->zone_noise);
+			}
+		}
 
 		pm->s_gain_P = 2.f * Df / pm->zone_noise;
 		pm->s_gain_I = 0.f;
-		pm->s_gain_D = 5.E-4f * Df / pm->zone_noise;
+		pm->s_gain_D = 2.E-2f * Df / pm->zone_noise;
 		pm->s_gain_A = 1.f;
 	}
 }
@@ -673,15 +687,15 @@ pm_torque_get_current(pmc_t *pm, float mQ)
 	if (pm->config_RELUCTANCE == PM_ENABLED) {
 
 		if (		pm->const_lambda < M_EPSILON
-				&& pm->mtpa_approx_Q < 1.f) {
+				&& pm->mtpa_approx_D < 1.f) {
 
-			pm->mtpa_approx_Q = 1.f;
+			pm->mtpa_approx_D = 1.f;
 		}
 
-		relu = (pm->const_im_L1 - pm->const_im_L2) * pm->mtpa_approx_Q;
+		relu = (pm->const_im_L1 - pm->const_im_L2) * pm->mtpa_approx_D;
 		iQ = mQ / (pm->k_KWAT * (pm->const_lambda + relu));
 
-		pm->mtpa_approx_Q = pm_torque_approx_MTPA(pm, pm->mtpa_approx_Q, iQ);
+		pm->mtpa_approx_D = pm_torque_approx_MTPA(pm, pm->mtpa_approx_D, iQ);
 	}
 	else {
 		if (pm->const_lambda > M_EPSILON) {
@@ -2716,7 +2730,7 @@ pm_loop_current(pmc_t *pm)
 			track_D = pm->forced_hold_D;
 		}
 		else {
-			track_D = 0.f;
+			track_D = pm->forced_weak_D;
 		}
 	}
 	else {

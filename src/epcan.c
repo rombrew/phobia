@@ -29,7 +29,7 @@ typedef struct {
 	SemaphoreHandle_t	log_mutex;
 	int			log_skipped;
 
-	/* Network service.
+	/* Network services.
 	 * */
 	QueueHandle_t		net_queue;
 
@@ -61,18 +61,13 @@ static epcan_local_t		local;
 static void
 EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 {
-	float			val;
-
 	switch (ep->PAYLOAD) {
 
 		case EPCAN_PAYLOAD_FLOAT:
 
 			if (msg->len == 4) {
 
-				val = * (float *) &msg->payload[0];
-
-				ep->reg_DATA = (ep->range[1] == 0.f) ? val
-					: ep->range[1] * val + ep->range[0];
+				ep->reg_DATA = ep->range[1] * msg->payload.f[0] + ep->range[0];
 			}
 			break;
 
@@ -80,9 +75,8 @@ EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 
 			if (msg->len == 2) {
 
-				val = (float) * (uint16_t *) &msg->payload[0] * (1.f / 65535.f);
-
-				ep->reg_DATA = ep->range[0] + val * (ep->range[1] - ep->range[0]);
+				ep->reg_DATA = ep->range[0] + (float) msg->payload.s[0]
+					* (ep->range[1] - ep->range[0]) * (1.f / 65535.f);
 			}
 			break;
 
@@ -99,7 +93,6 @@ static void
 EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 {
 	CAN_msg_t		msg;
-	float			val;
 
 	if (ep->reg_ID != ID_NULL) {
 
@@ -110,24 +103,22 @@ EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 
 	switch (ep->PAYLOAD) {
 
+		float			fval;
+
 		case EPCAN_PAYLOAD_FLOAT:
 
 			msg.len = 4;
-
-			val = (ep->range[1] == 0.f) ? ep->reg_DATA
-				: ep->range[1] * ep->reg_DATA + ep->range[0];
-
-			* (float *) &msg.payload[0] = val;
+			msg.payload.f[0] = ep->range[1] * ep->reg_DATA + ep->range[0];
 			break;
 
 		case EPCAN_PAYLOAD_INT_16:
 
 			msg.len = 2;
 
-			val = (ep->reg_DATA - ep->range[0]) / (ep->range[1] - ep->range[0]);
-			val = (val < 0.f) ? 0.f : (val > 1.f) ? 1.f : val;
+			fval = (ep->reg_DATA - ep->range[0]) / (ep->range[1] - ep->range[0]);
+			fval = (fval < 0.f) ? 0.f : (fval > 1.f) ? 1.f : fval;
 
-			* (uint16_t *) &msg.payload[0] = (uint16_t) (val * 65535.f);
+			msg.payload.s[0] = (uint16_t) (fval * 65535.f);
 			break;
 
 		default: break;
@@ -152,7 +143,7 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 		if (		ep->MODE == EPCAN_PIPE_INCOMING
 				&& ep->ID == msg->ID) {
 
-			ep->tx_N = 0;
+			ep->tx_clock = 0;
 
 			if (		ep->ACTIVE == PM_ENABLED
 					&& pm.lu_MODE == PM_LU_DISABLED) {
@@ -193,9 +184,9 @@ void EPCAN_pipe_REGULAR()
 		if (		ep->MODE == EPCAN_PIPE_INCOMING
 				&& ep->ACTIVE == PM_ENABLED) {
 
-			ep->tx_N++;
+			ep->tx_clock++;
 
-			if (ep->tx_N >= net.timeout_EP) {
+			if (ep->tx_clock >= net.timeout_EP) {
 
 				if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -203,16 +194,16 @@ void EPCAN_pipe_REGULAR()
 				}
 
 				ep->ACTIVE = PM_DISABLED;
-				ep->tx_N = 0;
+				ep->tx_clock = 0;
 			}
 		}
 		else if (ep->MODE == EPCAN_PIPE_OUTGOING_REGULAR) {
 
-			ep->tx_N++;
+			ep->tx_clock++;
 
-			if (ep->tx_N >= ep->rate) {
+			if (ep->tx_clock >= ep->rate) {
 
-				ep->tx_N = 0;
+				ep->tx_clock = 0;
 
 				if (		ep->STARTUP != PM_ENABLED
 						|| pm.lu_MODE != PM_LU_DISABLED) {
@@ -316,7 +307,7 @@ local_node_update_ACK(int node_ID, int node_ACK)
 }
 
 static int
-local_node_is_valid_remote(int node_ID)
+local_node_valid_remote(int node_ID)
 {
 	int		N, rc = 0;
 
@@ -341,7 +332,7 @@ local_node_assign_ID()
 
 	for (node_ID = 1; node_ID <= EPCAN_NODES_MAX; ++node_ID) {
 
-		if (local_node_is_valid_remote(node_ID) == 0
+		if (		local_node_valid_remote(node_ID) == 0
 				&& node_ID != net.node_ID) {
 
 			found_ID = node_ID;
@@ -362,7 +353,7 @@ local_node_random_ID()
 
 	for (node_ID = 1; node_ID <= EPCAN_NODES_MAX; ++node_ID) {
 
-		if (local_node_is_valid_remote(node_ID) == 0
+		if (		local_node_valid_remote(node_ID) == 0
 				&& node_ID != net.node_ID) {
 
 			list_ID[N++] = node_ID;
@@ -426,7 +417,7 @@ EPCAN_log_msg(CAN_msg_t *msg, const char *label)
 
 		for (N = 0; N < msg->len; ++N) {
 
-			xprintf(&ops, " %2x", msg->payload[N]);
+			xprintf(&ops, " %2x", msg->payload.b[N]);
 		}
 
 		xputs(&ops, EOL);
@@ -508,10 +499,9 @@ LD_TASK void task_EPCAN_NET(void *pData)
 				msg.ID = EPCAN_ID(node_ID, EPCAN_NODE_ACK);
 				msg.len = 6;
 
-				* (uint32_t *) &msg.payload[0] = local.UID;
-
-				msg.payload[4] = net.node_ID;
-				msg.payload[5] = node_ACK;
+				msg.payload.l[0] = local.UID;
+				msg.payload.b[4] = node_ACK;
+				msg.payload.b[5] = net.node_ID;
 
 				EPCAN_send_msg(&msg);
 			}
@@ -533,8 +523,8 @@ EPCAN_node_ACK(int node_ACK)
 		msg.ID = EPCAN_ID(net.node_ID, EPCAN_NODE_ACK);
 		msg.len = 2;
 
-		msg.payload[0] = net.node_ID;
-		msg.payload[1] = node_ACK;
+		msg.payload.b[0] = node_ACK;
+		msg.payload.b[1] = net.node_ID;
 
 		EPCAN_send_msg(&msg);
 	}
@@ -548,7 +538,22 @@ EPCAN_remote_node_REQ(int node_REQ)
 	msg.ID = EPCAN_ID(local.remote_node_ID, EPCAN_NODE_REQ);
 	msg.len = 1;
 
-	msg.payload[0] = node_REQ;
+	msg.payload.b[0] = node_REQ;
+
+	EPCAN_send_msg(&msg);
+}
+
+static void
+EPCAN_node_DATA(int reg_ID)
+{
+	CAN_msg_t		msg;
+
+	msg.ID = EPCAN_ID(net.node_ID, EPCAN_NODE_DATA);
+	msg.len = 6;
+
+	reg_GET(reg_ID, (rval_t *) &msg.payload.l[0]);
+
+	msg.payload.s[2] = reg_ID;
 
 	EPCAN_send_msg(&msg);
 }
@@ -560,25 +565,27 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 
 	/* Network functions.
 	 * */
-	if (msg->ID == EPCAN_ID_NET_SURVEY) {
+	if (		msg->ID == EPCAN_ID_NET_SURVEY
+			&& msg->len == 5) {
 
 		local_node_discard();
+		local_node_insert(msg->payload.l[0], msg->payload.b[4]);
 
 		EPCAN_node_ACK(EPCAN_ACK_NETWORK_REPLY);
 	}
-	else if (msg->ID == EPCAN_ID_NET_ASSIGN
+	else if (	msg->ID == EPCAN_ID_NET_ASSIGN
 			&& msg->len == 5) {
 
-		if (* (uint32_t *) &msg->payload[0] == local.UID) {
+		if (msg->payload.l[0] == local.UID) {
 
 			/* Accept new node ID.
 			 * */
-			net.node_ID = msg->payload[4];
+			net.node_ID = msg->payload.b[4];
 
 			EPCAN_bind();
 		}
 		else {
-			local_node_insert(* (uint32_t *) &msg->payload[0], msg->payload[4]);
+			local_node_insert(msg->payload.l[0], msg->payload.b[4]);
 		}
 	}
 
@@ -586,31 +593,31 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 	 * */
 	else if (msg->ID == EPCAN_ID(net.node_ID, EPCAN_NODE_REQ)) {
 
-		if (msg->payload[0] == EPCAN_REQ_FLOW_TX_PAUSE
+		if (		msg->payload.b[0] == EPCAN_REQ_FLOW_TX_PAUSE
 				&& msg->len == 1) {
 
 			local.flow_tx_paused = 1;
 		}
 	}
-	else if ((msg->ID & EPCAN_ID(0, 31)) == EPCAN_ID(0, EPCAN_NODE_ACK)
-			&& EPCAN_GET_NODE(msg->ID) != 31U
-			&& EPCAN_GET_NODE(msg->ID) != 0U) {
+	else if (	EPCAN_GET_FUNC(msg->ID) == EPCAN_NODE_ACK
+			&& EPCAN_GET_NODE(msg->ID) > 0U
+			&& EPCAN_GET_NODE(msg->ID) < 32U) {
 
-		if (msg->payload[5] == EPCAN_ACK_NETWORK_REPLY
+		if (		msg->payload.b[4] == EPCAN_ACK_NETWORK_REPLY
 				&& msg->len == 6) {
 
-			local_node_insert(* (uint32_t *) &msg->payload[0], msg->payload[4]);
+			local_node_insert(msg->payload.l[0], msg->payload.b[5]);
 		}
 		else if (msg->len == 2) {
 
-			local_node_update_ACK(msg->payload[0], msg->payload[1]);
+			local_node_update_ACK(msg->payload.b[1], msg->payload.b[0]);
 		}
 	}
 	else if (msg->ID == EPCAN_ID(net.node_ID, EPCAN_NODE_RX)) {
 
 		for (N = 0; N < msg->len; ++N) {
 
-			xQueueSendToBack(local.rx_queue, &msg->payload[N], (TickType_t) 0);
+			xQueueSendToBack(local.rx_queue, &msg->payload.b[N], (TickType_t) 0);
 		}
 
 		IODEF_TO_CAN();
@@ -621,7 +628,7 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 
 			/* Remote NODE output via LOG.
 			 * */
-			EPCAN_log_putc(msg->payload[N]);
+			EPCAN_log_putc(msg->payload.b[N]);
 		}
 
 		if (uxQueueSpacesAvailable(local.log_queue) < 20) {
@@ -629,6 +636,20 @@ EPCAN_message_IN(const CAN_msg_t *msg)
 			/* Notify remote node about overflow.
 			 * */
 			EPCAN_remote_node_REQ(EPCAN_REQ_FLOW_TX_PAUSE);
+		}
+	}
+	else if (msg->ID == EPCAN_ID(net.node_ID, EPCAN_NODE_GET)) {
+
+		if (msg->len == 2) {
+
+			EPCAN_node_DATA(msg->payload.s[0]);
+		}
+	}
+	else if (msg->ID == EPCAN_ID(net.node_ID, EPCAN_NODE_SET)) {
+
+		if (msg->len == 6) {
+
+			reg_SET(msg->payload.s[2], (rval_t *) &msg->payload.l[0]);
 		}
 	}
 }
@@ -661,7 +682,7 @@ LD_TASK void task_EPCAN_TX(void *pData)
 
 		while (xQueueReceive(local.tx_queue, &xbyte, (TickType_t) 10) == pdTRUE) {
 
-			msg.payload[msg.len++] = xbyte;
+			msg.payload.b[msg.len++] = xbyte;
 
 			if (msg.len >= 8) {
 
@@ -786,7 +807,10 @@ SH_DEF(net_survey)
 	local_node_discard();
 
 	msg.ID = EPCAN_ID_NET_SURVEY;
-	msg.len = 0;
+	msg.len = 5;
+
+	msg.payload.l[0] = local.UID;
+	msg.payload.b[4] = net.node_ID;
 
 	EPCAN_send_msg(&msg);
 
@@ -846,8 +870,8 @@ SH_DEF(net_assign)
 				msg.ID = EPCAN_ID_NET_ASSIGN;
 				msg.len = 5;
 
-				* (uint32_t *) &msg.payload[0] = local.node[N].UID;
-				msg.payload[4] = local.node[N].node_ID;
+				msg.payload.l[0] = local.node[N].UID;
+				msg.payload.b[4] = local.node[N].node_ID;
 
 				EPCAN_send_msg(&msg);
 
@@ -873,7 +897,7 @@ SH_DEF(net_revoke)
 
 		if (local.node[N].UID != 0 && local.node[N].node_ID != 0) {
 
-			if (local.node[N].node_ID == node_ID
+			if (		local.node[N].node_ID == node_ID
 					|| node_ID == 0) {
 
 				local.node[N].node_ID = 0;
@@ -881,8 +905,8 @@ SH_DEF(net_revoke)
 				msg.ID = EPCAN_ID_NET_ASSIGN;
 				msg.len = 5;
 
-				* (uint32_t *) &msg.payload[0] = local.node[N].UID;
-				msg.payload[4] = 0;
+				msg.payload.l[0] = local.node[N].UID;
+				msg.payload.b[4] = 0;
 
 				EPCAN_send_msg(&msg);
 
@@ -902,7 +926,7 @@ LD_TASK void task_epcan_REMOTE(void *pData)
 
 		while (xQueueReceive(local.remote_queue, &xbyte, (TickType_t) 10) == pdTRUE) {
 
-			msg.payload[msg.len++] = xbyte;
+			msg.payload.b[msg.len++] = xbyte;
 
 			if (msg.len >= 8) {
 
@@ -941,7 +965,7 @@ SH_DEF(net_node_remote)
 
 	if (stoi(&node_ID, s) != NULL) {
 
-		if (local_node_is_valid_remote(node_ID) != 0) {
+		if (local_node_valid_remote(node_ID) != 0) {
 
 			local.remote_node_ID = node_ID;
 		}

@@ -303,6 +303,7 @@ void ts_probe_spinup()
 
 		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
+		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
 		printf("s_gain_P = %.2E\n", pm.s_gain_P);
 		printf("s_gain_D = %.2E\n", pm.s_gain_D);
 	}

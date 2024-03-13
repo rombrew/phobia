@@ -1966,128 +1966,6 @@ reg_linked(struct public *pub, const char *sym, const char *name)
 }
 
 static void
-reg_float_prog(struct public *pub, const char *sym, const char *name)
-{
-	struct nk_sdl			*nk = pub->nk;
-	struct link_pmc			*lp = pub->lp;
-	struct nk_context		*ctx = &nk->ctx;
-	struct link_reg			*reg;
-
-	struct nk_style_edit		edit;
-	struct nk_color			hidden;
-
-	int				rc, pce = 0;
-
-	edit = ctx->style.edit;
-
-	nk_layout_row_template_begin(ctx, 0);
-	nk_layout_row_template_push_variable(ctx, 1);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 6);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 0);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 11);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
-	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
-	nk_layout_row_template_end(ctx);
-
-	reg = link_reg_lookup(lp, sym);
-
-	if (reg != NULL) {
-
-		if (reg->fetched + 500 > lp->clock) {
-
-			struct nk_color		flash;
-
-			flash = nk->table[NK_COLOR_FLICKER_LIGHT];
-
-			ctx->style.edit.normal = nk_style_item_color(flash);
-			ctx->style.edit.hover  = nk_style_item_color(flash);
-			ctx->style.edit.active = nk_style_item_color(flash);
-		}
-
-		pub_name_label(pub, name, reg);
-
-		if (		reg->started != 0
-				&& reg->fmin < reg->fmax) {
-
-			pce = (int) (1000.f * (reg->fval - reg->fmin)
-					/ (reg->fmax - reg->fmin));
-		}
-
-		if (reg->mode & LINK_REG_READ_ONLY) {
-
-			nk_prog(ctx, pce, 1000, nk_false);
-		}
-		else {
-			rc = nk_prog(ctx, pce, 1000, nk_true);
-
-			if (rc != pce) {
-
-				pce = (rc > 1000) ? 1000 : (rc < 0) ? 0 : rc;
-
-				reg->fval = (float) pce * (reg->fmax - reg->fmin)
-					/ 1000.f + reg->fmin;
-
-				sprintf(reg->val, "%.4f", reg->fval);
-
-				reg->modified = lp->clock;
-			}
-		}
-
-		nk_spacer(ctx);
-
-		if (reg->mode & LINK_REG_READ_ONLY) {
-
-			nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-					reg->val, 79, nk_filter_default);
-		}
-		else {
-			rc = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD
-				| NK_EDIT_SIG_ENTER, reg->val, 79, nk_filter_default);
-
-			if (rc & (NK_EDIT_DEACTIVATED | NK_EDIT_COMMITED)) {
-
-				reg->modified = lp->clock;
-			}
-		}
-
-		nk_spacer(ctx);
-
-		if (reg->um[0] != 0) {
-
-			sprintf(pub->lbuf, "(%.16s)", reg->um);
-			nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
-		}
-		else {
-			nk_spacer(ctx);
-		}
-
-		nk_spacer(ctx);
-
-		reg->shown = lp->clock;
-	}
-	else {
-		hidden = nk->table[NK_COLOR_HIDDEN];
-
-		pub_name_label_hidden(pub, name, sym);
-
-		pub->lbuf[0] = 0;
-
-		nk_spacer(ctx);
-		nk_spacer(ctx);
-
-		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-				pub->lbuf, 79, nk_filter_default);
-
-		nk_spacer(ctx);
-		nk_label_colored(ctx, "x", NK_TEXT_LEFT, hidden);
-		nk_spacer(ctx);
-	}
-
-	ctx->style.edit = edit;
-}
-
-static void
 reg_float_prog_by_ID(struct public *pub, int reg_ID)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -2651,8 +2529,7 @@ page_serial(struct public *pub)
 			config_write(pub->fe);
 		}
 
-		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Reading", link_pce);
+		pub_popup_progress(pub, POPUP_LINK_PROGRESS, "Reading", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3333,7 +3210,7 @@ page_in_network(struct public *pub)
 
 		nk_spacer(ctx);
 
-		if (strstr(lp->network, "remote") == NULL) {
+		if (strstr(lp->network, "REMOTE") == NULL) {
 
 			if (nk_button_label_styled(ctx, &orange, "Connect")) {
 
@@ -3370,7 +3247,7 @@ page_in_network(struct public *pub)
 
 		nk_spacer(ctx);
 
-		if (strstr(lp->network, "remote") == NULL) {
+		if (strstr(lp->network, "REMOTE") == NULL) {
 
 			nk_button_label_styled(ctx, &disabled, "Connect");
 		}
@@ -3433,93 +3310,96 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode", 1);
+	if (pub->popup_enum != POPUP_LINK_PROGRESS) {
 
-	reg = link_reg_lookup(lp, "net.ep0_MODE");
+		reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode", 1);
 
-	if (reg != NULL && reg->lval != 0) {
+		reg = link_reg_lookup(lp, "net.ep0_MODE");
 
-		reg = link_reg_lookup(lp, "net.ep0_reg_DATA");
-		if (reg != NULL) { reg->update = 200; }
+		if (reg != NULL && reg->lval != 0) {
 
-		reg_float(pub, "net.ep0_ID", "EP 0 network ID");
-		reg_float(pub, "net.ep0_clock_ID", "EP 0 clock ID");
-		reg_float_prog(pub, "net.ep0_reg_DATA", "EP 0 control DATA");
-		reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
-		reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type", 0);
-		reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
-		reg_float(pub, "net.ep0_rate", "EP 0 frequency");
-		reg_float(pub, "net.ep0_range0", "EP 0 range LOW");
-		reg_float(pub, "net.ep0_range1", "EP 0 range HIGH");
-	}
+			reg = link_reg_lookup(lp, "net.ep0_reg_DATA");
+			if (reg != NULL) { reg->update = 200; }
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+			reg_float(pub, "net.ep0_ID", "EP 0 network ID");
+			reg_float(pub, "net.ep0_clock_ID", "EP 0 clock ID");
+			reg_float(pub, "net.ep0_reg_DATA", "EP 0 control DATA");
+			reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
+			reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type", 0);
+			reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
+			reg_float(pub, "net.ep0_rate", "EP 0 frequency");
+			reg_float(pub, "net.ep0_range0", "EP 0 range LOW");
+			reg_float(pub, "net.ep0_range1", "EP 0 range HIGH");
+		}
 
-	reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode", 1);
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	reg = link_reg_lookup(lp, "net.ep1_MODE");
+		reg_enum_combo(pub, "net.ep1_MODE", "EP 1 operation mode", 1);
 
-	if (reg != NULL && reg->lval != 0) {
+		reg = link_reg_lookup(lp, "net.ep1_MODE");
 
-		reg = link_reg_lookup(lp, "net.ep1_reg_DATA");
-		if (reg != NULL) { reg->update = 200; }
+		if (reg != NULL && reg->lval != 0) {
 
-		reg_float(pub, "net.ep1_ID", "EP 1 network ID");
-		reg_float(pub, "net.ep1_clock_ID", "EP 1 clock ID");
-		reg_float_prog(pub, "net.ep1_reg_DATA", "EP 1 control DATA");
-		reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
-		reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type", 0);
-		reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
-		reg_float(pub, "net.ep1_rate", "EP 1 frequency");
-		reg_float(pub, "net.ep1_range0", "EP 1 range LOW");
-		reg_float(pub, "net.ep1_range1", "EP 1 range HIGH");
-	}
+			reg = link_reg_lookup(lp, "net.ep1_reg_DATA");
+			if (reg != NULL) { reg->update = 200; }
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+			reg_float(pub, "net.ep1_ID", "EP 1 network ID");
+			reg_float(pub, "net.ep1_clock_ID", "EP 1 clock ID");
+			reg_float(pub, "net.ep1_reg_DATA", "EP 1 control DATA");
+			reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
+			reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type", 0);
+			reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
+			reg_float(pub, "net.ep1_rate", "EP 1 frequency");
+			reg_float(pub, "net.ep1_range0", "EP 1 range LOW");
+			reg_float(pub, "net.ep1_range1", "EP 1 range HIGH");
+		}
 
-	reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode", 1);
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	reg = link_reg_lookup(lp, "net.ep2_MODE");
+		reg_enum_combo(pub, "net.ep2_MODE", "EP 2 operation mode", 1);
 
-	if (reg != NULL && reg->lval != 0) {
+		reg = link_reg_lookup(lp, "net.ep2_MODE");
 
-		reg = link_reg_lookup(lp, "net.ep2_reg_DATA");
-		if (reg != NULL) { reg->update = 200; }
+		if (reg != NULL && reg->lval != 0) {
 
-		reg_float(pub, "net.ep2_ID", "EP 2 network ID");
-		reg_float(pub, "net.ep2_clock_ID", "EP 2 clock ID");
-		reg_float_prog(pub, "net.ep2_reg_DATA", "EP 2 control DATA");
-		reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
-		reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type", 0);
-		reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
-		reg_float(pub, "net.ep2_rate", "EP 2 frequency");
-		reg_float(pub, "net.ep2_range0", "EP 2 range LOW");
-		reg_float(pub, "net.ep2_range1", "EP 2 range HIGH");
-	}
+			reg = link_reg_lookup(lp, "net.ep2_reg_DATA");
+			if (reg != NULL) { reg->update = 200; }
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+			reg_float(pub, "net.ep2_ID", "EP 2 network ID");
+			reg_float(pub, "net.ep2_clock_ID", "EP 2 clock ID");
+			reg_float(pub, "net.ep2_reg_DATA", "EP 2 control DATA");
+			reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
+			reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type", 0);
+			reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
+			reg_float(pub, "net.ep2_rate", "EP 2 frequency");
+			reg_float(pub, "net.ep2_range0", "EP 2 range LOW");
+			reg_float(pub, "net.ep2_range1", "EP 2 range HIGH");
+		}
 
-	reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode", 1);
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	reg = link_reg_lookup(lp, "net.ep3_MODE");
+		reg_enum_combo(pub, "net.ep3_MODE", "EP 3 operation mode", 1);
 
-	if (reg != NULL && reg->lval != 0) {
+		reg = link_reg_lookup(lp, "net.ep3_MODE");
 
-		reg = link_reg_lookup(lp, "net.ep3_reg_DATA");
-		if (reg != NULL) { reg->update = 200; }
+		if (reg != NULL && reg->lval != 0) {
 
-		reg_float(pub, "net.ep3_ID", "EP 3 network ID");
-		reg_float(pub, "net.ep3_clock_ID", "EP 3 clock ID");
-		reg_float_prog(pub, "net.ep3_reg_DATA", "EP 3 control DATA");
-		reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
-		reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type", 0);
-		reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
-		reg_float(pub, "net.ep3_rate", "EP 3 frequency");
-		reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
-		reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
+			reg = link_reg_lookup(lp, "net.ep3_reg_DATA");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep3_ID", "EP 3 network ID");
+			reg_float(pub, "net.ep3_clock_ID", "EP 3 clock ID");
+			reg_float(pub, "net.ep3_reg_DATA", "EP 3 control DATA");
+			reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
+			reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type", 0);
+			reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
+			reg_float(pub, "net.ep3_rate", "EP 3 frequency");
+			reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
+			reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
+		}
 	}
 
 	if (pub->popup_enum == POPUP_LINK_PROGRESS) {
@@ -3541,8 +3421,7 @@ page_in_network(struct public *pub)
 			config_write(pub->fe);
 		}
 
-		pub_popup_progress(pub, POPUP_LINK_PROGRESS,
-				"Reading", link_pce);
+		pub_popup_progress(pub, POPUP_LINK_PROGRESS, "Reading", link_pce);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -4067,6 +3946,7 @@ page_lu_forced(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.forced_hold_D", "Forced hold current");
+	reg_float(pub, "pm.forced_weak_D", "Forced weak current");
 	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 0);
 	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 0);
 	reg_float_um(pub, "pm.forced_accel", "Forced acceleration", 0);
@@ -4770,12 +4650,13 @@ page_lp_speed(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.l_track_tol", "Tracking tolerance");
-	reg_float(pub, "pm.l_gain_LP", "Blend gain LPF");
+	reg_float(pub, "pm.l_gain_LP", "Tracking blend gain LPF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.s_damping", "Damping percentage");
+	reg_float(pub, "pm.lu_gain_mq_LP", "Load torque gain LPF");
 	reg_float(pub, "pm.s_gain_P", "Proportional gain");
 	reg_float(pub, "pm.s_gain_I", "Integral gain");
 	reg_float(pub, "pm.s_gain_D", "Derivative gain");
@@ -4785,6 +4666,9 @@ page_lp_speed(struct public *pub)
 
 	if (		reg != NULL
 			&& reg->fetched == lp->clock) {
+
+		reg = link_reg_lookup(lp, "pm.lu_gain_mq_LP");
+		if (reg != NULL) { reg->onefetch = 1; }
 
 		reg = link_reg_lookup(lp, "pm.s_gain_P");
 		if (reg != NULL) { reg->onefetch = 1; }

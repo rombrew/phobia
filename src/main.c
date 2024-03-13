@@ -574,12 +574,20 @@ default_flash_load()
 	net.timeout_EP = 100 * HW_PWM_FREQUENCY_HZ / 1000;
 	net.ep[0].ID = 10;
 	net.ep[0].rate = HW_PWM_FREQUENCY_HZ / 1000;
+	net.ep[0].range[0] = 0.f;
+	net.ep[0].range[1] = 1.f;
 	net.ep[1].ID = 20;
 	net.ep[1].rate = net.ep[0].rate;
+	net.ep[1].range[0] = 0.f;
+	net.ep[1].range[1] = 1.f;
 	net.ep[2].ID = 30;
 	net.ep[2].rate = net.ep[0].rate;
+	net.ep[2].range[0] = 0.f;
+	net.ep[2].range[1] = 1.f;
 	net.ep[3].ID = 40;
 	net.ep[3].rate = net.ep[0].rate;
+	net.ep[3].range[0] = 0.f;
+	net.ep[3].range[1] = 1.f;
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
@@ -1301,6 +1309,6 @@ SH_DEF(ap_bootload)
 	vTaskDelay((TickType_t) 10);
 
 	app_halt();
-	hal_bootload_reset();
+	hal_bootload_jump();
 }
 

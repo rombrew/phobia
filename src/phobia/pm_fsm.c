@@ -1664,7 +1664,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
-				pm->mtpa_approx_Q = 0.f;
+				pm->mtpa_approx_D = 0.f;
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 

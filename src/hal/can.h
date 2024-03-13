@@ -9,7 +9,15 @@ typedef struct {
 
 	uint16_t		ID;
 	uint16_t		len;
-	uint8_t			payload[8];
+
+	union {
+
+		uint8_t		b[8];
+		uint16_t	s[4];
+		uint32_t	l[2];
+		float		f[2];
+	}
+	payload;
 }
 CAN_msg_t;
 

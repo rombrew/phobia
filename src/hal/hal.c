@@ -5,19 +5,29 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_BOOT_SIGNATURE	0x1A7CEA63U
+#define HAL_FLAG_SIGNATURE	0x2A7CEA64U
 
 uint32_t			clock_cpu_hz;
 
 HAL_t				hal;
 LOG_t				log		LD_NOINIT;
-volatile uint32_t		bootload_jump	LD_NOINIT;
+
+typedef struct {
+
+	uint32_t bootload;
+	uint32_t crystal;
+}
+priv_HAL_t;
+
+static volatile priv_HAL_t	noinit_HAL	LD_NOINIT;
 
 void irq_NMI()
 {
 	log_TRACE("IRQ NMI" EOL);
 
 	if (RCC->CIR & RCC_CIR_CSSF) {
+
+		noinit_HAL.crystal = HAL_FLAG_SIGNATURE;
 
 		RCC->CIR |= RCC_CIR_CSSC;
 
@@ -67,8 +77,6 @@ core_startup()
 {
 	uint32_t	CLOCK, PLLQ, PLLP, PLLN, PLLM;
 
-	int		HSE, N = 0;
-
 	/* Vector table offset.
 	 * */
 	SCB->VTOR = (uint32_t) &ld_begin_text;
@@ -83,33 +91,57 @@ core_startup()
 
 	/* Reset RCC.
 	 * */
-	RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_CSSON | RCC_CR_HSEBYP | RCC_CR_HSEON);
+	RCC->CR &= ~(RCC_CR_PLLI2SON | RCC_CR_PLLON | RCC_CR_CSSON
+			| RCC_CR_HSEBYP | RCC_CR_HSEON);
+
+	RCC->PLLCFGR = 0;
 	RCC->CFGR = 0;
 	RCC->CIR = 0;
 
 #ifdef STM32F7
 	RCC->DCKCFGR1 = 0;
 	RCC->DCKCFGR2 = 0;
-#endif  /* STM32F7 */
+#endif /* STM32F7 */
 
-	/* Enable HSE.
-	 * */
-	RCC->CR |= RCC_CR_HSEON;
+	if (noinit_HAL.crystal != HAL_FLAG_SIGNATURE) {
 
-	/* Wait till HSE is ready.
-	 * */
-	do {
-		HSE = RCC->CR & RCC_CR_HSERDY;
+		int		N = 0;
 
-		__NOP();
-		__NOP();
+		/* Enable HSE.
+		 * */
+		RCC->CR |= RCC_CR_HSEON;
 
-		if (N > 70000U)
-			break;
+		/* Wait till HSE is ready.
+		 * */
+		do {
+			if ((RCC->CR & RCC_CR_HSERDY) == RCC_CR_HSERDY)
+				break;
 
-		N++;
+			__NOP();
+			__NOP();
+
+			if (N > 70000U) {
+
+				log_TRACE("HSE not ready" EOL);
+
+				noinit_HAL.crystal = HAL_FLAG_SIGNATURE;
+
+#ifdef STM32F7
+				/* D-Cache Clean and Invalidate.
+				 * */
+				SCB->DCCIMVAC = (uint32_t) &noinit_HAL.crystal;
+
+				__DSB();
+				__ISB();
+
+#endif /* STM32F7 */
+				break;
+			}
+
+			N++;
+		}
+		while (1);
 	}
-	while (HSE == 0);
 
 	/* Enable power interface clock.
 	 * */
@@ -127,13 +159,13 @@ core_startup()
 	 * */
 	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
 
-	if (HSE != 0) {
+	if (noinit_HAL.crystal != HAL_FLAG_SIGNATURE) {
 
 		CLOCK = HW_CLOCK_CRYSTAL_HZ;
 
 		/* Clock from HSE.
 		 * */
-		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSE;
+		RCC->PLLCFGR |= RCC_PLLCFGR_PLLSRC_HSE;
 
 		/* Enable CSS.
 		 * */
@@ -144,9 +176,7 @@ core_startup()
 
 		/* Clock from HSI.
 		 * */
-		RCC->PLLCFGR = RCC_PLLCFGR_PLLSRC_HSI;
-
-		log_TRACE("HSE not ready" EOL);
+		RCC->PLLCFGR |= RCC_PLLCFGR_PLLSRC_HSI;
 	}
 
 #if defined(STM32F4)
@@ -180,7 +210,7 @@ core_startup()
 
 	/* Wait till the main PLL is ready.
 	 * */
-	while ((RCC->CR & RCC_CR_PLLRDY) == 0) {
+	while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY) {
 
 		__NOP();
 	}
@@ -269,9 +299,9 @@ void hal_bootload()
 {
 	const uint32_t		*sysmem;
 
-	if (bootload_jump == HAL_BOOT_SIGNATURE) {
+	if (noinit_HAL.bootload == HAL_FLAG_SIGNATURE) {
 
-		bootload_jump = 0U;
+		noinit_HAL.bootload = 0U;
 
 #if defined(STM32F4)
 		sysmem = (const uint32_t *) 0x1FFF0000U;
@@ -330,15 +360,11 @@ void hal_system_reset()
 	NVIC_SystemReset();
 }
 
-void hal_bootload_reset()
+void hal_bootload_jump()
 {
-	bootload_jump = HAL_BOOT_SIGNATURE;
+	noinit_HAL.bootload = HAL_FLAG_SIGNATURE;
 
-#ifdef STM32F7
-	SCB_CleanDCache();
-#endif /* STM32F7 */
-
-	NVIC_SystemReset();
+	hal_system_reset();
 }
 
 void hal_cpu_sleep()
@@ -359,9 +385,9 @@ int log_status()
 
 void log_bootup()
 {
-	if (log.boot_SIGNATURE != HAL_BOOT_SIGNATURE) {
+	if (log.boot_SIGNATURE != HAL_FLAG_SIGNATURE) {
 
-		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
+		log.boot_SIGNATURE = HAL_FLAG_SIGNATURE;
 		log.boot_COUNT = 0U;
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));
@@ -377,9 +403,9 @@ void log_bootup()
 
 void log_putc(int c)
 {
-	if (unlikely(log.boot_SIGNATURE != HAL_BOOT_SIGNATURE)) {
+	if (unlikely(log.boot_SIGNATURE != HAL_FLAG_SIGNATURE)) {
 
-		log.boot_SIGNATURE = HAL_BOOT_SIGNATURE;
+		log.boot_SIGNATURE = HAL_FLAG_SIGNATURE;
 		log.boot_COUNT = 0U;
 
 		memset(log.textbuf, 0, sizeof(log.textbuf));

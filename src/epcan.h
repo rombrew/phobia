@@ -23,30 +23,23 @@
 #define EPCAN_NODES_MAX			30
 
 enum {
-	/* Node functions (offset).
-	 * */
 	EPCAN_NODE_REQ			= 0,
 	EPCAN_NODE_ACK,
-	EPCAN_NODE_RX,
-	EPCAN_NODE_TX,
+	EPCAN_NODE_RX,				/* receive from remote node */
+	EPCAN_NODE_TX,				/* send to remote node */
+	EPCAN_NODE_GET,				/* request to GET register data */
+	EPCAN_NODE_SET,				/* request to SET register data */
+	EPCAN_NODE_DATA				/* reply to GET request */
 };
 
 enum {
 	EPCAN_REQ_NOTHING		= 0,
-
-	/* Node flow control.
-	 * */
-	EPCAN_REQ_FLOW_TX_PAUSE,
+	EPCAN_REQ_FLOW_TX_PAUSE			/* node flow control */
 };
 
 enum {
 	EPCAN_ACK_NOTHING		= 0,
-
-	/* Network ACKs.
-	 * */
-	EPCAN_ACK_NETWORK_REPLY,
-	EPCAN_ACK_NETWORK_RESERVED1,
-	EPCAN_ACK_NETWORK_RESERVED2,
+	EPCAN_ACK_NETWORK_REPLY			/* reply to network survey */
 };
 
 enum {
@@ -73,7 +66,7 @@ enum {
 
 typedef struct {
 
-	int		MODE;		/* type of EP */
+	int		MODE;		/* mode of EP */
 	int		ID;		/* CAN ID of the endpoint (EP) */
 	int		clock_ID;	/* CAN ID used as clock */
 
@@ -83,10 +76,11 @@ typedef struct {
 	int		PAYLOAD;	/* packet payload type */
 	int		STARTUP;	/* motor startup behaviour */
 	int		ACTIVE;
+
 	int		rate;		/* transfer rate */
 	float		range[2];	/* natural data range */
 
-	int		tx_N;
+	int		tx_clock;
 	int		tx_flag;
 }
 epcan_pipe_t;

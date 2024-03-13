@@ -31,7 +31,7 @@ SECTIONS
 		ld_end_text = . ;
 		ld_end = ld_end_text + SIZEOF(.data) ;
 
-	} > FLASH
+	} > ITCM_FLASH
 
 	.data : AT (ld_end_text) ALIGN(8)
 	{
