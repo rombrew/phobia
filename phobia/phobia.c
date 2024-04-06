@@ -2777,9 +2777,9 @@ page_diagnose(struct public *pub)
 		reg->update = 1000;
 	}
 
-	reg_float_prog_um(pub, "hal.CNT_diag0", "IRQ diagnostic 0", 0.f, maximal[0], 1);
-	reg_float_prog_um(pub, "hal.CNT_diag1", "IRQ diagnostic 1", 0.f, maximal[1], 1);
-	reg_float_prog_um(pub, "hal.CNT_diag2", "IRQ diagnostic 2", 0.f, maximal[2], 1);
+	reg_float_prog_um(pub, "hal.CNT_diag0", "IRQ entry time", 0.f, maximal[0], 1);
+	reg_float_prog_um(pub, "hal.CNT_diag1", "IRQ priority load", 0.f, maximal[1], 1);
+	reg_float_prog_um(pub, "hal.CNT_diag2", "IRQ total load", 0.f, maximal[2], 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3696,22 +3696,9 @@ page_thermal(struct public *pub)
 
 	reg_enum_combo(pub, "ap.ntc_EXT.type", "NTC type on EXT", 1);
 	reg_float(pub, "ap.ntc_EXT.balance", "NTC balance");
-
-	reg = link_reg_lookup(lp, "ap.ntc_EXT.type");
-
-	if (		reg != NULL
-			&& (reg->lval >= 1 || reg->lval <= 2)) {
-
-		reg_float(pub, "ap.ntc_EXT.ntc0", "NTC resistance at Ta");
-		reg_float(pub, "ap.ntc_EXT.ta0", "NTC Ta");
-		reg_float(pub, "ap.ntc_EXT.betta", "NTC betta");
-	}
-	else {
-		nk_layout_row_dynamic(ctx, 0, 1);
-		nk_spacer(ctx);
-		nk_spacer(ctx);
-		nk_spacer(ctx);
-	}
+	reg_float(pub, "ap.ntc_EXT.ntc0", "NTC resistance at Ta");
+	reg_float(pub, "ap.ntc_EXT.ta0", "NTC Ta");
+	reg_float(pub, "ap.ntc_EXT.betta", "NTC betta");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3732,13 +3719,13 @@ page_thermal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "ap.heat_PCB_temp_halt", "PCB halt threshold");
-	reg_float(pub, "ap.heat_PCB_temp_derate", "PCB derate threshold");
-	reg_float(pub, "ap.heat_PCB_temp_FAN", "PCB fan ON threshold");
-	reg_float(pub, "ap.heat_EXT_temp_derate", "EXT derate threshold");
-	reg_float(pub, "ap.heat_maximal_PCB", "PCB maximal current");
-	reg_float(pub, "ap.heat_maximal_EXT", "EXT maximal current");
-	reg_float(pub, "ap.heat_temp_recovery", "Recovery hysteresis");
+	reg_float(pub, "ap.otp_PCB_halt", "PCB halt threshold");
+	reg_float(pub, "ap.otp_PCB_derate", "PCB derate threshold");
+	reg_float(pub, "ap.otp_PCB_fan", "PCB fan ON threshold");
+	reg_float(pub, "ap.otp_EXT_derate", "EXT derate threshold");
+	reg_float(pub, "ap.otp_maximal_PCB", "PCB maximal current");
+	reg_float(pub, "ap.otp_maximal_EXT", "EXT maximal current");
+	reg_float(pub, "ap.otp_recovery", "Recovery hysteresis");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4007,14 +3994,14 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.detach_threshold", "Detached threshold");
-	reg_float(pub, "pm.detach_trip_AP", "Detached trip point");
+	reg_float(pub, "pm.detach_threshold", "Detached voltage threshold");
+	reg_float(pub, "pm.detach_trip_tol", "Detached trip tolerance");
 	reg_float(pub, "pm.detach_gain_SF", "Detached speed loop gain");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.flux_trip_AP", "Ortega speed trip point");
+	reg_float(pub, "pm.flux_trip_tol", "Ortega trip tolerance");
 	reg_float(pub, "pm.flux_gain_IN", "Ortega initial gain");
 	reg_float(pub, "pm.flux_gain_LO", "Ortega flux gain LO");
 	reg_float(pub, "pm.flux_gain_HI", "Ortega flux gain HI");
@@ -4241,7 +4228,7 @@ page_lu_hall(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.hall_trip_AP", "Hall speed trip point");
+	reg_float(pub, "pm.hall_trip_tol", "Hall trip tolerance");
 	reg_float(pub, "pm.hall_gain_LO", "Hall speed gain LO");
 	reg_float(pub, "pm.hall_gain_SF", "Hall speed loop gain");
 	reg_float(pub, "pm.hall_gain_IF", "Torque acceleration");
@@ -4382,7 +4369,7 @@ page_lu_eabi(struct public *pub)
 	reg_float(pub, "pm.eabi_const_EP", "EABI pulse resolution");
 	reg_float(pub, "pm.eabi_const_Zs", "Gear teeth number S");
 	reg_float(pub, "pm.eabi_const_Zq", "Gear teeth number Q");
-	reg_float(pub, "pm.eabi_trip_AP", "EABI speed trip point");
+	reg_float(pub, "pm.eabi_trip_tol", "EABI trip tolerance");
 	reg_float(pub, "pm.eabi_gain_LO", "EABI speed gain LO");
 	reg_float(pub, "pm.eabi_gain_SF", "EABI speed loop gain");
 	reg_float(pub, "pm.eabi_gain_IF", "Torque acceleration");
@@ -4740,8 +4727,8 @@ page_lp_location(struct public *pub)
 
 	reg_float_um(pub, "pm.x_maximal", "Maximal location limit", um_def);
 	reg_float_um(pub, "pm.x_minimal", "Minimal location limit", um_def);
-	reg_float_um(pub, "pm.x_damping", "Damping distance", 0);
-	reg_float_um(pub, "pm.x_residual_tol", "Residual tolerance", 0);
+	reg_float_um(pub, "pm.x_boost_tol", "Regulation tolerance", 0);
+	reg_float_um(pub, "pm.x_track_tol", "Tracking tolerance", 0);
 	reg_float_um(pub, "pm.x_gain_P", "Proportional gain", 0);
 	reg_float(pub, "pm.x_gain_D", "Damped gain");
 

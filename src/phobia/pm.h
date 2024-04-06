@@ -412,7 +412,7 @@ typedef struct {
 
 	int		detach_TIM;
 	float		detach_threshold;
-	float		detach_trip_AP;
+	float		detach_trip_tol;
 	float		detach_gain_SF;
 
 	int		flux_LINKAGE;
@@ -423,7 +423,7 @@ typedef struct {
 	float		flux_lambda;
 	float		flux_F[2];
 	float		flux_wS;
-	float		flux_trip_AP;
+	float		flux_trip_tol;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
 	float		flux_gain_HI;
@@ -462,7 +462,7 @@ typedef struct {
 	int		hall_ERN;
 	float		hall_F[2];
 	float		hall_wS;
-	float		hall_trip_AP;
+	float		hall_trip_tol;
 	float		hall_gain_LO;
 	float		hall_gain_SF;
 	float		hall_gain_IF;
@@ -480,7 +480,7 @@ typedef struct {
 	float		eabi_F[2];
 	float		eabi_wS;
 	float		eabi_location;
-	float		eabi_trip_AP;
+	float		eabi_trip_tol;
 	float		eabi_gain_LO;
 	float		eabi_gain_SF;
 	float		eabi_gain_IF;
@@ -595,8 +595,8 @@ typedef struct {
 	float		x_setpoint_speed;
 	float		x_maximal;
 	float		x_minimal;
-	float		x_damping;
-	float		x_residual_tol;
+	float		x_boost_tol;
+	float		x_track_tol;
 	float		x_gain_P;
 	float		x_gain_D;
 

@@ -13,8 +13,20 @@ int m_isfinitef(float x)
 	return ((0xFFU & (u.i >> 23)) != 0xFFU) ? 1 : 0;
 }
 
-static float
-m_fast_rsqrtf(float x)
+float m_fast_reciprocalf(float x)
+{
+	union {
+		float		f;
+		uint32_t	i;
+	}
+	u = { x };
+
+	u.i = 0x7EF30000U - u.i;
+
+	return u.f;
+}
+
+float m_fast_rsqrtf(float x)
 {
 	union {
 		float		f;
@@ -29,22 +41,33 @@ m_fast_rsqrtf(float x)
 
 void m_rotatef(float x[2], float r)
 {
-	float           q, s, c, y[2];
+	float           q, s, c;
+
+	/* Rotate the vector \x by angle \r.
+	 * */
 
 	q = r * r;
-
 	s = r * (1.f - q * (1.6666667E-1f - 8.3333338E-3f * q));
 	c = 1.f - q * (0.5f - 4.1666668E-2f * q);
 
-	y[0] = c * x[0] - s * x[1];
-	y[1] = s * x[0] + c * x[1];
+	   q = c * x[0] - s * x[1];
+	x[1] = s * x[0] + c * x[1];
+	x[0] = q;
+}
 
-	q = y[0] * y[0] + y[1] * y[1];
+void m_normalizef(float x[2])
+{
+	float		l;
 
-	s = likely(q < 2.f) ? (3.f - q) * 0.5f : m_fast_rsqrtf(q);
+	/* Approximate normalize the vector \x.
+	 * */
 
-	x[0] = y[0] * s;
-	x[1] = y[1] * s;
+	l = x[0] * x[0] + x[1] * x[1];
+
+	l = likely(l < 2.f) ? (3.f - l) * 0.5f : m_fast_rsqrtf(l);
+
+	x[0] *= l;
+	x[1] *= l;
 }
 
 void m_rsumf(float *sum, float *rem, float x)
@@ -61,48 +84,31 @@ void m_rsumf(float *sum, float *rem, float x)
 	*sum = m;
 }
 
-float m_wrapf(float x)
-{
-	int		revol;
-
-	revol = (int) (x * (1.f / M_2_PI_F));
-	x += - (float) revol * M_2_PI_F;
-
-	if (unlikely(x < - M_PI_F)) {
-
-		x += M_2_PI_F;
-	}
-	else if (unlikely(x > M_PI_F)) {
-
-		x += - M_2_PI_F;
-	}
-
-	return x;
-}
-
 static float
 m_atanf(float x)
 {
 	static const float	lt_atanf[] = {
 
-		-8.9550074E-3f,
-		 4.5295657E-2f,
-		-1.0939535E-1f,
-		 1.9063993E-1f,
-		-3.3214334E-1f,
-		 9.9995555E-1f,
+		 6.7754007E-3f,
+		-3.3435153E-2f,
+		 7.9335425E-2f,
+		-1.3210281E-1f,
+		 1.9798869E-1f,
+		-3.3315844E-1f,
+		 9.9999530E-1f
 	};
 
-	float		u, x2;
+	float		u, q;
 
-	x2 = x * x;
+	q = x * x;
 
 	u = lt_atanf[0];
-	u = lt_atanf[1] + u * x2;
-	u = lt_atanf[2] + u * x2;
-	u = lt_atanf[3] + u * x2;
-	u = lt_atanf[4] + u * x2;
-	u = lt_atanf[5] + u * x2;
+	u = lt_atanf[1] + u * q;
+	u = lt_atanf[2] + u * q;
+	u = lt_atanf[3] + u * q;
+	u = lt_atanf[4] + u * q;
+	u = lt_atanf[5] + u * q;
+	u = lt_atanf[6] + u * q;
 
 	return u * x;
 }
@@ -129,38 +135,35 @@ m_sincosf(float x)
 {
 	static const float	lt_sincosf[] = {
 
-		-1.3772950E-4f,
-		-2.0450985E-4f,
-		 8.6392885E-3f,
-		-2.4328724E-4f,
-		-1.6656229E-1f,
-		-2.2378746E-5f,
-		 1.0000019E+0f,
-		-3.5525078E-8f,
+		 2.5981195E-6f,
+		-1.9804760E-4f,
+		 8.3329641E-3f,
+		-1.6666652E-1f,
+		 9.9999998E-1f
 	};
 
-	float		u;
+	float		u, q;
+
+	q = x * x;
 
 	u = lt_sincosf[0];
-        u = lt_sincosf[1] + u * x;
-        u = lt_sincosf[2] + u * x;
-        u = lt_sincosf[3] + u * x;
-	u = lt_sincosf[4] + u * x;
-	u = lt_sincosf[5] + u * x;
-	u = lt_sincosf[6] + u * x;
-	u = lt_sincosf[7] + u * x;
+	u = lt_sincosf[1] + u * q;
+	u = lt_sincosf[2] + u * q;
+	u = lt_sincosf[3] + u * q;
+	u = lt_sincosf[4] + u * q;
 
-	return u;
+	return u * x;
 }
 
 float m_sinf(float x)
 {
 	float           y, u;
 
-	y = m_fabsf(x);
+	u = x * (1.f / M_2_PI_F) + 12582912.f;
+	x = x - (u - 12582912.f) * M_2_PI_F;
 
-	if (y > M_PI_F / 2.f)
-		y = M_PI_F - y;
+	y = m_fabsf(x);
+	y = (y > M_PI_F / 2.f) ? M_PI_F - y : y;
 
 	u = m_sincosf(y);
 	u = (x < 0.f) ? - u : u;
@@ -171,6 +174,9 @@ float m_sinf(float x)
 float m_cosf(float x)
 {
         float           u;
+
+	u = x * (1.f / M_2_PI_F) + 12582912.f;
+	x = x - (u - 12582912.f) * M_2_PI_F;
 
 	x = M_PI_F / 2.f - m_fabsf(x);
 	u = (x < 0.f) ? - m_sincosf(- x) : m_sincosf(x);

@@ -30,7 +30,6 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 
 #if LSE_FAST_TRANSFORM != 0
 	lse_float_t	di;
-	int		type;
 #endif /* LSE_FAST_TRANSFORM */
 
 	n = (rm->len < rm->keep) ? rm->len : rm->keep;
@@ -54,43 +53,15 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 #if LSE_FAST_TRANSFORM != 0
 			di = d[i];
 
-			/* We build the fast orthogonal transformation.
+			/* We build the fast Givens transformation.
 			 * */
-			if (lse_fabsf(x0) < lse_fabsf(xi)) {
+			alpa = x0 * di;
+			beta = xi * d0;
 
+			if (x0 * alpa < xi * beta) {
+
+				beta = - alpa / beta;
 				alpa = x0 / xi;
-				beta = alpa * di;
-
-				if (alpa * beta < d0) {
-
-					beta = - beta / d0;
-					type = 1;
-				}
-				else {
-					alpa = xi / x0;
-					beta = - alpa * d0 / di;
-					type = 0;
-				}
-			}
-			else {
-				alpa = xi / x0;
-				beta = alpa * d0;
-
-				if (alpa * beta < di) {
-
-					beta = - beta / di;
-					type = 0;
-				}
-				else {
-					alpa = x0 / xi;
-					beta = - alpa * di / d0;
-					type = 1;
-				}
-			}
-
-			/* Apply the transformation.
-			 * */
-			if (type != 0) {
 
 				m[i] = m[i] + beta * xz[i];
 
@@ -109,6 +80,9 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 				  d0 = d0 * x0;
 			}
 			else {
+				beta = - beta / alpa;
+				alpa = xi / x0;
+
 				m[i] = beta * m[i] + xz[i];
 
 				for (j = i + 1; j < rm->len; ++j) {

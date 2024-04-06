@@ -71,7 +71,7 @@ const char *stoi(int *x, const char *s);
 const char *htoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-uint32_t crc32b(const void *s, int n);
+uint32_t crc32b(const void *s, size_t n);
 uint32_t urand();
 
 #endif /* _H_LIBC_ */

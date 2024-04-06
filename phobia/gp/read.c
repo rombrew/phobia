@@ -1597,22 +1597,17 @@ configParseFSM(read_t *rd, parse_t *pa)
 	do {
 		r = configToken(rd, pa);
 
-		if (r < 0) break;
-		else if (r == 1) {
-
-			failed = 0;
-			continue;
-		}
-		else if (r == 0 && pa->newline != 0) {
+		if (r == 0 && pa->newline != 0) {
 
 			sprintf(msg_tbuf, "unable to parse \"%.80s\"", tbuf);
 
 			if (tbuf[0] == '#') {
 
 				failed = 0;
-				while (configToken(rd, pa) == 0) ;
 			}
 			else if (strcmp(tbuf, "include") == 0) {
+
+				failed = 1;
 
 				r = configToken(rd, pa);
 
@@ -1631,9 +1626,10 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (fd == NULL) {
 
 						ERROR("fopen(\"%s\"): %s\n", tbuf, strerror(errno));
-						failed = 1;
 					}
 					else {
+						failed = 0;
+
 						strcpy(rpa.file, tbuf);
 
 						rpa.path = pa->path;
@@ -1649,9 +1645,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						fclose(fd);
 					}
-				}
-				else {
-					failed = 1;
 				}
 			}
 			else if (strcmp(tbuf, "gpconfig") == 0) {
@@ -3162,6 +3155,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 			pa->newline = 0;
 		}
+		else if (r < 0)
+			break;
 	}
 	while (1);
 }

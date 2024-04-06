@@ -1208,6 +1208,7 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(NTC_GND);
 				PM_SFI_CASE(NTC_VCC);
 				PM_SFI_CASE(NTC_LMT87);
+				PM_SFI_CASE(NTC_KTY83);
 				PM_SFI_CASE(NTC_KTY84);
 
 				default: break;
@@ -1668,13 +1669,13 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_NTC_MACHINE */
 	REG_DEF(ap.temp_MCU,,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(ap.heat_PCB_temp_halt,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_PCB_temp_derate,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_PCB_temp_FAN,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_EXT_temp_derate,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_maximal_PCB,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_maximal_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.heat_temp_recovery,,,	"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_PCB_halt,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_PCB_derate,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_PCB_fan,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_EXT_derate,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_maximal_PCB,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_maximal_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_recovery,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_BUTTON,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
@@ -1862,7 +1863,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_stop_DC,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.detach_threshold,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.detach_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.detach_trip_tol,,,		"V",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.detach_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.flux_ZONE,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
@@ -1871,7 +1872,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.flux_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.flux_wS, _kmh,,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.flux_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.flux_trip_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_IN,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_HI,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1920,7 +1921,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.hall_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.hall_wS, _kmh,,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
-	REG_DEF(pm.hall_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hall_trip_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hall_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
@@ -1935,7 +1936,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.eabi_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.eabi_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.eabi_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
-	REG_DEF(pm.eabi_trip_AP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_trip_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_gain_LO,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
@@ -2044,10 +2045,10 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_minimal,,,			"rad",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_minimal, _deg,,		"deg",	"%2f",	0, &reg_proc_location_deg, NULL),
 	REG_DEF(pm.x_minimal, _mm,,		"mm",	"%3f",	0, &reg_proc_location_mm, NULL),
-	REG_DEF(pm.x_damping,,,			"rad",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.x_damping, _mm,,		"mm",	"%3f",	0, &reg_proc_mmps, NULL),
-	REG_DEF(pm.x_residual_tol,,,		"rad",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.x_residual_tol, _mm,,	"mm",	"%3f",	0, &reg_proc_mmps, NULL),
+	REG_DEF(pm.x_boost_tol,,,		"rad",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.x_boost_tol, _mm,,		"mm",	"%3f",	0, &reg_proc_mmps, NULL),
+	REG_DEF(pm.x_track_tol,,,		"rad",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.x_track_tol, _mm,,		"mm",	"%3f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.x_gain_P,,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.x_gain_P, _radps,,	"rad/s2",	"%1f",	0, &reg_proc_x_accel, NULL),
 	REG_DEF(pm.x_gain_P, _mmps,,	"mm/s2",	"%1f",	0, &reg_proc_x_accel_mm, NULL),

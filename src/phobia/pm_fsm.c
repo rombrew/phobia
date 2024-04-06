@@ -1066,7 +1066,7 @@ pm_fsm_state_adjust_current(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				REF = .01f;	/* regularization constant */
+				REF = 0.01f;	/* regularization constant */
 
 				v[0] = REF;
 				v[1] = 0.f;
@@ -1259,6 +1259,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 	if (track_HF > M_EPSILON) {
 
 		m_rotatef(pm->hfi_wave, pm->quick_HFwS * pm->m_dT);
+		m_normalizef(pm->hfi_wave);
 
 		uD += uHF * pm->hfi_wave[0];
 		uQ += uHF * pm->hfi_wave[1];
@@ -1287,8 +1288,6 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			pm->probe_HF_integral = 0.f;
 
 			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
-				(hold_A > M_PI_F) ? M_PI_F : hold_A;
 
 			pm->probe_TEMP[0] = m_cosf(hold_A);
 			pm->probe_TEMP[1] = m_sinf(hold_A);
@@ -1431,6 +1430,7 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_REM[7] = 0.f;
 
 			pm->quick_HFwS = M_2_PI_F * pm->probe_freq_sine;
+
 			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * 0.5f);
 			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * 0.5f);
 
@@ -1442,8 +1442,6 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->hfi_wave[1] = 0.f;
 
 			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
-			hold_A = (hold_A < - M_PI_F) ? - M_PI_F :
-				(hold_A > M_PI_F) ? M_PI_F : hold_A;
 
 			pm->i_track_D = m_cosf(hold_A) * pm->probe_current_bias;
 			pm->i_track_Q = m_sinf(hold_A) * pm->probe_current_bias;
@@ -2048,18 +2046,22 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 				if (dnum[HS] > thld) {
 
-					float		len;
+					float		l;
 
-					pm->hall_ST[HS].X /= (float) dnum[HS];
-					pm->hall_ST[HS].Y /= (float) dnum[HS];
+					l = m_fast_reciprocalf((float) dnum[HS]);
 
-					len = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
-						+ pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
+					pm->hall_ST[HS].X *= l;
+					pm->hall_ST[HS].Y *= l;
 
-					if (len > 0.5f) {
+					l = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
+						  + pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
 
-						pm->hall_ST[HS].X /= len;
-						pm->hall_ST[HS].Y /= len;
+					if (l > 0.5f) {
+
+						l = 1.f / l;
+
+						pm->hall_ST[HS].X *= l;
+						pm->hall_ST[HS].Y *= l;
 
 						N += 1;
 					}
@@ -2250,10 +2252,8 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 
 					if (m_isfinitef(ls->sol.m[0]) != 0) {
 
-						v[0] = m_wrapf(ls->sol.m[0]);
-
-						pm->eabi_F0[0] = m_cosf(v[0]);
-						pm->eabi_F0[1] = m_sinf(v[0]);
+						pm->eabi_F0[0] = m_cosf(ls->sol.m[0]);
+						pm->eabi_F0[1] = m_sinf(ls->sol.m[0]);
 
 						pm->eabi_ADJUST = PM_ENABLED;
 					}

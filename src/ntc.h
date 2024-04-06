@@ -1,7 +1,7 @@
 #ifndef _H_NTC_
 #define _H_NTC_
 
-/* Temperature measurement schematic (NTC on GND)
+/* Temperature measurement schematic (placement NTC on GND)
  *
 	            +------< VCC
 	            |
@@ -31,7 +31,8 @@ enum {
 	NTC_GND,
 	NTC_VCC,
 	NTC_LMT87,
-	NTC_KTY84,
+	NTC_KTY83,
+	NTC_KTY84
 };
 
 typedef struct {

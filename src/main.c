@@ -12,7 +12,7 @@
 #include "regfile.h"
 #include "shell.h"
 
-app_main_t			ap;
+app_t				ap;
 pmc_t 				pm LD_CCRAM;
 tlm_t				tlm;
 
@@ -181,7 +181,7 @@ timeout_IDLE()
 LD_TASK void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
-	
+
 	float			maximal_PCB, maximal_EXT, lock_PCB;
 	int			fsm_errno_last;
 
@@ -227,7 +227,7 @@ LD_TASK void task_TEMP(void *pData)
 			ap.temp_EXT = 0.f;
 		}
 
-		if (ap.temp_PCB > ap.heat_PCB_temp_halt - lock_PCB) {
+		if (ap.temp_PCB > ap.otp_PCB_halt - lock_PCB) {
 
 			maximal_PCB = 0.f;
 
@@ -237,16 +237,16 @@ LD_TASK void task_TEMP(void *pData)
 				pm.fsm_req = PM_STATE_HALT;
 			}
 
-			lock_PCB = ap.heat_temp_recovery;
+			lock_PCB = ap.otp_recovery;
 		}
 		else {
-			if (ap.temp_PCB > ap.heat_PCB_temp_derate) {
+			if (ap.temp_PCB > ap.otp_PCB_derate) {
 
 				/* Derate current in case of PCB thermal overload.
 				 * */
-				maximal_PCB = ap.heat_maximal_PCB;
+				maximal_PCB = ap.otp_maximal_PCB;
 			}
-			else if (ap.temp_PCB < ap.heat_PCB_temp_derate - ap.heat_temp_recovery) {
+			else if (ap.temp_PCB < ap.otp_PCB_derate - ap.otp_recovery) {
 
 				maximal_PCB = PM_MAX_F;
 			}
@@ -257,26 +257,26 @@ LD_TASK void task_TEMP(void *pData)
 #ifdef HW_HAVE_FAN_CONTROL
 		/* Enable FAN in case of PCB is warm enough.
 		 * */
-		if (ap.temp_PCB > ap.heat_PCB_temp_FAN) {
+		if (ap.temp_PCB > ap.otp_PCB_fan) {
 
 			GPIO_set_state_FAN(PM_ENABLED);
 		}
-		else if (ap.temp_PCB < ap.heat_PCB_temp_FAN - ap.heat_temp_recovery) {
+		else if (ap.temp_PCB < ap.otp_PCB_fan - ap.otp_recovery) {
 
 			GPIO_set_state_FAN(PM_DISABLED);
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
-		if (ap.heat_EXT_temp_derate > M_EPSILON) {
+		if (ap.otp_EXT_derate > M_EPSILON) {
 
-			if (ap.temp_EXT > ap.heat_EXT_temp_derate) {
+			if (ap.temp_EXT > ap.otp_EXT_derate) {
 
 				/* Derate current in case of external thermal
 				 * overload (machine overheat protection).
 				 * */
-				maximal_EXT = ap.heat_maximal_EXT;
+				maximal_EXT = ap.otp_maximal_EXT;
 			}
-			else if (ap.temp_EXT < ap.heat_EXT_temp_derate - ap.heat_temp_recovery) {
+			else if (ap.temp_EXT < ap.otp_EXT_derate - ap.otp_recovery) {
 
 				maximal_EXT = PM_MAX_F;
 			}
@@ -650,13 +650,13 @@ default_flash_load()
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MACHINE */
 
-	ap.heat_PCB_temp_halt = 110.f;	/* (C) */
-	ap.heat_PCB_temp_derate = 90.f;	/* (C) */
-	ap.heat_PCB_temp_FAN = 60.f;	/* (C) */
-	ap.heat_EXT_temp_derate = 0.f;	/* (C) */
-	ap.heat_maximal_PCB = 10.f;	/* (A) */
-	ap.heat_maximal_EXT = 10.f;	/* (A) */
-	ap.heat_temp_recovery = 5.f;	/* (C) */
+	ap.otp_PCB_halt = 110.f;	/* (C) */
+	ap.otp_PCB_derate = 90.f;	/* (C) */
+	ap.otp_PCB_fan = 60.f;		/* (C) */
+	ap.otp_EXT_derate = 0.f;	/* (C) */
+	ap.otp_maximal_PCB = 10.f;	/* (A) */
+	ap.otp_maximal_EXT = 10.f;	/* (A) */
+	ap.otp_recovery = 5.f;		/* (C) */
 
 	ap.auto_reg_DATA = 0.f;
 	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;

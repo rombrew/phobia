@@ -49,7 +49,7 @@ example there was no speed maneuver during the moment of inertia probing.
 `PM_ERROR_INVALID_OPERATION` - Numerical instability inside PMC control code or
 deliberately invalid operation was requested.
 
-`PM_ERROR_SENSOR_HALL_FAULT` - Forbidden value of Hall code was detected. Or
+`PM_ERROR_SENSOR_HALL_FAULT` - Forbidden value of Hall code was detected or
 result of Hall self-adjustment shows an inadequacy of sensor measurements.
 
 `PM_ERROR_SENSOR_EABI_FAULT` - Result of EABI self-adjustment shows an
@@ -82,7 +82,7 @@ computationally expensive features.
 `PM_ERROR_HW_OVERCURRENT` - Overcurrent accident detected by hardware.
 
 `PM_ERROR_HW_OVERTEMPERATURE` - PCB overheat condition has been reached.
-Apparently temperature regulation by current derate is not functional.
+Apparently temperature regulation by current limiting is not functional.
 
 `PM_ERROR_HW_EMERGENCY_STOP` - Emergency situation detected by emergency
 endstop signal.

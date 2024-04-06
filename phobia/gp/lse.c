@@ -174,7 +174,7 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 			}
 #else /* LSE_FAST_TRANSFORM */
 
-			/* WARNING: We use NAIVE hypot implementation as it is
+			/* WARNING: We use naive hypot implementation as it is
 			 * the fastest one and quite ulp-accurate.
 			 */
 			alpa = lse_sqrtf(x0 * x0 + xi * xi);

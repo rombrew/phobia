@@ -14,7 +14,7 @@
 /* Define whether to use fast Givens transformation in QR update. Typical this
  * is useful for fairly large matrix sizes. Also consumes a few of memory.
  * */
-#define LSE_FAST_TRANSFORM		0
+#define LSE_FAST_TRANSFORM		1
 
 /* Define native floating-point type to use inside of LSE.
  * */

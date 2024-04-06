@@ -820,7 +820,7 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-uint32_t crc32b(const void *s, int n)
+uint32_t crc32b(const void *s, size_t n)
 {
 	const uint32_t		*ls = (const uint32_t *) s;
 	uint32_t		crc, buf;
@@ -835,10 +835,10 @@ uint32_t crc32b(const void *s, int n)
 
 	crc = 0xFFFFFFFFU;
 
-	while (n >= 4) {
+	while (n >= 4U) {
 
 		buf = *ls++;
-		n += - 4;
+		n += - 4U;
 
 		crc = crc ^ buf;
 
@@ -857,11 +857,8 @@ uint32_t crc32b(const void *s, int n)
 
 uint32_t urand()
 {
-	uint32_t	rval;
-
 	rseed = rseed * 17317U + 1U;
-	rval = rseed >> 16;
 
-	return rval;
+	return rseed >> 16;
 }
 

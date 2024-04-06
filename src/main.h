@@ -82,13 +82,13 @@ typedef struct {
 
 	/* Overheat protection.
 	 * */
-	float			heat_PCB_temp_halt;
-	float			heat_PCB_temp_derate;
-	float			heat_PCB_temp_FAN;
-	float			heat_EXT_temp_derate;
-	float			heat_maximal_PCB;
-	float			heat_maximal_EXT;
-	float			heat_temp_recovery;
+	float			otp_PCB_halt;
+	float			otp_PCB_derate;
+	float			otp_PCB_fan;
+	float			otp_EXT_derate;
+	float			otp_maximal_PCB;
+	float			otp_maximal_EXT;
+	float			otp_recovery;
 
 	/* App enable/disable knobs.
 	 * */
@@ -111,9 +111,9 @@ typedef struct {
 	 * */
 	int 			(* proc_get_EP) ();
 }
-app_main_t;
+app_t;
 
-extern app_main_t		ap;
+extern app_t			ap;
 extern pmc_t			pm;
 extern tlm_t			tlm;
 

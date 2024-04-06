@@ -14,8 +14,8 @@ LOG_t				log		LD_NOINIT;
 
 typedef struct {
 
-	uint32_t bootload;
-	uint32_t crystal;
+	uint32_t bootload_flag;
+	uint32_t crystal_disabled;
 }
 priv_HAL_t;
 
@@ -27,7 +27,7 @@ void irq_NMI()
 
 	if (RCC->CIR & RCC_CIR_CSSF) {
 
-		noinit_HAL.crystal = HAL_FLAG_SIGNATURE;
+		noinit_HAL.crystal_disabled = HAL_FLAG_SIGNATURE;
 
 		RCC->CIR |= RCC_CIR_CSSC;
 
@@ -103,7 +103,7 @@ core_startup()
 	RCC->DCKCFGR2 = 0;
 #endif /* STM32F7 */
 
-	if (noinit_HAL.crystal != HAL_FLAG_SIGNATURE) {
+	if (noinit_HAL.crystal_disabled != HAL_FLAG_SIGNATURE) {
 
 		int		N = 0;
 
@@ -124,12 +124,12 @@ core_startup()
 
 				log_TRACE("HSE not ready" EOL);
 
-				noinit_HAL.crystal = HAL_FLAG_SIGNATURE;
+				noinit_HAL.crystal_disabled = HAL_FLAG_SIGNATURE;
 
 #ifdef STM32F7
 				/* D-Cache Clean and Invalidate.
 				 * */
-				SCB->DCCIMVAC = (uint32_t) &noinit_HAL.crystal;
+				SCB->DCCIMVAC = (uint32_t) &noinit_HAL.crystal_disabled;
 
 				__DSB();
 				__ISB();
@@ -159,7 +159,7 @@ core_startup()
 	 * */
 	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
 
-	if (noinit_HAL.crystal != HAL_FLAG_SIGNATURE) {
+	if (noinit_HAL.crystal_disabled != HAL_FLAG_SIGNATURE) {
 
 		CLOCK = HW_CLOCK_CRYSTAL_HZ;
 
@@ -299,9 +299,9 @@ void hal_bootload()
 {
 	const uint32_t		*sysmem;
 
-	if (noinit_HAL.bootload == HAL_FLAG_SIGNATURE) {
+	if (noinit_HAL.bootload_flag == HAL_FLAG_SIGNATURE) {
 
-		noinit_HAL.bootload = 0U;
+		noinit_HAL.bootload_flag = 0U;
 
 #if defined(STM32F4)
 		sysmem = (const uint32_t *) 0x1FFF0000U;
@@ -362,7 +362,7 @@ void hal_system_reset()
 
 void hal_bootload_jump()
 {
-	noinit_HAL.bootload = HAL_FLAG_SIGNATURE;
+	noinit_HAL.bootload_flag = HAL_FLAG_SIGNATURE;
 
 	hal_system_reset();
 }

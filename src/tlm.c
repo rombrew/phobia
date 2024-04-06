@@ -11,7 +11,7 @@
 
 void tlm_reg_default(tlm_t *tlm)
 {
-	tlm->rate_grab = 5;
+	tlm->rate_grab = 1;
 	tlm->rate_live = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 	tlm->reg_ID[0] = ID_PM_FB_IA;
