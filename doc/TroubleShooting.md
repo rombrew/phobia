@@ -87,4 +87,20 @@ Apparently temperature regulation by current limiting is not functional.
 `PM_ERROR_HW_EMERGENCY_STOP` - Emergency situation detected by emergency
 endstop signal.
 
+## Log in volatile RAM
+
+In case of critical system error like a crystal clock failure or watchdog reset
+this information will be logged in volatile RAM. You can also find timestamped
+PMC error codes in the log. Note that contents of the log is erased if you
+remove power from PMC.
+
+To print out and clear the log contents use these commands.
+
+	(pmc) ap_log_flush
+	(pmc) ap_log_clean
+
+## See also
+
+Also look into [Integrity Self Test](IntegritySelfTest.md) page in case of you
+if you need to check that your hardware is not broken.
 

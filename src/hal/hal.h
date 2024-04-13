@@ -172,11 +172,12 @@ HAL_t;
 
 typedef struct {
 
-	uint32_t	boot_SIGNATURE;
+	uint32_t	boot_FLAG;
 	uint32_t	boot_COUNT;
 
-	char		textbuf[2000];
-	int		textend;
+	char		text[2000];
+	int		text_wp;
+	int		text_rp;
 }
 LOG_t;
 
@@ -203,6 +204,8 @@ void hal_memory_fence();
 int log_status();
 void log_bootup();
 void log_putc(int c);
+void log_flush();
+void log_clean();
 
 void DBGMCU_mode_stop();
 

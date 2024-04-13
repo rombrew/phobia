@@ -1582,7 +1582,6 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->forced_track_D = 0.f;
 
 				pm->flux_DETACH = PM_DISABLED;
-				pm->detach_TIM = 0;
 
 				if (pm->config_LU_ESTIMATE == PM_FLUX_NONE) {
 
@@ -1592,13 +1591,18 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 					pm->flux_LINKAGE = PM_ENABLED;
 				}
-				else if (pm->const_lambda < M_EPSILON) {
+				else if (pm->const_lambda > M_EPSILON) {
 
-					/* Here we indicate that flux linkage
+					pm->flux_LINKAGE = PM_ENABLED;
+				}
+				else {
+					/* So we indicate that flux linkage
 					 * is to be estimated further.
 					 * */
 					pm->flux_LINKAGE = PM_DISABLED;
 				}
+
+				pm->detach_TIM = 0;
 
 				pm->flux_TYPE = PM_FLUX_NONE;
 				pm->flux_ZONE = in_ZONE;
@@ -1832,11 +1836,6 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 					pm->kalman_bias_Q = 0.f;
 
 					pm_quick_build(pm);
-
-					if (pm->flux_LINKAGE != PM_ENABLED) {
-
-						pm->flux_LINKAGE = PM_ENABLED;
-					}
 				}
 				else {
 					pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;

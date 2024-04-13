@@ -50,12 +50,12 @@ PWM scheme as shown in the diagram.
 ```
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
-specified Dead-Time `DET`. Depending on the direction of the current flow
-during the Dead-Time the actual voltage on half-bridge may be different. The
-amount of uncertainty in the output voltage `dU` expressed as follows:
+specified dead-time `ZT`. Depending on the direction of the current flow during
+the dead-time the actual voltage on half-bridge may be different. The amount of
+uncertainty in the output voltage `dU` expressed as follows:
 
 ```
-	       2 * DET * DC_link_voltage
+	       2 * ZT * DC_link_voltage
 	 dU = ---------------------------
 	                  dT
 
@@ -69,7 +69,7 @@ amount of uncertainty in the output voltage `dU` expressed as follows:
 	       ||  |     ---             |                 |
 	        |--+      |           |                       |
 	           |      |              |                 |
-	           +------+       --->|   <--- DET            |
+	           +------+       --->|   <--- ZT             |
 	           |                     |                 |
 	           +---< Terminal     |                       |
 	           |                     |                 |

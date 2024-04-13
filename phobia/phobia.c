@@ -265,7 +265,13 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 			/* TODO */
 		}
 		else {
-			sprintf(pub->lbuf, "Update rate \"%i\"", reg->update);
+			if (reg->update != 0) {
+
+				sprintf(pub->lbuf, "Update Rate = %i (ms)", reg->update);
+			}
+			else {
+				sprintf(pub->lbuf, "Update Disabled");
+			}
 
 			if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
 
@@ -274,7 +280,7 @@ pub_contextual(struct public *pub, struct link_reg *reg, struct nk_rect bounds)
 
 			if (reg->mode & LINK_REG_TYPE_FLOAT) {
 
-				sprintf(pub->lbuf, "* Range \"%.22s\" - \"%.22s\"",
+				sprintf(pub->lbuf, "* Range [%.22s; %.22s]",
 						reg->vmin, reg->vmax);
 
 				if (nk_contextual_item_label(ctx, pub->lbuf, NK_TEXT_LEFT)) {
@@ -1804,7 +1810,7 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 
 	struct nk_style_edit		edit;
 	struct nk_color			hidden;
-	int				rc, min, max;
+	int				rc, min_ID, max_ID;
 
 	edit = ctx->style.edit;
 
@@ -1816,16 +1822,33 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_end(ctx);
 
-	rc = link_reg_lookup_range(lp, sym, &min, &max);
+	if (sym[0] >= '0' && sym[0] <= '9' && sym[1] == '/') {
 
-	if (rc != 0 && max >= min) {
+		reg = link_reg_lookup(lp, sym + 2);
 
-		if (lp->reg[min + defsel].shown == 0) {
+		if (reg != NULL) {
 
-			lp->reg[min].um_sel = defsel;
+			rc = (int) (sym[0] - '1');
+
+			min_ID = (int) (reg - lp->reg);
+			max_ID = min_ID + rc;
+		}
+		else {
+			rc = 0;
+		}
+	}
+	else {
+		rc = link_reg_lookup_range(lp, sym, &min_ID, &max_ID);
+	}
+
+	if (rc != 0 && max_ID >= min_ID) {
+
+		if (lp->reg[min_ID + defsel].shown == 0) {
+
+			lp->reg[min_ID].um_sel = defsel;
 		}
 
-		reg = &lp->reg[min + lp->reg[min].um_sel];
+		reg = &lp->reg[min_ID + lp->reg[min_ID].um_sel];
 
 		if (reg->fetched + 500 > lp->clock) {
 
@@ -1857,17 +1880,17 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 
 		nk_spacer(ctx);
 
-		if (max != min) {
+		if (max_ID != min_ID) {
 
 			rc = nk_combo_callback(ctx, &reg_um_get_item,
-					&lp->reg[min], lp->reg[min].um_sel,
-					(max - min) + 1, pub->fe_font_h + 10,
+					&lp->reg[min_ID], lp->reg[min_ID].um_sel,
+					(max_ID - min_ID) + 1, pub->fe_font_h + 10,
 					nk_vec2(pub->fe_base * 8, 400));
 
-			if (rc != lp->reg[min].um_sel) {
+			if (rc != lp->reg[min_ID].um_sel) {
 
-				lp->reg[min].um_sel = rc;
-				lp->reg[min + lp->reg[min].um_sel].onefetch = 1;
+				lp->reg[min_ID].um_sel = rc;
+				lp->reg[min_ID + lp->reg[min_ID].um_sel].onefetch = 1;
 			}
 		}
 		else {
@@ -3063,6 +3086,8 @@ page_probe(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 	nk_spacer(ctx);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 }
 
 static void
@@ -3842,9 +3867,9 @@ page_config(struct public *pub)
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
 	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
 	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
-	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 0);
-	reg_float_um(pub, "pm.probe_speed_tol", "Speed settle tolerance", 0);
-	reg_float_um(pub, "pm.probe_location_tol", "Location settle tolerance", 0);
+	reg_float_um(pub, "pm.probe_speed_hold", "Probe speed", 1);
+	reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 1);
+	reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0);
 	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating losses");
 	reg_float(pub, "pm.probe_gain_P", "Probe loop gain P");
 	reg_float(pub, "pm.probe_gain_I", "Probe loop gain I");
@@ -3934,9 +3959,9 @@ page_lu_forced(struct public *pub)
 
 	reg_float(pub, "pm.forced_hold_D", "Forced hold current");
 	reg_float(pub, "pm.forced_weak_D", "Forced weak current");
-	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 0);
-	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 0);
-	reg_float_um(pub, "pm.forced_accel", "Forced acceleration", 0);
+	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 1);
+	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 1);
+	reg_float_um(pub, "pm.forced_accel", "Forced acceleration", 1);
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
 	reg_float(pub, "pm.forced_fall_rate", "Current fall rate");
 	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
@@ -4021,8 +4046,8 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "Noise threshold", 0);
-	reg_float_um(pub, "pm.zone_threshold", "Zone threshold", 0);
+	reg_float_um(pub, "pm.zone_noise", "Noise threshold", 1);
+	reg_float_um(pub, "pm.zone_threshold", "Zone threshold", 1);
 	reg_float(pub, "pm.zone_gain_TH", "Zone hysteresis");
 	reg_float(pub, "pm.zone_gain_LP", "Zone gain LPF");
 
@@ -4071,7 +4096,7 @@ page_lu_flux(struct public *pub)
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
 
-	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0);
+	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 1);
 	reg_float(pub, "pm.flux_lambda", "Flux linkage estimate");
 	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
 
@@ -4474,10 +4499,8 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.watt_wP_maximal", "Maximal consumption");
-	reg_float(pub, "pm.watt_wA_maximal", "Maximal DC link current");
-	reg_float(pub, "pm.watt_wP_reverse", "Maximal regeneration");
-	reg_float(pub, "pm.watt_wA_reverse", "Maximal DC link reverse");
+	reg_float_um(pub, "2/pm.watt_wP_maximal", "Maximal consumption", 1);
+	reg_float_um(pub, "2/pm.watt_wP_reverse", "Maximal regeneration", 1);
 	reg_float(pub, "pm.watt_uDC_maximal", "DC link voltage HIGH");
 	reg_float(pub, "pm.watt_uDC_minimal", "DC link voltage LOW");
 
@@ -4629,9 +4652,9 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 0);
-	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0);
-	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 0);
+	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 1);
+	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 1);
+	reg_float_um(pub, "pm.s_accel", "Maximal acceleration", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -5255,6 +5278,31 @@ page_flash(struct public *pub)
 		nk_group_end(ctx);
 	}
 
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 1);
+	nk_layout_row_template_push_variable(ctx, 1);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+	pub_drawing_flash_colored(nk, 'a');
+	nk_spacer(ctx);
+	nk_label(ctx, "Data block with correct CRC", NK_TEXT_LEFT);
+
+	nk_spacer(ctx);
+	pub_drawing_flash_colored(nk, 'x');
+	nk_spacer(ctx);
+	nk_label(ctx, "Garbage block", NK_TEXT_LEFT);
+
+	nk_spacer(ctx);
+	pub_drawing_flash_colored(nk, '.');
+	nk_spacer(ctx);
+	nk_label(ctx, "Erased block", NK_TEXT_LEFT);
+
 	if (lp->unable_warning[0] != 0) {
 
 		strcpy(pub->popup_msg, lp->unable_warning);
@@ -5289,7 +5337,7 @@ page_upgrade(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Embedded bootloader", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Enter bootloader", NK_TEXT_LEFT)) {
 
 			if (lp->linked != 0) {
 

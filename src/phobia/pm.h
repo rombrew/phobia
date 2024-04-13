@@ -409,13 +409,13 @@ typedef struct {
 	float		forced_stop_DC;
 
 	int		flux_DETACH;
+	int		flux_LINKAGE;
 
 	int		detach_TIM;
 	float		detach_threshold;
 	float		detach_trip_tol;
 	float		detach_gain_SF;
 
-	int		flux_LINKAGE;
 	int		flux_TYPE;
 	int		flux_ZONE;
 
@@ -600,7 +600,7 @@ typedef struct {
 	float		x_gain_P;
 	float		x_gain_D;
 
-	float		d_flux_rsu;
+	float		dbg_flux_rsu;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

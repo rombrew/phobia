@@ -15,6 +15,9 @@ The pulse signal is fed to PPM pin that must be 5v-tolerant.
 	|      +5v PPM GND                            |
 ```
 
+**WARNING**: Refer to your hardware manual or look into `src/hal/hw/...`
+directory to find out actual pin mapping on your port.
+
 ## Configuration
 
 First you need to enable the appropriate mode of the PPM interface.
@@ -22,7 +25,7 @@ First you need to enable the appropriate mode of the PPM interface.
 	(pmc) reg hal.PPM_mode 1
 
 Now you can see how the controller receives the control signal. If variable
-`ap.ppm_freq` is nonzero then pulse is caught. Use these registers to view
+`ap.ppm_FREQ` is nonzero then pulse is caught. Use these registers to view
 pulse parameters.
 
 	(pmc) reg ap.ppm_PULSE

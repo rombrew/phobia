@@ -21,6 +21,9 @@ to 5v) is fed to `BRK` pin. Unconnected inputs are pulled to `GND` inside PMC.
 	|          GND BRK ANG +5v                   |
 ```
 
+**WARNING**: Refer to your hardware manual or look into `src/hal/hw/...`
+directory to find out actual pin mapping on your port.
+
 ## Configuration
 
 First you need to figure out how the controller receives analog signals. Use

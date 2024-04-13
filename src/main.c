@@ -1005,7 +1005,10 @@ in_STEP_DIR()
 
 		if (ap.step_STARTUP == PM_ENABLED) {
 
-			if (pm.lu_MODE == PM_LU_DISABLED) {
+			if (		pm.lu_MODE == PM_LU_DISABLED
+					&& pm.fsm_errno == PM_OK) {
+
+				ap.step_POS = 0;
 
 				pm.fsm_req = PM_STATE_LU_STARTUP;
 			}
@@ -1147,7 +1150,7 @@ SH_DEF(ap_clock)
 	printf("Clock %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
-SH_DEF(ap_task_info)
+SH_DEF(ap_dbg_task)
 {
 	TaskStatus_t		*list;
 	int			len, symStat, n;
@@ -1204,7 +1207,7 @@ SH_DEF(ap_task_info)
 	}
 }
 
-SH_DEF(ap_heap_info)
+SH_DEF(ap_dbg_heap)
 {
 	HeapStats_t	info;
 
@@ -1225,26 +1228,7 @@ SH_DEF(ap_heap_info)
 			info.xNumberOfSuccessfulFrees);
 }
 
-SH_DEF(ap_log_flush)
-{
-	if (log_status() != HAL_OK) {
-
-		puts(log.textbuf);
-		puts(EOL);
-	}
-}
-
-SH_DEF(ap_log_clean)
-{
-	if (log_status() != HAL_OK) {
-
-		memset(log.textbuf, 0, sizeof(log.textbuf));
-
-		log.textend = 0;
-	}
-}
-
-SH_DEF(ap_hexdump)
+SH_DEF(ap_dbg_hexdump)
 {
 	uint8_t		*maddr, mdata[16];
 	int		sym, n, i, count = 4;
@@ -1281,6 +1265,22 @@ SH_DEF(ap_hexdump)
 
 			maddr += 16;
 		}
+	}
+}
+
+SH_DEF(ap_log_flush)
+{
+	if (log_status() != HAL_OK) {
+
+		log_flush();
+	}
+}
+
+SH_DEF(ap_log_clean)
+{
+	if (log_status() != HAL_OK) {
+
+		log_clean();
 	}
 }
 

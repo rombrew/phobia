@@ -1,8 +1,10 @@
 ## Overview
 
 This page describes how to identify the machine parameters by means of PMC. The
-knowledge of parameters is necessary to control. Any new machine connected to
-the PMC should be identified before run in closed control loop.
+knowledge of parameters is necessary to control.
+
+**WARNING**: Any new machine connected to the PMC should be identified before
+run in closed control loop.
 
 ## Preparation
 
@@ -14,16 +16,16 @@ be aware. These parameters are used to probe the machine.
 
 There are a lot of parameters that can affect the machine identification. But
 we believe that they will need a change only in a complicated case. Most likely
-you will need to decrease probe currents for a small machine.
+you will need to decrease probing currents for a small machine.
 
-* `pm.probe_current_hold`, `pm.probe_current_weak` - Two current setpoints that
+- `pm.probe_current_hold`, `pm.probe_current_weak` - Two current setpoints that
   is used to estimate stator resistance. Please note they must be significantly
-  different to get accurate estimate.
-* `pm.probe_freq_sine`, `pm.probe_current_sine` - Sine wave frequency and
-  amplitude that is used to estimate stator impedance.
-* `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
+  different to get accurate well-conditioned estimate.
+- `pm.probe_freq_sine`, `pm.probe_current_sine` - Sine wave frequency and
+  amplitude that is used to estimate stator winding impedance.
+- `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
   flux linkage and noise threshold will be estimated.
-* `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
+- `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
   allows us to assume maximal machine current.
 
 Also pay attention to the forced control parameters which are used to achieve
@@ -31,33 +33,32 @@ initial spinup.
 
 	(pmc) reg pm.forced
 
-* `pm.forced_hold_D` - Forced current setpoint which should be enough to hold
+- `pm.forced_hold_D` - Forced current setpoint which should be enough to hold
   rotor in aligned position and force it turn.
-* `pm.forced_accel` - Allowed acceleration of the forced control.
+- `pm.forced_accel` - Allowed acceleration of the forced control.
 
 If you use power supply that not tolerate reverse current then consider the
 wattage limit settings.
 
     (pmc) reg pm.watt
 
-* `pm.watt_wA_reverse` - Maximal reverse current on DC link.
-* `pm.watt_uDC_maximal` - Maximal overvoltage on DC link.
+- `pm.watt_wA_reverse` - Maximal reverse current on DC link.
+- `pm.watt_uDC_maximal` - Maximal overvoltage on DC link.
 
 Also do not forget to reset the machine parameters if you have previously run
-with another machine.
+another machine.
 
     (pmc) pm_default_probe
 
 ## Sensors adjustment
 
 To achieve the best accuracy PMC has the ability of self-adjust voltage and
-current onboard sensors. The automatic self-adjustment is necessary to match
-the voltage measurement channels. Also current sensors will be self-adjusted if
-machine is connected.
+current onboard sensors. The self-adjustment procedure allows you to match
+measurement channels between phases.
 
 	(pmc) pm_self_adjust
 
-This is enough to do it once and save the values in the flash. But we recommend
+This is enough to do it once and store the values in the flash. But we recommend
 to do it again if you radically change DC link voltage.
 
 ## Number of the rotor pole pairs
@@ -69,14 +70,14 @@ then divide it by 2. This is the most famous method.
 	(pmc) reg pm.const_Zp <n>
 
 If access to the machine is restricted and to count the magnets is impossible
-then just leave a value 1. Instead of mechanical speed you will see electrical
-speed. By measuring the mechanical speed directly you can estimate `Zp` and set
-it later.
+then you can leave a value 1. Instead of mechanical speed you will see
+electrical speed. By independent measuring the mechanical speed you can
+estimate `Zp` and set it later.
 
 ## Impedance of stator windings
 
 We measure the resistance `pm.const_Rs` by difference of voltage drop on two
-values of holding current. For more accuracy you need to increase the probe
+values of holding current. For more accuracy you need to increase the probing
 currents or reduce DC link voltage.
 
 Then we use a high frequency sinusoidal signal to measure the full impedance
@@ -84,8 +85,8 @@ and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
 
 	(pmc) pm_probe_impedance
 
-If the procedure fails with an error sure that probe currents are suitable for
-you machine.
+If the procedure fails with an error code sure that probing currents are
+suitable for your machine.
 
 ## Rotor flux linkage
 
@@ -99,15 +100,16 @@ This parameter also known as `Kv` rating. Internal representation is
 ```
 
 To identify `lambda` you have to run the machine. Also the rotor should rotate
-at significant speed. We do a forced initial spinup to reach this condition.
+at significant speed to get enough BEMF voltage. We do a forced initial spinup
+to reach this condition.
 
 	(pmc) pm_probe_spinup
 
 If the procedure fails to spinup the machine try to adjust forced control
 parameters.
 
-To get more accurate flux linkage estimate you can run the machine at high
-speed and request lambda probe manually. Do not load the machine.
+To get a more accurate flux linkage estimate you can run the machine at high
+speed and request lambda probing manually. Do not load the machine.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>
@@ -116,7 +118,7 @@ speed and request lambda probe manually. Do not load the machine.
 ## No forced spinup
 
 If you failed to start the machine with `pm_probe_spinup` you have an option to
-identify flux linkage in detached mode. You will have to rotate the machine
+identify the flux linkage in detached mode. You will have to rotate the machine
 manually in this case.
 
 	(pmc) pm_probe_detached
@@ -125,8 +127,8 @@ PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 
 ## Speed noise threshold
 
-After flux linkage we estimate speed noise to know the lower bound of flux
-observer operation. As a result these threshold values are calculated.
+After a flux linkage we estimate speed noise level to know the lower bound of
+flux observer operation. As a result these threshold values are calculated.
 
 	(pmc) reg pm.zone_noise
 	(pmc) reg pm.zone_threshold
@@ -136,10 +138,12 @@ observer operation. As a result these threshold values are calculated.
 Final estimate is a moment of inertia `pm.const_Ja`. To do this possible a
 speed maneuver will be performed. Note that this may result energy regeneration
 so your power supply must tolerate this. Either you should limit maximal DC
-link current reverse.
+link current reverse as stated above.
 
 This constant is used to tune speed control loop. Also it is used in operation
 to predict the speed changes from an applied current.
+
+## See also
 
 Also look into [Trouble Shooting](TroubleShooting.md) page in case of you
 getting any error codes in `pm.fsm_errno`.

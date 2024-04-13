@@ -36,8 +36,14 @@ to upgrade the firmware you can use USB DFU or serial bootloader.
 Also check [GettingStarted](GettingStarted.md) page howto build and load the
 firmware to MCU.
 
-## Interfaces
+## Analog interfaces
 
 Note that VESC does not have voltage dividers on ADC pins. You should use
 external dividers or specify 3.3v levels on analog knob range configuration.
+
+## Terminal voltages
+
+Note that VESC does not have required RC filters on the terminal voltage
+measurement circuits. So you are not able to use dead-time distortion
+compensation.
 

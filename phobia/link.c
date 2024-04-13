@@ -183,6 +183,21 @@ lk_token(char **sp)
 	return r;
 }
 
+static char *
+link_mballoc(struct link_pmc *lp, int len)
+{
+	struct link_priv	*priv = lp->priv;
+	char			*mb = NULL;
+
+	if ((int) (priv->mbflow - priv->mb) < sizeof(priv->mb) - len) {
+
+		mb = priv->mbflow;
+		priv->mbflow += len;
+	}
+
+	return mb;
+}
+
 static int
 link_fetch_network(struct link_pmc *lp)
 {
@@ -216,7 +231,6 @@ link_fetch_network(struct link_pmc *lp)
 static void
 link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 {
-	struct link_priv	*priv = lp->priv;
 	double			dval;
 
 	if (lk_stoi(&reg->lval, reg->val) != NULL) {
@@ -257,19 +271,22 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 	if (		(reg->mode & 7U) == LINK_REG_CONFIG
 			&& (reg->mode & LINK_REG_TYPE_INT) != 0
 			&& strlen(reg->um) >= 7
-			&& reg->lval >= 0 && reg->lval < LINK_COMBO_MAX
-			&& reg->combo[reg->lval] == NULL) {
+			&& strlen(reg->um) < LINK_NAME_MAX
+			&& reg->lval >= 0
+			&& reg->lval < LINK_COMBO_MAX) {
 
-		if ((int) (priv->mbflow - priv->mb) < sizeof(priv->mb) - 90U) {
+		if (reg->combo[reg->lval] == NULL) {
 
-			sprintf(priv->mbflow, "%.77s", reg->um);
-
-			reg->combo[reg->lval] = priv->mbflow;
-			priv->mbflow += strlen(priv->mbflow) + 1;
+			reg->combo[reg->lval] = link_mballoc(lp, LINK_NAME_MAX);
 		}
 
-		reg->lmax_combo = (reg->lval > reg->lmax_combo)
-			? reg->lval : reg->lmax_combo;
+		if (reg->combo[reg->lval] != NULL) {
+
+			sprintf(reg->combo[reg->lval], "%.77s", reg->um);
+
+			reg->lmax_combo = (reg->lval > reg->lmax_combo)
+				? reg->lval : reg->lmax_combo;
+		}
 	}
 }
 

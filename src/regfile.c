@@ -1863,7 +1863,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_stop_DC,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.detach_threshold,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.detach_trip_tol,,,		"V",	"%2e",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.detach_trip_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.detach_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.flux_ZONE,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
@@ -2054,7 +2054,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P, _mmps,,	"mm/s2",	"%1f",	0, &reg_proc_x_accel_mm, NULL),
 	REG_DEF(pm.x_gain_D,,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.d_flux_rsu,,,		"",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dbg_flux_rsu,,,		"deg",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_live,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),

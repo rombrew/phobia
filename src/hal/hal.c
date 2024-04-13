@@ -6,6 +6,7 @@
 #include "cmsis/stm32xx.h"
 
 #define HAL_FLAG_SIGNATURE	0x2A7CEA64U
+#define HAL_TEXT_INC(np)	(((np) < sizeof(log.text) - 1U) ? (np) + 1 : 0)
 
 uint32_t			clock_cpu_hz;
 
@@ -14,8 +15,8 @@ LOG_t				log		LD_NOINIT;
 
 typedef struct {
 
-	uint32_t bootload_flag;
-	uint32_t crystal_disabled;
+	uint32_t	bootload_flag;
+	uint32_t	crystal_disabled;
 }
 priv_HAL_t;
 
@@ -380,45 +381,71 @@ void hal_memory_fence()
 
 int log_status()
 {
-	return (log.textbuf[0] != 0) ? HAL_FAULT : HAL_OK;
+	return (	log.boot_FLAG == HAL_FLAG_SIGNATURE
+			&& log.text_wp != log.text_rp) ? HAL_FAULT : HAL_OK;
 }
 
 void log_bootup()
 {
-	if (log.boot_SIGNATURE != HAL_FLAG_SIGNATURE) {
+	if (log.boot_FLAG != HAL_FLAG_SIGNATURE) {
 
-		log.boot_SIGNATURE = HAL_FLAG_SIGNATURE;
+		log.boot_FLAG = HAL_FLAG_SIGNATURE;
 		log.boot_COUNT = 0U;
 
-		memset(log.textbuf, 0, sizeof(log.textbuf));
-
-		log.textend = 0;
+		log.text_wp = 0;
+		log.text_rp = 0;
 	}
 	else {
 		log.boot_COUNT += 1U;
-
-		log.textbuf[sizeof(log.textbuf) - 1] = 0;
 	}
 }
 
 void log_putc(int c)
 {
-	if (unlikely(log.boot_SIGNATURE != HAL_FLAG_SIGNATURE)) {
+	if (unlikely(log.boot_FLAG != HAL_FLAG_SIGNATURE)) {
 
-		log.boot_SIGNATURE = HAL_FLAG_SIGNATURE;
-		log.boot_COUNT = 0U;
+		log.boot_FLAG = HAL_FLAG_SIGNATURE;
 
-		memset(log.textbuf, 0, sizeof(log.textbuf));
-
-		log.textend = 0;
-	}
-	else if (unlikely(	   log.textend < 0
-				|| log.textend >= sizeof(log.textbuf) - 1U)) {
-
-		log.textend = 0;
+		log.text_wp = 0;
+		log.text_rp = 0;
 	}
 
-	log.textbuf[log.textend++] = (char) c;
+	log.text[log.text_wp] = (char) c;
+
+	log.text_wp = HAL_TEXT_INC(log.text_wp);
+	log.text_rp = (log.text_rp == log.text_wp)
+		? HAL_TEXT_INC(log.text_rp) : log.text_rp;
+}
+
+void log_flush()
+{
+	int		rp, wp;
+
+	if (log.boot_FLAG == HAL_FLAG_SIGNATURE) {
+
+		rp = log.text_rp;
+		wp = log.text_wp;
+
+		while (rp != wp) {
+
+			putc(log.text[rp]);
+
+			rp = HAL_TEXT_INC(rp);
+		}
+
+		puts(EOL);
+	}
+}
+
+void log_clean()
+{
+	if (unlikely(log.boot_FLAG != HAL_FLAG_SIGNATURE)) {
+
+		log.boot_FLAG = HAL_FLAG_SIGNATURE;
+	}
+
+	log.text_wp = 0;
+	log.text_rp = 0;
 }
 
 void DBGMCU_mode_stop()

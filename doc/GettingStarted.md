@@ -1,7 +1,7 @@
 ## Overview
 
-This manual gives a basic info about Phobia Motor Controller (PMC). Look into
-other documents for specific questions.
+This manual gives a basic info about Phobia Motor Controller (PMC). See other
+documents for specific topics.
 
 ## Hardware
 
@@ -47,6 +47,8 @@ erased MCU) then short BOOT pin to +3.3v before the power up.
 	                          |      |
 	                          +--/ --+
 ```
+
+You also can use an USB connection if your hardware has one.
 
 ## Software
 
@@ -117,18 +119,18 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 
 Read the following documentation for setting PMC up.
 
-* [Command Line Interface](CommandLineInterface.md)
-* [Hardware Design](HardwareDesign.md)
-* [Hardware VESC](HardwareVESC.md)
-* [Integrity Self Test](IntegritySelfTest.md)
-* [Machine Probe](MachineProbe.md)
-* [Machine Tuning](MachineTuning.md)
-* [High Frequency Injection](HighFrequencyInjection.md)
-* [Input Analog Knob](InputAnalogKnob.md)
-* [Input Pulse Width](InputPulseWidth.md)
-* [Input STEP/DIR Interface](InputStepDirection.md)
-* [Network CAN](NetworkCAN.md)
-* [Trouble Shooting](TroubleShooting.md)
+- [Command Line Interface](CommandLineInterface.md)
+- [Hardware Design](HardwareDesign.md)
+- [Hardware VESC](HardwareVESC.md)
+- [Integrity Self Test](IntegritySelfTest.md)
+- [Machine Probe](MachineProbe.md)
+- [Machine Tuning](MachineTuning.md)
+- [High Frequency Injection](HighFrequencyInjection.md)
+- [Input Analog Knob](InputAnalogKnob.md)
+- [Input Pulse Width](InputPulseWidth.md)
+- [Input STEP/DIR Interface](InputStepDirection.md)
+- [Network CAN](NetworkCAN.md)
+- [Trouble Shooting](TroubleShooting.md)
 
 ## Feedback and support
 

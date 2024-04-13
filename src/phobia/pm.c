@@ -28,6 +28,8 @@ void pm_quick_build(pmc_t *pm)
 
 		pm->quick_iWb = 1.f / pm->const_lambda;
 		pm->quick_iWb2 = pm->quick_iWb * pm->quick_iWb;
+
+		pm->flux_LINKAGE = PM_ENABLED;
 	}
 
 	if (pm->const_im_L1 > M_EPSILON) {
@@ -1034,6 +1036,7 @@ pm_kalman_jacobian(pmc_t *pm, const float X[2], const float F[2], float wS)
 	A[6] = (- F[0] * pm->vsi_X - F[1] * pm->vsi_Y) * pm->quick_TiL2;
 	A[7] = (- pm->const_lambda - X[0] * pm->const_im_L1) * pm->quick_TiL2;
 	A[8] = pm->quick_TiL2;
+
 	A[9] = pm->m_dT;
 }
 
@@ -1770,8 +1773,8 @@ pm_lu_FSM(pmc_t *pm)
 
 	m_rotatef(lu_F, - pm->lu_wS * pm->m_dT * 0.5f);
 
-	pm->lu_uD = pm->lu_F[0] * pm->tvm_X0 + pm->lu_F[1] * pm->tvm_Y0;
-	pm->lu_uQ = pm->lu_F[0] * pm->tvm_Y0 - pm->lu_F[1] * pm->tvm_X0;
+	pm->lu_uD = lu_F[0] * pm->tvm_X0 + lu_F[1] * pm->tvm_Y0;
+	pm->lu_uQ = lu_F[0] * pm->tvm_Y0 - lu_F[1] * pm->tvm_X0;
 
 	/* Transfer to the next apriori position.
 	 * */
@@ -3443,7 +3446,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			A = pm->lu_F[0] * pm->flux_F[0] + pm->lu_F[1] * pm->flux_F[1];
 			B = pm->lu_F[1] * pm->flux_F[0] - pm->lu_F[0] * pm->flux_F[1];
 
-			pm->d_flux_rsu = m_atan2f(B, A) * (180.f / M_PI_F);
+			pm->dbg_flux_rsu = m_atan2f(B, A) * (180.f / M_PI_F);
 		}
 
 		if (unlikely(m_isfinitef(pm->lu_F[0]) == 0)) {
