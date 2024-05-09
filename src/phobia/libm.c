@@ -13,7 +13,7 @@ int m_isfinitef(float x)
 	return ((0xFFU & (u.i >> 23)) != 0xFFU) ? 1 : 0;
 }
 
-float m_fast_reciprocalf(float x)
+float m_fast_recipf(float x)
 {
 	union {
 		float		f;

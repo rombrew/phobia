@@ -79,7 +79,7 @@ LD_TASK void app_AS5047(void *pData)
 {
 	volatile int		*knob = (volatile int *) pData;
 
-	SPI_startup(HW_SPI_EXT_ID, AS5047_FREQUENCY, SPI_LOW_FALLING | SPI_DMA);
+	SPI_startup(HW_SPI_EXT_ID, AS5047_FREQUENCY, SPI_LOW_FALLING | SPI_DMA | SPI_NSS_ON);
 
 	hal_memory_fence();
 

@@ -391,7 +391,7 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 	if (pm->const_lambda > M_EPSILON) {
 
 		probe_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U
-			* m_fast_reciprocalf(pm->const_lambda);
+			* m_fast_recipf(pm->const_lambda);
 
 		if (pm->probe_speed_hold > probe_MAX) {
 
@@ -419,7 +419,7 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 		if (pm->const_lambda > M_EPSILON) {
 
-			thld_MAX = 10.f * m_fast_reciprocalf(pm->const_lambda);
+			thld_MAX = 10.f * m_fast_recipf(pm->const_lambda);
 
 			if (pm->zone_noise > thld_MAX) {
 
@@ -455,7 +455,7 @@ pm_auto_zone_threshold(pmc_t *pm)
 			/* Total zone threshold.
 			 * */
 			pm->zone_threshold = thld_IRU
-				* m_fast_reciprocalf(pm->const_lambda);
+				* m_fast_recipf(pm->const_lambda);
 		}
 
 		thld_MAX = 0.8f * pm->forced_maximal - pm->zone_noise;
@@ -488,7 +488,7 @@ pm_auto_forced_maximal(pmc_t *pm)
 	if (pm->const_lambda > M_EPSILON) {
 
 		forced_MAX = 0.7f * pm->k_EMAX * pm->const_fb_U
-			* m_fast_reciprocalf(pm->const_lambda);
+			* m_fast_recipf(pm->const_lambda);
 
 		if (pm->forced_maximal > forced_MAX) {
 
@@ -509,7 +509,7 @@ pm_auto_forced_accel(pmc_t *pm)
 
 		/* Tune forced control based on the motor constants.
 		 * */
-		pm->forced_accel = 0.1f * mQ * m_fast_reciprocalf(pm->const_Ja);
+		pm->forced_accel = 0.1f * mQ * m_fast_recipf(pm->const_Ja);
 	}
 }
 
@@ -540,7 +540,7 @@ pm_auto_loop_current(pmc_t *pm)
 		pm->i_gain_A = 1.f;
 
 		pm->i_slew_rate = 0.2f * pm->const_fb_U
-			* Df * m_fast_reciprocalf(Lmin);
+			* Df * m_fast_recipf(Lmin);
 	}
 }
 
@@ -551,7 +551,7 @@ pm_auto_loop_speed(pmc_t *pm)
 
 	if (pm->zone_noise > M_EPSILON) {
 
-		Df = pm->s_damping * m_fast_reciprocalf(pm->zone_noise);
+		Df = pm->s_damping * m_fast_recipf(pm->zone_noise);
 
 		if (pm->const_Ja > 0.f) {
 
@@ -560,11 +560,11 @@ pm_auto_loop_speed(pmc_t *pm)
 				relu = (pm->const_im_L1 - pm->const_im_L2) * pm->i_maximal;
 
 				pm->lu_gain_mq_LP = 4.f * Df * (pm->const_lambda + relu)
-					* pm->m_dT * m_fast_reciprocalf(pm->const_Ja);
+					* pm->m_dT * m_fast_recipf(pm->const_Ja);
 			}
 			else {
 				pm->lu_gain_mq_LP = 4.f * Df * pm->const_lambda
-					* pm->m_dT * m_fast_reciprocalf(pm->const_Ja);
+					* pm->m_dT * m_fast_recipf(pm->const_Ja);
 			}
 		}
 
@@ -724,7 +724,7 @@ pm_torque_get_accel(pmc_t *pm)
 	if (pm->const_Ja > 0.f) {
 
 		tA = (pm->lu_mq_produce - pm->lu_mq_load)
-			* m_fast_reciprocalf(pm->const_Ja);
+			* m_fast_recipf(pm->const_Ja);
 	}
 
 	return tA;
@@ -744,7 +744,7 @@ pm_forced(pmc_t *pm)
 
 	/* Reduce the acceleration in case of current lack.
 	 * */
-	xRF = m_fabsf(pm->forced_track_D * m_fast_reciprocalf(pm->forced_hold_D));
+	xRF = m_fabsf(pm->forced_track_D * m_fast_recipf(pm->forced_hold_D));
 	dSA = pm->forced_accel * xRF * pm->m_dT;
 
 	if (		pm->vsi_lpf_DC < pm->forced_stop_DC
@@ -814,7 +814,7 @@ pm_flux_detached(pmc_t *pm)
 
 			if (A > M_EPSILON) {
 
-				blend = U * m_fast_reciprocalf(pm->detach_trip_tol);
+				blend = U * m_fast_recipf(pm->detach_trip_tol);
 				blend = (blend > 1.f) ? 1.f : blend;
 
 				A = pm->detach_gain_SF * blend;
@@ -822,7 +822,7 @@ pm_flux_detached(pmc_t *pm)
 				pm->flux_wS += B * pm->m_freq * A;
 			}
 
-			pm->flux_lambda = U * m_fast_reciprocalf(m_fabsf(pm->flux_wS));
+			pm->flux_lambda = U * m_fast_recipf(m_fabsf(pm->flux_wS));
 
 			A = (pm->flux_wS < 0.f) ? - 1.f : 1.f;
 
@@ -875,7 +875,7 @@ pm_flux_ortega(pmc_t *pm)
 		EY = pm->flux_X[1] - lY;
 
 		blend = m_fabsf(pm->flux_wS * pm->const_lambda)
-			* m_fast_reciprocalf(pm->flux_trip_tol);
+			* m_fast_recipf(pm->flux_trip_tol);
 		blend = (blend > 1.f) ? 1.f : blend;
 
 		/* Get the flux RESIDUE.
@@ -1129,7 +1129,7 @@ pm_kalman_update(pmc_t *pm, const float X[2])
 	CP[4] = P[10] - X[1] * P[12];
 
 	S = CP[0] - CP[2] * X[1] + pm->kalman_gain_R;
-	u = m_fast_reciprocalf(S);
+	u = m_fast_recipf(S);
 
 	K[0] = CP[0] * u;
 	K[2] = CP[1] * u;
@@ -1160,7 +1160,7 @@ pm_kalman_update(pmc_t *pm, const float X[2])
 	CP[4] = P[11] + X[0] * P[12];
 
 	S = CP[1] + CP[2] * X[0] + pm->kalman_gain_R;
-	u = m_fast_reciprocalf(S);
+	u = m_fast_recipf(S);
 
 	K[1] = CP[0] * u;
 	K[3] = CP[1] * u;
@@ -1499,7 +1499,7 @@ pm_sensor_hall(pmc_t *pm)
 			m_rotatef(pm->hall_F, rel);
 
 			blend = m_fabsf(pm->hall_wS)
-				* m_fast_reciprocalf(pm->hall_trip_tol);
+				* m_fast_recipf(pm->hall_trip_tol);
 			blend = (blend > 1.f) ? 1.f : blend;
 
 			A =	  pm->hall_gain_SF * blend
@@ -1612,7 +1612,7 @@ pm_sensor_eabi(pmc_t *pm)
 
 	pm->eabi_interp += rel;
 
-	blend = m_fabsf(pm->eabi_wS) * m_fast_reciprocalf(pm->eabi_trip_tol);
+	blend = m_fabsf(pm->eabi_wS) * m_fast_recipf(pm->eabi_trip_tol);
 	blend = (blend > 1.f) ? 1.f : blend;
 
 	A =	  pm->eabi_gain_SF * blend
@@ -2816,7 +2816,7 @@ pm_loop_current(pmc_t *pm)
 				 * */
 				eSP = pm->l_track - pm->lu_wS;
 
-				blend = m_fabsf(eSP) * m_fast_reciprocalf(pm->l_track_tol);
+				blend = m_fabsf(eSP) * m_fast_recipf(pm->l_track_tol);
 				blend = (blend > 1.f) ? 1.f : blend;
 
 				/* Blend current setpoint with speed regulation.
@@ -2860,7 +2860,7 @@ pm_loop_current(pmc_t *pm)
 				eDC = pm->k_EMAX * pm->const_fb_U;
 				wLS = pm->lu_wS * pm->const_im_L2;
 
-				iMAX = eDC * m_fast_reciprocalf(m_fabsf(wLS));
+				iMAX = eDC * m_fast_recipf(m_fabsf(wLS));
 
 				track_Q = (track_Q > iMAX) ? iMAX
 					: (track_Q < - iMAX) ? - iMAX : track_Q;
@@ -3200,7 +3200,7 @@ pm_loop_location(pmc_t *pm)
 
 	/* Damping inside NEAR zone.
 	 * */
-	blend = (eABS < pm->x_boost_tol) ? eABS * m_fast_reciprocalf(pm->x_boost_tol) : 1.f;
+	blend = (eABS < pm->x_boost_tol) ? eABS * m_fast_recipf(pm->x_boost_tol) : 1.f;
 	gain = pm->x_gain_P * blend + pm->x_gain_D * (1.f - blend);
 
 	wSP += gain * eLOC;

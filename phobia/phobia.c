@@ -3099,6 +3099,11 @@ page_hal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_enum_errno(pub, "hal.MCU_ID", "MCU ID", 0);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "hal.USART_baudrate", "USART baudrate");
 	reg_enum_combo(pub, "hal.USART_parity", "USART parity", 0);
 
@@ -5291,7 +5296,7 @@ page_flash(struct public *pub)
 	nk_spacer(ctx);
 	pub_drawing_flash_colored(nk, 'a');
 	nk_spacer(ctx);
-	nk_label(ctx, "Data block with correct CRC", NK_TEXT_LEFT);
+	nk_label(ctx, "Data block (with correct CRC)", NK_TEXT_LEFT);
 
 	nk_spacer(ctx);
 	pub_drawing_flash_colored(nk, 'x');

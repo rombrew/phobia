@@ -151,7 +151,7 @@ sh_common_match(priv_sh_t *sh)
 {
 	const sh_cmd_t		*cmd;
 	const char		*id, *sp;
-	int			n;
+	int			len;
 
 	sp = NULL;
 	cmd = cmLIST;
@@ -166,7 +166,7 @@ sh_common_match(priv_sh_t *sh)
 
 		if (strcmpe(sh->cline, id) == 0) {
 
-			n = (sp != NULL) ? strcmpn(sp, id, n) : strlen(id);
+			len = (sp != NULL) ? strcmpn(sp, id, len) : strlen(id);
 			sp = id;
 
 			sh->cnum++;
@@ -178,10 +178,10 @@ sh_common_match(priv_sh_t *sh)
 
 	if (sp != NULL) {
 
-		n = (n > SH_CLINE_MAX - 2) ? SH_CLINE_MAX - 2 : n;
+		len = (len > SH_CLINE_MAX - 2) ? SH_CLINE_MAX - 2 : len;
 
-		strcpyn(sh->cline, sp, n);
-		sh->ceon = n;
+		strcpyn(sh->cline, sp, len);
+		sh->ceon = len;
 	}
 	else {
 		sh->ceon = 0;
@@ -532,10 +532,10 @@ sh_line_null(priv_sh_t *sh)
 
 const char *sh_next_arg(const char *s)
 {
-	int			n;
+	int			len;
 
-	n = strlen(s);
-	s += (n != 0) ? n + 1 : 0;
+	len = strlen(s);
+	s += (len != 0) ? len + 1 : 0;
 
 	return s;
 }

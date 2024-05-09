@@ -53,6 +53,13 @@
 #define ADC_SAMPLE_ADVANCE		110
 
 enum {
+	MCU_ID_UNKNOWN			= 0,
+	MCU_ID_STM32F405,
+	MCU_ID_STM32F722,
+	MCU_ID_GD32F405
+};
+
+enum {
 	LEG_A				= 1U,
 	LEG_B				= 2U,
 	LEG_C				= 4U
@@ -93,14 +100,16 @@ enum {
 typedef struct {
 
 	uint32_t	ld_begin;
-	uint32_t	ld_end;
+	uint32_t	ld_crc32;
 
-	const char	hwrevision[16];
+	const char	hwrevision[32];
 	const char	build[16];
 }
-FW_info_t;
+fw_info_t;
 
 typedef struct {
+
+	int		MCU_ID;
 
 	int		USART_baudrate;
 	int		USART_parity;
@@ -181,9 +190,9 @@ typedef struct {
 }
 LOG_t;
 
-extern const FW_info_t		fw;
+extern const fw_info_t		fw;
 
-extern uint32_t			ld_begin_text;
+extern uint32_t			ld_text_begin;
 extern uint32_t			clock_cpu_hz;
 
 extern HAL_t			hal;
@@ -196,7 +205,7 @@ int hal_lock_irq();
 void hal_unlock_irq(int irq);
 
 void hal_system_reset();
-void hal_bootload_jump();
+void hal_bootload_reset();
 
 void hal_cpu_sleep();
 void hal_memory_fence();

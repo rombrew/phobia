@@ -8,14 +8,15 @@ typedef struct {
 	int		begin;
 	int		total;
 
+	uint32_t	flash;
 	uint32_t	map[6];
 }
 FLASH_config_t;
 
 extern const FLASH_config_t	FLASH_config;
 
-void *FLASH_erase(void *flash);
-void FLASH_prog(void *flash, uint32_t value);
+void *FLASH_erase(uint32_t *flash);
+void FLASH_prog_u32(uint32_t *flash, uint32_t val);
 
 #endif /* _H_FLASH_ */
 

@@ -20,7 +20,7 @@ static inline float m_sqrtf(float x) { return __builtin_sqrtf(x); }
 
 int m_isfinitef(float x);
 
-float m_fast_reciprocalf(float x);
+float m_fast_recipf(float x);
 float m_fast_rsqrtf(float x);
 
 void m_rotatef(float x[2], float r);

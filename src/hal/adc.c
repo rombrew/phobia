@@ -6,6 +6,8 @@
 typedef struct {
 
 	SemaphoreHandle_t	mutex_sem;
+
+	uint32_t		dmabuf[8] LD_DMA;
 }
 priv_ADC_t;
 
@@ -72,21 +74,21 @@ ADC_set_SMPR(ADC_TypeDef *pADC, int xCH, int xSMP)
 {
 	if (xCH < 10) {
 
-		pADC->SMPR2 |= xSMP << (xCH * 3);
+		MODIFY_REG(pADC->SMPR2, 7U << (xCH * 3), xSMP << (xCH * 3));
 	}
 	else {
-		pADC->SMPR1 |= xSMP << ((xCH - 10) * 3);
+		MODIFY_REG(pADC->SMPR1, 7U << ((xCH - 10) * 3), xSMP << ((xCH - 10) * 3));
 	}
 }
 
 void ADC_const_build()
 {
 #if defined(STM32F4)
-	uint16_t		*TEMP_30 = (void *) 0x1FFF7A2C;
-	uint16_t		*TEMP_110 = (void *) 0x1FFF7A2E;
+	const uint16_t		*TS_30 = (const uint16_t *) 0x1FFF7A2CU;
+	const uint16_t		*TS_110 = (const uint16_t *) 0x1FFF7A2EU;
 #elif defined(STM32F7)
-	uint16_t		*TEMP_30 = (void *) 0x1FF07A2C;
-	uint16_t		*TEMP_110 = (void *) 0x1FF07A2E;
+	const uint16_t		*TS_30 = (const uint16_t *) 0x1FF07A2CU;
+	const uint16_t		*TS_110 = (const uint16_t *) 0x1FF07A2EU;
 #endif /* STM32Fx */
 
 	float			U_reference, R_equivalent;
@@ -98,12 +100,21 @@ void ADC_const_build()
 	hal.const_ADC.GU = U_reference / hal.ADC_voltage_ratio;
 	hal.const_ADC.GT[1] = U_reference / hal.ADC_terminal_ratio;
 	hal.const_ADC.GT[0] = - hal.ADC_terminal_bias / hal.ADC_terminal_ratio;
-	hal.const_ADC.TS[1] = (30.f - 110.f) / (float) (*TEMP_30 - *TEMP_110);
-	hal.const_ADC.TS[0] = 110.f - hal.const_ADC.TS[1] * (float) (*TEMP_110);
-	hal.const_ADC.GS = 1.f / (float) ADC_RESOLUTION;
+	hal.const_ADC.GS = hal.ADC_reference_voltage / (float) ADC_RESOLUTION;
+	hal.const_ADC.TS[1] = 80.f / (float) (*TS_110 - *TS_30);
+	hal.const_ADC.TS[0] = 110.f - hal.const_ADC.TS[1] * (float) (*TS_110);
+
+#ifdef STM32F4
+	if (		hal.MCU_ID == MCU_ID_GD32F405
+			|| *TS_110 == *TS_30) {
+
+		hal.const_ADC.TS[1] = 0.323f;
+		hal.const_ADC.TS[0] = -279.f;
+	}
+#endif /* STM32F4 */
 
 #ifdef HW_HAVE_ANALOG_KNOB
-	hal.const_ADC.GK = hal.ADC_reference_voltage / hal.ADC_knob_ratio;
+	hal.const_ADC.GK = 1.f / hal.ADC_knob_ratio;
 #endif /* HW_HAVE_ANALOG_KNOB */
 
 	hal.const_CNT[0] = 1.f / (float) CLOCK_TIM1_HZ;
@@ -174,7 +185,7 @@ void ADC_startup()
 	/* Configure ADCs.
 	 * */
 	ADC1->CR1 = ADC_CR1_SCAN;
-	ADC1->CR2 = ADC_CR2_JEXTEN_0;
+	ADC1->CR2 = ADC_CR2_JEXTEN_0 | ADC_CR2_DDS | ADC_CR2_DMA;
 	ADC1->SMPR1 = 0;
 	ADC1->SMPR2 = 0;
 	ADC1->SQR1 = 0;
@@ -230,11 +241,42 @@ void ADC_startup()
 	 * */
 	priv_ADC.mutex_sem = xSemaphoreCreateMutex();
 
+	/* Enable DMA on ADC1.
+	 * */
+	DMA2_Stream0->CR = (0U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
+		| (2U << DMA_SxCR_MSIZE_Pos) | (2U << DMA_SxCR_PSIZE_Pos);
+	DMA2_Stream0->PAR = (uint32_t) &ADC1->DR;
+	DMA2_Stream0->M0AR = (uint32_t) &priv_ADC.dmabuf[0];
+	DMA2_Stream0->FCR = DMA_SxFCR_DMDIS;
+
 	/* Enable ADCs.
 	 * */
 	ADC1->CR2 |= ADC_CR2_ADON;
 	ADC2->CR2 |= ADC_CR2_ADON;
 	ADC3->CR2 |= ADC_CR2_ADON;
+
+#ifdef STM32F4
+	if (hal.MCU_ID == MCU_ID_GD32F405) {
+
+		TIM_wait_ns(800);
+
+		ADC1->CR2 |= (1U << 3);	/* RSTCLB */
+		ADC1->CR2 |= (1U << 2);	/* CLB */
+
+		ADC2->CR2 |= (1U << 3);
+		ADC2->CR2 |= (1U << 2);
+
+		ADC3->CR2 |= (1U << 3);
+		ADC3->CR2 |= (1U << 2);
+
+		while (		   (ADC1->CR2 & (1U << 2)) == 0U
+				&& (ADC2->CR2 & (1U << 2)) == 0U
+				&& (ADC3->CR2 & (1U << 2)) == 0U) {
+
+			__NOP();
+		}
+	}
+#endif /* STM32F4 */
 
 	/* Enable EXTI0.
 	 * */
@@ -252,41 +294,54 @@ float ADC_get_sample(int xGPIO)
 {
 	int			xCH, xADC;
 
-	union {
-		uint32_t	l;
-		float		f;
-	}
-	um = { 0xFFF80000U };
+	float			um = 0.f;
 
 	if (xSemaphoreTake(priv_ADC.mutex_sem, (TickType_t) 10) == pdTRUE) {
+
+		DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+
+		__DSB();
+
+#ifdef STM32F7
+		/* Invalidate D-Cache on DMABUF.
+		 * */
+		SCB->DCIMVAC = (uint32_t) &priv_ADC.dmabuf[0];
+
+		__DSB();
+		__ISB();
+#endif /* STM32F7 */
 
 		xCH = XGPIO_GET_CH(xGPIO);
 
 		ADC_set_SMPR(ADC1, xCH, ADC_SMP_480);
 
+		DMA2->LIFCR = DMA_LIFCR_CTCIF0 | DMA_LIFCR_CHTIF0
+			| DMA_LIFCR_CTEIF0 | DMA_LIFCR_CFEIF0;
+
+		DMA2_Stream0->NDTR = 1;
+		DMA2_Stream0->CR |= DMA_SxCR_EN;
+
 		ADC1->SQR3 = xCH;
 		ADC1->CR2 |= ADC_CR2_SWSTART;
 
-		while ((ADC1->SR & ADC_SR_EOC) == 0) {
+		while ((DMA2->LISR & (DMA_LISR_TCIF0 | DMA_LISR_TEIF0)) == 0U) {
 
 			taskYIELD();
 		}
 
-		ADC1->SR = ~ADC_SR_EOC;
-
-		xADC = ADC1->DR;
+		xADC = priv_ADC.dmabuf[0];
 
 		if (xCH == XGPIO_GET_CH(GPIO_ADC_TEMPINT)) {
 
-			um.f = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
+			um = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
 		}
 		else {
-			um.f = (float) (xADC) * hal.const_ADC.GS;
+			um = (float) (xADC) * hal.const_ADC.GS;
 		}
 
 		xSemaphoreGive(priv_ADC.mutex_sem);
 	}
 
-	return um.f;
+	return um;
 }
 

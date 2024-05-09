@@ -2047,7 +2047,7 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 
 					float		l;
 
-					l = m_fast_reciprocalf((float) dnum[HS]);
+					l = m_fast_recipf((float) dnum[HS]);
 
 					pm->hall_ST[HS].X *= l;
 					pm->hall_ST[HS].Y *= l;

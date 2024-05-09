@@ -183,7 +183,7 @@ LD_TASK void task_TEMP(void *pData)
 	TickType_t		xWake;
 
 	float			maximal_PCB, maximal_EXT, lock_PCB;
-	int			fsm_errno_last;
+	int			last_errno;
 
 	if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -202,7 +202,7 @@ LD_TASK void task_TEMP(void *pData)
 
 	lock_PCB = 0.f;
 
-	fsm_errno_last = PM_OK;
+	last_errno = PM_OK;
 
 	do {
 		/* 10 Hz.
@@ -310,7 +310,7 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (pm.fsm_errno != PM_OK) {
 
-			if (pm.fsm_errno != fsm_errno_last) {
+			if (pm.fsm_errno != last_errno) {
 
 				log_TRACE("FSM errno %s" EOL, pm_strerror(pm.fsm_errno));
 			}
@@ -324,7 +324,7 @@ LD_TASK void task_TEMP(void *pData)
 			}
 		}
 
-		fsm_errno_last = pm.fsm_errno;
+		last_errno = pm.fsm_errno;
 	}
 	while (1);
 }
@@ -1131,18 +1131,18 @@ void app_halt()
 
 SH_DEF(ap_version)
 {
-	uint32_t	flash_sizeof, flash_crc32;
+	uint32_t	ld_sizeof, ld_crc32;
 	int		rc;
 
 	printf("Revision \"%s\"" EOL, fw.hwrevision);
 	printf("Build \"%s\"" EOL, fw.build);
 
-	flash_sizeof = fw.ld_end - fw.ld_begin;
-	flash_crc32 = * (uint32_t *) fw.ld_end;
+	ld_sizeof = fw.ld_crc32 - fw.ld_begin;
+	ld_crc32 = * (uint32_t *) fw.ld_crc32;
 
-	rc = (crc32b((const void *) fw.ld_begin, flash_sizeof) == flash_crc32) ? 1 : 0;
+	rc = (crc32u((const void *) fw.ld_begin, ld_sizeof) == ld_crc32) ? 1 : 0;
 
-	printf("CRC32 %8x (%s)" EOL, flash_crc32, (rc != 0) ? "OK" : "does NOT match");
+	printf("CRC32 %8x (%s)" EOL, ld_crc32, (rc != 0) ? "OK" : "does NOT match");
 }
 
 SH_DEF(ap_clock)
@@ -1309,6 +1309,6 @@ SH_DEF(ap_bootload)
 	vTaskDelay((TickType_t) 10);
 
 	app_halt();
-	hal_bootload_jump();
+	hal_bootload_reset();
 }
 

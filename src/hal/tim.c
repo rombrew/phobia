@@ -27,7 +27,7 @@ void TIM_startup()
 	TIM7->DIER = TIM_DIER_UIE;
 	TIM7->CNT = 0;
 	TIM7->PSC = 0;
-	TIM7->ARR = 65535;
+	TIM7->ARR = 65535U;
 
 	/* Enable IRQ.
 	 * */
@@ -41,19 +41,20 @@ void TIM_startup()
 
 void TIM_wait_ns(int ns)
 {
-	int			CNT, timeout, elapsed;
+	uint32_t		END, CNT;
 
-	CNT = TIM7->CNT;
-
-	timeout = ns * (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
+	END = TIM7->CNT + (uint32_t) (ns)
+		* (CLOCK_TIM7_HZ / 1000000UL) / 1000UL;
 
 	do {
-		elapsed = (int) (TIM7->CNT - CNT) & 0xFFFFU;
+		CNT = TIM7->CNT;
 
-		if (elapsed >= timeout)
+		if (CNT < END)
+			CNT += 65535U;
+
+		if (CNT >= END)
 			break;
 
-		__NOP();
 		__NOP();
 	}
 	while (1);

@@ -34,17 +34,17 @@ typedef struct {
 flash_prog_t;
 
 static int
-flash_prog_putc(flash_prog_t *pg, int c)
+flash_prog_u8(flash_prog_t *pg, uint8_t u)
 {
 	int			rc = 0;
 
 	if (pg->total >= 4) {
 
-		pg->packed.b[pg->index++] = (uint8_t) c;
+		pg->packed.b[pg->index++] = u;
 
 		if (pg->index >= 4) {
 
-			FLASH_prog(pg->flash, pg->packed.l);
+			FLASH_prog_u32(pg->flash, pg->packed.l);
 
 			pg->flash += 1;
 			pg->total -= 4;
@@ -59,7 +59,7 @@ flash_prog_putc(flash_prog_t *pg, int c)
 }
 
 static void
-flash_prog_long(flash_prog_t *pg, uint32_t l)
+flash_prog_u32(flash_prog_t *pg, uint32_t l)
 {
 	union {
 		uint32_t	l;
@@ -67,31 +67,31 @@ flash_prog_long(flash_prog_t *pg, uint32_t l)
 	}
 	packed = { l };
 
-	flash_prog_putc(pg, packed.b[0]);
-	flash_prog_putc(pg, packed.b[1]);
-	flash_prog_putc(pg, packed.b[2]);
-	flash_prog_putc(pg, packed.b[3]);
+	flash_prog_u8(pg, packed.b[0]);
+	flash_prog_u8(pg, packed.b[1]);
+	flash_prog_u8(pg, packed.b[2]);
+	flash_prog_u8(pg, packed.b[3]);
 }
 
 static const char *
-flash_strcpyn(char *d, const char *s, int n)
+flash_strcpyn(char *d, const char *s, int len)
 {
 	do {
-		if (n < 1) {
+		if (len < 1) {
 
 			*d = 0;
 			break;
 		}
 
-		if (*s == 0xFF || *s == 0xFE) {
+		if (		   *s == 0xFF
+				|| *s == 0xBF) {
 
 			*d = 0;
 			break;
 		}
 
 		*d++ = *s++;
-
-		--n;
+		--len;
 	}
 	while (1);
 
@@ -101,7 +101,7 @@ flash_strcpyn(char *d, const char *s, int n)
 static uint32_t
 flash_block_crc32(const flash_block_t *block)
 {
-	return crc32b(block, sizeof(flash_block_t) - sizeof(uint32_t));
+	return crc32u(block, sizeof(flash_block_t) - sizeof(uint32_t));
 }
 
 static flash_block_t *
@@ -141,7 +141,7 @@ int flash_block_regs_load()
 	const reg_t		*reg, *linked;
 	const char		*lsym;
 
-	char			*symbuf;
+	char			symbuf[REGS_SYM_MAX + 1];
 	int			rc = 0;
 
 	block = flash_block_scan();
@@ -153,18 +153,17 @@ int flash_block_regs_load()
 		return rc;
 	}
 
-	symbuf = pvPortMalloc(REGS_SYM_MAX + 1);
 	lsym = (const char *) block->content;
 
 	while (*lsym != 0xFF) {
 
 		lsym = flash_strcpyn(symbuf, lsym, REGS_SYM_MAX);
 
-		/* Search for an exact match of symbolic NAME.
+		/* Search for an exact match of symbolic name.
 		 * */
 		reg = reg_search(symbuf);
 
-		if (*lsym == 0xFE) {
+		if (*lsym == 0xBF) {
 
 			lsym = flash_strcpyn(symbuf, lsym + 1, REGS_SYM_MAX);
 
@@ -188,10 +187,6 @@ int flash_block_regs_load()
 
 			lsym += 5;
 		}
-		else {
-			rc = 1;
-			break;
-		}
 
 		if (*lsym != 0xFF) {
 
@@ -201,8 +196,6 @@ int flash_block_regs_load()
 
 		lsym++;
 	}
-
-	vPortFree(symbuf);
 
 	return rc;
 }
@@ -247,33 +240,36 @@ flash_prog_config_regs(flash_block_t *block)
 
 			lsym = reg->sym;
 
-			/* Store symbolic NAME of the register.
+			/* Store symbolic name of the register.
 			 * */
-			while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
+			while (*lsym != 0) { flash_prog_u8(&pg, *lsym++); }
 
 			if (reg->mode & REG_LINKED) {
 
 				lsym = regfile[reg->link->i].sym;
 
-				flash_prog_putc(&pg, 0xFE);
+				flash_prog_u8(&pg, 0xBF);
 
-				while (*lsym != 0) { flash_prog_putc(&pg, *lsym++); }
+				while (*lsym != 0) { flash_prog_u8(&pg, *lsym++); }
 			}
 			else {
-				flash_prog_putc(&pg, 0xFF);
-				flash_prog_long(&pg, reg->link->i);
+				flash_prog_u8(&pg, 0xFF);
+				flash_prog_u32(&pg, reg->link->i);
 			}
 
-			if ((rc = flash_prog_putc(&pg, 0xFF)) == 0)
+			if ((rc = flash_prog_u8(&pg, 0xFF)) == 0)
 				break;
 		}
 	}
 
 	if (rc != 0) {
 
-		/* Fill the tail with 0xFF.
-		 * */
-		while (flash_prog_putc(&pg, 0xFF) != 0) ;
+		while (pg.index != 0) {
+
+			/* Flush the tail contents.
+			 * */
+			flash_prog_u8(&pg, 0xFF);
+		}
 	}
 
 	return rc;
@@ -314,18 +310,18 @@ flash_block_prog()
 
 			/* All flash storage is dirty.
 			 * */
-			block = FLASH_erase(block);
+			block = FLASH_erase((uint32_t *) block);
 			break;
 		}
 	}
 
-	FLASH_prog(&block->number, number);
+	FLASH_prog_u32(&block->number, number);
 
 	if ((rc = flash_prog_config_regs(block)) != 0) {
 
 		crc32 = flash_block_crc32(block);
 
-		FLASH_prog(&block->crc32, crc32);
+		FLASH_prog_u32(&block->crc32, crc32);
 
 		rc = (flash_block_crc32(block) == block->crc32) ? 1 : 0;
 	}
@@ -405,7 +401,7 @@ SH_DEF(flash_wipe)
 	do {
 		if (flash_block_crc32(block) == block->crc32) {
 
-			FLASH_prog(&block->crc32, lz);
+			FLASH_prog_u32(&block->crc32, lz);
 		}
 
 		block += 1;

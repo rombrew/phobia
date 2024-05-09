@@ -31,8 +31,11 @@ SH_DEF(pm_self_test)
 		reg_OUTP(ID_PM_SCALE_IC0);
 		reg_OUTP(ID_PM_SELF_STDI);
 
-		if (pm.fsm_errno != PM_OK)
+		if (pm.fsm_errno != PM_OK) {
+
+			reg_OUTP(ID_PM_FSM_ERRNO);
 			break;
+		}
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
@@ -292,7 +295,6 @@ SH_DEF(pm_self_impedance)
 SH_DEF(hal_ADC_scan)
 {
 	int			xCH, xGPIO;
-	float			fvoltage;
 
 	const int gpios_stm32f405_lqfp64[16] = {
 
@@ -317,14 +319,16 @@ SH_DEF(hal_ADC_scan)
 	if (		stoi(&xCH, s) != NULL
 			&& xCH >= 0 && xCH < 16) {
 
+		float		um;
+
 		xGPIO = gpios_stm32f405_lqfp64[xCH];
 
 		GPIO_set_mode_ANALOG(xGPIO);
 
-		fvoltage = ADC_get_sample(xGPIO) * hal.ADC_reference_voltage;
+		um = ADC_get_sample(xGPIO);
 
 		printf("P%c%i %4f (V)" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
-				XGPIO_GET_N(xGPIO), &fvoltage);
+				XGPIO_GET_N(xGPIO), &um);
 	}
 }
 

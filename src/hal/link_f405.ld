@@ -14,7 +14,7 @@ SECTIONS
 {
 	.text : ALIGN(8)
 	{
-		ld_begin_text = . ;
+		ld_text_begin = . ;
 
 		KEEP(*(.vectors))
 		. = ALIGN(8);
@@ -26,60 +26,76 @@ SECTIONS
 		*(.rodata.*)
 
 		. = ALIGN(8);
-		ld_end_text = . ;
-		ld_end = ld_end_text + SIZEOF(.data) ;
+		ld_text_end = . ;
 
 	} > FLASH
 
-	.data : AT (ld_end_text) ALIGN(8)
+	.ramfunc : ALIGN(8)
 	{
-		ld_begin_data = . ;
+		ld_ramfunc_load = LOADADDR(.ramfunc) ;
+		ld_ramfunc_begin = . ;
 
 		*(.ramfunc)
 		*(.ramfunc.*)
+
+		. = ALIGN(8);
+		ld_ramfunc_end = . ;
+
+	} > RAM1 AT > FLASH
+
+	.data : ALIGN(8)
+	{
+		ld_data_load = LOADADDR(.data) ;
+		ld_data_begin = . ;
 
 		*(.data)
 		*(.data.*)
 
 		. = ALIGN(8);
-		ld_end_data = . ;
+		ld_data_end = . ;
 
-	} > RAM1
+	} > RAM1 AT > FLASH
+
+	.endstub (NOLOAD) : ALIGN(8)
+	{
+		ld_end = . ;
+
+	} > FLASH
 
 	.bss (NOLOAD) : ALIGN(8)
 	{
-		ld_begin_bss = . ;
+		ld_bss_begin = . ;
 
 		*(.bss)
 		*(.bss.*)
 		*(COMMON)
 
 		. = ALIGN(8);
-		ld_end_bss = . ;
+		ld_bss_end = . ;
 
 	} > RAM1
 
 	.noinit (NOLOAD) : ALIGN(8)
 	{
-		ld_begin_noinit = . ;
+		ld_noinit_begin = . ;
 
 		*(.noinit)
 		*(.noinit.*)
 
 		. = ALIGN(8);
-		ld_end_noinit = . ;
+		ld_noinit_end = . ;
 
 	} > RAM2
 
 	.ccram (NOLOAD) : ALIGN(8)
 	{
-		ld_begin_ccm = . ;
+		ld_ccm_begin = . ;
 
 		*(.ccram)
 		*(.ccram.*)
 
 		. = ALIGN(8);
-		ld_end_ccm = . ;
+		ld_ccm_end = . ;
 
 	} > CCM
 

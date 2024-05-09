@@ -30,6 +30,7 @@ enum {
 	NTC_NONE		= 0,
 	NTC_GND,
 	NTC_VCC,
+
 	NTC_LMT87,
 	NTC_KTY83,
 	NTC_KTY84

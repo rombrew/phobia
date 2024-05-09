@@ -44,7 +44,8 @@ enum {
 	SPI_HIGH_RISING,
 
 	SPI_DMA			= 4,
-	SPI_SIZE_8		= 8
+	SPI_DATA_8		= 8,
+	SPI_NSS_ON		= 32
 };
 
 enum {

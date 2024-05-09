@@ -10,6 +10,8 @@ const FLASH_config_t	FLASH_config = {
 	.begin = 8,
 	.total = 4,
 
+	.flash = 0x08000000U,
+
 	.map = {
 
 		0x08080000U,
@@ -27,6 +29,8 @@ const FLASH_config_t	FLASH_config = {
 
 	.begin = 6,
 	.total = 2,
+
+	.flash = 0x08000000U,
 
 	.map = {
 
@@ -77,7 +81,7 @@ FLASH_erase_on_IWDG(int N)
 	__DSB();
 	__ISB();
 
-	FLASH->CR = FLASH_CR_PSIZE_1 | (N << 3)
+	FLASH->CR = FLASH_CR_PSIZE_1 | (N << FLASH_CR_SNB_Pos)
 		| FLASH_CR_SER | FLASH_CR_STRT;
 
 	__DSB();
@@ -98,9 +102,9 @@ FLASH_erase_on_IWDG(int N)
 	__enable_irq();
 }
 
-void *FLASH_erase(void *flash)
+void *FLASH_erase(uint32_t *flash)
 {
-	int		N, raw_N = 0;
+	int		N, native_N = 0;
 
 	for (N = 0; N < FLASH_config.total; ++N) {
 
@@ -108,20 +112,20 @@ void *FLASH_erase(void *flash)
 				&& (uint32_t) flash < FLASH_config.map[N + 1]) {
 
 			flash = (void *) FLASH_config.map[N];
-			raw_N = N + FLASH_config.begin;
+			native_N = N + FLASH_config.begin;
 
 			break;
 		}
 	}
 
-	if (raw_N != 0) {
+	if (native_N != 0) {
 
 		FLASH_unlock();
 		FLASH_wait_BSY();
 
 		/* Call the func from RAM because flash will busy.
 		 * */
-		FLASH_erase_on_IWDG(raw_N);
+		FLASH_erase_on_IWDG(native_N);
 
 		FLASH_lock();
 
@@ -144,12 +148,18 @@ void *FLASH_erase(void *flash)
 	return flash;
 }
 
-void FLASH_prog(void *flash, uint32_t value)
+void FLASH_prog_u32(uint32_t *flash, uint32_t val)
 {
-	uint32_t			*ld_flash = (uint32_t *) flash;
+#ifdef STM32F7
+	if (		(uint32_t) flash >= 0x00200000U
+			&& (uint32_t) flash < 0x00280000U) {
 
-	if (		(uint32_t) ld_flash >= fw.ld_end
-			&& (uint32_t) ld_flash < FLASH_config.map[FLASH_config.total]) {
+		flash = (uint32_t *) ((uint32_t) flash + 0x07E00000U);
+	}
+#endif /* STM32F7 */
+
+	if (		(uint32_t) flash >= FLASH_config.flash
+			&& (uint32_t) flash < FLASH_config.map[FLASH_config.total]) {
 
 		FLASH_unlock();
 		FLASH_wait_BSY();
@@ -158,14 +168,14 @@ void FLASH_prog(void *flash, uint32_t value)
 
 		/* Program flash memory.
 		 * */
-		*ld_flash = value;
+		*flash = val;
 
 		__DSB();
 
 #ifdef STM32F7
 		/* D-Cache Clean and Invalidate.
 		 * */
-		SCB->DCCIMVAC = (uint32_t) ld_flash;
+		SCB->DCCIMVAC = (uint32_t) flash;
 
 		__DSB();
 		__ISB();

@@ -1028,6 +1028,19 @@ reg_format_enum(const reg_t *reg)
 
 	switch (reg_ID) {
 
+		case ID_HAL_MCU_ID:
+
+			switch (val) {
+
+				PM_SFI_CASE(MCU_ID_UNKNOWN);
+				PM_SFI_CASE(MCU_ID_STM32F405);
+				PM_SFI_CASE(MCU_ID_STM32F722);
+				PM_SFI_CASE(MCU_ID_GD32F405);
+
+				default: break;
+			}
+			break;
+
 		case ID_HAL_USART_PARITY:
 
 			switch (val) {
@@ -1494,6 +1507,8 @@ reg_format_enum(const reg_t *reg)
 const reg_t		regfile[] = {
 
 	REG_DEF(null,,,				"",	"%0i",	REG_READ_ONLY, NULL, NULL),
+
+	REG_DEF(hal.MCU_ID,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(hal.USART_baudrate,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.USART_parity,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),

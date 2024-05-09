@@ -37,7 +37,7 @@ extern io_ops_t		io_USART;
 extern io_ops_t		io_USB;
 extern io_ops_t		io_CAN;
 
-/* Currently used.
+/* Currently used serial.
  * */
 extern io_ops_t		*iodef;
 
@@ -45,15 +45,15 @@ extern io_ops_t		*iodef;
  * */
 extern uint32_t		rseed;
 
-void *memset(void *d, int c, size_t n) LD_LIBC;
-void *memcpy(void *restrict d, const void *restrict s, size_t n) LD_LIBC;
+void *memset(void *d, int c, size_t len) LD_LIBC;
+void *memcpy(void *restrict d, const void *restrict s, size_t len) LD_LIBC;
 
 int strcmp(const char *s, const char *p);
 int strcmpe(const char *s, const char *p);
-int strcmpn(const char *s, const char *p, int x);
+int strcmpn(const char *s, const char *p, int n);
 const char *strstr(const char *s, const char *p);
 char *strcpy(char *restrict d, const char *restrict s);
-char *strcpyn(char *restrict d, const char *restrict s, int n);
+char *strcpyn(char *restrict d, const char *restrict s, int len);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
 
@@ -71,7 +71,7 @@ const char *stoi(int *x, const char *s);
 const char *htoi(int *x, const char *s);
 const char *stof(float *x, const char *s);
 
-uint32_t crc32b(const void *s, size_t n);
+uint32_t crc32u(const void *raw, size_t len);
 uint32_t urand();
 
 #endif /* _H_LIBC_ */

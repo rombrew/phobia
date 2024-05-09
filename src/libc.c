@@ -12,7 +12,7 @@ io_ops_t		*iodef;
 
 uint32_t		rseed;
 
-void *memset(void *d, int c, size_t n)
+void *memset(void *d, int c, size_t len)
 {
 	uint32_t	fill, *ld = (uint32_t *) d;
 
@@ -22,37 +22,37 @@ void *memset(void *d, int c, size_t n)
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (n >= 4U) {
+		while (len >= 4U) {
 
 			*ld++ = fill;
-			n -= 4U;
+			len -= 4U;
 		}
 	}
 
 	{
 		uint8_t		*xd = (uint8_t *) ld;
 
-		while (n >= 1U) {
+		while (len >= 1U) {
 
 			*xd++ = (uint8_t) c;
-			n -= 1U;
+			len -= 1U;
 		}
 	}
 
 	return d;
 }
 
-void *memcpy(void *restrict d, const void *restrict s, size_t n)
+void *memcpy(void *restrict d, const void *restrict s, size_t len)
 {
 	uint32_t	*restrict ld = (uint32_t * restrict) d;
 	const uint32_t	*restrict ls = (const uint32_t * restrict) s;
 
 	if (likely(((uint32_t) ld & 3U) == 0 && ((uint32_t) ls & 3U) == 0)) {
 
-		while (n >= 4U) {
+		while (len >= 4U) {
 
 			*ld++ = *ls++;
-			n -= 4U;
+			len -= 4U;
 		}
 	}
 
@@ -60,10 +60,10 @@ void *memcpy(void *restrict d, const void *restrict s, size_t n)
 		uint8_t		*restrict xd = (uint8_t * restrict) ld;
 		const uint8_t	*restrict xs = (const uint8_t * restrict) ls;
 
-		while (n >= 1U) {
+		while (len >= 1U) {
 
 			*xd++ = *xs++;
-			n -= 1U;
+			len -= 1U;
 		}
 	}
 
@@ -98,7 +98,7 @@ int strcmpe(const char *s, const char *p)
 
 		c = *s - *p;
 
-		if (c)
+		if (c != 0)
 			break;
 
 		++s;
@@ -120,7 +120,7 @@ int strcmpn(const char *s, const char *p, int n)
 
 		c = *s - *p;
 
-		if (c || *s == 0)
+		if (c != 0 || *s == 0)
 			break;
 
 		++s;
@@ -175,10 +175,10 @@ char *strcpy(char *restrict d, const char *restrict s)
 	return d;
 }
 
-char *strcpyn(char *restrict d, const char *restrict s, int n)
+char *strcpyn(char *restrict d, const char *restrict s, int len)
 {
 	do {
-		if (n < 1) {
+		if (len < 1) {
 
 			*d = 0;
 			break;
@@ -189,7 +189,7 @@ char *strcpyn(char *restrict d, const char *restrict s, int n)
 
 		++d;
 		++s;
-		--n;
+		--len;
 	}
 	while (1);
 
@@ -233,18 +233,18 @@ void xputs(io_ops_t *io, const char *s)
 	while (*s) io->putc(*s++);
 }
 
-void xputs_aligned(io_ops_t *io, const char *s, int nleft)
+void xputs_aligned(io_ops_t *io, const char *s, int left)
 {
 	while (*s) {
 
 		io->putc(*s++);
-		nleft--;
+		left--;
 	}
 
-	while (nleft > 0) {
+	while (left > 0) {
 
 		io->putc(' ');
-		nleft--;
+		left--;
 	}
 }
 
@@ -293,7 +293,7 @@ fmt_hex_long(io_ops_t *io, uint32_t x)
 }
 
 static void
-fmt_int_aligned(io_ops_t *io, int x, int nleft)
+fmt_int_aligned(io_ops_t *io, int x, int left)
 {
 	char		s[16], *p;
 	int		n;
@@ -303,7 +303,7 @@ fmt_int_aligned(io_ops_t *io, int x, int nleft)
 		io->putc('-');
 
 		x = - x;
-		nleft--;
+		left--;
 	}
 
 	p = s + 16;
@@ -319,13 +319,13 @@ fmt_int_aligned(io_ops_t *io, int x, int nleft)
 	while (*p) {
 
 		io->putc(*p++);
-		nleft--;
+		left--;
 	}
 
-	while (nleft > 0) {
+	while (left > 0) {
 
 		io->putc(' ');
-		nleft--;
+		left--;
 	}
 }
 
@@ -417,7 +417,7 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 	int		i, v;
 	float		h;
 
-	if (x < 0) {
+	if (x < 0.f) {
 
 		io->putc('-');
 
@@ -502,7 +502,7 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 	int		i, v;
 	float		h;
 
-	if (x < 0) {
+	if (x < 0.f) {
 
 		io->putc('-');
 
@@ -820,12 +820,12 @@ const char *stof(float *x, const char *s)
 	return s;
 }
 
-uint32_t crc32b(const void *s, size_t n)
+uint32_t crc32u(const void *raw, size_t len)
 {
-	const uint32_t		*ls = (const uint32_t *) s;
-	uint32_t		crc, buf;
+	const uint32_t		*ip = (const uint32_t *) raw;
+	uint32_t		crcsum, seq;
 
-	static const uint32_t	mask[16] = {
+	static const uint32_t	lt[16] = {
 
 		0x00000000U, 0x1DB71064U, 0x3B6E20C8U, 0x26D930ACU,
 		0x76DC4190U, 0x6B6B51F4U, 0x4DB26158U, 0x5005713CU,
@@ -833,26 +833,26 @@ uint32_t crc32b(const void *s, size_t n)
 		0x9B64C2B0U, 0x86D3D2D4U, 0xA00AE278U, 0xBDBDF21CU
 	};
 
-	crc = 0xFFFFFFFFU;
+	crcsum = 0xFFFFFFFFU;
 
-	while (n >= 4U) {
+	while (len >= 4U) {
 
-		buf = *ls++;
-		n += - 4U;
+		seq = *ip++;
+		len += - 4U;
 
-		crc = crc ^ buf;
+		crcsum = crcsum ^ seq;
 
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
-		crc = (crc >> 4) ^ mask[crc & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
+		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
 	}
 
-	return crc ^ 0xFFFFFFFFU;
+	return crcsum ^ 0xFFFFFFFFU;
 }
 
 uint32_t urand()

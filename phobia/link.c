@@ -14,6 +14,9 @@
 #define LINK_SPACE			" \t"
 #define LINK_EXTRA			"])"
 
+#define LINK_ALLOC_MAX			92160U
+#define LINK_CACHE_MAX			4096U
+
 enum {
 	LINK_MODE_IDLE			= 0,
 	LINK_MODE_HWINFO,
@@ -40,8 +43,10 @@ struct link_priv {
 	char			hw_build[LINK_NAME_MAX];
 	char			hw_crc32[LINK_NAME_MAX];
 
-	char			mb[81920];
+	char			mb[LINK_ALLOC_MAX];
 	char			*mbflow;
+
+	int			cache[LINK_CACHE_MAX];
 };
 
 const char *lk_stoi(int *x, const char *s)
@@ -183,13 +188,32 @@ lk_token(char **sp)
 	return r;
 }
 
+static unsigned int
+lk_hash(const char *sym)
+{
+	unsigned long		hash = 0U;
+
+	while (*sym != 0) {
+
+		hash = (hash + *sym) * 1149773U;
+		hash ^= (hash << 1) + (hash >> 4);
+
+		++sym;
+	}
+
+	hash ^= (hash << 15);
+	hash = (hash >> 16) & (LINK_CACHE_MAX - 1U);
+
+	return hash;
+}
+
 static char *
 link_mballoc(struct link_pmc *lp, int len)
 {
 	struct link_priv	*priv = lp->priv;
 	char			*mb = NULL;
 
-	if ((int) (priv->mbflow - priv->mb) < sizeof(priv->mb) - len) {
+	if ((int) (priv->mbflow - priv->mb) < LINK_ALLOC_MAX - len) {
 
 		mb = priv->mbflow;
 		priv->mbflow += len;
@@ -203,7 +227,7 @@ link_fetch_network(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
 	char			*lbuf = priv->lbuf;
-	int			n, rc = 0;
+	int			net_ID, rc = 0;
 
 	if (strstr(lbuf, "(pmc)") == lbuf) {
 
@@ -214,9 +238,9 @@ link_fetch_network(struct link_pmc *lp)
 
 	if (strstr(lbuf, "(net/") == lbuf) {
 
-		if (lk_stoi(&n, lbuf + 5) != NULL) {
+		if (lk_stoi(&net_ID, lbuf + 5) != NULL) {
 
-			sprintf(lp->network, "REMOTE/%i", n);
+			sprintf(lp->network, "REMOTE/%i", net_ID);
 		}
 		else {
 			lp->network[0] = 0;
@@ -894,17 +918,32 @@ int link_command(struct link_pmc *lp, const char *command)
 
 struct link_reg *link_reg_lookup(struct link_pmc *lp, const char *sym)
 {
-	struct link_reg			*reg = NULL;
-	int				reg_ID;
+	struct link_priv	*priv = lp->priv;
+	struct link_reg		*reg = NULL;
+	int			hash, reg_ID;
 
-	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+	if (lp->linked == 0)
+		return NULL;
 
-		if (lp->reg[reg_ID].sym[0] != 0) {
+	hash = lk_hash(sym);
+	reg_ID = priv->cache[hash];
 
-			if (strcmp(lp->reg[reg_ID].sym, sym) == 0) {
+	if (strcmp(lp->reg[reg_ID].sym, sym) == 0) {
 
-				reg = &lp->reg[reg_ID];
-				break;
+		reg = &lp->reg[reg_ID];
+	}
+	else {
+		for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+
+			if (lp->reg[reg_ID].sym[0] != 0) {
+
+				if (strcmp(lp->reg[reg_ID].sym, sym) == 0) {
+
+					priv->cache[hash] = reg_ID;
+					reg = &lp->reg[reg_ID];
+
+					break;
+				}
 			}
 		}
 	}
@@ -914,31 +953,50 @@ struct link_reg *link_reg_lookup(struct link_pmc *lp, const char *sym)
 
 int link_reg_lookup_range(struct link_pmc *lp, const char *sym, int *min, int *max)
 {
-	int				n, rc, reg_ID;
+	struct link_priv	*priv = lp->priv;
+	int			len, hash, reg_ID, found = 0;
 
-	n = strlen(sym);
-	rc = 0;
+	if (lp->linked == 0)
+		return 0;
 
-	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+	len = strlen(sym);
+
+	hash = lk_hash(sym);
+	reg_ID = priv->cache[hash];
+
+	if (strncmp(lp->reg[reg_ID].sym, sym, len) == 0) {
+
+		*min = reg_ID;
+		*max = reg_ID++;
+
+		found = 1;
+	}
+	else {
+		reg_ID = 0;
+	}
+
+	for (; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
 		if (lp->reg[reg_ID].sym[0] != 0) {
 
-			if (strncmp(lp->reg[reg_ID].sym, sym, n) == 0) {
+			if (strncmp(lp->reg[reg_ID].sym, sym, len) == 0) {
 
-				if (rc == 0) {
+				if (found == 0) {
+
+					priv->cache[hash] = reg_ID;
 
 					*min = reg_ID;
-					rc = 1;
+					found = 1;
 				}
 
 				*max = reg_ID;
 			}
-			else if (rc != 0)
+			else if (found != 0)
 				break;
 		}
 	}
 
-	return rc;
+	return found;
 }
 
 void link_reg_fetch_all_shown(struct link_pmc *lp)

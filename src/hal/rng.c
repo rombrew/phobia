@@ -36,7 +36,9 @@ uint32_t RNG_urand()
 			break;
 		}
 
-		N++; __NOP();
+		__NOP();
+
+		N++;
 	}
 	while (N < 700000U);
 
@@ -48,9 +50,9 @@ uint32_t RNG_make_UID()
 	uint32_t		UID;
 
 #if defined(STM32F4)
-	UID = crc32b((const void *) 0x1FFF7A10U, 12);
+	UID = crc32u((const void *) 0x1FFF7A10U, 12);
 #elif defined(STM32F7)
-	UID = crc32b((const void *) 0x1FF07A10U, 12);
+	UID = crc32u((const void *) 0x1FF07A10U, 12);
 #endif /* STM32Fx */
 
 	return UID;

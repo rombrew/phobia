@@ -8,7 +8,7 @@ The step and direction signals are fed to STEP and DIR pins.
 
 ```
 	           +---------------< STEP (or CW)
-               |    +----------< DIR (or CCW)
+	           |    +----------< DIR (or CCW)
 	           |    |    +-----> GND
 	           |    |    |
 	+----------+----+----+-------------------------+

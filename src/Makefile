@@ -148,7 +148,7 @@ $(TARGET): $(BUILD_OBJS)
 
 $(IMAGE): $(TARGET)
 	@ echo "  OC    " $(notdir $@)
-	@ $(OC) -j .text -j .data -O binary -S $< $@
+	@ $(OC) -O binary -S $< $@
 
 gdb: $(TARGET)
 	@ echo "  GDB   " $(notdir $<)

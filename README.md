@@ -7,7 +7,7 @@ PMC is an open project that aims to build the quality permanent magnet
 synchronous machine (PMSM) controller for use in a variety of scopes like RC or
 electric transport.
 
-## Brief
+## Brief description
 
 PMC is ready to use in most intended applications. You can flash any supported
 third-party hardware to work with PMC or use our original hardware.
@@ -111,7 +111,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Battery energy (Wh) and charge (Ah) consumed.
 	- Fuel gauge percentage.
 
-## Hardware specification (`REV5A`)
+## Hardware specification (`REV5A`, `REV5B`)
 
 - Dimension: 82mm x 55mm x 35mm.
 - Weight: 40g (PCB) or about 400g (with wires and heatsink).

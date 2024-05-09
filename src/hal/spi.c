@@ -97,7 +97,7 @@ void SPI_startup(int bus, int freq, int mode)
 	}
 
 #if defined(STM32F4)
-	dsize = (mode & SPI_SIZE_8) ? 0U : 1U;
+	dsize = (mode & SPI_DATA_8) ? 0U : 1U;
 
 	/* Configure SPI.
 	 * */
@@ -106,7 +106,7 @@ void SPI_startup(int bus, int freq, int mode)
 	priv_SPI[bus].SPI->CR2 = 0;
 
 #elif defined(STM32F7)
-	dsize = (mode & SPI_SIZE_8) ? 7U : 15U;
+	dsize = (mode & SPI_DATA_8) ? 7U : 15U;
 
 	/* Configure SPI.
 	 * */
@@ -173,7 +173,7 @@ void SPI_startup(int bus, int freq, int mode)
 		TIM8->CR1 = TIM_CR1_OPM;
 		TIM8->CR2 = 0;
 		TIM8->SMCR = 0;
-		TIM8->DIER = TIM_DIER_CC4DE | TIM_DIER_CC3DE | TIM_DIER_CC2DE | TIM_DIER_CC1DE;
+		TIM8->DIER = TIM_DIER_CC3DE | TIM_DIER_CC2DE;
 		TIM8->CCMR1 = 0;
 		TIM8->CCMR2 = 0;
 		TIM8->CCER = 0;
@@ -184,9 +184,9 @@ void SPI_startup(int bus, int freq, int mode)
 		TIM8->CCR3 = 42;	/* rxbuf = DR */
 		TIM8->CCR4 = 42;	/* NSS = 1 */
 
-		dsize = (mode & SPI_SIZE_8) ? 0U : 1U;
+		dsize = (mode & SPI_DATA_8) ? 0U : 1U;
 
-		/* DMA on TIM8_CH3.
+		/* Enable DMA on TIM8_CH3.
 		 * */
 		DMA2_Stream4->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
 			| (dsize << DMA_SxCR_MSIZE_Pos) | (dsize << DMA_SxCR_PSIZE_Pos)
@@ -194,7 +194,7 @@ void SPI_startup(int bus, int freq, int mode)
 		DMA2_Stream4->PAR = (uint32_t) &priv_SPI[bus].SPI->DR;
 		DMA2_Stream4->FCR = DMA_SxFCR_DMDIS;
 
-		/* DMA on TIM8_CH2.
+		/* Enable DMA on TIM8_CH2.
 		 * */
 		DMA2_Stream3->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
 			| (dsize << DMA_SxCR_MSIZE_Pos) | (dsize << DMA_SxCR_PSIZE_Pos)
@@ -202,48 +202,53 @@ void SPI_startup(int bus, int freq, int mode)
 		DMA2_Stream3->PAR = (uint32_t) &priv_SPI[bus].SPI->DR;
 		DMA2_Stream3->FCR = DMA_SxFCR_DMDIS;
 
+		if (mode & SPI_NSS_ON) {
+
+			TIM8->DIER |= TIM_DIER_CC4DE | TIM_DIER_CC1DE;
+
 #define XGPIO_GET_BSRR(xGPIO)	(GPIOA_BASE + 0x0400U * XGPIO_GET_PORT(xGPIO) + 0x18U)
 
-		/* DMA on TIM8_CH1.
-		 * */
-		DMA2_Stream2->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
-			| (2U << DMA_SxCR_MSIZE_Pos) | (2U << DMA_SxCR_PSIZE_Pos)
-			| DMA_SxCR_DIR_0 | DMA_SxCR_CIRC;
-		DMA2_Stream2->NDTR = 1;
-		DMA2_Stream2->PAR = (uint32_t) XGPIO_GET_BSRR(priv_SPI[bus].gpio_NSS);
-		DMA2_Stream2->M0AR = (uint32_t) &priv_SPI[bus].dmabuf[0];
-		DMA2_Stream2->FCR = DMA_SxFCR_DMDIS;
+			/* Enable DMA on TIM8_CH1.
+			 * */
+			DMA2_Stream2->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
+				| (2U << DMA_SxCR_MSIZE_Pos) | (2U << DMA_SxCR_PSIZE_Pos)
+				| DMA_SxCR_DIR_0 | DMA_SxCR_CIRC;
+			DMA2_Stream2->NDTR = 1;
+			DMA2_Stream2->PAR = (uint32_t) XGPIO_GET_BSRR(priv_SPI[bus].gpio_NSS);
+			DMA2_Stream2->M0AR = (uint32_t) &priv_SPI[bus].dmabuf[0];
+			DMA2_Stream2->FCR = DMA_SxFCR_DMDIS;
 
-		/* DMA on TIM8_CH4.
-		 * */
-		DMA2_Stream7->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
-			| (2U << DMA_SxCR_MSIZE_Pos) | (2U << DMA_SxCR_PSIZE_Pos)
-			| DMA_SxCR_DIR_0 | DMA_SxCR_CIRC;
-		DMA2_Stream7->NDTR = 1;
-		DMA2_Stream7->PAR = (uint32_t) XGPIO_GET_BSRR(priv_SPI[bus].gpio_NSS);
-		DMA2_Stream7->M0AR = (uint32_t) &priv_SPI[bus].dmabuf[1];
-		DMA2_Stream7->FCR = DMA_SxFCR_DMDIS;
+			/* Enable DMA on TIM8_CH4.
+			 * */
+			DMA2_Stream7->CR = (7U << DMA_SxCR_CHSEL_Pos) | DMA_SxCR_PL_1
+				| (2U << DMA_SxCR_MSIZE_Pos) | (2U << DMA_SxCR_PSIZE_Pos)
+				| DMA_SxCR_DIR_0 | DMA_SxCR_CIRC;
+			DMA2_Stream7->NDTR = 1;
+			DMA2_Stream7->PAR = (uint32_t) XGPIO_GET_BSRR(priv_SPI[bus].gpio_NSS);
+			DMA2_Stream7->M0AR = (uint32_t) &priv_SPI[bus].dmabuf[1];
+			DMA2_Stream7->FCR = DMA_SxFCR_DMDIS;
 
-		N = XGPIO_GET_N(priv_SPI[bus].gpio_NSS);
+			N = XGPIO_GET_N(priv_SPI[bus].gpio_NSS);
 
-		priv_SPI[bus].dmabuf[0] = (1U << (N + 16));
-		priv_SPI[bus].dmabuf[1] = (1U << N);
+			priv_SPI[bus].dmabuf[0] = (1U << (N + 16));
+			priv_SPI[bus].dmabuf[1] = (1U << N);
 
-		__DSB();
+			__DSB();
 
 #ifdef STM32F7
-		/* D-Cache Clean.
-		 * */
-		SCB->DCCMVAC = (uint32_t) &priv_SPI[bus].dmabuf[0];
+			/* D-Cache Clean.
+			 * */
+			SCB->DCCMVAC = (uint32_t) &priv_SPI[bus].dmabuf[0];
 
-		__DSB();
-		__ISB();
+			__DSB();
+			__ISB();
 #endif /* STM32F7 */
 
-		/* Enable DMA2.
-		 * */
-		DMA2_Stream2->CR |= DMA_SxCR_EN;
-		DMA2_Stream7->CR |= DMA_SxCR_EN;
+			/* Enable DMA2.
+			 * */
+			DMA2_Stream2->CR |= DMA_SxCR_EN;
+			DMA2_Stream7->CR |= DMA_SxCR_EN;
+		}
 	}
 
 	/* Enable SPI.
@@ -306,7 +311,6 @@ void SPI_halt(int bus)
 				|| (DMA2_Stream7->CR & DMA_SxCR_EN)) {
 
 			__NOP();
-			__NOP();
 
 			if (N > 70000U)
 				break;
@@ -353,9 +357,8 @@ uint16_t SPI_transfer(int bus, uint16_t txbuf)
 	if (priv_SPI[bus].SPI == 0)
 		return 0U;
 
-	while ((priv_SPI[bus].SPI->SR & SPI_SR_TXE) == 0) {
+	while ((priv_SPI[bus].SPI->SR & SPI_SR_TXE) != SPI_SR_TXE) {
 
-		__NOP();
 		__NOP();
 
 		if (N > 70000U)
@@ -369,17 +372,15 @@ uint16_t SPI_transfer(int bus, uint16_t txbuf)
 
 	priv_SPI[bus].SPI->DR = txbuf;
 
-	while ((priv_SPI[bus].SPI->SR & SPI_SR_RXNE) == 0) {
+	while ((priv_SPI[bus].SPI->SR & SPI_SR_RXNE) != SPI_SR_RXNE) {
 
-		__NOP();
 		__NOP();
 	}
 
 	txbuf = priv_SPI[bus].SPI->DR;
 
-	while (priv_SPI[bus].SPI->SR & SPI_SR_BSY) {
+	while ((priv_SPI[bus].SPI->SR & SPI_SR_BSY) == SPI_SR_BSY) {
 
-		__NOP();
 		__NOP();
 	}
 
@@ -417,8 +418,10 @@ void SPI_transfer_dma(int bus, const uint16_t *txbuf, uint16_t *rxbuf, int len)
 	DMA2_Stream4->M0AR = (uint32_t) rxbuf;
 	DMA2_Stream3->M0AR = (uint32_t) txbuf;
 
-	DMA2->LIFCR = DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTEIF3 | DMA_LIFCR_CFEIF3;
-	DMA2->HIFCR = DMA_HIFCR_CTCIF4 | DMA_HIFCR_CHTIF4 | DMA_HIFCR_CTEIF4 | DMA_HIFCR_CFEIF4;
+	DMA2->LIFCR = DMA_LIFCR_CTCIF3 | DMA_LIFCR_CHTIF3
+		| DMA_LIFCR_CTEIF3 | DMA_LIFCR_CFEIF3;
+	DMA2->HIFCR = DMA_HIFCR_CTCIF4 | DMA_HIFCR_CHTIF4
+		| DMA_HIFCR_CTEIF4 | DMA_HIFCR_CFEIF4;
 
 	/* Enable DMA2.
 	 * */

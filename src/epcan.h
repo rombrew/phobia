@@ -29,7 +29,7 @@ enum {
 	EPCAN_NODE_TX,				/* send to remote node */
 	EPCAN_NODE_GET,				/* request to GET register data */
 	EPCAN_NODE_SET,				/* request to SET register data */
-	EPCAN_NODE_DATA				/* reply to GET request */
+	EPCAN_NODE_DATA				/* reply to the GET request */
 };
 
 enum {
@@ -70,7 +70,7 @@ typedef struct {
 	int		ID;		/* CAN ID of the endpoint (EP) */
 	int		clock_ID;	/* CAN ID used as clock */
 
-	float		reg_DATA;	/* current DATA */
+	float		reg_DATA;	/* actual DATA */
 	int		reg_ID;		/* linked register ID */
 
 	int		PAYLOAD;	/* packet payload type */

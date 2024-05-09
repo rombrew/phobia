@@ -6,9 +6,6 @@
 #include "usbd_core.h"
 #include "usbd_cdc.h"
 
-const char *stop_name[] = { "1", "1.5", "2" };
-const char *parity_name[] = { "N", "O", "E", "M", "S" };
-
 static int cdc_acm_class_interface_request_handler(struct usb_setup_packet *setup, uint8_t **data, uint32_t *len)
 {
     USB_LOG_DBG("CDC Class request: "
@@ -40,12 +37,12 @@ static int cdc_acm_class_interface_request_handler(struct usb_setup_packet *setu
             /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
             /*******************************************************************************/
             memcpy(&line_coding, *data, setup->wLength);
-            USB_LOG_DBG("Set intf:%d linecoding <%d %d %s %s>\r\n",
+            USB_LOG_DBG("Set intf:%d linecoding <%d %d %d %d>\r\n",
                         intf_num,
                         line_coding.dwDTERate,
                         line_coding.bDataBits,
-                        parity_name[line_coding.bParityType],
-                        stop_name[line_coding.bCharFormat]);
+                        line_coding.bParityType,
+                        line_coding.bCharFormat);
 
             usbd_cdc_acm_set_line_coding(intf_num, &line_coding);
             break;

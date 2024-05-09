@@ -5,14 +5,18 @@
 #define LD_IRQ_WEAK		__attribute__ ((weak, alias("irq_Weak")))
 
 extern uint32_t ld_stack;
-extern uint32_t ld_begin_text;
-extern uint32_t ld_end_text;
-extern uint32_t ld_begin_data;
-extern uint32_t ld_end_data;
-extern uint32_t ld_begin_bss;
-extern uint32_t ld_end_bss;
-extern uint32_t ld_begin_ccm;
-extern uint32_t ld_end_ccm;
+extern uint32_t ld_text_begin;
+extern uint32_t ld_text_end;
+extern uint32_t ld_ramfunc_load;
+extern uint32_t ld_ramfunc_begin;
+extern uint32_t ld_ramfunc_end;
+extern uint32_t ld_data_load;
+extern uint32_t ld_data_begin;
+extern uint32_t ld_data_end;
+extern uint32_t ld_bss_begin;
+extern uint32_t ld_bss_end;
+extern uint32_t ld_ccm_begin;
+extern uint32_t ld_ccm_end;
 extern uint32_t ld_end;
 
 void irq_Reset();
@@ -40,15 +44,15 @@ void irq_USART3() LD_IRQ_WEAK;
 void irq_TIM7() LD_IRQ_WEAK;
 void irq_OTG_FS() LD_IRQ_WEAK;
 
-const FW_info_t		fw = {
+const fw_info_t		fw = {
 
-	(uint32_t) &ld_begin_text,
+	(uint32_t) &ld_text_begin,
 	(uint32_t) &ld_end,
 
 	_HW_REV, __DATE__
 };
 
-LD_VECTORS void *VECTORS[] = {
+LD_VECTORS void *vtab[] = {
 
 	(void *) &ld_stack,
 
@@ -168,9 +172,11 @@ void irq_Reset()
 {
 	hal_bootload();
 
-	init_data(&ld_end_text, &ld_begin_data, &ld_end_data);
-	init_bss(&ld_begin_bss, &ld_end_bss);
-	init_bss(&ld_begin_ccm, &ld_end_ccm);
+	init_data(&ld_ramfunc_load, &ld_ramfunc_begin, &ld_ramfunc_end);
+	init_data(&ld_data_load, &ld_data_begin, &ld_data_end);
+
+	init_bss(&ld_bss_begin, &ld_bss_end);
+	init_bss(&ld_ccm_begin, &ld_ccm_end);
 
 	hal_startup();
 	app_MAIN();

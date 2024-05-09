@@ -113,7 +113,6 @@ STEP_halt()
 	while (DMA2_Stream1->CR & DMA_SxCR_EN) {
 
 		__NOP();
-		__NOP();
 
 		if (N > 70000U)
 			break;

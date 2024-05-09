@@ -6,7 +6,7 @@
 #include "cmsis/stm32xx.h"
 
 #define HAL_FLAG_SIGNATURE	0x2A7CEA64U
-#define HAL_TEXT_INC(np)	(((np) < sizeof(log.text) - 1U) ? (np) + 1 : 0)
+#define HAL_LOG_INC(np)		(((np) < sizeof(log.text) - 1U) ? (np) + 1 : 0)
 
 uint32_t			clock_cpu_hz;
 
@@ -74,26 +74,45 @@ void irq_Default()
 }
 
 static void
+mcu_identify()
+{
+	uint32_t		ID;
+
+	ID = DBGMCU->IDCODE & DBGMCU_IDCODE_DEV_ID_Msk;
+
+	if (ID == 0x413U) {
+
+		hal.MCU_ID = MCU_ID_STM32F405;
+
+		if (* (volatile const uint32_t *) 0x400238E8U == 0x88000000U) {
+
+			hal.MCU_ID = MCU_ID_GD32F405;
+		}
+	}
+	else if (ID == 0x452U) {
+
+		hal.MCU_ID = MCU_ID_STM32F722;
+	}
+	else {
+		hal.MCU_ID = MCU_ID_UNKNOWN;
+
+		log_TRACE("Unknown MCU ID %4x" EOL, ID);
+	}
+}
+
+static void
 core_startup()
 {
 	uint32_t	CLOCK, PLLQ, PLLP, PLLN, PLLM;
 
-	/* Vector table offset.
-	 * */
-	SCB->VTOR = (uint32_t) &ld_begin_text;
+	SCB->VTOR = (uint32_t) &ld_text_begin;
 
-	/* Configure priority grouping.
-	 * */
 	NVIC_SetPriorityGrouping(0U);
-
-	/* Enable HSI.
-	 * */
-	RCC->CR |= RCC_CR_HSION;
 
 	/* Reset RCC.
 	 * */
-	RCC->CR &= ~(RCC_CR_PLLI2SON | RCC_CR_PLLON | RCC_CR_CSSON
-			| RCC_CR_HSEBYP | RCC_CR_HSEON);
+	MODIFY_REG(RCC->CR, RCC_CR_PLLI2SON | RCC_CR_PLLON | RCC_CR_CSSON
+			| RCC_CR_HSEBYP | RCC_CR_HSEON, RCC_CR_HSION);
 
 	RCC->PLLCFGR = 0;
 	RCC->CFGR = 0;
@@ -112,13 +131,12 @@ core_startup()
 		 * */
 		RCC->CR |= RCC_CR_HSEON;
 
-		/* Wait till HSE is ready.
+		/* Wait until HSE is ready.
 		 * */
 		do {
 			if ((RCC->CR & RCC_CR_HSERDY) == RCC_CR_HSERDY)
 				break;
 
-			__NOP();
 			__NOP();
 
 			if (N > 70000U) {
@@ -126,16 +144,6 @@ core_startup()
 				log_TRACE("HSE not ready" EOL);
 
 				noinit_HAL.crystal_disabled = HAL_FLAG_SIGNATURE;
-
-#ifdef STM32F7
-				/* D-Cache Clean and Invalidate.
-				 * */
-				SCB->DCCIMVAC = (uint32_t) &noinit_HAL.crystal_disabled;
-
-				__DSB();
-				__ISB();
-
-#endif /* STM32F7 */
 				break;
 			}
 
@@ -148,10 +156,17 @@ core_startup()
 	 * */
 	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
 
-	/* Regulator voltage scale 1 mode.
+	/* Select voltage regulator scale 1 mode.
 	 * */
 #if defined(STM32F4)
-	PWR->CR |= PWR_CR_VOS;
+	if (hal.MCU_ID == MCU_ID_STM32F405) {
+
+		PWR->CR |= PWR_CR_VOS;
+	}
+	else if (hal.MCU_ID == MCU_ID_GD32F405) {
+
+		PWR->CR |= (1U << 15) | (1U << 14);	/* LDOVS */
+	}
 #elif defined(STM32F7)
 	PWR->CR1 |= PWR_CR1_VOS_1 | PWR_CR1_VOS_0;
 #endif /* STM32Fx */
@@ -205,16 +220,11 @@ core_startup()
 	 * */
 	clock_cpu_hz = CLOCK / PLLP;
 
-	/* Enable PLL.
+	/* Enable PLL and wait until it is ready.
 	 * */
 	RCC->CR |= RCC_CR_PLLON;
 
-	/* Wait till the main PLL is ready.
-	 * */
-	while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY) {
-
-		__NOP();
-	}
+	while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY) { __NOP(); }
 
 	/* Configure Flash.
 	 * */
@@ -225,16 +235,26 @@ core_startup()
 	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY_5WS;
 #endif /* STM32Fx */
 
-	/* Select PLL.
+	/* Enable high frequency mode on GD32F405.
+	 * */
+#ifdef STM32F4
+	if (hal.MCU_ID == MCU_ID_GD32F405) {
+
+		PWR->CR |= (1U << 16);		/* HDEN */
+
+		while ((PWR->CSR & (1U << 16)) == 0U) { __NOP(); }
+
+		PWR->CR |= (1U << 17);		/* HDS */
+
+		while ((PWR->CSR & (1U << 17)) == 0U) { __NOP(); }
+	}
+#endif /* STM32F4 */
+
+	/* Select PLL clock and wait until it is used.
 	 * */
 	RCC->CFGR |= RCC_CFGR_SW_PLL;
 
-	/* Wait till PLL is used.
-	 * */
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {
-
-		__NOP();
-	}
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) { __NOP(); }
 
 	/* Enable caching on Cortex-M7.
 	 * */
@@ -276,23 +296,22 @@ periph_startup()
 static void
 flash_verify()
 {
-	uint32_t	flash_sizeof, *flash_crc32, crc32;
+	uint32_t		crc32;
 
-	flash_sizeof = fw.ld_end - fw.ld_begin;
-	flash_crc32 = (uint32_t *) fw.ld_end;
+	if (* (const uint32_t *) fw.ld_crc32 == 0xFFFFFFFFU) {
 
-	if (*flash_crc32 == 0xFFFFFFFFU) {
-
-		crc32 = crc32b((const void *) fw.ld_begin, flash_sizeof);
+		crc32 = crc32u((const void *) fw.ld_begin, fw.ld_crc32 - fw.ld_begin);
 
 		/* Update flash CRC32.
 		 * */
-		FLASH_prog(flash_crc32, crc32);
+		FLASH_prog_u32((uint32_t *) fw.ld_crc32, crc32);
 	}
 
-	if (crc32b((const void *) fw.ld_begin, flash_sizeof) != *flash_crc32) {
+	crc32 = crc32u((const void *) fw.ld_begin, fw.ld_crc32 - fw.ld_begin);
 
-		log_TRACE("FLASH CRC32 invalid" EOL);
+	if (* (const uint32_t *) fw.ld_crc32 != crc32) {
+
+		log_TRACE("Flash CRC32 does not match" EOL);
 	}
 }
 
@@ -304,11 +323,20 @@ void hal_bootload()
 
 		noinit_HAL.bootload_flag = 0U;
 
+#ifdef STM32F7
+		SCB_CleanDCache();
+#endif /* STM32F7 */
+
 #if defined(STM32F4)
 		sysmem = (const uint32_t *) 0x1FFF0000U;
 #elif defined(STM32F7)
 		sysmem = (const uint32_t *) 0x1FF00000U;
 #endif /* STM32Fx */
+
+		SCB->VTOR = (uint32_t) sysmem;
+
+		__DSB();
+		__ISB();
 
 		/* Load MSP.
 		 * */
@@ -329,6 +357,7 @@ void hal_bootload()
 
 void hal_startup()
 {
+	mcu_identify();
 	core_startup();
 	periph_startup();
 	flash_verify();
@@ -361,7 +390,7 @@ void hal_system_reset()
 	NVIC_SystemReset();
 }
 
-void hal_bootload_jump()
+void hal_bootload_reset()
 {
 	noinit_HAL.bootload_flag = HAL_FLAG_SIGNATURE;
 
@@ -405,6 +434,7 @@ void log_putc(int c)
 	if (unlikely(log.boot_FLAG != HAL_FLAG_SIGNATURE)) {
 
 		log.boot_FLAG = HAL_FLAG_SIGNATURE;
+		log.boot_COUNT = 0U;
 
 		log.text_wp = 0;
 		log.text_rp = 0;
@@ -412,9 +442,9 @@ void log_putc(int c)
 
 	log.text[log.text_wp] = (char) c;
 
-	log.text_wp = HAL_TEXT_INC(log.text_wp);
+	log.text_wp = HAL_LOG_INC(log.text_wp);
 	log.text_rp = (log.text_rp == log.text_wp)
-		? HAL_TEXT_INC(log.text_rp) : log.text_rp;
+		? HAL_LOG_INC(log.text_rp) : log.text_rp;
 }
 
 void log_flush()
@@ -430,7 +460,7 @@ void log_flush()
 
 			putc(log.text[rp]);
 
-			rp = HAL_TEXT_INC(rp);
+			rp = HAL_LOG_INC(rp);
 		}
 
 		puts(EOL);
@@ -439,13 +469,11 @@ void log_flush()
 
 void log_clean()
 {
-	if (unlikely(log.boot_FLAG != HAL_FLAG_SIGNATURE)) {
+	if (log.boot_FLAG == HAL_FLAG_SIGNATURE) {
 
-		log.boot_FLAG = HAL_FLAG_SIGNATURE;
+		log.text_wp = 0;
+		log.text_rp = 0;
 	}
-
-	log.text_wp = 0;
-	log.text_rp = 0;
 }
 
 void DBGMCU_mode_stop()
