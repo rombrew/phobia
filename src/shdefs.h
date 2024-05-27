@@ -36,8 +36,14 @@ SH_DEF(tlm_flush_sync)
 SH_DEF(tlm_live_sync)
 #ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_survey)
+#endif /* HW_HAVE_NETWORK_EPCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_assign)
+#endif /* HW_HAVE_NETWORK_EPCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_revoke)
+#endif /* HW_HAVE_NETWORK_EPCAN */
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_node_remote)
 #endif /* HW_HAVE_NETWORK_EPCAN */
 SH_DEF(pm_self_test)
@@ -46,6 +52,9 @@ SH_DEF(pm_self_TVM)
 SH_DEF(pm_self_impedance)
 SH_DEF(hal_ADC_scan)
 SH_DEF(hal_PWM_set_DC)
+#ifdef HW_HAVE_FAN_CONTROL
+SH_DEF(hal_FAN_control)
+#endif /* HW_HAVE_FAN_CONTROL */
 SH_DEF(hal_DBGMCU_mode_stop)
 SH_DEF(reg)
 SH_DEF(config_reg)

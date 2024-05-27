@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2023 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -203,11 +203,11 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->fastdraw = 200;
 
 	rd->mk_config.delim = '.';
-	strcpy(rd->mk_config.space, " \t;");
+	strcpy(rd->mk_config.space, " \t");
 	strcpy(rd->mk_config.lend, "\r\n");
 
 	rd->mk_text.delim = rd->mk_config.delim;
-	strcpy(rd->mk_text.space, rd->mk_config.space);
+	strcpy(rd->mk_text.space, "; \t");
 	strcpy(rd->mk_text.lend, rd->mk_config.lend);
 
 #ifdef _WINDOWS
@@ -789,7 +789,7 @@ readTimeGetBuf(char *s, int len, FILE *fd, int timeout)
 }
 
 static int
-readTEXTGetRow(read_t *rd, int dN)
+readTEXTGetRow(read_t *rd, int dN, int label_N)
 {
 	fval_t 		*row = rd->data[dN].row;
 	int		*hint = rd->data[dN].hint;
@@ -882,6 +882,46 @@ readTEXTGetRow(read_t *rd, int dN)
 		}
 
 		s++;
+	}
+
+	if (N > label_N) {
+
+		fval_t		*end = row;
+
+		row = rd->data[dN].row;
+
+		m = 0;
+
+		while (row < end - m) {
+
+			if (fp_isfinite(*row)) {
+
+				/* nothing */
+			}
+			else if (	m < READ_TEXT_DEVIATE_MAX
+					&& N > label_N) {
+
+				N--;
+				m++;
+			}
+
+			*row = *(row + m);
+
+			row++;
+		}
+	}
+	else {
+		m = N + READ_TEXT_DEVIATE_MAX;
+
+		while (N < label_N) {
+
+			*row++ = (fval_t) FP_NAN;
+
+			N++;
+
+			if (N >= m)
+				break;
+		}
 	}
 
 	return N;
@@ -981,11 +1021,11 @@ readTEXTSkipBOM(read_t *rd, FILE *fd)
 static int
 readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 {
-	int		label_cN, fixed_N, total_N;
+	int		label_N, fixed_N, total_N;
 	int		N, cN, timeout;
 	char		*r;
 
-	label_cN = 0;
+	label_N = 0;
 	cN = 0;
 
 	fixed_N = 0;
@@ -1001,18 +1041,18 @@ readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 		if (r == NULL)
 			break;
 
-		if (label_cN < 1) {
+		if (label_N < 1) {
 
-			label_cN = readTEXTGetLabel(rd, dN);
+			label_N = readTEXTGetLabel(rd, dN);
 		}
 		else {
-			cN = readTEXTGetRow(rd, dN);
+			cN = readTEXTGetRow(rd, dN, label_N);
 
 			if (cN != 0) {
 
-				if (cN > label_cN) {
+				if (cN > label_N) {
 
-					label_cN = readTEXTGetLabel(rd, dN);
+					label_N = readTEXTGetLabel(rd, dN);
 					fixed_N = 0;
 				}
 				else {
@@ -1032,7 +1072,7 @@ readTEXTGetCN(read_t *rd, int dN, FILE *fd, fval_t *rbuf, int *rbuf_N)
 			}
 		}
 
-		if (total_N >= READ_TEXT_HEADER_MAX) {
+		if (total_N >= READ_TEXT_SCAN_MAX) {
 
 			cN = 0;
 			break;
@@ -1236,7 +1276,7 @@ readTEXTCSV(read_t *rd, int dN)
 
 	if (r == ASYNC_OK) {
 
-		cN = readTEXTGetRow(rd, dN);
+		cN = readTEXTGetRow(rd, dN, rd->pl->data[dN].column_N);
 
 		if (cN == rd->pl->data[dN].column_N) {
 
@@ -2220,8 +2260,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0) {
 
 						failed = 0;
-						strcpy(rd->mk_text.space, rd->mk_config.space);
-						strcat(rd->mk_text.space, tbuf);
+						strcpy(rd->mk_text.space, tbuf);
+						strcat(rd->mk_text.space, rd->mk_config.space);
 					}
 				}
 				while (0);

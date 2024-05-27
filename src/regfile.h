@@ -24,7 +24,7 @@ typedef struct {
 	const char		fmt[4];
 
 	int			mode;
-	rval_t			*link;
+	volatile rval_t		*link;
 
 	void	(* proc) (const void *reg, rval_t *lval, const rval_t *rval);
 	void	(* format) (const void *reg);

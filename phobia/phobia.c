@@ -3156,6 +3156,12 @@ page_hal(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg_enum_toggle(pub, "hal.OPT_filter_current", "OPT current filter");
+	reg_enum_toggle(pub, "hal.OPT_filter_voltage", "OPT voltage filter");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 	nk_spacer(ctx);
 	nk_spacer(ctx);
 }
@@ -3663,7 +3669,7 @@ page_application(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup automatic");
+	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup at powerup");
 
 	reg = link_reg_lookup(lp, "ap.task_AUTOSTART");
 
@@ -3680,11 +3686,11 @@ page_application(struct public *pub)
 		nk_spacer(ctx);
 	}
 
-	reg_enum_toggle(pub, "ap.task_BUTTON", "Button control");
-	reg_enum_toggle(pub, "ap.task_AS5047", "AS5047 magnetic encoder");
-	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
+	reg_enum_toggle(pub, "ap.task_BUTTON", "Two push button control");
+	reg_enum_toggle(pub, "ap.task_SPI_AS5047", "SPI AS5047 magnetic encoder");
+	reg_enum_toggle(pub, "ap.task_SPI_HX711", "SPI HX711 load cell ADC");
 
-	reg = link_reg_lookup(lp, "ap.task_HX711");
+	reg = link_reg_lookup(lp, "ap.task_SPI_HX711");
 
 	if (		reg != NULL
 			&& reg->lval != 0) {
@@ -3698,7 +3704,17 @@ page_application(struct public *pub)
 		nk_spacer(ctx);
 	}
 
-	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial unit");
+	reg_enum_toggle(pub, "ap.task_SPI_MPU6050", "SPI MPU6050 inertial unit");
+
+	if (lp->unable_warning[0] != 0) {
+
+		strcpy(pub->popup_msg, lp->unable_warning);
+		pub->popup_enum = POPUP_UNABLE_WARNING;
+
+		lp->unable_warning[0] = 0;
+	}
+
+	pub_popup_message(pub, POPUP_UNABLE_WARNING, pub->popup_msg);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);

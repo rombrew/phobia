@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2023 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -519,7 +519,9 @@ void plotFigureGarbage(plot_t *pl, int dN);
 void plotFigureMoveAxes(plot_t *pl, int fN);
 void plotFigureMakeIndividualAxes(plot_t *pl, int fN);
 void plotFigureExchange(plot_t *pl, int fN_1, int fN_2);
+
 int plotFigureSelected(plot_t *pl);
+int plotFigureAnyData(plot_t *pl);
 
 tuple_t plotGetSubtractTimeMedian(plot_t *pl, int dN, int cNX, int cNY,
 		int length, int unwrap, int opdata);

@@ -7,21 +7,22 @@
 #include "main.h"
 #include "regfile.h"
 
-/* The application allows you to control the speed using two push-buttons.
- * Such control is convenient for drill machine and other tools.
+/* The application allows you to control the speed using push-buttons. This
+ * control is convenient for drill machine and other tools.
  *
  * [A]		- START or step up the speed
  * [B]		- STOP
  * [B] + [A]	- START with reverse direction
  * */
 
-#define BUTTON_DEBOUNCE		5
-
 LD_TASK void app_BUTTON(void *pData)
 {
-	volatile int		*knob = (volatile int *) pData;
+	volatile int		*lknob = (volatile int *) pData;
 
 	TickType_t		xWake;
+
+#define BUTTON_DEBOUNCE		(4)
+#define BUTTON_TABLE_MAX	(sizeof(rpm_table) / sizeof(rpm_table[0]) - 1)
 
 	const float		rpm_table[] = {
 
@@ -95,11 +96,13 @@ LD_TASK void app_BUTTON(void *pData)
 				pm.fsm_req = PM_STATE_LU_STARTUP;
 
 				vTaskDelay((TickType_t) 10);
+
+				xWake = xTaskGetTickCount();
 			}
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				rpm_knob = (rpm_knob < 4) ? rpm_knob + 1 : 0;
+				rpm_knob = (rpm_knob < BUTTON_TABLE_MAX) ? rpm_knob + 1 : 0;
 
 				if (reverse != 0) {
 
@@ -145,12 +148,14 @@ LD_TASK void app_BUTTON(void *pData)
 				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
 				vTaskDelay((TickType_t) 10);
+
+				xWake = xTaskGetTickCount();
 			}
 
 			event_B = 0;
 		}
 	}
-	while (*knob != 0);
+	while (*lknob == PM_ENABLED);
 
 	vTaskDelete(NULL);
 }

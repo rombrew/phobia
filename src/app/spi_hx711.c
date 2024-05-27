@@ -11,14 +11,24 @@
 /* This is the helper task that reads HX711 ADC.
  * */
 
-LD_TASK void app_HX711(void *pData)
+LD_TASK void app_SPI_HX711(void *pData)
 {
-	volatile int		*knob = (volatile int *) pData;
+	volatile int		*lknob = (volatile int *) pData;
 
 	const int		gpio_DOUT = GPIO_SPI1_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI1_SCK;
 
 	int			DOUT, ADC, N;
+
+	if (SPI_is_halted(HW_SPI_EXT_ID) != HAL_OK) {
+
+		printf("Unable to start application when SPI is busy" EOL);
+
+		*lknob = PM_DISABLED;
+		vTaskDelete(NULL);
+	}
+
+	SPI_startup(HW_SPI_EXT_ID, 0, 0);
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_OUTPUT(gpio_PD_SCK);
@@ -72,10 +82,12 @@ LD_TASK void app_HX711(void *pData)
 			ap.load_HX711 = ADC;
 		}
 	}
-	while (*knob != 0);
+	while (*lknob == PM_ENABLED);
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_INPUT(gpio_PD_SCK);
+
+	SPI_halt(HW_SPI_EXT_ID);
 
 	vTaskDelete(NULL);
 }

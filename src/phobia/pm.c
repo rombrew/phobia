@@ -2317,15 +2317,6 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	float		uA, uB, uC, uMIN, uMAX, uDC;
 	int		xA, xB, xC, xMIN, xMAX, nZONE;
 
-	if (		PM_CONFIG_TVM(pm) == PM_ENABLED
-			&& pm->tvm_ACTIVE == PM_ENABLED) {
-
-		/* Add TVM correction to compensate for distortion a little.
-		 * */
-		uX += pm->vsi_X0 - pm->tvm_X0;
-		uY += pm->vsi_Y0 - pm->tvm_Y0;
-	}
-
 	uX *= pm->quick_iUDC;
 	uY *= pm->quick_iUDC;
 

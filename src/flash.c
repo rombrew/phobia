@@ -182,7 +182,7 @@ int flash_block_regs_load()
 
 			if (reg != NULL && reg->mode & REG_CONFIG) {
 
-				memcpy(reg->link, lsym + 1, sizeof(uint32_t));
+				memcpy((void *) reg->link, lsym + 1, sizeof(uint32_t));
 			}
 
 			lsym += 5;

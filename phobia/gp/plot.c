@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2023 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1080,6 +1080,8 @@ plotDataPolyfit(plot_t *pl, int dN, int cNX, int cNY,
 static void
 plotDataFileCSV(plot_t *pl, int *list_dN, int *list_cN, int len_N, FILE *fd_csv)
 {
+	const read_t	*rd = (const read_t *) pl->ld;
+
 	char		numfmt[PLOT_STRING_MAX];
 
 	fval_t		fval;
@@ -1140,6 +1142,8 @@ plotDataFileCSV(plot_t *pl, int *list_dN, int *list_cN, int len_N, FILE *fd_csv)
 
 		for (N = 0; N < len_N; ++N) {
 
+			job = 0;
+
 			dN = list_dN[N];
 
 			if (local[dN].row != NULL) {
@@ -1147,11 +1151,33 @@ plotDataFileCSV(plot_t *pl, int *list_dN, int *list_cN, int len_N, FILE *fd_csv)
 				fval = (list_cN[N] < 0) ? local[dN].id_N
 					: local[dN].row[list_cN[N]];
 
-				sprintf(numfmt, "%%.%iE;", pl->fprecision - 1);
-				fprintf(fd_csv, numfmt, fval);
+				if (fp_isfinite(fval))
+					job = 1;
+			}
+
+			if (job != 0) {
+
+				int		fexp = 1;
+
+				if (fval != 0.) {
+
+					fexp += (int) floor(log10(fabs(fval)));
+				}
+
+				if (fexp >= -2 && fexp < pl->fprecision) {
+
+					fexp = (fexp < 1) ? 1 : fexp;
+
+					sprintf(numfmt, "%%.%df%%c", pl->fprecision - fexp);
+				}
+				else {
+					sprintf(numfmt, "%%.%dE%%c", pl->fprecision - 1);
+				}
+
+				fprintf(fd_csv, numfmt, fval, rd->mk_text.space[0]);
 			}
 			else {
-				fprintf(fd_csv, "NAN;");
+				fprintf(fd_csv, "NaN%c", rd->mk_text.space[0]);
 			}
 		}
 
@@ -3576,6 +3602,15 @@ plotDataBoxTextFmt(plot_t *pl, int fN, double val)
 	strcat(pl->data_box_text[fN], tbuf);
 }
 
+static void
+plotDataBoxTextHex(plot_t *pl, int fN, double val)
+{
+	char		tbuf[PLOT_STRING_MAX];
+
+	sprintf(tbuf, " 0x%08lX", (unsigned long) val);
+	strcat(pl->data_box_text[fN], tbuf);
+}
+
 static int
 plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 {
@@ -3976,6 +4011,23 @@ int plotFigureSelected(plot_t *pl)
 	}
 
 	return N;
+}
+
+int plotFigureAnyData(plot_t *pl)
+{
+	int		fN, dN = 0;
+
+	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
+
+		if (		pl->figure[fN].busy != 0
+				&& pl->figure[fN].hidden == 0) {
+
+			dN = pl->figure[fN].data_N;
+			break;
+		}
+	}
+
+	return dN;
 }
 
 static int
@@ -5061,7 +5113,7 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 static void
 plotLabelFusedCSV(plot_t *pl, char *label, const char *name, const char *unit)
 {
-	read_t		*rd = (read_t *) pl->ld;
+	const read_t	*rd = (const read_t *) pl->ld;
 
 	const char	*s;
 	char		*l = label;
@@ -5166,10 +5218,9 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 
 	if (len_N >= 2) {
 
+		const read_t	*rd = (const read_t *) pl->ld;
 		FILE		*fd_csv;
-#ifdef _WINDOWS
-		read_t		*rd = (read_t *) pl->ld;
-#endif /* _WINDOWS */
+
 		char		labelbuf[PLOT_STRING_MAX];
 
 		fd_csv = unified_fopen(file, "w");
@@ -5210,7 +5261,7 @@ void plotFigureExportCSV(plot_t *pl, const char *file)
 			}
 #endif /* _WINDOWS */
 
-			fprintf(fd_csv, "%s;", labelbuf);
+			fprintf(fd_csv, "%s%c", labelbuf, rd->mk_text.space[0]);
 		}
 
 		fprintf(fd_csv, "\n");
@@ -5640,6 +5691,8 @@ void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y)
 
 		if (pl->figure[fN].slice_busy != 0) {
 
+			const read_t		*rd = (const read_t *) pl->ld;
+
 			if (pl->slice_mode_N != 0) {
 
 				fval_X = pl->figure[fN].slice_base_X;
@@ -5653,7 +5706,18 @@ void plotSliceTrack(plot_t *pl, int cur_X, int cur_Y)
 			}
 			else {
 				plotDataBoxTextFmt(pl, fN, pl->figure[fN].slice_X);
-				plotDataBoxTextFmt(pl, fN, pl->figure[fN].slice_Y);
+
+				dN = pl->figure[fN].data_N;
+				cY = pl->figure[fN].column_Y;
+
+				if (		rd->data[dN].hint[cY] == DATA_HINT_HEX
+						|| rd->data[dN].hint[cY] == DATA_HINT_OCT) {
+
+					plotDataBoxTextHex(pl, fN, pl->figure[fN].slice_Y);
+				}
+				else {
+					plotDataBoxTextFmt(pl, fN, pl->figure[fN].slice_Y);
+				}
 			}
 		}
 	}

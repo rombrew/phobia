@@ -9,9 +9,9 @@ This page gives you an overview of VESC hardware supported by PMC.
 | FLIPSKY FSESC 6.7                     | FSESC67     | Bad PCB design    |
 | FLIPSKY MINI FSESC 6.7 PRO            | FSESC67MINI | Low side shunts   |
 | FLIPSKY 75100 V202 ESC                | FSESC75100  | Low side shunts   |
-| Makerbase VESC 75200 V2 84V 200A      | FSESC75100  | Low side shunts   |
 | Holybro Mini FOC ESC Based on VESC6   | HBESC6FOC   |                   |
 | Makerbase VESC 60100 V2               | MKESC60100  |                   |
+| Makerbase VESC 84200                  | MKESC84200  |                   |
 | VESC 6 MkVI                           | VESC6MK5    |                   |
 | VESC 75/300 R3                        | VESC75300   |                   |
 

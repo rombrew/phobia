@@ -1,7 +1,6 @@
 #define HW_MCU_STM32F405
 
 /* Tested on FLIPSKY 75100 V202 ESC
- * Tested on Makerbase VESC 75200 V2 84V 200A
  * */
 
 #define HW_HAVE_LOW_SIDE_SHUNT
@@ -34,7 +33,7 @@
 #define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
-#define HW_ADC_KNOB_R2			1000.f
+#define HW_ADC_KNOB_R2			10000.f
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f

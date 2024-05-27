@@ -685,60 +685,14 @@ pm_fsm_state_adjust_voltage(pmc_t *pm)
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
 
 			pm->fsm_phase = 5;
-			pm->fsm_subi = 0;
 			break;
 
 		case 5:
 			xMIN = pm->ts_minimal;
 			xMAX = (int) (pm->dc_resolution * pm->tvm_clean_zone);
 
-			switch (pm->fsm_subi) {
-
-				case 0:
-				case 1:
-				case 2:
-				case 6:
-				case 8:
-					xDC = xMIN;
-					break;
-
-				case 3:
-				case 4:
-				case 5:
-				case 7:
-				case 9:
-					xDC = xMAX;
-					break;
-
-				case 10:
-				case 11:
-				case 12:
-					xDC = (xMIN + xMAX) / 2;
-					break;
-
-				case 13:
-				case 14:
-				case 15:
-				case 19:
-				case 21:
-				case 23:
-					xDC = xMIN + (xMAX - xMIN) / 4;
-					break;
-
-				case 16:
-				case 17:
-				case 18:
-				case 20:
-				case 22:
-					xDC = xMIN + 3 * (xMAX - xMIN) / 4;
-					break;
-
-				default:
-					xDC = 0;
-					break;
-			}
-
-			pm->fsm_subi = (pm->fsm_subi < 23) ? pm->fsm_subi + 1 : 0;
+			REF = m_lf_urandf(&pm->hfi_seed) * 0.5f + 0.5f;
+			xDC = xMIN + (int) (REF * (float) (xMAX - xMIN));
 
 			pm->proc_set_DC(xDC, xDC, xDC);
 
@@ -2271,12 +2225,6 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_loop_boost(pmc_t *pm)
-{
-	/* TODO */
-}
-
-static void
 pm_fsm_state_halt(pmc_t *pm)
 {
 	switch (pm->fsm_phase) {
@@ -2442,10 +2390,6 @@ void pm_FSM(pmc_t *pm)
 
 		case PM_STATE_ADJUST_SENSOR_EABI:
 			pm_fsm_state_adjust_sensor_eabi(pm);
-			break;
-
-		case PM_STATE_LOOP_BOOST:
-			pm_fsm_state_loop_boost(pm);
 			break;
 
 		case PM_STATE_HALT:

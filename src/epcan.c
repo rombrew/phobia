@@ -799,6 +799,7 @@ void EPCAN_bind()
 	}
 }
 
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_survey)
 {
 	CAN_msg_t		msg;
@@ -844,7 +845,9 @@ SH_DEF(net_survey)
 		printf("No remote nodes found" EOL);
 	}
 }
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_assign)
 {
 	CAN_msg_t		msg;
@@ -882,7 +885,9 @@ SH_DEF(net_assign)
 		}
 	}
 }
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_revoke)
 {
 	CAN_msg_t		msg;
@@ -915,6 +920,7 @@ SH_DEF(net_revoke)
 		}
 	}
 }
+#endif /* HW_HAVE_NETWORK_EPCAN */
 
 LD_TASK void task_epcan_REMOTE(void *pData)
 {
@@ -951,6 +957,7 @@ void EPCAN_remote_putc(int c)
 	xQueueSendToBack(local.remote_queue, &xbyte, portMAX_DELAY);
 }
 
+#ifdef HW_HAVE_NETWORK_EPCAN
 SH_DEF(net_node_remote)
 {
 	TaskHandle_t		xHandle;
@@ -982,8 +989,7 @@ SH_DEF(net_node_remote)
 
 		/* Create task to outgoing message packaging.
 		 * */
-		xTaskCreate(task_epcan_REMOTE, "REMOTE", configMINIMAL_STACK_SIZE,
-				NULL, 2, &xHandle);
+		xTaskCreate(task_epcan_REMOTE, "REMOTE", configMINIMAL_STACK_SIZE, NULL, 2, &xHandle);
 
 		xputs(&ops, EOL);
 
@@ -1014,4 +1020,5 @@ SH_DEF(net_node_remote)
 		puts(EOL);
 	}
 }
+#endif /* HW_HAVE_NETWORK_EPCAN */
 

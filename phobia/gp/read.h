@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2023 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@
 #define READ_COLUMN_MAX		2000
 #define READ_TOKEN_MAX		80
 #define READ_FILE_PATH_MAX	800
-#define READ_TEXT_HEADER_MAX	9
+#define READ_TEXT_SCAN_MAX	9
+#define READ_TEXT_DEVIATE_MAX	2
 #define READ_SUBTRACT_MAX	4
 
 #define GP_MIN_SIZE_X		640

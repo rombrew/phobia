@@ -16,6 +16,11 @@ priv_SPI_t;
 
 static priv_SPI_t		priv_SPI[3];
 
+int SPI_is_halted(int bus)
+{
+	return (priv_SPI[bus].SPI == (SPI_TypeDef *) 0) ? HAL_OK : HAL_FAULT;
+}
+
 void SPI_startup(int bus, int freq, int mode)
 {
 	int			clock, baud, dsize, cpol, N;

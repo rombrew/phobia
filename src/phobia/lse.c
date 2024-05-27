@@ -238,11 +238,11 @@ lse_qrmerge(lse_t *ls, lse_upper_t *rm)
 
 int lse_getsize(int n_cascades, int n_full)
 {
-	int		n_lse_len, n_vma_len;
+	int		n_lse, n_vm;
 
-	n_lse_len = sizeof(lse_t) - sizeof(((lse_t *) 0)->vm);
+	n_lse = sizeof(lse_t) - sizeof(((lse_t *) 0)->vm);
 
-	n_vma_len = n_cascades * n_full * (n_full + 1) / 2
+	n_vm = n_cascades * n_full * (n_full + 1) / 2
 
 #if LSE_FAST_TRANSFORM != 0
 		  + n_cascades * n_full
@@ -250,7 +250,7 @@ int lse_getsize(int n_cascades, int n_full)
 
 		  + n_full * n_full / 4 + n_full / 2 + 1;
 
-	return n_lse_len + sizeof(lse_float_t) * n_vma_len;
+	return n_lse + sizeof(lse_float_t) * n_vm;
 }
 
 void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)

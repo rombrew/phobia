@@ -7,12 +7,12 @@
 #include "main.h"
 #include "regfile.h"
 
-/* The application allows you to startup PMC automatically.
+/* The application allows you to startup PMC automatically at powerup.
  * */
 
 LD_TASK void app_AUTOSTART(void *pData)
 {
-	volatile int		*knob = (volatile int *) pData;
+	volatile int		*lknob = (volatile int *) pData;
 
 	if (xTaskGetTickCount() >= (TickType_t) 5000) {
 
@@ -38,7 +38,7 @@ LD_TASK void app_AUTOSTART(void *pData)
 			}
 		}
 	}
-	while (*knob != 0);
+	while (*lknob == PM_ENABLED);
 
 	vTaskDelete(NULL);
 }

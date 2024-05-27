@@ -1,6 +1,6 @@
 #define HW_MCU_STM32F405
 
-/* Tested on Holybro Mini FOC ESC Based on VESC6
+/* Tested on Makerbase VESC 84200
  * */
 
 #define HW_HAVE_ANALOG_KNOB
@@ -9,25 +9,27 @@
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_USB_CDC_ACM
+#define HW_HAVE_NETWORK_EPCAN
+#define HW_HAVE_ADC_FILTER
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
 #define HW_PWM_FREQUENCY_HZ		28571.f
-#define HW_PWM_DEADTIME_NS		70.f		/* NTMFS5C604NL */
+#define HW_PWM_DEADTIME_NS		400.f		/* HYG015N10NS1TA */
 
-#define HW_PWM_MINIMAL_PULSE		0.2f
+#define HW_PWM_MINIMAL_PULSE		0.4f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
 #define HW_PWM_SKIP_ZONE		2.0f
-#define HW_PWM_BOOTSTRAP_RETENTION	10.f		/* LM5113 */
+#define HW_PWM_BOOTSTRAP_RETENTION	100.f		/* EG3112 */
 
 #define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABC_UTT_TXX
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
-#define HW_ADC_SHUNT_RESISTANCE		0.0005f
-#define HW_ADC_AMPLIFIER_GAIN		60.f		/* AD8417 */
+#define HW_ADC_SHUNT_RESISTANCE		0.0001667f
+#define HW_ADC_AMPLIFIER_GAIN		20.f		/* INA241B2 */
 
-#define HW_ADC_VOLTAGE_R1		39000.f
-#define HW_ADC_VOLTAGE_R2		2200.f
+#define HW_ADC_VOLTAGE_R1		560000.f
+#define HW_ADC_VOLTAGE_R2		21500.f
 #define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
@@ -62,6 +64,13 @@
 #define GPIO_OTG_FS_DM			XGPIO_DEF4('A', 11, 0, 10)
 #define GPIO_OTG_FS_DP			XGPIO_DEF4('A', 12, 0, 10)
 
-#define GPIO_LED_ALERT			XGPIO_DEF2('B', 1)
-#define GPIO_LED_MODE			XGPIO_DEF2('B', 0)
+#define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
+#define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
+
+#define GPIO_FAN_EN			XGPIO_DEF2('C', 12)	/* have no gate resistor */
+#define GPIO_LED_ALERT			XGPIO_DEF2('B', 5)
+#define GPIO_LED_MODE			XGPIO_DEF2('B', 7)
+
+#define GPIO_FILTER_CURRENT		XGPIO_DEF2('D', 2)
+#define GPIO_FILTER_VOLTAGE		XGPIO_DEF2('C', 9)
 

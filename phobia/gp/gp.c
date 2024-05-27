@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2023 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1758,6 +1758,8 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 3:
+				gp->data_N = plotFigureAnyData(pl);
+
 				gpMakeDatasetMenu(gp);
 
 				menuRaise(mu, 1022, gp->la_menu, mu->box_X, mu->box_Y);
@@ -2417,7 +2419,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 					sprintf(gp->sbuf[0], "%d %d %d", config[0], config[1], config[2]);
 				}
 				else {
-					sprintf(gp->sbuf[0], "15 0 0");
+					sprintf(gp->sbuf[0], "15 0 1");
 				}
 
 				editRaise(ed, 18, gp->la->median_unwrap_edit,
@@ -4556,143 +4558,152 @@ int gp_Draw(gp_t *gp)
 
 #ifndef _EMBED_GP
 static void
+gpHelp(gp_t *gp)
+{
+	printf(	"Usage: gp [-0kult] [filename] ...\n"
+		"  -0     Open stdin text stream\n"
+		"  -k#    Chunk size in bytes\n"
+		"  -u#    Waiting timeout in msec\n"
+		"  -l#    Data length to allocate\n"
+		"  -t#    Time column default\n");
+}
+
+static void
 gpGetOPT(gp_t *gp, char *argv[])
 {
 	read_t		*rd = gp->rd;
 
-	char		*subarg;
-	int		argi, op = 1;
+	char		*op;
+	int		argi;
 
-	while (argv[op] != NULL) {
+	int		n = 1;
 
-		if (argv[op][0] == '-') {
+	while (argv[n] != NULL) {
 
-			if (argv[op][1] == 'h') {
+		if (argv[n][0] == '-') {
 
-				printf(	"Usage: gp [options] file ...\n"
-					"  -i        open stdin text stream\n"
-					"  -k <n>    chunk size in bytes\n"
-					"  -u <n>    waiting timeout in msec\n"
-					"  -l <n>    data length to allocate\n"
-					"  -t <n>    time column default\n"
-					);
+			op = &argv[n][1];
 
-				exit(0);
-			}
-			else if (argv[op][1] == 'i') {
+			while (*op != 0) {
 
-				sprintf(gp->sbuf[0],	"load 0 0 stdin\n"
-							"mkpages -2\n");
+				if (*op == 'h') {
 
-				readConfigIN(rd, gp->sbuf[0], 0);
-			}
-			else if (argv[op][1] == 'k') {
+					gpHelp(gp);
+					exit(0);
+				}
+				else if (*op == '0') {
 
-				subarg = &argv[op][2];
+					sprintf(gp->sbuf[0],	"load 0 0 stdin\n"
+								"mkpages -2\n");
 
-				if (*subarg == 0) {
+					readConfigIN(rd, gp->sbuf[0], 0);
+				}
+				else if (*op == 'k') {
 
 					op++;
 
-					if (argv[op] == NULL)
-						break;
+					if (*op == 0) {
 
-					subarg = argv[op];
-				}
+						if (argv[n + 1] == NULL)
+							break;
 
-				if (stoi(&rd->mk_config, &argi, subarg) != NULL) {
+						n++;
+						op = argv[n];
+					}
 
-					if (argi > 0) {
+					if (stoi(&rd->mk_config, &argi, op) != NULL) {
 
-						rd->chunk = argi;
+						if (argi > 0) {
+
+							rd->chunk = argi;
+						}
 					}
 				}
-			}
-			else if (argv[op][1] == 'u') {
-
-				subarg = &argv[op][2];
-
-				if (*subarg == 0) {
+				else if (argv[n][1] == 'u') {
 
 					op++;
 
-					if (argv[op] == NULL)
-						break;
+					if (*op == 0) {
 
-					subarg = argv[op];
-				}
+						if (argv[n + 1] == NULL)
+							break;
 
-				if (stoi(&rd->mk_config, &argi, subarg) != NULL) {
+						n++;
+						op = argv[n];
+					}
 
-					if (argi >= 0) {
+					if (stoi(&rd->mk_config, &argi, op) != NULL) {
 
-						rd->timeout = argi;
+						if (argi >= 0) {
+
+							rd->timeout = argi;
+						}
 					}
 				}
-			}
-			else if (argv[op][1] == 'l') {
-
-				subarg = &argv[op][2];
-
-				if (*subarg == 0) {
+				else if (argv[n][1] == 'l') {
 
 					op++;
 
-					if (argv[op] == NULL)
-						break;
+					if (*op == 0) {
 
-					subarg = argv[op];
-				}
+						if (argv[n + 1] == NULL)
+							break;
 
-				if (stoi(&rd->mk_config, &argi, subarg) != NULL) {
+						n++;
+						op = argv[n];
+					}
 
-					if (argi > 0) {
+					if (stoi(&rd->mk_config, &argi, op) != NULL) {
 
-						rd->length_N = argi;
+						if (argi > 0) {
+
+							rd->length_N = argi;
+						}
 					}
 				}
-			}
-			else if (argv[op][1] == 't') {
-
-				subarg = &argv[op][2];
-
-				if (*subarg == 0) {
+				else if (argv[n][1] == 't') {
 
 					op++;
 
-					if (argv[op] == NULL)
-						break;
+					if (*op == 0) {
 
-					subarg = argv[op];
-				}
+						if (argv[n + 1] == NULL)
+							break;
 
-				if (stoi(&rd->mk_config, &argi, subarg) != NULL) {
+						n++;
+						op = argv[n];
+					}
 
-					if (argi >= -1 && argi < READ_COLUMN_MAX) {
+					if (stoi(&rd->mk_config, &argi, op) != NULL) {
 
-						rd->timecol = argi;
+						if (argi >= -1 && argi < READ_COLUMN_MAX) {
+
+							rd->timecol = argi;
+						}
 					}
 				}
-			}
-			else {
-				ERROR("Unknown option \"%s\"\n", argv[op]);
+				else {
+					ERROR("Unknown option \"%c\"\n", *op);
+				}
+
+				op++;
 			}
 		}
 		else {
-			if (strlen(argv[op]) >= READ_FILE_PATH_MAX) {
+			if (strlen(argv[n]) >= READ_FILE_PATH_MAX) {
 
 				ERROR("Too long input file names\n");
 				break;
 			}
 #ifdef _WINDOWS
-			legacy_ACP_to_UTF8(gp->tempfile, argv[op], READ_FILE_PATH_MAX);
+			legacy_ACP_to_UTF8(gp->tempfile, argv[n], READ_FILE_PATH_MAX);
 #else /* _WINDOWS */
-			strcpy(gp->tempfile, argv[op]);
+			strcpy(gp->tempfile, argv[n]);
 #endif
 			gpUnifiedFileOpen(gp, gp->tempfile, 0);
 		}
 
-		op++;
+		n++;
 	}
 }
 

@@ -75,9 +75,17 @@ int AS5047_get_EP()
 	return priv_AS5047.EP;
 }
 
-LD_TASK void app_AS5047(void *pData)
+LD_TASK void app_SPI_AS5047(void *pData)
 {
-	volatile int		*knob = (volatile int *) pData;
+	volatile int		*lknob = (volatile int *) pData;
+
+	if (SPI_is_halted(HW_SPI_EXT_ID) != HAL_OK) {
+
+		printf("Unable to start application when SPI is busy" EOL);
+
+		*lknob = PM_DISABLED;
+		vTaskDelete(NULL);
+	}
 
 	SPI_startup(HW_SPI_EXT_ID, AS5047_FREQUENCY, SPI_LOW_FALLING | SPI_DMA | SPI_NSS_ON);
 
@@ -110,7 +118,7 @@ LD_TASK void app_AS5047(void *pData)
 			priv_AS5047.PA_errcnt = 0;
 		}
 	}
-	while (*knob != 0);
+	while (*lknob == PM_ENABLED);
 
 	ap.proc_get_EP = NULL;
 

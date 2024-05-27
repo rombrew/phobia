@@ -20,11 +20,11 @@ def mkdefs(hw):
             g.write('OBJ_HAL_STEP = 1\n')
 
         elif 'HW_HAVE_NETWORK_EPCAN' in s:
-            g.write('OBJ_EPCAN = 1\n')
+            g.write('OBJ_NET_EPCAN = 1\n')
             g.write('OBJ_HAL_CAN = 1\n')
 
         elif 'HW_HAVE_USB_CDC_ACM' in s:
-            g.write('OBJ_CHERRY = 1\n')
+            g.write('OBJ_LIB_CHERRY = 1\n')
             g.write('OBJ_HAL_USB = 1\n')
 
     f.close()
@@ -45,17 +45,19 @@ def shdefs(file, g):
 
     f = open(file, 'r')
 
-    if file.endswith('epcan.c'):
-        g.write('#ifdef HW_HAVE_NETWORK_EPCAN\n')
-
     for s in f:
-        if checkmacro(s, 'SH_DEF'):
+        if s[0] == '#':
+            m = re.search('(#\w+)\s+(\w+)', s)
+            if m != None:
+                ifdef = m.group(1) + ' ' + m.group(2) + '\n'
+                endif = '#endif /* ' + m.group(2) + ' */\n'
+        elif checkmacro(s, 'SH_DEF'):
             m = re.search('\(\w+\)', s).group(0)
             s = re.sub('[\s\(\)]', '', m)
-            g.write('SH_DEF(' + s + ')\n')
-
-    if file.endswith('epcan.c'):
-        g.write('#endif /* HW_HAVE_NETWORK_EPCAN */\n')
+            g.write(ifdef + 'SH_DEF(' + s + ')\n' + endif)
+        else:
+            ifdef = ''
+            endif = ''
 
     f.close()
 
@@ -81,7 +83,7 @@ def apbuild():
 
 def regdefs():
 
-    distance = 10
+    distance = 4
 
     f = open('regfile.c', 'r')
     g = open('regdefs.h', 'w')

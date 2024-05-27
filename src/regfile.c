@@ -12,8 +12,8 @@
 #include "shell.h"
 #include "tlm.h"
 
-#define REG_DEF(l, e, q, u, f, m, p, t)		{ #l #e "\0" u, f, m, \
-						(rval_t * const) &(l q), \
+#define REG_DEF(l, e, q, u, f, m, p, t)		{ #l #e "\0" u, f, m,		\
+						(rval_t * const) &(l q),	\
 						(void * const) p, (void * const) t}
 
 #define REGFILE_MAX				(sizeof(regfile) / sizeof(reg_t) - 1U)
@@ -1130,6 +1130,20 @@ reg_format_enum(const reg_t *reg)
 			break;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
+#ifdef HW_HAVE_ADC_FILTER
+		case ID_HAL_OPT_FILTER_CURRENT:
+		case ID_HAL_OPT_FILTER_VOLTAGE:
+
+			switch (val) {
+
+				PM_SFI_CASE(PM_DISABLED);
+				PM_SFI_CASE(PM_ENABLED);
+
+				default: break;
+			}
+			break;
+#endif /* HW_HAVE_ADC_FILTER */
+
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MODE:
 
@@ -1551,6 +1565,11 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.DRV.ocp_level,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, &reg_format_DRV_ocp_level),
 #endif /* HW_HAVE_DRV_ON_PCB */
 
+#ifdef HW_HAVE_ADC_FILTER
+	REG_DEF(hal.OPT_filter_current,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(hal.OPT_filter_voltage,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+#endif /* HW_HAVE_ADC_FILTER */
+
 	REG_DEF(hal.CNT_diag, 0, [0],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
 	REG_DEF(hal.CNT_diag, 0_pc, [0], "%",	"%1f",	REG_READ_ONLY, &reg_proc_CNT_diag_pc, NULL),
 	REG_DEF(hal.CNT_diag, 1, [1],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
@@ -1659,8 +1678,8 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	REG_DEF(ap.timeout_DISARM,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.timeout_IDLE,,,		"s",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_DISARM,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.timeout_IDLE,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 
 #ifdef HW_HAVE_NTC_ON_PCB
 	REG_DEF(ap.ntc_PCB.type,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1694,9 +1713,9 @@ const reg_t		regfile[] = {
 
 	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_BUTTON,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_AS5047,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_SPI_AS5047,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_SPI_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_SPI_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 
 	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_auto),
 	REG_DEF(ap.auto_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),

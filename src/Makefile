@@ -65,13 +65,13 @@ ifeq ($(HWMCU), STM32F722)
 LDFLAGS += -Wl,-T,hal/link_f722.ld
 endif
 
-OBJS	=  app/as5047.o \
-	   app/autostart.o \
+OBJS	=  app/autostart.o \
 	   app/button.o \
-	   app/hx711.o \
-	   app/mpu6050.o
+	   app/spi_as5047.o \
+	   app/spi_hx711.o \
+	   app/spi_mpu6050.o
 
-ifeq ($(OBJ_CHERRY), 1)
+ifeq ($(OBJ_LIB_CHERRY), 1)
 OBJS	+= cherry/usb_dc_dwc2.o \
 	   cherry/usbd_cdc.o \
 	   cherry/usbd_core.o
@@ -119,7 +119,7 @@ OBJS	+= phobia/libm.o \
 	   phobia/pm.o \
 	   phobia/pm_fsm.o
 
-ifeq ($(OBJ_EPCAN), 1)
+ifeq ($(OBJ_NET_EPCAN), 1)
 OBJS	+= epcan.o
 endif
 

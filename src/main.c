@@ -195,6 +195,14 @@ LD_TASK void task_TEMP(void *pData)
 		GPIO_set_mode_ANALOG(ap.ntc_EXT.gpio);
 	}
 
+#ifdef GPIO_FILTER_CURRENT
+	GPIO_set_mode_OUTPUT(GPIO_FILTER_CURRENT);
+#endif /* GPIO_FILTER_CURRENT */
+
+#ifdef GPIO_FILTER_VOLTAGE
+	GPIO_set_mode_OUTPUT(GPIO_FILTER_VOLTAGE);
+#endif /* GPIO_FILTER_VOLTAGE */
+
 	xWake = xTaskGetTickCount();
 
 	maximal_PCB = PM_MAX_F;
@@ -297,6 +305,26 @@ LD_TASK void task_TEMP(void *pData)
 			DRV_startup();
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
+
+#ifdef GPIO_FILTER_CURRENT
+		if (hal.OPT_filter_current == PM_ENABLED) {
+
+			GPIO_set_HIGH(GPIO_FILTER_CURRENT);
+		}
+		else {
+			GPIO_set_LOW(GPIO_FILTER_CURRENT);
+		}
+#endif /* GPIO_FILTER_CURRENT */
+
+#ifdef GPIO_FILTER_VOLTAGE
+		if (hal.OPT_filter_voltage == PM_ENABLED) {
+
+			GPIO_set_HIGH(GPIO_FILTER_VOLTAGE);
+		}
+		else {
+			GPIO_set_LOW(GPIO_FILTER_VOLTAGE);
+		}
+#endif /* GPIO_FILTER_VOLTAGE */
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -568,6 +596,11 @@ default_flash_load()
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
+#ifdef HW_HAVE_ADC_FILTER
+	hal.OPT_filter_current = PM_DISABLED;
+	hal.OPT_filter_voltage = PM_DISABLED;
+#endif /* HW_HAVE_ADC_FILTER */
+
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;
 	net.log_MODE = EPCAN_LOG_DISABLED;
@@ -835,7 +868,7 @@ LD_TASK void task_INIT(void *pData)
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	xTaskCreate(task_CMDSH, "CMDSH", 220, NULL, 1, NULL);
+	xTaskCreate(task_CMDSH, "CMDSH", 240, NULL, 1, NULL);
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
@@ -1111,8 +1144,8 @@ void app_control(const reg_t *reg, void (* pvTask) (void *), const char *pcName)
 
 		if (xHandle == NULL) {
 
-			xTaskCreate(pvTask, pcName, configMINIMAL_STACK_SIZE,
-					(void *) reg->link, 1, NULL);
+			xTaskCreate(pvTask, pcName, 140, (void * const) reg->link, 1, NULL);
+			vTaskDelay((TickType_t) 10);
 		}
 	}
 }

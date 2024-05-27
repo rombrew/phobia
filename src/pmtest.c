@@ -346,6 +346,24 @@ SH_DEF(hal_PWM_set_DC)
 	}
 }
 
+#ifdef HW_HAVE_FAN_CONTROL
+SH_DEF(hal_FAN_control)
+{
+	int			control;
+
+	if (stoi(&control, s) != NULL) {
+
+		if (control != 0) {
+
+			GPIO_set_HIGH(GPIO_FAN_EN);
+		}
+		else {
+			GPIO_set_LOW(GPIO_FAN_EN);
+		}
+	}
+}
+#endif /* HW_HAVE_FAN_CONTROL */
+
 SH_DEF(hal_DBGMCU_mode_stop)
 {
 	DBGMCU_mode_stop();

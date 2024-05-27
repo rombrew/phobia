@@ -12,20 +12,20 @@ done
 make -C ../phobia -f Makefile.mingw ARCH=i686   $MAKEOPTS $1	|| exit
 make -C ../phobia -f Makefile.mingw ARCH=x86_64 $MAKEOPTS $1	|| exit
 
-export BUNDLE="pmc-bundle-$(hg id -n)"
+export BUNDLE="/tmp/pmc-bundle-$(hg id -n)"
 
 if [ -n "$1" ] && [ "$1" = "clean" ]; then
 
-	rm -r -f /tmp/$BUNDLE
-	rm -f /tmp/$BUNDLE.zip
+	rm -r -f $BUNDLE
+	rm -f $BUNDLE.zip
 	exit
 fi
 
-install -D -t /tmp/$BUNDLE/ ../README.md 			|| exit
-install -D -t /tmp/$BUNDLE/doc ../doc/*.md 			|| exit
+install -D -t $BUNDLE/ ../README.md 				|| exit
+install -D -t $BUNDLE/doc ../doc/*.md 				|| exit
 
-install -D -t /tmp/$BUNDLE/firmware /tmp/pmc-*/pmc-*.bin 	|| exit
-install -D -t /tmp/$BUNDLE/phobia /tmp/phobia/*/phobia-*.exe 	|| exit
+install -D -t $BUNDLE/firmware /tmp/pmc-*/pmc-*.bin 		|| exit
+install -D -t $BUNDLE/phobia /tmp/phobia/*/phobia-*.exe 	|| exit
 
-zip -rD -9 /tmp/$BUNDLE.zip /tmp/$BUNDLE
+zip -rD -9 $BUNDLE.zip $BUNDLE
 

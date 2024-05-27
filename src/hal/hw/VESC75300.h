@@ -10,6 +10,7 @@
 #define HW_HAVE_NTC_MACHINE
 #define HW_HAVE_USB_CDC_ACM
 #define HW_HAVE_NETWORK_EPCAN
+#define HW_HAVE_ADC_FILTER
 
 #define HW_CLOCK_CRYSTAL_HZ		8000000U
 
@@ -32,7 +33,7 @@
 #define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
-#define HW_ADC_KNOB_R2			1000.f
+#define HW_ADC_KNOB_R2			10000.f
 
 #define HW_NTC_PCB_TYPE			NTC_VCC
 #define HW_NTC_PCB_BALANCE		10000.f
@@ -66,6 +67,10 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
+#define GPIO_FAN_EN			XGPIO_DEF2('C', 12)	/* have no gate resistor */
 #define GPIO_LED_ALERT			XGPIO_DEF2('B', 7)
 #define GPIO_LED_MODE			XGPIO_DEF2('B', 5)
+
+#define GPIO_FILTER_CURRENT		XGPIO_DEF2('D', 2)
+#define GPIO_FILTER_VOLTAGE		XGPIO_DEF2('C', 9)
 

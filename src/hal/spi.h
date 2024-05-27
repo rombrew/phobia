@@ -54,6 +54,8 @@ enum {
 	BUS_ID_SPI3
 };
 
+int SPI_is_halted(int bus);
+
 void SPI_startup(int bus, int freq_hz, int mode);
 void SPI_halt(int bus);
 
