@@ -23,11 +23,11 @@ jobs:
         release: latest
 
     - name: Build REV5A firmware
-      run: make -C src HWREV=REV5A
+      run: make -C src HWREV=PHOBIA_rev5
 
     - name: Build PESC1 firmware
-      run: make -C src HWREV=PESC1
+      run: make -C src HWREV=PESC_r1
 
     - name: Build FSESC67 firmware
-      run: make -C src HWREV=FSESC67
+      run: make -C src HWREV=MKESC_60100_v2
 
