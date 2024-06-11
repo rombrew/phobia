@@ -233,18 +233,17 @@ void xputs(io_ops_t *io, const char *s)
 	while (*s) io->putc(*s++);
 }
 
-void xputs_aligned(io_ops_t *io, const char *s, int left)
+void xputs_aligned(io_ops_t *io, const char *s, int len)
 {
 	while (*s) {
 
 		io->putc(*s++);
-		left--;
+		len--;
 	}
 
-	while (left > 0) {
+	for (; len > 0; --len) {
 
 		io->putc(' ');
-		left--;
 	}
 }
 
@@ -293,7 +292,7 @@ fmt_hex_long(io_ops_t *io, uint32_t x)
 }
 
 static void
-fmt_int_aligned(io_ops_t *io, int x, int left)
+fmt_int_aligned(io_ops_t *io, int x, int len)
 {
 	char		s[16], *p;
 	int		n;
@@ -303,7 +302,7 @@ fmt_int_aligned(io_ops_t *io, int x, int left)
 		io->putc('-');
 
 		x = - x;
-		left--;
+		len--;
 	}
 
 	p = s + 16;
@@ -319,13 +318,12 @@ fmt_int_aligned(io_ops_t *io, int x, int left)
 	while (*p) {
 
 		io->putc(*p++);
-		left--;
+		len--;
 	}
 
-	while (left > 0) {
+	for (; len > 0; --len) {
 
 		io->putc(' ');
-		left--;
 	}
 }
 
@@ -376,30 +374,28 @@ fmt_fp_fixed(io_ops_t *io, float x, int n)
 	}
 
 	i = (int) x;
-	x -= i;
+	x -= (float) i;
 
 	io->putc('0' + i);
 
-	while (v > 0) {
+	for (; v > 0; --v) {
 
 		x *= 10.f;
-		v--;
 
 		i = (int) x;
-		x -= i;
+		x -= (float) i;
 
 		io->putc('0' + i);
 	}
 
 	io->putc('.');
 
-	while (n > 0) {
+	for (; n > 0; --n) {
 
 		x *= 10.f;
-		n--;
 
 		i = (int) x;
-		x -= i;
+		x -= (float) i;
 
 		io->putc('0' + i);
 	}
@@ -464,18 +460,17 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 	}
 
 	i = (int) x;
-	x -= i;
+	x -= (float) i;
 
 	io->putc('0' + i);
 	io->putc('.');
 
-	while (n > 0) {
+	for (; n > 0; --n) {
 
 		x *= 10.f;
-		n--;
 
 		i = (int) x;
-		x -= i;
+		x -= (float) i;
 
 		io->putc('0' + i);
 	}
@@ -551,31 +546,28 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 	}
 
 	i = (int) x;
-	x -= i;
+	x -= (float) i;
 
 	io->putc('0' + i);
 
-	while (v % 3 != 0) {
+	for (; v % 3 != 0; --v, --n) {
 
 		x *= 10.f;
-		v--;
-		n--;
 
 		i = (int) x;
-		x -= i;
+		x -= (float) i;
 
 		io->putc('0' + i);
 	}
 
 	io->putc('.');
 
-	while (n > 0) {
+	for (; n > 0; --n) {
 
 		x *= 10.f;
-		n--;
 
 		i = (int) x;
-		x -= i;
+		x -= (float) i;
 
 		io->putc('0' + i);
 	}

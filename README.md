@@ -22,11 +22,11 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 - Robust ORTEGA observer with gain scheduling against speed.
 - Accurate KALMAN observer having convergence at HF injection.
 - Flux weakening and MTPA control (**EXPERIMENTAL**).
-- Three and two phase machine support.
+- Three and two phases machine connection.
 - Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
 - Various controller hardware are supported (including VESC clones).
-- Regular Command Line Interface (CLI) with autocompletion and history.
-- Graphical front-end software based on
+- Command Line Interface (CLI) with autocompletion and history.
+- Graphical User Interface (PGUI) based on
   [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) and
   [SDL2](https://www.libsdl.org/).
 - Non time-critical tasks are managed by
@@ -36,7 +36,8 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 - Least Squares estimate library
   [LSE](https://github.com/rombrew/lse).
 
-- Phase current sampling schemes includes two or three sensors configuration
+
+- Phase current sampling scheme includes two or three sensors configuration
   with inline or low-side placement.
 - Self-adjustment of all onboard measurements (current and voltage) along
   symmetrical channels.
@@ -86,14 +87,14 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- DC link current consumption and regeneration.
 	- DC link overvoltage and undervoltage.
 	- Maximal speed (forward and reverse) and acceleration.
-	- Absolute location maximal and minimal limit.
+	- Absolute location limits in servo operation.
 
 - Input control interfaces:
 	- Analog input knob with brake signal.
 	- RC servo pulse width modulation.
 	- CAN bus flexible configurable data transfers.
 	- STEP/DIR (or CW/CCW) interface (**EXPERIMENTAL**).
-	- Manual control through CLI or graphical front-end.
+	- Manual control through CLI or PGUI.
 	- Custom embedded application can implement any control strategy.
 
 - Advanced CAN networking:
@@ -111,20 +112,20 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Battery energy (Wh) and charge (Ah) consumed.
 	- Fuel gauge percentage.
 
-## Hardware specification (`REV5A`, `REV5B`)
+## Hardware specification (`REV5`)
 
 - Dimension: 82mm x 55mm x 35mm.
 - Weight: 40g (PCB) or about 400g (with wires and heatsink).
 - Wires: 10 AWG.
 - Connector: XT90-S and bullet 5.5mm.
-- Battery voltage from 5v to 50v.
+- Battery voltage from 5v to 52v.
 - Phase current up to 120A (with IPT007N06N, 60v, 0.75 mOhm).
 - Light capacitor bank (4 x 4.7uF + 2 x 330uF).
 - PWM frequency from 20 to 60 kHz.
 - STM32F405RG microcontroller (Cortex-M4F at 168 MHz).
 
 - Onboard sensors:
-	- Two current shunts (0.5 mOhm) with amplifiers (AD8418) give a
+	- Two current shunts 0.5 mOhm with amplifiers AD8418 give a
 	  measuring range of 165A.
 	- Battery voltage from 0 to 60v.
 	- Three terminal voltages from 0 to 60v.
@@ -153,8 +154,8 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 ## TODO
 
 - Make a detailed documentation.
-- Improve GUI front-end software.
+- Improve PGUI software.
 - Add pulse output signal.
-- Make a drawing of the heatsink case for `REV5A`.
+- Make a drawing of the heatsink case for `REV5`.
 - Design the new hardware for 120v battery voltage.
 

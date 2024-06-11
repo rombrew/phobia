@@ -196,14 +196,15 @@ void ts_probe_spinup()
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
-		if (pm.flux_LINKAGE != PM_ENABLED) {
+		if (		pm.flux_LINKAGE != PM_ENABLED
+				&& pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
 			if (ts_wait_spinup() != PM_OK)
 				break;
 
-			printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
+			sim_runtime(400 / (double) TS_TICK_RATE);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -219,23 +220,21 @@ void ts_probe_spinup()
 		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
+		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
+
 		printf("zone_noise = %.2f (rad/s) %.3f (V)\n",
 				pm.zone_noise,
-				pm.zone_noise * pm.const_lambda);
+				pm.zone_noise * pm.const_lambda / pm.k_EMAX);
 
 		printf("zone_threshold = %.2f (rad/s) %.3f (V)\n",
 				pm.zone_threshold,
-				pm.zone_threshold * pm.const_lambda);
-
-		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
-		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
+				pm.zone_threshold * pm.const_lambda / pm.k_EMAX);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
 		if (ts_wait_spinup() != PM_OK)
 			break;
-
-		printf("zone_lpf_wS = %.2f (rad/s)\n", pm.zone_lpf_wS);
 
 		if (pm.flux_ZONE != PM_ZONE_HIGH) {
 
@@ -244,6 +243,8 @@ void ts_probe_spinup()
 		}
 
 		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
+
+			sim_runtime(400 / (double) TS_TICK_RATE);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -257,20 +258,27 @@ void ts_probe_spinup()
 			TS_assert_relative(pm.const_lambda, m.lambda);
 		}
 
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
+
+		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 
 		printf("zone_noise = %.2f (rad/s) %.3f (V)\n",
 				pm.zone_noise,
-				pm.zone_noise * pm.const_lambda);
+				pm.zone_noise * pm.const_lambda / pm.k_EMAX);
 
 		printf("zone_threshold = %.2f (rad/s) %.3f (V)\n",
 				pm.zone_threshold,
-				pm.zone_threshold * pm.const_lambda);
+				pm.zone_threshold * pm.const_lambda / pm.k_EMAX);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -297,11 +305,9 @@ void ts_probe_spinup()
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
-		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
-		printf("forced_maximal = %.2f (rad/s)\n", pm.forced_maximal);
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
 		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
 		printf("s_gain_P = %.2E\n", pm.s_gain_P);

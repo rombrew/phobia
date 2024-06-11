@@ -15,28 +15,37 @@
  * [B] + [A]	- START with reverse direction
  * */
 
+#define BUTTON_DEBOUNCE		4
+
 LD_TASK void app_BUTTON(void *pData)
 {
 	volatile int		*lknob = (volatile int *) pData;
 
 	TickType_t		xWake;
 
-#define BUTTON_DEBOUNCE		(4)
-#define BUTTON_TABLE_MAX	(sizeof(rpm_table) / sizeof(rpm_table[0]) - 1)
+	const float		*rpm_table = ap.ppm_control;
 
-	const float		rpm_table[] = {
-
-		1000.f, 2000.f, 3000.f, 4000.f, 5000.f
-	};
-
-	const int		gpio_A = GPIO_HALL_A;
-	const int		gpio_B = GPIO_HALL_B;
+#ifdef HW_HAVE_STEP_DIR_KNOB
+	const int		gpio_A = GPIO_STEP;
+	const int		gpio_B = GPIO_DIR;
+#else /* HW_HAVE_STEP_DIR_KNOB */
+	const int		gpio_A = GPIO_HALL_B;
+	const int		gpio_B = GPIO_HALL_C;
+#endif
 
 	int			pushed_A, value_A, count_A, event_A;
 	int			pushed_B, value_B, count_B, event_B;
 
 	int			reverse, rpm_knob;
 	float			total_rpm;
+
+	if (hal.PPM_mode == PPM_PULSE_WIDTH) {
+
+		printf("Unable to start application when PPM function is enabled" EOL);
+
+		*lknob = PM_DISABLED;
+		vTaskDelete(NULL);
+	}
 
 	GPIO_set_mode_INPUT(gpio_A);
 	GPIO_set_mode_INPUT(gpio_B);
@@ -88,8 +97,11 @@ LD_TASK void app_BUTTON(void *pData)
 
 		if (event_A != 0) {
 
-			if (pm.lu_MODE == PM_LU_DISABLED) {
+			if (pm.lu_MODE != PM_LU_DISABLED) {
 
+				rpm_knob = (rpm_knob < 2) ? rpm_knob + 1 : 0;
+			}
+			else {
 				reverse = pushed_B;
 				rpm_knob = 0;
 
@@ -102,8 +114,6 @@ LD_TASK void app_BUTTON(void *pData)
 
 			if (pm.lu_MODE != PM_LU_DISABLED) {
 
-				rpm_knob = (rpm_knob < BUTTON_TABLE_MAX) ? rpm_knob + 1 : 0;
-
 				if (reverse != 0) {
 
 					total_rpm = - rpm_table[rpm_knob];
@@ -112,7 +122,7 @@ LD_TASK void app_BUTTON(void *pData)
 					total_rpm = rpm_table[rpm_knob];
 				}
 
-				reg_SET_F(ID_PM_S_SETPOINT_SPEED_RPM, total_rpm);
+				reg_SET_F(ap.ppm_reg_ID, total_rpm);
 			}
 
 			event_A = 0;

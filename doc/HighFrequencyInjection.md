@@ -37,9 +37,9 @@ degeneracy at frequencies close to the PWM frequency.
 	(pmc) reg pm.hfi_freq <Hz>
 	(pmc) reg pm.hfi_sine <A>
 
-If the machine loses its magnetic anisotropy at high current you can limit that
-current on HFI operation mode. This gives reliable operation at the cost of
-reduced torque production.
+If the machine loses its magnetic anisotropy at high current you can limit
+machine current in case of HFI operation mode. This gives reliable operation at
+the cost of reduced torque production.
 
 	(pmc) reg pm.i_maximal_on_HFI <A>
 

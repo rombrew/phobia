@@ -73,12 +73,13 @@ SH_DEF(pm_self_test)
 			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SELF_RMSI);
-			reg_OUTP(ID_PM_FSM_ERRNO);
 
 			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 				reg_OUTP(ID_PM_SELF_RMSU);
 			}
+
+			reg_OUTP(ID_PM_FSM_ERRNO);
 		}
 	}
 	while (0);
@@ -147,7 +148,7 @@ SH_DEF(pm_self_adjust)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_self_TVM)
+SH_DEF(pm_analysis_TVM)
 {
 	TickType_t		xWake, xTim0;
 	int			xDC, xMIN, xMAX;
@@ -223,7 +224,7 @@ SH_DEF(pm_self_TVM)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_self_impedance)
+SH_DEF(pm_analysis_impedance)
 {
 	float		usual_freq, walk_freq, stop_freq;
 
@@ -246,9 +247,17 @@ SH_DEF(pm_self_impedance)
 
 		pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 		pm_wait_IDLE();
+
+		reg_OUTP(ID_PM_SELF_IST);
 	}
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	if (pm.fsm_errno != PM_OK) {
+
+		printf("Unable to continue if there are errors" EOL);
+		return;
+	}
 
 	/*
 	tlm.reg_ID[0] = ID_PM_PROBE_FREQ_SINE;

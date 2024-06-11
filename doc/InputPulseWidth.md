@@ -16,11 +16,11 @@ The pulse signal is fed to PPM pin that must be 5v-tolerant.
 ```
 
 **WARNING**: Refer to your hardware manual or look into `src/hal/hw/...`
-directory to find out actual pin mapping on your port.
+directory to find out actual pin mapping and voltage levels of your port.
 
 ## Configuration
 
-First you need to enable the appropriate mode of the PPM interface.
+First you need to enable the appropriate mode of the PPM interface in HAL.
 
 	(pmc) reg hal.PPM_mode 1
 
@@ -87,7 +87,6 @@ with 1282 Hz minimal pulse frequency.
 # Disarm timeout
 
 To ensure a safe startup it is required to hold low pulse signal for
-`ap.disarm_timeout` seconds until disarmed state was reset.
+`ap.timeout_DISARM` milliseconds until disarmed state was reset.
 
-	(pmc) reg ap.disarm_timeout <s>
-
+	(pmc) reg ap.timeout_DISARM <ms>

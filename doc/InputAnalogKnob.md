@@ -22,7 +22,7 @@ to 5v) is fed to `BRK` pin. Unconnected inputs are pulled to `GND` inside PMC.
 ```
 
 **WARNING**: Refer to your hardware manual or look into `src/hal/hw/...`
-directory to find out actual pin mapping on your port.
+directory to find out actual pin mapping and voltage levels of your port.
 
 ## Configuration
 
@@ -65,17 +65,6 @@ to this control range.
 	(pmc) reg ap.knob_control_ANG1 <x>
 	(pmc) reg ap.knob_control_ANG2 <x>
 
-Specify control variable value in case of full brake. As the `BRK` signal rises
-the control variable will be interpolated to this value.
-
-	(pmc) reg ap.knob_control_BRK <x>
-
-If you need you can change input lost range. If signal goes beyond this range
-it is considered lost and halt happens with `PM_ERROR_SENSOR_HALL_FAULT` reason.
-
-	(pmc) reg ap.knob_range_LOS0 <V>
-	(pmc) reg ap.knob_range_LOS1 <V>
-
 Enable machine startup control. Each time when `ANG` signal is in range the
 startup is requested.
 
@@ -85,6 +74,17 @@ Enable brake signal usage if you need it.
 
 	(pmc) reg ap.knob_BRAKE 1
 
+Specify control variable value in case of full brake. As the `BRK` signal rises
+the control variable will be interpolated to this value.
+
+	(pmc) reg ap.knob_control_BRK <x>
+
+If you need you can change input lost range. If signal goes beyond this range
+it is considered lost and halt happens with `PM_ERROR_KNOB_CONTROL_FAULT` reason.
+
+	(pmc) reg ap.knob_range_LOS0 <V>
+	(pmc) reg ap.knob_range_LOS1 <V>
+
 Now you are ready to enable the analog knob interface.
 
 	(pmc) reg ap.knob_ENABLED 1
@@ -93,14 +93,14 @@ Now you are ready to enable the analog knob interface.
 
 To stop the control we check if machine is run or setpoint is high. If setpoint
 is out of input range and machine does not make full turns for
-`ap.timeout_IDLE` seconds the shutdown is requested.
+`ap.timeout_IDLE` milliseconds the shutdown is requested.
 
-	(pmc) reg ap.timeout_IDLE <s>
+	(pmc) reg ap.timeout_IDLE <ms>
 
 # Disarm timeout
 
 To ensure a safe startup it is required to hold low `ANG` signal for
-`ap.timeout_DISARM` seconds until disarmed state was reset.
+`ap.timeout_DISARM` milliseconds until disarmed state was reset.
 
-	(pmc) reg ap.timeout_DISARM <s>
+	(pmc) reg ap.timeout_DISARM <ms>
 

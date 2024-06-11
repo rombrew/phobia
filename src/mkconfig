@@ -38,7 +38,7 @@ def mkbuild():
 
 def checkmacro(s, m):
 
-    m = re.search('^\s*' + m + '\(.+\)', s)
+    m = re.search('^\\s*' + m + '\\(.+\\)', s)
     return True if m != None else False
 
 def shdefs(file, g):
@@ -47,13 +47,13 @@ def shdefs(file, g):
 
     for s in f:
         if s[0] == '#':
-            m = re.search('(#\w+)\s+(\w+)', s)
+            m = re.search('(#\\w+)\\s+(\\w+)', s)
             if m != None:
                 ifdef = m.group(1) + ' ' + m.group(2) + '\n'
                 endif = '#endif /* ' + m.group(2) + ' */\n'
         elif checkmacro(s, 'SH_DEF'):
-            m = re.search('\(\w+\)', s).group(0)
-            s = re.sub('[\s\(\)]', '', m)
+            m = re.search('\\(\\w+\\)', s).group(0)
+            s = re.sub('[\\s\\(\\)]', '', m)
             g.write(ifdef + 'SH_DEF(' + s + ')\n' + endif)
         else:
             ifdef = ''
@@ -93,8 +93,8 @@ def regdefs():
             if distance < 4:
                 g.write(s)
         elif checkmacro(s, 'REG_DEF'):
-            s = re.search('\([\w\.]+?,\s*[\w\.]*?,', s).group(0)
-            s = re.sub('[\(\,\s]', '', s).replace('.', '_')
+            s = re.search('\\([\\w\\.]+?,\\s*[\\w\\.]*?,', s).group(0)
+            s = re.sub('[\\(\\,\\s]', '', s).replace('.', '_')
             g.write('ID_' + s.upper() + ',\n')
             distance = 0
 

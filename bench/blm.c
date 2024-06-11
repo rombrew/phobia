@@ -68,13 +68,13 @@ void blm_enable(blm_t *m)
 	m->Ld = 11.E-6;
 	m->Lq = 16.E-6;
 
-	/* Flux linkage constant (Weber).
-         * */
-        m->lambda = blm_Kv_lambda(m, 270.);
-
 	/* Number of the rotor pole pairs.
 	 * */
 	m->Zp = 14;
+
+	/* Flux linkage constant (Weber).
+         * */
+        m->lambda = blm_Kv_lambda(m, 270.);
 
 	/* Ambient temperature (Celsius).
 	 * */

@@ -161,7 +161,7 @@ tlm_plot_grab()
 	fmt_GP(pm.base_TIM, 0);
 	fmt_GP(pm.hold_TIM, 0);
 
-	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "°");
+	sym_GP(atan2(pm.forced_F[1], pm.forced_F[0]) * kDEG, "pm.forced_F", "deg");
 	fmk_GP(pm.forced_wS, kRPM, "rpm");
 
 	fmt_GP(pm.forced_track_D, "A");
@@ -174,7 +174,7 @@ tlm_plot_grab()
 	fmt_GP(pm.flux_X[0], "Wb");
 	fmt_GP(pm.flux_X[1], "Wb");
 	fmt_GP(pm.flux_lambda, "Wb");
-	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "°");
+	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "deg");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
 	fmt_GP(pm.kalman_bias_Q, "V");
@@ -185,12 +185,12 @@ tlm_plot_grab()
 	fmt_GP(pm.hfi_wave[0], 0);
 	fmt_GP(pm.hfi_wave[1], 0);
 
-	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "°");
+	sym_GP(atan2(pm.hall_F[1], pm.hall_F[0]) * kDEG, "pm.hall_F", "deg");
 	fmk_GP(pm.hall_wS, kRPM, "rpm");
 
 	fmt_GP(pm.eabi_ADJUST, 0);
 
-	sym_GP(atan2(pm.eabi_F[1], pm.eabi_F[0]) * kDEG, "pm.eabi_F", "°");
+	sym_GP(atan2(pm.eabi_F[1], pm.eabi_F[0]) * kDEG, "pm.eabi_F", "deg");
 	fmk_GP(pm.eabi_wS, kRPM, "rpm");
 
 	fmt_GP(pm.watt_DC_MAX, 0);
@@ -408,14 +408,16 @@ void bench_script()
 	ts_script_base();
 	blm_restart(&m);
 
+	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();
 
 	pm.s_setpoint_speed = 4000.f;
 	sim_runtime(1.0);
 
-	m.Udc = 30.;
-	m.Rdc = 50.;
+	//m.Udc = 30.;
+	//m.Rdc = 50.;
 
 	pm.watt_wP_reverse = 1000.f;
 	pm.watt_uDC_maximal = 48.f;
@@ -427,7 +429,7 @@ void bench_script()
 	//pm.s_track = 0.f;
 	sim_runtime(0.3);
 
-	m.Rdc = 1.;
+	//m.Rdc = 1.;
 	sim_runtime(0.5);
 
 	tlm_PWM_grab();

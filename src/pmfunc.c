@@ -206,14 +206,15 @@ SH_DEF(pm_probe_spinup)
 
 		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
 
-		if (pm.flux_LINKAGE != PM_ENABLED) {
+		if (		pm.flux_LINKAGE != PM_ENABLED
+				&& pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 			if (pm_wait_spinup() != PM_OK)
 				break;
 
-			reg_OUTP(ID_PM_ZONE_LPF_WS);
+			vTaskDelay((TickType_t) 400);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -227,17 +228,15 @@ SH_DEF(pm_probe_spinup)
 		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
 		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
-		reg_OUTP(ID_PM_ZONE_NOISE);
-		reg_OUTP(ID_PM_ZONE_THRESHOLD);
-		reg_OUTP(ID_PM_PROBE_SPEED_HOLD);
-		reg_OUTP(ID_PM_FORCED_MAXIMAL);
+		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
+		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
+		reg_OUTP(ID_PM_ZONE_NOISE_VOLT);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_VOLT);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		if (pm_wait_spinup() != PM_OK)
 			break;
-
-		reg_OUTP(ID_PM_ZONE_LPF_WS);
 
 		if (pm.flux_ZONE != PM_ZONE_HIGH) {
 
@@ -247,6 +246,8 @@ SH_DEF(pm_probe_spinup)
 
 		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
+			vTaskDelay((TickType_t) 400);
+
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
 			if (pm_wait_IDLE() != PM_OK)
@@ -255,15 +256,21 @@ SH_DEF(pm_probe_spinup)
 			reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 		}
 
+		vTaskDelay((TickType_t) 400);
+
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
+		pm_auto(&pm, PM_AUTO_PROBE_SPEED_HOLD);
+		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 
-		reg_OUTP(ID_PM_ZONE_NOISE);
-		reg_OUTP(ID_PM_ZONE_THRESHOLD);
+		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
+		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
+		reg_OUTP(ID_PM_ZONE_NOISE_VOLT);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_VOLT);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -287,12 +294,10 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		pm_auto(&pm, PM_AUTO_FORCED_MAXIMAL);
 		pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
-		reg_OUTP(ID_PM_FORCED_MAXIMAL);
-		reg_OUTP(ID_PM_FORCED_ACCEL);
+		reg_OUTP(ID_PM_FORCED_ACCEL_RPM);
 		reg_OUTP(ID_PM_LU_GAIN_MQ_LP);
 		reg_OUTP(ID_PM_S_GAIN_P);
 		reg_OUTP(ID_PM_S_GAIN_D);
@@ -336,7 +341,6 @@ SH_DEF(pm_probe_detached)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		reg_OUTP(ID_PM_ZONE_LPF_WS);
 		reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;

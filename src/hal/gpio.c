@@ -18,6 +18,11 @@ void GPIO_set_mode_OUTPUT(int xGPIO)
 	XGPIO_DECODE(xGPIO);
 
 	MODIFY_REG(GPIO->MODER, 3U << (N * 2), 1U << (N * 2));
+
+	if (xGPIO & XGPIO_OPEN_DRAIN) {
+
+		GPIO->OTYPER |= (1U << N);
+	}
 }
 
 void GPIO_set_mode_ANALOG(int xGPIO)
@@ -97,14 +102,26 @@ void GPIO_set_HIGH(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 
-	GPIO->BSRR = (1U << N);
+	if ((xGPIO & XGPIO_OPEN_DRAIN) == 0U) {
+
+		GPIO->BSRR = (1U << N);
+	}
+	else {
+		GPIO->BSRR = (1U << (N + 16));
+	}
 }
 
 void GPIO_set_LOW(int xGPIO)
 {
 	XGPIO_DECODE(xGPIO);
 
-	GPIO->BSRR = (1U << (N + 16));
+	if ((xGPIO & XGPIO_OPEN_DRAIN) == 0U) {
+
+		GPIO->BSRR = (1U << (N + 16));
+	}
+	else {
+		GPIO->BSRR = (1U << N);
+	}
 }
 
 int GPIO_get_STATE(int xGPIO)

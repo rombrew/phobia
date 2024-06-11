@@ -89,35 +89,6 @@ ADC_get_knob_BRK()
 #endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-#ifdef HW_HAVE_FAN_CONTROL
-static void
-GPIO_set_mode_FAN()
-{
-	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
-
-#ifdef HW_FAN_OPEN_DRAIN
-	GPIO_set_mode_OPEN_DRAIN(GPIO_FAN_EN);
-#else /* HW_HW_FAN_OPEN_DRAIN */
-	GPIO_set_mode_PUSH_PULL(GPIO_FAN_EN);
-#endif
-}
-
-static void
-GPIO_set_state_FAN(int knob)
-{
-#ifdef HW_FAN_OPEN_DRAIN
-	if (knob == PM_ENABLED) {
-#else /* HW_HW_FAN_OPEN_DRAIN */
-	if (knob != PM_ENABLED) {
-#endif
-		GPIO_set_LOW(GPIO_FAN_EN);
-	}
-	else {
-		GPIO_set_HIGH(GPIO_FAN_EN);
-	}
-}
-#endif /* HW_HAVE_FAN_CONTROL */
-
 static int
 timeout_DISARM()
 {
@@ -267,11 +238,11 @@ LD_TASK void task_TEMP(void *pData)
 		 * */
 		if (ap.temp_PCB > ap.otp_PCB_fan) {
 
-			GPIO_set_state_FAN(PM_ENABLED);
+			GPIO_set_HIGH(GPIO_FAN_EN);
 		}
 		else if (ap.temp_PCB < ap.otp_PCB_fan - ap.otp_recovery) {
 
-			GPIO_set_state_FAN(PM_DISABLED);
+			GPIO_set_LOW(GPIO_FAN_EN);
 		}
 #endif /* HW_HAVE_FAN_CONTROL */
 
@@ -809,8 +780,8 @@ LD_TASK void task_INIT(void *pData)
 #endif /* GPIO_GATE_EN */
 
 #ifdef HW_HAVE_FAN_CONTROL
-	GPIO_set_mode_FAN();
-	GPIO_set_state_FAN(PM_DISABLED);
+	GPIO_set_mode_OUTPUT(GPIO_FAN_EN);
+	GPIO_set_LOW(GPIO_FAN_EN);
 #endif /* HW_HAVE_FAN_CONTROL */
 
 	hal_lock_irq();
@@ -1178,9 +1149,9 @@ SH_DEF(ap_version)
 	printf("CRC32 %8x (%s)" EOL, ld_crc32, (rc != 0) ? "OK" : "does NOT match");
 }
 
-SH_DEF(ap_clock)
+SH_DEF(ap_time)
 {
-	printf("Clock %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
+	printf("TCN %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
 SH_DEF(ap_dbg_task)

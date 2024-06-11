@@ -155,9 +155,9 @@ enum {
 	PM_AUTO_SCALE_DEFAULT,
 	PM_AUTO_MAXIMAL_CURRENT,
 	PM_AUTO_PROBE_SPEED_HOLD,
-	PM_AUTO_ZONE_THRESHOLD,
 	PM_AUTO_FORCED_MAXIMAL,
 	PM_AUTO_FORCED_ACCEL,
+	PM_AUTO_ZONE_THRESHOLD,
 	PM_AUTO_LOOP_CURRENT,
 	PM_AUTO_LOOP_SPEED
 };
@@ -307,7 +307,7 @@ typedef struct {
 	int		fb_EP;
 
 	float		probe_current_hold;
-	float		probe_current_weak;
+	float		probe_weak_level;
 	float		probe_hold_angle;
 	float		probe_current_sine;
 	float		probe_current_bias;

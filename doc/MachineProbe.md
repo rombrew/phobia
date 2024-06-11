@@ -18,27 +18,19 @@ There are a lot of parameters that can affect the machine identification. But
 we believe that they will need a change only in a complicated case. Most likely
 you will need to decrease probing currents for a small machine.
 
-- `pm.probe_current_hold`, `pm.probe_current_weak` - Two current setpoints that
-  is used to estimate stator resistance. Please note they must be significantly
-  different to get accurate well-conditioned estimate.
-- `pm.probe_freq_sine`, `pm.probe_current_sine` - Sine wave frequency and
-  amplitude that is used to estimate stator winding impedance.
+- `pm.probe_current_hold` - Machine probing current that is used to estimate
+  stator resistance. Note it must be large enough to get perceptible voltage drop.
+- `pm.probe_current_sine` - Sine wave probing signal amplitude that is used to
+  estimate stator winding impedance.
 - `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
   flux linkage and noise threshold will be estimated.
 - `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
   allows us to assume maximal machine current.
-
-Also pay attention to the forced control parameters which are used to achieve
-initial spinup.
-
-	(pmc) reg pm.forced
-
 - `pm.forced_hold_D` - Forced current setpoint which should be enough to hold
   rotor in aligned position and force it turn.
-- `pm.forced_accel` - Allowed acceleration of the forced control.
 
-If you use power supply that not tolerate reverse current then consider the
-wattage limit settings.
+If you use power supply that not tolerate reverse current then pay attention to
+the wattage limit settings.
 
     (pmc) reg pm.watt
 
@@ -59,7 +51,10 @@ measurement channels between phases.
 	(pmc) pm_self_adjust
 
 This is enough to do it once and store the values in the flash. But we recommend
-to do it again if you radically change DC link voltage.
+to do it again if you change DC link voltage rating.
+
+Also look into [Integrity Self Test](IntegritySelfTest.md) page to get more
+info about self-adjustment functions.
 
 ## Number of the rotor pole pairs
 
@@ -78,10 +73,10 @@ estimate `Zp` and set it later.
 
 We measure the resistance `pm.const_Rs` by difference of voltage drop on two
 values of holding current. For more accuracy you need to increase the probing
-currents or reduce DC link voltage.
+current or reduce DC link voltage.
 
-Then we use a high frequency sinusoidal signal to measure the full impedance
-and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
+Then we inject a high frequency sinusoidal signal to measure the full impedance
+tensor and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
 
 	(pmc) pm_probe_impedance
 
@@ -109,7 +104,7 @@ If the procedure fails to spinup the machine try to adjust forced control
 parameters.
 
 To get a more accurate flux linkage estimate you can run the machine at high
-speed and request lambda probing manually. Do not load the machine.
+speed and request lambda probing manually. Do not load the machine at this.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>

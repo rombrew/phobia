@@ -60,8 +60,6 @@
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
 #define GPIO_GATE_EN			XGPIO_DEF2('B', 2)
-#define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
+#define GPIO_FAN_EN			XGPIO_DEF2('B', 12) | XGPIO_OPEN_DRAIN
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
-
-#define HW_FAN_OPEN_DRAIN		/* IRLML6401 */
 

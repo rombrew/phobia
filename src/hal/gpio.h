@@ -12,6 +12,8 @@
 #define XGPIO_GET_CH(XGPIO)		(((XGPIO) >> 7) & 0x1FU)
 #define XGPIO_GET_FUNC(XGPIO)		(((XGPIO) >> 12) & 0xFU)
 
+#define XGPIO_OPEN_DRAIN		(1U << 16)
+
 void GPIO_set_mode_INPUT(int xGPIO);
 void GPIO_set_mode_OUTPUT(int xGPIO);
 void GPIO_set_mode_ANALOG(int xGPIO);

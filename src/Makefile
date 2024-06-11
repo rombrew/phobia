@@ -1,4 +1,4 @@
-HWREV	?= REV5A
+HWREV	?= PHOBIA_rev5
 
 include hal/mk/$(HWREV).d
 

@@ -7,7 +7,7 @@ CLI with autocompletion function and command history.
 
 These are the basic special keys that are used in the CLI:
 
-- `Return` - Run the current line.
+- `Return` - Run the command from current line.
 - `Backspace` or `Delete` - Erase last typed character.
 - `Tab` or (@) - Automplete function.
 - `Shift` + `Tab` - Automplete function reverse.
@@ -15,7 +15,7 @@ These are the basic special keys that are used in the CLI:
 - `Ctrl` + `P` or `Up` or `*` - History function scroll up.
 - `Ctrl` + `N` or `Down` or `!` - History function scroll down.
 
-## Register file concept
+## Register file
 
 A register is a scalar variable known by its name and having associated
 attributes. All registers together are called the register file. This is a
@@ -26,8 +26,8 @@ command.
 - Without arguments it will list all registers and their current values.
 - You can specify a pattern by which registers will be filtered. A pattern can
   be any part of the register name.
-- If only one register matches the specified pattern the second parameter
-  specifies its new value.
+- If only one register matches the specified pattern the second parameter can
+  specify its new value.
 - You can specify a register number instead of its name to refer the exactly
   one register.
 
@@ -64,7 +64,7 @@ registers that are required to configure data transfer between different
 subsystems.
 
 Keep in mind each register can have its own write and read event handler that
-can do any complex non-obvious actions during access to it.
+can do any non-obvious actions during access to it.
 
 ## Linkage concept
 
@@ -88,7 +88,7 @@ Command to grab telemetry into RAM and flush textual dump.
 	(pmc) tlm_grab <rate>
 	(pmc) tlm_flush_sync
 
-Run an endless loop grabbing until PMC stops with error.
+Run in endless loop of grabbing until PMC stops with error.
 
 	(pmc) tlm_watch <rate>
 
@@ -98,20 +98,17 @@ Use a real-time telemetry printout.
 
 Using CAN data pipes you are able to link register across CAN network. You can
 easily control many machines from single input. Build a traction control by
-exchange the speed signals across PMC instances.
+exchange the speed signals across PMC nodes.
 
 ## Textual transcription
 
 Some of integer registers printed out accompanied by textual transcription that
 describes register current value. Typically this is a configuration register
-responsible for selecting one of several possible options. Note that you must
-assign a new value to the register to find out its transcription.
+responsible for selecting one of several possible options. The textual
+transcription corresponds to the enumeration in the source code of PMC.
 
 	(pmc) reg pm.config_IFB
 	1 [151] pm.config_IFB = 2 (PM_IFB_ABC_INLINE)
-
-The textual transcription corresponds to the enumeration constants in the
-source code of PMC.
 
 ## Examples
 

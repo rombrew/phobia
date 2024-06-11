@@ -16,11 +16,11 @@ The step and direction signals are fed to STEP and DIR pins.
 ```
 
 **WARNING**: Refer to your hardware manual or look into `src/hal/hw/...`
-directory to find out actual pin mapping on your port.
+directory to find out actual pin mapping and voltage levels of your port.
 
 ## Configuration
 
-First you need to enable the appropriate mode of the STEP interface.
+First you need to enable the appropriate mode of the STEP interface in HAL.
 
     (pmc) reg hal.STEP_mode 1
 

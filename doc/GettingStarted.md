@@ -7,7 +7,8 @@ documents for specific topics.
 
 We do not assemble hardware for sales. You can get fabrication files from our
 [releases](https://sourceforge.net/projects/phobia/files/) or look into the PCB
-repos. You will have to order the fabrication and assembly yourself.
+[repo](https://github.com/rombrew/phobia-pcb). You will have to order the
+fabrication and assembly yourself.
 
 	$ git clone https://github.com/rombrew/phobia-pcb.git phobia-pcb
 
@@ -15,7 +16,7 @@ The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
 sometimes cross the border of quality in favor of PCB size.
 
-Our recent HW revision is `REV5A` designed in 8-layer PCB with 35um or 70um
+Our recent HW revision is `REV5` designed in 8-layer PCB with 35um or 70um
 copper foil thickness. To improve heat dissipation it is necessary to mount an
 aluminium heatsink at bottom side through thermal interface.
 
@@ -48,7 +49,7 @@ erased MCU) then short BOOT pin to +3.3v before the power up.
 	                          +--/ --+
 ```
 
-You also can use an USB connection if your hardware has one.
+**WARNING**: You also can use an USB connection if your hardware has one.
 
 ## Software
 
@@ -61,20 +62,20 @@ There are a few parts of software:
    numerical model. But keep in mind that only abstract control code from
    `src/phobia/...` directory is covered by these tests.
 
-2. Phobia graphical frontend application (`phobia/...`). It is a user tool to
-   configure and diagnose PMC in visual way. This frontend communicates with
-   PMC using the CLI via serial port or USB.
+2. Phobia Graphical User Interface (`pgui/...`). It is a user tool to configure
+   and diagnose PMC in visual way. This frontend communicates with PMC using
+   the CLI via serial port or USB.
 
 3. Firmware code for onboard MCU (`src/...`). All of control algorithms are
    implemented here.
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
 [Clang](https://clang.llvm.org/) toolchain. For example, let us build the
-firmware for the `REV5A` hardware.
+firmware for the `REV5` hardware.
 
 	$ git clone https://github.com/rombrew/phobia.git phobia
 	$ cd phobia/src
-	$ make HWREV=REV5A
+	$ make HWREV=PHOBIA_rev5
 
 So using the above commands we have built the firmware. Next there are a few
 ways to load the firmware into the MCU:
@@ -84,26 +85,26 @@ SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
 careful when using hardware debugging while the machine is running. The sudden
 stop of feedback loop can cause overcurrent accident.
 
-	$ make HWREV=REV5A gdb
+	$ make HWREV=PHOBIA_rev5 gdb
 	(gdb) load
 
 SWD interface with [STLINK](https://github.com/stlink-org/stlink). You can use
 GDB as in previous case but we are only concerned with using `st-flash` util.
 
-	$ make HWREV=REV5A stlink
+	$ make HWREV=PHOBIA_rev5 stlink
 
 USART interface with ST embedded bootloader using
 [stm32flash](https://sourceforge.net/projects/stm32flash/). You should have a
 serial port connected to the board TX and RX pins and BOOT pin shorted to the
 +3.3v.
 
-	$ make HWREV=REV5A flash
+	$ make HWREV=PHOBIA_rev5 flash
 
 USB interface with ST embedded bootloader using
 [DFU](http://dfu-util.sourceforge.net/). You should have an USB port connected
 to the board and BOOT pin shorted to the +3.3v.
 
-	$ make HWREV=REV5A dfu
+	$ make HWREV=PHOBIA_rev5 dfu
 
 After MCU is flashed the Command Line Interface (CLI) will be presented on
 USART, USB and CAN interfaces. We use
@@ -120,6 +121,7 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 Read the following documentation for setting PMC up.
 
 - [Command Line Interface](CommandLineInterface.md)
+- [Graphical User Interface](GraphicalUserInterface.md)
 - [Hardware Design](HardwareDesign.md)
 - [Hardware VESC](HardwareVESC.md)
 - [Integrity Self Test](IntegritySelfTest.md)

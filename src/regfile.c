@@ -397,13 +397,13 @@ reg_proc_voltage(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
 
-		lval->f = reg->link->f * pm.const_lambda;
+		lval->f = reg->link->f * pm.const_lambda / pm.k_EMAX;
 	}
 	else if (rval != NULL) {
 
 		if (pm.const_lambda > M_EPSILON) {
 
-			reg->link->f = rval->f / pm.const_lambda;
+			reg->link->f = rval->f * pm.k_EMAX / pm.const_lambda;
 		}
 	}
 }
@@ -567,25 +567,6 @@ reg_proc_auto_probe_speed_hold(const reg_t *reg, rval_t *lval, const rval_t *rva
 }
 
 static void
-reg_proc_auto_zone_threshold(const reg_t *reg, rval_t *lval, const rval_t *rval)
-{
-	if (lval != NULL) {
-
-		lval->f = reg->link->f;
-	}
-	else if (rval != NULL) {
-
-		if (rval->f < - M_EPSILON) {
-
-			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
-		}
-		else {
-			reg->link->f = rval->f;
-		}
-	}
-}
-
-static void
 reg_proc_auto_forced_maximal(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
@@ -616,6 +597,25 @@ reg_proc_auto_forced_accel(const reg_t *reg, rval_t *lval, const rval_t *rval)
 		if (rval->f < - M_EPSILON) {
 
 			pm_auto(&pm, PM_AUTO_FORCED_ACCEL);
+		}
+		else {
+			reg->link->f = rval->f;
+		}
+	}
+}
+
+static void
+reg_proc_auto_zone_threshold(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	if (lval != NULL) {
+
+		lval->f = reg->link->f;
+	}
+	else if (rval != NULL) {
+
+		if (rval->f < - M_EPSILON) {
+
+			pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
 		}
 		else {
 			reg->link->f = rval->f;
@@ -656,6 +656,44 @@ reg_proc_percent(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	else if (rval != NULL) {
 
 		reg->link->f = rval->f / 100.f;
+	}
+}
+
+static void
+reg_proc_weakening(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	float			weak;
+
+	if (lval != NULL) {
+
+		weak = pm.const_lambda - reg->link->f * pm.const_im_L1;
+
+		if (weak > M_EPSILON) {
+
+			lval->f = pm.const_lambda / weak * 100.f;
+		}
+		else {
+			union {
+				uint32_t	i;
+				float		f;
+			}
+			u = { 0x7F800000U };
+
+			lval->f = u.f;
+		}
+	}
+	else if (rval != NULL) {
+
+		if (		pm.const_im_L1 > M_EPSILON
+				&& rval->f > 100.f) {
+
+			weak = pm.const_lambda * 100.f / rval->f;
+
+			reg->link->f = (pm.const_lambda - weak) / pm.const_im_L1;
+		}
+		else {
+			reg->link->f = 0.f;
+		}
 	}
 }
 
@@ -1802,7 +1840,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fb_COS,,,			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.probe_current_hold,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.probe_current_weak,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_weak_level,,,		"%",	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_hold_angle,,,		"deg",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_sine,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_bias,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1922,9 +1960,11 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.kalman_gain_R,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.zone_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.zone_noise, _u,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
+	REG_DEF(pm.zone_noise, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.zone_noise, _volt,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_threshold,,, 	"rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_zone_threshold, NULL),
-	REG_DEF(pm.zone_threshold, _u,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
+	REG_DEF(pm.zone_threshold, _rpm,, 	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.zone_threshold, _volt,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -2033,6 +2073,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.mtpa_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.weak_maximal,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.weak_maximal, _pc,,		"%",	"%2f",	0, &reg_proc_weakening, NULL),
 	REG_DEF(pm.weak_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.weak_gain_EU,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 

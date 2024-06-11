@@ -1317,8 +1317,10 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 					pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
 				}
 
-				pm->i_track_D = pm->probe_TEMP[0] * pm->probe_current_weak;
-				pm->i_track_Q = pm->probe_TEMP[1] * pm->probe_current_weak;
+				hold_A = pm->probe_current_hold * pm->probe_weak_level;
+
+				pm->i_track_D = pm->probe_TEMP[0] * hold_A;
+				pm->i_track_Q = pm->probe_TEMP[1] * hold_A;
 
 				pm->fsm_phase += 1;
 			}
@@ -1694,8 +1696,6 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 			pm->fsm_phase = 1;
 
 		case 1:
-			pm->i_maximal_on_PCB = 0.f;
-
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
@@ -1916,7 +1916,7 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 			if (		m_isfinitef(ls->std.m[0]) != 0
 					&& ls->std.m[0] > M_EPSILON) {
 
-				pm->zone_noise = ls->std.m[0] * 5.f;
+				pm->zone_noise = ls->std.m[0] * 4.f;
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
