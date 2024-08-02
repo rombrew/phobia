@@ -233,7 +233,7 @@ void xputs(io_ops_t *io, const char *s)
 	while (*s) io->putc(*s++);
 }
 
-void xputs_aligned(io_ops_t *io, const char *s, int len)
+void xputs_left(io_ops_t *io, const char *s, int len)
 {
 	while (*s) {
 
@@ -292,17 +292,15 @@ fmt_hex_long(io_ops_t *io, uint32_t x)
 }
 
 static void
-fmt_int_aligned(io_ops_t *io, int x, int len)
+fmt_int_left(io_ops_t *io, int x, int len)
 {
 	char		s[16], *p;
-	int		n;
+	int		n, m = 0;
 
 	if (x < 0) {
 
-		io->putc('-');
-
 		x = - x;
-		len--;
+		m = 1;
 	}
 
 	p = s + 16;
@@ -315,15 +313,60 @@ fmt_int_aligned(io_ops_t *io, int x, int len)
 	}
 	while (x);
 
+	if (m != 0) {
+
+		*--p = '-';
+	}
+
 	while (*p) {
 
 		io->putc(*p++);
-		len--;
+		--len;
 	}
 
 	for (; len > 0; --len) {
 
 		io->putc(' ');
+	}
+}
+
+static void
+fmt_int_right(io_ops_t *io, int x, int len)
+{
+	char		s[16], *p;
+	int		n, m = 0;
+
+	if (x < 0) {
+
+		x = - x;
+		m = 1;
+	}
+
+	p = s + 16;
+	*--p = 0;
+
+	do {
+		n = x % 10;
+		x /= 10;
+		*--p = '0' + n;
+	}
+	while (x);
+
+	if (m != 0) {
+
+		*--p = '-';
+	}
+
+	n = len - strlen(p);
+
+	for (; n > 0; --n) {
+
+		io->putc(' ');
+	}
+
+	while (*p) {
+
+		io->putc(*p++);
 	}
 }
 
@@ -482,7 +525,7 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 		io->putc('+');
 	}
 
-	fmt_int_aligned(io, v, 0);
+	fmt_int_left(io, v, 0);
 }
 
 static void
@@ -587,22 +630,30 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 			io->putc('+');
 		}
 
-		fmt_int_aligned(io, v, 0);
+		fmt_int_left(io, v, 0);
 	}
 }
 
 void xvprintf(io_ops_t *io, const char *fmt, va_list ap)
 {
 	const char	*s;
-	int		n;
+	int		n, m;
 
 	while (*fmt) {
 
                 if (*fmt == '%') {
 
 			n = 0;
+			m = 0;
 
 			++fmt;
+
+			if (*fmt == '-') {
+
+				m = 1;
+
+				++fmt;
+			}
 
 			if (*fmt == '*') {
 
@@ -634,14 +685,19 @@ void xvprintf(io_ops_t *io, const char *fmt, va_list ap)
 
 						fmt_hex_short(io, va_arg(ap, int));
 					}
-					else if (n == 8) {
-
+					else {
 						fmt_hex_long(io, va_arg(ap, uint32_t));
 					}
 					break;
 
 				case 'i':
-					fmt_int_aligned(io, va_arg(ap, int), n);
+					if (m == 0) {
+
+						fmt_int_left(io, va_arg(ap, int), n);
+					}
+					else {
+						fmt_int_right(io, va_arg(ap, int), n);
+					}
 					break;
 
 				case 'f':
@@ -662,7 +718,7 @@ void xvprintf(io_ops_t *io, const char *fmt, va_list ap)
 
 				case 's':
 					s = va_arg(ap, const char *);
-					xputs_aligned(io, (s != NULL) ? s : "(null)", n);
+					xputs_left(io, (s != NULL) ? s : "(null)", n);
 					break;
 			}
 		}

@@ -43,8 +43,8 @@
 #define GPIO_STEP			XGPIO_DEF2('B', 6)
 #define GPIO_DIR			XGPIO_DEF2('B', 7)
 
-#define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
+#define GPIO_USART_TX			XGPIO_DEF4('C', 10, 0, 7)
+#define GPIO_USART_RX			XGPIO_DEF4('C', 11, 0, 7)
 
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)

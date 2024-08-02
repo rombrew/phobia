@@ -72,9 +72,9 @@ void USART_startup()
 
 	/* Enable USART3 pins.
 	 * */
-	GPIO_set_mode_FUNCTION(GPIO_USART3_TX);
-	GPIO_set_mode_FUNCTION(GPIO_USART3_RX);
-	GPIO_set_mode_PULL_UP(GPIO_USART3_RX);
+	GPIO_set_mode_FUNCTION(GPIO_USART_TX);
+	GPIO_set_mode_FUNCTION(GPIO_USART_RX);
+	GPIO_set_mode_PULL_UP(GPIO_USART_RX);
 
 	/* Alloc queues.
 	 * */
@@ -138,7 +138,7 @@ int USART_getc()
 
 int USART_poll()
 {
-	return uxQueueMessagesWaiting(priv_USART.rx_queue);
+	return (int) uxQueueMessagesWaiting(priv_USART.rx_queue);
 }
 
 void USART_putc(int c)

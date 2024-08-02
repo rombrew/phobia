@@ -86,7 +86,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Machine voltage applied from VSI.
 	- DC link current consumption and regeneration.
 	- DC link overvoltage and undervoltage.
-	- Maximal speed (forward and reverse) and acceleration.
+	- Maximal speed and acceleration (forward and reverse).
 	- Absolute location limits in servo operation.
 
 - Input control interfaces:

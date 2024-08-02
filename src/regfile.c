@@ -428,7 +428,7 @@ reg_proc_knob(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 		reg = &regfile[ID_PM_I_SETPOINT_CURRENT_PC];
 
-		reg_proc_rpm_pc(reg, lval, rval);
+		reg_proc_current_pc(reg, lval, rval);
 	}
 	else if (pm.config_LU_DRIVE == PM_DRIVE_SPEED) {
 
@@ -874,7 +874,7 @@ reg_proc_watt_fuel(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		if (rval->f < - M_EPSILON) {
+		if (rval->f < M_EPSILON) {
 
 			irq = hal_lock_irq();
 
@@ -1273,8 +1273,8 @@ reg_format_enum(const reg_t *reg)
 				PM_SFI_CASE(NTC_GND);
 				PM_SFI_CASE(NTC_VCC);
 				PM_SFI_CASE(NTC_LMT87);
-				PM_SFI_CASE(NTC_KTY83);
-				PM_SFI_CASE(NTC_KTY84);
+				PM_SFI_CASE(NTC_KTY83_GND);
+				PM_SFI_CASE(NTC_KTY84_GND);
 
 				default: break;
 			}
@@ -1558,7 +1558,7 @@ reg_format_enum(const reg_t *reg)
 
 const reg_t		regfile[] = {
 
-	REG_DEF(null,,,				"",	"%0i",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(null,,,				"",	"%0i",	REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 
 	REG_DEF(hal.MCU_ID,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
@@ -1741,13 +1741,13 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_NTC_MACHINE */
 	REG_DEF(ap.temp_MCU,,,			"C",	"%1f",	REG_READ_ONLY, NULL, NULL),
 
+	REG_DEF(ap.temp_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
+
 	REG_DEF(ap.otp_PCB_halt,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.otp_PCB_derate,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.otp_PCB_fan,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.otp_EXT_derate,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.otp_maximal_PCB,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.otp_maximal_EXT,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.otp_recovery,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.otp_derate_tol,,,		"C",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_BUTTON,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
@@ -1884,17 +1884,17 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tvm_A,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_B,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_C,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_A, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_A, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_A, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_A, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.tvm_FIR_A, _tau,,		"us",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
-	REG_DEF(pm.tvm_FIR_B, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_B, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_B, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_B, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.tvm_FIR_B, _tau,,		"us",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
-	REG_DEF(pm.tvm_FIR_C, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_C, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.tvm_FIR_C, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C, 0, [0],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C, 1, [1],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.tvm_FIR_C, 2, [2],		"",	"%4e",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.tvm_FIR_C, _tau,,		"us",	"%3f",	REG_READ_ONLY, &reg_proc_tvm_FIR_tau, NULL),
 	REG_DEF(pm.tvm_X0,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.tvm_Y0,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1951,6 +1951,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
+	REG_DEF(pm.kalman_residual_D,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.kalman_residual_Q,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_bias_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 0, [0],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 1, [1],	"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1961,10 +1963,10 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.zone_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.zone_noise, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.zone_noise, _volt,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
+	REG_DEF(pm.zone_noise, _u,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_threshold,,, 	"rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_zone_threshold, NULL),
 	REG_DEF(pm.zone_threshold, _rpm,, 	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.zone_threshold, _volt,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
+	REG_DEF(pm.zone_threshold, _u,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -1972,23 +1974,23 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hfi_freq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_sine,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.hall_ST, 1_X, [1].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 1_Y, [1].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 1_X, [1].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 1_Y, [1].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 1, [1],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.hall_ST, 2_X, [2].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 2_Y, [2].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 2_X, [2].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 2_Y, [2].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 2, [2],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.hall_ST, 3_X, [3].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 3_Y, [3].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 3_X, [3].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 3_Y, [3].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 3, [3],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.hall_ST, 4_X, [4].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 4_Y, [4].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 4_X, [4].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 4_Y, [4].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 4, [4],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.hall_ST, 5_X, [5].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 5_Y, [5].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 5_X, [5].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 5_Y, [5].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 5, [5],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
-	REG_DEF(pm.hall_ST, 6_X, [6].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.hall_ST, 6_Y, [6].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.hall_ST, 6_X, [6].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.hall_ST, 6_Y, [6].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 6, [6],	"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
 
 	REG_DEF(pm.hall_wS,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
@@ -2001,8 +2003,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.hall_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.eabi_ADJUST,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.eabi_F0, _X, [0],		"",	"%3f",	REG_READ_ONLY | REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.eabi_F0, _Y, [1],		"",	"%3f",	REG_READ_ONLY | REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.eabi_F0, _X, [0],		"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
+	REG_DEF(pm.eabi_F0, _Y, [1],		"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.eabi_F0,,,			"deg",	"%2f",	REG_READ_ONLY, &reg_proc_fpos_nolock_deg, NULL),
 	REG_DEF(pm.eabi_const_EP,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.eabi_const_Zs,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
@@ -2067,7 +2069,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_damping,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_auto_loop_current, NULL),
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.i_gain_A,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.mtpa_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.mtpa_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -2095,17 +2096,21 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.s_reverse, _mmps,,		"mm/s",	"%2f",	0, &reg_proc_mmps, NULL),
 	REG_DEF(pm.s_reverse, _kmh,,		"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.s_track,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.s_accel,,,		"rad/s2",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_accel, _rpm,,	"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
-	REG_DEF(pm.s_accel, _kmh,,	"km/h/s",	"%1f",	0, &reg_proc_kmh, NULL),
+	REG_DEF(pm.s_accel_forward,,,	"rad/s2",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_accel_forward, _rpm,,"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.s_accel_forward, _kmh,,"km/h/s",	"%1f",	0, &reg_proc_kmh, NULL),
+	REG_DEF(pm.s_accel_reverse,,,	"rad/s2",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.s_accel_reverse, _rpm,,"rpm/s",	"%1f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.s_accel_reverse, _kmh,,"km/h/s",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.s_damping,,,			"%",	"%1f",	REG_CONFIG, &reg_proc_auto_loop_speed, NULL),
 	REG_DEF(pm.s_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.s_gain_D,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.s_gain_A,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.l_track,,,		"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.l_track_tol,,,	"rad/s",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.l_track_tol, _rpm,,	"rpm",		"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.l_track_tol, _kmh,,	"km/h",		"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.l_gain_LP,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.x_setpoint_location,,,	"rad",	"%4f",	0, NULL, NULL),
@@ -2145,6 +2150,17 @@ const reg_t		regfile[] = {
 	REG_DEF(tlm.reg_ID, 7, [7],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(tlm.reg_ID, 8, [8],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(tlm.reg_ID, 9, [9],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+
+	REG_DEF(tlm.reg_ID, 10, [10],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 11, [11],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 12, [12],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 13, [13],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 14, [14],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 15, [15],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 16, [16],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 17, [17],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 18, [18],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(tlm.reg_ID, 19, [19],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
 	{ NULL, "", 0, NULL, NULL, NULL }
 };
@@ -2198,7 +2214,7 @@ void reg_format(const reg_t *reg)
 
 		reg_ID = (int) (reg - regfile);
 
-		printf("%i [%i] %s = ", (int) reg->mode, (int) reg_ID, reg->sym);
+		printf("%2i [%-3i] %s = ", (int) reg->mode, (int) reg_ID, reg->sym);
 
 		if (reg->format != NULL) {
 
@@ -2216,12 +2232,13 @@ void reg_format(const reg_t *reg)
 					printf(" (%s)", regfile[rval.i].sym);
 				}
 			}
+			else {
+				su = reg->sym + strlen(reg->sym) + 1;
 
-			su = reg->sym + strlen(reg->sym) + 1;
+				if (*su != 0) {
 
-			if (*su != 0) {
-
-				printf(" (%s)", su);
+					printf(" (%s)", su);
+				}
 			}
 		}
 
@@ -2393,7 +2410,8 @@ SH_DEF(reg)
 	else {
 		for (reg = regfile; reg->sym != NULL; ++reg) {
 
-			if (strstr(reg->sym, s) != NULL) {
+			if (		strstr(reg->sym, s) != NULL
+					&& (reg->mode & REG_HIDDEN) == 0) {
 
 				reg_format(reg);
 			}

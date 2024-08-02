@@ -6,7 +6,7 @@
 #include "regfile.h"
 
 #define TLM_DATA_MAX		20000
-#define TLM_INPUT_MAX		10
+#define TLM_INPUT_MAX		20
 
 enum {
 	TLM_MODE_DISABLED	= 0,

@@ -39,7 +39,7 @@
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	15
+#define GP_CONFIG_VERSION	16
 
 enum {
 	FORMAT_NONE			= 0,
@@ -59,6 +59,12 @@ enum {
 	DATA_HINT_FLOAT,
 	DATA_HINT_HEX,
 	DATA_HINT_OCT
+};
+
+enum {
+	BOM_NONE			= 0,
+	BOM_UTF_8,
+	BOM_UTF_UNKNOWN
 };
 
 typedef struct {
@@ -182,6 +188,7 @@ typedef struct {
 		char		label[READ_COLUMN_MAX][READ_TOKEN_MAX];
 
 		int		hint[READ_COLUMN_MAX];
+		int		bom;
 	}
 	data[PLOT_DATASET_MAX];
 

@@ -934,13 +934,16 @@ readTEXTGetLabel(read_t *rd, int dN)
 	int		m, N;
 
 #ifdef _WINDOWS
-	if (rd->legacy_label == 1) {
+	if (rd->data[dN].bom != BOM_UTF_8) {
 
-		legacy_ACP_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
-	}
-	else if (rd->legacy_label == 2) {
+		if (rd->legacy_label == 1) {
 
-		legacy_OEM_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
+			legacy_ACP_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
+		}
+		else if (rd->legacy_label == 2) {
+
+			legacy_OEM_to_UTF8(s, rd->data[dN].buf, sizeof(rd->data[0].buf));
+		}
 	}
 #endif /* _WINDOWS */
 
@@ -986,10 +989,10 @@ readTEXTGetLabel(read_t *rd, int dN)
 }
 
 static int
-readTEXTSkipBOM(read_t *rd, FILE *fd)
+readTEXTGetBOM(read_t *rd, FILE *fd)
 {
 	char		tbuf[8];
-	int		len, bom = 0;
+	int		len, bom = BOM_NONE;
 
 	len = fread(tbuf, 4, 1, fd);
 
@@ -1000,18 +1003,17 @@ readTEXTSkipBOM(read_t *rd, FILE *fd)
 		if (		   memcmp(tbuf, "\x00\x00\xFE\xFF", 4) == 0
 				|| memcmp(tbuf, "\xFF\xFE\x00\x00", 4) == 0) {
 
-			ERROR("UTF-32 signature detected\n");
-			bom = 1;
+			bom = BOM_UTF_UNKNOWN;
 		}
 		else if (	   memcmp(tbuf, "\xFE\xFF", 2) == 0
 				|| memcmp(tbuf, "\xFF\xFE", 2) == 0) {
 
-			ERROR("UTF-16 signature detected\n");
-			bom = 1;
+			bom = BOM_UTF_UNKNOWN;
 		}
 		else if (memcmp(tbuf, "\xEF\xBB\xBF", 3) == 0) {
 
 			fseek(fd, 3UL, SEEK_SET);
+			bom = BOM_UTF_8;
 		}
 	}
 
@@ -1104,7 +1106,7 @@ readClose(read_t *rd, int dN)
 void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int fmt)
 {
 	fval_t		rbuf[READ_COLUMN_MAX * 3];
-	int		N, rbuf_N;
+	int		N, rbuf_N, bom;
 
 	FILE			*fd;
 	unsigned long long	bF = 0U;
@@ -1139,11 +1141,17 @@ void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int f
 
 			if (fmt != FORMAT_PLAIN_STDIN) {
 
-				if (readTEXTSkipBOM(rd, fd) != 0) {
+				bom = readTEXTGetBOM(rd, fd);
+
+				if (bom == BOM_UTF_UNKNOWN) {
+
+					ERROR("Unsupported BOM in file \"%s\"\n", file);
 
 					fclose(fd);
 					return ;
 				}
+
+				rd->data[dN].bom = bom;
 			}
 
 			cN = readTEXTGetCN(rd, dN, fd, rbuf, &rbuf_N);
@@ -2012,7 +2020,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 					if (r == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
 					else break;
 
-					if (argi[0] >= 0 && argi[0] < 3) {
+					if (argi[0] >= 1 && argi[0] <= 3) {
 
 						failed = 0;
 						rd->dw->thickness = argi[0];
@@ -3271,7 +3279,9 @@ void readConfigGP(read_t *rd, const char *file, int fromUI)
 		ERROR("fopen(\"%s\"): %s\n", file, strerror(errno));
 	}
 	else {
-		if (readTEXTSkipBOM(rd, fd) != 0) {
+		if (readTEXTGetBOM(rd, fd) == BOM_UTF_UNKNOWN) {
+
+			ERROR("Unsupported BOM in file \"%s\"\n", file);
 
 			fclose(fd);
 			return ;

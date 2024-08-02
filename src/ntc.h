@@ -32,8 +32,8 @@ enum {
 	NTC_VCC,
 
 	NTC_LMT87,
-	NTC_KTY83,
-	NTC_KTY84
+	NTC_KTY83_GND,
+	NTC_KTY84_GND
 };
 
 typedef struct {

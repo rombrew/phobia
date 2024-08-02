@@ -275,7 +275,7 @@ gpDefaultFile(gp_t *gp)
 				"colorscheme 0\n"
 				"antialiasing 1\n"
 				"blendfont 1\n"
-				"thickness 1\n"
+				"thickness 2\n"
 				"gamma 50\n"
 				"drawing line 2\n"
 				"marker 40\n"
@@ -1485,7 +1485,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 	menu_t		*mu = gp->mu;
 	edit_t		*ed = gp->ed;
 
-	int		N;
+	int		N, nAX, nAY;
 
 	if (menu_N == 1) {
 
@@ -1494,6 +1494,29 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 			case 0:
 				menuRaise(mu, 101, gp->la->global_zoom_menu,
 						mu->box_X, mu->box_Y);
+
+				nAX = 0;
+				nAY = 0;
+
+				for (N = 0; N < PLOT_AXES_MAX; ++N) {
+
+					if (pl->axis[N].busy == AXIS_BUSY_X)
+						nAX++;
+
+					if (pl->axis[N].busy == AXIS_BUSY_Y)
+						nAY++;
+				}
+
+				if (nAX < 2 && nAY < 2) {
+
+					mu->hidden_N[0] = 2;
+					mu->hidden_N[1] = 3;
+				}
+				else if (nAY < 2) {
+
+					mu->hidden_N[1] = 3;
+				}
+
 				gp->stat = GP_MENU;
 				break;
 
@@ -2110,7 +2133,7 @@ gpMenuHandle(gp_t *gp, int menu_N, int item_N)
 				break;
 
 			case 4:
-				dw->thickness = (dw->thickness < 2) ? dw->thickness + 1 : 0;
+				dw->thickness = (dw->thickness < 3) ? dw->thickness + 1 : 1;
 				break;
 
 			case 5:
@@ -4216,7 +4239,7 @@ gp_t *gp_Alloc()
 
 	dw->antialiasing = DRAW_4X_MSAA;
 	dw->blendfont = 1;
-	dw->thickness = 1;
+	dw->thickness = 2;
 	dw->gamma = 50;
 
 	pl = plotAlloc(dw, sch);

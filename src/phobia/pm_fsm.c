@@ -1177,13 +1177,13 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 
 		eHF = track_HF - m_sqrtf(eD * eD + eQ * eQ);
 
-		pm->probe_HF_lpf_track += (eHF - pm->probe_HF_lpf_track) * pm->probe_LP;
-		pm->probe_HF_integral += pm->probe_gain_I * pm->probe_HF_lpf_track;
+		pm->probe_HF_residual += (eHF - pm->probe_HF_residual) * pm->probe_gain_LP;
 
+		pm->probe_HF_integral += pm->probe_gain_I * pm->probe_HF_residual;
 		pm->probe_HF_integral = (pm->probe_HF_integral > uMAX) ? uMAX
 			: (pm->probe_HF_integral < - uMAX) ? - uMAX : pm->probe_HF_integral;
 
-		uHF = pm->probe_gain_P * pm->probe_HF_lpf_track + pm->probe_HF_integral;
+		uHF = pm->probe_gain_P * pm->probe_HF_residual + pm->probe_HF_integral;
 	}
 
 	pm->i_integral_D += pm->probe_gain_I * eD;
@@ -1238,7 +1238,7 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 
 			lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
 
-			pm->probe_HF_lpf_track = 0.f;
+			pm->probe_HF_residual = 0.f;
 			pm->probe_HF_integral = 0.f;
 
 			hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
@@ -1390,9 +1390,9 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			pm->probe_SC[0] = m_cosf(pm->quick_HFwS * pm->m_dT * 0.5f);
 			pm->probe_SC[1] = m_sinf(pm->quick_HFwS * pm->m_dT * 0.5f);
 
-			pm->probe_HF_lpf_track = 0.f;
+			pm->probe_HF_residual = 0.f;
 			pm->probe_HF_integral = 0.f;
-			pm->probe_LP = pm->quick_HFwS * pm->m_dT / 4.f;
+			pm->probe_gain_LP = pm->quick_HFwS * pm->m_dT / 4.f;
 
 			pm->hfi_wave[0] = 1.f;
 			pm->hfi_wave[1] = 0.f;
@@ -2424,7 +2424,7 @@ const char *pm_strerror(int fsm_errno)
 		PM_SFI_CASE(PM_ERROR_TIMEOUT);
 		PM_SFI_CASE(PM_ERROR_NO_FLUX_CAUGHT);
 		PM_SFI_CASE(PM_ERROR_NO_SYNC_FAULT);
-		PM_SFI_CASE(PM_ERROR_KNOB_CONTROL_FAULT);
+		PM_SFI_CASE(PM_ERROR_KNOB_SIGNAL_FAULT);
 		PM_SFI_CASE(PM_ERROR_SPI_DATA_FAULT);
 
 		PM_SFI_CASE(PM_ERROR_HW_UNMANAGED_IRQ);

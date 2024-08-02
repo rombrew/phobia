@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define CONFIG_PHOBIA_VERSION		5
+#define CONFIG_VERSION			5
 
 #define FILE_HOME_CONFIG		"pguirc"
 #define FILE_LINK_LOG			"phobia.log"

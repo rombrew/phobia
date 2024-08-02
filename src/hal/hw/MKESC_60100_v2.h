@@ -72,8 +72,8 @@
 #define GPIO_SPI3_MISO			XGPIO_DEF4('C', 11, 0, 6)
 #define GPIO_SPI3_MOSI			XGPIO_DEF4('C', 12, 0, 6)
 
-#define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)
+#define GPIO_USART_TX			XGPIO_DEF4('B', 10, 0, 7)
+#define GPIO_USART_RX			XGPIO_DEF4('B', 11, 0, 7)
 
 #define GPIO_OTG_FS_DM			XGPIO_DEF4('A', 11, 0, 10)
 #define GPIO_OTG_FS_DP			XGPIO_DEF4('A', 12, 0, 10)

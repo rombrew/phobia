@@ -176,11 +176,11 @@ void config_open(struct config_phobia *fe)
 		}
 	}
 
-	if (fe->version != CONFIG_PHOBIA_VERSION) {
+	if (fe->version != CONFIG_VERSION) {
 
 		if (config_rcfiletry(fe) != 0) {
 
-			fe->version = CONFIG_PHOBIA_VERSION;
+			fe->version = CONFIG_VERSION;
 
 			config_write(fe);
 			config_read(fe);
@@ -215,7 +215,7 @@ void config_default(struct config_phobia *fe)
 	char		lptemp[PHOBIA_PATH_MAX];
 #endif /* _WINDOWS */
 
-	fe->version = CONFIG_PHOBIA_VERSION;
+	fe->version = CONFIG_VERSION;
 
 	strcpy(fe->serialport, "none");
 
@@ -239,6 +239,6 @@ void config_default(struct config_phobia *fe)
 
 	strcpy(fe->fuzzy, "setpoint");
 
-	fe->regfile = 484;
+	fe->regfile = 500;
 }
 

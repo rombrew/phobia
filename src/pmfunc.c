@@ -94,16 +94,16 @@ int pm_wait_settle()
 	TickType_t		xTick = (TickType_t) 0;
 
 	do {
-		float		xER;
+		float		eRSU;
 
 		vTaskDelay((TickType_t) 50);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		xER = pm.x_setpoint_location - pm.lu_location;
+		eRSU = pm.x_setpoint_location - pm.lu_location;
 
-		if (m_fabsf(xER) < pm.probe_location_tol)
+		if (m_fabsf(eRSU) < pm.probe_location_tol)
 			break;
 
 		if (xTick > (TickType_t) 10000) {
@@ -214,7 +214,7 @@ SH_DEF(pm_probe_spinup)
 			if (pm_wait_spinup() != PM_OK)
 				break;
 
-			vTaskDelay((TickType_t) 400);
+			vTaskDelay((TickType_t) 200);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -230,8 +230,8 @@ SH_DEF(pm_probe_spinup)
 
 		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
 		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
-		reg_OUTP(ID_PM_ZONE_NOISE_VOLT);
-		reg_OUTP(ID_PM_ZONE_THRESHOLD_VOLT);
+		reg_OUTP(ID_PM_ZONE_NOISE_U);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_U);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -246,7 +246,7 @@ SH_DEF(pm_probe_spinup)
 
 		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
-			vTaskDelay((TickType_t) 400);
+			vTaskDelay((TickType_t) 200);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -256,7 +256,7 @@ SH_DEF(pm_probe_spinup)
 			reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 		}
 
-		vTaskDelay((TickType_t) 400);
+		vTaskDelay((TickType_t) 200);
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -269,8 +269,8 @@ SH_DEF(pm_probe_spinup)
 
 		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
 		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
-		reg_OUTP(ID_PM_ZONE_NOISE_VOLT);
-		reg_OUTP(ID_PM_ZONE_THRESHOLD_VOLT);
+		reg_OUTP(ID_PM_ZONE_NOISE_U);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_U);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 

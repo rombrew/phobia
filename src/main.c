@@ -153,8 +153,10 @@ LD_TASK void task_TEMP(void *pData)
 {
 	TickType_t		xWake;
 
-	float			maximal_PCB, maximal_EXT, lock_PCB;
-	int			last_errno;
+	float			temp_NTC, maximal_PCB, maximal_EXT;
+	float			blend_A, lock_halt_PCB;
+
+	int			last_fsm_errno;
 
 	if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -179,9 +181,8 @@ LD_TASK void task_TEMP(void *pData)
 	maximal_PCB = PM_MAX_F;
 	maximal_EXT = PM_MAX_F;
 
-	lock_PCB = 0.f;
-
-	last_errno = PM_OK;
+	lock_halt_PCB = 0.f;
+	last_fsm_errno = PM_OK;
 
 	do {
 		/* 10 Hz.
@@ -192,7 +193,8 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (ap.ntc_PCB.type != NTC_NONE) {
 
-			ap.temp_PCB = ntc_read_temperature(&ap.ntc_PCB);
+			temp_NTC = ntc_read_temperature(&ap.ntc_PCB);
+			ap.temp_PCB += (temp_NTC - ap.temp_PCB) * ap.temp_gain_LP;
 		}
 		else {
 			ap.temp_PCB = ap.temp_MCU;
@@ -200,13 +202,14 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (ap.ntc_EXT.type != NTC_NONE) {
 
-			ap.temp_EXT = ntc_read_temperature(&ap.ntc_EXT);
+			temp_NTC = ntc_read_temperature(&ap.ntc_EXT);
+			ap.temp_EXT += (temp_NTC - ap.temp_EXT) * ap.temp_gain_LP;
 		}
 		else {
 			ap.temp_EXT = 0.f;
 		}
 
-		if (ap.temp_PCB > ap.otp_PCB_halt - lock_PCB) {
+		if (ap.temp_PCB > ap.otp_PCB_halt - lock_halt_PCB) {
 
 			maximal_PCB = 0.f;
 
@@ -216,21 +219,25 @@ LD_TASK void task_TEMP(void *pData)
 				pm.fsm_req = PM_STATE_HALT;
 			}
 
-			lock_PCB = ap.otp_recovery;
+			lock_halt_PCB = ap.otp_derate_tol;
 		}
 		else {
-			if (ap.temp_PCB > ap.otp_PCB_derate) {
+			temp_NTC = ap.temp_PCB - ap.otp_PCB_derate;
 
-				/* Derate current in case of PCB thermal overload.
-				 * */
-				maximal_PCB = ap.otp_maximal_PCB;
-			}
-			else if (ap.temp_PCB < ap.otp_PCB_derate - ap.otp_recovery) {
+			if (temp_NTC < 0.f) {
 
 				maximal_PCB = PM_MAX_F;
 			}
+			else {
+				blend_A = temp_NTC / ap.otp_derate_tol;
+				blend_A = (blend_A > 1.f) ? 1.f : blend_A;
 
-			lock_PCB = 0.f;
+				/* Derate current in case of PCB thermal overload.
+				 * */
+				maximal_PCB = pm.i_maximal * (1.f - blend_A);
+			}
+
+			lock_halt_PCB = 0.f;
 		}
 
 #ifdef HW_HAVE_FAN_CONTROL
@@ -240,7 +247,7 @@ LD_TASK void task_TEMP(void *pData)
 
 			GPIO_set_HIGH(GPIO_FAN_EN);
 		}
-		else if (ap.temp_PCB < ap.otp_PCB_fan - ap.otp_recovery) {
+		else if (ap.temp_PCB < ap.otp_PCB_fan - ap.otp_derate_tol) {
 
 			GPIO_set_LOW(GPIO_FAN_EN);
 		}
@@ -248,20 +255,25 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (ap.otp_EXT_derate > M_EPSILON) {
 
-			if (ap.temp_EXT > ap.otp_EXT_derate) {
+			temp_NTC = ap.temp_EXT - ap.otp_EXT_derate;
+
+			if (temp_NTC < 0.f) {
+
+				maximal_EXT = PM_MAX_F;
+			}
+			else {
+				blend_A = temp_NTC / ap.otp_derate_tol;
+				blend_A = (blend_A > 1.f) ? 1.f : blend_A;
 
 				/* Derate current in case of external thermal
 				 * overload (machine overheat protection).
 				 * */
-				maximal_EXT = ap.otp_maximal_EXT;
-			}
-			else if (ap.temp_EXT < ap.otp_EXT_derate - ap.otp_recovery) {
-
-				maximal_EXT = PM_MAX_F;
+				maximal_EXT = pm.i_maximal * (1.f - blend_A);
 			}
 		}
 
-		pm.i_maximal_on_PCB = (maximal_PCB < maximal_EXT) ? maximal_PCB : maximal_EXT;
+		pm.i_maximal_on_PCB = (maximal_PCB < maximal_EXT)
+			? maximal_PCB : maximal_EXT;
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
@@ -309,7 +321,7 @@ LD_TASK void task_TEMP(void *pData)
 
 		if (pm.fsm_errno != PM_OK) {
 
-			if (pm.fsm_errno != last_errno) {
+			if (pm.fsm_errno != last_fsm_errno) {
 
 				log_TRACE("FSM errno %s" EOL, pm_strerror(pm.fsm_errno));
 			}
@@ -323,7 +335,7 @@ LD_TASK void task_TEMP(void *pData)
 			}
 		}
 
-		last_errno = pm.fsm_errno;
+		last_fsm_errno = pm.fsm_errno;
 	}
 	while (1);
 }
@@ -341,8 +353,6 @@ conv_KNOB()
 
 		ap.knob_ACTIVE = PM_DISABLED;
 		ap.knob_DISARM = PM_ENABLED;
-
-		ap.knob_NFAULT = 0;
 	}
 
 	if (		   ap.knob_in_ANG < ap.knob_range_LOS[0]
@@ -355,18 +365,7 @@ conv_KNOB()
 
 		if (ap.knob_ACTIVE == PM_ENABLED) {
 
-			if (pm.lu_MODE != PM_LU_DISABLED) {
-
-				ap.knob_NFAULT++;
-
-				if (unlikely(ap.knob_NFAULT >= 10)) {
-
-					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
-					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-					ap.knob_ACTIVE = PM_DISABLED;
-				}
-			}
+			ap.knob_NFAULT++;
 		}
 
 		ap.knob_DISARM = PM_ENABLED;
@@ -452,13 +451,31 @@ conv_KNOB()
 	else if (ap.knob_BRAKE == PM_ENABLED) {
 
 		range = ap.knob_range_BRK[1] - ap.knob_range_BRK[0];
-		scaled = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 
+		scaled = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 		scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-		control += (ap.knob_control_BRK - control) * scaled;
+		if (scaled > 0.f) {
+
+			hold_FLAG = PM_ENABLED;
+
+			control += (ap.knob_control_BRK - control) * scaled;
+		}
+
+		ap.knob_NFAULT = 0;
 	}
 #endif /* HW_HAVE_BRAKE_KNOB */
+
+	if (ap.knob_ACTIVE == PM_ENABLED) {
+
+		if (unlikely(ap.knob_NFAULT >= 10)) {
+
+			pm.fsm_errno = PM_ERROR_KNOB_SIGNAL_FAULT;
+			pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+			ap.knob_ACTIVE = PM_DISABLED;
+		}
+	}
 
 	if (		ap.knob_reg_DATA != control
 			|| hold_FLAG == PM_ENABLED) {
@@ -654,13 +671,13 @@ default_flash_load()
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MACHINE */
 
+	ap.temp_gain_LP = 1.E-1f;
+
 	ap.otp_PCB_halt = 110.f;	/* (C) */
 	ap.otp_PCB_derate = 90.f;	/* (C) */
 	ap.otp_PCB_fan = 60.f;		/* (C) */
 	ap.otp_EXT_derate = 0.f;	/* (C) */
-	ap.otp_maximal_PCB = 10.f;	/* (A) */
-	ap.otp_maximal_EXT = 10.f;	/* (A) */
-	ap.otp_recovery = 5.f;		/* (C) */
+	ap.otp_derate_tol = 10.f;	/* (C) */
 
 	ap.auto_reg_DATA = 0.f;
 	ap.auto_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
@@ -956,19 +973,17 @@ in_PULSE_WIDTH()
 		ap.ppm_NFAULT = 0;
 	}
 	else {
-		if (ap.ppm_ACTIVE == PM_ENABLED) {
+		if (		ap.ppm_ACTIVE == PM_ENABLED
+				&& pm.lu_MODE != PM_LU_DISABLED) {
 
-			if (pm.lu_MODE != PM_LU_DISABLED) {
+			ap.ppm_NFAULT++;
 
-				ap.ppm_NFAULT++;
+			if (unlikely(ap.ppm_NFAULT >= 10)) {
 
-				if (unlikely(ap.ppm_NFAULT >= 10)) {
+				pm.fsm_errno = PM_ERROR_KNOB_SIGNAL_FAULT;
+				pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 
-					pm.fsm_errno = PM_ERROR_KNOB_CONTROL_FAULT;
-					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-
-					ap.ppm_ACTIVE = PM_DISABLED;
-				}
+				ap.ppm_ACTIVE = PM_DISABLED;
 			}
 		}
 

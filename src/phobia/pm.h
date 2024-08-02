@@ -185,7 +185,7 @@ enum {
 	PM_ERROR_TIMEOUT,
 	PM_ERROR_NO_FLUX_CAUGHT,
 	PM_ERROR_NO_SYNC_FAULT,
-	PM_ERROR_KNOB_CONTROL_FAULT,
+	PM_ERROR_KNOB_SIGNAL_FAULT,
 	PM_ERROR_SPI_DATA_FAULT,
 
 	/* Arise by hardware.
@@ -322,9 +322,9 @@ typedef struct {
 	float		probe_DFT[8];
 	float		probe_REM[8];
 	float		probe_SC[2];
-	float		probe_HF_lpf_track;
+	float		probe_HF_residual;
 	float		probe_HF_integral;
-	float		probe_LP;
+	float		probe_gain_LP;
 	float		probe_TEMP[2];
 
 	lse_t		probe_lse[3];
@@ -434,6 +434,8 @@ typedef struct {
 	float		kalman_P[15];
 	float		kalman_A[10];
 	float		kalman_K[10];
+	float		kalman_residual_D;
+	float		kalman_residual_Q;
 	float		kalman_bias_Q;
 	float		kalman_lpf_wS;
 	float		kalman_gain_Q[5];
@@ -560,7 +562,6 @@ typedef struct {
 	float		i_damping;
 	float		i_gain_P;
 	float		i_gain_I;
-	float		i_gain_A;
 
 	float		mtpa_approx_D;
 	float		mtpa_D;
@@ -578,12 +579,12 @@ typedef struct {
 	float		s_reverse;
 	float		s_track;
 	float		s_integral;
-	float		s_accel;
+	float		s_accel_forward;
+	float		s_accel_reverse;
 	float		s_damping;
 	float		s_gain_P;
 	float		s_gain_I;
 	float		s_gain_D;
-	float		s_gain_A;
 
 	float		l_track;
 	float		l_track_tol;

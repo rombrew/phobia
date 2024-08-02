@@ -4,7 +4,8 @@
 enum {
 	REG_CONFIG		= 1U,
 	REG_READ_ONLY		= 2U,
-	REG_LINKED		= 4U
+	REG_LINKED		= 4U,
+	REG_HIDDEN		= 8U
 };
 
 enum {

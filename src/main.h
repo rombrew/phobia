@@ -79,6 +79,7 @@ typedef struct {
 	float			temp_PCB;
 	float			temp_EXT;
 	float			temp_MCU;
+	float			temp_gain_LP;
 
 	/* Overheat protection.
 	 * */
@@ -86,9 +87,7 @@ typedef struct {
 	float			otp_PCB_derate;
 	float			otp_PCB_fan;
 	float			otp_EXT_derate;
-	float			otp_maximal_PCB;
-	float			otp_maximal_EXT;
-	float			otp_recovery;
+	float			otp_derate_tol;
 
 	/* App enable/disable knobs.
 	 * */

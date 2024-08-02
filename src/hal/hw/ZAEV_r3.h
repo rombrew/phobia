@@ -45,8 +45,8 @@
 #define GPIO_ADC_NTC_PCB		XGPIO_DEF3('B', 0, 8)
 #define GPIO_ADC_KNOB_ANG		XGPIO_DEF3('B', 1, 9)
 
-#define GPIO_USART3_TX			XGPIO_DEF4('C', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('C', 11, 0, 7)
+#define GPIO_USART_TX			XGPIO_DEF4('C', 10, 0, 7)
+#define GPIO_USART_RX			XGPIO_DEF4('C', 11, 0, 7)
 
 #define GPIO_OTG_FS_DM			XGPIO_DEF4('A', 11, 0, 10)
 #define GPIO_OTG_FS_DP			XGPIO_DEF4('A', 12, 0, 10)

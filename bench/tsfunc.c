@@ -204,7 +204,7 @@ void ts_probe_spinup()
 			if (ts_wait_spinup() != PM_OK)
 				break;
 
-			sim_runtime(400 / (double) TS_TICK_RATE);
+			sim_runtime(200 / (double) TS_TICK_RATE);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -244,7 +244,7 @@ void ts_probe_spinup()
 
 		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
 
-			sim_runtime(400 / (double) TS_TICK_RATE);
+			sim_runtime(200 / (double) TS_TICK_RATE);
 
 			pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -258,7 +258,7 @@ void ts_probe_spinup()
 			TS_assert_relative(pm.const_lambda, m.lambda);
 		}
 
-		sim_runtime(400 / (double) TS_TICK_RATE);
+		sim_runtime(200 / (double) TS_TICK_RATE);
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -438,7 +438,9 @@ static void
 ts_script_speed()
 {
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
-	pm.s_accel = 300000.f;
+
+	pm.s_accel_forward = 300000.f;
+	pm.s_accel_reverse = pm.s_accel_forward;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();

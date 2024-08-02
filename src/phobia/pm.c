@@ -165,7 +165,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->scale_uC[1] = 1.f;
 
 	pm->probe_current_hold = 20.f;		/* (A) */
-	pm->probe_weak_level = 0.2f;
+	pm->probe_weak_level = 0.5f;
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 5.f;		/* (A) */
 	pm->probe_current_bias = 0.f;		/* (A) */
@@ -213,7 +213,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->flux_gain_LO = 2.E-6f;
 	pm->flux_gain_HI = 5.E-5f;
 	pm->flux_gain_SF = 5.E-2f;
-	pm->flux_gain_IF = 0.5f;
+	pm->flux_gain_IF = 0.1f;
 
 	pm->kalman_gain_Q[0] = 5.E-2f;
 	pm->kalman_gain_Q[1] = 5.E-2f;
@@ -233,7 +233,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->hall_trip_tol = 200.f;		/* (rad/s) */
 	pm->hall_gain_LO = 5.E-4f;
 	pm->hall_gain_SF = 7.E-3f;
-	pm->hall_gain_IF = 0.9f;
+	pm->hall_gain_IF = 0.5f;
 
 	pm->eabi_const_EP = 2400;
 	pm->eabi_const_Zs = 1;
@@ -265,7 +265,6 @@ pm_auto_config_default(pmc_t *pm)
 	pm->i_damping = 1.f;
 	pm->i_gain_P = 2.E-1f;
 	pm->i_gain_I = 5.E-3f;
-	pm->i_gain_A = 1.f;
 
 	pm->mtpa_gain_LP = 5.E-3f;
 
@@ -277,12 +276,12 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->s_maximal = 15000.f;		/* (rad/s) */
 	pm->s_reverse = pm->s_maximal;		/* (rad/s) */
-	pm->s_accel = 10000.f;			/* (rad/s2) */
+	pm->s_accel_forward = 10000.f;		/* (rad/s2) */
+	pm->s_accel_reverse = pm->s_accel_forward;
 	pm->s_damping = 1.f;
 	pm->s_gain_P = 4.E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 4.E-4f;
-	pm->s_gain_A = 1.f;
+	pm->s_gain_D = 2.E-4f;
 
 	pm->l_track_tol = 50.f;			/* (rad/s) */
 	pm->l_gain_LP = 5.E-3f;
@@ -320,12 +319,10 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->i_slew_rate = 10000.f;
 	pm->i_gain_P = 2.E-1f;
 	pm->i_gain_I = 5.E-3f;
-	pm->i_gain_A = 1.f;
 
 	pm->s_gain_P = 4.E-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 4.E-4f;
-	pm->s_gain_A = 1.f;
+	pm->s_gain_D = 2.E-4f;
 }
 
 static void
@@ -555,7 +552,6 @@ pm_auto_loop_current(pmc_t *pm)
 
 		pm->i_gain_P = (Kp > 0.f) ? Kp : 0.f;
 		pm->i_gain_I = Ki;
-		pm->i_gain_A = 1.f;
 
 		pm->i_slew_rate = 0.2f * pm->const_fb_U
 			* Df * m_fast_recipf(Lmin);
@@ -587,7 +583,6 @@ pm_auto_loop_speed(pmc_t *pm)
 		pm->s_gain_P = 2.f * Df;
 		pm->s_gain_I = 0.f;
 		pm->s_gain_D = 0.01f * Df;
-		pm->s_gain_A = 1.f;
 	}
 }
 
@@ -1270,10 +1265,13 @@ pm_flux_kalman(pmc_t *pm)
 	bF[0] = pm->flux_F[0];
 	bF[1] = pm->flux_F[1];
 
-	/* Get the current RESIDUE in DQ-axes.
+	/* Get the current residuals in DQ-axes.
 	 * */
 	eD = bF[0] * pm->lu_iX + bF[1] * pm->lu_iY - pm->flux_X[0];
 	eQ = bF[0] * pm->lu_iY - bF[1] * pm->lu_iX - pm->flux_X[1];
+
+	pm->kalman_residual_D = eD;
+	pm->kalman_residual_Q = eQ;
 
 	if (likely(pm->vsi_IF == 0)) {
 
@@ -1872,7 +1870,7 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (pm->flux_ZONE == PM_ZONE_LOCKED_IN_DETACH) {
 
-			/* Lock in detached mode permanently.
+			/* Lock in DETACHED mode permanently.
 			 * */
 		}
 		else if (pm->base_TIM < PM_TSMS(pm, pm->tm_pause_startup)) {
@@ -1907,19 +1905,25 @@ pm_lu_FSM(pmc_t *pm)
 
 			pm->proc_set_Z(PM_Z_NONE);
 		}
-		else if (	pm->config_LU_FORCED == PM_ENABLED
-				&& (	pm->config_LU_FREEWHEEL != PM_ENABLED
-					|| m_fabsf(pm->s_setpoint_speed) > M_EPSILON)) {
+		else if (pm->config_LU_FORCED == PM_ENABLED) {
 
-			pm->lu_MODE = PM_LU_FORCED;
+			if (		pm->config_LU_FREEWHEEL == PM_ENABLED
+					&& m_fabsf(pm->s_setpoint_speed) < M_EPSILON) {
 
-			pm->hold_TIM = 0;
+				/* Keep in freewheeling until non-zero setpoint is given.
+				 * */
+			}
+			else {
+				pm->lu_MODE = PM_LU_FORCED;
 
-			pm->forced_F[0] = pm->lu_F[0];
-			pm->forced_F[1] = pm->lu_F[1];
-			pm->forced_wS = pm->lu_wS;
+				pm->hold_TIM = 0;
 
-			pm->proc_set_Z(PM_Z_NONE);
+				pm->forced_F[0] = pm->lu_F[0];
+				pm->forced_F[1] = pm->lu_F[1];
+				pm->forced_wS = pm->lu_wS;
+
+				pm->proc_set_Z(PM_Z_NONE);
+			}
 		}
 		else if (       pm->config_LU_ESTIMATE == PM_FLUX_KALMAN
 				&& pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
@@ -2018,17 +2022,30 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->hold_TIM = 0;
 			}
-			else if (	pm->config_LU_FORCED == PM_ENABLED
-					&& (	pm->config_LU_FREEWHEEL != PM_ENABLED
-						|| m_fabsf(pm->s_setpoint_speed) > M_EPSILON)) {
+			else if (pm->config_LU_FORCED == PM_ENABLED) {
 
-				pm->lu_MODE = PM_LU_FORCED;
+				if (		pm->config_LU_FREEWHEEL == PM_ENABLED
+					&& m_fabsf(pm->s_setpoint_speed) < M_EPSILON) {
 
-				pm->hold_TIM = 0;
+					if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-				pm->forced_F[0] = pm->lu_F[0];
-				pm->forced_F[1] = pm->lu_F[1];
-				pm->forced_wS = pm->lu_wS;
+						pm->lu_MODE = PM_LU_DETACHED;
+
+						pm->flux_DETACH = PM_DISABLED;
+						pm->flux_TYPE = PM_FLUX_NONE;
+
+						pm->proc_set_Z(PM_Z_ABC);
+					}
+				}
+				else {
+					pm->lu_MODE = PM_LU_FORCED;
+
+					pm->hold_TIM = 0;
+
+					pm->forced_F[0] = pm->lu_F[0];
+					pm->forced_F[1] = pm->lu_F[1];
+					pm->forced_wS = pm->lu_wS;
+				}
 			}
 			else if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
@@ -2157,12 +2174,12 @@ pm_lu_FSM(pmc_t *pm)
 
 	pm->lu_F[2] = pm->lu_F[1];
 
-	if (pm->lu_revol - pm->lu_revob < - 4) {
+	if (pm->lu_revol - pm->lu_revob < - pm->const_Zp) {
 
 		pm->lu_total_revol += pm->lu_revob - pm->lu_revol;
 		pm->lu_revob = pm->lu_revol;
 	}
-	else if (pm->lu_revol - pm->lu_revob > 4) {
+	else if (pm->lu_revol - pm->lu_revob > pm->const_Zp) {
 
 		pm->lu_total_revol += pm->lu_revol - pm->lu_revob;
 		pm->lu_revob = pm->lu_revol;
@@ -2611,17 +2628,37 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 		}
 	}
 	else {
-		xMIN = (xA < xB) ? (xC < xA) ? xC : xA : (xC < xB) ? xC : xB;
+		if (		PM_CONFIG_TVM(pm) == PM_ENABLED
+				&& pm->tvm_ACTIVE == PM_ENABLED) {
 
-		xA += pm->ts_minimal - xMIN;
-		xB += pm->ts_minimal - xMIN;
-		xC += pm->ts_minimal - xMIN;
+			xMIN = (xA < xB) ? (xC < xA) ? xC : xA : (xC < xB) ? xC : xB;
+
+			/* Clamp to minimal.
+			 * */
+			xA += pm->ts_minimal - xMIN;
+			xB += pm->ts_minimal - xMIN;
+			xC += pm->ts_minimal - xMIN;
+		}
+		else {
+			xMIN = (xA < xB) ? (xC < xA) ? xC : xA : (xC < xB) ? xC : xB;
+			xMAX = (xA > xB) ? (xC > xA) ? xC : xA : (xC > xB) ? xC : xB;
+
+			xMAX = (pm->dc_resolution - (pm->ts_clearance + 1)
+					- (xMAX + xMIN) + pm->ts_minimal) / 2;
+
+			/* Clamp to middle.
+			 * */
+			xA += xMAX;
+			xB += xMAX;
+			xC += xMAX;
+		}
 
 		xMAX = pm->dc_resolution - (pm->ts_clearance + 1);
+		xMIN = pm->ts_minimal;
 
-		xA = (xA > xMAX) ? xMAX : xA;
-		xB = (xB > xMAX) ? xMAX : xB;
-		xC = (xC > xMAX) ? xMAX : xC;
+		xA = (xA < xMIN) ? xMIN : (xA > xMAX) ? xMAX : xA;
+		xB = (xB < xMIN) ? xMIN : (xB > xMAX) ? xMAX : xB;
+		xC = (xC < xMIN) ? xMIN : (xC > xMAX) ? xMAX : xC;
 	}
 
 	if (pm->ts_bootstrap != 0) {
@@ -2680,7 +2717,7 @@ pm_form_SP(pmc_t *pm, float eSP)
 
 	/* Add an load torque estimate as feed forward term.
 	 * */
-	iSP += pm->s_gain_A * pm_torque_get_current(pm, pm->lu_mq_load);
+	iSP += pm_torque_get_current(pm, pm->lu_mq_load);
 
 	/* Add derivative term based on the estimated acceleration.
 	 * */
@@ -2691,6 +2728,11 @@ pm_form_SP(pmc_t *pm, float eSP)
 
 		pm->s_integral += pm->s_gain_I * eSP;
 	}
+
+	/* Clamp the output in accordance with CURRENT constraints.
+	 * */
+	iSP =     (iSP > pm->i_maximal) ? pm->i_maximal
+		: (iSP < - pm->i_reverse) ? - pm->i_reverse : iSP;
 
 	return iSP;
 }
@@ -2733,7 +2775,7 @@ pm_wattage(pmc_t *pm)
 	 * */
 	if (pm->watt_capacity_Ah > M_EPSILON) {
 
-		Ah = pm->watt_capacity_Ah - pm->watt_consumed_Ah + pm->watt_reverted_Ah;
+		Ah = pm->watt_consumed_Ah - pm->watt_reverted_Ah;
 
 		pm->watt_fuel_gauge = 100.f * Ah / pm->watt_capacity_Ah;
 	}
@@ -2799,12 +2841,11 @@ pm_loop_current(pmc_t *pm)
 
 				if (track_Q < - M_EPSILON) {
 
+					iMAX = m_fabsf(track_Q);
+
 					/* Replace current setpoint by speed regulation.
 					 * */
 					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
-
-					iMAX = m_fabsf(track_Q);
-
 					track_Q = (track_Q > iMAX) ? iMAX
 						: (track_Q < - iMAX) ? - iMAX : track_Q;
 				}
@@ -2818,11 +2859,13 @@ pm_loop_current(pmc_t *pm)
 				wSP = (wSP > pm->s_maximal) ? pm->s_maximal
 					: (wSP < - pm->s_reverse) ? - pm->s_reverse : wSP;
 
-				dSA = pm->s_accel * pm->m_dT;
-				pm->l_track = (pm->l_track < wSP - dSA) ? pm->l_track + dSA
-					: (pm->l_track > wSP + dSA) ? pm->l_track - dSA : wSP;
+				dSA = pm->s_accel_forward * pm->m_dT;
+				dFA = pm->s_accel_reverse * pm->m_dT;
 
-				/* Get speed tracking discrepancy.
+				pm->l_track = (pm->l_track < wSP - dSA) ? pm->l_track + dSA
+					: (pm->l_track > wSP + dFA) ? pm->l_track - dFA : wSP;
+
+				/* Obtain the speed tracking discrepancy.
 				 * */
 				eSP = pm->l_track - pm->lu_wS;
 
@@ -2892,23 +2935,18 @@ pm_loop_current(pmc_t *pm)
 	iMAX = pm->i_maximal;
 	iREV = - pm->i_reverse;
 
-	if (pm->fsm_state == PM_STATE_LU_SHUTDOWN) {
+	track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
+	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
 
-		/* In case of shutdown was requested we fall down the current.
-		 * */
-		iMAX = 0.f;
-		iREV = 0.f;
-	}
-	else if (pm->lu_MODE == PM_LU_ON_HFI) {
+	if (pm->lu_MODE == PM_LU_ON_HFI) {
+
+		iMAX = pm->i_maximal_on_HFI;
 
 		/* Add current constraint from HFI.
 		 * */
-		iMAX = (iMAX < pm->i_maximal_on_HFI) ? iMAX : pm->i_maximal_on_HFI;
-		iREV = (iREV > - pm->i_maximal_on_HFI) ? iREV : - pm->i_maximal_on_HFI;
+		track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
+		track_Q = (track_Q > iMAX) ? iMAX : (track_Q < - iMAX) ? - iMAX : track_Q;
 	}
-
-	track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
-	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
 
 	/* Add current constraint from PCB.
 	 * */
@@ -2921,6 +2959,14 @@ pm_loop_current(pmc_t *pm)
 		/* In case of no flux weakening also constraint D-axis current.
 		 * */
 		track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
+	}
+
+	if (unlikely(pm->fsm_state == PM_STATE_LU_SHUTDOWN)) {
+
+		/* In case of SHUTDOWN was requested we fall down the current.
+		 * */
+		track_D = 0.f;
+		track_Q = 0.f;
 	}
 
 	/* Maximal WATTAGE constraints.
@@ -3064,7 +3110,7 @@ pm_loop_current(pmc_t *pm)
 	pm->i_track_Q = (pm->i_track_Q < track_Q - dSA) ? pm->i_track_Q + dSA
 		: (pm->i_track_Q > track_Q + dSA) ? pm->i_track_Q - dSA : track_Q;
 
-	/* Obtain discrepancy in DQ-axes.
+	/* Obtain the discrepancy in DQ-axes.
 	 * */
 	eD = pm->i_track_D - pm->lu_iD;
 	eQ = pm->i_track_Q - pm->lu_iQ;
@@ -3076,13 +3122,13 @@ pm_loop_current(pmc_t *pm)
 
 	/* Feed forward compensation (R).
 	 * */
-	uD += pm->i_gain_A * pm->const_Rs * pm->i_track_D;
-	uQ += pm->i_gain_A * pm->const_Rs * pm->i_track_Q;
+	uD += pm->const_Rs * pm->i_track_D;
+	uQ += pm->const_Rs * pm->i_track_Q;
 
 	/* Feed forward compensation (L).
 	 * */
-	uD += - pm->i_gain_A * pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
-	uQ += pm->i_gain_A * pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_lambda);
+	uD += - pm->lu_wS * pm->const_im_L2 * pm->i_track_Q;
+	uQ += pm->lu_wS * (pm->const_im_L1 * pm->i_track_D + pm->const_lambda);
 
 	uMAX = pm->k_UMAX * pm->const_fb_U;
 
@@ -3137,7 +3183,7 @@ pm_loop_current(pmc_t *pm)
 static void
 pm_loop_speed(pmc_t *pm)
 {
-	float		wSP, eSP, dSA;
+	float		wSP, eSP, dSA, dFA;
 
 	wSP = pm->s_setpoint_speed;
 
@@ -3153,32 +3199,39 @@ pm_loop_speed(pmc_t *pm)
 	else {
 		if (pm->config_LU_DRIVE == PM_DRIVE_SPEED) {
 
-			/* Maximal ACCELERATION constraint.
+			dSA = pm->s_accel_forward * pm->m_dT;
+			dFA = pm->s_accel_reverse * pm->m_dT;
+
+			/* Apply acceleration constraints.
 			 * */
-			dSA = pm->s_accel * pm->m_dT;
 			pm->s_track = (pm->s_track < wSP - dSA) ? pm->s_track + dSA
-				: (pm->s_track > wSP + dSA) ? pm->s_track - dSA : wSP;
+				: (pm->s_track > wSP + dFA) ? pm->s_track - dFA : wSP;
 		}
 		else {
-			/* No constraint required.
-			 * */
 			pm->s_track = wSP;
 		}
 
-		/* Get speed discrepancy.
-		 * */
-		eSP = pm->s_track - pm->lu_wS;
+		if (		pm->config_LU_FREEWHEEL == PM_ENABLED
+				&& m_fabsf(pm->s_track) < M_EPSILON) {
 
-		/* Update current loop SETPOINT.
-		 * */
-		pm->i_setpoint_current = pm_form_SP(pm, eSP);
+			pm->i_setpoint_current = 0.f;
+		}
+		else {
+			/* Obtain the speed discrepancy.
+			 * */
+			eSP = pm->s_track - pm->lu_wS;
+
+			/* Update current loop SETPOINT.
+			 * */
+			pm->i_setpoint_current = pm_form_SP(pm, eSP);
+		}
 	}
 }
 
 static void
 pm_loop_location(pmc_t *pm)
 {
-	float		xSP, wSP, eLOC, eABS, blend, gain;
+	float		xSP, wSP, eRSU, eABS, blend, gain;
 
 	xSP = pm->x_setpoint_location;
 	wSP = pm->x_setpoint_speed;
@@ -3202,25 +3255,25 @@ pm_loop_location(pmc_t *pm)
 
 	pm->x_setpoint_location = xSP;
 
-	/* Get location discrepancy.
+	/* Obtain the location discrepancy.
 	 * */
-	eLOC = pm->x_setpoint_location - pm->lu_location;
+	eRSU = pm->x_setpoint_location - pm->lu_location;
 
 	/* Servo is based on constant acceleration formula.
 	 * */
-	eABS= m_fabsf(eLOC);
-	eLOC = (eLOC < 0.f) ? - m_sqrtf(eABS) : m_sqrtf(eABS);
+	eABS= m_fabsf(eRSU);
+	eRSU = (eRSU < 0.f) ? - m_sqrtf(eABS) : m_sqrtf(eABS);
 
 	/* There is a residual tolerance.
 	 * */
-	eLOC = (eABS > pm->x_track_tol) ? eLOC : 0.f;
+	eRSU = (eABS > pm->x_track_tol) ? eRSU : 0.f;
 
 	/* Damping inside NEAR zone.
 	 * */
 	blend = (eABS < pm->x_boost_tol) ? eABS * m_fast_recipf(pm->x_boost_tol) : 1.f;
 	gain = pm->x_gain_P * blend + pm->x_gain_D * (1.f - blend);
 
-	wSP += gain * eLOC;
+	wSP += gain * eRSU;
 
 	/* Update speed loop SETPOINT.
 	 * */

@@ -39,8 +39,8 @@
 #define GPIO_ADC_VOLTAGE_C		XGPIO_DEF3('A', 2, 2)
 #define GPIO_ADC_NTC_PCB		XGPIO_DEF3('A', 3, 3)
 
-#define GPIO_USART3_TX			XGPIO_DEF4('B', 10, 0, 7)
-#define GPIO_USART3_RX			XGPIO_DEF4('B', 11, 0, 7)
+#define GPIO_USART_TX			XGPIO_DEF4('B', 10, 0, 7)
+#define GPIO_USART_RX			XGPIO_DEF4('B', 11, 0, 7)
 
 #define GPIO_FAN_EN			XGPIO_DEF2('B', 12)
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 4)

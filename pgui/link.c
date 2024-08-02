@@ -138,13 +138,9 @@ const char *lk_stod(double *x, const char *s)
 }
 
 static const char *
-lk_space(char **sp)
+lk_space(const char *s)
 {
-	char		*s = *sp;
-
 	while (*s != 0 && strchr(LINK_SPACE, *s) != 0) { ++s; }
-
-	*sp = s;
 
 	return s;
 }
@@ -152,23 +148,29 @@ lk_space(char **sp)
 static const char *
 lk_token(char **sp)
 {
-	char		*s = *sp;
-	const char	*r;
+	const char	*tok;
+	char		*s;
 
-	while (*s != 0 && strchr(LINK_SPACE, *s) != 0) { ++s; }
+	tok = lk_space(*sp);
+	s = (char *) tok;
 
-	r = s;
+	if (tok[0] == '"') {
 
-	if (r[0] == '"') {
-
-		++r;
+		++tok;
 		++s;
 
 		while (*s != 0 && *s != '"') { ++s; }
 	}
-	else if (r[0] == '(') {
+	else if (tok[0] == '[') {
 
-		++r;
+		++tok;
+		++s;
+
+		while (*s != 0 && *s != ']') { ++s; }
+	}
+	else if (tok[0] == '(') {
+
+		++tok;
 		++s;
 
 		while (*s != 0 && *s != ')') { ++s; }
@@ -185,7 +187,7 @@ lk_token(char **sp)
 
 	*sp = s;
 
-	return r;
+	return tok;
 }
 
 static unsigned int
@@ -306,7 +308,7 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 
 		if (reg->combo[reg->lval] != NULL) {
 
-			sprintf(reg->combo[reg->lval], "%.77s", reg->um);
+			sprintf(reg->combo[reg->lval], "%.79s", reg->um);
 
 			reg->lmax_combo = (reg->lval > reg->lmax_combo)
 				? reg->lval : reg->lmax_combo;
@@ -320,27 +322,26 @@ link_fetch_reg_format(struct link_pmc *lp)
 	struct link_priv	*priv = lp->priv;
 	char			ldup[LINK_MESSAGE_MAX], *sp = ldup;
 	const char		*tok, *sym;
-	int			reg_mode, reg_ID, eol, n;
+	int			reg_mode, reg_ID, n;
 
 	strcpy(ldup, priv->lbuf);
 
 	reg_ID = -1;
 
-	if (*sp >= '0' && *sp <= '7') {
+	tok = lk_token(&sp);
 
-		reg_mode = (int) (*sp - '0');
+	if (strlen(tok) <= 2) {
 
-		if (		   *(sp + 1) == ' '
-				&& *(sp + 2) == '[') {
+		if (lk_stoi(&n, tok) != NULL) {
 
-			sp += 2;
+			reg_mode = n;
 
 			tok = lk_token(&sp);
-			eol = strlen(tok) - 1;
 
-			if (tok[eol] == ']') {
+			if (		strlen(tok) <= 3
+					&& tok[-1] == '[') {
 
-				if (lk_stoi(&n, tok + 1) != NULL) {
+				if (lk_stoi(&n, lk_space(tok)) != NULL) {
 
 					reg_ID = n;
 				}
@@ -357,24 +358,24 @@ link_fetch_reg_format(struct link_pmc *lp)
 
 		if (strcmp(tok, "=") == 0) {
 
-			char		vbuf[80];
+			char		text[80];
 
-			sprintf(vbuf, "%.77s", lk_space(&sp));
+			sprintf(text, "%.79s", sp = (char *) lk_space(sp));
 
 			reg->mode = reg_mode;
 
-			sprintf(reg->sym, "%.77s", sym);
-			sprintf(reg->val, "%.77s", lk_token(&sp));
-			sprintf(reg->um,  "%.77s", lk_token(&sp));
+			sprintf(reg->sym, "%.79s", sym);
+			sprintf(reg->val, "%.79s", lk_token(&sp));
+			sprintf(reg->um,  "%.79s", lk_token(&sp));
 
-			tok = lk_space(&sp);
+			tok = lk_space(sp);
 
 			if (tok[0] == 0) {
 
 				link_reg_postproc(lp, reg);
 			}
 			else {
-				sprintf(reg->val, "%.77s", vbuf);
+				strcpy(reg->val, text);
 
 				reg->um[0] = 0;
 			}
@@ -536,7 +537,7 @@ void link_open(struct link_pmc *lp, struct config_phobia *fe,
 
 	lp->fe = fe;
 
-	sprintf(lp->devname, "%.77s", devname);
+	sprintf(lp->devname, "%.79s", devname);
 
 	lp->baudrate = baudrate;
 	lp->quantum = 10;
@@ -561,6 +562,10 @@ void link_open(struct link_pmc *lp, struct config_phobia *fe,
 	lp->locked = lp->clock + 1000;
 	lp->active = lp->clock;
 	lp->keep = lp->clock;
+
+	strcpy(lp->reg[0].sym, "null");
+
+	lp->reg_MAX_N = 1;
 
 	sprintf(priv->lbuf, "\x04\x04" LINK_EOL LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
@@ -636,7 +641,9 @@ void link_remote(struct link_pmc *lp)
 
 	memset(lp->reg, 0, sizeof(lp->reg));
 
-	lp->reg_MAX_N = 0;
+	strcpy(lp->reg[0].sym, "null");
+
+	lp->reg_MAX_N = 1;
 
 	sprintf(priv->lbuf, LINK_EOL LINK_EOL);
 	serial_fputs(priv->fd, priv->lbuf);
@@ -851,7 +858,7 @@ void link_push(struct link_pmc *lp)
 
 			if (reg->modified > reg->fetched) {
 
-				sprintf(priv->lbuf, "reg %i %.77s" LINK_EOL,
+				sprintf(priv->lbuf, "reg %i %.79s" LINK_EOL,
 						reg_ID, reg->val);
 
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {

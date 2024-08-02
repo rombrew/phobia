@@ -16,6 +16,7 @@ float ntc_read_temperature(ntc_t *ntc)
 		case NTC_GND:
 
 			ohm = um * ntc->balance / (1.f - um);
+
 			temp = ntc->betta / (ntc->betta / (ntc->ta0 + 273.f)
 					+ m_logf(ohm / ntc->ntc0)) - 273.f;
 			break;
@@ -23,6 +24,7 @@ float ntc_read_temperature(ntc_t *ntc)
 		case NTC_VCC:
 
 			ohm = (1.f - um) * ntc->balance / um;
+
 			temp = ntc->betta / (ntc->betta / (ntc->ta0 + 273.f)
 					+ m_logf(ohm / ntc->ntc0)) - 273.f;
 			break;
@@ -36,9 +38,12 @@ float ntc_read_temperature(ntc_t *ntc)
 			temp =  185.81927f + temp * ohm;
 			break;
 
-		case NTC_KTY83:
+		case NTC_KTY83_GND:
 
 			ohm = um * ntc->balance / (1.f - um);
+
+			ohm = (ohm < 480.f) ? 480.f
+				: (ohm > 2647.f) ? 2647.f : ohm;
 
 			temp =  1.0572638E-8f;
 			temp = -7.1592662E-5f + temp * ohm;
@@ -46,9 +51,12 @@ float ntc_read_temperature(ntc_t *ntc)
 			temp = -1.6020638E+2f + temp * ohm;
 			break;
 
-		case NTC_KTY84:
+		case NTC_KTY84_GND:
 
 			ohm = um * ntc->balance / (1.f - um);
+
+			ohm = (ohm < 332.f) ? 332.f
+				: (ohm > 2791.f) ? 2791.f : ohm;
 
 			temp =  1.7536720E-8f;
 			temp = -1.0947810E-4f + temp * ohm;

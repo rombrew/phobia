@@ -79,8 +79,8 @@ the control variable will be interpolated to this value.
 
 	(pmc) reg ap.knob_control_BRK <x>
 
-If you need you can change input lost range. If signal goes beyond this range
-it is considered lost and halt happens with `PM_ERROR_KNOB_CONTROL_FAULT` reason.
+If you need you can change input lost range. If analog signal goes beyond this
+range it is considered lost and error reason `PM_ERROR_KNOB_SIGNAL_FAULT` is reported.
 
 	(pmc) reg ap.knob_range_LOS0 <V>
 	(pmc) reg ap.knob_range_LOS1 <V>

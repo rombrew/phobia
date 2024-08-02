@@ -473,7 +473,7 @@ void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 	if (g != NULL) {
 
 		svgDrawLine(g, fxs, fys, fxe, fye, (svgCol_t) col,
-				1 + dw->thickness, 0, 0);
+				dw->thickness, 0, 0);
 	}
 
 	xs = (int) fxs;
@@ -483,7 +483,7 @@ void drawLine(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 
 	drawRoughLine(surface, xs, ys, xe, ye, col);
 
-	for (n = 1; n <= dw->thickness; ++n) {
+	for (n = 1; n < dw->thickness; ++n) {
 
 		if (abs(xs - xe) < abs(ys - ye)) {
 
@@ -507,7 +507,7 @@ void drawDash(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 	if (g != NULL) {
 
 		svgDrawLine(g, fxs, fys, fxe, fye, (svgCol_t) col,
-				1 + dw->thickness, dash + dw->thickness, space);
+				dw->thickness, dash + dw->thickness, space);
 	}
 
 	xs = (int) fxs;
@@ -520,7 +520,7 @@ void drawDash(draw_t *dw, SDL_Surface *surface, clipBox_t *cb, double fxs, doubl
 
 	drawRoughDash(dw, surface, xs, ys, xe, ye, col, dash, space);
 
-	for (n = 1; n <= dw->thickness; ++n) {
+	for (n = 1; n < dw->thickness; ++n) {
 
 		dw->dash_context = context;
 

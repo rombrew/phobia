@@ -304,26 +304,38 @@ void m_la_eigf(const float a[3], float v[4], int m)
 		v[3] = (b - la) * 0.5f;
 	}
 
-	if (a[0] >= a[2]) {
+	if (a[0] > a[2]) {
 
-		la = a[0] - v[3];
-		b = m_sqrtf(la * la + a[1] * a[1]);
+		b = a[0] - v[3];
+		d = a[1];
 
-		v[0] = la / b;
-		v[1] = - a[1] / b;
+		la = m_sqrtf(b * b + d * d);
+
+		if (b < 0.f) {
+
+			v[0] = - b / la;
+			v[1] = d / la;
+		}
+		else {
+			v[0] = b / la;
+			v[1] = - d / la;
+		}
 	}
 	else {
-		la = a[2] - v[3];
-		b = m_sqrtf(la * la + a[1] * a[1]);
+		b = a[2] - v[3];
+		d = a[1];
 
-		v[0] = a[1] / b;
-		v[1] = - la / b;
-	}
+		la = m_sqrtf(b * b + d * d);
 
-	if (v[0] < 0.f) {
+		if (d < 0.f) {
 
-		v[0] = - v[0];
-		v[1] = - v[1];
+			v[0] = - d / la;
+			v[1] = b / la;
+		}
+		else {
+			v[0] = d / la;
+			v[1] = - b / la;
+		}
 	}
 }
 

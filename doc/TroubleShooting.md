@@ -67,8 +67,8 @@ some unknown reason. Maybe speed is too low or spinup was failed at all.
 `PM_ERROR_NO_SYNC_FAULT` - Position estimate discrepancy is out of range. This
 erorr code can only come from bench model.
 
-`PM_ERROR_KNOB_CONTROL_FAULT` - Knob control signal was lost. Check the
-reliability and noise immunity of wiring.
+`PM_ERROR_KNOB_SIGNAL_FAULT` - Knob input signal was lost or corrupted. Check
+the reliability and noise immunity of wiring.
 
 `PM_ERROR_SPI_DATA_FAULT` - SPI data transfer was failed frequently. Check the
 reliability and noise immunity of wiring.

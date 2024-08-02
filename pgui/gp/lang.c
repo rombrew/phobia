@@ -48,9 +48,9 @@ void langFill(lang_t *la, int lang)
 		la->global_zoom_menu =
 
 			"A   Auto fit to page\0"
-			"Q   Equal scales\0"
-			"G   Grid align\0"
-			"W   Stacked on Y\0"
+			"Q   Equal scales along X and Y\0"
+			"G   Grid align between axes\0"
+			"W   Stacked layout on Y\0"
 
 			"\0";
 
@@ -241,8 +241,8 @@ void langFill(lang_t *la, int lang)
 		la->global_zoom_menu =
 
 			"A   Автоматически на всю страницу\0"
-			"Q   Одинаковый масштаб по осям\0"
-			"G   Выравнивание сетки\0"
+			"Q   Одинаковый масштаб по осям X и Y\0"
+			"G   Выравнивание сетки между осями\0"
 			"W   Укладка стопкой по Y\0"
 
 			"\0";

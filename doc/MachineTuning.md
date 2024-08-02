@@ -100,9 +100,11 @@ remember about alternative units of measure by using specific register name.
 	(pmc) reg pm.s_maximal <rad/s>
 	(pmc) reg pm.s_reverse <rad/s>
 
-You can limit the acceleration. We recommend to increase the default value.
+You can limit the acceleration in forward and reverse direction. We suggest you
+to increase the default acceleration value.
 
-	(pmc) reg pm.s_accel <rad/s/s>
+	(pmc) reg pm.s_accel_forward <rad/s2>
+	(pmc) reg pm.s_accel_reverse <rad/s2>
 
 It should be noted that above constraints are used differently depending on
 selected control loop. In case of speed control above constraints are applied
@@ -127,7 +129,6 @@ Also you can tune PID regulator and load torque gains manually.
 	(pmc) reg pm.s_gain_P <x>
 	(pmc) reg pm.s_gain_I <x>
 	(pmc) reg pm.s_gain_D <x>
-	(pmc) reg pm.s_gain_A <x>
 
 ## Brake function
 
