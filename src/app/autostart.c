@@ -14,7 +14,7 @@ LD_TASK void app_AUTOSTART(void *pData)
 {
 	volatile int		*lknob = (volatile int *) pData;
 
-	if (xTaskGetTickCount() >= (TickType_t) 5000) {
+	if (xTaskGetTickCount() >= (TickType_t) 1000) {
 
 		/* If the application task was started much later than powerup
 		 * we will pause to give you time for flash programing.

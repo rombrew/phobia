@@ -11,6 +11,9 @@ int ts_wait_IDLE();
 int ts_wait_motion();
 int ts_wait_spinup();
 
+void ts_adjust_sensor_hall();
+void ts_adjust_sensor_eabi();
+
 void ts_script_default();
 void ts_script_base();
 void ts_script_test();

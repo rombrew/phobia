@@ -127,7 +127,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_DTC_VOLTAGE = PM_ENABLED;
 	pm->config_LU_FORCED = PM_ENABLED;
 	pm->config_LU_FREEWHEEL = PM_ENABLED;
-	pm->config_LU_ESTIMATE = PM_FLUX_KALMAN;
+	pm->config_LU_ESTIMATE = PM_FLUX_ORTEGA;
 	pm->config_LU_SENSOR = PM_SENSOR_NONE;
 	pm->config_LU_LOCATION = PM_LOCATION_NONE;
 	pm->config_LU_DRIVE = PM_DRIVE_SPEED;
@@ -993,7 +993,15 @@ pm_kalman_forecast(pmc_t *pm)
 	const float	*A = pm->kalman_A;
 	const float	*Q = pm->kalman_gain_Q;
 
-	float		iX, iY, uX, uY, fC, fS, wS, bQ;
+	const float	iX = A[0];
+	const float	iY = A[1];
+	const float	uX = A[2];
+	const float	uY = A[3];
+	const float	fC = A[4];
+	const float	fS = A[5];
+	const float	wS = A[6];
+	const float	bQ = A[7];
+
 	float		u[17], F[10], R1, E1;
 
 	/*
@@ -1014,15 +1022,6 @@ pm_kalman_forecast(pmc_t *pm)
 	 *     [ P(10) P(11) P(12) P(13) P(14) ]
 	 *
 	 * */
-
-	iX = A[0];
-	iY = A[1];
-	uX = A[2];
-	uY = A[3];
-	fC = A[4];
-	fS = A[5];
-	wS = A[6];
-	bQ = A[7];
 
 	u[0] = fC * fC;
 	u[1] = fS * fS;

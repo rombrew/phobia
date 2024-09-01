@@ -426,8 +426,6 @@ void bench_script()
 	pm.s_setpoint_speed = 2000.f;
 	sim_runtime(2.0);
 
-	
-
 	sim_runtime(3.0);
 
 	tlm_PWM_grab();
