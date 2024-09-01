@@ -16,7 +16,7 @@ Note that non-salient machine implies `Ld = Lq`, negative saliency (BLDC)
 implies `Ld < Lq`, positive saliency (IPM, SynRM) implies `Ld > Lq`.
 
 You should check the inductance difference along the DQ axes after the machine
-probing procedures. Inductances L1 and L2 should differ by more than ~10% to
+probing procedures. Inductances Ld and Lq should differ by more than ~10% to
 get reliable HFI operation.
 
 	(pmc) pm_probe_impedance

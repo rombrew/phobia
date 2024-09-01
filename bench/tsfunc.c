@@ -100,7 +100,7 @@ int ts_wait_spinup()
 
 void ts_self_adjust()
 {
-	double		tau_A, tau_B, tau_C;
+	double		usual_Mq;
 
 	do {
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
@@ -108,7 +108,7 @@ void ts_self_adjust()
 
 		printf("const_fb_U = %.3f (V)\n", pm.const_fb_U);
 
-		printf("scale_iABC0 = %.3f %.3f %.3f (A)\n", pm.scale_iA[0],
+		printf("scale_i_0 = %.3f %.3f %.3f (A)\n", pm.scale_iA[0],
 				pm.scale_iB[0], pm.scale_iC[0]);
 
 		printf("self_STDi = %.3f %.3f %.3f (A)\n", pm.self_STDi[0],
@@ -119,46 +119,55 @@ void ts_self_adjust()
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
+			pm.fsm_req = PM_STATE_ADJUST_ON_PCB_VOLTAGE;
 			ts_wait_IDLE();
 
 			printf("scale_uA = %.4E %.4f (V)\n", pm.scale_uA[1], pm.scale_uA[0]);
 			printf("scale_uB = %.4E %.4f (V)\n", pm.scale_uB[1], pm.scale_uB[0]);
 			printf("scale_uC = %.4E %.4f (V)\n", pm.scale_uC[1], pm.scale_uC[0]);
 
-			tau_A = pm.m_dT / log(pm.tvm_FIR_A[0] / - pm.tvm_FIR_A[1]);
-			tau_B = pm.m_dT / log(pm.tvm_FIR_B[0] / - pm.tvm_FIR_B[1]);
-			tau_C = pm.m_dT / log(pm.tvm_FIR_C[0] / - pm.tvm_FIR_C[1]);
-
-			printf("tau_A = %.2f (us)\n", tau_A * 1000000.);
-			printf("tau_B = %.2f (us)\n", tau_B * 1000000.);
-			printf("tau_C = %.2f (us)\n", tau_C * 1000000.);
-
-			printf("self_RMSu = %.4f %.4f %.4f (V)\n", pm.self_RMSu[1],
-					pm.self_RMSu[2], pm.self_RMSu[3]);
-
-			TS_assert_relative(tau_A, m.tau_B);
-			TS_assert_relative(tau_B, m.tau_B);
-			TS_assert_relative(tau_C, m.tau_B);
+			printf("self_RMSu = %.4f (V)\n", pm.self_RMSu);
+			printf("self_RMSt = %.4f %.4f %.4f (V)\n", pm.self_RMSt[0],
+					pm.self_RMSt[1], pm.self_RMSt[2]);
 
 			if (pm.fsm_errno != PM_OK)
 				break;
 		}
+
+		usual_Mq = m.Mq[3];
+		m.Mq[3] = 5.E-1;
+
+		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
+		ts_wait_IDLE();
+
+		m.Mq[3] = usual_Mq;
+
+		printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
+		printf("dtc_deadband = %.1f (ns)\n", pm.dtc_deadband);
+		printf("self_DTu = %.4f (V)\n", pm.self_DTu);
 	}
 	while (0);
 }
 
 void ts_probe_impedance()
 {
+	double		usual_Mq;
+
 	do {
+		usual_Mq = m.Mq[3];
+		m.Mq[3] = 5.E-1;
+
 		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
-		pm.const_Rs = pm.const_im_R;
+		m.Mq[3] = usual_Mq;
+
+		pm.const_Rs = pm.const_im_Rz;
 
 		printf("const_Rs = %.4E (Ohm)\n", pm.const_Rs);
+		printf("self_DTu = %.4f (V)\n", pm.self_DTu);
 
 		TS_assert_relative(pm.const_Rs, m.Rs);
 
@@ -167,13 +176,13 @@ void ts_probe_impedance()
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
-		printf("const_im_L1 = %.4E (H)\n", pm.const_im_L1);
-		printf("const_im_L2 = %.4E (H)\n", pm.const_im_L2);
-		printf("const_im_B = %.2f (deg)\n", pm.const_im_B);
-		printf("const_im_R = %.4E (Ohm)\n", pm.const_im_R);
+		printf("const_im_Ld = %.4E (H)\n", pm.const_im_Ld);
+		printf("const_im_Lq = %.4E (H)\n", pm.const_im_Lq);
+		printf("const_im_A = %.2f (deg)\n", pm.const_im_A);
+		printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
 
-		TS_assert_relative(pm.const_im_L1, m.Ld);
-		TS_assert_relative(pm.const_im_L2, m.Lq);
+		TS_assert_relative(pm.const_im_Ld, m.Ld);
+		TS_assert_relative(pm.const_im_Lq, m.Lq);
 
 		pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
@@ -287,11 +296,11 @@ void ts_probe_spinup()
 		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
 				* pm.const_fb_U / pm.const_lambda;
 
-		sim_runtime(300 / (double) TS_TICK_RATE);
+		sim_runtime(400 / (double) TS_TICK_RATE);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
-		sim_runtime(300 / (double) TS_TICK_RATE);
+		sim_runtime(400 / (double) TS_TICK_RATE);
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
@@ -688,7 +697,7 @@ void ts_script_test()
 	tlm_restart();
 
 	m.Rs = 7.E-3;
-	m.Ld = 2.E-6;
+	m.Ld = 3.E-6;
 	m.Lq = 5.E-6;
 	m.Udc = 48.;
 	m.Rdc = 0.1;

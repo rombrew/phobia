@@ -3,7 +3,18 @@
 #include "freertos/FreeRTOS.h"
 #include "cmsis/stm32xx.h"
 
+#define _HW_HAVE_USART1		  ((GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('A', 9)  \
+				|| (GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('B', 6))
+
+#define _HW_HAVE_USART2		  ((GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('A', 2)  \
+				|| (GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('D', 5))
+
+#define _HW_HAVE_USART3		  ((GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('B', 10)  \
+				|| (GPIO_USART_TX & 0x7FU) == XGPIO_DEF2('C', 10))
+
 typedef struct {
+
+	USART_TypeDef		*BASE;
 
 	QueueHandle_t		rx_queue;
 	QueueHandle_t		tx_queue;
@@ -12,16 +23,17 @@ priv_USART_t;
 
 static priv_USART_t		priv_USART;
 
-void irq_USART3()
+static void
+irq_USART(USART_TypeDef *USART)
 {
 	BaseType_t		xWoken = pdFALSE;
 	uint32_t		SR;
 	char			xbyte;
 
 #if defined(STM32F4)
-	SR = USART3->SR;
+	SR = USART->SR;
 #elif defined(STM32F7)
-	SR = USART3->ISR;
+	SR = USART->ISR;
 #endif /* STM32Fx */
 
 #if defined(STM32F4)
@@ -31,9 +43,9 @@ void irq_USART3()
 #endif /* STM32Fx */
 
 #if defined(STM32F4)
-		xbyte = USART3->DR;
+		xbyte = USART->DR;
 #elif defined(STM32F7)
-		xbyte = USART3->RDR;
+		xbyte = USART->RDR;
 #endif /* STM32Fx */
 
 		xQueueSendToBackFromISR(priv_USART.rx_queue, &xbyte, &xWoken);
@@ -50,30 +62,59 @@ void irq_USART3()
 		if (xQueueReceiveFromISR(priv_USART.tx_queue, &xbyte, &xWoken) == pdTRUE) {
 
 #if defined(STM32F4)
-			USART3->DR = xbyte;
+			USART->DR = xbyte;
 #elif defined(STM32F7)
-			USART3->TDR = xbyte;
+			USART->TDR = xbyte;
 #endif /* STM32Fx */
 
 		}
 		else {
-			USART3->CR1 &= ~USART_CR1_TXEIE;
+			USART->CR1 &= ~USART_CR1_TXEIE;
 		}
 	}
 
 	portYIELD_FROM_ISR(xWoken);
 }
 
+void irq_USART1() { irq_USART(USART1); }
+void irq_USART2() { irq_USART(USART2); }
+void irq_USART3() { irq_USART(USART3); }
+
 void USART_startup()
 {
-	/* Enable USART3 clock.
-	 * */
-	RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
+	if (_HW_HAVE_USART1) {
 
-	/* Enable USART3 pins.
+		priv_USART.BASE = USART1;
+	}
+	else if (_HW_HAVE_USART2) {
+
+		priv_USART.BASE = USART2;
+	}
+	else if (_HW_HAVE_USART3) {
+
+		priv_USART.BASE = USART3;
+	}
+
+	/* Enable USART clock.
+	 * */
+	if (_HW_HAVE_USART1) {
+
+		RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+	}
+	else if (_HW_HAVE_USART2) {
+
+		RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+	}
+	else if (_HW_HAVE_USART3) {
+
+		RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
+	}
+
+	/* Enable USART pins.
 	 * */
 	GPIO_set_mode_FUNCTION(GPIO_USART_TX);
 	GPIO_set_mode_FUNCTION(GPIO_USART_RX);
+
 	GPIO_set_mode_PULL_UP(GPIO_USART_RX);
 
 	/* Alloc queues.
@@ -83,48 +124,68 @@ void USART_startup()
 
 	/* Configure USART.
 	 * */
-	USART3->BRR = CLOCK_APB1_HZ / hal.USART_baudrate;
+	if (_HW_HAVE_USART1) {
+
+		priv_USART.BASE->BRR = CLOCK_APB2_HZ / hal.USART_baudrate;
+	}
+	else if (_HW_HAVE_USART2 || _HW_HAVE_USART3) {
+
+		priv_USART.BASE->BRR = CLOCK_APB1_HZ / hal.USART_baudrate;
+	}
 
 #if defined(STM32F4)
 	if (hal.USART_parity == PARITY_EVEN) {
 
-		USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 			| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	}
 	else if (hal.USART_parity == PARITY_ODD) {
 
-		USART3->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_M | USART_CR1_PCE
 			| USART_CR1_PS | USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	}
 	else {
-		USART3->CR1 = USART_CR1_UE | USART_CR1_RXNEIE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_RXNEIE
 			| USART_CR1_TE | USART_CR1_RE;
 	}
 
 #elif defined(STM32F7)
 	if (hal.USART_parity == PARITY_EVEN) {
 
-		USART3->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
 			| USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	}
 	else if (hal.USART_parity == PARITY_ODD) {
 
-		USART3->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_M0 | USART_CR1_PCE
 			| USART_CR1_PS | USART_CR1_RXNEIE | USART_CR1_TE | USART_CR1_RE;
 	}
 	else {
-		USART3->CR1 = USART_CR1_UE | USART_CR1_RXNEIE
+		priv_USART.BASE->CR1 = USART_CR1_UE | USART_CR1_RXNEIE
 			| USART_CR1_TE | USART_CR1_RE;
 	}
 #endif /* STM32Fx */
 
-	USART3->CR2 = 0;
-	USART3->CR3 = 0;
+	priv_USART.BASE->CR2 = 0;
+	priv_USART.BASE->CR3 = 0;
 
 	/* Enable IRQ.
 	 * */
-	NVIC_SetPriority(USART3_IRQn, 11);
-	NVIC_EnableIRQ(USART3_IRQn);
+	if (_HW_HAVE_USART1) {
+
+		NVIC_SetPriority(USART1_IRQn, 11);
+		NVIC_EnableIRQ(USART1_IRQn);
+	}
+	else if (_HW_HAVE_USART2) {
+
+		NVIC_SetPriority(USART2_IRQn, 11);
+		NVIC_EnableIRQ(USART2_IRQn);
+	}
+	else if (_HW_HAVE_USART3) {
+
+		NVIC_SetPriority(USART3_IRQn, 11);
+		NVIC_EnableIRQ(USART3_IRQn);
+	}
 }
 
 int USART_getc()
@@ -149,7 +210,7 @@ void USART_putc(int c)
 
 	xQueueSendToBack(priv_USART.tx_queue, &xbyte, portMAX_DELAY);
 
-	USART3->CR1 |= USART_CR1_TXEIE;
+	priv_USART.BASE->CR1 |= USART_CR1_TXEIE;
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 }

@@ -144,15 +144,10 @@ tlm_plot_grab()
 	fmt_GP(pm.vsi_BF, 0);
 	fmt_GP(pm.vsi_CF, 0);
 	fmt_GP(pm.vsi_IF, 0);
-	fmt_GP(pm.vsi_SF, 0);
 	fmt_GP(pm.vsi_UF, 0);
 
-	fmt_GP(pm.tvm_A, "V");
-	fmt_GP(pm.tvm_B, "V");
-	fmt_GP(pm.tvm_C, "V");
-
-	fmt_GP(pm.tvm_X0, "V");
-	fmt_GP(pm.tvm_Y0, "V");
+	fmt_GP(pm.dtc_uX, "V");
+	fmt_GP(pm.dtc_uY, "V");
 
 	fmt_GP(pm.lu_MODE, 0);
 	fmk_GP(pm.lu_mq_produce, pm.const_Zp, "Nm");
@@ -177,8 +172,8 @@ tlm_plot_grab()
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "deg");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
-	fmt_GP(pm.kalman_residual_D, "A");
-	fmt_GP(pm.kalman_residual_Q, "A");
+	fmt_GP(pm.kalman_E[0], "A");
+	fmt_GP(pm.kalman_E[1], "A");
 	fmt_GP(pm.kalman_bias_Q, "V");
 	fmk_GP(pm.kalman_lpf_wS, kRPM, "rpm");
 
@@ -379,60 +374,61 @@ void bench_script()
 
 	tlm_restart();
 
-	/*m.Rs = 8.1E-3;
-	m.Ld = 3.2E-6;
-	m.Lq = 4.8E-6;
-	m.Udc = 48.;
+	m.Rs = 7.E-3;
+	m.Ld = 37.E-6;
+	m.Lq = 57.E-6;
+	m.Udc = 49.;
 	m.Rdc = 0.1;
-	m.Zp = 21;
-	m.lambda = blm_Kv_lambda(&m, 109.);
-	m.Jm = 5.39E-3;*/
-
-	m.Rs = 28.E-3;
-	m.Ld = 14.E-6;
-	m.Lq = 22.E-6;
-	m.Udc = 48.;
-	m.Rdc = 0.1;
-	m.Zp = 14;
-	m.lambda = blm_Kv_lambda(&m, 87.);
-	m.Jm = 0.82E-3;
-
-	/*m.Rs = 257.E-3;
-	m.Ld = 1.1E-3;
-	m.Lq = 1.5E-3;
-	m.Udc = 48.;
-	m.Rdc = 0.1;
-	m.Zp = 1;
-	m.lambda = blm_Kv_lambda(&m, 55.);
-	m.Jm = 5.39E-3;*/
+	m.Zp = 5;
+	m.lambda = blm_Kv_lambda(&m, 58.);
+	m.Jm = 17.E-3;
 
 	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 
+	ts_adjust_sensor_hall();
+	blm_restart(&m);
+
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+	pm.config_LU_SENSOR = PM_SENSOR_HALL;
+	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+	//pm.config_DTC_VOLTAGE = PM_DISABLED;
+
+	pm.watt_wA_maximal = 80.f;
+	pm.watt_wA_reverse = 80.f;
+
+	pm.zone_threshold *= 2.f;
+
+	pm.hall_gain_IF = 0.1f;
+	pm.flux_gain_IF = 0.1f;
+
+	m.Jm = 17.E-3 * 48. / 10.;
+
+	/*pm.const_im_Ld /= 1.2f;
+	pm.const_im_Lq /= 1.2f;*/
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();
 
-	pm.s_setpoint_speed = 4000.f;
+	pm.s_setpoint_speed = 10.f;
 	sim_runtime(1.0);
 
-	//m.Udc = 30.;
-	//m.Rdc = 50.;
+	pm.s_setpoint_speed = 100.f;
+	sim_runtime(2.0);
 
-	pm.watt_wP_reverse = 1000.f;
-	pm.watt_uDC_maximal = 48.f;
-	//pm.watt_uDC_tol = 10.f;
+	pm.s_setpoint_speed = 2000.f;
+	sim_runtime(1.0);
 
-	sim_runtime(0.2);
+	pm.s_setpoint_speed = - 2000.f;
+	sim_runtime(2.0);
 
-	pm.s_setpoint_speed = 0.f;
-	//pm.s_track = 0.f;
-	sim_runtime(0.3);
+	pm.s_setpoint_speed = 2000.f;
+	sim_runtime(2.0);
 
-	//m.Rdc = 1.;
-	sim_runtime(0.5);
+	
+
+	sim_runtime(3.0);
 
 	tlm_PWM_grab();
 }

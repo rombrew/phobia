@@ -119,6 +119,47 @@ int pm_wait_settle()
 	return pm.fsm_errno;
 }
 
+SH_DEF(pm_adjust_dtc_voltage)
+{
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
+		pm_wait_IDLE();
+
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SCALE_IA0);
+		reg_OUTP(ID_PM_SCALE_IB0);
+		reg_OUTP(ID_PM_SCALE_IC0);
+		reg_OUTP(ID_PM_SELF_STDI);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+
+			if (pm_wait_IDLE() != PM_OK)
+				break;
+		}
+
+		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
+		pm_wait_IDLE();
+
+		reg_OUTP(ID_PM_CONST_IM_RZ);
+		reg_OUTP(ID_PM_DTC_DEADBAND);
+		reg_OUTP(ID_PM_SELF_DTU);
+	}
+	while (0);
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+}
+
 SH_DEF(pm_probe_impedance)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -155,19 +196,20 @@ SH_DEF(pm_probe_impedance)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		pm.const_Rs = pm.const_im_R;
+		pm.const_Rs = pm.const_im_Rz;
 
 		reg_OUTP(ID_PM_CONST_RS);
+		reg_OUTP(ID_PM_SELF_DTU);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		reg_OUTP(ID_PM_CONST_IM_L1);
-		reg_OUTP(ID_PM_CONST_IM_L2);
-		reg_OUTP(ID_PM_CONST_IM_B);
-		reg_OUTP(ID_PM_CONST_IM_R);
+		reg_OUTP(ID_PM_CONST_IM_LD);
+		reg_OUTP(ID_PM_CONST_IM_LQ);
+		reg_OUTP(ID_PM_CONST_IM_A);
+		reg_OUTP(ID_PM_CONST_IM_RZ);
 
 		pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
@@ -278,11 +320,11 @@ SH_DEF(pm_probe_spinup)
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
@@ -360,81 +402,6 @@ SH_DEF(pm_probe_detached)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_probe_const_resistance)
-{
-	float		R[3];
-
-	if (pm.lu_MODE != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
-	do {
-		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_IDLE();
-
-		reg_OUTP(ID_PM_CONST_FB_U);
-		reg_OUTP(ID_PM_SCALE_IA0);
-		reg_OUTP(ID_PM_SCALE_IB0);
-		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
-
-		if (pm.fsm_errno != PM_OK)
-			break;
-
-		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
-
-			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
-
-			if (pm_wait_IDLE() != PM_OK)
-				break;
-		}
-
-		pm.probe_hold_angle = 0.f;
-
-		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
-
-		if (pm_wait_IDLE() != PM_OK)
-			break;
-
-		R[0] = pm.const_im_R;
-
-		reg_OUTP(ID_PM_CONST_IM_R);
-
-		pm.probe_hold_angle = 120.f;
-
-		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
-
-		if (pm_wait_IDLE() != PM_OK)
-			break;
-
-		R[1] = pm.const_im_R;
-
-		reg_OUTP(ID_PM_CONST_IM_R);
-
-		pm.probe_hold_angle = - 120.f;
-
-		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
-
-		if (pm_wait_IDLE() != PM_OK)
-			break;
-
-		R[2] = pm.const_im_R;
-
-		reg_OUTP(ID_PM_CONST_IM_R);
-
-		pm.const_Rs = (R[0] + R[1] + R[2]) / 3.f;
-
-		reg_OUTP(ID_PM_CONST_RS);
-	}
-	while (0);
-
-	pm.probe_hold_angle = 0.f;
-
-	reg_OUTP(ID_PM_FSM_ERRNO);
-}
-
 SH_DEF(pm_probe_const_flux_linkage)
 {
 	if (pm.lu_MODE == PM_LU_DISABLED) {
@@ -498,11 +465,11 @@ SH_DEF(pm_probe_const_inertia)
 		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
@@ -702,11 +669,11 @@ SH_DEF(ld_probe_const_inertia)
 
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_maximal);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		reg_SET_F(ID_PM_X_SETPOINT_LOCATION, pm.x_minimal);
 
-		vTaskDelay((TickType_t) 300);
+		vTaskDelay((TickType_t) 400);
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;

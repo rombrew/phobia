@@ -670,5 +670,23 @@ LD_TASK void task_CMDSH(void *pData)
 #undef SH_DEF
 #define SH_DEF(name)		void name(const char *s)
 
-/* TODO */
+SH_DEF(help)
+{
+	const sh_cmd_t		*cmd;
+
+	cmd = cmLIST;
+
+	do {
+		if (cmd->sym == NULL)
+			break;
+
+		if (strstr(cmd->sym, s) != NULL) {
+
+			printf("%s\n", cmd->sym);
+		}
+
+		++cmd;
+	}
+	while (1);
+}
 

@@ -535,7 +535,7 @@ LD_TASK void task_KNOB(void *pData)
 static void
 default_flash_load()
 {
-	float			volt_D, halt_I, halt_U;
+	float			halt_I, halt_U;
 
 	hal.USART_baudrate = 57600;
 	hal.USART_parity = PARITY_EVEN;
@@ -547,13 +547,15 @@ default_flash_load()
 	hal.ADC_amplifier_gain = HW_ADC_AMPLIFIER_GAIN;
 	hal.ADC_voltage_ratio = HW_ADC_VOLTAGE_R2 / (HW_ADC_VOLTAGE_R1 + HW_ADC_VOLTAGE_R2);
 
-	volt_D =  HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2
-		+ HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_R3
-		+ HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R3;
+#ifndef HW_ADC_TERMINAL_R1
+#define HW_ADC_TERMINAL_R1	HW_ADC_VOLTAGE_R1
+#endif /* HW_ADC_TERMINAL_R1 */
 
-	hal.ADC_terminal_ratio = HW_ADC_VOLTAGE_R2 * HW_ADC_VOLTAGE_R3 / volt_D;
-	hal.ADC_terminal_bias = HW_ADC_VOLTAGE_R1 * HW_ADC_VOLTAGE_R2
-				* hal.ADC_reference_voltage / volt_D;
+#ifndef HW_ADC_TERMINAL_R2
+#define HW_ADC_TERMINAL_R2	HW_ADC_VOLTAGE_R2
+#endif /* HW_ADC_TERMINAL_R2 */
+
+	hal.ADC_terminal_ratio = HW_ADC_TERMINAL_R2 / (HW_ADC_TERMINAL_R1 + HW_ADC_TERMINAL_R2);
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	hal.ADC_knob_ratio = HW_ADC_KNOB_R2 / (HW_ADC_KNOB_R1 + HW_ADC_KNOB_R2);
@@ -725,6 +727,8 @@ default_flash_load()
 
 	pm.fault_current_halt = (float) (int) (.95f * halt_I);
 	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
+
+	pm.dtc_deadband = HW_PWM_DEADTIME_NS;
 
 	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 
@@ -1086,13 +1090,11 @@ void ADC_IRQ()
 			pm.fsm_req = PM_STATE_HALT;
 		}
 
-#ifdef HW_HAVE_PWM_BREAK
 		if (unlikely(PWM_fault() != HAL_OK)) {
 
 			pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
 			pm.fsm_req = PM_STATE_HALT;
 		}
-#endif /* HW_HAVE_PWM_BREAK */
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (unlikely(DRV_fault() != HAL_OK)) {

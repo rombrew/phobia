@@ -4,7 +4,7 @@
 /* Define the maximal full size to be allocated. This is the sum of \x and \z
  * row-vector sizes.
  * */
-#define LSE_FULL_MAX			10
+#define LSE_FULL_MAX			8
 
 /* Define the maximal number of cascades. A large value gives greater precision
  * on large datasets but consumes more memory. Reasonable values are from 2 to 4.

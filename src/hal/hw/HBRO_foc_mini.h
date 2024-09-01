@@ -28,7 +28,6 @@
 
 #define HW_ADC_VOLTAGE_R1		39000.f
 #define HW_ADC_VOLTAGE_R2		2200.f
-#define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_ADC_KNOB_R1			0.f			/* have no */
 #define HW_ADC_KNOB_R2			10000.f

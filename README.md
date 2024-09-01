@@ -20,7 +20,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 - Sensorless vector control of PMSM by measurement of currents and voltages.
 - Robust ORTEGA observer with gain scheduling against speed.
-- Accurate KALMAN observer having convergence at HF injection.
+- Accurate KALMAN observer having convergence at HF injection (**EXPERIMENTAL**).
 - Flux weakening and MTPA control (**EXPERIMENTAL**).
 - Three and two phases machine connection.
 - Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
@@ -41,6 +41,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
   with inline or low-side placement.
 - Self-adjustment of all onboard measurements (current and voltage) along
   symmetrical channels.
+- Dead-Time Compensation (DTC) based on currents polatity (**EXPERIMENTAL**).
 
 - Advanced SVPWM scheme provides:
 	- Reduced switching losses and fully utilised DC link voltage.
@@ -49,14 +50,13 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Prevent bootstrap circuit undervoltage condition.
 
 - Terminal voltage measurements (TVM):
-	- Compensation of the voltage distortion caused by dead-time insertion.
 	- Back EMF voltage tracking to catch an already running machine.
 	- Self-test of the power stages integrity and machine wiring.
 	- Self-test of bootstrap retention time.
 
-- Automated machine parameters identification (with no external tools):
+- Automated machine parameters identification:
 	- Stator DC resistance (Rs).
-	- Stator AC impedance in DQ frame (L1, L2, R).
+	- Stator AC impedance in DQ frame (Ld, Lq, R).
 	- Rotor flux linkage constant (lambda).
 	- Mechanical moment of inertia (Ja).
 
@@ -82,7 +82,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 - Adjustable constraints:
 	- Phase current (forward and reverse, on HFI current, weakening D current).
-	- Hardware overtemperature protection (decrease phase current or halt).
+	- Hardware overtemperature protection (derate phase current or halt).
 	- Machine voltage applied from VSI.
 	- DC link current consumption and regeneration.
 	- DC link overvoltage and undervoltage.
@@ -90,7 +90,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Absolute location limits in servo operation.
 
 - Input control interfaces:
-	- Analog input knob with brake signal.
+	- Analog input knob and brake signal.
 	- RC servo pulse width modulation.
 	- CAN bus flexible configurable data transfers.
 	- STEP/DIR (or CW/CCW) interface (**EXPERIMENTAL**).
@@ -105,7 +105,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Flexible configurable data transfers.
 
 - Available information:
-	- Machine state (electrical position, speed, load torque, etc.)
+	- Machine state (angle, speed, torque, current, etc.)
 	- DC link voltage and current consumption.
 	- Information from temperature sensors.
 	- Total distance traveled.

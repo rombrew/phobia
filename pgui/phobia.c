@@ -193,7 +193,7 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.forced_hold_D",
 		"pm.eabi_const_Zq",
 		"pm.const_Zp",
-		"pm.const_ld_S",
+		"pm.const_ld_Sm",
 		"pm.watt_wP_maximal",
 		"pm.watt_wP_reverse",
 		"pm.watt_wA_maximal",
@@ -2698,11 +2698,17 @@ page_diagnose(struct public *pub)
 	reg_float(pub, "pm.scale_iA0", "A sensor drift");
 	reg_float(pub, "pm.scale_iB0", "B sensor drift");
 	reg_float(pub, "pm.scale_iC0", "C sensor drift");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_text_large(pub, "pm.self_BST", "Bootstrap retention");
 	reg_text_large(pub, "pm.self_IST", "Self test result");
 	reg_text_large(pub, "pm.self_STDi", "Current noise STD");
-	reg_text_large(pub, "pm.self_RMSi", "Current sensor RMS");
-	reg_text_large(pub, "pm.self_RMSu", "Voltage sensor RMS");
+	reg_text_large(pub, "pm.self_RMSi", "Current transient RMS");
+	reg_text_large(pub, "pm.self_RMSu", "DC link voltage RMS");
+	reg_text_large(pub, "pm.self_RMSt", "Terminal voltage RMS");
+	reg_text_large(pub, "pm.self_DTu", "DTC voltage RMS");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2726,10 +2732,8 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_ACTIVE", "TVM is active");
-	reg_float(pub, "pm.tvm_FIR_A_tau", "A voltage FIR tau");
-	reg_float(pub, "pm.tvm_FIR_B_tau", "B voltage FIR tau");
-	reg_float(pub, "pm.tvm_FIR_C_tau", "C voltage FIR tau");
+	reg_float(pub, "pm.dtc_deadband", "DTC deadband time");
+	reg_float(pub, "pm.dtc_tol", "DTC tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2883,9 +2887,9 @@ page_probe(struct public *pub)
 
 		nk_spacer(ctx);
 
-		if (nk_menu_item_label(ctx, "DC resistance probing", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "DTC voltage adjusting", NK_TEXT_LEFT)) {
 
-			link_command(lp, "pm_probe_const_resistance");
+			link_command(lp, "pm_adjust_dtc_voltage");
 		}
 
 		if (nk_menu_item_label(ctx, "KV flux linkage", NK_TEXT_LEFT)) {
@@ -2972,11 +2976,11 @@ page_probe(struct public *pub)
 	reg_float(pub, "pm.const_Rs", "Winding resistance");
 	reg_float(pub, "pm.const_Zp", "Rotor pole pairs number");
 	reg_float_um(pub, "pm.const_Ja", "Moment of inertia", 1);
-	reg_float(pub, "pm.const_im_L1", "Inductance D");
-	reg_float(pub, "pm.const_im_L2", "Inductance Q");
-	reg_float(pub, "pm.const_im_B", "Principal angle");
-	reg_float(pub, "pm.const_im_R", "Active impedance");
-	reg_float(pub, "pm.const_ld_S", "Wheel circumference");
+	reg_float(pub, "pm.const_im_Ld", "Inductance D");
+	reg_float(pub, "pm.const_im_Lq", "Inductance Q");
+	reg_float(pub, "pm.const_im_A", "Principal angle");
+	reg_float(pub, "pm.const_im_Rz", "Active impedance");
+	reg_float(pub, "pm.const_ld_Sm", "Wheel circumference");
 
 	reg = link_reg_lookup(lp, "pm.const_Zp");
 
@@ -3165,7 +3169,6 @@ page_hal(struct public *pub)
 	reg_float(pub, "hal.ADC_amplifier_gain", "Current amplifier gain");
 	reg_float(pub, "hal.ADC_voltage_ratio", "DC link voltage ratio");
 	reg_float(pub, "hal.ADC_terminal_ratio", "Terminal voltage ratio");
-	reg_float(pub, "hal.ADC_terminal_bias", "Terminal voltage bias");
 	reg_float(pub, "hal.ADC_knob_ratio", "Knob voltage ratio");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3913,6 +3916,7 @@ page_config(struct public *pub)
 
 	reg_enum_combo(pub, "pm.config_VSI_ZERO", "ZERO sequence modulation", 1);
 	reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
+	reg_enum_toggle(pub, "pm.config_DTC_VOLTAGE", "DTC voltage compensation");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3984,13 +3988,12 @@ page_config(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.vsi_gain_LP", "VSI gain LP");
-	reg_enum_combo(pub, "pm.vsi_mask_XF", "VSI channel mask", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.tvm_ACTIVE", "TVM is active");
-	reg_float(pub, "pm.tvm_clean_zone", "TVM clean zone");
+	reg_float(pub, "pm.dtc_deadband", "DTC deadband time");
+	reg_float(pub, "pm.dtc_tol", "DTC tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4606,7 +4609,8 @@ page_wattage(struct public *pub)
 	reg_float(pub, "pm.watt_uDC_tol", "DC regulation tolerance");
 	reg_float(pub, "pm.watt_gain_P", "DC proportional gain");
 	reg_float(pub, "pm.watt_gain_I", "DC integral gain");
-	reg_float(pub, "pm.watt_gain_LP", "Wattage gain LP");
+	reg_float(pub, "pm.watt_gain_LP", "Voltage gain LP");
+	reg_float(pub, "pm.watt_gain_WF", "Wattage gain WF");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4834,7 +4838,7 @@ page_lp_location(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(lp, "pm.const_ld_S");
+	reg = link_reg_lookup(lp, "pm.const_ld_Sm");
 	if (reg != NULL && reg->fval > 0.f) { um_def = 2; }
 
 	reg_float_um(pub, "pm.x_maximal", "Maximal location", um_def);

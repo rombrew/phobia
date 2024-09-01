@@ -76,7 +76,7 @@ values of holding current. For more accuracy you need to increase the probing
 current or reduce DC link voltage.
 
 Then we inject a high frequency sinusoidal signal to measure the full impedance
-tensor and calculate DQ inductances `pm.const_im_L1` and `pm.const_im_L2`.
+tensor and calculate DQ inductances `pm.const_im_Ld` and `pm.const_im_Lq`.
 
 	(pmc) pm_probe_impedance
 

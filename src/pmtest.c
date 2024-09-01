@@ -77,6 +77,7 @@ SH_DEF(pm_self_test)
 			if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 				reg_OUTP(ID_PM_SELF_RMSU);
+				reg_OUTP(ID_PM_SELF_RMST);
 			}
 
 			reg_OUTP(ID_PM_FSM_ERRNO);
@@ -112,7 +113,7 @@ SH_DEF(pm_self_adjust)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm.fsm_req = PM_STATE_ADJUST_VOLTAGE;
+			pm.fsm_req = PM_STATE_ADJUST_ON_PCB_VOLTAGE;
 			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SCALE_UA0);
@@ -122,104 +123,37 @@ SH_DEF(pm_self_adjust)
 			reg_OUTP(ID_PM_SCALE_UC0);
 			reg_OUTP(ID_PM_SCALE_UC1);
 
-			reg_OUTP(ID_PM_TVM_ACTIVE);
-			reg_OUTP(ID_PM_TVM_FIR_A_TAU);
-			reg_OUTP(ID_PM_TVM_FIR_B_TAU);
-			reg_OUTP(ID_PM_TVM_FIR_C_TAU);
-
 			reg_OUTP(ID_PM_SELF_RMSU);
+			reg_OUTP(ID_PM_SELF_RMST);
 
 			if (pm.fsm_errno != PM_OK)
 				break;
 		}
 
-		pm.fsm_req = PM_STATE_ADJUST_CURRENT;
+		pm.fsm_req = PM_STATE_ADJUST_ON_PCB_CURRENT;
 		pm_wait_IDLE();
 
 		reg_OUTP(ID_PM_SCALE_IA1);
 		reg_OUTP(ID_PM_SCALE_IB1);
 		reg_OUTP(ID_PM_SCALE_IC1);
 		reg_OUTP(ID_PM_SELF_RMSI);
-	}
-	while (0);
-
-	reg_OUTP(ID_PM_FSM_ERRNO);
-
-	tlm_halt(&tlm);
-}
-
-SH_DEF(pm_analysis_TVM)
-{
-	TickType_t		xWake, xTim0;
-	int			xDC, xMIN, xMAX;
-
-	if (pm.lu_MODE != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
-	if (		PM_CONFIG_TVM(&pm) != PM_ENABLED
-			|| pm.tvm_ACTIVE != PM_ENABLED) {
-
-		printf("Unable with TVM disabled" EOL);
-		return;
-	}
-
-	xMIN = pm.ts_minimal;
-	xMAX = (int) (pm.dc_resolution * pm.tvm_clean_zone);
-
-	xDC = xMIN;
-
-	PWM_set_DC(0, 0, 0);
-	PWM_set_Z(0);
-
-	pm_clearance(&pm, 0, 0, 0);
-	pm_clearance(&pm, 0, 0, 0);
-
-	xWake = xTaskGetTickCount();
-	xTim0 = xWake;
-
-	/*
-	tlm.reg_ID[0] = ID_PM_VSI_X;
-	tlm.reg_ID[1] = ID_PM_TVM_A;
-	tlm.reg_ID[2] = ID_PM_TVM_B;
-	tlm.reg_ID[3] = ID_PM_TVM_C;
-	*/
-
-	tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_GRAB);
-
-	do {
-		/* 1000 Hz.
-		 * */
-		vTaskDelayUntil(&xWake, (TickType_t) 1);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		xDC = (xDC < xMAX) ? xDC + 1 : xMIN;
+		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
+		pm_wait_IDLE();
 
-		PWM_set_DC(xDC, xDC, xDC);
+		reg_OUTP(ID_PM_CONST_IM_RZ);
+		reg_OUTP(ID_PM_DTC_DEADBAND);
+		reg_OUTP(ID_PM_SELF_DTU);
 
-		pm_clearance(&pm, xDC, xDC, xDC);
-
-		/* Get reference VOLTAGE.
-		 * */
-		pm.vsi_X = xDC * pm.const_fb_U * pm.ts_inverted;
-
-		if (tlm.mode == TLM_MODE_DISABLED)
+		if (pm.fsm_errno != PM_OK)
 			break;
-
-		if ((xWake - xTim0) > (TickType_t) 10000) {
-
-			pm.fsm_errno = PM_ERROR_TIMEOUT;
-			break;
-		}
 	}
-	while (1);
+	while (0);
 
-	PWM_set_DC(0, 0, 0);
-	PWM_set_Z(PM_Z_ABC);
+	reg_OUTP(ID_PM_FSM_ERRNO);
 
 	tlm_halt(&tlm);
 }
@@ -261,10 +195,10 @@ SH_DEF(pm_analysis_impedance)
 
 	/*
 	tlm.reg_ID[0] = ID_PM_PROBE_FREQ_SINE;
-	tlm.reg_ID[1] = ID_PM_CONST_IM_L1;
-	tlm.reg_ID[2] = ID_PM_CONST_IM_L2;
-	tlm.reg_ID[3] = ID_PM_CONST_IM_B;
-	tlm.reg_ID[4] = ID_PM_CONST_IM_R;
+	tlm.reg_ID[1] = ID_PM_CONST_IM_LD;
+	tlm.reg_ID[2] = ID_PM_CONST_IM_LQ;
+	tlm.reg_ID[3] = ID_PM_CONST_IM_A;
+	tlm.reg_ID[4] = ID_PM_CONST_IM_RZ;
 	*/
 
 	tlm_startup(&tlm, tlm.rate_live, TLM_MODE_WATCH);
@@ -275,7 +209,7 @@ SH_DEF(pm_analysis_impedance)
 	stop_freq = 400.f;
 	walk_freq = (float) (int) ((pm.probe_freq_sine - stop_freq) / 90.f);
 
-	printf("Fq@Hz     L1@H   L2@H   Rz@Ohm" EOL);
+	printf("Fq@Hz     Ld@H   Lq@H   Rz@Ohm" EOL);
 
 	do {
 		if (pm.fsm_errno != PM_OK)
@@ -285,7 +219,7 @@ SH_DEF(pm_analysis_impedance)
 		pm_wait_IDLE();
 
 		printf("%4g    %4g %4g %4g" EOL, &pm.probe_freq_sine,
-				&pm.const_im_L1, &pm.const_im_L2, &pm.const_im_R);
+				&pm.const_im_Ld, &pm.const_im_Lq, &pm.const_im_Rz);
 
 		pm.probe_freq_sine += - walk_freq;
 

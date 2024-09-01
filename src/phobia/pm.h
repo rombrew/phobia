@@ -26,13 +26,6 @@ enum {
 };
 
 enum {
-	PM_MASK_NONE				= 0,
-	PM_MASK_A,
-	PM_MASK_B,
-	PM_MASK_C,
-};
-
-enum {
 	PM_NOP_THREE_PHASE			= 0,
 	PM_NOP_TWO_PHASE
 };
@@ -132,8 +125,9 @@ enum {
 	PM_STATE_SELF_TEST_BOOTSTRAP,
 	PM_STATE_SELF_TEST_POWER_STAGE,
 	PM_STATE_SELF_TEST_CLEARANCE,
-	PM_STATE_ADJUST_VOLTAGE,
-	PM_STATE_ADJUST_CURRENT,
+	PM_STATE_ADJUST_ON_PCB_VOLTAGE,
+	PM_STATE_ADJUST_ON_PCB_CURRENT,
+	PM_STATE_ADJUST_DTC_VOLTAGE,
 	PM_STATE_PROBE_CONST_RESISTANCE,
 	PM_STATE_PROBE_CONST_INDUCTANCE,
 	PM_STATE_LU_DETACHED,
@@ -171,12 +165,12 @@ enum {
 	PM_ERROR_NO_MOTOR_CONNECTED,
 	PM_ERROR_BOOTSTRAP_FAULT,
 	PM_ERROR_POWER_STAGE_BROKEN,
-	PM_ERROR_INSUFFICIENT_ACCURACY,
+	PM_ERROR_LOW_ACCURACY,
 	PM_ERROR_CURRENT_LOOP_FAULT,
 	PM_ERROR_INSTANT_OVERCURRENT,
 	PM_ERROR_DC_LINK_OVERVOLTAGE,
 	PM_ERROR_UNCERTAIN_RESULT,
-	PM_ERROR_INVALID_OPERATION,
+	PM_ERROR_NAN_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
 	PM_ERROR_SENSOR_EABI_FAULT,
 
@@ -239,7 +233,9 @@ typedef struct {
 	int		self_IST[8];
 	float		self_STDi[3];
 	float		self_RMSi[3];
-	float		self_RMSu[4];
+	float		self_RMSu;
+	float		self_RMSt[3];
+	float		self_DTu;
 
 	int		config_NOP;
 	int		config_IFB;
@@ -248,6 +244,7 @@ typedef struct {
 
 	int		config_VSI_ZERO;
 	int		config_VSI_CLAMP;
+	int		config_DTC_VOLTAGE;
 	int		config_LU_FORCED;
 	int		config_LU_FREEWHEEL;
 	int		config_LU_ESTIMATE;
@@ -321,13 +318,10 @@ typedef struct {
 
 	float		probe_DFT[8];
 	float		probe_REM[8];
-	float		probe_SC[2];
-	float		probe_HF_residual;
-	float		probe_HF_integral;
+	float		probe_WS[2];
+	float		probe_HF[2];
 	float		probe_gain_LP;
-	float		probe_TEMP[2];
-
-	lse_t		probe_lse[3];
+	float		probe_HOLD[2];
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -340,40 +334,28 @@ typedef struct {
 	float		vsi_lpf_DC;
 	float		vsi_X;
 	float		vsi_Y;
-	float		vsi_X0;
-	float		vsi_Y0;
 	float		vsi_gain_LP;
-	int		vsi_mask_XF;
 
 	int		vsi_AF;
 	int		vsi_BF;
 	int		vsi_CF;
 	int		vsi_IF;
-	int		vsi_SF;
 	int		vsi_UF;
-	int		vsi_AZ;
-	int		vsi_BZ;
-	int		vsi_CZ;
 	int		vsi_AT;
 	int		vsi_BT;
 	int		vsi_CT;
-	int		vsi_AQ;
-	int		vsi_BQ;
-	int		vsi_CQ;
+	int		vsi_A0;
+	int		vsi_B0;
+	int		vsi_C0;
 
-	int		tvm_ACTIVE;
-	float		tvm_clean_zone;
-	float		tvm_A;
-	float		tvm_B;
-	float		tvm_C;
-	float		tvm_FIR_A[3];
-	float		tvm_FIR_B[3];
-	float		tvm_FIR_C[3];
-	float		tvm_X0;
-	float		tvm_Y0;
+	float		dtc_deadband;
+	float		dtc_tol;
+	float		dtc_uX;
+	float		dtc_uY;
+	float		dtc_X;
+	float		dtc_Y;
 
 	int		lu_MODE;
-
 	float		lu_iX;
 	float		lu_iY;
 	float		lu_iD;
@@ -419,9 +401,9 @@ typedef struct {
 	int		flux_ZONE;
 
 	float		flux_X[2];
-	float		flux_lambda;
 	float		flux_F[2];
 	float		flux_wS;
+	float		flux_lambda;
 	float		flux_trip_tol;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
@@ -434,11 +416,10 @@ typedef struct {
 	float		kalman_P[15];
 	float		kalman_A[10];
 	float		kalman_K[10];
-	float		kalman_residual_D;
-	float		kalman_residual_Q;
+	float		kalman_E[2];
 	float		kalman_bias_Q;
 	float		kalman_lpf_wS;
-	float		kalman_gain_Q[5];
+	float		kalman_gain_Q[4];
 	float		kalman_gain_R;
 
 	float		zone_noise;
@@ -450,8 +431,6 @@ typedef struct {
 	float		hfi_freq;
 	float		hfi_sine;
 	float		hfi_wave[2];
-
-	m_seed_t	hfi_seed;
 
 	struct {
 
@@ -504,23 +483,24 @@ typedef struct {
 	float		const_Rs;
 	int		const_Zp;
 	float		const_Ja;
-	float		const_im_L1;
-	float		const_im_L2;
-	float		const_im_B;
-	float		const_im_R;
-	float		const_ld_S;
+	float		const_im_Ld;
+	float		const_im_Lq;
+	float		const_im_A;
+	float		const_im_Rz;
+	float		const_ld_Sm;
 
-	float		quick_iUDC;
+	float		quick_iU;
 	float		quick_iWb;
 	float		quick_iWb2;
-	float		quick_iL1;
-	float		quick_iL2;
-	float		quick_TiL1;
-	float		quick_TiL2;
+	float		quick_iLd;
+	float		quick_iLq;
+	float		quick_TiLd;
+	float		quick_TiLq;
+	float		quick_TiLu[4];
+	float		quick_WiL4;
 	float		quick_HFwS;
 	float		quick_ZiEP;
 	float		quick_ZiSQ;
-	float		quick_WiL4;
 
 	int		watt_DC_MAX;
 	int		watt_DC_MIN;
@@ -548,6 +528,7 @@ typedef struct {
 	float		watt_gain_P;
 	float		watt_gain_I;
 	float		watt_gain_LP;
+	float		watt_gain_WF;
 
 	float		i_setpoint_current;
 	float		i_maximal;
@@ -604,6 +585,9 @@ typedef struct {
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);
+
+	lfseed_t	lfseed;
+	lse_t		lse[2];
 }
 pmc_t;
 

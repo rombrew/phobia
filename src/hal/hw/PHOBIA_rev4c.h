@@ -26,7 +26,6 @@
 
 #define HW_ADC_VOLTAGE_R1		470000.f
 #define HW_ADC_VOLTAGE_R2		27000.f
-#define HW_ADC_VOLTAGE_R3		470000.f
 
 #define HW_ADC_KNOB_R1			10000.f
 #define HW_ADC_KNOB_R2			10000.f

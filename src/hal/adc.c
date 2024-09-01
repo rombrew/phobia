@@ -29,18 +29,18 @@ void irq_ADC()
 		hal.ADC_current_A = (float) ((int) ADC1->JDR1 - 2047) * hal.const_ADC.GA;
 		hal.ADC_current_B = (float) ((int) ADC2->JDR1 - 2047) * hal.const_ADC.GA;
 		hal.ADC_voltage_U = (float) ((int) ADC3->JDR1) * hal.const_ADC.GU;
-		hal.ADC_voltage_A = (float) ((int) ADC1->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-		hal.ADC_voltage_B = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-		hal.ADC_voltage_C = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_A = (float) ((int) ADC1->JDR2) * hal.const_ADC.GT;
+		hal.ADC_voltage_B = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT;
+		hal.ADC_voltage_C = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT;
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UXX)
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TXX)
 		hal.ADC_current_A = (float) ((int) ADC1->JDR1 - 2047) * hal.const_ADC.GA;
 		hal.ADC_current_B = (float) ((int) ADC2->JDR1 - 2047) * hal.const_ADC.GA;
 		hal.ADC_current_C = (float) ((int) ADC3->JDR1 - 2047) * hal.const_ADC.GA;
 		hal.ADC_voltage_U = (float) ((int) ADC1->JDR2) * hal.const_ADC.GU;
-		hal.ADC_voltage_A = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-		hal.ADC_voltage_B = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
-		hal.ADC_voltage_C = (float) ((int) ADC1->JDR3) * hal.const_ADC.GT[1] + hal.const_ADC.GT[0];
+		hal.ADC_voltage_A = (float) ((int) ADC2->JDR2) * hal.const_ADC.GT;
+		hal.ADC_voltage_B = (float) ((int) ADC3->JDR2) * hal.const_ADC.GT;
+		hal.ADC_voltage_C = (float) ((int) ADC1->JDR3) * hal.const_ADC.GT;
 #elif (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
 #endif /* HW_ADC_SAMPLING_SEQUENCE */
 
@@ -98,8 +98,7 @@ void ADC_const_build()
 
 	hal.const_ADC.GA = U_reference / R_equivalent;
 	hal.const_ADC.GU = U_reference / hal.ADC_voltage_ratio;
-	hal.const_ADC.GT[1] = U_reference / hal.ADC_terminal_ratio;
-	hal.const_ADC.GT[0] = - hal.ADC_terminal_bias / hal.ADC_terminal_ratio;
+	hal.const_ADC.GT = U_reference / hal.ADC_terminal_ratio;
 	hal.const_ADC.GS = hal.ADC_reference_voltage / (float) ADC_RESOLUTION;
 	hal.const_ADC.TS[1] = 80.f / (float) (*TS_110 - *TS_30);
 	hal.const_ADC.TS[0] = 110.f - hal.const_ADC.TS[1] * (float) (*TS_110);

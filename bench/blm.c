@@ -51,7 +51,7 @@ void blm_enable(blm_t *m)
 	m->sol_dT = 5.E-6;	/* ODE solver step (Second) */
 
 	m->pwm_dT = 35.E-6;		/* PWM cycle (Second)    */
-	m->pwm_deadtime = 170.E-9;	/* PWM deadtime (Second) */
+	m->pwm_deadtime = 90.E-9;	/* PWM deadtime (Second) */
 	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
 	m->pwm_resolution = 2940;	/* PWM resolution        */
 
@@ -61,7 +61,7 @@ void blm_enable(blm_t *m)
 
 	/* Winding resistance (Ohm).
          * */
-	m->Rs = 0.007;
+	m->Rs = 0.011;
 
 	/* Winding inductance (Henry).
          * */
@@ -100,14 +100,14 @@ void blm_enable(blm_t *m)
 	 * */
 	m->Cdc = 940.E-6;
 
-	/* Moment of inertia.
+	/* Moment of inertia (Kilogram Metre squared).
 	 * */
 	m->Jm = 5.E-3;
 
-	/* Load torque constants.
+	/* Load torque polynom.
 	 * */
 	m->Mq[0] = 0.E-3;
-	m->Mq[1] = 5.E-5;
+	m->Mq[1] = 5.E-4;
 	m->Mq[2] = 5.E-7;
 	m->Mq[3] = 5.E-2;
 
@@ -125,7 +125,7 @@ void blm_enable(blm_t *m)
 	m->range_A = 165.;	/* (Ampere) */
 	m->range_B = 60.;	/* (Volt)   */
 
-	/* Hall sensor installation angles.
+	/* Hall Sensor installation angles (Degree).
 	 * */
 	m->hall[0] = 30.7;
 	m->hall[1] = 150.1;
@@ -228,7 +228,7 @@ blm_equation(const blm_t *m, const double state[7], double y[7])
 	 * */
 	mS = state[2] / m->Zp;
 	mQ = m->Mq[0] - mS * (m->Mq[1] + fabs(mS) * m->Mq[2]);
-	mQ += (mS < 0.) ? m->Mq[3] : - m->Mq[3];
+	mQ += - mS / (1.f + fabs(mS)) * m->Mq[3];
 
 	/* Mechanical equations.
 	 * */
@@ -244,47 +244,49 @@ blm_equation(const blm_t *m, const double state[7], double y[7])
 static void
 blm_ode_step(blm_t *m, double dT)
 {
-	double		x2[7], y1[7], y2[7];
-	double		iA, iB, iC, uA, uB, uC, kA, kB, uMIN;
+	double		x0[7], y0[7], y1[7];
+
+	double		iA, iB, iC, uA, uB, uC;
+	double		kA, kB, uMIN;
 
 	/* Second-order ODE solver.
 	 * */
 
-	blm_equation(m, m->state, y1);
+	blm_equation(m, m->state, y0);
 
 	if (m->pwm_Z != BLM_Z_DETACHED) {
 
-		x2[0] = m->state[0] + y1[0] * dT;
-		x2[1] = m->state[1] + y1[1] * dT;
+		x0[0] = m->state[0] + y0[0] * dT;
+		x0[1] = m->state[1] + y0[1] * dT;
 	}
 	else {
-		x2[0] = 0.;
-		x2[1] = 0.;
+		x0[0] = 0.;
+		x0[1] = 0.;
 	}
 
-	x2[2] = m->state[2] + y1[2] * dT;
-	x2[3] = m->state[3] + y1[3] * dT;
-	x2[4] = m->state[4] + y1[4] * dT;
-	x2[5] = m->state[5] + y1[5] * dT;
-	x2[6] = m->state[6] + y1[6] * dT;
+	x0[2] = m->state[2] + y0[2] * dT;
+	x0[3] = m->state[3] + y0[3] * dT;
+	x0[4] = m->state[4] + y0[4] * dT;
+	x0[5] = m->state[5] + y0[5] * dT;
+	x0[6] = m->state[6] + y0[6] * dT;
 
-	blm_equation(m, x2, y2);
+	blm_equation(m, x0, y1);
 
 	if (m->pwm_Z != BLM_Z_DETACHED) {
 
-		m->state[0] += (y1[0] + y2[0]) * dT / 2.;
-		m->state[1] += (y1[1] + y2[1]) * dT / 2.;
+		m->state[0] += (y0[0] + y1[0]) * dT / 2.;
+		m->state[1] += (y0[1] + y1[1]) * dT / 2.;
 	}
 	else {
 		m->state[0] = 0.;
 		m->state[1] = 0.;
 	}
 
-	m->state[2] += (y1[2] + y2[2]) * dT / 2.;
-	m->state[3] += (y1[3] + y2[3]) * dT / 2.;
-	m->state[4] += (y1[4] + y2[4]) * dT / 2.;
-	m->state[5] += (y1[5] + y2[5]) * dT / 2.;
-	m->state[6] += (y1[6] + y2[6]) * dT / 2.;
+	m->state[2] += (y0[2] + y1[2]) * dT / 2.;
+	m->state[3] += (y0[3] + y1[3]) * dT / 2.;
+	m->state[4] += (y0[4] + y1[4]) * dT / 2.;
+	m->state[5] += (y0[5] + y1[5]) * dT / 2.;
+	m->state[6] += (y0[6] + y1[6]) * dT / 2.;
 
 	/* Sensor transient (FAST).
 	 * */

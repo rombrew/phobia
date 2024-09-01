@@ -4,9 +4,11 @@
 #define GPIO_TIM1_CH1N			XGPIO_DEF4('B', 13, 0, 1)
 #define GPIO_TIM1_CH2N			XGPIO_DEF4('B', 14, 0, 1)
 #define GPIO_TIM1_CH3N			XGPIO_DEF4('B', 15, 0, 1)
+
 #define GPIO_TIM1_CH1			XGPIO_DEF4('A', 8, 0, 1)
 #define GPIO_TIM1_CH2			XGPIO_DEF4('A', 9, 0, 1)
 #define GPIO_TIM1_CH3			XGPIO_DEF4('A', 10, 0, 1)
+
 #define GPIO_TIM1_BKIN			XGPIO_DEF4('B', 12, 0, 1)
 
 void PWM_startup();

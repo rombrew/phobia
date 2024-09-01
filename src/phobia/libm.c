@@ -59,7 +59,7 @@ void m_normalizef(float x[2])
 {
 	float		l;
 
-	/* Approximate normalize the vector \x.
+	/* Approximate normalization of the vector \x.
 	 * */
 
 	l = x[0] * x[0] + x[1] * x[1];
@@ -345,7 +345,7 @@ m_lf_lcgu(uint32_t rseed)
 	return rseed * 17317U + 1U;
 }
 
-void m_lf_randseed(m_seed_t *lf, int seed)
+void m_lf_randseed(lfseed_t *lf, int seed)
 {
 	uint32_t	lcgu;
 
@@ -359,7 +359,7 @@ void m_lf_randseed(m_seed_t *lf, int seed)
 	lf->nb = 0;
 }
 
-float m_lf_urandf(m_seed_t *lf)
+float m_lf_urandf(lfseed_t *lf)
 {
 	float		y, a, b;
 	int		n, k;
@@ -381,7 +381,7 @@ float m_lf_urandf(m_seed_t *lf)
 	return y;
 }
 
-float m_lf_gaussf(m_seed_t *lf)
+float m_lf_gaussf(lfseed_t *lf)
 {
 	float		x;
 

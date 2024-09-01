@@ -22,7 +22,6 @@
 
 #define HW_ADC_VOLTAGE_R1		470000.f
 #define HW_ADC_VOLTAGE_R2		27000.f
-#define HW_ADC_VOLTAGE_R3		1000000000000.f		/* have no bias */
 
 #define HW_NTC_PCB_TYPE			NTC_GND
 #define HW_NTC_PCB_BALANCE		10000.f

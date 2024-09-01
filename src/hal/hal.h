@@ -123,7 +123,6 @@ typedef struct {
 	float		ADC_amplifier_gain;
 	float		ADC_voltage_ratio;
 	float		ADC_terminal_ratio;
-	float		ADC_terminal_bias;
 
 	int		ADC_sample_time;
 	int		ADC_sample_advance;
@@ -171,9 +170,9 @@ typedef struct {
 
 		float		GA;
 		float		GU;
-		float		GT[2];
-		float		TS[2];
+		float		GT;
 		float		GS;
+		float		TS[2];
 #ifdef HW_HAVE_ANALOG_KNOB
 		float		GK;
 #endif /* HW_HAVE_ANALOG_KNOB */

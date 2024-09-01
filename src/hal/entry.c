@@ -40,6 +40,8 @@ void irq_CAN1_RX1() LD_IRQ_WEAK;
 void irq_CAN1_SCE() LD_IRQ_WEAK;
 void irq_TIM1_UP_TIM10() LD_IRQ_WEAK;
 void irq_TIM4() LD_IRQ_WEAK;
+void irq_USART1() LD_IRQ_WEAK;
+void irq_USART2() LD_IRQ_WEAK;
 void irq_USART3() LD_IRQ_WEAK;
 void irq_TIM7() LD_IRQ_WEAK;
 void irq_OTG_FS() LD_IRQ_WEAK;
@@ -109,8 +111,8 @@ LD_VECTORS void *vtab[] = {
 	irq_Default,
 	irq_Default,
 	irq_Default,
-	irq_Default,
-	irq_Default,
+	irq_USART1,
+	irq_USART2,
 	irq_USART3,
 	irq_Default,
 	irq_Default,

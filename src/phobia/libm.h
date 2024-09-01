@@ -45,11 +45,11 @@ typedef struct {
 	float		seed[4];
 	int		nb;
 }
-m_seed_t;
+lfseed_t;
 
-void m_lf_randseed(m_seed_t *lf, int seed);
-float m_lf_urandf(m_seed_t *lf);
-float m_lf_gaussf(m_seed_t *lf);
+void m_lf_randseed(lfseed_t *lf, int seed);
+float m_lf_urandf(lfseed_t *lf);
+float m_lf_gaussf(lfseed_t *lf);
 
 #endif /* _H_LIB_M_ */
 
