@@ -137,8 +137,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
-	pm->config_REVERSE_BRAKE = PM_ENABLED;
-	pm->config_SPEED_MAXIMAL = PM_ENABLED;
+	pm->config_CC_BRAKE = PM_ENABLED;
+	pm->config_CC_SPEED_TRACK = PM_ENABLED;
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
 
@@ -488,8 +488,7 @@ pm_auto_zone_threshold(pmc_t *pm)
 		else {
 			/* Based on voltage uncertainty on DT.
 			 * */
-			thld_IRU += pm->dtc_deadband * 1.E-9f
-				* pm->m_freq * pm->const_fb_U;
+			thld_IRU += PM_DTNS(pm, pm->dtc_deadband) * pm->const_fb_U;
 		}
 
 		if (pm->const_lambda > M_EPSILON) {
@@ -2784,7 +2783,7 @@ pm_loop_current(pmc_t *pm)
 				&& pm->flux_ZONE != PM_ZONE_HIGH)) {
 
 		if (		pm->config_LU_DRIVE == PM_DRIVE_CURRENT
-				&& pm->config_SPEED_MAXIMAL == PM_ENABLED) {
+				&& pm->config_CC_SPEED_TRACK == PM_ENABLED) {
 
 			pm->l_track = pm->lu_wS;
 		}
@@ -2794,7 +2793,7 @@ pm_loop_current(pmc_t *pm)
 
 		if (pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
-			if (pm->config_REVERSE_BRAKE == PM_ENABLED) {
+			if (pm->config_CC_BRAKE == PM_ENABLED) {
 
 				if (track_Q < - M_EPSILON) {
 
@@ -2808,7 +2807,7 @@ pm_loop_current(pmc_t *pm)
 				}
 			}
 
-			if (pm->config_SPEED_MAXIMAL == PM_ENABLED) {
+			if (pm->config_CC_SPEED_TRACK == PM_ENABLED) {
 
 				float		wSP, eSP, blend;
 
@@ -3254,7 +3253,7 @@ pm_dtc_voltage(pmc_t *pm)
 		iC = - pm->lu_iX - pm->lu_iY;
 	}
 
-	DTu = pm->dtc_deadband * 1.E-9f * pm->m_freq * pm->const_fb_U;
+	DTu = PM_DTNS(pm, pm->dtc_deadband) * pm->const_fb_U;
 
 	if (likely(		pm->vsi_A0 != pm->dc_resolution
 				&& pm->vsi_A0 != 0)) {

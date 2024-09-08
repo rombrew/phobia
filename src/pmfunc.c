@@ -172,7 +172,7 @@ SH_DEF(pm_probe_impedance)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_IDLE();
 
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
 		reg_OUTP(ID_PM_SCALE_IA0);
@@ -246,7 +246,7 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		if (		pm.flux_LINKAGE != PM_ENABLED
 				&& pm.config_EXCITATION == PM_EXCITATION_CONST) {
@@ -376,7 +376,7 @@ SH_DEF(pm_probe_detached)
 		if (pm_wait_motion() != PM_OK)
 			break;
 
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -423,7 +423,7 @@ SH_DEF(pm_probe_const_flux_linkage)
 	}
 
 	do {
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_FLUX_LINKAGE;
 
@@ -456,7 +456,7 @@ SH_DEF(pm_probe_const_inertia)
 	}
 
 	do {
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -498,7 +498,7 @@ SH_DEF(pm_probe_noise_threshold)
 	}
 
 	do {
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
 
@@ -544,7 +544,7 @@ SH_DEF(pm_adjust_sensor_hall)
 		if (pm_wait_spinup() != PM_OK)
 			break;
 
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_HALL;
 
@@ -607,7 +607,7 @@ SH_DEF(pm_adjust_sensor_eabi)
 		if (pm_wait_spinup() != PM_OK)
 			break;
 
-		tlm_startup(&tlm, tlm.rate_grab, TLM_MODE_WATCH);
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_EABI;
 

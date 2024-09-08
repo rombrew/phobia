@@ -41,8 +41,3 @@ firmware to MCU.
 VESC does not have voltage dividers on ADC pins. You should use external
 dividers or specify 3.3v levels on analog knob range configuration.
 
-## Terminal voltages
-
-VESC does not have required RC filters on the terminal voltage measurement
-circuits. So you are not able to use dead-time distortion compensation.
-

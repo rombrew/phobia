@@ -696,7 +696,7 @@ void ts_script_test()
 
 	tlm_restart();
 
-	m.Rs = 7.E-3;
+	m.Rs = 8.E-3;
 	m.Ld = 3.E-6;
 	m.Lq = 5.E-6;
 	m.Udc = 48.;

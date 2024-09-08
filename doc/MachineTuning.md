@@ -26,7 +26,7 @@ at low speed range.
 ## Current loop
 
 You can automatically tune current loop PI regulator gains based on damping
-percentage. Reasonable values are from 50 to 150.
+percentage. Reasonable values are from 20 to 200.
 
 	(pmc) reg pm.i_damping <pc>
 
@@ -90,7 +90,7 @@ transient rate and noise level.
 ## Speed loop
 
 You can automatically tune speed loop PID regulator gains based on damping
-percentage. Reasonable values are from 50 to 200.
+percentage. Reasonable values are from 40 to 400.
 
 	(pmc) reg pm.s_damping <pc>
 
@@ -109,14 +109,14 @@ to increase the default acceleration value.
 It should be noted that above constraints are used differently depending on
 selected control loop. In case of speed control above constraints are applied
 to speed setpoint to get trackpoint `pm.s_track`. In other words we do not
-limits actual parameters but limit input setpoint to comply it with
+limits actual parameters but limit the input setpoint to comply it with
 constraints.
 
 Quite different in the case of current control. You should enable
-`SPEED_MAXIMAL` feature to apply above speed loop constraints to actual speed
+`CC_SPEED_TRACK` feature to apply above speed loop constraints to actual speed
 and acceleration.
 
-    (pmc) reg pm.config_SPEED_MAXIMAL 1
+    (pmc) reg pm.config_CC_SPEED_TRACK 1
 
 Here trackpoint is driven by actual speed estimate with acceleration
 constraint. For system stability we have introduced a linear regulation region
@@ -132,12 +132,12 @@ Also you can tune PID regulator and load torque gains manually.
 
 ## Brake function
 
-If you need a reverse brake function in combination with current control then
-enable `REVERSE_BRAKE` feature. It is activated when current setpoint is
-negative. Brake current is limited by absolute value of setpoint so brake is
+If you need a brake function without a reverse in combination with current
+control then enable `CC_BRAKE` feature. It is activated when current setpoint
+is negative. Brake current is limited by absolute value of setpoint so brake is
 proportional.
 
-	(pmc) reg pm.config_REVERSE_BRAKE 1
+	(pmc) reg pm.config_CC_BRAKE 1
 
 Note that speed control loop should be fine tuned to use this feature.
 

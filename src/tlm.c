@@ -12,6 +12,7 @@
 void tlm_reg_default(tlm_t *tlm)
 {
 	tlm->rate_grab = 1;
+	tlm->rate_watch = (int) (hal.PWM_frequency / 100.f + 0.5f);
 	tlm->rate_live = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
@@ -136,7 +137,7 @@ SH_DEF(tlm_grab)
 
 SH_DEF(tlm_watch)
 {
-	int		rate = tlm.rate_grab;
+	int		rate = tlm.rate_watch;
 
 	stoi(&rate, s);
 

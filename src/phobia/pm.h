@@ -10,6 +10,7 @@
 #define PM_CONFIG_DBG(pm)	(pm)->config_DBG
 
 #define PM_TSMS(pm, ms)		(int) ((pm)->m_freq * (ms) * 0.001f)
+#define PM_DTNS(pm, ns)		((ns) * (pm)->m_freq * 0.000000001f)
 
 #define PM_MAX_F		1000000000000.f
 #define PM_SFI(s)		#s
@@ -257,8 +258,8 @@ typedef struct {
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
 	int		config_WEAKENING;
-	int		config_REVERSE_BRAKE;
-	int		config_SPEED_MAXIMAL;
+	int		config_CC_BRAKE;
+	int		config_CC_SPEED_TRACK;
 	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
 

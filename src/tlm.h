@@ -18,6 +18,7 @@ enum {
 typedef struct {
 
 	int		rate_grab;
+	int		rate_watch;
 	int		rate_live;
 
 	int		mode;

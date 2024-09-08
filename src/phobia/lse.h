@@ -14,7 +14,7 @@
 /* Define whether to use fast Givens transformation in QR update. Typical this
  * is useful for fairly large matrix sizes. Also consumes a few of memory.
  * */
-#define LSE_FAST_TRANSFORM		0
+#define LSE_FAST_GIVENS			0
 
 /* Define native floating-point type to use inside of LSE.
  * */
@@ -38,11 +38,11 @@ typedef struct {
 	 * */
 	lse_float_t	*m;
 
-#if LSE_FAST_TRANSFORM != 0
+#if LSE_FAST_GIVENS != 0
 	/* Content of the scale diagonal matrix.
 	 * */
 	lse_float_t	*d;
-#endif /* LSE_FAST_TRANSFORM */
+#endif /* LSE_FAST_GIVENS */
 }
 lse_upper_t;
 
@@ -74,17 +74,17 @@ typedef struct {
 	int		n_threshold;
 	int		n_total;
 
-	/* \R(i) is row-major upper-triangular matrix array with block
+	/* \rm(i) is row-major upper-triangular matrix array with block
 	 * structure as shown. We store only the upper triangular elements.
 	 *
-	 *                                 [0 1 2 3]
-	 *                                 [  4 5 6]
-	 *        [Rx  S ]                 [    7 8]
-	 * R(i) = [0   Rz],        (ex.) = [      9].
+	 *                                    [0 1 2 3]
+	 *                                    [  4 5 6]
+	 *          [ RX  S  ]                [    7 8]
+	 * \rm(i) = [ 0   RZ ],       (ex.) = [      9].
 	 *
-	 * Rx - upper-triangular matrix size of \x,
-	 * Rz - upper-triangular matrix size of \z,
-	 * S  - rectangular matrix size of \x by \z.
+	 * \RX - upper-triangular matrix size of \x,
+	 * \RZ - upper-triangular matrix size of \z,
+	 * \S  - rectangular matrix size of \x by \z.
 	 *
 	 * */
 	lse_upper_t	rm[LSE_CASCADE_MAX];
@@ -97,7 +97,7 @@ typedef struct {
 	 * */
 	lse_row_t	std;
 
-	/* Approximate extremal singular values of \Rx.
+	/* Approximate extremal singular values of \RX.
 	 * */
 	struct {
 
@@ -110,9 +110,9 @@ typedef struct {
 	 * */
 	lse_float_t	vm[LSE_CASCADE_MAX * LSE_FULL_MAX * (LSE_FULL_MAX + 1) / 2
 
-#if LSE_FAST_TRANSFORM != 0
+#if LSE_FAST_GIVENS != 0
 			 + LSE_CASCADE_MAX * LSE_FULL_MAX
-#endif /* LSE_FAST_TRANSFORM */
+#endif /* LSE_FAST_GIVENS */
 
 			 + LSE_FULL_MAX * LSE_FULL_MAX / 4 + LSE_FULL_MAX / 2 + 1];
 }
@@ -127,8 +127,8 @@ int lse_getsize(int n_cascades, int n_full);
  * */
 void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z);
 
-/* The function updates \R with a new data row-vector \xz which contains \x and
- * \z concatenated. We does QR update of \R by orthogonal transformation. Note
+/* The function updates \rm with a new data row-vector \xz which contains \x and
+ * \z concatenated. We does QR update of \rm by orthogonal transformation. Note
  * that the contents of \xz will be destroyed.
  * */
 void lse_insert(lse_t *ls, lse_float_t *xz);
@@ -138,10 +138,15 @@ void lse_insert(lse_t *ls, lse_float_t *xz);
  * */
 void lse_ridge(lse_t *ls, lse_float_t la);
 
-/* The function scales all cascades of \R with forgetting factor \la. It is
+/* The function scales all cascades of \rm with forgetting factor \la. It is
  * reasonable to use this function with only one cascade allocated.
  * */
 void lse_forget(lse_t *ls, lse_float_t la);
+
+/* The function updates \rm of \ls instance with data rows from \rm of \lb
+ * instance. This is a merge of two LSE instances.
+ * */
+void lse_merge(lse_t *ls, lse_t *lb);
 
 /* The function calculates the final LS solution \b.
  * */
@@ -152,12 +157,12 @@ void lse_solve(lse_t *ls);
 void lse_std(lse_t *ls);
 
 /* The function estimates the approximate largest and smallest singular values
- * of \Rx in \n_approx iterations. A rather computationally heavy function if
- * \n_approx is large (most reasonable is 4). You can calculate the conditional
+ * of \RX in \n_approx iterations. A rather computationally heavy function if
+ * \n_approx is large (most reasonable is 2). You can calculate the conditional
  * number or detect a rank deficiency based on retrieved values.
  *
  * WARNING: You need to provide enough memory to use this function. We use
- * empty cascades of \R as temporal storage.
+ * empty cascades of \rm as temporal storage.
  *
  * */
 void lse_esv(lse_t *ls, int n_approx);

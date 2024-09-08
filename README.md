@@ -56,7 +56,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 - Automated machine parameters identification:
 	- Stator DC resistance (Rs).
-	- Stator AC impedance in DQ frame (Ld, Lq, R).
+	- Stator AC impedance in DQ frame (Ld, Lq, Rz).
 	- Rotor flux linkage constant (lambda).
 	- Mechanical moment of inertia (Ja).
 

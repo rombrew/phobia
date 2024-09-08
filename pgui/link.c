@@ -678,9 +678,9 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "flash_info",		LINK_MODE_FLASH_MAP },
 		{ "flash_prog",		LINK_MODE_UNABLE_WARNING },
 		{ "flash_wipe",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_self",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_probe",		LINK_MODE_UNABLE_WARNING },
-		{ "pm_adjust",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_self_",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_probe_",		LINK_MODE_UNABLE_WARNING },
+		{ "pm_adjust_",		LINK_MODE_UNABLE_WARNING },
 		{ "tlm_flush_sync",	LINK_MODE_DATA_GRAB },
 		{ "tlm_live_sync",	LINK_MODE_DATA_GRAB },
 		{ "net_survey",		LINK_MODE_EPCAN_MAP },
@@ -709,6 +709,12 @@ int link_fetch(struct link_pmc *lp, int clock)
 		rc_local = link_fetch_network(lp);
 
 		if (rc_local != 0) {
+
+			if (		   lp->command_state == LINK_COMMAND_RUNING
+					|| lp->command_state == LINK_COMMAND_WAITING) {
+
+				lp->command_state = LINK_COMMAND_NONE;
+			}
 
 			if (priv->link_mode == LINK_MODE_DATA_GRAB) {
 
@@ -741,11 +747,21 @@ int link_fetch(struct link_pmc *lp, int clock)
 					mp++;
 				}
 
-				if (priv->link_mode == LINK_MODE_FLASH_MAP)
-					memset(lp->flash, 0, sizeof(lp->flash));
-				else if (priv->link_mode == LINK_MODE_EPCAN_MAP)
-					memset(lp->epcan, 0, sizeof(lp->epcan));
+				if (priv->link_mode == LINK_MODE_FLASH_MAP) {
 
+					memset(lp->flash, 0, sizeof(lp->flash));
+				}
+				else if (priv->link_mode == LINK_MODE_EPCAN_MAP) {
+
+					memset(lp->epcan, 0, sizeof(lp->epcan));
+				}
+				else if (priv->link_mode == LINK_MODE_UNABLE_WARNING) {
+
+					if (lp->command_state == LINK_COMMAND_PENDING) {
+
+						lp->command_state = LINK_COMMAND_RUNING;
+					}
+				}
 				break;
 
 			case LINK_MODE_HWINFO:
@@ -790,13 +806,15 @@ int link_fetch(struct link_pmc *lp, int clock)
 			if (lp->active + 12000 < lp->clock) {
 
 				link_close(lp);
+
+				return N;
 			}
 			else {
 				sprintf(priv->lbuf, "ap_time" LINK_EOL);
 				serial_fputs(priv->fd, priv->lbuf);
-			}
 
-			lp->keep = lp->clock;
+				lp->keep = lp->clock;
+			}
 		}
 	}
 	else {
@@ -908,7 +926,7 @@ int link_command(struct link_pmc *lp, const char *command)
 	if (lp->linked == 0)
 		return 0;
 
-	if (lp->locked > lp->clock + 50)
+	if (lp->locked > lp->clock + 100)
 		return 0;
 
 	sprintf(priv->lbuf, "%.90s" LINK_EOL, command);
@@ -917,7 +935,7 @@ int link_command(struct link_pmc *lp, const char *command)
 
 		pushed = 1;
 
-		lp->locked = lp->clock + 100;
+		lp->locked = lp->clock + 200;
 	}
 
 	return pushed;

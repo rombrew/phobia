@@ -1312,8 +1312,8 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_HFI_PERMANENT:
 		case ID_PM_CONFIG_RELUCTANCE:
 		case ID_PM_CONFIG_WEAKENING:
-		case ID_PM_CONFIG_REVERSE_BRAKE:
-		case ID_PM_CONFIG_SPEED_MAXIMAL:
+		case ID_PM_CONFIG_CC_BRAKE:
+		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
 			switch (val) {
 
@@ -1756,8 +1756,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_SALIENCY,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_RELUCTANCE,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_WEAKENING,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_REVERSE_BRAKE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_SPEED_MAXIMAL,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_CC_BRAKE,,	,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_CC_SPEED_TRACK,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_EABI_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SINCOS_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 
@@ -1909,14 +1909,15 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.kalman_gain_Q, 1, [1],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 2, [2],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 3, [3],	"",	"%2e",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.kalman_gain_Q, 4, [4],	"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.kalman_gain_R,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.zone_noise,,, 	"rad/s", 	"%2f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.zone_noise, _rpm,,		"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.zone_noise, _kmh,,		"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.zone_noise, _u,,		"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_threshold,,, 	"rad/s",	"%2f",	REG_CONFIG, &reg_proc_auto_zone_threshold, NULL),
 	REG_DEF(pm.zone_threshold, _rpm,, 	"rpm",	"%2f",	0, &reg_proc_rpm, NULL),
+	REG_DEF(pm.zone_threshold, _kmh,, 	"km/h",	"%1f",	0, &reg_proc_kmh, NULL),
 	REG_DEF(pm.zone_threshold, _u,, 	"V",	"%3f",	0, &reg_proc_voltage, NULL),
 	REG_DEF(pm.zone_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
@@ -2089,6 +2090,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.dbg_flux_rsu,,,		"deg",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
+	REG_DEF(tlm.rate_watch,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_live,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.mode,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 

@@ -26,6 +26,13 @@ enum {
 	LINK_PRIMAL_ENABLED
 };
 
+enum {
+	LINK_COMMAND_NONE	= 0,
+	LINK_COMMAND_PENDING,
+	LINK_COMMAND_RUNING,
+	LINK_COMMAND_WAITING
+};
+
 struct link_priv;
 
 struct link_reg {
@@ -96,6 +103,8 @@ struct link_pmc {
 
 	char			unable_warning[LINK_MESSAGE_MAX];
 	int			uptime_warning;
+
+	int			command_state;
 
 	int			line_N;
 	int			grab_N;

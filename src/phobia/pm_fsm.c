@@ -1300,7 +1300,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 			}
 
 			if (		m_isfinitef(ls->sol.m[3]) != 0
-					&& m_fabsf(ls->sol.m[3]) > M_EPSILON) {
+					&& ls->sol.m[3] > M_EPSILON) {
 
 				pm->dtc_deadband = ls->sol.m[3];
 			}

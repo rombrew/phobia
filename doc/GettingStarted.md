@@ -95,8 +95,7 @@ GDB as in previous case but we are only concerned with using `st-flash` util.
 
 USART interface with ST embedded bootloader using
 [stm32flash](https://sourceforge.net/projects/stm32flash/). You should have a
-serial port connected to the board TX and RX pins and BOOT pin shorted to the
-+3.3v.
+serial port connected to the board TX and RX pins and BOOT pin shorted to the +3.3v.
 
 	$ make HWREV=PHOBIA_rev5 flash
 
@@ -137,7 +136,7 @@ Read the following documentation for setting PMC up.
 ## Feedback and support
 
 Yuo can contact me on [sourceforge](https://sourceforge.net/projects/phobia/)
-[github](https://github.com/rombrew/phobia) or by email.
+or [github](https://github.com/rombrew/phobia) as well as by email.
 
 Roman Belov <romblv@gmail.com>
 

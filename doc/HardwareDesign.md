@@ -50,14 +50,14 @@ PWM scheme as shown in the diagram.
 ```
 
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
-specified dead-time `ZT`. Depending on the direction of the current flow during
+specified dead-time `DT`. Depending on the direction of the current flow during
 the dead-time the actual voltage on half-bridge may be different. The amount of
-uncertainty in the output voltage `dU` expressed as follows:
+uncertainty in the output voltage `DTu` expressed as follows:
 
 ```
-	       2 * ZT * DC_link_voltage
-	 dU = ---------------------------
-	                  dT
+	        DT * DC_link_voltage
+	 DTu = ----------------------
+	                dT
 
 	           |
 	           |
@@ -69,7 +69,7 @@ uncertainty in the output voltage `dU` expressed as follows:
 	       ||  |     ---             |                 |
 	        |--+      |           |                       |
 	           |      |              |                 |
-	           +------+       --->|   <--- ZT             |
+	           +------+       --->|   <--- DT             |
 	           |                     |                 |
 	           +---< Terminal     |                       |
 	           |                     |                 |
@@ -95,8 +95,8 @@ linear region. You can skip the terminal voltage sensing if you do not need
 related features but supply voltage measuring is mandatory.
 
 To get acceptable accuracy you need to make sure that the RC scheme time
-constant is comparable to dT. Also make sure that your capacitors are stable
-over whole temperature and voltage range.
+constant is comparable to the typical `dT` value. Also make sure that your
+capacitors are stable over whole temperature and voltage range.
 
 ```
 	                         +------< REF

@@ -33,11 +33,11 @@ This adjustment does the following steps in this order:
 
 - Get current sensors zero drift and check it is within the acceptable range.
 - Adjust the voltage measurement channels relatively to DC link voltage.
-- Adjust dead-time distortion compensation (**OPTIONAL**).
 - Adjust the current measurement channels pairwise.
+- Adjust dead-time distortion compensation (DTC).
 
-Note that in step 4 you need to connect the machine (or test coil) to let the
-current flow in phase circuits.
+Note that in last two steps you need to connect the machine (or test coil) to
+let the current flow in phase circuits.
 
 ## See also
 
