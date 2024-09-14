@@ -12,7 +12,7 @@
 void tlm_reg_default(tlm_t *tlm)
 {
 	tlm->rate_grab = 1;
-	tlm->rate_watch = (int) (hal.PWM_frequency / 100.f + 0.5f);
+	tlm->rate_watch = (int) (hal.PWM_frequency / 200.f + 0.5f);
 	tlm->rate_live = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
@@ -20,24 +20,24 @@ void tlm_reg_default(tlm_t *tlm)
 #ifdef HW_HAVE_NTC_MACHINE
 	tlm->reg_ID[2] = ID_AP_TEMP_EXT;
 #endif /* HW_HAVE_NTC_MACHINE */
-	tlm->reg_ID[3] = ID_PM_VSI_DC;
-	tlm->reg_ID[4] = ID_PM_LU_MODE;
-	tlm->reg_ID[5] = ID_PM_LU_ID;
-	tlm->reg_ID[6] = ID_PM_LU_IQ;
-	tlm->reg_ID[7] = ID_PM_LU_WS_RPM;
-	tlm->reg_ID[8] = ID_PM_LU_MQ_LOAD;
-	tlm->reg_ID[9] = ID_PM_CONST_FB_U;
+	tlm->reg_ID[3] = ID_PM_FSM_STATE;
+	tlm->reg_ID[4] = ID_PM_FB_IA;
+	tlm->reg_ID[5] = ID_PM_FB_IB;
+	tlm->reg_ID[6] = ID_PM_FB_IC;
+	tlm->reg_ID[7] = ID_PM_FB_UA;
+	tlm->reg_ID[8] = ID_PM_FB_UB;
+	tlm->reg_ID[9] = ID_PM_FB_UC;
 
-	tlm->reg_ID[10] = ID_PM_WATT_DRAIN_WA;
-	tlm->reg_ID[11] = ID_PM_WATT_CONSUMED_WH;
-	tlm->reg_ID[12] = ID_PM_WATT_REVERTED_WH;
-	tlm->reg_ID[13] = ID_PM_FB_IA;
-	tlm->reg_ID[14] = ID_PM_FB_IB;
-	tlm->reg_ID[15] = ID_PM_FB_IC;
-	tlm->reg_ID[16] = ID_PM_FB_UA;
-	tlm->reg_ID[17] = ID_PM_FB_UB;
-	tlm->reg_ID[18] = ID_PM_FB_UC;
-	tlm->reg_ID[19] = ID_NULL;
+	tlm->reg_ID[10] = ID_PM_VSI_A0;
+	tlm->reg_ID[11] = ID_PM_VSI_B0;
+	tlm->reg_ID[12] = ID_PM_VSI_C0;
+	tlm->reg_ID[13] = ID_PM_LU_MODE;
+	tlm->reg_ID[14] = ID_PM_LU_ID;
+	tlm->reg_ID[15] = ID_PM_LU_IQ;
+	tlm->reg_ID[16] = ID_PM_LU_WS_RPM;
+	tlm->reg_ID[17] = ID_PM_LU_MQ_LOAD;
+	tlm->reg_ID[18] = ID_PM_CONST_FB_U;
+	tlm->reg_ID[19] = ID_PM_WATT_DRAIN_WA;
 }
 
 void tlm_reg_grab(tlm_t *tlm)

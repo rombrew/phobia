@@ -901,57 +901,57 @@ reg_proc_tlm_rate(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 #ifdef HW_HAVE_DRV_ON_PCB
 static void
-reg_format_DRV_gate_current(const reg_t *reg)
+reg_format_DRV_gate_current(const reg_t *reg, const rval_t *rval)
 {
 	float		current = DRV_gate_current();
 
-	printf("%0i (%3f A)", reg->link->i, &current);
+	printf("%0i (%3f A)", rval->i, &current);
 }
 
 static void
-reg_format_DRV_ocp_level(const reg_t *reg)
+reg_format_DRV_ocp_level(const reg_t *reg, const rval_t *rval)
 {
 	float		level = DRV_ocp_level();
 
-	printf("%0i (%3f V)", reg->link->i, &level);
+	printf("%0i (%3f V)", rval->i, &level);
 }
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 static void
-reg_format_self_BST(const reg_t *reg)
+reg_format_self_BST(const reg_t *reg, const rval_t *rval)
 {
-	const int	*BST = (const void *) reg->link;
+	const int	*BST = (const int *) &reg->link->i;
 
 	printf("%1f %1f %1f (ms)", &BST[0], &BST[1], &BST[2]);
 }
 
 static void
-reg_format_self_IST(const reg_t *reg)
+reg_format_self_IST(const reg_t *reg, const rval_t *rval)
 {
-	const int	*IST = (const void *) reg->link;
+	const int	*IST = (const int *) &reg->link->i;
 
 	printf("%2x %2x %2x %2x %2x %2x %2x", IST[0], IST[1],
 			IST[2], IST[3], IST[4], IST[5], IST[6]);
 }
 
 static void
-reg_format_self_RMSi(const reg_t *reg)
+reg_format_self_RMSi(const reg_t *reg, const rval_t *rval)
 {
-	float		*RMS = (void *) reg->link;
+	const float	*RMS = (const float *) &reg->link->f;
 
 	printf("%3f %3f %3f (A)", &RMS[0], &RMS[1], &RMS[2]);
 }
 
 static void
-reg_format_self_RMSt(const reg_t *reg)
+reg_format_self_RMSt(const reg_t *reg, const rval_t *rval)
 {
-	float		*RMS = (void *) reg->link;
+	const float	*RMS = (const float *) &reg->link->f;
 
 	printf("%4f %4f %4f (V)", &RMS[0], &RMS[1], &RMS[2]);
 }
 
 static void
-reg_format_referenced(const reg_t *reg, int reg_ID)
+reg_format_referenced(const reg_t *reg, const rval_t *rval, int reg_ID)
 {
 	const char	*fmt, *su;
 
@@ -964,10 +964,10 @@ reg_format_referenced(const reg_t *reg, int reg_ID)
 		if (		   fmt[2] == 'i'
 				|| fmt[2] == 'x') {
 
-			printf(fmt, reg->link->i);
+			printf(fmt, rval->i);
 		}
 		else {
-			printf(fmt, &reg->link->f);
+			printf(fmt, &rval->f);
 		}
 
 		su = regfile[reg_ID].sym;
@@ -979,82 +979,82 @@ reg_format_referenced(const reg_t *reg, int reg_ID)
 		}
 	}
 	else {
-		printf(reg->fmt, &reg->link->f);
+		printf(reg->fmt, &rval->f);
 	}
 }
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 static void
-reg_format_referenced_net_ep0(const reg_t *reg)
+reg_format_ref_net_ep0(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_NET_EP0_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP0_REG_ID);
 }
 
 static void
-reg_format_referenced_net_ep1(const reg_t *reg)
+reg_format_ref_net_ep1(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_NET_EP1_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP1_REG_ID);
 }
 
 static void
-reg_format_referenced_net_ep2(const reg_t *reg)
+reg_format_ref_net_ep2(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_NET_EP2_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP2_REG_ID);
 }
 
 static void
-reg_format_referenced_net_ep3(const reg_t *reg)
+reg_format_ref_net_ep3(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_NET_EP3_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP3_REG_ID);
 }
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 static void
-reg_format_referenced_ppm(const reg_t *reg)
+reg_format_ref_ppm(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_AP_PPM_REG_ID);
+	reg_format_referenced(reg, rval, ID_AP_PPM_REG_ID);
 }
 
 #ifdef HW_HAVE_STEP_DIR_KNOB
 static void
-reg_format_referenced_step(const reg_t *reg)
+reg_format_ref_step(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_AP_STEP_REG_ID);
+	reg_format_referenced(reg, rval, ID_AP_STEP_REG_ID);
 }
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_ANALOG_KNOB
 static void
-reg_format_referenced_knob(const reg_t *reg)
+reg_format_ref_knob(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_AP_KNOB_REG_ID);
+	reg_format_referenced(reg, rval, ID_AP_KNOB_REG_ID);
 }
 #endif /* HW_HAVE_ANALOG_KNOB */
 
 static void
-reg_format_referenced_auto(const reg_t *reg)
+reg_format_ref_auto(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, ID_AP_AUTO_REG_ID);
+	reg_format_referenced(reg, rval, ID_AP_AUTO_REG_ID);
 }
 
 #undef PM_SFI_CASE
-#define PM_SFI_CASE(val)	case val: printf("(%s)", PM_SFI(val)); break
+#define PM_SFI_CASE(value)	case value: printf("(%s)", PM_SFI(value)); um = 1; break
 
-static void
-reg_format_enum(const reg_t *reg)
+static int
+reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 {
-	int			reg_ID, val;
+	int			reg_ID, value, um = 0;
 
 	reg_ID = (int) (reg - regfile);
-	val = reg->link->i;
+	value = (int) rval->i;
 
-	printf("%i ", val);
+	printf("%i ", value);
 
 	switch (reg_ID) {
 
 		case ID_HAL_MCU_ID:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(MCU_ID_UNKNOWN);
 				PM_SFI_CASE(MCU_ID_STM32F405);
@@ -1067,7 +1067,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_HAL_USART_PARITY:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PARITY_NONE);
 				PM_SFI_CASE(PARITY_EVEN);
@@ -1079,7 +1079,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_HAL_ADC_SAMPLE_TIME:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(ADC_SMP_3);
 				PM_SFI_CASE(ADC_SMP_15);
@@ -1092,7 +1092,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_HAL_DPS_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(DPS_DISABLED);
 				PM_SFI_CASE(DPS_DRIVE_HALL);
@@ -1105,7 +1105,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_HAL_PPM_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PPM_DISABLED);
 				PM_SFI_CASE(PPM_PULSE_WIDTH);
@@ -1118,7 +1118,7 @@ reg_format_enum(const reg_t *reg)
 #ifdef HW_HAVE_STEP_DIR_KNOB
 		case ID_HAL_STEP_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(STEP_DISABLED);
 				PM_SFI_CASE(STEP_ON_STEP_DIR);
@@ -1132,7 +1132,7 @@ reg_format_enum(const reg_t *reg)
 #ifdef HW_HAVE_DRV_ON_PCB
 		case ID_HAL_DRV_PARTNO:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(DRV_NONE);
 				PM_SFI_CASE(DRV_PART_DRV8301);
@@ -1144,7 +1144,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_HAL_DRV_AUTO_RESTART:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1158,7 +1158,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_HAL_OPT_FILTER_CURRENT:
 		case ID_HAL_OPT_FILTER_VOLTAGE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1171,7 +1171,7 @@ reg_format_enum(const reg_t *reg)
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(EPCAN_LOG_DISABLED);
 				PM_SFI_CASE(EPCAN_LOG_FILTERED);
@@ -1186,7 +1186,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_NET_EP2_MODE:
 		case ID_NET_EP3_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(EPCAN_PIPE_DISABLED);
 				PM_SFI_CASE(EPCAN_PIPE_INCOMING);
@@ -1202,7 +1202,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_NET_EP2_STARTUP:
 		case ID_NET_EP3_STARTUP:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1216,7 +1216,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_NET_EP2_PAYLOAD:
 		case ID_NET_EP3_PAYLOAD:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
 				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
@@ -1238,7 +1238,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1253,7 +1253,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_AP_NTC_EXT_TYPE:
 #endif /* HW_HAVE_NTC_MACHINE */
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(NTC_NONE);
 				PM_SFI_CASE(NTC_GND);
@@ -1270,7 +1270,7 @@ reg_format_enum(const reg_t *reg)
 #define APP_DEF(name)		case ID_AP_TASK_ ## name:
 #include "app/apdefs.h"
 
-		switch (val) {
+		switch (value) {
 
 			PM_SFI_CASE(PM_DISABLED);
 			PM_SFI_CASE(PM_ENABLED);
@@ -1281,7 +1281,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_NOP:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_NOP_THREE_PHASE);
 				PM_SFI_CASE(PM_NOP_TWO_PHASE);
@@ -1292,7 +1292,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_IFB:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_IFB_AB_INLINE);
 				PM_SFI_CASE(PM_IFB_AB_GND);
@@ -1315,7 +1315,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_CONFIG_CC_BRAKE:
 		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1326,7 +1326,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_VSI_ZERO:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_VSI_GND);
 				PM_SFI_CASE(PM_VSI_CENTER);
@@ -1338,7 +1338,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_LU_ESTIMATE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_FLUX_NONE);
 				PM_SFI_CASE(PM_FLUX_ORTEGA);
@@ -1350,7 +1350,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_LU_SENSOR:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_SENSOR_NONE);
 				PM_SFI_CASE(PM_SENSOR_HALL);
@@ -1363,7 +1363,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_LU_LOCATION:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_LOCATION_NONE);
 				PM_SFI_CASE(PM_LOCATION_INHERITED);
@@ -1376,7 +1376,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_LU_DRIVE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DRIVE_CURRENT);
 				PM_SFI_CASE(PM_DRIVE_SPEED);
@@ -1388,7 +1388,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_HFI_WAVETYPE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_HFI_NONE);
 				PM_SFI_CASE(PM_HFI_SINE);
@@ -1400,7 +1400,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_EXCITATION:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_EXCITATION_NONE);
 				PM_SFI_CASE(PM_EXCITATION_CONST);
@@ -1411,7 +1411,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_SALIENCY:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_SALIENCY_NONE);
 				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
@@ -1423,7 +1423,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_EABI_FRONTEND:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_EABI_INCREMENTAL);
 				PM_SFI_CASE(PM_EABI_ABSOLUTE);
@@ -1434,7 +1434,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_CONFIG_SINCOS_FRONTEND:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_SINCOS_ANALOG);
 				PM_SFI_CASE(PM_SINCOS_RESOLVER);
@@ -1446,12 +1446,12 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_FSM_ERRNO:
 
-			printf("(%s)", pm_strerror(val));
+			printf("(%s)", pm_strerror(value));
 			break;
 
 		case ID_PM_LU_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_LU_DISABLED);
 				PM_SFI_CASE(PM_LU_DETACHED);
@@ -1468,7 +1468,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_FLUX_ZONE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_ZONE_NONE);
 				PM_SFI_CASE(PM_ZONE_UNCERTAIN);
@@ -1481,7 +1481,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_PM_EABI_ADJUST:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1493,7 +1493,7 @@ reg_format_enum(const reg_t *reg)
 		case ID_PM_WATT_DC_MAX:
 		case ID_PM_WATT_DC_MIN:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1504,7 +1504,7 @@ reg_format_enum(const reg_t *reg)
 
 		case ID_TLM_MODE:
 
-			switch (val) {
+			switch (value) {
 
 				PM_SFI_CASE(TLM_MODE_DISABLED);
 				PM_SFI_CASE(TLM_MODE_GRAB);
@@ -1517,6 +1517,14 @@ reg_format_enum(const reg_t *reg)
 
 		default: break;
 	}
+
+	return um;
+}
+
+static void
+reg_format_enum(const reg_t *reg, const rval_t *rval)
+{
+	(void) reg_format_um_enum(reg, rval);
 }
 
 const reg_t		regfile[] = {
@@ -1585,63 +1593,63 @@ const reg_t		regfile[] = {
 	REG_DEF(net.ep, 0_MODE, [0].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 0_ID, [0].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 0_clock_ID, [0].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 0_reg_DATA, [0].reg_DATA,"",	"%4f",	0, NULL, &reg_format_referenced_net_ep0),
+	REG_DEF(net.ep, 0_reg_DATA, [0].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep0),
 	REG_DEF(net.ep, 0_reg_ID, [0].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 0_PAYLOAD, [0].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 0_STARTUP, [0].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 0_rate, [0].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 0_range0, [0].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep0),
-	REG_DEF(net.ep, 0_range1, [0].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep0),
+	REG_DEF(net.ep, 0_range0, [0].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
+	REG_DEF(net.ep, 0_range1, [0].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
 
 	REG_DEF(net.ep, 1_MODE, [1].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 1_ID, [1].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 1_clock_ID, [1].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 1_reg_DATA, [1].reg_DATA,"",	"%4f",	0, NULL, &reg_format_referenced_net_ep1),
+	REG_DEF(net.ep, 1_reg_DATA, [1].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep1),
 	REG_DEF(net.ep, 1_reg_ID, [1].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 1_PAYLOAD, [1].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 1_STARTUP, [1].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 1_rate, [1].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 1_range0, [1].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep1),
-	REG_DEF(net.ep, 1_range1, [1].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep1),
+	REG_DEF(net.ep, 1_range0, [1].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
+	REG_DEF(net.ep, 1_range1, [1].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
 
 	REG_DEF(net.ep, 2_MODE, [2].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 2_ID, [2].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 2_clock_ID, [2].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 2_reg_DATA, [2].reg_DATA,"",	"%4f",	0, NULL, &reg_format_referenced_net_ep2),
+	REG_DEF(net.ep, 2_reg_DATA, [2].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep2),
 	REG_DEF(net.ep, 2_reg_ID, [2].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 2_PAYLOAD, [2].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 2_STARTUP, [2].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 2_rate, [2].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 2_range0, [2].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep2),
-	REG_DEF(net.ep, 2_range1, [2].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep2),
+	REG_DEF(net.ep, 2_range0, [2].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
+	REG_DEF(net.ep, 2_range1, [2].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
 
 	REG_DEF(net.ep, 3_MODE, [3].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 3_ID, [3].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 3_clock_ID, [3].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 3_reg_DATA, [3].reg_DATA,"",	"%4f",	0, NULL, &reg_format_referenced_net_ep3),
+	REG_DEF(net.ep, 3_reg_DATA, [3].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep3),
 	REG_DEF(net.ep, 3_reg_ID, [3].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 3_PAYLOAD, [3].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 3_STARTUP, [3].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(net.ep, 3_rate, [3].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 3_range0, [3].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep3),
-	REG_DEF(net.ep, 3_range1, [3].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_referenced_net_ep3),
+	REG_DEF(net.ep, 3_range0, [3].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
+	REG_DEF(net.ep, 3_range1, [3].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	REG_DEF(ap.ppm_PULSE,,,			"ms",	"%4f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(ap.ppm_FREQ,,,			"Hz",	"%1f",	REG_READ_ONLY, &reg_proc_ppm_freq, NULL),
-	REG_DEF(ap.ppm_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_referenced_ppm),
+	REG_DEF(ap.ppm_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_ppm),
 	REG_DEF(ap.ppm_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.ppm_STARTUP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.ppm_range, 0, [0],		"ms",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_range, 1, [1],		"ms",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.ppm_range, 2, [2],		"ms",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.ppm_control, 0, [0],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_ppm),
-	REG_DEF(ap.ppm_control, 1, [1],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_ppm),
-	REG_DEF(ap.ppm_control, 2, [2],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_ppm),
+	REG_DEF(ap.ppm_control, 0, [0],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_ppm),
+	REG_DEF(ap.ppm_control, 1, [1],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_ppm),
+	REG_DEF(ap.ppm_control, 2, [2],		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_ppm),
 
 #ifdef HW_HAVE_STEP_DIR_KNOB
 	REG_DEF(ap.step_POS,,,			"",	"%0i",	0, NULL, NULL),
-	REG_DEF(ap.step_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_referenced_step),
+	REG_DEF(ap.step_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_step),
 	REG_DEF(ap.step_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.step_STARTUP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(ap.step_const_S,,,	"rad/step",	"%4f",	REG_CONFIG, NULL, NULL),
@@ -1654,7 +1662,7 @@ const reg_t		regfile[] = {
 #ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_in_BRK,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 #endif /* HW_HAVE_BRAKE_KNOB */
-	REG_DEF(ap.knob_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_referenced_knob),
+	REG_DEF(ap.knob_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_knob),
 	REG_DEF(ap.knob_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.knob_ENABLED,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 #ifdef HW_HAVE_BRAKE_KNOB
@@ -1670,11 +1678,11 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_BRAKE_KNOB */
 	REG_DEF(ap.knob_range_LOS, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_LOS, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.knob_control_ANG, 0, [0],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
-	REG_DEF(ap.knob_control_ANG, 1, [1],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
-	REG_DEF(ap.knob_control_ANG, 2, [2],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
+	REG_DEF(ap.knob_control_ANG, 0, [0],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_knob),
+	REG_DEF(ap.knob_control_ANG, 1, [1],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_knob),
+	REG_DEF(ap.knob_control_ANG, 2, [2],	"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_knob),
 #ifdef HW_HAVE_BRAKE_KNOB
-	REG_DEF(ap.knob_control_BRK,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_knob),
+	REG_DEF(ap.knob_control_BRK,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_knob),
 #endif /* HW_HAVE_BRAKE_KNOB */
 #endif /* HW_HAVE_ANALOG_KNOB */
 
@@ -1717,7 +1725,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.task_SPI_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_SPI_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 
-	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_referenced_auto),
+	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_auto),
 	REG_DEF(ap.auto_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 
 	REG_DEF(ap.load_HX711,,,		"",	"%0i",	REG_READ_ONLY, NULL, NULL),
@@ -2172,7 +2180,9 @@ void reg_format(const reg_t *reg)
 
 		if (reg->format != NULL) {
 
-			reg->format(reg);
+			reg_getval(reg, &rval);
+
+			reg->format(reg, &rval);
 		}
 		else {
 			reg_getval(reg, &rval);
@@ -2322,7 +2332,7 @@ void reg_TOUCH_I(int reg_ID)
 SH_DEF(reg)
 {
 	rval_t			rval;
-	const reg_t		*reg, *lreg;
+	const reg_t		*reg, *lnk;
 
 	reg = reg_search_fuzzy(s);
 
@@ -2335,11 +2345,11 @@ SH_DEF(reg)
 
 			if (reg->mode & REG_LINKED) {
 
-				lreg = reg_search_fuzzy(s);
+				lnk = reg_search_fuzzy(s);
 
-				if (lreg != NULL) {
+				if (lnk != NULL) {
 
-					rval.i = (int) (lreg - regfile);
+					rval.i = (int) (lnk - regfile);
 					reg_setval(reg, &rval);
 				}
 			}
@@ -2370,6 +2380,36 @@ SH_DEF(reg)
 				reg_format(reg);
 			}
 		}
+	}
+}
+
+SH_DEF(enum_reg)
+{
+	rval_t			rval;
+	const reg_t		*reg;
+
+	int			reg_ID, um;
+
+	reg = reg_search_fuzzy(s);
+
+	if (		reg != NULL && reg->fmt[2] == 'i'
+			&& reg->format == (void *) &reg_format_enum) {
+
+		reg_ID = (int) (reg - regfile);
+
+		for (rval.i = 0; rval.i < 40; ++rval.i) {
+
+			printf("%2i [%-3i] %s = ", (int) reg->mode, (int) reg_ID, reg->sym);
+
+			um = reg_format_um_enum(reg, &rval);
+
+			puts(EOL);
+
+			if (um == 0)
+				break;
+		}
+
+		reg_format(reg);
 	}
 }
 

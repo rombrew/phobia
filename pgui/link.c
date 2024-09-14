@@ -267,6 +267,7 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 	if (lk_stod(&dval, reg->val) != NULL) {
 
 		reg->mode |= LINK_REG_TYPE_FLOAT;
+
 		reg->fval = (float) dval;
 
 		if (reg->started != 0) {
@@ -300,6 +301,8 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 			&& strlen(reg->um) < LINK_NAME_MAX
 			&& reg->lval >= 0
 			&& reg->lval < LINK_COMBO_MAX) {
+
+		reg->mode |= LINK_REG_TYPE_ENUM;
 
 		if (reg->combo[reg->lval] == NULL) {
 
@@ -882,6 +885,7 @@ void link_push(struct link_pmc *lp)
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
 					reg->queued = lp->clock;
+
 					lp->locked = lp->clock + lp->quantum;
 				}
 
@@ -894,6 +898,23 @@ void link_push(struct link_pmc *lp)
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
 					reg->queued = lp->clock;
+
+					lp->locked = lp->clock + lp->quantum;
+				}
+
+				break;
+			}
+
+			if (		(reg->mode & LINK_REG_TYPE_ENUM) != 0
+					&& reg->enumerated == 0) {
+
+				sprintf(priv->lbuf, "enum_reg %i" LINK_EOL, reg_ID);
+
+				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
+
+					reg->queued = lp->clock;
+					reg->enumerated = lp->clock;
+
 					lp->locked = lp->clock + lp->quantum;
 				}
 

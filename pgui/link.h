@@ -18,6 +18,8 @@ enum {
 
 	LINK_REG_TYPE_INT	= (1UL << 8),
 	LINK_REG_TYPE_FLOAT	= (1UL << 9),
+
+	LINK_REG_TYPE_ENUM	= (1UL << 10)
 };
 
 enum {
@@ -43,6 +45,7 @@ struct link_reg {
 	int		modified;
 	int		fetched;
 	int		queued;
+	int		enumerated;
 
 	char		sym[LINK_NAME_MAX];
 	char		val[LINK_NAME_MAX];

@@ -28,7 +28,7 @@ typedef struct {
 	volatile rval_t		*link;
 
 	void	(* proc) (const void *reg, rval_t *lval, const rval_t *rval);
-	void	(* format) (const void *reg);
+	void	(* format) (const void *reg, const rval_t *rval);
 }
 reg_t;
 

@@ -57,4 +57,5 @@ SH_DEF(hal_FAN_control)
 #endif /* HW_HAVE_FAN_CONTROL */
 SH_DEF(hal_DBGMCU_mode_stop)
 SH_DEF(reg)
+SH_DEF(enum_reg)
 SH_DEF(config_reg)
