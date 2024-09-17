@@ -10,7 +10,7 @@
 
 #define LSE_RM_TOP(ls)		((ls)->rm + (ls)->n_cascades - 1)
 
-/* Define external math functions.
+/* Define which external math functions to use in LSE.
  * */
 #define lse_fabsf(x)		m_fabsf(x)
 #define lse_sqrtf(x)		m_sqrtf(x)

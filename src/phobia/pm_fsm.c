@@ -117,7 +117,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			pm->self_BST[1] = 0.f;
 			pm->self_BST[2] = 0.f;
 
-			pm->vsi_AT = PM_TSMS(pm, pm->tm_transient_fast);
+			pm->vsi_AT = 20;	/* safety threshold */
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_transient_fast);
@@ -146,7 +146,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->vsi_BT = 0;
 
-				pm->self_BST[0] += 1.f;
+				pm->self_BST[0] = pm->tm_value * (pm->m_dT * 1000.f);
 			}
 			else {
 				pm->vsi_BT++;
@@ -160,8 +160,6 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
-
-				pm->self_BST[0] *= 1000.f / pm->m_freq;
 
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(PM_Z_AC);
@@ -194,7 +192,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->vsi_BT = 0;
 
-				pm->self_BST[1] += 1.f;
+				pm->self_BST[1] = pm->tm_value * (pm->m_dT * 1000.f);
 			}
 			else {
 				pm->vsi_BT++;
@@ -208,8 +206,6 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
-
-				pm->self_BST[1] *= 1000.f / pm->m_freq;
 
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(PM_Z_AB);
@@ -242,7 +238,7 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 
 				pm->vsi_BT = 0;
 
-				pm->self_BST[2] += 1.f;
+				pm->self_BST[2] = pm->tm_value * (pm->m_dT * 1000.f);
 			}
 			else {
 				pm->vsi_BT++;
@@ -256,8 +252,6 @@ pm_fsm_state_self_test_bootstrap(pmc_t *pm)
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
-
-				pm->self_BST[2] *= 1000.f / pm->m_freq;
 
 				if (		   pm->self_BST[0] < pm->dc_bootstrap
 						|| pm->self_BST[1] < pm->dc_bootstrap
@@ -557,7 +551,7 @@ pm_fsm_state_adjust_on_pcb_voltage(pmc_t *pm)
 	lse_t			*ls = &pm->lse[0];
 	lse_float_t		v[5];
 
-	int			xDC;
+	int			xDC, tMAX;
 
 	switch (pm->fsm_phase) {
 
@@ -597,10 +591,19 @@ pm_fsm_state_adjust_on_pcb_voltage(pmc_t *pm)
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_voltage_hold);
 
-				if (pm->ts_bootstrap != 0) {
+				if (pm->fsm_subi == 0) {
 
-					pm->tm_end = (pm->tm_end > pm->ts_bootstrap)
-						? pm->ts_bootstrap : pm->tm_end;
+					/* GND */
+				}
+				else if (pm->ts_bootstrap != 0) {
+
+					tMAX = pm->ts_bootstrap / 2;
+
+					pm->tm_end = (pm->tm_end > tMAX)
+						? tMAX : pm->tm_end;
+				}
+				else {
+					pm->tm_end = PM_TSMS(pm, pm->tm_instant_probe);
 				}
 
 				pm->fsm_phase += 1;
@@ -1693,8 +1696,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->kalman_POSTPONED = PM_DISABLED;
 
-				pm->kalman_E[0] = 0.f;
-				pm->kalman_E[1] = 0.f;
+				pm->kalman_rsu[0] = 0.f;
+				pm->kalman_rsu[1] = 0.f;
 				pm->kalman_bias_Q = 0.f;
 				pm->kalman_lpf_wS = 0.f;
 
@@ -1747,7 +1750,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
-				pm->mtpa_approx_D = 0.f;
+				pm->mtpa_load_D = 0.f;
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 

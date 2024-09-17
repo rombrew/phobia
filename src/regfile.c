@@ -1038,23 +1038,23 @@ reg_format_ref_auto(const reg_t *reg, const rval_t *rval)
 }
 
 #undef PM_SFI_CASE
-#define PM_SFI_CASE(value)	case value: printf("(%s)", PM_SFI(value)); um = 1; break
+#define PM_SFI_CASE(val)	case val: printf(" (%s)", PM_SFI(val)); um = 1; break
 
 static int
-reg_format_um_enum(const reg_t *reg, const rval_t *rval)
+reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 {
-	int			reg_ID, value, um = 0;
+	int			reg_ID, val, um = 0;
 
 	reg_ID = (int) (reg - regfile);
-	value = (int) rval->i;
+	val = (int) rval->i;
 
-	printf("%i ", value);
+	printf("%i", val);
 
 	switch (reg_ID) {
 
 		case ID_HAL_MCU_ID:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(MCU_ID_UNKNOWN);
 				PM_SFI_CASE(MCU_ID_STM32F405);
@@ -1067,7 +1067,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_HAL_USART_PARITY:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PARITY_NONE);
 				PM_SFI_CASE(PARITY_EVEN);
@@ -1079,7 +1079,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_HAL_ADC_SAMPLE_TIME:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(ADC_SMP_3);
 				PM_SFI_CASE(ADC_SMP_15);
@@ -1092,7 +1092,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_HAL_DPS_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(DPS_DISABLED);
 				PM_SFI_CASE(DPS_DRIVE_HALL);
@@ -1105,7 +1105,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_HAL_PPM_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PPM_DISABLED);
 				PM_SFI_CASE(PPM_PULSE_WIDTH);
@@ -1118,7 +1118,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 #ifdef HW_HAVE_STEP_DIR_KNOB
 		case ID_HAL_STEP_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(STEP_DISABLED);
 				PM_SFI_CASE(STEP_ON_STEP_DIR);
@@ -1132,7 +1132,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 #ifdef HW_HAVE_DRV_ON_PCB
 		case ID_HAL_DRV_PARTNO:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(DRV_NONE);
 				PM_SFI_CASE(DRV_PART_DRV8301);
@@ -1144,7 +1144,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_HAL_DRV_AUTO_RESTART:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1158,7 +1158,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_HAL_OPT_FILTER_CURRENT:
 		case ID_HAL_OPT_FILTER_VOLTAGE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1171,7 +1171,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(EPCAN_LOG_DISABLED);
 				PM_SFI_CASE(EPCAN_LOG_FILTERED);
@@ -1186,7 +1186,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_MODE:
 		case ID_NET_EP3_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(EPCAN_PIPE_DISABLED);
 				PM_SFI_CASE(EPCAN_PIPE_INCOMING);
@@ -1202,7 +1202,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_STARTUP:
 		case ID_NET_EP3_STARTUP:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1216,7 +1216,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_PAYLOAD:
 		case ID_NET_EP3_PAYLOAD:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
 				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
@@ -1238,7 +1238,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1253,7 +1253,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_AP_NTC_EXT_TYPE:
 #endif /* HW_HAVE_NTC_MACHINE */
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(NTC_NONE);
 				PM_SFI_CASE(NTC_GND);
@@ -1270,7 +1270,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 #define APP_DEF(name)		case ID_AP_TASK_ ## name:
 #include "app/apdefs.h"
 
-		switch (value) {
+		switch (val) {
 
 			PM_SFI_CASE(PM_DISABLED);
 			PM_SFI_CASE(PM_ENABLED);
@@ -1281,7 +1281,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_NOP:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_NOP_THREE_PHASE);
 				PM_SFI_CASE(PM_NOP_TWO_PHASE);
@@ -1292,7 +1292,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_IFB:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_IFB_AB_INLINE);
 				PM_SFI_CASE(PM_IFB_AB_GND);
@@ -1315,7 +1315,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_PM_CONFIG_CC_BRAKE:
 		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1326,7 +1326,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_VSI_ZERO:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_VSI_GND);
 				PM_SFI_CASE(PM_VSI_CENTER);
@@ -1338,7 +1338,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_LU_ESTIMATE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_FLUX_NONE);
 				PM_SFI_CASE(PM_FLUX_ORTEGA);
@@ -1350,7 +1350,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_LU_SENSOR:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_SENSOR_NONE);
 				PM_SFI_CASE(PM_SENSOR_HALL);
@@ -1363,7 +1363,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_LU_LOCATION:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_LOCATION_NONE);
 				PM_SFI_CASE(PM_LOCATION_INHERITED);
@@ -1376,7 +1376,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_LU_DRIVE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DRIVE_CURRENT);
 				PM_SFI_CASE(PM_DRIVE_SPEED);
@@ -1388,7 +1388,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_HFI_WAVETYPE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_HFI_NONE);
 				PM_SFI_CASE(PM_HFI_SINE);
@@ -1400,7 +1400,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_EXCITATION:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_EXCITATION_NONE);
 				PM_SFI_CASE(PM_EXCITATION_CONST);
@@ -1411,7 +1411,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_SALIENCY:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_SALIENCY_NONE);
 				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
@@ -1423,7 +1423,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_EABI_FRONTEND:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_EABI_INCREMENTAL);
 				PM_SFI_CASE(PM_EABI_ABSOLUTE);
@@ -1434,7 +1434,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_CONFIG_SINCOS_FRONTEND:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_SINCOS_ANALOG);
 				PM_SFI_CASE(PM_SINCOS_RESOLVER);
@@ -1446,12 +1446,12 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_FSM_ERRNO:
 
-			printf("(%s)", pm_strerror(value));
+			printf(" (%s)", pm_strerror(val));
 			break;
 
 		case ID_PM_LU_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_LU_DISABLED);
 				PM_SFI_CASE(PM_LU_DETACHED);
@@ -1468,7 +1468,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_FLUX_ZONE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_ZONE_NONE);
 				PM_SFI_CASE(PM_ZONE_UNCERTAIN);
@@ -1481,7 +1481,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_PM_EABI_ADJUST:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1493,7 +1493,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 		case ID_PM_WATT_DC_MAX:
 		case ID_PM_WATT_DC_MIN:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
@@ -1504,7 +1504,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 
 		case ID_TLM_MODE:
 
-			switch (value) {
+			switch (val) {
 
 				PM_SFI_CASE(TLM_MODE_DISABLED);
 				PM_SFI_CASE(TLM_MODE_GRAB);
@@ -1524,7 +1524,7 @@ reg_format_um_enum(const reg_t *reg, const rval_t *rval)
 static void
 reg_format_enum(const reg_t *reg, const rval_t *rval)
 {
-	(void) reg_format_um_enum(reg, rval);
+	(void) reg_format_enumerate(reg, rval);
 }
 
 const reg_t		regfile[] = {
@@ -1813,7 +1813,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.fb_COS,,,			"",	"%4f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.probe_current_hold,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.probe_weak_level,,,		"%",	"%2f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.probe_weak_level,,,		"%",	"%2f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.probe_hold_angle,,,		"deg",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_sine,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_current_bias,,,	"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1909,8 +1909,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
-	REG_DEF(pm.kalman_E, 0, [0],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.kalman_E, 1, [1],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.kalman_rsu, 0, [0],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.kalman_rsu, 1, [1],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_bias_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 0, [0],	"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -2176,7 +2176,7 @@ void reg_format(const reg_t *reg)
 
 		reg_ID = (int) (reg - regfile);
 
-		printf("%2i [%-3i] %s = ", (int) reg->mode, (int) reg_ID, reg->sym);
+		printf("%2i [%-3i] %s = ", reg->mode, reg_ID, reg->sym);
 
 		if (reg->format != NULL) {
 
@@ -2399,9 +2399,10 @@ SH_DEF(enum_reg)
 
 		for (rval.i = 0; rval.i < 40; ++rval.i) {
 
-			printf("%2i [%-3i] %s = ", (int) reg->mode, (int) reg_ID, reg->sym);
+			printf("%2i [%-3i] %s = ", reg->mode
+					| REG_HIDDEN, reg_ID, reg->sym);
 
-			um = reg_format_um_enum(reg, &rval);
+			um = reg_format_enumerate(reg, &rval);
 
 			puts(EOL);
 

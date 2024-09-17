@@ -142,12 +142,12 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
 
-	pm->tm_transient_slow = 40.f;		/* (ms) */
-	pm->tm_transient_fast = 4.f;		/* (ms) */
+	pm->tm_transient_slow = 50.f;		/* (ms) */
+	pm->tm_transient_fast = 2.f;		/* (ms) */
 	pm->tm_voltage_hold = 100.f;		/* (ms) */
 	pm->tm_current_hold = 200.f;		/* (ms) */
 	pm->tm_current_ramp = 900.f;		/* (ms) */
-	pm->tm_instant_probe = 4.f;		/* (ms) */
+	pm->tm_instant_probe = 2.f;		/* (ms) */
 	pm->tm_average_probe = 200.f;		/* (ms) */
 	pm->tm_average_drift = 100.f;		/* (ms) */
 	pm->tm_average_inertia = 900.f;		/* (ms) */
@@ -650,7 +650,7 @@ pm_torque_approx_MTPA(pmc_t *pm, float iD, float iQ)
 	Wq = pm->quick_WiL4 * pm->quick_WiL4;
 	Bq = (bD < bQ) ? bD + bQ : bQ + bQ;
 
-	if (pm->quick_WiL4 < 0.f) {
+	if (unlikely(pm->quick_WiL4 < 0.f)) {
 
 		iD = - pm->quick_WiL4 - m_sqrtf(Wq + Bq * 0.5f);
 	}
@@ -663,14 +663,15 @@ pm_torque_approx_MTPA(pmc_t *pm, float iD, float iQ)
 
 float pm_torque_feasible(pmc_t *pm, float iQ)
 {
-	float		MTPA_iD, mQ;
+	float		iD, mQ;
 
 	if (pm->config_RELUCTANCE == PM_ENABLED) {
 
-		MTPA_iD = pm_torque_approx_MTPA(pm, 0.f, iQ);
-		MTPA_iD = pm_torque_approx_MTPA(pm, MTPA_iD, iQ);
+		iD = pm_torque_approx_MTPA(pm, 0.f, iQ);
+		iD = pm_torque_approx_MTPA(pm, iD, iQ);
+		iD = pm_torque_approx_MTPA(pm, iD, iQ);
 
-		mQ = pm_torque_equation(pm, MTPA_iD, iQ);
+		mQ = pm_torque_equation(pm, iD, iQ);
 	}
 	else {
 		mQ = pm_torque_equation(pm, 0.f, iQ);
@@ -687,15 +688,15 @@ pm_torque_get_current(pmc_t *pm, float mQ)
 	if (pm->config_RELUCTANCE == PM_ENABLED) {
 
 		if (		pm->const_lambda < M_EPSILON
-				&& pm->mtpa_approx_D < 1.f) {
+				&& pm->mtpa_load_D < 1.f) {
 
-			pm->mtpa_approx_D = 1.f;
+			pm->mtpa_load_D = 1.f;
 		}
 
-		rel = (pm->const_im_Ld - pm->const_im_Lq) * pm->mtpa_approx_D;
+		rel = (pm->const_im_Ld - pm->const_im_Lq) * pm->mtpa_load_D;
 		iQ = mQ / (pm->k_KWAT * (pm->const_lambda + rel));
 
-		pm->mtpa_approx_D = pm_torque_approx_MTPA(pm, pm->mtpa_approx_D, iQ);
+		pm->mtpa_load_D = pm_torque_approx_MTPA(pm, pm->mtpa_load_D, iQ);
 	}
 	else {
 		if (pm->const_lambda > M_EPSILON) {
@@ -1235,7 +1236,7 @@ pm_flux_kalman(pmc_t *pm)
 {
 	const float		*K = pm->kalman_K;
 	float			*A = pm->kalman_A;
-	float			*E = pm->kalman_E;
+	float			*E = pm->kalman_rsu;
 
 	float			tA, dA = 0.f;
 
@@ -1819,12 +1820,12 @@ pm_lu_FSM(pmc_t *pm)
 	if (		pm->config_LU_FORCED == PM_ENABLED
 			&& pm->config_LU_DRIVE == PM_DRIVE_CURRENT) {
 
-		float		wSP;
+		float		wSP, iSP = pm->i_setpoint_current;
 
 		/* Derive the speed SETPOINT in case of current control.
 		 * */
-		wSP = (pm->i_setpoint_current < - M_EPSILON) ? - pm->forced_reverse
-			: (pm->i_setpoint_current > M_EPSILON) ? pm->forced_maximal : 0.f;
+		wSP = (iSP < - M_EPSILON) ? - pm->forced_reverse
+			: (iSP > M_EPSILON) ? pm->forced_maximal : 0.f;
 
 		pm->s_setpoint_speed = wSP;
 	}

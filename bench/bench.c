@@ -172,8 +172,8 @@ tlm_plot_grab()
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "deg");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
-	fmt_GP(pm.kalman_E[0], "A");
-	fmt_GP(pm.kalman_E[1], "A");
+	fmt_GP(pm.kalman_rsu[0], "A");
+	fmt_GP(pm.kalman_rsu[1], "A");
 	fmt_GP(pm.kalman_bias_Q, "V");
 	fmk_GP(pm.kalman_lpf_wS, kRPM, "rpm");
 

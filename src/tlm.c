@@ -12,21 +12,19 @@
 void tlm_reg_default(tlm_t *tlm)
 {
 	tlm->rate_grab = 1;
-	tlm->rate_watch = (int) (hal.PWM_frequency / 200.f + 0.5f);
-	tlm->rate_live = (int) (hal.PWM_frequency / 10.f + 0.5f);
+	tlm->rate_watch = (int) (hal.PWM_frequency / 1000.f + 0.5f);
+	tlm->rate_live =  (int) (hal.PWM_frequency / 10.f   + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
 	tlm->reg_ID[1] = ID_AP_TEMP_PCB;
-#ifdef HW_HAVE_NTC_MACHINE
-	tlm->reg_ID[2] = ID_AP_TEMP_EXT;
-#endif /* HW_HAVE_NTC_MACHINE */
-	tlm->reg_ID[3] = ID_PM_FSM_STATE;
-	tlm->reg_ID[4] = ID_PM_FB_IA;
-	tlm->reg_ID[5] = ID_PM_FB_IB;
-	tlm->reg_ID[6] = ID_PM_FB_IC;
-	tlm->reg_ID[7] = ID_PM_FB_UA;
-	tlm->reg_ID[8] = ID_PM_FB_UB;
-	tlm->reg_ID[9] = ID_PM_FB_UC;
+	tlm->reg_ID[2] = ID_PM_FSM_STATE;
+	tlm->reg_ID[3] = ID_PM_FB_IA;
+	tlm->reg_ID[4] = ID_PM_FB_IB;
+	tlm->reg_ID[5] = ID_PM_FB_IC;
+	tlm->reg_ID[6] = ID_PM_FB_UA;
+	tlm->reg_ID[7] = ID_PM_FB_UB;
+	tlm->reg_ID[8] = ID_PM_FB_UC;
+	tlm->reg_ID[9] = ID_PM_VSI_DC;
 
 	tlm->reg_ID[10] = ID_PM_VSI_A0;
 	tlm->reg_ID[11] = ID_PM_VSI_B0;

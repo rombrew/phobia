@@ -116,7 +116,7 @@ Quite different in the case of current control. You should enable
 `CC_SPEED_TRACK` feature to apply above speed loop constraints to actual speed
 and acceleration.
 
-    (pmc) reg pm.config_CC_SPEED_TRACK 1
+	(pmc) reg pm.config_CC_SPEED_TRACK 1
 
 Here trackpoint is driven by actual speed estimate with acceleration
 constraint. For system stability we have introduced a linear regulation region
@@ -125,7 +125,7 @@ backlash in case of direction change.
 
 Also you can tune PID regulator and load torque gains manually.
 
-    (pmc) reg pm.lu_gain_mq_LP <x>
+	(pmc) reg pm.lu_gain_mq_LP <x>
 	(pmc) reg pm.s_gain_P <x>
 	(pmc) reg pm.s_gain_I <x>
 	(pmc) reg pm.s_gain_D <x>

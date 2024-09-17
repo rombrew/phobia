@@ -108,9 +108,19 @@ responsible for selecting one of several possible options. The textual
 transcription corresponds to the enumeration in the source code of PMC.
 
 	(pmc) reg pm.config_IFB
-	1 [151] pm.config_IFB = 2 (PM_IFB_ABC_INLINE)
+	1  [153] pm.config_IFB = 2 (PM_IFB_ABC_INLINE)
 
-## Examples
+Use `enum_reg` command to show all of allowed values and its transcriptions.
+
+	(pmc) enum_reg pm.config_IFB
+	9  [103] pm.config_IFB = 0 (PM_IFB_AB_INLINE)
+	9  [103] pm.config_IFB = 1 (PM_IFB_AB_GND)
+	9  [103] pm.config_IFB = 2 (PM_IFB_ABC_INLINE)
+	9  [103] pm.config_IFB = 3 (PM_IFB_ABC_GND)
+	9  [103] pm.config_IFB = 4
+	1  [103] pm.config_IFB = 2 (PM_IFB_ABC_INLINE)
+
+## Examples with registers
 
 Show all raw feedback values that PMC uses in control loops.
 

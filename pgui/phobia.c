@@ -5711,12 +5711,16 @@ int main(int argc, char **argv)
 
 				struct nk_color		header;
 
-				if (strstr(lp->hwinfo, "does NOT match") == NULL) {
+				if (strstr(lp->hwinfo, "does NOT match") != NULL) {
 
-					header = nk->table[NK_COLOR_ENABLED];
+					header = nk->table[NK_COLOR_FLICKER_ALERT];
+				}
+				else if (lp->active + 2000 < lp->clock) {
+
+					header = nk->table[NK_COLOR_FLICKER_LIGHT];
 				}
 				else {
-					header = nk->table[NK_COLOR_FLICKER_ALERT];
+					header = nk->table[NK_COLOR_ENABLED];
 				}
 
 				nk->ctx.style.window.header.active = nk_style_item_color(header);

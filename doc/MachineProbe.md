@@ -51,7 +51,7 @@ measurement channels between phases.
 	(pmc) pm_self_adjust
 
 This is enough to do it once and store the values in the flash. But we recommend
-to do it again if you change DC link voltage rating.
+to do it again if you change DC link voltage.
 
 Also look into [Integrity Self Test](IntegritySelfTest.md) page to get more
 info about self-adjustment functions.

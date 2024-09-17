@@ -22,7 +22,7 @@
  * SOFTWARE.
 */
 
-/* Adapted from sdl2surface_rawfb.h for use in Phobia by Roman Belov.
+/* Adapted from sdl2surface_rawfb.h to use in Phobia by Roman Belov.
  * */
 
 #include <stdlib.h>

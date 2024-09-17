@@ -299,10 +299,9 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 			&& (reg->mode & LINK_REG_TYPE_INT) != 0
 			&& strlen(reg->um) >= 7
 			&& strlen(reg->um) < LINK_NAME_MAX
-			&& reg->lval >= 0
-			&& reg->lval < LINK_COMBO_MAX) {
+			&& reg->lval >= 0 && reg->lval < LINK_COMBO_MAX) {
 
-		reg->mode |= LINK_REG_TYPE_ENUM;
+		reg->mode |= LINK_REG_TYPE_ENUMERATE;
 
 		if (reg->combo[reg->lval] == NULL) {
 
@@ -317,6 +316,10 @@ link_reg_postproc(struct link_pmc *lp, struct link_reg *reg)
 				? reg->lval : reg->lmax_combo;
 		}
 	}
+	else if (reg->enumerated != 0) {
+
+		reg->mode |= LINK_REG_TYPE_ENUMERATE;
+	}
 }
 
 static void
@@ -325,7 +328,7 @@ link_fetch_reg_format(struct link_pmc *lp)
 	struct link_priv	*priv = lp->priv;
 	char			ldup[LINK_MESSAGE_MAX], *sp = ldup;
 	const char		*tok, *sym;
-	int			reg_mode, reg_ID, n;
+	int			reg_mode, reg_ID, N;
 
 	strcpy(ldup, priv->lbuf);
 
@@ -335,18 +338,18 @@ link_fetch_reg_format(struct link_pmc *lp)
 
 	if (strlen(tok) <= 2) {
 
-		if (lk_stoi(&n, tok) != NULL) {
+		if (lk_stoi(&N, tok) != NULL) {
 
-			reg_mode = n;
+			reg_mode = N;
 
 			tok = lk_token(&sp);
 
 			if (		strlen(tok) <= 3
 					&& tok[-1] == '[') {
 
-				if (lk_stoi(&n, lk_space(tok)) != NULL) {
+				if (lk_stoi(&N, lk_space(tok)) != NULL) {
 
-					reg_ID = n;
+					reg_ID = N;
 				}
 			}
 		}
@@ -361,11 +364,18 @@ link_fetch_reg_format(struct link_pmc *lp)
 
 		if (strcmp(tok, "=") == 0) {
 
-			char		text[80];
+			char			text[80];
+			struct link_reg		local;
 
 			sprintf(text, "%.79s", sp = (char *) lk_space(sp));
 
 			reg->mode = reg_mode;
+
+			if (reg->mode & LINK_REG_HIDDEN) {
+
+				local = *reg;
+				reg = &local;
+			}
 
 			sprintf(reg->sym, "%.79s", sym);
 			sprintf(reg->val, "%.79s", lk_token(&sp));
@@ -381,6 +391,17 @@ link_fetch_reg_format(struct link_pmc *lp)
 				strcpy(reg->val, text);
 
 				reg->um[0] = 0;
+			}
+
+			if (reg->mode & LINK_REG_HIDDEN) {
+
+				reg = lp->reg + reg_ID;
+
+				reg->mode = local.mode;
+				reg->lmax_combo = local.lmax_combo;
+
+				for (N = 0; N <= reg->lmax_combo; ++N)
+					reg->combo[N] = local.combo[N];
 			}
 
 			reg->fetched = lp->clock;
@@ -804,15 +825,25 @@ int link_fetch(struct link_pmc *lp, int clock)
 
 	if (priv->link_mode != LINK_MODE_DATA_GRAB) {
 
-		if (lp->keep + 2000 < lp->clock) {
+		if (lp->active + 12000 < lp->clock) {
 
-			if (lp->active + 12000 < lp->clock) {
+			link_close(lp);
 
-				link_close(lp);
+			return N;
+		}
+		else if (lp->active + 1000 < lp->clock) {
 
-				return N;
+			if (lp->keep + 1000 < lp->clock) {
+
+				sprintf(priv->lbuf, "ap_time" LINK_EOL);
+				serial_fputs(priv->fd, priv->lbuf);
+
+				lp->keep = lp->clock;
 			}
-			else {
+		}
+		else {
+			if (lp->keep + 5000 < lp->clock) {
+
 				sprintf(priv->lbuf, "ap_time" LINK_EOL);
 				serial_fputs(priv->fd, priv->lbuf);
 
@@ -905,8 +936,8 @@ void link_push(struct link_pmc *lp)
 				break;
 			}
 
-			if (		(reg->mode & LINK_REG_TYPE_ENUM) != 0
-					&& reg->enumerated == 0) {
+			if (		(reg->mode & LINK_REG_TYPE_ENUMERATE) != 0
+					&& reg->enumerated + 10000 < reg->shown) {
 
 				sprintf(priv->lbuf, "enum_reg %i" LINK_EOL, reg_ID);
 
