@@ -8,11 +8,11 @@ first powerup.
 ## Automated Self Test
 
 There is basic built-in integrity check. It is useful to do this the first time
-you power PMC up to make sure that hardware is ok.
+you power PMC up to make sure that hardware is OK.
 
 	(pmc) pm_self_test
 
-This test does the following steps in this order:
+This test does the following steps in this order.
 
 - Get current sensors zero drift and check it is within the acceptable range.
 - Check actual bootstrap retention time and compare with configuration.
@@ -29,12 +29,12 @@ to identify abnormal deviations in measuring circuits.
 
 	(pmc) pm_self_adjust
 
-This adjustment does the following steps in this order:
+This adjustment does the following steps in this order.
 
 - Get current sensors zero drift and check it is within the acceptable range.
 - Adjust the voltage measurement channels relatively to DC link voltage.
 - Adjust the current measurement channels pairwise.
-- Adjust dead-time distortion compensation (DTC).
+- Adjust dead-time distortion compensation (DCU).
 
 Note that in last two steps you need to connect the machine (or test coil) to
 let the current flow in phase circuits.

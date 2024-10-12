@@ -77,6 +77,7 @@ enum {
 
 enum {
 	PM_DRIVE_CURRENT			= 0,
+	PM_DRIVE_TORQUE,
 	PM_DRIVE_SPEED,
 	PM_DRIVE_LOCATION
 };
@@ -128,7 +129,7 @@ enum {
 	PM_STATE_SELF_TEST_CLEARANCE,
 	PM_STATE_ADJUST_ON_PCB_VOLTAGE,
 	PM_STATE_ADJUST_ON_PCB_CURRENT,
-	PM_STATE_ADJUST_DTC_VOLTAGE,
+	PM_STATE_ADJUST_DCU_VOLTAGE,
 	PM_STATE_PROBE_CONST_RESISTANCE,
 	PM_STATE_PROBE_CONST_INDUCTANCE,
 	PM_STATE_LU_DETACHED,
@@ -245,7 +246,7 @@ typedef struct {
 
 	int		config_VSI_ZERO;
 	int		config_VSI_CLAMP;
-	int		config_DTC_VOLTAGE;
+	int		config_DCU_VOLTAGE;
 	int		config_LU_FORCED;
 	int		config_LU_FREEWHEEL;
 	int		config_LU_ESTIMATE;
@@ -258,7 +259,7 @@ typedef struct {
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
 	int		config_WEAKENING;
-	int		config_CC_BRAKE;
+	int		config_CC_BRAKE_STOP;
 	int		config_CC_SPEED_TRACK;
 	int		config_EABI_FRONTEND;
 	int		config_SINCOS_FRONTEND;
@@ -349,12 +350,12 @@ typedef struct {
 	int		vsi_B0;
 	int		vsi_C0;
 
-	float		dtc_deadband;
-	float		dtc_tol;
-	float		dtc_uX;
-	float		dtc_uY;
-	float		dtc_X;
-	float		dtc_Y;
+	float		dcu_deadband;
+	float		dcu_tol;
+	float		dcu_DX;
+	float		dcu_DY;
+	float		dcu_X;
+	float		dcu_Y;
 
 	int		lu_MODE;
 	float		lu_iX;
@@ -417,7 +418,8 @@ typedef struct {
 	float		kalman_P[15];
 	float		kalman_A[10];
 	float		kalman_K[10];
-	float		kalman_rsu[2];
+	float		kalman_rsu_D;
+	float		kalman_rsu_Q;
 	float		kalman_bias_Q;
 	float		kalman_lpf_wS;
 	float		kalman_gain_Q[4];
@@ -495,10 +497,11 @@ typedef struct {
 	float		quick_iWb2;
 	float		quick_iLd;
 	float		quick_iLq;
+	float		quick_Lrel;
+	float		quick_iL4rel;
 	float		quick_TiLd;
 	float		quick_TiLq;
 	float		quick_TiLu[4];
-	float		quick_WiL4;
 	float		quick_HFwS;
 	float		quick_ZiEP;
 	float		quick_ZiSQ;
@@ -532,6 +535,7 @@ typedef struct {
 	float		watt_gain_WF;
 
 	float		i_setpoint_current;
+	float		i_setpoint_torque;
 	float		i_maximal;
 	float		i_maximal_on_HFI;
 	float		i_maximal_on_PCB;
@@ -545,7 +549,9 @@ typedef struct {
 	float		i_gain_P;
 	float		i_gain_I;
 
-	float		mtpa_load_D;
+	float		mtpa_tol;
+	float		mtpa_setpoint_Q;
+	float		mtpa_load_Q;
 	float		mtpa_D;
 	float		mtpa_gain_LP;
 
@@ -596,7 +602,7 @@ void pm_quick_build(pmc_t *pm);
 void pm_auto(pmc_t *pm, int req);
 
 float pm_torque_equation(pmc_t *pm, float iD, float iQ);
-float pm_torque_feasible(pmc_t *pm, float iQ);
+float pm_torque_maximal(pmc_t *pm, float iQ);
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC);
 void pm_voltage(pmc_t *pm, float uX, float uY);

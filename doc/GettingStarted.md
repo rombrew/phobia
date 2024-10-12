@@ -16,13 +16,13 @@ The aim of our PCB design is to optimize electrical and thermal performance.
 We are not trying to cram all the components into a small volume. However, we
 sometimes cross the border of quality in favor of PCB size.
 
-Our recent HW revision is `REV5` designed in 8-layer PCB with 35um or 70um
-copper foil thickness. To improve heat dissipation it is necessary to mount an
-aluminium heatsink at bottom side through thermal interface.
+Our recent HW revision is `REV5` designed in 8-layer PCB with 35um copper foil
+thickness. To improve heat dissipation it is necessary to mount an aluminium
+heatsink at bottom side through isolated thermal interface.
 
 You can also try to use third-party hardware like VESC or its clones. Look into
 [Hardware VESC](HardwareVESC.md) document to get an overview of supported
-hardware.
+third-party hardware.
 
 ## Basic wiring
 
@@ -53,7 +53,7 @@ erased MCU) then short BOOT pin to +3.3v before the power up.
 
 ## Software
 
-There are a few parts of software:
+PMC software consist of several main parts.
 
 1. Workbench includes numerical model of VSI with PMSM connected (`bench/...`).
    The numerical model enables us to develop control code in fast cycle without
@@ -66,19 +66,37 @@ There are a few parts of software:
    and diagnose PMC in visual way. This frontend communicates with PMC using
    the CLI via serial port or USB.
 
-3. Firmware code for onboard MCU (`src/...`). All of control algorithms are
-   implemented here.
+3. Firmware code for onboard MCU (`src/...`). All of PMSM control algorithms
+   and related functions are implemented here.
+
+You can build the software from sources yourself or get binaries from bundle
+[resleases](https://github.com/rombrew/phobia/releases).
+
+## Build
 
 The firmware can be compiled with appropriate [GCC](https://gcc.gnu.org/) or
-[Clang](https://clang.llvm.org/) toolchain. For example, let us build the
-firmware for the `REV5` hardware.
+[Clang](https://clang.llvm.org/) toolchain. Setting up the build toolchain is
+beyond the scope of this document.
+
+For example let us build the firmware for our `REV5` hardware.
 
 	$ git clone https://github.com/rombrew/phobia.git phobia
 	$ cd phobia/src
 	$ make HWREV=PHOBIA_rev5
 
-So using the above commands we have built the firmware. Next there are a few
-ways to load the firmware into the MCU:
+You can specify cross-compiler prefix `CROSS` and serial device name `TTY`.
+
+	$ make HWREV=PHOBIA_rev5 CROSS=armv7m-none-eabi TTY=/dev/rfcomm0
+
+If you modified source code files it may be necessary to regenerate `defs.h`
+files by `mkconfig` python script before build.
+
+	$ ./mkconfig
+	$ make HWREV=PHOBIA_rev5
+
+## Load
+
+There are several ways to load the firmware into the MCU.
 
 SWD interface with [GDB](https://www.gnu.org/software/gdb/). We use
 [Black Magic Probe](https://1bitsquared.com/products/black-magic-probe). Be
@@ -117,7 +135,11 @@ embedded bootloader without BOOT pin. Just run the command in the CLI.
 
 	(pmc) ap_bootload
 
-Read the following documentation for setting PMC up.
+## Basic configuration
+
+We recommend you to do built-in [integrity check](IntegritySelfTest.md) and
+self-adjustment the first time you power PMC up. Then read all of documentation
+for setting PMC up.
 
 - [Command Line Interface](CommandLineInterface.md)
 - [Graphical User Interface](GraphicalUserInterface.md)

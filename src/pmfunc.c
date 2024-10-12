@@ -119,7 +119,7 @@ int pm_wait_settle()
 	return pm.fsm_errno;
 }
 
-SH_DEF(pm_adjust_dtc_voltage)
+SH_DEF(pm_adjust_dcu_voltage)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -148,12 +148,15 @@ SH_DEF(pm_adjust_dtc_voltage)
 				break;
 		}
 
-		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
-		pm_wait_IDLE();
+		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
 
-		reg_OUTP(ID_PM_CONST_IM_RZ);
-		reg_OUTP(ID_PM_DTC_DEADBAND);
-		reg_OUTP(ID_PM_SELF_DTU);
+			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
+			pm_wait_IDLE();
+
+			reg_OUTP(ID_PM_CONST_IM_RZ);
+			reg_OUTP(ID_PM_DCU_DEADBAND);
+			reg_OUTP(ID_PM_SELF_DTU);
+		}
 	}
 	while (0);
 
@@ -228,17 +231,16 @@ SH_DEF(pm_probe_impedance)
 
 SH_DEF(pm_probe_spinup)
 {
+	int		backup_LU_DRIVE;
+
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
 		printf("Unable when PM is running" EOL);
 		return;
 	}
 
-	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
-
-		printf("Unable when DRIVE is not SPEED" EOL);
-		return;
-	}
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -353,6 +355,8 @@ SH_DEF(pm_probe_spinup)
 		pm.fsm_req = PM_STATE_HALT;
 	}
 
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
+
 	tlm_halt(&tlm);
 }
 
@@ -441,7 +445,7 @@ SH_DEF(pm_probe_const_flux_linkage)
 
 SH_DEF(pm_probe_const_inertia)
 {
-	float		wSP;
+	float		backup_wSP;
 
 	if (pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -462,12 +466,12 @@ SH_DEF(pm_probe_const_inertia)
 
 		vTaskDelay((TickType_t) 100);
 
-		wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
+		backup_wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 400);
 
-		reg_SET_F(ID_PM_S_SETPOINT_SPEED, wSP);
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, backup_wSP);
 
 		vTaskDelay((TickType_t) 400);
 
@@ -517,6 +521,7 @@ SH_DEF(pm_probe_noise_threshold)
 SH_DEF(pm_adjust_sensor_hall)
 {
 	int		backup_LU_SENSOR;
+	int		backup_LU_DRIVE;
 
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -524,14 +529,11 @@ SH_DEF(pm_adjust_sensor_hall)
 		return;
 	}
 
-	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
-
-		printf("Unable when DRIVE is not SPEED" EOL);
-		return;
-	}
-
 	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -573,6 +575,7 @@ SH_DEF(pm_adjust_sensor_hall)
 	}
 
 	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
 
 	tlm_halt(&tlm);
 }
@@ -580,6 +583,7 @@ SH_DEF(pm_adjust_sensor_hall)
 SH_DEF(pm_adjust_sensor_eabi)
 {
 	int		backup_LU_SENSOR;
+	int		backup_LU_DRIVE;
 
 	if (pm.lu_MODE != PM_LU_DISABLED) {
 
@@ -587,14 +591,11 @@ SH_DEF(pm_adjust_sensor_eabi)
 		return;
 	}
 
-	if (pm.config_LU_DRIVE != PM_DRIVE_SPEED) {
-
-		printf("Unable when DRIVE is not SPEED" EOL);
-		return;
-	}
-
 	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -633,6 +634,7 @@ SH_DEF(pm_adjust_sensor_eabi)
 	}
 
 	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
 
 	tlm_halt(&tlm);
 }

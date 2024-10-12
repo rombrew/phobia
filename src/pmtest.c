@@ -141,15 +141,18 @@ SH_DEF(pm_self_adjust)
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
-		pm_wait_IDLE();
+		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
 
-		reg_OUTP(ID_PM_CONST_IM_RZ);
-		reg_OUTP(ID_PM_DTC_DEADBAND);
-		reg_OUTP(ID_PM_SELF_DTU);
+			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
+			pm_wait_IDLE();
 
-		if (pm.fsm_errno != PM_OK)
-			break;
+			reg_OUTP(ID_PM_CONST_IM_RZ);
+			reg_OUTP(ID_PM_DCU_DEADBAND);
+			reg_OUTP(ID_PM_SELF_DTU);
+
+			if (pm.fsm_errno != PM_OK)
+				break;
+		}
 	}
 	while (0);
 

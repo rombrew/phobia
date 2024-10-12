@@ -91,8 +91,8 @@ Now you are ready to enable the analog knob interface.
 
 # Shutdown timeout
 
-To stop the control we check if machine is run or setpoint is high. If setpoint
-is out of input range and machine does not make full turns for
+To stop the control we check if machine is still run or setpoint is high. If
+setpoint is out of input range and machine does not make full turns for
 `ap.timeout_IDLE` milliseconds the shutdown is requested.
 
 	(pmc) reg ap.timeout_IDLE <ms>

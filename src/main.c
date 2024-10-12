@@ -194,6 +194,7 @@ LD_TASK void task_TEMP(void *pData)
 		if (ap.ntc_PCB.type != NTC_NONE) {
 
 			temp_NTC = ntc_read_temperature(&ap.ntc_PCB);
+
 			ap.temp_PCB += (temp_NTC - ap.temp_PCB) * ap.temp_gain_LP;
 		}
 		else {
@@ -203,6 +204,7 @@ LD_TASK void task_TEMP(void *pData)
 		if (ap.ntc_EXT.type != NTC_NONE) {
 
 			temp_NTC = ntc_read_temperature(&ap.ntc_EXT);
+
 			ap.temp_EXT += (temp_NTC - ap.temp_EXT) * ap.temp_gain_LP;
 		}
 		else {
@@ -272,8 +274,13 @@ LD_TASK void task_TEMP(void *pData)
 			}
 		}
 
-		pm.i_maximal_on_PCB = (maximal_PCB < maximal_EXT)
-			? maximal_PCB : maximal_EXT;
+		if (maximal_PCB < maximal_EXT) {
+
+			pm.i_maximal_on_PCB = maximal_PCB;
+		}
+		else {
+			pm.i_maximal_on_PCB = maximal_EXT;
+		}
 
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
@@ -326,7 +333,7 @@ LD_TASK void task_TEMP(void *pData)
 				log_TRACE("FSM errno %s" EOL, pm_strerror(pm.fsm_errno));
 			}
 
-			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 205) {
+			if ((xWake & (TickType_t) 0x3FFU) < (TickType_t) 0xF0U) {
 
 				GPIO_set_HIGH(GPIO_LED_ALERT);
 			}
@@ -626,7 +633,7 @@ default_flash_load()
 #ifdef HW_HAVE_STEP_DIR_KNOB
 	ap.step_reg_ID = ID_PM_X_SETPOINT_LOCATION;
 	ap.step_STARTUP = PM_DISABLED;
-	ap.step_const_S = 0.f;
+	ap.step_const_Sm = M_2_PI_F / 400.f;	/* (rad/step) */
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_ANALOG_KNOB
@@ -728,7 +735,7 @@ default_flash_load()
 	pm.fault_current_halt = (float) (int) (.95f * halt_I);
 	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
 
-	pm.dtc_deadband = HW_PWM_DEADTIME_NS;
+	pm.dcu_deadband = HW_PWM_DEADTIME_NS;
 
 	pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
 
@@ -1014,7 +1021,7 @@ in_STEP_DIR()
 
 		ap.step_POS += relEP;
 
-		xSP = ap.step_POS * ap.step_const_S;
+		xSP = ap.step_POS * ap.step_const_Sm;
 
 		if (ap.step_reg_DATA != xSP) {
 

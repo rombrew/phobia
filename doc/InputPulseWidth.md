@@ -49,7 +49,7 @@ enabled.
 Note that setting the control variable does not enable appropriate control loop
 automatically. You can select control loop if you need.
 
-	(pmc) reg pm.config_LU_DRIVE 1
+	(pmc) reg pm.config_LU_DRIVE 2
 
 Select the control variable range. So the input pulse width range will be
 converted to this control range.

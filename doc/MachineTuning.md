@@ -18,14 +18,19 @@ To get more reliable start increase hold current and decrease acceleration.
 Keep in mind that hold current is applied constantly (like in stepper motor) so
 it causes significant heating.
 
-You have an option to disable forced control. The machine will be freewheeling
-at low speed range.
+You have an option to disable forced control completely. The machine will be
+freewheeling at low speed range.
 
 	(pmc) reg pm.config_LU_FORCED 0
 
+Also you can allow zero freewheeling. This will mean that motor is freewheeling
+if current (or speed) setpoint is zero.
+
+	(pmc) reg pmc.config_LU_FREEWHEEL 1
+
 ## Current loop
 
-You can automatically tune current loop PI regulator gains based on damping
+We can automatically tune current loop PI regulator gains based on damping
 percentage. Reasonable values are from 20 to 200.
 
 	(pmc) reg pm.i_damping <pc>
@@ -37,15 +42,14 @@ can set reverse limit of negative Q current.
 	(pmc) reg pm.i_maximal <A>
 	(pmc) reg pm.i_reverse <A>
 
-Derated current constraint in case of PCB overheat (also look into other
-`ap.heat` regs). Applicable to both D and Q axes.
+Weakening current constraint is applicable if `WEAKENING` is enabled.
 
-	(pmc) reg ap.heat_derated_PCB <A>
+	(pmc) reg pm.weak_maximal <A>
 
 ## Wattage
 
-You can limit consumption and regeneration DC link current. Set the limits
-according to the power supply capabilities.
+We can limit consumption and regeneration DC link current. Set the limits
+according to your power supply capabilities.
 
 	(pmc) reg pm.watt_wA_maximal <A>
 	(pmc) reg pm.watt_wA_reverse <A>
@@ -89,7 +93,7 @@ transient rate and noise level.
 
 ## Speed loop
 
-You can automatically tune speed loop PID regulator gains based on damping
+We can automatically tune speed loop PID regulator gains based on damping
 percentage. Reasonable values are from 40 to 400.
 
 	(pmc) reg pm.s_damping <pc>
@@ -106,15 +110,14 @@ to increase the default acceleration value.
 	(pmc) reg pm.s_accel_forward <rad/s2>
 	(pmc) reg pm.s_accel_reverse <rad/s2>
 
-It should be noted that above constraints are used differently depending on
-selected control loop. In case of speed control above constraints are applied
-to speed setpoint to get trackpoint `pm.s_track`. In other words we do not
-limits actual parameters but limit the input setpoint to comply it with
-constraints.
+Note that above constraints are used differently depending on selected control
+loop. In case of speed control above constraints are applied to speed setpoint
+to get trackpoint `pm.s_track`. In other words we do not limits actual speed
+but limit the input setpoint to comply it with constraints.
 
 Quite different in the case of current control. You should enable
-`CC_SPEED_TRACK` feature to apply above speed loop constraints to actual speed
-and acceleration.
+`CC_SPEED_TRACK` feature to apply the above speed loop constraints to actual
+speed and acceleration.
 
 	(pmc) reg pm.config_CC_SPEED_TRACK 1
 
@@ -123,21 +126,14 @@ constraint. For system stability we have introduced a linear regulation region
 `pm.l_track_tol` and blending gain `pm.l_gain_LP`. So there may be some
 backlash in case of direction change.
 
-Also you can tune PID regulator and load torque gains manually.
-
-	(pmc) reg pm.lu_gain_mq_LP <x>
-	(pmc) reg pm.s_gain_P <x>
-	(pmc) reg pm.s_gain_I <x>
-	(pmc) reg pm.s_gain_D <x>
-
 ## Brake function
 
 If you need a brake function without a reverse in combination with current
-control then enable `CC_BRAKE` feature. It is activated when current setpoint
-is negative. Brake current is limited by absolute value of setpoint so brake is
-proportional.
+control then enable `CC_BRAKE_STOP` feature. It is activated when current
+setpoint is negative. Brake current is limited by absolute value of setpoint so
+brake is proportional.
 
-	(pmc) reg pm.config_CC_BRAKE 1
+	(pmc) reg pm.config_CC_BRAKE_STOP 1
 
 Note that speed control loop should be fine tuned to use this feature.
 
@@ -148,3 +144,4 @@ TODO
 ## MTPA control
 
 TODO
+

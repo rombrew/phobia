@@ -413,11 +413,54 @@ reg_proc_current_pc(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
 
-		lval->f = reg->link->f * 100.f / pm.i_maximal;
+		if (reg->link->f > 0.f) {
+
+			lval->f = reg->link->f * 100.f / pm.i_maximal;
+		}
+		else {
+			lval->f = reg->link->f * 100.f / pm.i_reverse;
+		}
 	}
 	else if (rval != NULL) {
 
-		reg->link->f = rval->f * pm.i_maximal / 100.f;
+		if (rval->f > 0.f) {
+
+			reg->link->f = rval->f * pm.i_maximal / 100.f;
+		}
+		else {
+			reg->link->f = rval->f * pm.i_reverse / 100.f;
+		}
+	}
+}
+
+static void
+reg_proc_torque_pc(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	float			mQ;
+
+	if (lval != NULL) {
+
+		if (reg->link->f > 0.f) {
+
+			mQ = pm_torque_maximal(&pm, pm.i_maximal);
+		}
+		else {
+			mQ = pm_torque_maximal(&pm, pm.i_reverse);
+		}
+
+		lval->f = reg->link->f * 100.f / mQ;
+	}
+	else if (rval != NULL) {
+
+		if (rval->f > 0.f) {
+
+			mQ = pm_torque_maximal(&pm, pm.i_maximal);
+		}
+		else {
+			mQ = pm_torque_maximal(&pm, pm.i_reverse);
+		}
+
+		reg->link->f = rval->f * mQ / 100.f;
 	}
 }
 
@@ -429,6 +472,12 @@ reg_proc_knob(const reg_t *reg, rval_t *lval, const rval_t *rval)
 		reg = &regfile[ID_PM_I_SETPOINT_CURRENT_PC];
 
 		reg_proc_current_pc(reg, lval, rval);
+	}
+	else if (pm.config_LU_DRIVE == PM_DRIVE_TORQUE) {
+
+		reg = &regfile[ID_PM_I_SETPOINT_TORQUE_PC];
+
+		reg_proc_torque_pc(reg, lval, rval);
 	}
 	else if (pm.config_LU_DRIVE == PM_DRIVE_SPEED) {
 
@@ -464,7 +513,7 @@ reg_proc_lambda_nm(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 	if (lval != NULL) {
 
-		mQ = pm_torque_feasible(&pm, pm.i_maximal) / pm.i_maximal;
+		mQ = pm_torque_maximal(&pm, pm.i_maximal) / pm.i_maximal;
 
 		lval->f = mQ * (float) pm.const_Zp;
 	}
@@ -521,10 +570,7 @@ reg_proc_load_nm(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		if (pm.const_lambda > M_EPSILON) {
-
-			reg->link->f = rval->f / (float) pm.const_Zp;
-		}
+		reg->link->f = rval->f / (float) pm.const_Zp;
 	}
 }
 
@@ -860,7 +906,7 @@ reg_proc_watt_fuel(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		if (rval->f < M_EPSILON) {
+		if (rval->f < - M_EPSILON) {
 
 			irq = hal_lock_irq();
 
@@ -890,10 +936,13 @@ reg_proc_tlm_rate(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	}
 	else if (rval != NULL) {
 
-		int		rate;
+		int		rate = 1;
 
-		rate = (rval->f >= 0.1f) ? (int) (hal.PWM_frequency / rval->f + 0.5f) : 1;
-		rate = (rate < 1) ? 1 : rate;
+		if (		rval->f <= hal.PWM_frequency
+				&& rval->f >= 0.1f) {
+
+			rate = (int) (hal.PWM_frequency / rval->f + 0.5f);
+		}
 
 		reg->link->i = rate;
 	}
@@ -1306,13 +1355,13 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_PM_CONFIG_TVM:
 		case ID_PM_CONFIG_DBG:
 		case ID_PM_CONFIG_VSI_CLAMP:
-		case ID_PM_CONFIG_DTC_VOLTAGE:
+		case ID_PM_CONFIG_DCU_VOLTAGE:
 		case ID_PM_CONFIG_LU_FORCED:
 		case ID_PM_CONFIG_LU_FREEWHEEL:
 		case ID_PM_CONFIG_HFI_PERMANENT:
 		case ID_PM_CONFIG_RELUCTANCE:
 		case ID_PM_CONFIG_WEAKENING:
-		case ID_PM_CONFIG_CC_BRAKE:
+		case ID_PM_CONFIG_CC_BRAKE_STOP:
 		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
 			switch (val) {
@@ -1379,6 +1428,7 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 			switch (val) {
 
 				PM_SFI_CASE(PM_DRIVE_CURRENT);
+				PM_SFI_CASE(PM_DRIVE_TORQUE);
 				PM_SFI_CASE(PM_DRIVE_SPEED);
 				PM_SFI_CASE(PM_DRIVE_LOCATION);
 
@@ -1652,9 +1702,9 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.step_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_step),
 	REG_DEF(ap.step_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.step_STARTUP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(ap.step_const_S,,,	"rad/step",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.step_const_S, _deg,,	"deg/step",	"%4f",	0, &reg_proc_location_deg, NULL),
-	REG_DEF(ap.step_const_S, _mm,,	"mm/step",	"%4f",	0, &reg_proc_location_mm, NULL),
+	REG_DEF(ap.step_const_Sm,,,	"rad/step",	"%4f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.step_const_Sm, _deg,, "deg/step",	"%4f",	0, &reg_proc_location_deg, NULL),
+	REG_DEF(ap.step_const_Sm, _mm,,	"mm/step",	"%4f",	0, &reg_proc_location_mm, NULL),
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_ANALOG_KNOB
@@ -1751,7 +1801,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.config_VSI_ZERO,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_VSI_CLAMP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_DTC_VOLTAGE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_DCU_VOLTAGE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_FORCED,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_FREEWHEEL,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_LU_ESTIMATE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1764,7 +1814,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_SALIENCY,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_RELUCTANCE,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_WEAKENING,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(pm.config_CC_BRAKE,,	,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_CC_BRAKE_STOP,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_CC_SPEED_TRACK,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_EABI_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SINCOS_FRONTEND,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1850,12 +1900,12 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.vsi_B0,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.vsi_C0,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 
-	REG_DEF(pm.dtc_deadband,,,		"ns",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.dtc_tol,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.dtc_uX,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dtc_uY,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dtc_X,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.dtc_Y,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dcu_deadband,,,		"ns",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dcu_tol,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dcu_DX,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dcu_DY,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dcu_X,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.dcu_Y,,,			"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(pm.lu_MODE,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(pm.lu_iX,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -1909,8 +1959,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.flux_gain_SF,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.flux_gain_IF,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
-	REG_DEF(pm.kalman_rsu, 0, [0],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
-	REG_DEF(pm.kalman_rsu, 1, [1],		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.kalman_rsu_D,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.kalman_rsu_Q,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_bias_Q,,,		"V",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_lpf_wS,,,	"rad/s",	"%2f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.kalman_gain_Q, 0, [0],	"",	"%2e",	REG_CONFIG, NULL, NULL),
@@ -2021,6 +2071,8 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.i_setpoint_current,,,	"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_current, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
+	REG_DEF(pm.i_setpoint_torque,,,		"Nm",	"%3f",	0, &reg_proc_load_nm, NULL),
+	REG_DEF(pm.i_setpoint_torque, _pc,,	"%",	"%2f",	0, &reg_proc_torque_pc, NULL),
 	REG_DEF(pm.i_maximal,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
 	REG_DEF(pm.i_maximal_on_HFI,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -2031,6 +2083,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.mtpa_tol,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.mtpa_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.mtpa_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 

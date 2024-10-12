@@ -30,7 +30,7 @@ typedef struct {
 	float			step_reg_DATA;
 	int			step_reg_ID;
 	int			step_STARTUP;
-	float			step_const_S;
+	float			step_const_Sm;
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 	/* Analog interface knob.

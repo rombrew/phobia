@@ -7,7 +7,7 @@ position estimate at low speed.
 
 HFI operation is based on inductance variance depending on the rotor position.
 Inductance variance can be produced by salient pole machine design (IPM, SynRM)
-or be saturation induced (BLDC). The first step is to specify `SALIENCY`
+or be saturation induced (BLDC). The first step is to specify the `SALIENCY`
 depending on machine type.
 
 	(pmc) reg pm.config_SALIENCY 1

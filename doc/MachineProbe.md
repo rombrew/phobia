@@ -101,7 +101,9 @@ to reach this condition.
 	(pmc) pm_probe_spinup
 
 If the procedure fails to spinup the machine try to adjust forced control
-parameters.
+parameters. Also you can specify Kv manually if you know it exactly.
+
+	(pmc) reg pm.const_lambda_kv <rpm/V>
 
 To get a more accurate flux linkage estimate you can run the machine at high
 speed and request lambda probing manually. Do not load the machine at this.

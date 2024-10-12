@@ -31,7 +31,7 @@ command.
 - You can specify a register number instead of its name to refer the exactly
   one register.
 
-Something like that:
+Something like that.
 
 	(pmc) reg <pattern> <value>
 	(pmc) reg <ID> <value>
@@ -76,11 +76,11 @@ link it to another register if you want control another parameter. We provide
 many registers in different units of measurement. You are free to choose how to
 control current in Amperes or percentage from full scale or something else.
 
-There are telemetry module with 10 link registers. Choose any registers you
-need to be captured.
+We have telemetry module with 20 links that configured to the most important
+registers by default. You can choose any registers you need to be captured.
 
-	(pmc) reg tlm.reg_ID0 pm.tvm_A
-	(pmc) reg tlm.reg_ID1 pm.tvm_B
+	(pmc) reg tlm.reg_ID0 pm.dbg_flux_rsu
+	(pmc) reg tlm.reg_ID1 pm.watt_consumed_Ah
 	(pmc) reg tlm.reg_ID2 ...
 
 Command to grab telemetry into RAM and flush textual dump.

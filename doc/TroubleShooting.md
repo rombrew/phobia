@@ -14,7 +14,7 @@ If something goes wrong PMC stops and gives the error code in `pm.fsm_errno`.
 `PM_ERROR_ZERO_DRIFT_FAULT` - Zero drift of current sensor is above the fault
 threshold. This may happen if current sensing circuit is broken.
 
-`PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are ok but no machine detected at
+`PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are OK but no machine detected at
 the output terminals. Ignore this error if you know that.
 
 `PM_ERROR_BOOTSTRAP_FAULT` - Actual bootstrap retention time is lower that
@@ -29,7 +29,7 @@ broken.
 above the fault threshold. Check the voltage and current measurement circuit.
 
 `PM_ERROR_CURRENT_LOOP_FAULT` - This means that we apply the full voltage but
-actual current is still near zero. If current sensing circuit is ok this may be
+actual current is still low. If current sensing circuit is OK this may be
 caused by open circuit in machine phases or in its wiring. Also a common cause
 of this error is a low level of DC link voltage in combine with high machine
 stator resistance.
@@ -64,7 +64,7 @@ probing procedures.
 some unknown reason. Maybe speed is too low or spinup was failed at all.
 
 `PM_ERROR_NO_SYNC_FAULT` - Position estimate discrepancy is out of range. This
-erorr code can only come from bench model.
+erorr code can only come from workbench model.
 
 `PM_ERROR_KNOB_SIGNAL_FAULT` - Knob input signal was lost or corrupted. Check
 the reliability and noise immunity of wiring.

@@ -1119,7 +1119,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 }
 
 static void
-pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
+pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 {
 	lse_t			*ls = &pm->lse[0];
 	lse_float_t		v[5];
@@ -1129,7 +1129,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			if (pm->config_DTC_VOLTAGE == PM_ENABLED) {
+			if (pm->config_DCU_VOLTAGE == PM_ENABLED) {
 
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(PM_Z_NONE);
@@ -1139,7 +1139,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 				pm->probe_HF[0] = 0.f;
 				pm->probe_HF[1] = 0.f;
 
-				pm->probe_WS[0] = 1.f / pm->dtc_deadband;
+				pm->probe_WS[0] = 1.f / pm->dcu_deadband;
 
 				pm->fsm_subi = 0;
 
@@ -1216,7 +1216,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 			v[0] = (pm->fsm_subi == 0) ? pm->lu_iX : 0.f;
 			v[1] = (pm->fsm_subi == 1) ? pm->lu_iX : 0.f;
 			v[2] = (pm->fsm_subi == 2) ? pm->lu_iX : 0.f;
-			v[3] = pm->dtc_uX * pm->probe_WS[0];
+			v[3] = pm->dcu_DX * pm->probe_WS[0];
 			v[4] = pm->vsi_X;
 
 			lse_insert(ls, v);
@@ -1224,7 +1224,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 			v[0] = (pm->fsm_subi == 0) ? pm->lu_iY : 0.f;
 			v[1] = (pm->fsm_subi == 1) ? pm->lu_iY : 0.f;
 			v[2] = (pm->fsm_subi == 2) ? pm->lu_iY : 0.f;
-			v[3] = pm->dtc_uY * pm->probe_WS[0];
+			v[3] = pm->dcu_DY * pm->probe_WS[0];
 			v[4] = pm->vsi_Y;
 
 			lse_insert(ls, v);
@@ -1305,7 +1305,7 @@ pm_fsm_state_adjust_dtc_voltage(pmc_t *pm)
 			if (		m_isfinitef(ls->sol.m[3]) != 0
 					&& ls->sol.m[3] > M_EPSILON) {
 
-				pm->dtc_deadband = ls->sol.m[3];
+				pm->dcu_deadband = ls->sol.m[3];
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -1404,13 +1404,13 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 		case 5:
 			v[0] = pm->lu_iX;
 			v[1] = 1.f;
-			v[2] = pm->dtc_X;
+			v[2] = pm->dcu_X;
 
 			lse_insert(ls, v);
 
 			v[0] = pm->lu_iY;
 			v[1] = 1.f;
-			v[2] = pm->dtc_Y;
+			v[2] = pm->dcu_Y;
 
 			lse_insert(ls, v);
 
@@ -1540,8 +1540,8 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			iX = pm->lu_iX;
 			iY = pm->lu_iY;
 
-			uX = pm->dtc_X * pm->probe_WS[0] + pm->dtc_Y * pm->probe_WS[1];
-			uY = pm->dtc_Y * pm->probe_WS[0] - pm->dtc_X * pm->probe_WS[1];
+			uX = pm->dcu_X * pm->probe_WS[0] + pm->dcu_Y * pm->probe_WS[1];
+			uY = pm->dcu_Y * pm->probe_WS[0] - pm->dcu_X * pm->probe_WS[1];
 
 			m_rsumf(&pm->probe_DFT[0], &pm->probe_REM[0], iX * pm->hfi_wave[0]);
 			m_rsumf(&pm->probe_DFT[1], &pm->probe_REM[1], iX * pm->hfi_wave[1]);
@@ -1631,10 +1631,10 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->vsi_BT = 0;
 				pm->vsi_CT = 0;
 
-				pm->dtc_uX = 0.f;
-				pm->dtc_uY = 0.f;
-				pm->dtc_X = 0.f;
-				pm->dtc_Y = 0.f;
+				pm->dcu_DX = 0.f;
+				pm->dcu_DY = 0.f;
+				pm->dcu_X = 0.f;
+				pm->dcu_Y = 0.f;
 
 				pm->lu_iX = 0.f;
 				pm->lu_iY = 0.f;
@@ -1696,8 +1696,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->kalman_POSTPONED = PM_DISABLED;
 
-				pm->kalman_rsu[0] = 0.f;
-				pm->kalman_rsu[1] = 0.f;
+				pm->kalman_rsu_D = 0.f;
+				pm->kalman_rsu_Q = 0.f;
 				pm->kalman_bias_Q = 0.f;
 				pm->kalman_lpf_wS = 0.f;
 
@@ -1744,13 +1744,15 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->watt_integral = 0.f;
 
 				pm->i_setpoint_current = 0.f;
+				pm->i_setpoint_torque = 0.f;
 				pm->i_maximal_on_PCB = PM_MAX_F;
 				pm->i_track_D = 0.f;
 				pm->i_track_Q = 0.f;
 				pm->i_integral_D = 0.f;
 				pm->i_integral_Q = 0.f;
 
-				pm->mtpa_load_D = 0.f;
+				pm->mtpa_setpoint_Q = 0.f;
+				pm->mtpa_load_Q = 0.f;
 				pm->mtpa_D = 0.f;
 				pm->weak_D = 0.f;
 
@@ -1824,6 +1826,8 @@ pm_fsm_state_lu_shutdown(pmc_t *pm)
 			pm->fsm_phase = 1;
 
 		case 1:
+			pm->i_maximal_on_PCB = 0.f;
+
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
@@ -2400,7 +2404,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_SELF_TEST_CLEARANCE:
 		case PM_STATE_ADJUST_ON_PCB_VOLTAGE:
 		case PM_STATE_ADJUST_ON_PCB_CURRENT:
-		case PM_STATE_ADJUST_DTC_VOLTAGE:
+		case PM_STATE_ADJUST_DCU_VOLTAGE:
 		case PM_STATE_PROBE_CONST_RESISTANCE:
 		case PM_STATE_PROBE_CONST_INDUCTANCE:
 		case PM_STATE_LU_DETACHED:
@@ -2481,8 +2485,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_adjust_on_pcb_current(pm);
 			break;
 
-		case PM_STATE_ADJUST_DTC_VOLTAGE:
-			pm_fsm_state_adjust_dtc_voltage(pm);
+		case PM_STATE_ADJUST_DCU_VOLTAGE:
+			pm_fsm_state_adjust_dcu_voltage(pm);
 			break;
 
 		case PM_STATE_PROBE_CONST_RESISTANCE:

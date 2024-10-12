@@ -20,7 +20,7 @@ directory to find out actual pin mapping and voltage levels of your port.
 
 ## Configuration
 
-First you need to enable the appropriate mode of the STEP interface in HAL.
+Enable the appropriate mode of the STEP interface in HAL configuration.
 
     (pmc) reg hal.STEP_mode 1
 
@@ -38,12 +38,12 @@ selected that mapped on absolute location in electrical radians.
 Define the step length constant to convert steps from `ap.step_POS` register to
 a setpoint value in `ap.step_reg_DATA` register.
 
-	(pmc) reg ap.step_const_S <rad/step>
+	(pmc) reg ap.step_const_Sm <rad/step>
 
 Your probably should select location control loop. Note that machine must
 already be configured to operate in speed control loop.
 
-	(pmc) reg pm.config_LU_DRIVE 2
+	(pmc) reg pm.config_LU_DRIVE 3
 
 Now enable the machine startup control. The condition to start is no error code
 in `pm.fsm_errno` register.
@@ -54,8 +54,8 @@ in `pm.fsm_errno` register.
 
 You can change the timebase frequency of the timer that is used to sample STEP
 and DIR signals. By increasing the frequency you decrease the minimum pulse
-width that can be accurately detected. But we use DMA based software event
-counting so a high frequency will cause a high computational load.
+width that can be accurately detected. But we use DMA based software GPIO
+polling so a high frequency will cause a high computational load.
 
 	(pmc) reg hal.STEP_frequency <Hz>
 

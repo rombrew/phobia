@@ -16,6 +16,7 @@ uses a linear bus terminated at each end
 	       |     |                  |     |
 	+------|-----|------+    +------|-----|------+
 	|    CAN_H CAN_L    |    |    CAN_H CAN_L    |    ...
+	|                   |    |                   |
 
 
 ## Protocol

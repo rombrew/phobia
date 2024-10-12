@@ -134,17 +134,20 @@ void ts_self_adjust()
 				break;
 		}
 
-		usual_Mq = m.Mq[3];
-		m.Mq[3] = 5.E-1;
+		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
 
-		pm.fsm_req = PM_STATE_ADJUST_DTC_VOLTAGE;
-		ts_wait_IDLE();
+			usual_Mq = m.Mq[3];
+			m.Mq[3] = 5.E-1;
 
-		m.Mq[3] = usual_Mq;
+			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
+			ts_wait_IDLE();
 
-		printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
-		printf("dtc_deadband = %.1f (ns)\n", pm.dtc_deadband);
-		printf("self_DTu = %.4f (V)\n", pm.self_DTu);
+			m.Mq[3] = usual_Mq;
+
+			printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
+			printf("dcu_deadband = %.1f (ns)\n", pm.dcu_deadband);
+			printf("self_DTu = %.4f (V)\n", pm.self_DTu);
+		}
 	}
 	while (0);
 }
@@ -197,7 +200,11 @@ void ts_probe_impedance()
 
 void ts_probe_spinup()
 {
+	int		backup_LU_DRIVE;
 	float		Kv;
+
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -323,14 +330,19 @@ void ts_probe_spinup()
 		printf("s_gain_D = %.2E\n", pm.s_gain_D);
 	}
 	while (0);
+
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
 }
 
 void ts_adjust_sensor_hall()
 {
-	int		backup_LU_SENSOR, N;
+	int		backup_LU_SENSOR, backup_LU_DRIVE, N;
 
 	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -365,16 +377,20 @@ void ts_adjust_sensor_hall()
 	while (0);
 
 	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
 }
 
 void ts_adjust_sensor_eabi()
 {
-	int		backup_LU_SENSOR;
+	int		backup_LU_SENSOR, backup_LU_DRIVE;
 
 	double		F0g;
 
 	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
@@ -406,6 +422,7 @@ void ts_adjust_sensor_eabi()
 	while (0);
 
 	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
 }
 
 static void
@@ -781,11 +798,14 @@ void ts_script_test()
 	m.Rdc = 0.1;
 	m.Zp = 5;
 	m.lambda = blm_Kv_lambda(&m, 58.);
-	m.Jm = 4.E-3;
+	m.Jm = 15.E-3;
 
 	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
+
+	//pm.config_DCU_VOLTAGE = PM_DISABLED;
+	//pm.dcu_tol = 1.f;
 
 	ts_script_speed();
 	blm_restart(&m);

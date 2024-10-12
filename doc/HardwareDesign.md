@@ -5,10 +5,10 @@ PMC internals. Also this page will be useful for understanding.
 
 ## Hardware
 
-We have a three-phase Voltage Source Inverter (VSI) which consists of at least
-six metal–oxide–semiconductor field-effect transistors (MOSFET). The voltage at
-each of the output terminals is measured. Phase current A and B (optionally C)
-is measured. The output terminals are connected to the machine.
+We have a three-phase Voltage Source Inverter (VSI) which typically consists of
+at least six Metal–Oxide–Semiconductor Field-Effect Transistors (MOSFET). The
+voltage at each of the output terminals is measured. Phase current A and B
+(optionally C) is measured. The output terminals are connected to the machine.
 
 ```
 	  (VCC) >---+--------+---------+---------+
@@ -52,7 +52,7 @@ PWM scheme as shown in the diagram.
 Each half-bridge consists of two MOSFETs controlled by a gate drivers with a
 specified dead-time `DT`. Depending on the direction of the current flow during
 the dead-time the actual voltage on half-bridge may be different. The amount of
-uncertainty in the output voltage `DTu` expressed as follows:
+uncertainty in the output voltage `DTu` expressed as follows.
 
 ```
 	        DT * DC_link_voltage
@@ -90,13 +90,10 @@ uncertainty in the output voltage `DTu` expressed as follows:
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC) and supply voltage (uS). This RC scheme forms an
 exponential integrator that allows us to restore the pulse width by measured
-voltage. Additional resistor R3 is used to bias the operating point into the
+voltage. Additional resistor R3 can be used to bias the zero volatege into the
 linear region. You can skip the terminal voltage sensing if you do not need
 related features but supply voltage measuring is mandatory.
 
-To get acceptable accuracy you need to make sure that the RC scheme time
-constant is comparable to the typical `dT` value. Also make sure that your
-capacitors are stable over whole temperature and voltage range.
 
 ```
 	                         +------< REF
@@ -114,7 +111,7 @@ capacitors are stable over whole temperature and voltage range.
 	                 R2 27K | |     -----
 	                        |_|     -----
 	                         |        |    C1 1nF
-	                         |        |      (C0G)
+	                         |        |
 	                         +--------+
 	                         |
 	                        ---
@@ -131,13 +128,13 @@ measurement you will need to configure the software appropriately.
 ```
 	                   // Current measurement //
 	  >-----+
-	        |  (+) |\       R1 = 0.5 mOhm
+	        |  (+) |\   R1 = 0.5 mOhm
 	        +------| \
-	        |      |  \      +---+
-	        \      |   \    /    |
-	    R1  /      |Amp +--- ADC |
-	        \      |   /    \    |
-	        |  (-) |  /      +---+
+	        |      |  \          +---+
+	        \      |   \        /    |
+	    R1  /      |Amp +------- ADC |
+	        \      |   /        \    |
+	        |  (-) |  /          +---+
 	        +------| /
 	        |      |/
 	        |
@@ -151,8 +148,8 @@ three ADCs. Then the voltages and other signals are sampled depending on
 particular sampling scheme selected.
 
 The values obtained are passed to the main IRQ handler to process. The MCU
-software calculates a new value of duty cycle and load it to hw timer. This
-value will be used at next PWM period.
+software calculates a new value of duty cycle and load it to TIM. This value
+will be used at next PWM period.
 
 ```
 	                // Control loop diagram //
@@ -165,7 +162,7 @@ value will be used at next PWM period.
 	  ---*--*--*-----------------------------+-------------*--*--*--------
 	     |  |  |                             |             |  |  |
 	     iA uS uC         preload DC         |             iA uS uC
-	     iB uA u?          to hw timer -->  TIM            iB uA u?
+	     iB uA u?          to HW timer -->  TIM            iB uA u?
          iC uB u?                                          iC uB u?
 	             \                          /                      \ ...
 	              pm_feedback()            /
@@ -174,7 +171,7 @@ value will be used at next PWM period.
 
 ## Clean zones
 
-We typically need about 5us before current samples to be clean. If MOSFETs
+We typically need about 5 us before current samples to be clean. If MOSFETs
 switching occur at this time then ADC result is discarded.
 
 ```

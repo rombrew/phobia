@@ -146,8 +146,8 @@ tlm_plot_grab()
 	fmt_GP(pm.vsi_IF, 0);
 	fmt_GP(pm.vsi_UF, 0);
 
-	fmt_GP(pm.dtc_uX, "V");
-	fmt_GP(pm.dtc_uY, "V");
+	fmt_GP(pm.dcu_DX, "V");
+	fmt_GP(pm.dcu_DY, "V");
 
 	fmt_GP(pm.lu_MODE, 0);
 	fmk_GP(pm.lu_mq_produce, pm.const_Zp, "Nm");
@@ -172,8 +172,8 @@ tlm_plot_grab()
 	sym_GP(atan2(pm.flux_F[1], pm.flux_F[0]) * kDEG, "pm.flux_F", "deg");
 	fmk_GP(pm.flux_wS, kRPM, "rpm");
 
-	fmt_GP(pm.kalman_rsu[0], "A");
-	fmt_GP(pm.kalman_rsu[1], "A");
+	fmt_GP(pm.kalman_rsu_D, "A");
+	fmt_GP(pm.kalman_rsu_Q, "A");
 	fmt_GP(pm.kalman_bias_Q, "V");
 	fmk_GP(pm.kalman_lpf_wS, kRPM, "rpm");
 
@@ -197,11 +197,14 @@ tlm_plot_grab()
 	fmt_GP(pm.watt_lpf_Q, "V");
 
 	fmt_GP(pm.i_setpoint_current, "A");
+	fmk_GP(pm.i_setpoint_torque, pm.const_Zp, "Nm");
 	fmt_GP(pm.i_track_D, "A");
 	fmt_GP(pm.i_track_Q, "A");
 	fmt_GP(pm.i_integral_D, "V");
 	fmt_GP(pm.i_integral_Q, "V");
 
+	fmt_GP(pm.mtpa_setpoint_Q, "A");
+	fmt_GP(pm.mtpa_load_Q, "A");
 	fmt_GP(pm.mtpa_D, "A");
 	fmt_GP(pm.weak_D, "A");
 
@@ -375,8 +378,8 @@ void bench_script()
 	tlm_restart();
 
 	m.Rs = 7.E-3;
-	m.Ld = 37.E-6;
-	m.Lq = 57.E-6;
+	m.Ld = 35.E-6;
+	m.Lq = 65.E-6;
 	m.Udc = 49.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
@@ -392,8 +395,7 @@ void bench_script()
 
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
-	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
-	//pm.config_DTC_VOLTAGE = PM_DISABLED;
+	pm.config_RELUCTANCE = PM_ENABLED;
 
 	pm.watt_wA_maximal = 80.f;
 	pm.watt_wA_reverse = 80.f;

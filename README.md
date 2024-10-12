@@ -41,7 +41,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
   with inline or low-side placement.
 - Self-adjustment of all onboard measurements (current and voltage) along
   symmetrical channels.
-- Dead-Time Compensation (DTC) based on currents polatity (**EXPERIMENTAL**).
+- Dead-Time Compensation (DCU) based on currents polatity (**EXPERIMENTAL**).
 
 - Advanced SVPWM scheme provides:
 	- Reduced switching losses and fully utilised DC link voltage.

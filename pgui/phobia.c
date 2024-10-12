@@ -45,6 +45,13 @@ enum {
 	DRAWING_WITH_HALL
 };
 
+enum {
+	LU_DRIVE_CURRENT		= 0,
+	LU_DRIVE_TORQUE,
+	LU_DRIVE_SPEED,
+	LU_DRIVE_LOCATION
+};
+
 struct public {
 
 	struct config_phobia	*fe;
@@ -2763,7 +2770,7 @@ page_diagnose(struct public *pub)
 	reg_text_large(pub, "pm.self_RMSi", "Current transient RMS");
 	reg_text_large(pub, "pm.self_RMSu", "DC link voltage RMS");
 	reg_text_large(pub, "pm.self_RMSt", "Terminal voltage RMS");
-	reg_text_large(pub, "pm.self_DTu", "DTC voltage RMS");
+	reg_text_large(pub, "pm.self_DTu", "DCU voltage RMS");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2787,8 +2794,8 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.dtc_deadband", "DTC deadband time");
-	reg_float(pub, "pm.dtc_tol", "DTC tolerance");
+	reg_float(pub, "pm.dcu_deadband", "DCU deadband time");
+	reg_float(pub, "pm.dcu_tol", "DCU tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -2918,7 +2925,7 @@ page_probe(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
-	int				config_LU_DRIVE = 1;
+	int				config_LU_DRIVE = LU_DRIVE_SPEED;
 
 	nk_menubar_begin(ctx);
 
@@ -2958,9 +2965,9 @@ page_probe(struct public *pub)
 
 		nk_spacer(ctx);
 
-		if (nk_menu_item_label(ctx, "DTC voltage adjusting", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "DCU voltage adjusting", NK_TEXT_LEFT)) {
 
-			if (link_command(lp, "pm_adjust_dtc_voltage") != 0) {
+			if (link_command(lp, "pm_adjust_dcu_voltage") != 0) {
 
 				lp->command_state = LINK_COMMAND_PENDING;
 			}
@@ -3108,12 +3115,17 @@ page_probe(struct public *pub)
 			reg = link_reg_lookup(lp, "pm.lu_MODE");
 			if (reg != NULL) { reg->onefetch = 1; }
 
-			if (config_LU_DRIVE == 0) {
+			if (config_LU_DRIVE == LU_DRIVE_CURRENT) {
 
 				reg = link_reg_lookup(lp, "pm.i_setpoint_current");
 				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
-			else if (config_LU_DRIVE == 1) {
+			else if (config_LU_DRIVE == LU_DRIVE_TORQUE) {
+
+				reg = link_reg_lookup(lp, "pm.i_setpoint_torque");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+			}
+			else if (config_LU_DRIVE == LU_DRIVE_SPEED) {
 
 				reg = link_reg_lookup(lp, "pm.s_setpoint_speed");
 				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
@@ -3137,8 +3149,9 @@ page_probe(struct public *pub)
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 
-	if (		   config_LU_DRIVE == 0
-			|| config_LU_DRIVE == 1) {
+	if (		   config_LU_DRIVE == LU_DRIVE_CURRENT
+			|| config_LU_DRIVE == LU_DRIVE_TORQUE
+			|| config_LU_DRIVE == LU_DRIVE_SPEED) {
 
 		reg = link_reg_lookup(lp, "pm.lu_MODE");
 
@@ -3159,9 +3172,6 @@ page_probe(struct public *pub)
 			reg = link_reg_lookup(lp, "pm.lu_wS");
 			if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-			reg = link_reg_lookup(lp, "pm.lu_mq_produce");
-			if (reg != NULL) { reg->update = rate; }
-
 			reg = link_reg_lookup(lp, "pm.lu_mq_load");
 			if (reg != NULL) { reg->update = rate; }
 		}
@@ -3169,17 +3179,20 @@ page_probe(struct public *pub)
 		reg_float(pub, "pm.lu_iD", "LU current D");
 		reg_float(pub, "pm.lu_iQ", "LU current Q");
 		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
-		reg_float(pub, "pm.lu_mq_produce", "LU torque production");
 		reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		if (config_LU_DRIVE == 0) {
+		if (config_LU_DRIVE == LU_DRIVE_CURRENT) {
 
 			reg_float_um(pub, "pm.i_setpoint_current", "Current SETPOINT", 0);
 		}
-		else if (config_LU_DRIVE == 1) {
+		else if (config_LU_DRIVE == LU_DRIVE_TORQUE) {
+
+			reg_float_um(pub, "pm.i_setpoint_torque", "Torque SETPOINT", 0);
+		}
+		else if (config_LU_DRIVE == LU_DRIVE_SPEED) {
 
 			reg_float_um(pub, "pm.s_setpoint_speed", "Speed SETPOINT", 1);
 		}
@@ -3639,7 +3652,7 @@ page_in_stepdir(struct public *pub)
 
 	reg_linked(pub, "ap.step_reg_ID", "Control register ID");
 	reg_enum_toggle(pub, "ap.step_STARTUP", "Startup control");
-	reg_float_um(pub, "ap.step_const_S", "STEP length constant", 0);
+	reg_float_um(pub, "ap.step_const_Sm", "STEP length constant", 0);
 
 	reg = link_reg_lookup(lp, "ap.step_reg_ID");
 
@@ -4013,7 +4026,7 @@ page_config(struct public *pub)
 
 	reg_enum_combo(pub, "pm.config_VSI_ZERO", "ZERO sequence modulation", 1);
 	reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
-	reg_enum_toggle(pub, "pm.config_DTC_VOLTAGE", "DTC voltage compensation");
+	reg_enum_toggle(pub, "pm.config_DCU_VOLTAGE", "DCU voltage compensation");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4033,7 +4046,7 @@ page_config(struct public *pub)
 	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux WEAKENING control");
 
-	reg_enum_toggle(pub, "pm.config_CC_BRAKE", "CC brake (no reverse)");
+	reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "CC brake (no reverse)");
 	reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "CC speed tracking");
 
 	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
@@ -4089,8 +4102,8 @@ page_config(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.dtc_deadband", "DTC deadband time");
-	reg_float(pub, "pm.dtc_tol", "DTC tolerance");
+	reg_float(pub, "pm.dcu_deadband", "DCU deadband time");
+	reg_float(pub, "pm.dcu_tol", "DCU tolerance");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4860,8 +4873,9 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.mtpa_tol", "MTPA tolerance");
+	reg_float(pub, "pm.mtpa_gain_LP", "MTPA gain LP");
 	reg_float_um(pub, "pm.weak_maximal", "Maximal WEAKENING", 0);
-	reg_float(pub, "pm.mtpa_gain_LP", "MTPA regulation gain");
 	reg_float(pub, "pm.weak_gain_EU", "WEAKENING gain EU");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5080,9 +5094,6 @@ page_lp_location(struct public *pub)
 		reg = link_reg_lookup(lp, "pm.lu_wS");
 		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
 
-		reg = link_reg_lookup(lp, "pm.lu_mq_produce");
-		if (reg != NULL) { reg->update = rate; }
-
 		reg = link_reg_lookup(lp, "pm.lu_mq_load");
 		if (reg != NULL) { reg->update = rate; }
 
@@ -5095,7 +5106,6 @@ page_lp_location(struct public *pub)
 	reg_float(pub, "pm.lu_iD", "LU current D");
 	reg_float(pub, "pm.lu_iQ", "LU current Q");
 	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", um_def);
-	reg_float(pub, "pm.lu_mq_produce", "LU torque production");
 	reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
