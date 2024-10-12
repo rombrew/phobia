@@ -22,12 +22,12 @@ jobs:
       with:
         release: latest
 
-    - name: Build REV5A firmware
+    - name: Build PHOBIA_rev5 firmware
       run: make -C src HWREV=PHOBIA_rev5
 
-    - name: Build PESC1 firmware
+    - name: Build PESC_r1 firmware
       run: make -C src HWREV=PESC_r1
 
-    - name: Build FSESC67 firmware
-      run: make -C src HWREV=MKESC_60100_v2
+    - name: Build MKESC_84200 firmware
+      run: make -C src HWREV=MKESC_84200
 
