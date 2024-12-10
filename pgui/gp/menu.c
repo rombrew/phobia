@@ -181,7 +181,7 @@ menu_t *menuAlloc(draw_t *dw, scheme_t *sch)
 {
 	menu_t			*mu;
 
-	mu = calloc(1, sizeof(menu_t));
+	mu = (menu_t *) calloc(1, sizeof(menu_t));
 
 	mu->dw = dw;
 	mu->sch = sch;

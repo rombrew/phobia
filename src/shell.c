@@ -586,13 +586,13 @@ LD_TASK void task_CMDSH(void *pData)
 
 				sh_line_null(sh);
 			}
-			else if (c == K_DLE || c == '*') {
+			else if (c == K_DLE) {
 
 				/* Ctrl + P.
 				 * */
 				sh_history(sh, DIR_UP);
 			}
-			else if (c == K_SO || c == '!') {
+			else if (c == K_SO) {
 
 				/* Ctrl + N.
 				 * */
@@ -682,7 +682,7 @@ SH_DEF(help)
 
 		if (strstr(cmd->sym, s) != NULL) {
 
-			printf("%s\n", cmd->sym);
+			printf("%s" EOL, cmd->sym);
 		}
 
 		++cmd;

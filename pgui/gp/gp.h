@@ -20,21 +20,37 @@
 #define _H_GP_
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 
-struct gp_struct;
+struct gp_context;
 
-typedef struct gp_struct gp_t;
+typedef struct gp_context gpcon_t;
 
-gp_t *gp_Alloc();
-void gp_Clean(gp_t *gp);
+enum {
+	GP_PAGE_SELECT		= 0,
+	GP_PAGE_COMBINE,
+	GP_PAGE_NO_REMAP
+};
 
-void gp_TakeConfig(gp_t *gp, const char *config);
-int gp_OpenWindow(gp_t *gp);
+gpcon_t *gp_Alloc();
+void gp_Clean(gpcon_t *gp);
 
-void gp_TakeEvent(gp_t *gp, const SDL_Event *ev);
-int gp_IsQuit(gp_t *gp);
-int gp_Draw(gp_t *gp);
+void gp_TakeConfig(gpcon_t *gp, const char *config);
+void gp_TakeEvent(gpcon_t *gp, const SDL_Event *ev);
+
+SDL_Surface *gp_GetSurface(gpcon_t *gp);
+Uint32 gp_OpenWindow(gpcon_t *gp);
+
+int gp_DataAdd(gpcon_t *gp, int dN, const double *payload);
+void gp_FileReload(gpcon_t *gp);
+void gp_PageCombine(gpcon_t *gp, int pN, int remap);
+int gp_PageSafe(gpcon_t *gp);
+void gp_AxisRange(gpcon_t *gp, int aN, double min, double max);
+
+int gp_IsQuit(gpcon_t *gp);
+int gp_Draw(gpcon_t *gp);
+
+void gp_SavePNG(gpcon_t *gp, const char *file);
+void gp_SaveSVG(gpcon_t *gp, const char *file);
 
 #endif /* _H_GP_ */
 

@@ -32,15 +32,13 @@ you will need to decrease probing currents for a small machine.
 If you use power supply that not tolerate reverse current then pay attention to
 the wattage limit settings.
 
-    (pmc) reg pm.watt
-
 - `pm.watt_wA_reverse` - Maximal reverse current on DC link.
 - `pm.watt_uDC_maximal` - Maximal overvoltage on DC link.
 
 Also do not forget to reset the machine parameters if you have previously run
 another machine.
 
-    (pmc) pm_default_probe
+    (pmc) pm_default_machine
 
 ## Sensors adjustment
 
@@ -101,7 +99,8 @@ to reach this condition.
 	(pmc) pm_probe_spinup
 
 If the procedure fails to spinup the machine try to adjust forced control
-parameters. Also you can specify Kv manually if you know it exactly.
+parameters. Also you can specify Kv manually if you know it exactly and Zp
+number is already configured correcly.
 
 	(pmc) reg pm.const_lambda_kv <rpm/V>
 
@@ -110,6 +109,7 @@ speed and request lambda probing manually. Do not load the machine at this.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>
+	...
 	(pmc) pm_probe_const_flux_linkage
 
 ## No forced spinup
@@ -124,21 +124,38 @@ PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 
 ## Speed noise threshold
 
-After a flux linkage we estimate speed noise level to know the lower bound of
-flux observer operation. As a result these threshold values are calculated.
+In case of you use `pm_probe_spinup` after a flux linkage we estimate speed
+noise level to know the lower bound of flux observer operation. As a result
+these threshold values are calculated.
 
 	(pmc) reg pm.zone_noise
 	(pmc) reg pm.zone_threshold
 
+If you have estimated flux linkage in detached mode or specified Kv manually
+you should probe the noise threshold manually when the machine is in run.
+
+	(pmc) pm_fsm_startup
+	(pmc) reg pm.s_setpoint_rpm <rpm>
+	...
+	(pmc) pm_probe_noise_threshold
+
 ## Moment of inertia
 
-Final estimate is a moment of inertia `pm.const_Ja`. To do this possible a
-speed maneuver will be performed. Note that this may result energy regeneration
-so your power supply must tolerate this. Either you should limit maximal DC
-link current reverse as stated above.
+In case of you use `pm_probe_spinup` the final estimate is a moment of inertia
+`pm.const_Ja`. To do this possible a speed maneuver will be performed. Note
+that this may result energy regeneration so your power supply must tolerate
+this. Either you should limit maximal DC link current reverse as stated above.
 
 This constant is used to tune speed control loop. Also it is used in operation
-to predict the speed changes from an applied current.
+to predict the speed changes from an applied current and so on.
+
+If you have estimated flux linkage in detached mode or specified Kv manually
+you should probe the moment of inertia manually.
+
+	(pmc) pm_fsm_startup
+	(pmc) reg pm.s_setpoint_rpm <rpm>
+	...
+	(pmc) pm_probe_const_inertia
 
 ## See also
 

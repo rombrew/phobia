@@ -45,7 +45,7 @@ int dirent_open(struct dirent_stat *sb, const char *path)
 		memset(sb->priv, 0, sizeof(struct dirent_priv));
 	}
 	else {
-		sb->priv = calloc(1, sizeof(struct dirent_priv));
+		sb->priv = (struct dirent_priv *) calloc(1, sizeof(struct dirent_priv));
 	}
 
 	p = sb->priv;
@@ -207,7 +207,7 @@ int dirent_open(struct dirent_stat *sb, const char *path)
 		memset(sb->priv, 0, sizeof(struct dirent_priv));
 	}
 	else {
-		sb->priv = calloc(1, sizeof(struct dirent_priv));
+		sb->priv = (struct dirent_priv *) calloc(1, sizeof(struct dirent_priv));
 	}
 
 	p = sb->priv;

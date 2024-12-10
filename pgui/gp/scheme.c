@@ -34,6 +34,8 @@ void schemeFill(scheme_t *sch, int nu)
 		sch->plot_figure[5] = 0xFF00FF;
 		sch->plot_figure[6] = 0xFF7700;
 		sch->plot_figure[7] = 0x7700FF;
+		sch->plot_figure[8] = 0xFF0077;
+		sch->plot_figure[9] = 0x0077FF;
 		sch->plot_axis = 0x00BFCF;
 		sch->plot_hovered = 0x223344;
 		sch->plot_text = 0xFFFFFF;
@@ -57,6 +59,8 @@ void schemeFill(scheme_t *sch, int nu)
 		sch->plot_figure[5] = 0xFF00FF;
 		sch->plot_figure[6] = 0xFF7700;
 		sch->plot_figure[7] = 0x7700FF;
+		sch->plot_figure[8] = 0xFF0077;
+		sch->plot_figure[9] = 0x0077FF;
 		sch->plot_axis = 0x005F6F;
 		sch->plot_hovered = 0xCCDDEE;
 		sch->plot_text = 0x000000;
@@ -73,13 +77,15 @@ void schemeFill(scheme_t *sch, int nu)
 
 		sch->plot_background = 0xFFFFFF;
 		sch->plot_figure[0] = 0x000000;
-		sch->plot_figure[1] = 0x777777;
-		sch->plot_figure[2] = 0xBBBBBB;
-		sch->plot_figure[3] = 0x333333;
-		sch->plot_figure[4] = 0x555555;
-		sch->plot_figure[5] = 0x999999;
-		sch->plot_figure[6] = 0xCCCCCC;
-		sch->plot_figure[7] = 0xDDDDDD;
+		sch->plot_figure[1] = 0x555555;
+		sch->plot_figure[2] = 0x999999;
+		sch->plot_figure[3] = 0x111111;
+		sch->plot_figure[4] = 0x666666;
+		sch->plot_figure[5] = 0x888888;
+		sch->plot_figure[6] = 0x222222;
+		sch->plot_figure[7] = 0x333333;
+		sch->plot_figure[8] = 0x444444;
+		sch->plot_figure[9] = 0x777777;
 		sch->plot_axis = 0x5F5F5F;
 		sch->plot_hovered = 0xDDDDDD;
 		sch->plot_text = 0x000000;

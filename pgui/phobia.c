@@ -134,9 +134,9 @@ struct public {
 	}
 	telemetry;
 
-	gp_t			*gp;
+	gpcon_t			*gp;
 
-	int			gp_ID;
+	Uint32			gp_ID;
 
 	char			popup_msg[LINK_MESSAGE_MAX];
 	int			popup_enum;
@@ -941,11 +941,14 @@ pub_open_GP(struct public *pub, const char *file)
 	pub->gp = gp_Alloc();
 
 	sprintf(pub->lbuf,	"chunk 10\n"
-				"timeout 10000\n"
-				"load 0 0 text \"%s\"\n"
+				"timeout 1000\n"
+				"load 0 0 csv \"%s\"\n"
 				"mkpages 0\n", file);
 
 	gp_TakeConfig(pub->gp, pub->lbuf);
+
+	(void) gp_GetSurface(pub->gp);
+	gp_PageCombine(pub->gp, 2, GP_PAGE_SELECT);
 
 	pub->gp_ID = gp_OpenWindow(pub->gp);
 }
@@ -3825,7 +3828,7 @@ page_application(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup at powerup");
+	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup at the power up");
 
 	reg = link_reg_lookup(lp, "ap.task_AUTOSTART");
 

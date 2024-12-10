@@ -14,7 +14,7 @@
 
 #define REG_DEF(l, e, q, u, f, m, p, t)		{ #l #e "\0" u, f, m,		\
 						(rval_t * const) &(l q),	\
-						(void * const) p, (void * const) t}
+						(void * const) p, (void * const) t }
 
 #define REGFILE_MAX				(sizeof(regfile) / sizeof(reg_t) - 1U)
 

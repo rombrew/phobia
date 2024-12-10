@@ -34,10 +34,10 @@ void langFill(lang_t *la, int lang)
 			"C   Combine with page ...\0"
 			"B   No remap combine ...\0"
 			"R   Create subtraction\0"
-			"M   Place figure markers\0"
-			"T   Data slice (on X)\0"
-			"K   Compact axes mode\0"
-			"E   Exponential mode\0"
+			"M   Add figure markers\0"
+			"T   Data slice on X\0"
+			"K   Data pick point\0"
+			"E   Erase selection\0"
 			"Y   Copy to clipboard\0"
 			"    Language ...\0"
 			"    About ...\0"
@@ -91,7 +91,7 @@ void langFill(lang_t *la, int lang)
 		la->dataset_menu[3] = " Data median  [ %s ]";
 		la->dataset_menu[4] = " Time scale   [ %s ]";
 		la->dataset_menu[5] = " Length       [ %3i ]  %iM (%i%%) cache %iM";
-		la->dataset_menu[6] = " Close file";
+		la->dataset_menu[6] = " [ Close ]";
 
 		la->axis_menu =
 
@@ -99,8 +99,8 @@ void langFill(lang_t *la, int lang)
 			"S   Slave mode\0"
 			"X   Remove the axis\0"
 			"T   Data slice\0"
-			"K   Compact mode      [ %s ]\0"
-			"E   Exponential mode  [ %s ]\0"
+			"    Compact layout    [ %s ]\0"
+			"    Exponential mode  [ %s ]\0"
 			"    Ticks lock        [ %s ]\0"
 			"    Label ...\0"
 
@@ -156,8 +156,7 @@ void langFill(lang_t *la, int lang)
 		la->figure_operation_menu =
 
 			"    Duplicate figure\0"
-			"    Time median\0"
-			"    Resample all\0"
+			"    Time median ...\0"
 			"    Scale on X ...\0"
 			"    Scale on Y ...\0"
 			"    Add P polynomial ...\0"
@@ -166,7 +165,7 @@ void langFill(lang_t *la, int lang)
 			"    Add B multiplication\0"
 			"    Add B hypotenuse\0"
 			"    Add F differences\0"
-			"    Add F cumulative sum\0"
+			"    Add F integral\0"
 			"    Add F bit field ...\0"
 			"    Add F low pass ...\0"
 			"    Add F median ...\0"
@@ -176,6 +175,7 @@ void langFill(lang_t *la, int lang)
 		la->legend_menu =
 
 			"    Drawing primitive ...\0"
+			"N   Time resample ...\0"
 			"    Scale on X ...\0"
 			"    Scale on Y ...\0"
 			"    Bake figures to CSV ...\0"
@@ -184,17 +184,27 @@ void langFill(lang_t *la, int lang)
 
 			"\0";
 
+		la->resample_menu[0] = "    Dataset         [ %s ]";
+		la->resample_menu[1] = "    Length          [ %3i ]";
+		la->resample_menu[2] = "    Time range      [ %s ]";
+		la->resample_menu[3] = "    Time step       [ %s ]";
+		la->resample_menu[4] = "    Interpolation   [ %s ]";
+		la->resample_menu[5] = "    Threshold       [ %2i ]";
+		la->resample_menu[6] = "    [ OK ]";
+
 		la->databox_menu =
 
-			"    Close data window\0"
 			"    Copy to clipboard\0"
+			"    Decimal precision    [ %s ]\0"
+			"    Format hexadecimal   [ %s ]\0"
+			"    [ Close ]\0"
 
 			"\0";
 
 		la->cancel_menu =
 
 			"    Cancel\0"
-			"    OK\0"
+			"    [ OK ]\0"
 
 			"\0";
 
@@ -209,9 +219,13 @@ void langFill(lang_t *la, int lang)
 		la->length_edit = "Length";
 		la->figure_thickness_edit = "Thickness";
 		la->font_size_edit = "Font size";
-		la->median_unwrap_edit = "Median and unwrap flags";
+		la->median_unwrap_edit = "Median and Flags";
 		la->marker_density_edit = "Density and Size";
 		la->gamma_edit = "Gamma";
+		la->time_range_edit = "Time range";
+		la->precision_edit = "Precision";
+		la->time_step_edit = "Time step";
+		la->time_threshold_edit = "Time threshold";
 	}
 	else if (lang == LANG_RU) {
 
@@ -227,10 +241,10 @@ void langFill(lang_t *la, int lang)
 			"C   Комбинировать страницы ...\0"
 			"B   Без переназначения ...\0"
 			"R   Создать вычитание\0"
-			"M   Разместить маркеры фигур\0"
-			"T   Нарезка данных (по X)\0"
-			"K   Режим компактных осей\0"
-			"E   Экспонентный режим\0"
+			"M   Добавить маркеры фигур\0"
+			"T   Нарезка данных по X\0"
+			"K   Выборка точки данных\0"
+			"E   Стирание выбранного\0"
 			"Y   Копировать в буфер обмена\0"
 			"    Язык ...\0"
 			"    О программе ...\0"
@@ -284,7 +298,7 @@ void langFill(lang_t *la, int lang)
 		la->dataset_menu[3] = " Медиана данных    [ %s ]";
 		la->dataset_menu[4] = " Масштаб времени   [ %s ]";
 		la->dataset_menu[5] = " Длина             [ %3i ]  %iM (%i%%) кэш %iM";
-		la->dataset_menu[6] = " Закрыть файл";
+		la->dataset_menu[6] = " [ Закрыть ]";
 
 		la->axis_menu =
 
@@ -292,9 +306,9 @@ void langFill(lang_t *la, int lang)
 			"S   Подчиненный режим\0"
 			"X   Удалить эту ось\0"
 			"T   Нарезка данных\0"
-			"K   Компактный режим    [ %s ]\0"
-			"E   Экспонентный режим  [ %s ]\0"
-			"    Блокировка линейки  [ %s ]\0"
+			"    Компактная укладка      [ %s ]\0"
+			"    Экспоненциальный режим  [ %s ]\0"
+			"    Блокировка линейки      [ %s ]\0"
 			"    Текст ...\0"
 
 			"\0";
@@ -349,17 +363,16 @@ void langFill(lang_t *la, int lang)
 		la->figure_operation_menu =
 
 			"    Дублировать фигуру\0"
-			"    Медиана времени\0"
-			"    Передискретизация\0"
+			"    Медиана времени ...\0"
 			"    Масштаб по X ...\0"
 			"    Масштаб по Y ...\0"
 			"    Добавить P полином ...\0"
 			"R   Добавить B вычитание\0"
 			"    Добавить B сложение\0"
 			"    Добавить B умножение\0"
-			"    Добавить B гипотенуза\0"
-			"    Добавить F разности\0"
-			"    Добавить F накопленная сумма\0"
+			"    Добавить B гипотенузу\0"
+			"    Добавить F производную\0"
+			"    Добавить F интеграл\0"
 			"    Добавить F битовое поле ...\0"
 			"    Добавить F фильтр НЧ ...\0"
 			"    Добавить F медиану ...\0"
@@ -369,6 +382,7 @@ void langFill(lang_t *la, int lang)
 		la->legend_menu =
 
 			"    Примитив рисования ...\0"
+			"N   Передискретизация ...\0"
 			"    Масштаб по X ...\0"
 			"    Масштаб по Y ...\0"
 			"    Запечь фигуры в CSV ...\0"
@@ -377,17 +391,27 @@ void langFill(lang_t *la, int lang)
 
 			"\0";
 
+		la->resample_menu[0] = "    Набор данных      [ %s ]";
+		la->resample_menu[1] = "    Длина набора      [ %3i ]";
+		la->resample_menu[2] = "    Диапазон времени  [ %s ]";
+		la->resample_menu[3] = "    Шаг времени       [ %s ]";
+		la->resample_menu[4] = "    Интерполяция      [ %s ]";
+		la->resample_menu[5] = "    Пороговое         [ %2i ]";
+		la->resample_menu[6] = "    [ OK ]";
+
 		la->databox_menu =
 
-			"    Закрыть окно данных\0"
 			"    Копировать в буфер обмена\0"
+			"    Десятичная точность          [ %s ]\0"
+			"    Выводить шестнадцатеричные   [ %s ]\0"
+			"    [ Закрыть ]\0"
 
 			"\0";
 
 		la->cancel_menu =
 
 			"    Отмена\0"
-			"    OK\0"
+			"    [ OK ]\0"
 
 			"\0";
 
@@ -396,19 +420,25 @@ void langFill(lang_t *la, int lang)
 		la->axis_label_edit = "Текст Оси";
 		la->scale_offset_edit = "Масштаб и Смещение";
 		la->file_name_edit = "Имя Файла";
-		la->bit_number_edit = "Дипазон Разрядов";
+		la->bit_number_edit = "Диапазон Разрядов";
 		la->low_pass_edit = "Коэффициент НЧ фильтра";
 		la->polynomial_edit = "Степень полинома";
 		la->length_edit = "Длина";
 		la->figure_thickness_edit = "Толщина";
 		la->font_size_edit = "Размер шрифта";
-		la->median_unwrap_edit = "Медиана и флаги разворота";
+		la->median_unwrap_edit = "Медиана и Флаги";
 		la->marker_density_edit = "Плотность и Размер";
 		la->gamma_edit = "Гамма";
+		la->time_range_edit = "Диапазон времени";
+		la->precision_edit = "Точность";
+		la->time_step_edit = "Шаг времени";
+		la->time_threshold_edit = "Порог времени";
 	}
 
 	la->figure_edit_color_menu =
 
+		"          \0"
+		"          \0"
 		"          \0"
 		"          \0"
 		"          \0"

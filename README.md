@@ -36,7 +36,6 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 - Least Squares estimate library
   [LSE](https://github.com/rombrew/lse).
 
-
 - Phase current sampling scheme includes two or three sensors configuration
   with inline or low-side placement.
 - Self-adjustment of all onboard measurements (current and voltage) along

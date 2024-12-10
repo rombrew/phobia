@@ -29,7 +29,7 @@
 static int
 async_READ(async_FILE *afd)
 {
-	int		rp, wp, nw, r;
+	int		rp, wp, nw, rc;
 
 	wp = SDL_AtomicGet(&afd->wp);
 
@@ -44,11 +44,11 @@ async_READ(async_FILE *afd)
 			nw = afd->preload - wp;
 			nw = (nw > afd->chunk) ? afd->chunk : nw;
 
-			r = fread(afd->stream + wp, 1, nw, afd->fd);
+			rc = (int) fread(afd->stream + wp, 1, nw, afd->fd);
 
-			if (r != 0) {
+			if (rc != 0) {
 
-				wp += r;
+				wp += rc;
 				wp -= (wp >= afd->preload) ? afd->preload : 0;
 
 				SDL_AtomicSet(&afd->wp, wp);
@@ -56,7 +56,7 @@ async_READ(async_FILE *afd)
 				afd->waiting = 0;
 			}
 
-			if (r != nw) {
+			if (rc != nw) {
 
 				if (feof(afd->fd) || ferror(afd->fd)) {
 
@@ -89,7 +89,7 @@ async_FILE *async_open(FILE *fd, int preload, int chunk, int timeout)
 {
 	async_FILE		*afd;
 
-	afd = calloc(1, sizeof(async_FILE));
+	afd = (async_FILE *) calloc(1, sizeof(async_FILE));
 
 	afd->preload = preload;
 	afd->chunk = chunk;
@@ -109,9 +109,30 @@ async_FILE *async_open(FILE *fd, int preload, int chunk, int timeout)
 	return afd;
 }
 
+async_FILE *async_stub(int preload, int chunk, int timeout)
+{
+	async_FILE		*afd;
+
+	afd = (async_FILE *) calloc(1, sizeof(async_FILE));
+
+	afd->preload = preload;
+	afd->chunk = chunk;
+	afd->timeout = timeout;
+
+	afd->stream = (char *) malloc(afd->preload);
+
+	if (afd->stream == NULL) {
+
+		ERROR("No memory allocated for async preload\n");
+		return NULL;
+	}
+
+	return afd;
+}
+
 void async_close(async_FILE *afd)
 {
-	int		t = 0;
+	int		tN = 0;
 
 	SDL_AtomicSet(&afd->flag_break, 1);
 	SDL_DetachThread(afd->thread);
@@ -123,13 +144,12 @@ void async_close(async_FILE *afd)
 
 			free(afd->stream);
 			free(afd);
-
 			break;
 		}
 
-		t += 1;
+		tN += 1;
 
-		if (t >= 200) {
+		if (tN >= 100) {
 
 			ERROR("Unable to terminate async_READ (memory leak)\n");
 			break;
@@ -138,15 +158,51 @@ void async_close(async_FILE *afd)
 	while (1);
 }
 
-int async_read(async_FILE *afd, char *sbuf, int n)
+int async_write(async_FILE *afd, const char *raw, int n)
+{
+	int		rp, wp, nw;
+
+	rp = SDL_AtomicGet(&afd->rp);
+	wp = SDL_AtomicGet(&afd->wp);
+
+	nw = (wp < rp) ? rp - wp : rp + afd->preload - wp;
+
+	if (nw > n) {
+
+		if (wp + n >= afd->preload) {
+
+			nw = afd->preload - wp;
+
+			memcpy(afd->stream + wp, raw, nw);
+			memcpy(afd->stream, raw + nw, n - nw);
+
+			wp += n - afd->preload;
+		}
+		else {
+			memcpy(afd->stream + wp, raw, n);
+
+			wp += n;
+		}
+
+		afd->clock = SDL_GetTicks();
+
+		SDL_AtomicSet(&afd->wp, wp);
+
+		return ASYNC_OK;
+	}
+	else {
+		return ASYNC_NO_FREE_SPACE;
+	}
+}
+
+int async_read(async_FILE *afd, char *raw, int n)
 {
 	int		rp, wp, nr;
 
 	rp = SDL_AtomicGet(&afd->rp);
 	wp = SDL_AtomicGet(&afd->wp);
 
-	nr = wp - rp;
-	nr += (nr < 0) ? afd->preload : 0;
+	nr = (wp < rp) ? wp + afd->preload - rp : wp - rp;
 
 	if (nr >= n) {
 
@@ -154,13 +210,13 @@ int async_read(async_FILE *afd, char *sbuf, int n)
 
 			nr = afd->preload - rp;
 
-			memcpy(sbuf, afd->stream + rp, nr);
-			memcpy(sbuf + nr, afd->stream, n - nr);
+			memcpy(raw, afd->stream + rp, nr);
+			memcpy(raw + nr, afd->stream, n - nr);
 
 			rp += n - afd->preload;
 		}
 		else {
-			memcpy(sbuf, afd->stream + rp, n);
+			memcpy(raw, afd->stream + rp, n);
 
 			rp += n;
 		}
@@ -178,7 +234,7 @@ int async_read(async_FILE *afd, char *sbuf, int n)
 	}
 }
 
-int async_gets(async_FILE *afd, char *sbuf, int n)
+int async_gets(async_FILE *afd, char *raw, int n)
 {
 	int		rp, wp, eol, nq;
 	char		c;
@@ -207,7 +263,7 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 			}
 			else if (nq < n - 1) {
 
-				*sbuf++ = (char) c;
+				*raw++ = (char) c;
 				nq++;
 			}
 
@@ -219,7 +275,7 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 
 		if (eol != 0) {
 
-			*sbuf = 0;
+			*raw = 0;
 
 			SDL_AtomicSet(&afd->rp, rp);
 
@@ -242,7 +298,7 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 
 				if (nq < n - 1) {
 
-					*sbuf++ = (char) c;
+					*raw++ = (char) c;
 					nq++;
 				}
 
@@ -250,7 +306,7 @@ int async_gets(async_FILE *afd, char *sbuf, int n)
 			}
 			while (1);
 
-			*sbuf = 0;
+			*raw = 0;
 
 			SDL_AtomicSet(&afd->rp, rp);
 

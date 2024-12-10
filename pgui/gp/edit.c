@@ -96,7 +96,7 @@ char *utf8_insert_prev(char *s, const char *i)
 
 	q = s + strlen(s);
 
-	n = strlen(i);
+	n = (int) strlen(i);
 	r = s + n;
 
 	do {
@@ -155,7 +155,7 @@ const char *utf8_skip(const char *s, int n)
 	return s;
 }
 
-const char *utf8_skip_b(const char *s, int n)
+const char *utf8_skip_byte(const char *s, int n)
 {
 	char		*r;
 
@@ -167,6 +167,7 @@ const char *utf8_skip_b(const char *s, int n)
 		else break;
 
 		r = (char *) utf8_go_next(s);
+
 		n += (int) (s - r);
 		s = r;
 	}
@@ -225,7 +226,7 @@ edit_t *editAlloc(draw_t *dw, scheme_t *sch)
 {
 	edit_t			*ed;
 
-	ed = calloc(1, sizeof(edit_t));
+	ed = (edit_t *) calloc(1, sizeof(edit_t));
 
 	ed->dw = dw;
 	ed->sch = sch;
@@ -264,8 +265,8 @@ void editRaise(edit_t *ed, int id, const char *title, const char *text, int sx, 
 	ed->box_Y = ed->cur_Y;
 
 	strcpy(ed->text, text);
-	ed->text_cur = ed->text + strlen(ed->text);
 
+	ed->text_cur = ed->text + strlen(ed->text);
 	ed->list_fmt = "";
 
 	editBuild(ed, 0);
@@ -397,7 +398,7 @@ void editEvent(edit_t *ed, int evno, int ex, int ey)
 
 		if (ed->list_fmt[0] != 0) {
 
-			len = strlen(ed->text);
+			len = (int) strlen(ed->text);
 
 			if (len > 4) {
 

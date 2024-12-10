@@ -23,7 +23,7 @@ You are also welcome to look into `src/hal/hw/...` directory to get a full
 actual information about specific hardware port.
 
 You can build the firmware binary yourself from sources or get it from the
-bundle releases.
+bundle [resleases](https://github.com/rombrew/phobia/releases).
 
 	$ cd phobia/src
 	$ make HWREV=MKESC_60100_v2

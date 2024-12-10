@@ -37,6 +37,7 @@ typedef struct {
 	const char	*figure_edit_color_menu;
 	const char	*figure_operation_menu;
 	const char	*legend_menu;
+	const char	*resample_menu[7];
 	const char	*databox_menu;
 	const char	*cancel_menu;
 
@@ -54,6 +55,10 @@ typedef struct {
 	const char	*median_unwrap_edit;
 	const char	*marker_density_edit;
 	const char	*gamma_edit;
+	const char	*time_range_edit;
+	const char	*precision_edit;
+	const char	*time_step_edit;
+	const char	*time_threshold_edit;
 }
 lang_t;
 

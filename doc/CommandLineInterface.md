@@ -1,7 +1,8 @@
 ## Overview
 
-This page introduces you to the Command Line Interface (CLI). We have a regular
-CLI with autocompletion function and command history.
+The main control interface of PMC is Command Line Interface (CLI). We have a
+regular UNIX-like CLI with autocompletion function and command history.
+Depending on the hardware it is available on USART, USB and CAN interface.
 
 ## Key mapping
 
@@ -12,10 +13,10 @@ These are the basic special keys that are used in the CLI:
 - `Tab` or (@) - Automplete function.
 - `Shift` + `Tab` - Automplete function reverse.
 - `Ctrl` + `C` or `Ctrl` + `D` - Drop the content of the line or abort the command.
-- `Ctrl` + `P` or `Up` or `*` - History function scroll up.
-- `Ctrl` + `N` or `Down` or `!` - History function scroll down.
+- `Ctrl` + `P` or `Up` - History function scroll up.
+- `Ctrl` + `N` or `Down` - History function scroll down.
 
-## Register file
+## Register concept
 
 A register is a scalar variable known by its name and having associated
 attributes. All registers together are called the register file. This is a
@@ -31,7 +32,7 @@ command.
 - You can specify a register number instead of its name to refer the exactly
   one register.
 
-Something like that.
+Try something like that.
 
 	(pmc) reg <pattern> <value>
 	(pmc) reg <ID> <value>
@@ -88,7 +89,7 @@ Command to grab telemetry into RAM and flush textual dump.
 	(pmc) tlm_grab <rate>
 	(pmc) tlm_flush_sync
 
-Run in endless loop of grabbing until PMC stops with error.
+Run in endless loop of grabbing until PMC stops with an error.
 
 	(pmc) tlm_watch <rate>
 
@@ -162,7 +163,7 @@ Show instant analog knob input voltages.
 	(pmc) reg ap.knob_in_ANG
 	(pmc) reg ap.knob_in_BRK
 
-Enable the HX711 helper task.
+Enable the HX711 helper application.
 
 	(pmc) reg ap.task_HX711 1
 

@@ -32,7 +32,7 @@ svg_t *svgOpenNew(const char *file, int width, int height)
 {
 	svg_t		*g;
 
-	g = calloc(1, sizeof(svg_t));
+	g = (svg_t *) calloc(1, sizeof(svg_t));
 	g->fd = unified_fopen(file, "w");
 
 	if (g->fd == NULL) {

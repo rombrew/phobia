@@ -3,7 +3,7 @@
 This page describes how to verify the electrical integrity of PMC hardware.
 
 **WARNING**: The procedures listed here are MUST DO in case of new hardware
-first powerup.
+first power up.
 
 ## Automated Self Test
 
@@ -16,7 +16,7 @@ This test does the following steps in this order.
 
 - Get current sensors zero drift and check it is within the acceptable range.
 - Check actual bootstrap retention time and compare with configuration.
-- Check the power stage responds to the control.
+- Check the power stages respond to the control.
 - Check measurement accuracy against the distortion introduced by PWM.
 
 You can do it with or without machine connected. Ignore the appropriate error

@@ -33,20 +33,21 @@
 #define READ_TOKEN_MAX		80
 #define READ_FILE_PATH_MAX	800
 #define READ_TEXT_SCAN_MAX	9
+#define READ_TEXT_HEAD_MAX	3
 #define READ_TEXT_DEVIATE_MAX	2
 #define READ_SUBTRACT_MAX	4
 
 #define GP_MIN_SIZE_X		640
 #define GP_MIN_SIZE_Y		480
 
-#define GP_CONFIG_VERSION	16
-
 enum {
 	FORMAT_NONE			= 0,
-	FORMAT_PLAIN_STDIN,
-	FORMAT_PLAIN_TEXT,
-	FORMAT_BINARY_FLOAT,
-	FORMAT_BINARY_DOUBLE,
+	FORMAT_BLANK_DATA,
+	FORMAT_STUB_DATA,
+	FORMAT_TEXT_STDIN,
+	FORMAT_TEXT_CSV,
+	FORMAT_BINARY_FP_32,
+	FORMAT_BINARY_FP_64,
 
 #ifdef _LEGACY
 	FORMAT_BINARY_LEGACY_V1,
@@ -78,7 +79,7 @@ markup_t;
 typedef struct {
 
 	int		busy;
-	int		column_2;
+	int		column_Y;
 
 	double		args[2];
 }
@@ -194,7 +195,7 @@ typedef struct {
 
 	page_t		page[READ_PAGE_MAX];
 
-	int		files_N;
+	int		keep_N;
 
 	int		bind_N;
 	int		page_N;
@@ -211,7 +212,8 @@ read_t *readAlloc(draw_t *dw, plot_t *pl);
 void readClean(read_t *rd);
 void readOpenUnified(read_t *rd, int dN, int cN, int lN, const char *file, int fmt);
 void readToggleHint(read_t *rd, int dN, int cN);
-int readUpdate(read_t *rd);
+int readDataLoad(read_t *rd);
+int readGetFreeData(read_t *rd);
 
 #ifdef _WINDOWS
 void legacy_ACP_to_UTF8(char *us, const char *text, int n);
@@ -228,7 +230,7 @@ FILE *unified_fopen(const char *file, const char *mode);
 
 void readConfigIN(read_t *rd, const char *config, int fromUI);
 void readConfigGP(read_t *rd, const char *file, int fromUI);
-void readConfigVerify(read_t *rd);
+void readConfigSafe(read_t *rd);
 
 void readMakePages(read_t *rd, int dN, int cX, int fromUI);
 void readDatasetClean(read_t *rd, int dN);
@@ -237,7 +239,7 @@ void readSetTimeColumn(read_t *rd, int dN, int cX);
 
 void readSelectPage(read_t *rd, int pN);
 void readCombinePage(read_t *rd, int pN, int remap);
-void readDataReload(read_t *rd);
+int readDataReload(read_t *rd);
 
 #endif /* _H_READ_ */
 

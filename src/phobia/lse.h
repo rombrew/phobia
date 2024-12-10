@@ -127,9 +127,9 @@ int lse_getsize(int n_cascades, int n_full);
  * */
 void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z);
 
-/* The function updates \rm with a new data row-vector \xz which contains \x and
- * \z concatenated. We does QR update of \rm by orthogonal transformation. Note
- * that the contents of \xz will be destroyed.
+/* The function updates \rm with a new data row-vector \xz which contains \x
+ * and \z concatenated. We are doing QR update of \rm by orthogonal
+ * transformation. Note that the contents of \xz will be destroyed.
  * */
 void lse_insert(lse_t *ls, lse_float_t *xz);
 

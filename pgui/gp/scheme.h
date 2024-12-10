@@ -27,7 +27,7 @@
 typedef struct {
 
 	Uint32		plot_background;
-	Uint32		plot_figure[8];
+	Uint32		plot_figure[10];
 	Uint32		plot_axis;
 	Uint32		plot_hovered;
 	Uint32		plot_text;

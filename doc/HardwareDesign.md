@@ -90,7 +90,7 @@ uncertainty in the output voltage `DTu` expressed as follows.
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
 terminal voltage (uA, uB, uC) and supply voltage (uS). This RC scheme forms an
 exponential integrator that allows us to restore the pulse width by measured
-voltage. Additional resistor R3 can be used to bias the zero volatege into the
+voltage. Additional resistor R3 can be used to bias the zero voltage into the
 linear region. You can skip the terminal voltage sensing if you do not need
 related features but supply voltage measuring is mandatory.
 

@@ -49,7 +49,9 @@ erased MCU) then short BOOT pin to +3.3v before the power up.
 	                          +--/ --+
 ```
 
-**WARNING**: You also can use an USB connection if your hardware has one.
+**WARNING**: You also can use an USB connection if your hardware has one. Refer
+to your hardware manual or look into `src/hal/hw/...` directory to find out
+available serial interfaces.
 
 ## Software
 
@@ -94,7 +96,7 @@ files by `mkconfig` python script before build.
 	$ ./mkconfig
 	$ make HWREV=PHOBIA_rev5
 
-## Load
+## MCU flash
 
 There are several ways to load the firmware into the MCU.
 
@@ -147,7 +149,7 @@ for setting PMC up.
 - [Hardware VESC](HardwareVESC.md)
 - [Integrity Self Test](IntegritySelfTest.md)
 - [Machine Probe](MachineProbe.md)
-- [Machine Tuning](MachineTuning.md)
+- [Control Tuning](ControlTuning.md)
 - [High Frequency Injection](HighFrequencyInjection.md)
 - [Input Analog Knob](InputAnalogKnob.md)
 - [Input Pulse Width](InputPulseWidth.md)
