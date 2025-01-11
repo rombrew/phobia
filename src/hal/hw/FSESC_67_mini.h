@@ -41,7 +41,7 @@
 #define HW_ADC_KNOB_R1			0.f			/* have no */
 #define HW_ADC_KNOB_R2			10000.f
 
-#define HW_NTC_PCB_TYPE			NTC_VCC
+#define HW_NTC_PCB_TYPE			NTC_ON_VCC
 #define HW_NTC_PCB_BALANCE		10000.f
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f

@@ -41,5 +41,7 @@ void config_open(struct config_phobia *fe);
 void config_write(struct config_phobia *fe);
 void config_default(struct config_phobia *fe);
 
+void config_storage_path(struct config_phobia *fe, char *lbuf, const char *file);
+
 #endif /* _H_CONFIG_ */
 

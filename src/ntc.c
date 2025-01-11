@@ -13,7 +13,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 	switch (ntc->type) {
 
-		case NTC_GND:
+		case NTC_ON_GND:
 
 			ohm = um * ntc->balance / (1.f - um);
 
@@ -21,7 +21,7 @@ float ntc_read_temperature(ntc_t *ntc)
 					+ m_logf(ohm / ntc->ntc0)) - 273.f;
 			break;
 
-		case NTC_VCC:
+		case NTC_ON_VCC:
 
 			ohm = (1.f - um) * ntc->balance / um;
 
@@ -42,7 +42,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 			ohm = um * ntc->balance / (1.f - um);
 
-			ohm = (ohm < 480.f) ? 480.f
+			ohm =     (ohm < 480.f)  ? 480.f
 				: (ohm > 2647.f) ? 2647.f : ohm;
 
 			temp =  1.0572638E-8f;
@@ -55,7 +55,7 @@ float ntc_read_temperature(ntc_t *ntc)
 
 			ohm = um * ntc->balance / (1.f - um);
 
-			ohm = (ohm < 332.f) ? 332.f
+			ohm =     (ohm < 332.f)  ? 332.f
 				: (ohm > 2791.f) ? 2791.f : ohm;
 
 			temp =  1.7536720E-8f;

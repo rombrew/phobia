@@ -12,7 +12,7 @@
 
 #define LINK_EOL			"\r\n"
 #define LINK_SPACE			" \t"
-#define LINK_EXTRA			"])"
+#define LINK_EXTRA			" \t])"
 
 #define LINK_ALLOC_MAX			92160U
 #define LINK_CACHE_MAX			4096U
@@ -51,51 +51,50 @@ struct link_priv {
 
 const char *lk_stoi(int *x, const char *s)
 {
-	int		n, k, i;
+	int		n, d, i;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	i = 0;
 
 	while (*s >= '0' && *s <= '9') {
 
 		i = 10 * i + (*s++ - '0') * n;
-		k++;
-
-		if (k > 9) return NULL;
+		d += 1;
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0 || d > 9) { return NULL; }
 
-	if (*s == 0 || strchr(LINK_SPACE LINK_EXTRA LINK_EOL, *s) != NULL) {
+	if (*s == 0 || strchr(LINK_EXTRA, *s) != NULL
+			|| strchr(LINK_EOL, *s) != NULL) {
 
 		*x = i;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
 
 const char *lk_stod(double *x, const char *s)
 {
-	int		n, k, v, e;
-	double		f = 0.;
+	int		n, d, v, e;
+	double		f;
 
 	if (*s == '-') { n = - 1; s++; }
 	else if (*s == '+') { n = 1; s++; }
 	else { n = 1; }
 
-	k = 0;
+	d = 0;
 	v = 0;
 	f = 0.;
 
 	while (*s >= '0' && *s <= '9') {
 
 		f = 10. * f + (*s++ - '0') * n;
-		k++;
+		d += 1;
 	}
 
 	if (*s == '.') {
@@ -105,11 +104,11 @@ const char *lk_stod(double *x, const char *s)
 		while (*s >= '0' && *s <= '9') {
 
 			f = 10. * f + (*s++ - '0') * n;
-			k++; v--;
+			d += 1; v -= 1;
 		}
 	}
 
-	if (k == 0) return NULL;
+	if (d == 0) { return NULL; }
 
 	if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
@@ -122,17 +121,18 @@ const char *lk_stod(double *x, const char *s)
 		s = lk_stoi(&e, s + 1);
 
 		if (s != NULL) { v += e; }
-		else return NULL;
+		else { return NULL; }
 	}
 
-	if (*s == 0 || strchr(LINK_SPACE LINK_EXTRA LINK_EOL, *s) != NULL) {
+	if (*s == 0 || strchr(LINK_EXTRA, *s) != NULL
+			|| strchr(LINK_EOL, *s) != NULL) {
 
-		while (v < 0) { f /= 10.; v++; }
-		while (v > 0) { f *= 10.; v--; }
+		while (v < 0) { f /= 10.; v += 1; }
+		while (v > 0) { f *= 10.; v -= 1; }
 
 		*x = f;
 	}
-	else return NULL;
+	else { return NULL; }
 
 	return s;
 }
@@ -141,6 +141,14 @@ static const char *
 lk_space(const char *s)
 {
 	while (*s != 0 && strchr(LINK_SPACE, *s) != 0) { ++s; }
+
+	return s;
+}
+
+static const char *
+lk_eol(const char *s)
+{
+	while (*s != 0 && strchr(LINK_EOL, *s) == 0) { ++s; }
 
 	return s;
 }
@@ -564,7 +572,6 @@ void link_open(struct link_pmc *lp, struct config_phobia *fe,
 	sprintf(lp->devname, "%.79s", devname);
 
 	lp->baudrate = baudrate;
-	lp->quantum = 10;
 
 	if (lp->priv != NULL) {
 
@@ -804,6 +811,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 				fprintf(priv->fd_grab, "%s\n", priv->lbuf);
 				fflush(priv->fd_grab);
 
+				lp->locked = lp->clock;
 				lp->grab_N++;
 				break;
 
@@ -823,8 +831,14 @@ int link_fetch(struct link_pmc *lp, int clock)
 		N++;
 	}
 
-	if (priv->link_mode != LINK_MODE_DATA_GRAB) {
+	if (priv->link_mode == LINK_MODE_DATA_GRAB) {
 
+		if (lp->active + 1000 < lp->clock) {
+
+			link_grab_file_close(lp);
+		}
+	}
+	else {
 		if (lp->active + 12000 < lp->clock) {
 
 			link_close(lp);
@@ -851,31 +865,51 @@ int link_fetch(struct link_pmc *lp, int clock)
 			}
 		}
 	}
-	else {
-		if (lp->active + 1000 < lp->clock) {
-
-			link_grab_file_close(lp);
-		}
-	}
 
 	lp->line_N += N;
 
 	return N;
 }
 
+static int
+link_reg_all_queued(struct link_pmc *lp)
+{
+	struct link_reg			*reg;
+	int				reg_ID;
+	int				busy_N = 0;
+
+	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+
+		if (lp->reg[reg_ID].sym[0] != 0) {
+
+			reg = &lp->reg[reg_ID];
+
+			if (reg->queued != 0)
+				busy_N++;
+		}
+	}
+
+	return busy_N;
+}
+
 void link_push(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
 	struct link_reg		*reg;
-	int			reg_ID, dofetch;
+	int			reg_ID, dofetch, busy_N;
 
 	if (lp->linked == 0)
+		return ;
+
+	if (lp->locked > lp->clock)
 		return ;
 
 	if (priv->link_mode == LINK_MODE_DATA_GRAB)
 		return ;
 
-	if (lp->locked > lp->clock)
+	busy_N = link_reg_all_queued(lp);
+
+	if (busy_N > 10)
 		return ;
 
 	reg_ID = priv->reg_push_ID;
@@ -916,11 +950,10 @@ void link_push(struct link_pmc *lp)
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
 					reg->queued = lp->clock;
+					lp->locked = lp->clock;
 
-					lp->locked = lp->clock + lp->quantum;
+					busy_N++;
 				}
-
-				break;
 			}
 			else if (dofetch != 0) {
 
@@ -929,11 +962,10 @@ void link_push(struct link_pmc *lp)
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
 					reg->queued = lp->clock;
+					lp->locked = lp->clock;
 
-					lp->locked = lp->clock + lp->quantum;
+					busy_N++;
 				}
-
-				break;
 			}
 
 			if (		(reg->mode & LINK_REG_TYPE_ENUMERATE) != 0
@@ -946,10 +978,10 @@ void link_push(struct link_pmc *lp)
 					reg->queued = lp->clock;
 					reg->enumerated = lp->clock;
 
-					lp->locked = lp->clock + lp->quantum;
-				}
+					lp->locked = lp->clock;
 
-				break;
+					busy_N++;
+				}
 			}
 		}
 		else {
@@ -961,6 +993,9 @@ void link_push(struct link_pmc *lp)
 
 		if (reg_ID >= lp->reg_MAX_N)
 			reg_ID = 0;
+
+		if (busy_N > 10)
+			break;
 
 		if (reg_ID == priv->reg_push_ID)
 			break;
@@ -978,7 +1013,7 @@ int link_command(struct link_pmc *lp, const char *command)
 	if (lp->linked == 0)
 		return 0;
 
-	if (lp->locked > lp->clock + 100)
+	if (lp->locked > lp->clock)
 		return 0;
 
 	sprintf(priv->lbuf, "%.90s" LINK_EOL, command);
@@ -1078,7 +1113,7 @@ int link_reg_lookup_range(struct link_pmc *lp, const char *sym, int *min, int *m
 
 void link_reg_fetch_all_shown(struct link_pmc *lp)
 {
-	struct link_reg			*reg = NULL;
+	struct link_reg			*reg;
 	int				reg_ID;
 
 	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
@@ -1106,18 +1141,21 @@ void link_config_write(struct link_pmc *lp, const char *file)
 
 	if (fd != NULL) {
 
-		for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
+		for (reg_ID = 1; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
 			if (lp->reg[reg_ID].sym[0] != 0) {
 
 				reg = &lp->reg[reg_ID];
 
-				if (reg->mode & LINK_REG_LINKED) {
+				if (reg->mode & LINK_REG_CONFIG) {
 
-					fprintf(fd, "%s %s\n", reg->sym, reg->um);
-				}
-				else {
-					fprintf(fd, "%s %s\n", reg->sym, reg->val);
+					if (reg->mode & LINK_REG_LINKED) {
+
+						fprintf(fd, "%s %s\n", reg->sym, reg->um);
+					}
+					else {
+						fprintf(fd, "%s %s\n", reg->sym, reg->val);
+					}
 				}
 			}
 		}
@@ -1151,6 +1189,8 @@ void link_config_read(struct link_pmc *lp, const char *file)
 			reg = link_reg_lookup(lp, sym);
 
 			if (reg != NULL) {
+
+				* (char *) lk_eol(val) = 0;
 
 				sprintf(reg->val, "%.70s", val);
 

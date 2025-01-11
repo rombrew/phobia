@@ -1203,7 +1203,7 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 			break;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ADC_FILTER
+#ifdef HW_HAVE_OPT_FILTER
 		case ID_HAL_OPT_FILTER_CURRENT:
 		case ID_HAL_OPT_FILTER_VOLTAGE:
 
@@ -1215,7 +1215,7 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 				default: break;
 			}
 			break;
-#endif /* HW_HAVE_ADC_FILTER */
+#endif /* HW_HAVE_OPT_FILTER */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MODE:
@@ -1305,8 +1305,8 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 			switch (val) {
 
 				PM_SFI_CASE(NTC_NONE);
-				PM_SFI_CASE(NTC_GND);
-				PM_SFI_CASE(NTC_VCC);
+				PM_SFI_CASE(NTC_ON_GND);
+				PM_SFI_CASE(NTC_ON_VCC);
 				PM_SFI_CASE(NTC_LMT87);
 				PM_SFI_CASE(NTC_KTY83_GND);
 				PM_SFI_CASE(NTC_KTY84_GND);
@@ -1623,10 +1623,10 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.DRV.ocp_level,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, &reg_format_DRV_ocp_level),
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ADC_FILTER
+#ifdef HW_HAVE_OPT_FILTER
 	REG_DEF(hal.OPT_filter_current,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(hal.OPT_filter_voltage,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-#endif /* HW_HAVE_ADC_FILTER */
+#endif /* HW_HAVE_OPT_FILTER */
 
 	REG_DEF(hal.CNT_diag, 0, [0],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
 	REG_DEF(hal.CNT_diag, 0_pc, [0], "%",	"%1f",	REG_READ_ONLY, &reg_proc_CNT_diag_pc, NULL),

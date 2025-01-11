@@ -168,13 +168,14 @@ LD_TASK void task_TEMP(void *pData)
 		GPIO_set_mode_ANALOG(ap.ntc_EXT.gpio);
 	}
 
+#ifdef HW_HAVE_OPT_FILTER
 #ifdef GPIO_FILTER_CURRENT
 	GPIO_set_mode_OUTPUT(GPIO_FILTER_CURRENT);
 #endif /* GPIO_FILTER_CURRENT */
-
 #ifdef GPIO_FILTER_VOLTAGE
 	GPIO_set_mode_OUTPUT(GPIO_FILTER_VOLTAGE);
 #endif /* GPIO_FILTER_VOLTAGE */
+#endif /* HW_HAVE_OPT_FILTER  */
 
 	xWake = xTaskGetTickCount();
 
@@ -296,6 +297,7 @@ LD_TASK void task_TEMP(void *pData)
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
 
+#ifdef HW_HAVE_OPT_FILTER
 #ifdef GPIO_FILTER_CURRENT
 		if (hal.OPT_filter_current == PM_ENABLED) {
 
@@ -305,7 +307,6 @@ LD_TASK void task_TEMP(void *pData)
 			GPIO_set_LOW(GPIO_FILTER_CURRENT);
 		}
 #endif /* GPIO_FILTER_CURRENT */
-
 #ifdef GPIO_FILTER_VOLTAGE
 		if (hal.OPT_filter_voltage == PM_ENABLED) {
 
@@ -315,6 +316,7 @@ LD_TASK void task_TEMP(void *pData)
 			GPIO_set_LOW(GPIO_FILTER_VOLTAGE);
 		}
 #endif /* GPIO_FILTER_VOLTAGE */
+#endif /* HW_HAVE_OPT_FILTER  */
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -593,10 +595,10 @@ default_flash_load()
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ADC_FILTER
+#ifdef HW_HAVE_OPT_FILTER
 	hal.OPT_filter_current = PM_DISABLED;
 	hal.OPT_filter_voltage = PM_DISABLED;
-#endif /* HW_HAVE_ADC_FILTER */
+#endif /* HW_HAVE_OPT_FILTER */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;
@@ -672,7 +674,7 @@ default_flash_load()
 #endif /* HW_HAVE_NTC_ON_PCB */
 
 #ifdef HW_HAVE_NTC_MACHINE
-	ap.ntc_EXT.type = NTC_GND;
+	ap.ntc_EXT.type = NTC_ON_GND;
 	ap.ntc_EXT.gpio = GPIO_ADC_NTC_EXT;
 	ap.ntc_EXT.balance = HW_NTC_EXT_BALANCE;
 	ap.ntc_EXT.ntc0 = 10000.f;

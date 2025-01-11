@@ -23,7 +23,7 @@ CFLAGS	+= -fno-math-errno \
 
 CFLAGS	+= -fno-stack-protector
 CFLAGS	+= -I$(MINGW)/include
-CFLAGS	+= -D_EMBED_GP -D_WINDOWS
+CFLAGS	+= -D_EMBED_GP -D_LOCAL_GP -D_LOCAL_PGUI -D_WINDOWS
 
 LFLAGS	= -lm -lSDL2 -lSDL2_ttf -lSDL2_image -static -mwindows
 LFLAGS	+= -L$(MINGW)/lib

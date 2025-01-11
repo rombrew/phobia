@@ -23,7 +23,7 @@
 #define HW_ADC_VOLTAGE_R1		470000.f
 #define HW_ADC_VOLTAGE_R2		27000.f
 
-#define HW_NTC_PCB_TYPE			NTC_GND
+#define HW_NTC_PCB_TYPE			NTC_ON_GND
 #define HW_NTC_PCB_BALANCE		10000.f
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f

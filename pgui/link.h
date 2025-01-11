@@ -78,7 +78,6 @@ struct link_pmc {
 
 	char			devname[LINK_NAME_MAX];
 	int			baudrate;
-	int			quantum;
 
 	int			linked;
 	int			uptime;
@@ -132,8 +131,9 @@ int link_command(struct link_pmc *lp, const char *command);
 struct link_reg *link_reg_lookup(struct link_pmc *lp, const char *sym);
 int link_reg_lookup_range(struct link_pmc *lp, const char *sym, int *min, int *max);
 void link_reg_fetch_all_shown(struct link_pmc *lp);
-void link_reg_clean_all_always(struct link_pmc *lp);
 
+void link_config_write(struct link_pmc *lp, const char *file);
+void link_config_read(struct link_pmc *lp, const char *file);
 int link_log_file_open(struct link_pmc *lp, const char *file);
 int link_grab_file_open(struct link_pmc *lp, const char *file);
 void link_grab_file_close(struct link_pmc *lp);

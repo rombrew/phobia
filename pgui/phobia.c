@@ -36,7 +36,8 @@ enum {
 	POPUP_FLASH_WIPE,
 	POPUP_SYSTEM_REBOOT,
 	POPUP_SYSTEM_BOOTLOAD,
-	POPUP_TELEMETRY_GRAB
+	POPUP_TELEMETRY_GRAB,
+	POPUP_CONFIG_EXPORT
 };
 
 enum {
@@ -747,6 +748,9 @@ pub_popup_progress(struct public *pub, int popup, int pce)
 	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Reading", NK_WINDOW_TITLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
+		nk_spacer(ctx);
+
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 		nk_layout_row_template_push_variable(ctx, 1);
@@ -755,6 +759,9 @@ pub_popup_progress(struct public *pub, int popup, int pce)
 
 		nk_spacer(ctx);
 		nk_prog(ctx, pce, 1000, nk_false);
+		nk_spacer(ctx);
+
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
 		nk_spacer(ctx);
 
 		if (pce >= 1000) {
@@ -789,6 +796,9 @@ pub_popup_command(struct public *pub, int popup, int command_state)
 	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, "Waiting", NK_WINDOW_TITLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
+		nk_spacer(ctx);
+
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
@@ -803,6 +813,9 @@ pub_popup_command(struct public *pub, int popup, int command_state)
 		nk_prog(ctx, ((clock & 3U) == 1U) ? 10 : 0, 10, nk_false);
 		nk_prog(ctx, ((clock & 3U) == 2U) ? 10 : 0, 10, nk_false);
 		nk_prog(ctx, ((clock & 3U) == 3U) ? 10 : 0, 10, nk_false);
+		nk_spacer(ctx);
+
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
 		nk_spacer(ctx);
 
 		if (command_state == LINK_COMMAND_NONE) {
@@ -891,8 +904,15 @@ pub_directory_scan(struct public *pub, const char *sup)
 {
 	int			len, ofs, bsz, kmg, N;
 
-	if (dirent_open(&pub->scan.sb, pub->fe->storage) != ENT_OK)
-		return ;
+	if (pub->fe->storage[0] != 0) {
+
+		if (dirent_open(&pub->scan.sb, pub->fe->storage) != ENT_OK)
+			return ;
+	}
+	else {
+		if (dirent_open(&pub->scan.sb, ".") != ENT_OK)
+			return ;
+	}
 
 	len = strlen(sup);
 	N = 0;
@@ -1029,9 +1049,9 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 			if (nk_button_label(ctx, "Flush GP")) {
 
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, pub->telemetry.file_grab);
+				config_storage_path(pub->fe, pub->lbuf,
+						pub->telemetry.file_grab);
+
 				strcpy(pub->telemetry.file_snap, pub->lbuf);
 
 				if (link_grab_file_open(lp, pub->telemetry.file_snap) != 0) {
@@ -1068,9 +1088,9 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		if (nk_button_label(ctx, "Live GP")) {
 
-			strcpy(pub->lbuf, pub->fe->storage);
-			strcat(pub->lbuf, DIRSEP);
-			strcat(pub->lbuf, pub->telemetry.file_grab);
+			config_storage_path(pub->fe, pub->lbuf,
+					pub->telemetry.file_grab);
+
 			strcpy(pub->telemetry.file_snap, pub->lbuf);
 
 			if (link_grab_file_open(lp, pub->telemetry.file_snap) != 0) {
@@ -1206,9 +1226,9 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 			if (nk_button_label(ctx, "Plot GP")) {
 
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, pub->telemetry.file_grab);
+				config_storage_path(pub->fe, pub->lbuf,
+						pub->telemetry.file_grab);
+
 				strcpy(pub->telemetry.file_snap, pub->lbuf);
 
 				pub_open_GP(pub, pub->telemetry.file_snap);
@@ -1218,9 +1238,8 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 			if (nk_button_label(ctx, "Remove")) {
 
-				strcpy(pub->lbuf, pub->fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, pub->telemetry.file_grab);
+				config_storage_path(pub->fe, pub->lbuf,
+						pub->telemetry.file_grab);
 
 				file_remove(pub->lbuf);
 
@@ -1265,12 +1284,202 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 }
 
 static void
+pub_popup_config_export(struct public *pub, int popup)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			bounds;
+	struct nk_style_button		disabled;
+
+	int				height;
+	int				N, sel, newsel;
+
+	if (pub->popup_enum != popup)
+		return ;
+
+	bounds = pub_get_popup_bounds_full(pub);
+
+	if (nk_popup_begin(ctx, NK_POPUP_STATIC, " ", NK_WINDOW_CLOSABLE
+				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
+
+		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "Export")) {
+
+			config_storage_path(pub->fe, pub->lbuf,
+					pub->config.file_grab);
+
+			strcpy(pub->config.file_snap, pub->lbuf);
+
+			link_config_write(lp, pub->config.file_snap);
+
+			pub_directory_scan(pub, FILE_CONFIG_EXT);
+		}
+
+		nk_spacer(ctx);
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD,
+				pub->config.file_grab,
+				sizeof(pub->config.file_grab),
+				nk_filter_default);
+
+		if (		pub->scan.selected >= 0
+				&& pub->scan.selected < PHOBIA_FILE_MAX) {
+
+			N = pub->scan.selected;
+
+			if (		strcmp(pub->scan.file[N].name,
+						pub->config.file_grab) != 0) {
+
+				pub->scan.selected = -1;
+			}
+		}
+
+		nk_spacer(ctx);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		height = ctx->current->bounds.h - ctx->current->layout->row.height * 6;
+
+		nk_layout_row_template_begin(ctx, height);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_group_begin(ctx, "FILES", NK_WINDOW_BORDER)) {
+
+			nk_layout_row_template_begin(ctx, 0);
+			nk_layout_row_template_push_variable(ctx, 1);
+			nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
+			nk_layout_row_template_push_static(ctx, pub->fe_base * 5);
+			nk_layout_row_template_end(ctx);
+
+			for (N = 0; N < PHOBIA_FILE_MAX; ++N) {
+
+				if (pub->scan.file[N].name[0] == 0)
+					break;
+
+				sel = (N == pub->scan.selected) ? 1 : 0;
+
+				newsel = nk_select_label(ctx, pub->scan.file[N].name,
+						NK_TEXT_LEFT, sel);
+
+				newsel |= nk_select_label(ctx, pub->scan.file[N].time,
+						NK_TEXT_LEFT, sel);
+
+				newsel |= nk_select_label(ctx, pub->scan.file[N].size,
+						NK_TEXT_RIGHT, sel);
+
+				if (newsel != sel && newsel != 0) {
+
+					pub->scan.selected = N;
+
+					strcpy(pub->config.file_grab,
+							pub->scan.file[N].name);
+				}
+			}
+
+			nk_group_end(ctx);
+		}
+
+		nk_spacer(ctx);
+
+		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "Scan")) {
+
+			pub_directory_scan(pub, FILE_CONFIG_EXT);
+		}
+
+		nk_spacer(ctx);
+
+		if (		pub->scan.selected >= 0
+				&& pub->scan.selected < PHOBIA_FILE_MAX) {
+
+			if (nk_button_label(ctx, "Load")) {
+
+				config_storage_path(pub->fe, pub->lbuf,
+						pub->config.file_grab);
+
+				strcpy(pub->config.file_snap, pub->lbuf);
+
+				link_config_read(lp, pub->config.file_snap);
+			}
+
+			nk_spacer(ctx);
+
+			if (nk_button_label(ctx, "Remove")) {
+
+				config_storage_path(pub->fe, pub->lbuf,
+						pub->config.file_grab);
+
+				file_remove(pub->lbuf);
+
+				pub_directory_scan(pub, FILE_CONFIG_EXT);
+			}
+		}
+		else {
+			disabled = ctx->style.button;
+
+			disabled.normal = disabled.active;
+			disabled.hover = disabled.active;
+			disabled.text_normal = disabled.text_active;
+			disabled.text_hover = disabled.text_active;
+
+			nk_button_label_styled(ctx, &disabled, "Load");
+
+			nk_spacer(ctx);
+
+			nk_button_label_styled(ctx, &disabled, "Remove");
+		}
+
+		nk_spacer(ctx);
+
+		nk_popup_end(ctx);
+	}
+	else {
+		pub->popup_enum = 0;
+	}
+}
+
+static void
 pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
-	struct nk_command_buffer	*canvas = nk_window_get_canvas(ctx);
+
+	struct nk_command_buffer	*out = nk_window_get_canvas(ctx);
 	struct nk_rect			space;
 
 	float				tfm[4], arrow[10], pbuf[10];
@@ -1288,14 +1497,14 @@ pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 	space.w += - 2.f * thickness;
 	space.h += - 2.f * thickness;
 
-	nk_fill_circle(canvas, space, nk->table[NK_COLOR_DESIGN]);
+	nk_fill_circle(out, space, nk->table[NK_COLOR_DESIGN]);
 
 	space.x += thickness;
 	space.y += thickness;
 	space.w += - 2.f * thickness;
 	space.h += - 2.f * thickness;
 
-	nk_fill_circle(canvas, space, nk->table[NK_COLOR_WINDOW]);
+	nk_fill_circle(out, space, nk->table[NK_COLOR_WINDOW]);
 
 	tfm[0] = space.x + space.w / 2.f;
 	tfm[1] = space.y + space.h / 2.f;
@@ -1336,7 +1545,7 @@ pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 		pbuf[6] = tfm[0] + (tfm[2] * arrow[6] - tfm[3] * arrow[7]);
 		pbuf[7] = tfm[1] + (tfm[3] * arrow[6] + tfm[2] * arrow[7]);
 
-		nk_fill_polygon(canvas, pbuf, 4, nk->table[NK_COLOR_DESIGN]);
+		nk_fill_polygon(out, pbuf, 4, nk->table[NK_COLOR_DESIGN]);
 	}
 
 	if (dtype == DRAWING_WITH_HALL) {
@@ -1384,7 +1593,7 @@ pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 			col = (N == hall) ? nk->table[NK_COLOR_ENABLED]
 					  : nk->table[NK_COLOR_HIDDEN];
 
-			nk_fill_polygon(canvas, pbuf, 4, col);
+			nk_fill_polygon(out, pbuf, 4, col);
 		}
 	}
 
@@ -1422,7 +1631,7 @@ pub_drawing_machine_position(struct public *pub, float fpos[2], int dtype)
 	pbuf[8] = tfm[0] + (tfm[2] * arrow[8] - tfm[3] * arrow[9]);
 	pbuf[9] = tfm[1] + (tfm[3] * arrow[8] + tfm[2] * arrow[9]);
 
-	nk_fill_polygon(canvas, pbuf, 5, nk->table[NK_COLOR_EDIT_NUMBER]);
+	nk_fill_polygon(out, pbuf, 5, nk->table[NK_COLOR_EDIT_NUMBER]);
 }
 
 static void
@@ -2432,9 +2641,7 @@ page_serial(struct public *pub)
 
 			if (lp->linked != 0) {
 
-				strcpy(pub->lbuf, fe->storage);
-				strcat(pub->lbuf, DIRSEP);
-				strcat(pub->lbuf, FILE_LINK_LOG);
+				config_storage_path(pub->fe, pub->lbuf, FILE_LINK_LOG);
 
 				link_log_file_open(lp, pub->lbuf);
 
@@ -2633,6 +2840,7 @@ page_diagnose(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
 	float				maximal[4] = { 100.f, 100.f, 100.f, 35.f };
 
 	nk_menubar_begin(ctx);
@@ -2681,8 +2889,8 @@ page_diagnose(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "RAM log flush", NK_TEXT_LEFT)) {
 
-			strcpy(pub->lbuf, pub->fe->storage);
-			strcat(pub->lbuf, DIRSEP FILE_DEBUG_LOG);
+			config_storage_path(pub->fe, pub->lbuf, FILE_DEBUG_LOG);
+
 			strcpy(pub->debug.file_snap, pub->lbuf);
 
 			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
@@ -2758,6 +2966,20 @@ page_diagnose(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "pm.scale_iA1");
+
+	if (reg != NULL && reg->fval == 1.0f) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select self-test and "
+					" self-adjustment from `Test` menu",
+					NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
 	reg_float(pub, "pm.scale_iA0", "A sensor drift");
@@ -3634,6 +3856,8 @@ page_in_stepdir(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
+
 	reg = link_reg_lookup(lp, "ap.step_POS");
 	if (reg != NULL) { reg->update = 100; }
 
@@ -3642,6 +3866,19 @@ page_in_stepdir(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "hal.STEP_mode");
+
+	if (reg != NULL && reg->lval == 0) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select STEP mode `STEP_ON_STEP_DIR`"
+					" on `HAL` page", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg_float_prog_um(pub, "ap.step_POS", "STEP position", 0.f, 0.f, 0);
 
@@ -3678,6 +3915,8 @@ page_in_pwm(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
+
 	reg = link_reg_lookup(lp, "ap.ppm_PULSE");
 	if (reg != NULL) { reg->update = 100; }
 
@@ -3689,6 +3928,19 @@ page_in_pwm(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "hal.PPM_mode");
+
+	if (reg != NULL && reg->lval != 1) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select PPM mode `PPM_PULSE_WIDTH`"
+					" on `HAL` page", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg_float_prog_um(pub, "ap.ppm_PULSE", "PWM pulse received", 0.f, 0.f, 0);
 	reg_float_prog_um(pub, "ap.ppm_FREQ", "PWM frequency received", 0.f, 0.f, 0);
@@ -3990,7 +4242,10 @@ page_config(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Export configuration", NK_TEXT_LEFT)) {
 
-			/* TODO */
+			pub->popup_enum = POPUP_CONFIG_EXPORT;
+
+			strcpy(pub->config.file_grab, FILE_CONFIG_DEFAULT);
+			pub_directory_scan(pub, FILE_CONFIG_EXT);
 		}
 
 		if (nk_menu_item_label(ctx, "Default configuration", NK_TEXT_LEFT)) {
@@ -4007,119 +4262,124 @@ page_config(struct public *pub)
 	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+	if (pub->popup_enum != POPUP_CONFIG_EXPORT) {
 
-	reg_float(pub, "pm.dc_resolution", "PWM resolution");
-	reg_float(pub, "pm.dc_minimal", "Minimal pulse");
-	reg_float(pub, "pm.dc_clearance", "Clearance before ADC sample");
-	reg_float(pub, "pm.dc_skip", "Skip after ADC sample");
-	reg_float(pub, "pm.dc_bootstrap", "Bootstrap retention time");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.dc_resolution", "PWM resolution");
+		reg_float(pub, "pm.dc_minimal", "Minimal pulse");
+		reg_float(pub, "pm.dc_clearance", "Clearance before ADC sample");
+		reg_float(pub, "pm.dc_skip", "Skip after ADC sample");
+		reg_float(pub, "pm.dc_bootstrap", "Bootstrap retention time");
 
-	reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
-	reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
-	reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
-	reg_enum_toggle(pub, "pm.config_DBG", "DEBUG information gather");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
+		reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
+		reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
+		reg_enum_toggle(pub, "pm.config_DBG", "DEBUG information gather");
 
-	reg_enum_combo(pub, "pm.config_VSI_ZERO", "ZERO sequence modulation", 1);
-	reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
-	reg_enum_toggle(pub, "pm.config_DCU_VOLTAGE", "DCU voltage compensation");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_enum_combo(pub, "pm.config_VSI_ZERO", "ZERO sequence modulation", 1);
+		reg_enum_toggle(pub, "pm.config_VSI_CLAMP", "Circular voltage clamping");
+		reg_enum_toggle(pub, "pm.config_DCU_VOLTAGE", "DCU voltage compensation");
 
-	reg_enum_toggle(pub, "pm.config_LU_FORCED", "FORCED control");
-	reg_enum_toggle(pub, "pm.config_LU_FREEWHEEL", "Allow FREEWHEELING");
-	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "SENSORLESS estimate", 1);
-	reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position SENSOR type", 1);
-	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
-	reg_enum_combo(pub, "pm.config_LU_DRIVE", "DRIVE control loop", 0);
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
-	reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
+		reg_enum_toggle(pub, "pm.config_LU_FORCED", "FORCED control");
+		reg_enum_toggle(pub, "pm.config_LU_FREEWHEEL", "Allow FREEWHEELING");
+		reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "SENSORLESS estimate", 1);
+		reg_enum_combo(pub, "pm.config_LU_SENSOR", "Position SENSOR type", 1);
+		reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
+		reg_enum_combo(pub, "pm.config_LU_DRIVE", "DRIVE control loop", 0);
 
-	reg_enum_combo(pub, "pm.config_EXCITATION", "Machine EXCITATION", 0);
-	reg_enum_combo(pub, "pm.config_SALIENCY", "Machine SALIENCY", 0);
-	reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
-	reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux WEAKENING control");
+		reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
+		reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
 
-	reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "CC brake (no reverse)");
-	reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "CC speed tracking");
+		reg_enum_combo(pub, "pm.config_EXCITATION", "Machine EXCITATION", 0);
+		reg_enum_combo(pub, "pm.config_SALIENCY", "Machine SALIENCY", 0);
+		reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
+		reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux WEAKENING control");
 
-	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
-	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
+		reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "CC brake (no reverse)");
+		reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "CC speed tracking");
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
+		reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
 
-	reg_float(pub, "pm.tm_transient_slow", "Transient time slow");
-	reg_float(pub, "pm.tm_transient_fast", "Transient time fast");
-	reg_float(pub, "pm.tm_voltage_hold", "Voltage hold time");
-	reg_float(pub, "pm.tm_current_hold", "Current hold time");
-	reg_float(pub, "pm.tm_current_ramp", "Current ramp time");
-	reg_float(pub, "pm.tm_instant_probe", "Instant probe time");
-	reg_float(pub, "pm.tm_average_probe", "Average probe time");
-	reg_float(pub, "pm.tm_average_drift", "Average drift time");
-	reg_float(pub, "pm.tm_average_inertia", "Average inertia time");
-	reg_float(pub, "pm.tm_pause_startup", "Startup pause");
-	reg_float(pub, "pm.tm_pause_forced", "FORCED pause");
-	reg_float(pub, "pm.tm_pause_halt", "Halt pause");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.tm_transient_slow", "Transient time slow");
+		reg_float(pub, "pm.tm_transient_fast", "Transient time fast");
+		reg_float(pub, "pm.tm_voltage_hold", "Voltage hold time");
+		reg_float(pub, "pm.tm_current_hold", "Current hold time");
+		reg_float(pub, "pm.tm_current_ramp", "Current ramp time");
+		reg_float(pub, "pm.tm_instant_probe", "Instant probe time");
+		reg_float(pub, "pm.tm_average_probe", "Average probe time");
+		reg_float(pub, "pm.tm_average_drift", "Average drift time");
+		reg_float(pub, "pm.tm_average_inertia", "Average inertia time");
+		reg_float(pub, "pm.tm_pause_startup", "Startup pause");
+		reg_float(pub, "pm.tm_pause_forced", "FORCED pause");
+		reg_float(pub, "pm.tm_pause_halt", "Halt pause");
 
-	reg_float(pub, "pm.probe_current_hold", "Probe hold current");
-	reg_float(pub, "pm.probe_weak_level", "Probe weak level");
-	reg_float(pub, "pm.probe_hold_angle", "Probe hold angle");
-	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
-	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
-	reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
-	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 1);
-	reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 1);
-	reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0);
-	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
-	reg_float(pub, "pm.probe_gain_P", "Probe loop GAIN P");
-	reg_float(pub, "pm.probe_gain_I", "Probe loop GAIN I");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.probe_current_hold", "Probe hold current");
+		reg_float(pub, "pm.probe_weak_level", "Probe weak level");
+		reg_float(pub, "pm.probe_hold_angle", "Probe hold angle");
+		reg_float(pub, "pm.probe_current_sine", "Probe sine current");
+		reg_float(pub, "pm.probe_current_bias", "Probe bias current");
+		reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
+		reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 1);
+		reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 1);
+		reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0);
+		reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
+		reg_float(pub, "pm.probe_gain_P", "Probe loop GAIN P");
+		reg_float(pub, "pm.probe_gain_I", "Probe loop GAIN I");
 
-	reg_float(pub, "pm.fault_voltage_tol", "Voltage fault tolerance");
-	reg_float(pub, "pm.fault_current_tol", "Current fault tolerance");
-	reg_float(pub, "pm.fault_accuracy_tol", "Accuracy fault tolerance");
-	reg_float(pub, "pm.fault_terminal_tol", "Terminal fault tolerance");
-	reg_float(pub, "pm.fault_current_halt", "Current halt threshold");
-	reg_float(pub, "pm.fault_voltage_halt", "Voltage halt threshold");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.fault_voltage_tol", "Voltage fault tolerance");
+		reg_float(pub, "pm.fault_current_tol", "Current fault tolerance");
+		reg_float(pub, "pm.fault_accuracy_tol", "Accuracy fault tolerance");
+		reg_float(pub, "pm.fault_terminal_tol", "Terminal fault tolerance");
+		reg_float(pub, "pm.fault_current_halt", "Current halt threshold");
+		reg_float(pub, "pm.fault_voltage_halt", "Voltage halt threshold");
 
-	reg_float(pub, "pm.vsi_gain_LP", "VSI gain LP");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.vsi_gain_LP", "VSI gain LP");
 
-	reg_float(pub, "pm.dcu_deadband", "DCU deadband time");
-	reg_float(pub, "pm.dcu_tol", "DCU tolerance");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.dcu_deadband", "DCU deadband time");
+		reg_float(pub, "pm.dcu_tol", "DCU tolerance");
 
-	reg_float(pub, "pm.lu_transient", "LU transient rate");
-	reg_float(pub, "pm.lu_gain_mq_LP", "LU load torque GAIN LP");
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
 
-	nk_layout_row_dynamic(ctx, 0, 1);
-	nk_spacer(ctx);
+		reg_float(pub, "pm.lu_transient", "LU transient rate");
+		reg_float(pub, "pm.lu_gain_mq_LP", "LU load torque GAIN LP");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
+	pub_popup_config_export(pub, POPUP_CONFIG_EXPORT);
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
 				"Please confirm that you really"
-				" want to reset all PMC configuration.") != 0) {
+				" want to reset all of PMC configuration.") != 0) {
 
 		link_command(lp, "pm_default_config");
 		link_reg_fetch_all_shown(lp);
@@ -4350,12 +4610,33 @@ page_lu_hfi(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
 	int				m_drawing = pub->fe_def_size_x / 4;
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM error code", 1);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "pm.config_LU_ESTIMATE");
+
+	if (reg != NULL && reg->lval != 2) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select sensorless estimate"
+					" `PM_FLUX_KALMAN` on `Config` page",
+					NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
+	reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
+	reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4437,6 +4718,7 @@ page_lu_hall(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
 	int				m_drawing = pub->fe_def_size_x / 4;
 
 	nk_menubar_begin(ctx);
@@ -4472,6 +4754,19 @@ page_lu_hall(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "hal.DPS_mode");
+
+	if (reg != NULL && reg->lval != 1) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select DPS mode `DPS_DRIVE_HALL`"
+					" on `HAL` page", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg_float(pub, "pm.hall_ST1", "HALL ST 1");
 	reg_float(pub, "pm.hall_ST2", "HALL ST 2");
@@ -4588,6 +4883,7 @@ page_lu_eabi(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
 	int				m_drawing = pub->fe_def_size_x / 4;
 
 	nk_menubar_begin(ctx);
@@ -4632,6 +4928,19 @@ page_lu_eabi(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "hal.DPS_mode");
+
+	if (reg != NULL && reg->lval != 2) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select DPS mode `DPS_DRIVE_EABI`"
+					" on `HAL` page", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg_float(pub, "pm.eabi_F0", "EABI adjustment position");
 	reg_float(pub, "pm.eabi_const_EP", "EABI pulse resolution");
@@ -5542,23 +5851,23 @@ menu_group_layout(struct public *pub)
 		menu_select_button(pub, "Diagnose", &page_diagnose);
 		menu_select_button(pub, "Probe", &page_probe);
 		menu_select_button(pub, "HAL", &page_hal);
-		menu_select_button(pub, "in Network", &page_in_network);
-		menu_select_button(pub, "in STEP/DIR", &page_in_stepdir);
-		menu_select_button(pub, "in PWM", &page_in_pwm);
-		menu_select_button(pub, "in Knob", &page_in_knob);
+		menu_select_button(pub, "IN Network", &page_in_network);
+		menu_select_button(pub, "IN STEP/DIR", &page_in_stepdir);
+		menu_select_button(pub, "IN PWM", &page_in_pwm);
+		menu_select_button(pub, "IN Knob", &page_in_knob);
 		menu_select_button(pub, "Application", &page_application);
 		menu_select_button(pub, "Thermal", &page_thermal);
 		menu_select_button(pub, "Config", &page_config);
-		menu_select_button(pub, "lu Forced", &page_lu_forced);
-		menu_select_button(pub, "lu FLUX", &page_lu_flux);
-		menu_select_button(pub, "lu HFI", &page_lu_hfi);
-		menu_select_button(pub, "lu Hall", &page_lu_hall);
-		menu_select_button(pub, "lu EABI", &page_lu_eabi);
-		menu_select_button(pub, "lu SIN/COS", &page_lu_sincos);
+		menu_select_button(pub, "LU Forced", &page_lu_forced);
+		menu_select_button(pub, "LU FLUX", &page_lu_flux);
+		menu_select_button(pub, "LU HFI", &page_lu_hfi);
+		menu_select_button(pub, "LU Hall", &page_lu_hall);
+		menu_select_button(pub, "LU EABI", &page_lu_eabi);
+		menu_select_button(pub, "LU SIN/COS", &page_lu_sincos);
 		menu_select_button(pub, "Wattage", &page_wattage);
-		menu_select_button(pub, "lp Current", &page_lp_current);
-		menu_select_button(pub, "lp Speed", &page_lp_speed);
-		menu_select_button(pub, "lp Location", &page_lp_location);
+		menu_select_button(pub, "LP Current", &page_lp_current);
+		menu_select_button(pub, "LP Speed", &page_lp_speed);
+		menu_select_button(pub, "LP Location", &page_lp_location);
 		menu_select_button(pub, "Telemetry", &page_telemetry);
 		menu_select_button(pub, "Flash", &page_flash);
 		menu_select_button(pub, "Upgrade", &page_upgrade);
@@ -5758,9 +6067,31 @@ int main(int argc, char **argv)
 			if (nk_begin(&nk->ctx, pub->lbuf, bounds, NK_WINDOW_TITLE
 						| NK_WINDOW_NO_SCROLLBAR)) {
 
+				struct nk_command_buffer	*out;
+				struct nk_panel			*panel;
+
+				out = nk_window_get_canvas(&nk->ctx);
+				panel = nk_window_get_panel(&nk->ctx);
+
 				menu_group_layout(pub);
 
 				nk_end(&nk->ctx);
+
+				if (lp->linked != 0 && lp->locked + 50 > lp->clock) {
+
+					struct nk_rect		busy;
+					struct nk_color		led;
+
+					busy.w = pub->fe_font_h;
+					busy.h = pub->fe_font_h;
+
+					busy.x = nk->surface->w - busy.w * 1.5f;
+					busy.y = (panel->header_height - busy.h) * 0.5f;
+
+					led = nk->table[NK_COLOR_TEXT];
+
+					nk_fill_rect(out, busy, 1, led);
+				}
 			}
 
 			nk_sdl_render(nk);

@@ -158,10 +158,10 @@ typedef struct {
 	DRV_config_t	DRV;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ADC_FILTER
+#ifdef HW_HAVE_OPT_FILTER
 	int		OPT_filter_current;
 	int		OPT_filter_voltage;
-#endif /* HW_HAVE_ADC_FILTER */
+#endif /* HW_HAVE_OPT_FILTER */
 
 	uint32_t	CNT_raw[4];
 	float		CNT_diag[3];

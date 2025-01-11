@@ -52,7 +52,7 @@ int dirent_open(struct dirent_stat *sb, const char *path)
 
 	MultiByteToWideChar(CP_UTF8, 0, path, -1, p->wpath, DIRENT_PATH_MAX);
 
-	wcscat(p->wpath, L"/*");
+	wcscat(p->wpath, L"\\*");
 
 	p->hDIR = FindFirstFileW(p->wpath, &p->fDATA);
 

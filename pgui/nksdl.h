@@ -36,8 +36,9 @@ struct nk_sdl {
 	struct nk_recti			scissor;
 	struct nk_color			table[NK_COLOR_COUNT + 20];
 
-	int				clock;
-	int				updated;
+	Uint32				clock;
+	Uint32				updated;
+
 	int				idled;
 
 	SDL_Window			*window;

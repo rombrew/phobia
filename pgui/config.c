@@ -76,12 +76,13 @@ void config_read(struct config_phobia *fe)
 			name = strtok(line, sep);
 			value = strtok(NULL, sep);
 
-			if (		   name == NULL
-					|| value == NULL) {
+			if (name == NULL)
+				goto config_read_SKIP;
 
-				/* Skip empty lines */
-			}
-			else if (strcmp(name, "version") == 0) {
+			if (value == NULL)
+				value = "";
+
+			if (strcmp(name, "version") == 0) {
 
 				fe->version = strtol(value, NULL, 10);
 			}
@@ -113,6 +114,8 @@ void config_read(struct config_phobia *fe)
 
 				fe->regfile = strtol(value, NULL, 10);
 			}
+config_read_SKIP:
+
 		}
 
 		fclose(fd);
@@ -122,8 +125,6 @@ void config_read(struct config_phobia *fe)
 void config_open(struct config_phobia *fe)
 {
 	char		*path_HOME;
-
-	config_default(fe);
 
 #ifdef _WINDOWS
 	path_HOME = getenv("APPDATA");
@@ -136,6 +137,10 @@ void config_open(struct config_phobia *fe)
 		fe->local = 1;
 	}
 
+#ifdef _LOCAL_PGUI
+	fe->local = 1;
+#endif /* _LOCAL_PGUI */
+
 	if (fe->local == 0) {
 
 #ifdef _WINDOWS
@@ -144,6 +149,8 @@ void config_open(struct config_phobia *fe)
 		strcpy(fe->rcfile, path_HOME);
 #endif
 		strcat(fe->rcfile, DIRSEP FILE_HIDDEN_CONFIG);
+
+		config_default(fe);
 
 		if (config_rcfiletry(fe) == 0) {
 
@@ -224,21 +231,33 @@ void config_default(struct config_phobia *fe)
 
 	fe->windowsize = 1;
 
-#ifdef _WINDOWS
 	if (fe->local == 0) {
-
+#ifdef _WINDOWS
 		GetTempPathA(sizeof(lptemp), lptemp);
 		config_ACP_to_UTF8(fe->storage, lptemp, sizeof(fe->storage));
+#else /* _WINDOWS */
+		strcpy(fe->storage, "/tmp");
+#endif
 	}
 	else {
 		fe->storage[0] = 0;
 	}
-#else /* _WINDOWS */
-	strcpy(fe->storage, "/tmp");
-#endif
 
 	strcpy(fe->fuzzy, "setpoint");
 
 	fe->regfile = 500;
+}
+
+void config_storage_path(struct config_phobia *fe, char *lbuf, const char *file)
+{
+	lbuf[0] = 0;
+
+	if (fe->storage[0] != 0) {
+
+		strcat(lbuf, fe->storage);
+		strcat(lbuf, DIRSEP);
+	}
+
+	strcat(lbuf, file);
 }
 

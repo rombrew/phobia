@@ -373,6 +373,29 @@ pm_auto_maximal_current(pmc_t *pm)
 		pm->i_maximal = (float) (int) maximal_A;
 		pm->i_reverse = pm->i_maximal;
 	}
+
+	/* Hold current based on maximal machine current.
+	 * */
+	maximal_A = pm->i_maximal * 0.8f;
+
+	if (pm->probe_current_hold > maximal_A) {
+
+		pm->probe_current_hold = maximal_A;
+	}
+
+	if (pm->forced_hold_D > maximal_A) {
+
+		pm->forced_hold_D = maximal_A;
+	}
+
+	/* Sine current based on maximal machine current.
+	 * */
+	maximal_A = pm->i_maximal * 0.2f;
+
+	if (pm->probe_current_sine > maximal_A) {
+
+		pm->probe_current_sine = maximal_A;
+	}
 }
 
 static void

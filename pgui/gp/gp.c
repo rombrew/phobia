@@ -4694,6 +4694,10 @@ gpcon_t *gp_Alloc()
 
 	gpFileGetPath(gp);
 
+#ifdef _LOCAL_GP
+	gpFileGetLocal(gp);
+#endif /* _LOCAL_GP */
+
 	if (gp->rcfile[0] != 0) {
 
 		if (gpFileExist(gp->rcfile) == 0) {

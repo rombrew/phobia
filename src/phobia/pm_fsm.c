@@ -79,7 +79,7 @@ pm_fsm_state_zero_drift(pmc_t *pm)
 						|| pm->self_STDi[1] > pm->fault_current_tol
 						|| pm->self_STDi[2] > pm->fault_current_tol) {
 
-					pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+					pm->fsm_errno = PM_ERROR_LOW_CURRENT_ACCURACY;
 				}
 			}
 			else {
@@ -525,14 +525,14 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 						|| pm->self_RMSi[1] > pm->fault_current_tol
 						|| pm->self_RMSi[2] > pm->fault_current_tol) {
 
-					pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+					pm->fsm_errno = PM_ERROR_LOW_CURRENT_ACCURACY;
 				}
 				else if (	   pm->self_RMSu > pm->fault_voltage_tol
 						|| pm->self_RMSt[0] > pm->fault_voltage_tol
 						|| pm->self_RMSt[1] > pm->fault_voltage_tol
 						|| pm->self_RMSt[2] > pm->fault_voltage_tol) {
 
-					pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+					pm->fsm_errno = PM_ERROR_LOW_VOLTAGE_ACCURACY;
 				}
 			}
 			else {
@@ -658,7 +658,7 @@ pm_fsm_state_adjust_on_pcb_voltage(pmc_t *pm)
 					|| m_fabsf(ls->sol.m[2]) > pm->fault_voltage_tol
 					|| m_fabsf(ls->sol.m[4]) > pm->fault_voltage_tol) {
 
-				pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+				pm->fsm_errno = PM_ERROR_LOW_VOLTAGE_ACCURACY;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -668,7 +668,7 @@ pm_fsm_state_adjust_on_pcb_voltage(pmc_t *pm)
 					|| m_fabsf(ls->sol.m[3] - 1.f) > pm->fault_accuracy_tol
 					|| m_fabsf(ls->sol.m[5] - 1.f) > pm->fault_accuracy_tol) {
 
-				pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+				pm->fsm_errno = PM_ERROR_LOW_VOLTAGE_ACCURACY;
 				pm->fsm_state = PM_STATE_HALT;
 				pm->fsm_phase = 0;
 				break;
@@ -965,7 +965,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 					|| m_fabsf(pm->scale_iB[1] - 1.f) > pm->fault_accuracy_tol
 					|| m_fabsf(pm->scale_iC[1] - 1.f) > pm->fault_accuracy_tol) {
 
-				pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+				pm->fsm_errno = PM_ERROR_LOW_CURRENT_ACCURACY;
 			}
 
 			pm->fsm_state = PM_STATE_HALT;
@@ -1302,18 +1302,6 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 				break;
 			}
 
-			if (		m_isfinitef(ls->sol.m[3]) != 0
-					&& ls->sol.m[3] > M_EPSILON) {
-
-				pm->dcu_deadband = ls->sol.m[3];
-			}
-			else {
-				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
-				pm->fsm_state = PM_STATE_HALT;
-				pm->fsm_phase = 0;
-				break;
-			}
-
 			lse_std(ls);
 
 			pm->self_DTu = ls->std.m[0];
@@ -1322,8 +1310,23 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 
 				if (pm->self_DTu > pm->fault_terminal_tol) {
 
-					pm->fsm_errno = PM_ERROR_LOW_ACCURACY;
+					pm->fsm_errno = PM_ERROR_LOW_DEADBAND_ACCURACY;
+					pm->fsm_state = PM_STATE_HALT;
+					pm->fsm_phase = 0;
+					break;
 				}
+			}
+			else {
+				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
+			}
+
+			if (		m_isfinitef(ls->sol.m[3]) != 0
+					&& ls->sol.m[3] > M_EPSILON) {
+
+				pm->dcu_deadband = ls->sol.m[3];
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -2549,7 +2552,9 @@ const char *pm_strerror(int fsm_errno)
 		PM_SFI_CASE(PM_ERROR_NO_MOTOR_CONNECTED);
 		PM_SFI_CASE(PM_ERROR_BOOTSTRAP_FAULT);
 		PM_SFI_CASE(PM_ERROR_POWER_STAGE_BROKEN);
-		PM_SFI_CASE(PM_ERROR_LOW_ACCURACY);
+		PM_SFI_CASE(PM_ERROR_LOW_CURRENT_ACCURACY);
+		PM_SFI_CASE(PM_ERROR_LOW_VOLTAGE_ACCURACY);
+		PM_SFI_CASE(PM_ERROR_LOW_DEADBAND_ACCURACY);
 		PM_SFI_CASE(PM_ERROR_CURRENT_LOOP_FAULT);
 		PM_SFI_CASE(PM_ERROR_INSTANT_OVERCURRENT);
 		PM_SFI_CASE(PM_ERROR_DC_LINK_OVERVOLTAGE);

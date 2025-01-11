@@ -804,9 +804,6 @@ void ts_script_test()
 	ts_script_base();
 	blm_restart(&m);
 
-	//pm.config_DCU_VOLTAGE = PM_DISABLED;
-	//pm.dcu_tol = 1.f;
-
 	ts_script_speed();
 	blm_restart(&m);
 
