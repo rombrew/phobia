@@ -119,50 +119,6 @@ int pm_wait_settle()
 	return pm.fsm_errno;
 }
 
-SH_DEF(pm_adjust_dcu_voltage)
-{
-	if (pm.lu_MODE != PM_LU_DISABLED) {
-
-		printf("Unable when PM is running" EOL);
-		return;
-	}
-
-	do {
-		pm.fsm_req = PM_STATE_ZERO_DRIFT;
-		pm_wait_IDLE();
-
-		reg_OUTP(ID_PM_CONST_FB_U);
-		reg_OUTP(ID_PM_SCALE_IA0);
-		reg_OUTP(ID_PM_SCALE_IB0);
-		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
-
-		if (pm.fsm_errno != PM_OK)
-			break;
-
-		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
-
-			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
-
-			if (pm_wait_IDLE() != PM_OK)
-				break;
-		}
-
-		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
-
-			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
-			pm_wait_IDLE();
-
-			reg_OUTP(ID_PM_CONST_IM_RZ);
-			reg_OUTP(ID_PM_DCU_DEADBAND);
-			reg_OUTP(ID_PM_SELF_DTU);
-		}
-	}
-	while (0);
-
-	reg_OUTP(ID_PM_FSM_ERRNO);
-}
-
 SH_DEF(pm_probe_impedance)
 {
 	if (pm.lu_MODE != PM_LU_DISABLED) {

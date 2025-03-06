@@ -3241,7 +3241,7 @@ pm_loop_location(pmc_t *pm)
 
 	/* Servo is based on constant acceleration formula.
 	 * */
-	eABS= m_fabsf(eRSU);
+	eABS = m_fabsf(eRSU);
 	eRSU = (eRSU < 0.f) ? - m_sqrtf(eABS) : m_sqrtf(eABS);
 
 	/* There is a residual tolerance.
@@ -3494,7 +3494,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 	pm->dcu_X = pm->vsi_X - pm->dcu_DX;
 	pm->dcu_Y = pm->vsi_Y - pm->dcu_DY;
 
-	if (likely(pm->lu_MODE != PM_LU_DISABLED)) {
+	if (pm->lu_MODE != PM_LU_DISABLED) {
 
 		/* The observer FSM.
 		 * */

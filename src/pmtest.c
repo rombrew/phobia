@@ -161,7 +161,51 @@ SH_DEF(pm_self_adjust)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_analysis_impedance)
+SH_DEF(pm_adjust_dcu_voltage)
+{
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
+		pm_wait_IDLE();
+
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SCALE_IA0);
+		reg_OUTP(ID_PM_SCALE_IB0);
+		reg_OUTP(ID_PM_SCALE_IC0);
+		reg_OUTP(ID_PM_SELF_STDI);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+
+			if (pm_wait_IDLE() != PM_OK)
+				break;
+		}
+
+		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
+			pm_wait_IDLE();
+
+			reg_OUTP(ID_PM_CONST_IM_RZ);
+			reg_OUTP(ID_PM_DCU_DEADBAND);
+			reg_OUTP(ID_PM_SELF_DTU);
+		}
+	}
+	while (0);
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+}
+
+SH_DEF(pm_scan_impedance)
 {
 	float		usual_freq, walk_freq, stop_freq;
 
@@ -174,35 +218,17 @@ SH_DEF(pm_analysis_impedance)
 	pm.fsm_req = PM_STATE_ZERO_DRIFT;
 	pm_wait_IDLE();
 
-	reg_OUTP(ID_PM_CONST_FB_U);
-	reg_OUTP(ID_PM_SCALE_IA0);
-	reg_OUTP(ID_PM_SCALE_IB0);
-	reg_OUTP(ID_PM_SCALE_IC0);
-	reg_OUTP(ID_PM_SELF_STDI);
-
 	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
 		pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 		pm_wait_IDLE();
-
-		reg_OUTP(ID_PM_SELF_IST);
 	}
-
-	reg_OUTP(ID_PM_FSM_ERRNO);
 
 	if (pm.fsm_errno != PM_OK) {
 
-		printf("Unable to continue if there are errors" EOL);
+		printf("Unable to continue when there are errors" EOL);
 		return;
 	}
-
-	/*
-	tlm.reg_ID[0] = ID_PM_PROBE_FREQ_SINE;
-	tlm.reg_ID[1] = ID_PM_CONST_IM_LD;
-	tlm.reg_ID[2] = ID_PM_CONST_IM_LQ;
-	tlm.reg_ID[3] = ID_PM_CONST_IM_A;
-	tlm.reg_ID[4] = ID_PM_CONST_IM_RZ;
-	*/
 
 	tlm_startup(&tlm, tlm.rate_live, TLM_MODE_WATCH);
 
@@ -232,8 +258,6 @@ SH_DEF(pm_analysis_impedance)
 	while (1);
 
 	pm.probe_freq_sine = usual_freq;
-
-	reg_OUTP(ID_PM_FSM_ERRNO);
 
 	tlm_halt(&tlm);
 }

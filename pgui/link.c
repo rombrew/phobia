@@ -714,6 +714,7 @@ int link_fetch(struct link_pmc *lp, int clock)
 		{ "pm_adjust_",		LINK_MODE_UNABLE_WARNING },
 		{ "tlm_flush_sync",	LINK_MODE_DATA_GRAB },
 		{ "tlm_live_sync",	LINK_MODE_DATA_GRAB },
+		{ "pm_scan_impedance",	LINK_MODE_DATA_GRAB },
 		{ "net_survey",		LINK_MODE_EPCAN_MAP },
 		{ "net_assign",		LINK_MODE_UNABLE_WARNING },
 		{ "net_revoke",		LINK_MODE_UNABLE_WARNING },

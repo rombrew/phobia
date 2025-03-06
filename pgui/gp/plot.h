@@ -149,6 +149,7 @@ typedef struct {
 		int		chunk_bSIZE;
 
 		int		lz4_compress;
+		void		*lz4_reserved;
 
 		struct {
 

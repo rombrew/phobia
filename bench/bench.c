@@ -377,7 +377,7 @@ void bench_script()
 
 	tlm_restart();
 
-	m.Rs = 7.E-3;
+	m.Rs = 400.E-3;
 	m.Ld = 35.E-6;
 	m.Lq = 65.E-6;
 	m.Udc = 49.;
@@ -419,16 +419,16 @@ void bench_script()
 	pm.s_setpoint_speed = 100.f;
 	sim_runtime(2.0);
 
-	pm.s_setpoint_speed = 2000.f;
+	pm.s_setpoint_speed = 700.f;
 	sim_runtime(1.0);
 
-	pm.s_setpoint_speed = - 2000.f;
-	sim_runtime(2.0);
+	pm.s_setpoint_speed = - 700.f;
+	sim_runtime(1.0);
 
-	pm.s_setpoint_speed = 2000.f;
-	sim_runtime(2.0);
+	pm.s_setpoint_speed = 700.f;
+	sim_runtime(1.0);
 
-	sim_runtime(3.0);
+	sim_runtime(2.0);
 
 	tlm_PWM_grab();
 }

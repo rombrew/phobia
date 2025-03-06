@@ -115,6 +115,8 @@ struct public {
 		int			log_flush;
 		char			log_message[4000];
 
+		int			log_GP;
+
 		char			file_snap[PHOBIA_PATH_MAX];
 	}
 	debug;
@@ -960,7 +962,8 @@ pub_open_GP(struct public *pub, const char *file)
 
 	pub->gp = gp_Alloc();
 
-	sprintf(pub->lbuf,	"chunk 10\n"
+	sprintf(pub->lbuf,	"windowsize 800 600\n"
+				"chunk 10\n"
 				"timeout 1000\n"
 				"load 0 0 csv \"%s\"\n"
 				"mkpages 0\n", file);
@@ -2848,9 +2851,9 @@ page_diagnose(struct public *pub)
 	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
 			nk_vec2(pub->fe_base * 1.5f, 4.0f));
 
-	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 3);
 
-	if (nk_menu_begin_label(ctx, "Test", NK_TEXT_CENTERED,
+	if (nk_menu_begin_label(ctx, "Self-Test", NK_TEXT_CENTERED,
 				nk_vec2(pub->fe_base * 16, 800)))
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
@@ -2876,6 +2879,37 @@ page_diagnose(struct public *pub)
 			if (lp->linked != 0) {
 
 				pub->popup_enum = POPUP_RESET_DEFAULT;
+			}
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	if (nk_menu_begin_label(ctx, "Advanced", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 800)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "DCU voltage adjustment", NK_TEXT_LEFT)) {
+
+			if (link_command(lp, "pm_adjust_dcu_voltage") != 0) {
+
+				lp->command_state = LINK_COMMAND_PENDING;
+			}
+		}
+
+		if (nk_menu_item_label(ctx, "AC frequency scan", NK_TEXT_LEFT)) {
+
+			config_storage_path(pub->fe, pub->lbuf, FILE_TLM_IMPEDANCE);
+
+			strcpy(pub->debug.file_snap, pub->lbuf);
+
+			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
+
+				if (link_command(lp, "pm_scan_impedance" "\r\n") != 0) {
+
+					pub->debug.log_GP = 1;
+				}
 			}
 		}
 
@@ -2909,7 +2943,6 @@ page_diagnose(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Set PWM to 50%", NK_TEXT_LEFT)) {
 
-			struct link_reg		*reg;
 			int			dc_resolution = 2940;
 
 			reg = link_reg_lookup(lp, "pm.dc_resolution");
@@ -2959,6 +2992,14 @@ page_diagnose(struct public *pub)
 		}
 	}
 
+	if (		pub->debug.log_GP != 0
+			&& lp->grab_N >= 5) {
+
+		pub->debug.log_GP = 0;
+
+		pub_open_GP(pub, pub->debug.file_snap);
+	}
+
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
@@ -2973,7 +3014,7 @@ page_diagnose(struct public *pub)
 
 		warning = nk->table[NK_COLOR_FLICKER_ALERT];
 
-		nk_label_colored(ctx, 	"NOTE: Select self-test and "
+		nk_label_colored(ctx, 	"NOTE: Select self-test and"
 					" self-adjustment from `Test` menu",
 					NK_TEXT_LEFT, warning);
 
@@ -3157,7 +3198,7 @@ page_probe(struct public *pub)
 	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
 			nk_vec2(pub->fe_base * 1.5f, 4.0f));
 
-	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 3);
 
 	if (nk_menu_begin_label(ctx, "Probe", NK_TEXT_CENTERED,
 				nk_vec2(pub->fe_base * 16, 800)))
@@ -3188,15 +3229,13 @@ page_probe(struct public *pub)
 			}
 		}
 
-		nk_spacer(ctx);
+		nk_menu_end(ctx);
+	}
 
-		if (nk_menu_item_label(ctx, "DCU voltage adjusting", NK_TEXT_LEFT)) {
-
-			if (link_command(lp, "pm_adjust_dcu_voltage") != 0) {
-
-				lp->command_state = LINK_COMMAND_PENDING;
-			}
-		}
+	if (nk_menu_begin_label(ctx, "Advanced", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 800)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
 
 		if (nk_menu_item_label(ctx, "KV flux linkage", NK_TEXT_LEFT)) {
 
@@ -5263,6 +5302,7 @@ page_lp_location(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
 	float				ld_range[2] = { - 100.f, 100.f };
 	int				um_sel, um_def = 1;
 
@@ -5301,6 +5341,19 @@ page_lp_location(struct public *pub)
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "pm.config_LU_DRIVE");
+
+	if (reg != NULL && reg->lval != LU_DRIVE_LOCATION) {
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"NOTE: Select DRIVE control loop `PM_DRIVE_LOCATION`"
+					" on `Config` page", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	reg = link_reg_lookup(lp, "pm.const_ld_Sm");
 	if (reg != NULL && reg->fval > 0.f) { um_def = 2; }

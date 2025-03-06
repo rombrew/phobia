@@ -1122,9 +1122,9 @@ static void
 pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 {
 	lse_t			*ls = &pm->lse[0];
-	lse_float_t		v[5];
+	lse_float_t		v[3];
 
-	float			hold_A, ramp_A, Rz;
+	float			hold_A, ramp_A;
 
 	switch (pm->fsm_phase) {
 
@@ -1134,14 +1134,23 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 				pm->proc_set_DC(0, 0, 0);
 				pm->proc_set_Z(PM_Z_NONE);
 
-				lse_construct(ls, LSE_CASCADE_MAX, 4, 1);
+				lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+
+				pm->probe_WS[0] = 1.f / pm->dcu_deadband;
 
 				pm->probe_HF[0] = 0.f;
 				pm->probe_HF[1] = 0.f;
 
-				pm->probe_WS[0] = 1.f / pm->dcu_deadband;
+				hold_A = pm->probe_hold_angle * (M_PI_F / 180.f);
 
-				pm->fsm_subi = 0;
+				pm->probe_HOLD[0] = m_cosf(hold_A);
+				pm->probe_HOLD[1] = m_sinf(hold_A);
+
+				pm->i_integral_D = 0.f;
+				pm->i_integral_Q = 0.f;
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
 
 				pm->fsm_errno = PM_OK;
 				pm->fsm_phase = 1;
@@ -1153,41 +1162,13 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 			break;
 
 		case 1:
-			switch (pm->fsm_subi) {
-
-				case 0:
-					hold_A = 0.f;
-					break;
-
-				case 1:
-					hold_A = 120.f * M_PI_F / 180.f;
-					break;
-
-				case 2:
-					hold_A = - 120.f * M_PI_F / 180.f;
-					break;
-			}
-
-			pm->probe_HOLD[0] = m_cosf(hold_A);
-			pm->probe_HOLD[1] = m_sinf(hold_A);
-
-			pm->i_integral_D = 0.f;
-			pm->i_integral_Q = 0.f;
-
-			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, pm->tm_current_ramp);
-
-			pm->fsm_phase += 1;
-			break;
-
-		case 2:
 			ramp_A = (float) (pm->tm_value + 1)
 				* pm->probe_current_hold / (float) pm->tm_end;
 
 			pm->i_track_D = pm->probe_HOLD[0] * ramp_A;
 			pm->i_track_Q = pm->probe_HOLD[1] * ramp_A;
 
-		case 3:
+		case 2:
 			pm_fsm_probe_loop_current(pm, 0.f);
 
 			if (pm->fsm_errno != PM_OK)
@@ -1197,7 +1178,7 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				if (pm->fsm_phase < 3) {
+				if (pm->fsm_phase < 2) {
 
 					pm->tm_value = 0;
 					pm->tm_end = PM_TSMS(pm, pm->tm_current_hold);
@@ -1211,25 +1192,21 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 			}
 			break;
 
-		case 4:
-		case 6:
-			v[0] = (pm->fsm_subi == 0) ? pm->lu_iX : 0.f;
-			v[1] = (pm->fsm_subi == 1) ? pm->lu_iX : 0.f;
-			v[2] = (pm->fsm_subi == 2) ? pm->lu_iX : 0.f;
-			v[3] = pm->dcu_DX * pm->probe_WS[0];
-			v[4] = pm->vsi_X;
-
-			lse_insert(ls, v);
-
-			v[0] = (pm->fsm_subi == 0) ? pm->lu_iY : 0.f;
-			v[1] = (pm->fsm_subi == 1) ? pm->lu_iY : 0.f;
-			v[2] = (pm->fsm_subi == 2) ? pm->lu_iY : 0.f;
-			v[3] = pm->dcu_DY * pm->probe_WS[0];
-			v[4] = pm->vsi_Y;
-
-			lse_insert(ls, v);
-
+		case 3:
 		case 5:
+			v[0] = pm->lu_iX;
+			v[1] = pm->dcu_DX * pm->probe_WS[0];
+			v[2] = pm->vsi_X;
+
+			lse_insert(ls, v);
+
+			v[0] = pm->lu_iY;
+			v[1] = pm->dcu_DY * pm->probe_WS[0];
+			v[2] = pm->vsi_Y;
+
+			lse_insert(ls, v);
+
+		case 4:
 			pm_fsm_probe_loop_current(pm, 0.f);
 
 			if (pm->fsm_errno != PM_OK)
@@ -1239,12 +1216,12 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				if (pm->fsm_phase < 5) {
+				if (pm->fsm_phase < 4) {
 
 					pm->tm_value = 0;
 					pm->tm_end = PM_TSMS(pm, pm->tm_transient_slow);
 				}
-				else if (pm->fsm_phase < 6) {
+				else if (pm->fsm_phase < 5) {
 
 					pm->tm_value = 0;
 					pm->tm_end = PM_TSMS(pm, pm->tm_average_probe);
@@ -1263,37 +1240,24 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 			}
 			break;
 
-		case 7:
+		case 6:
 			pm_voltage(pm, 0.f, 0.f);
 
 			pm->tm_value++;
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				if (pm->fsm_subi < 2) {
-
-					pm->fsm_phase = 1;
-					pm->fsm_subi += 1;
-				}
-				else {
-					pm->fsm_phase += 1;
-				}
+				pm->fsm_phase += 1;
 			}
 			break;
 
-		case 8:
+		case 7:
 			lse_solve(ls);
 
 			if (		   m_isfinitef(ls->sol.m[0]) != 0
-					&& m_isfinitef(ls->sol.m[1]) != 0
-					&& m_isfinitef(ls->sol.m[2]) != 0
-					&& ls->sol.m[0] > M_EPSILON
-					&& ls->sol.m[1] > M_EPSILON
-					&& ls->sol.m[2] > M_EPSILON) {
+					&& ls->sol.m[0] > M_EPSILON) {
 
-				Rz = (ls->sol.m[0] + ls->sol.m[1] + ls->sol.m[2]) / 3.f;
-
-				pm->const_im_Rz = Rz;
+				pm->const_im_Rz = ls->sol.m[0];
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -1323,10 +1287,10 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 				break;
 			}
 
-			if (		m_isfinitef(ls->sol.m[3]) != 0
-					&& ls->sol.m[3] > M_EPSILON) {
+			if (		m_isfinitef(ls->sol.m[1]) != 0
+					&& ls->sol.m[1] > M_EPSILON) {
 
-				pm->dcu_deadband = ls->sol.m[3];
+				pm->dcu_deadband = ls->sol.m[1];
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;

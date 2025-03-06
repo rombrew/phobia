@@ -144,7 +144,9 @@ struct gp_context {
 	struct dirent_stat	sb;
 
 	char		cwd[READ_FILE_PATH_MAX];
+
 	int		cwd_exist;
+	int		cwd_return;
 
 	char		d_names[GP_FILE_ENT_MAX][PLOT_STRING_MAX];
 	char		la_menu[GP_FILE_ENT_MAX * PLOT_STRING_MAX + 1];
@@ -1924,6 +1926,8 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 				gpMakeDirMenu(gp);
 
 				menuRaise(mu, 1021, gp->la_menu, mu->box_X, mu->box_Y);
+
+				gp->cwd_return = 2;
 				gp->stat = GP_MENU;
 				break;
 
@@ -1953,11 +1957,16 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 					gpMakeDirMenu(gp);
 
 					menuRaise(mu, 1021, gp->la_menu, mu->box_X, mu->box_Y);
+					menuSelect(mu, gp->cwd_return);
+
+					gp->cwd_return = item_N;
+
 					gp->stat = GP_MENU;
 					break;
 
 				case 2:
 					menuResume(mu);
+
 					gp->stat = GP_MENU;
 					break;
 
@@ -1972,6 +1981,7 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 					}
 
 					menuResume(mu);
+
 					gp->stat = GP_MENU;
 					break;
 

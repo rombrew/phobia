@@ -9,6 +9,7 @@
 #define FILE_HOME_CONFIG		"pguirc"
 #define FILE_LINK_LOG			"phobia.log"
 #define FILE_DEBUG_LOG			"debug.log"
+#define FILE_TLM_IMPEDANCE		"tlmscan.csv"
 #define FILE_TLM_DEFAULT		"tlmgrab.csv"
 #define FILE_CONFIG_DEFAULT		"config.txt"
 

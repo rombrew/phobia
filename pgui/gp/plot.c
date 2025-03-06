@@ -256,7 +256,7 @@ plotDataChunkAlloc(plot_t *pl, int dN, int lN)
 
 					lN = N * (1UL << lSHIFT);
 
-					ERROR("Unable to allocate memory of %i dataset\n", dN);
+					ERROR("Unable to allocate raw memory of %i dataset\n", dN);
 					break;
 				}
 			}
@@ -406,32 +406,38 @@ plotDataCacheFetch(plot_t *pl, int dN, int kN)
 			if (pl->data[dN].compress[kNZ].raw != NULL) {
 
 				free(pl->data[dN].compress[kNZ].raw);
-			}
-
-			pl->data[dN].compress[kNZ].raw = (void *) malloc(lzLEN);
-
-			if (pl->data[dN].compress[kNZ].raw == NULL) {
-
-				ERROR("Unable to allocate LZ4 memory of %i dataset\n", dN);
-			}
-
-			lzLEN = LZ4_compress_fast((const char *) pl->data[dN].cache[xN].raw,
-					(char *) pl->data[dN].compress[kNZ].raw,
-					pl->data[dN].chunk_bSIZE, lzLEN, 1);
-
-			if (lzLEN > 0) {
-
-				pl->data[dN].compress[kNZ].raw =
-					realloc(pl->data[dN].compress[kNZ].raw, lzLEN);
-				pl->data[dN].compress[kNZ].length = lzLEN;
-			}
-			else {
-				ERROR("Unable to compress the chunk of %i dataset\n", dN);
-
-				free(pl->data[dN].compress[kNZ].raw);
 
 				pl->data[dN].compress[kNZ].raw = NULL;
-				pl->data[dN].compress[kNZ].length = 0;
+			}
+
+			pl->data[dN].compress[kNZ].length = 0;
+
+			if (pl->data[dN].lz4_reserved == NULL) {
+
+				pl->data[dN].lz4_reserved = (void *) malloc(lzLEN);
+			}
+
+			if (pl->data[dN].lz4_reserved != NULL) {
+
+				lzLEN = LZ4_compress_fast((const char *) pl->data[dN].cache[xN].raw,
+						(char *) pl->data[dN].lz4_reserved,
+						pl->data[dN].chunk_bSIZE, lzLEN, 1);
+
+				pl->data[dN].compress[kNZ].raw = (void *) malloc(lzLEN);
+
+				if (pl->data[dN].compress[kNZ].raw != NULL) {
+
+					memcpy(pl->data[dN].compress[kNZ].raw,
+							pl->data[dN].lz4_reserved, lzLEN);
+
+					pl->data[dN].compress[kNZ].length = lzLEN;
+				}
+				else {
+					ERROR("Unable to allocate LZ4 memory of %i dataset\n", dN);
+				}
+			}
+			else {
+				ERROR("Unable to allocate reserved memory of %i dataset\n", dN);
 			}
 		}
 
@@ -459,7 +465,7 @@ plotDataCacheFetch(plot_t *pl, int dN, int kN)
 
 		if (lzLEN != pl->data[dN].chunk_bSIZE) {
 
-			ERROR("Unable to decompress the chunk of %i dataset\n", dN);
+			ERROR("Unable to decompress LZ4 memory of %i dataset\n", dN);
 		}
 	}
 }
@@ -1949,6 +1955,13 @@ void plotDataClean(plot_t *pl, int dN)
 
 					pl->data[dN].compress[N].raw = NULL;
 				}
+			}
+
+			if (pl->data[dN].lz4_reserved != NULL) {
+
+				free(pl->data[dN].lz4_reserved);
+
+				pl->data[dN].lz4_reserved = NULL;
 			}
 		}
 		else {

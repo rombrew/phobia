@@ -80,7 +80,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Location control with constant acceleration regulator.
 
 - Adjustable constraints:
-	- Phase current (forward and reverse, on HFI current, weakening D current).
+	- Phase current (forward and reverse, on HFI current, weakening current).
 	- Hardware overtemperature protection (derate phase current or halt).
 	- Machine voltage applied from VSI.
 	- DC link current consumption and regeneration.

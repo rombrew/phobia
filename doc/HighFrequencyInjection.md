@@ -48,8 +48,9 @@ can select RANDOM waveform and adjust an amplitude.
 
 	(pmc) reg pm.config_HFI_WAVETYPE 2
 
-Note that in HFI operation it is possible to detect only direction of the rotor
-flux axis but not its orientation or flux polarity.
+Note on HFI operation it is possible to detect only direction of the rotor flux
+axis but not its orientation or flux polarity. So you should bootstrap from
+forced alignment or flux observer estimate.
 
 ## Permanent injection
 
