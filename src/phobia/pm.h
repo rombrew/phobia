@@ -177,6 +177,7 @@ enum {
 	PM_ERROR_NAN_OPERATION,
 	PM_ERROR_SENSOR_HALL_FAULT,
 	PM_ERROR_SENSOR_EABI_FAULT,
+	PM_ERROR_SENSOR_SINCOS_FAULT,
 
 	/* Application level.
 	 * */
@@ -284,6 +285,7 @@ typedef struct {
 	float		tm_average_probe;
 	float		tm_average_drift;
 	float		tm_average_inertia;
+	float		tm_average_outside;
 	float		tm_pause_startup;
 	float		tm_pause_forced;
 	float		tm_pause_halt;
@@ -471,7 +473,7 @@ typedef struct {
 	float		eabi_gain_IF;
 
 	int		sincos_RECENT;
-	float		sincos_FIR[20];
+	float		sincos_CONST[16];
 	float		sincos_SC[3];
 	int		sincos_revol;
 	int		sincos_unwrap;
@@ -480,6 +482,7 @@ typedef struct {
 	float		sincos_F[2];
 	float		sincos_wS;
 	float		sincos_location;
+	float		sincos_gain_PF;
 	float		sincos_gain_SF;
 	float		sincos_gain_IF;
 

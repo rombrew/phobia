@@ -916,7 +916,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				REF = 0.01f;	/* regularization constant */
+				REF = 1.E-2f;	/* regularization constant */
 
 				v[0] = REF;
 				v[1] = 0.f;
@@ -2142,7 +2142,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 
 	int			*range_bEP = (int *) pm->lse[1].vm;
 
-	int			relEP, WRAP, N;
+	int			relEP, WRAP;
 
 	switch (pm->fsm_phase) {
 
@@ -2154,7 +2154,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 			range_bEP[1] = pm->fb_EP;
 
 			pm->tm_value = 0;
-			pm->tm_end = PM_TSMS(pm, 10.f * pm->tm_average_probe);
+			pm->tm_end = PM_TSMS(pm, pm->tm_average_outside);
 
 			pm->fsm_errno = PM_OK;
 			pm->fsm_phase = 1;
@@ -2187,16 +2187,12 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				}
 				else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
 
-					if (		range_bEP[1] - range_bEP[0] > 100
+					if (		   range_bEP[1] > 100
 							&& range_bEP[0] < 100) {
 
-						for (N = 0; N < 32; ++N) {
-
-							if ((range_bEP[1] & 0x1FU) == 0)
-								break;
-
-							range_bEP[1]++;
-						}
+						WRAP = range_bEP[1] & 0x1F;
+						range_bEP[1] += (WRAP != 0)
+							? 0x20 - WRAP : 0;
 					}
 					else {
 						pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
@@ -2218,7 +2214,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				pm->lu_revol = 0;
 
 				pm->tm_value = 0;
-				pm->tm_end = PM_TSMS(pm, 10.f * pm->tm_average_probe);
+				pm->tm_end = PM_TSMS(pm, pm->tm_average_outside);
 
 				pm->fsm_phase += 1;
 			}
@@ -2283,6 +2279,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 					pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
 					pm->fsm_state = PM_STATE_HALT;
 					pm->fsm_phase = 0;
+					break;
 				}
 			}
 			else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
@@ -2314,7 +2311,115 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 					pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;
 					pm->fsm_state = PM_STATE_HALT;
 					pm->fsm_phase = 0;
+					break;
 				}
+			}
+
+			pm->fsm_state = PM_STATE_IDLE;
+			pm->fsm_phase = 0;
+			break;
+	}
+}
+
+static void
+pm_fsm_state_adjust_sensor_sincos(pmc_t *pm)
+{
+	lse_t			*ls = &pm->lse[0];
+	lse_float_t		v[10];
+
+	float			ANG;
+
+	switch (pm->fsm_phase) {
+
+		case 0:
+			if (pm->config_SINCOS_FRONTEND == PM_SINCOS_ANALOG) {
+
+				lse_construct(ls, LSE_CASCADE_MAX, 8, 2);
+
+				pm->lu_revol = 0;
+
+				pm->tm_value = 0;
+				pm->tm_end = PM_TSMS(pm, pm->tm_average_outside);
+
+				pm->fsm_errno = PM_OK;
+				pm->fsm_phase = 1;
+			}
+			else {
+				pm->fsm_state = PM_STATE_IDLE;
+				pm->fsm_phase = 0;
+			}
+			break;
+
+		case 1:
+			v[0] = 1.f;
+			v[1] = pm->fb_COS;
+			v[2] = pm->fb_SIN;
+			v[3] = pm->lu_iX;
+			v[4] = pm->lu_iY;
+			v[5] = v[1] * v[2];
+			v[6] = v[1] * v[1];
+			v[7] = v[2] * v[2];
+
+			ANG = (m_atan2f(pm->lu_F[1], pm->lu_F[0])
+				+ (float) pm->lu_revol * M_2_PI_F
+				- pm->lu_wS * pm->m_dT) / pm->quick_ZiSQ;
+
+			v[8] = m_cosf(ANG);
+			v[9] = m_sinf(ANG);
+
+			lse_insert(ls, v);
+
+			pm->tm_value++;
+
+			if (pm->tm_value >= pm->tm_end) {
+
+				pm->fsm_phase += 1;
+			}
+			break;
+
+		case 2:
+			lse_ridge(ls, 1.E-3);
+			lse_solve(ls);
+
+			if (		   m_isfinitef(ls->sol.m[0]) != 0
+					&& m_isfinitef(ls->sol.m[1]) != 0
+					&& m_isfinitef(ls->sol.m[2]) != 0
+					&& m_isfinitef(ls->sol.m[3]) != 0
+					&& m_isfinitef(ls->sol.m[4]) != 0
+					&& m_isfinitef(ls->sol.m[5]) != 0
+					&& m_isfinitef(ls->sol.m[6]) != 0
+					&& m_isfinitef(ls->sol.m[7]) != 0
+					&& m_isfinitef(ls->sol.m[8]) != 0
+					&& m_isfinitef(ls->sol.m[9]) != 0
+					&& m_isfinitef(ls->sol.m[10]) != 0
+					&& m_isfinitef(ls->sol.m[11]) != 0
+					&& m_isfinitef(ls->sol.m[12]) != 0
+					&& m_isfinitef(ls->sol.m[13]) != 0
+					&& m_isfinitef(ls->sol.m[14]) != 0
+					&& m_isfinitef(ls->sol.m[15]) != 0) {
+
+				pm->sincos_CONST[0] = ls->sol.m[0];
+				pm->sincos_CONST[1] = ls->sol.m[1];
+				pm->sincos_CONST[2] = ls->sol.m[2];
+				pm->sincos_CONST[3] = ls->sol.m[3];
+				pm->sincos_CONST[4] = ls->sol.m[4];
+				pm->sincos_CONST[5] = ls->sol.m[5];
+				pm->sincos_CONST[6] = ls->sol.m[6];
+				pm->sincos_CONST[7] = ls->sol.m[7];
+				pm->sincos_CONST[8] = ls->sol.m[8];
+				pm->sincos_CONST[9] = ls->sol.m[9];
+				pm->sincos_CONST[10] = ls->sol.m[10];
+				pm->sincos_CONST[11] = ls->sol.m[11];
+				pm->sincos_CONST[12] = ls->sol.m[12];
+				pm->sincos_CONST[13] = ls->sol.m[13];
+				pm->sincos_CONST[14] = ls->sol.m[14];
+				pm->sincos_CONST[15] = ls->sol.m[15];
+			}
+			else {
+				pm->fsm_errno = PM_ERROR_SENSOR_SINCOS_FAULT;
+				pm->fsm_state = PM_STATE_HALT;
+				pm->fsm_phase = 0;
+				break;
 			}
 
 			pm->fsm_state = PM_STATE_IDLE;
@@ -2496,6 +2601,10 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_adjust_sensor_eabi(pm);
 			break;
 
+		case PM_STATE_ADJUST_SENSOR_SINCOS:
+			pm_fsm_state_adjust_sensor_sincos(pm);
+			break;
+
 		case PM_STATE_HALT:
 		default:
 			pm_fsm_state_halt(pm);
@@ -2526,6 +2635,7 @@ const char *pm_strerror(int fsm_errno)
 		PM_SFI_CASE(PM_ERROR_NAN_OPERATION);
 		PM_SFI_CASE(PM_ERROR_SENSOR_HALL_FAULT);
 		PM_SFI_CASE(PM_ERROR_SENSOR_EABI_FAULT);
+		PM_SFI_CASE(PM_ERROR_SENSOR_SINCOS_FAULT);
 
 		PM_SFI_CASE(PM_ERROR_TIMEOUT);
 		PM_SFI_CASE(PM_ERROR_NO_FLUX_CAUGHT);

@@ -143,6 +143,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->tm_average_probe = 200.f;		/* (ms) */
 	pm->tm_average_drift = 100.f;		/* (ms) */
 	pm->tm_average_inertia = 900.f;		/* (ms) */
+	pm->tm_average_outside = 2000.f;	/* (ms) */
 	pm->tm_pause_startup = 100.f;		/* (ms) */
 	pm->tm_pause_forced = 1000.f;		/* (ms) */
 	pm->tm_pause_halt = 2000.f;		/* (ms) */
@@ -230,8 +231,28 @@ pm_auto_config_default(pmc_t *pm)
 	pm->eabi_gain_SF = 5.E-2f;
 	pm->eabi_gain_IF = 0.1f;
 
+	pm->sincos_CONST[0] = 0.f;
+	pm->sincos_CONST[1] = 0.f;
+	pm->sincos_CONST[2] = 0.f;
+	pm->sincos_CONST[3] = 0.f;
+	pm->sincos_CONST[4] = 0.f;
+	pm->sincos_CONST[5] = 0.f;
+	pm->sincos_CONST[6] = 0.f;
+	pm->sincos_CONST[7] = 0.f;
+	pm->sincos_CONST[8] = 0.f;
+	pm->sincos_CONST[9] = 0.f;
+	pm->sincos_CONST[10] = 0.f;
+	pm->sincos_CONST[11] = 0.f;
+	pm->sincos_CONST[12] = 0.f;
+	pm->sincos_CONST[13] = 0.f;
+	pm->sincos_CONST[14] = 0.f;
+	pm->sincos_CONST[15] = 0.f;
+
 	pm->sincos_const_Zs = 1;
 	pm->sincos_const_Zq = 1;
+	pm->sincos_gain_PF = 5.E-1f;
+	pm->sincos_gain_SF = 5.E-3f;
+	pm->sincos_gain_IF = 0.1f;
 
 	pm->const_lambda = 0.f;			/* (Wb) */
 	pm->const_Rs = 0.f;			/* (Ohm) */
@@ -1697,38 +1718,47 @@ pm_sensor_eabi(pmc_t *pm)
 static void
 pm_sensor_sincos(pmc_t *pm)
 {
-	float			*FIR = pm->sincos_FIR;
-	float			scAN, locAN;
-	int			WRAP;
+	float		*CONST = pm->sincos_CONST;
+
+	float		F[2], A, B, ANG, locAN;
+	int		WRAP;
 
 	if (pm->sincos_RECENT != PM_ENABLED) {
+
+		pm->sincos_SC[2] = 0.f;
+
+		pm->sincos_revol = 0;
+		pm->sincos_unwrap = 0;
+
+		if (pm->config_LU_SENSOR == PM_SENSOR_SINCOS) {
+
+			pm->sincos_F[0] = pm->lu_F[0];
+			pm->sincos_F[1] = pm->lu_F[1];
+			pm->sincos_wS = pm->lu_wS;
+		}
 
 		pm->sincos_RECENT = PM_ENABLED;
 	}
 
 	if (pm->config_SINCOS_FRONTEND == PM_SINCOS_ANALOG) {
 
-		float		Q[9];
+		float		Q[7];
 
 		Q[0] = pm->fb_COS;
 		Q[1] = pm->fb_SIN;
-		Q[2] = Q[0] * Q[1];
-		Q[3] = Q[0] * Q[0];
-		Q[4] = Q[1] * Q[1];
-		Q[5] = Q[3] * Q[1];
-		Q[6] = Q[4] * Q[0];
-		Q[7] = Q[3] * Q[0];
-		Q[8] = Q[4] * Q[1];
+		Q[2] = pm->lu_iX;
+		Q[3] = pm->lu_iY;
+		Q[4] = Q[0] * Q[1];
+		Q[5] = Q[0] * Q[0];
+		Q[6] = Q[1] * Q[1];
 
-		pm->sincos_SC[0] = FIR[0] + FIR[2] * Q[0] + FIR[4]  * Q[1]
-			+ FIR[6]  * Q[2] + FIR[8]  * Q[3] + FIR[10] * Q[4]
-			+ FIR[12] * Q[5] + FIR[14] * Q[6] + FIR[16] * Q[7]
-			+ FIR[18] * Q[8];
+		pm->sincos_SC[0] = CONST[0] + CONST[1] * Q[0] + CONST[2] * Q[1]
+			+ CONST[3] * Q[2]   + CONST[4] * Q[3] + CONST[5] * Q[4]
+			+ CONST[6] * Q[5]   + CONST[7] * Q[6];
 
-		pm->sincos_SC[0] = FIR[1] + FIR[3] * Q[0] + FIR[5]  * Q[1]
-			+ FIR[7]  * Q[2] + FIR[9]  * Q[3] + FIR[11] * Q[4]
-			+ FIR[13] * Q[5] + FIR[15] * Q[6] + FIR[17] * Q[7]
-			+ FIR[19] * Q[8];
+		pm->sincos_SC[1] = CONST[8] + CONST[9] * Q[0]  + CONST[10] * Q[1]
+			+ CONST[11] * Q[2]  + CONST[12] * Q[3] + CONST[13] * Q[4]
+			+ CONST[14] * Q[5]  + CONST[15] * Q[6];
 	}
 	else if (pm->config_SINCOS_FRONTEND == PM_SINCOS_RESOLVER) {
 
@@ -1766,28 +1796,47 @@ pm_sensor_sincos(pmc_t *pm)
 		pm->sincos_revol += - WRAP;
 	}
 
-	scAN = m_atan2f(pm->sincos_SC[1], pm->sincos_SC[0])
+	ANG = m_atan2f(pm->sincos_SC[1], pm->sincos_SC[0])
 		+ (float) pm->sincos_revol * M_2_PI_F;
+
+	/* Take the electrical position DQ-axes.
+	 * */
+	locAN = ANG * pm->quick_ZiSQ;
+
+	F[0] = m_cosf(locAN);
+	F[1] = m_sinf(locAN);
+
+	A = F[0] * pm->sincos_F[0] + F[1] * pm->sincos_F[1];
+	B = F[1] * pm->sincos_F[0] - F[0] * pm->sincos_F[1];
+
+	if (A > M_EPSILON) {
+
+		m_rotatef(pm->sincos_F, B * pm->sincos_gain_PF);
+
+		pm->sincos_wS += B * pm->m_freq * pm->sincos_gain_SF;
+	}
+	else {
+		pm->sincos_F[0] = F[0];
+		pm->sincos_F[1] = F[1];
+	}
+
+	if (pm->sincos_gain_IF > M_EPSILON) {
+
+		A = pm_lu_accel(pm) * pm->m_dT;
+		pm->sincos_wS += A * pm->sincos_gain_IF;
+	}
+
+	m_rotatef(pm->sincos_F, pm->sincos_wS * pm->m_dT);
+	m_normalizef(pm->sincos_F);
 
 	if (pm->config_LU_LOCATION == PM_LOCATION_SINCOS) {
 
-		float		scLOC;
-
-		scLOC = scAN + (float) pm->sincos_unwrap * M_2_PI_F;
+		locAN = ANG + (float) pm->sincos_unwrap * M_2_PI_F;
 
 		/* Take the electrical absolute LOCATION.
 		 * */
-		pm->sincos_location = scLOC * pm->quick_ZiSQ;
+		pm->sincos_location = locAN * pm->quick_ZiSQ;
 	}
-
-	/* Take the electrical position.
-	 * */
-	locAN = scAN * pm->quick_ZiSQ;
-
-	pm->sincos_F[0] = m_cosf(locAN);
-	pm->sincos_F[1] = m_sinf(locAN);
-
-	/* TODO */
 }
 
 static void
@@ -1795,7 +1844,8 @@ pm_lu_FSM(pmc_t *pm)
 {
 	float			lu_F[2], hS, A, B;
 
-	int			lu_EABI = PM_DISABLED;
+	int			lu_EABI		= PM_DISABLED;
+	int			lu_SINCOS	= PM_DISABLED;
 
 	/* Get the current on DQ-axes.
 	 * */
@@ -1925,6 +1975,12 @@ pm_lu_FSM(pmc_t *pm)
 
 			pm->proc_set_Z(PM_Z_NONE);
 		}
+		else if (pm->config_LU_SENSOR == PM_SENSOR_SINCOS) {
+
+			pm->lu_MODE = PM_LU_SENSOR_SINCOS;
+
+			pm->proc_set_Z(PM_Z_NONE);
+		}
 		else if (pm->config_LU_FORCED == PM_ENABLED) {
 
 			if (		pm->config_LU_FREEWHEEL == PM_ENABLED
@@ -2035,6 +2091,10 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_MODE = PM_LU_SENSOR_EABI;
 			}
+			else if (pm->config_LU_SENSOR == PM_SENSOR_SINCOS) {
+
+				pm->lu_MODE = PM_LU_SENSOR_SINCOS;
+			}
 			else if (	pm->config_LU_ESTIMATE == PM_FLUX_KALMAN
 					&& pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
 
@@ -2140,7 +2200,17 @@ pm_lu_FSM(pmc_t *pm)
 		pm_estimate(pm);
 		pm_sensor_sincos(pm);
 
-		/* TODO */
+		lu_F[0] = pm->sincos_F[0];
+		lu_F[1] = pm->sincos_F[1];
+
+		lu_SINCOS = PM_ENABLED;
+
+		pm->lu_wS = pm->sincos_wS;
+
+		if (pm->flux_ZONE == PM_ZONE_HIGH) {
+
+			pm->lu_MODE = PM_LU_ESTIMATE;
+		}
 	}
 	else {
 		lu_F[0] = pm->lu_F[0];
@@ -2226,7 +2296,15 @@ pm_lu_FSM(pmc_t *pm)
 	}
 	else if (pm->config_LU_LOCATION == PM_LOCATION_SINCOS) {
 
-		/* TODO */
+		if (lu_SINCOS != PM_ENABLED) {
+
+			pm_sensor_sincos(pm);
+
+			lu_SINCOS = PM_ENABLED;
+		}
+
+		pm->lu_wS = pm->sincos_wS;
+		pm->lu_location = pm->sincos_location;
 	}
 
 	if (		pm->eabi_RECENT == PM_ENABLED

@@ -20,8 +20,8 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 - Sensorless vector control of PMSM by measurement of currents and voltages.
 - Robust ORTEGA observer with gain scheduling against speed.
-- Accurate KALMAN observer having convergence at HF injection (**EXPERIMENTAL**).
-- Flux weakening and MTPA control (**EXPERIMENTAL**).
+- Accurate KALMAN observer having convergence at HF injection.
+- Flux weakening and MTPA control.
 - Three and two phases machine connection.
 - Hardware abstraction layer (HAL) over STM32F4 and STM32F7.
 - Various controller hardware are supported (including VESC clones).
@@ -40,7 +40,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
   with inline or low-side placement.
 - Self-adjustment of all onboard measurements (current and voltage) along
   symmetrical channels.
-- Dead-Time Compensation (DCU) based on currents polatity (**EXPERIMENTAL**).
+- Dead-Time Compensation (DCU) based on currents polatity.
 
 - Advanced SVPWM scheme provides:
 	- Reduced switching losses and fully utilised DC link voltage.
@@ -62,6 +62,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 - Automated configuration of external measurements:
 	- Discrete Hall sensors installation angles recognition.
 	- EABI resolution and direction adjustment.
+	- Analog Hall sensors signal distortion adjustment.
 
 - Operation at low or zero speed:
 	- Forced control that applies a current vector without feedback to
@@ -71,7 +72,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 	- Discrete Hall sensors.
 	- AB quadrature incremental encoder (EABI).
 	- Absolute encoder on SPI interface (AS5047).
-	- Analog Hall sensors and resolver decoder (**TODO**).
+	- Analog Hall sensors and resolver decoder (**EXPERIMENTAL**).
 
 - Nested control loops:
 	- Detached voltage monitoring.
@@ -81,7 +82,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 - Adjustable constraints:
 	- Phase current (forward and reverse, on HFI current, weakening current).
-	- Hardware overtemperature protection (derate phase current or halt).
+	- Overtemperature protection (derate phase current or halt).
 	- Machine voltage applied from VSI.
 	- DC link current consumption and regeneration.
 	- DC link overvoltage and undervoltage.

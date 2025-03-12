@@ -4363,6 +4363,7 @@ page_config(struct public *pub)
 		reg_float(pub, "pm.tm_average_probe", "Average probe time");
 		reg_float(pub, "pm.tm_average_drift", "Average drift time");
 		reg_float(pub, "pm.tm_average_inertia", "Average inertia time");
+		reg_float(pub, "pm.tm_average_outside", "Average outside time");
 		reg_float(pub, "pm.tm_pause_startup", "Startup pause");
 		reg_float(pub, "pm.tm_pause_forced", "FORCED pause");
 		reg_float(pub, "pm.tm_pause_halt", "Halt pause");
@@ -5086,7 +5087,164 @@ page_lu_eabi(struct public *pub)
 static void
 page_lu_sincos(struct public *pub)
 {
-	/* TODO */
+	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
+	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
+
+	int				m_drawing = pub->fe_def_size_x / 4;
+
+	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+
+	if (nk_menu_begin_label(ctx, "Menu", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 800)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "SINCOS self-adjustment", NK_TEXT_LEFT)) {
+
+			if (link_command(lp, "pm_adjust_sensor_sincos") != 0) {
+
+				lp->command_state = LINK_COMMAND_PENDING;
+			}
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	nk_style_pop_vec2(ctx);
+	nk_menubar_end(ctx);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_errno(pub, "pm.fsm_errno", "FSM error code", 1);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "hal.config_SINCOS_FRONTEND");
+
+	if (reg != NULL && reg->lval == 0) {
+
+		int		N;
+
+		for (N = 0; N < 16; ++ N) {
+
+			sprintf(pub->lbuf, "pm.sincos_CONST%d", N);
+			sprintf(pub->lbuf + 80, "SINCOS CONST %d", N);
+
+			reg_float(pub, pub->lbuf, pub->lbuf + 80);
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
+	reg_float(pub, "pm.sincos_const_Zs", "Gear teeth number S");
+	reg_float(pub, "pm.sincos_const_Zq", "Gear teeth number Q");
+	reg_float(pub, "pm.sincos_gain_PF", "SINCOS position gain");
+	reg_float(pub, "pm.sincos_gain_SF", "SINCOS speed loop gain");
+	reg_float(pub, "pm.sincos_gain_IF", "Torque insight gain");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg = link_reg_lookup(lp, "pm.lu_MODE");
+
+	if (reg != NULL) {
+
+		int		rate, fast;
+
+		reg->update = 1000;
+
+		rate = (reg->lval != 0) ? 400 : 0;
+		fast = (reg->lval != 0) ? 20  : 0;
+
+		reg = link_reg_lookup(lp, "pm.lu_location");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(lp, "pm.lu_location");
+		if (reg != NULL) { reg->shown = lp->clock; reg->update = fast; }
+
+		reg = link_reg_lookup(lp, "pm.lu_wS");
+		if (reg != NULL) { reg += reg->um_sel; reg->update = rate; }
+
+		reg = link_reg_lookup(lp, "pm.fb_SIN");
+		if (reg != NULL) { reg->update = rate; }
+
+		reg = link_reg_lookup(lp, "pm.fb_COS");
+		if (reg != NULL) { reg->update = rate; }
+	}
+
+	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
+
+	reg_float_um(pub, "pm.lu_location", "LU location", 1);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+	reg_float(pub, "pm.fb_SIN", "SIN feedback");
+	reg_float(pub, "pm.fb_COS", "COS feedback");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, m_drawing + 20);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
+	nk_layout_row_template_push_static(ctx, m_drawing + 20);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+
+	if (nk_group_begin(ctx, "MOTOR", NK_WINDOW_BORDER)) {
+
+		float		fpos[2] = { 0.f, 0.f };
+		int		const_Zp = 1;
+
+		nk_layout_row_static(ctx, m_drawing, m_drawing, 1);
+
+		reg = link_reg_lookup(lp, "pm.const_Zp");
+		if (reg != NULL) { const_Zp = reg->lval; }
+
+		reg = link_reg_lookup(lp, "pm.lu_location");
+
+		if (reg != NULL) {
+
+			fpos[0] = cosf(reg->fval / (float) const_Zp);
+			fpos[1] = sinf(reg->fval / (float) const_Zp);
+
+			pub_drawing_machine_position(pub, fpos, DRAWING_WITH_TOOTH);
+		}
+
+		nk_group_end(ctx);
+	}
+
+	if (		lp->unable_warning[0] != 0
+			&& pub->popup_enum == POPUP_NONE) {
+
+		strcpy(pub->popup_msg, lp->unable_warning);
+		pub->popup_enum = POPUP_UNABLE_WARNING;
+
+		lp->unable_warning[0] = 0;
+	}
+
+	if (		lp->command_state == LINK_COMMAND_RUNING
+			&& lp->locked < lp->clock + 100
+			&& pub->popup_enum == POPUP_NONE) {
+
+		pub->popup_enum = POPUP_LINK_COMMAND;
+		lp->command_state = LINK_COMMAND_WAITING;
+	}
+
+	pub_popup_command(pub, POPUP_LINK_COMMAND, lp->command_state);
+	pub_popup_message(pub, POPUP_UNABLE_WARNING, pub->popup_msg);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+	nk_spacer(ctx);
 }
 
 static void

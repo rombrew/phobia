@@ -161,13 +161,13 @@ LD_VECTORS void *vtab[] = {
 static void
 init_data(const uint32_t *long_s, uint32_t *long_d, const uint32_t *long_e)
 {
-	while (long_d < long_e) { *long_d++ = *long_s++; }
+	while (long_d < long_e) { * (long_d++) = * (long_s++); }
 }
 
 static void
 init_bss(uint32_t *long_d, const uint32_t *long_e)
 {
-	while (long_d < long_e) { *long_d++ = 0; }
+	while (long_d < long_e) { * (long_d++) = 0U; }
 }
 
 void irq_Reset()

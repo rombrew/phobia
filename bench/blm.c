@@ -193,8 +193,8 @@ blm_equation(const blm_t *m, const double state[7], double y[7])
 
 	/* Thermal drift.
 	 * */
-	Rs = m->Rs * (1. + 4.E-3 * (state[4] - m->Ta));
-	lambda = m->lambda * (1. - 1.E-3 * (state[4] - m->Ta));
+	Rs = m->Rs * (1. + 3.93E-3 * (state[4] - m->Ta));
+	lambda = m->lambda * (1. - 1.20E-3 * (state[4] - m->Ta));
 
 	/* Voltage from VSI.
 	 * */

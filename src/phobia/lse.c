@@ -386,7 +386,7 @@ void lse_ridge(lse_t *ls, lse_float_t la)
 
 	int		i, j;
 
-	/* Add bias using the unit matrix multiplied by \la.
+	/* Add bias using the unity matrix multiplied by \la.
 	 * */
 	for (i = 0; i < ls->n_len_of_x; ++i) {
 

@@ -377,7 +377,7 @@ void bench_script()
 
 	tlm_restart();
 
-	m.Rs = 400.E-3;
+	m.Rs = 40.E-3;
 	m.Ld = 35.E-6;
 	m.Lq = 65.E-6;
 	m.Udc = 49.;

@@ -597,7 +597,92 @@ SH_DEF(pm_adjust_sensor_eabi)
 
 SH_DEF(pm_adjust_sensor_sincos)
 {
-	/* TODO */
+	int		backup_LU_SENSOR;
+	int		backup_LU_DRIVE;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
+
+	do {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		if (pm_wait_IDLE() != PM_OK)
+			break;
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+
+		if (pm_wait_spinup() != PM_OK)
+			break;
+
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
+		pm.fsm_req = PM_STATE_ADJUST_SENSOR_SINCOS;
+
+		vTaskDelay((TickType_t) 400);
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
+
+		vTaskDelay((TickType_t) 400);
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+
+		vTaskDelay((TickType_t) 400);
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
+
+		vTaskDelay((TickType_t) 400);
+
+		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
+
+		vTaskDelay((TickType_t) 400);
+
+		if (pm_wait_IDLE() != PM_OK)
+			break;
+
+		reg_OUTP(ID_PM_SINCOS_CONST0);
+		reg_OUTP(ID_PM_SINCOS_CONST1);
+		reg_OUTP(ID_PM_SINCOS_CONST2);
+		reg_OUTP(ID_PM_SINCOS_CONST3);
+		reg_OUTP(ID_PM_SINCOS_CONST4);
+		reg_OUTP(ID_PM_SINCOS_CONST5);
+		reg_OUTP(ID_PM_SINCOS_CONST6);
+		reg_OUTP(ID_PM_SINCOS_CONST7);
+		reg_OUTP(ID_PM_SINCOS_CONST8);
+		reg_OUTP(ID_PM_SINCOS_CONST9);
+		reg_OUTP(ID_PM_SINCOS_CONST10);
+		reg_OUTP(ID_PM_SINCOS_CONST11);
+		reg_OUTP(ID_PM_SINCOS_CONST12);
+		reg_OUTP(ID_PM_SINCOS_CONST13);
+		reg_OUTP(ID_PM_SINCOS_CONST14);
+		reg_OUTP(ID_PM_SINCOS_CONST15);
+
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+		if (pm_wait_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		pm.fsm_req = PM_STATE_HALT;
+	}
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(ld_probe_const_inertia)

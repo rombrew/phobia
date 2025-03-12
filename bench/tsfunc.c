@@ -425,6 +425,70 @@ void ts_adjust_sensor_eabi()
 	pm.config_LU_DRIVE = backup_LU_DRIVE;
 }
 
+void ts_adjust_sensor_sincos()
+{
+	int		backup_LU_SENSOR, backup_LU_DRIVE;
+
+	int		N;
+
+	backup_LU_SENSOR = pm.config_LU_SENSOR;
+	backup_LU_DRIVE = pm.config_LU_DRIVE;
+
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
+
+	do {
+		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		if (ts_wait_IDLE() != PM_OK)
+			break;
+
+		pm.s_setpoint_speed = pm.probe_speed_hold;
+
+		if (ts_wait_spinup() != PM_OK)
+			break;
+
+		pm.fsm_req = PM_STATE_ADJUST_SENSOR_SINCOS;
+
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
+				* pm.const_fb_U / pm.const_lambda;
+
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		pm.s_setpoint_speed = pm.probe_speed_hold;
+
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
+				* pm.const_fb_U / pm.const_lambda;
+
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		pm.s_setpoint_speed = pm.probe_speed_hold;
+
+		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		if (ts_wait_IDLE() != PM_OK)
+			break;
+
+		for (N = 0; N < 16; ++N) {
+
+			printf("sincos_CONST[%i] = %.6f\n", N, pm.sincos_CONST[N]);
+		}
+
+		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+
+		if (ts_wait_IDLE() != PM_OK)
+			break;
+	}
+	while (0);
+
+	pm.config_LU_SENSOR = backup_LU_SENSOR;
+	pm.config_LU_DRIVE = backup_LU_DRIVE;
+}
+
 static void
 blm_proc_DC(int A, int B, int C)
 {
@@ -704,6 +768,56 @@ ts_script_eabi(int knob_EABI)
 	pm.config_LU_SENSOR = PM_SENSOR_NONE;
 }
 
+static void
+ts_script_sincos()
+{
+	int		backup_LU_ESTIMATE;
+
+	ts_adjust_sensor_sincos();
+	blm_restart(&m);
+
+	backup_LU_ESTIMATE = pm.config_LU_ESTIMATE;
+
+	pm.config_LU_ESTIMATE = PM_FLUX_NONE;
+	pm.config_LU_SENSOR = PM_SENSOR_SINCOS;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	ts_wait_IDLE();
+
+	m.unsync_flag = 1;
+
+	pm.s_setpoint_speed = 50.f * pm.k_EMAX / 100.f
+			* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_spinup();
+	sim_runtime(0.5);
+
+	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 20.f;
+	sim_runtime(0.5);
+
+	m.Mq[0] = 0.f;
+	sim_runtime(0.5);
+
+	TS_assert(pm.lu_MODE == PM_LU_SENSOR_SINCOS);
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
+
+	pm.s_setpoint_speed = 10.f * pm.k_EMAX / 100.f
+		* pm.const_fb_U / pm.const_lambda;
+
+	ts_wait_spinup();
+	sim_runtime(0.5);
+
+	TS_assert_absolute(pm.lu_wS, pm.s_setpoint_speed, 50.);
+
+	m.unsync_flag = 0;
+
+	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+	ts_wait_IDLE();
+
+	pm.config_LU_ESTIMATE = backup_LU_ESTIMATE;
+	pm.config_LU_SENSOR = PM_SENSOR_NONE;
+}
+
 void ts_script_test()
 {
 	blm_enable(&m);
@@ -811,6 +925,9 @@ void ts_script_test()
 	  blm_restart(&m);*/
 
 	ts_script_hall();
+	blm_restart(&m);
+
+	ts_script_sincos();
 	blm_restart(&m);
 }
 
