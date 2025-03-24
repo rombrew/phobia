@@ -53,6 +53,7 @@ void blm_enable(blm_t *m)
 	m->pwm_dT = 35.E-6;		/* PWM cycle (Second)    */
 	m->pwm_deadtime = 90.E-9;	/* PWM deadtime (Second) */
 	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
+	m->pwm_advance = 0.2E-6;	/* PWM advance (Second)  */
 	m->pwm_resolution = 2940;	/* PWM resolution        */
 
 	/* Threshold about deadtime (Ampere).
@@ -118,7 +119,7 @@ void blm_enable(blm_t *m)
 	/* Sensor time constant (Second).
 	 * */
 	m->tau_A = 0.636E-6;
-	m->tau_B = 25.53E-6;
+	m->tau_B = 5.940E-6;
 
 	/* Sensor measurement range.
 	 * */
@@ -174,14 +175,15 @@ void blm_restart(blm_t *m)
 	m->xdtu[1] = 0;
 	m->xdtu[2] = 0;
 
-	m->event[0].ev = 1;
-	m->event[1].ev = 2;
-	m->event[2].ev = 3;
-	m->event[3].ev = 4;
-	m->event[4].ev = 5;
-	m->event[5].ev = 6;
-	m->event[6].ev = 7;
-	m->event[7].ev = 8;
+	m->event[0].ev = 0;
+	m->event[1].ev = 1;
+	m->event[2].ev = 2;
+	m->event[3].ev = 3;
+	m->event[4].ev = 4;
+	m->event[5].ev = 5;
+	m->event[6].ev = 6;
+	m->event[7].ev = 7;
+	m->event[8].ev = 8;
 
 	m->revol = 0;
 }
@@ -481,20 +483,20 @@ blm_sample_analog(blm_t *m)
 static void
 blm_pwm_bsort(blm_t *m)
 {
-	int		ebuf[2];
-	int		i;
+	int		ebuf[2], i;
 
 	do {
 		ebuf[0] = 0;
 
 		/* Bubble SORT.
 		 * */
-		for (i = 1; i < 8; ++i) {
+		for (i = 1; i < 9; ++i) {
 
 			if (m->event[i - 1].comp < m->event[i].comp) {
 
 				ebuf[0] = m->event[i].ev;
 				ebuf[1] = m->event[i].comp;
+
 				m->event[i].ev   = m->event[i - 1].ev;
 				m->event[i].comp = m->event[i - 1].comp;
 				m->event[i - 1].ev   = ebuf[0];
@@ -609,9 +611,9 @@ static void
 blm_pwm_solve(blm_t *m)
 {
 	double		dTu;
-	int		rev[9], level, xA, xB, xC, i, xMIN, xMAX;
+	int		rev[9], xA, xB, xC, xMIN, xMAX, xAD, xCONV, level, i;
 
-	for (i = 0; i < 8; ++i) {
+	for (i = 0; i < 9; ++i) {
 
 		level = m->event[i].ev;
 		rev[level] = i;
@@ -622,10 +624,14 @@ blm_pwm_solve(blm_t *m)
 	xMIN = (int) (m->pwm_minimal * (double) m->pwm_resolution / m->pwm_dT);
 	xMAX = m->pwm_resolution;
 
+	xAD = (int) (m->pwm_advance / dTu);
+	xCONV = (int) (m->adc_Tconv / dTu);
+
 	/* ADC sampling.
 	 * */
-	m->event[rev[1]].comp = xMAX - (int) (m->adc_Tconv / dTu);
-	m->event[rev[2]].comp = xMAX - (int) (2. * m->adc_Tconv / dTu);
+	m->event[rev[0]].comp = xMAX - (xAD + 0 * xCONV);
+	m->event[rev[1]].comp = xMAX - (xAD + 1 * xCONV);
+	m->event[rev[2]].comp = xMAX - (xAD + 2 * xCONV);
 
 	xA = (m->pwm_A < xMIN) ? 0 : m->pwm_A + (int) (m->pwm_deadtime / dTu);
 	xB = (m->pwm_B < xMIN) ? 0 : m->pwm_B + (int) (m->pwm_deadtime / dTu);
@@ -651,13 +657,11 @@ blm_pwm_solve(blm_t *m)
 	 * */
 	blm_pwm_bsort(m);
 
-	/* PWM count up.
-	 * */
-	blm_pwm_up_event(m, 0);
-
 	level = xMAX;
 
-	for (i = 0; i < 8; ++i) {
+	/* PWM count up.
+	 * */
+	for (i = 0; i < 9; ++i) {
 
 		if (level != m->event[i].comp) {
 
@@ -669,16 +673,16 @@ blm_pwm_solve(blm_t *m)
 		blm_pwm_up_event(m, m->event[i].ev);
 	}
 
-	if (m->event[7].comp != 0) {
+	if (m->event[8].comp != 0) {
 
-		blm_solve(m, dTu * m->event[7].comp);
+		blm_solve(m, dTu * m->event[8].comp);
 	}
 
 	level = 0;
 
 	/* PWM count down.
 	 * */
-	for (i = 7; i >= 0; --i) {
+	for (i = 8; i >= 0; --i) {
 
 		if (level != m->event[i].comp) {
 

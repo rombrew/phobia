@@ -259,6 +259,16 @@ tlm_proc_step(double dT)
 	tlm.y[17] = m.state[13];
 	tlm.y[18] = m.state[14];
 
+	/* Analog feedback.
+	 * */
+	tlm.y[19] = m.analog_iA;
+	tlm.y[20] = m.analog_iB;
+	tlm.y[21] = m.analog_iC;
+	tlm.y[22] = m.analog_uA;
+	tlm.y[23] = m.analog_uB;
+	tlm.y[24] = m.analog_uC;
+	tlm.y[25] = m.analog_uS;
+
 	fwrite(tlm.y, sizeof(float), 40, tlm.fd_pwm);
 
 	tlm.hatch = (tlm.hatch == 0) ? 1 : 0;
@@ -283,8 +293,10 @@ tlm_PWM_grab()
 	m.sol_dT = 10.E-9;
 	m.proc_step = &tlm_proc_step;
 
-	/* Collect telemetry in one PWM cycle.
+	/* Collect telemetry in three PWM cycle.
 	 * */
+	blm_update(&m);
+	blm_update(&m);
 	blm_update(&m);
 
 	fclose(tlm.fd_pwm);
@@ -377,9 +389,9 @@ void bench_script()
 
 	tlm_restart();
 
-	m.Rs = 40.E-3;
-	m.Ld = 35.E-6;
-	m.Lq = 65.E-6;
+	m.Rs = 20.E-3;
+	m.Ld = 15.E-6;
+	m.Lq = 25.E-6;
 	m.Udc = 49.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
@@ -428,7 +440,7 @@ void bench_script()
 	pm.s_setpoint_speed = 700.f;
 	sim_runtime(1.0);
 
-	sim_runtime(2.0);
+	/*sim_runtime(2.0);*/
 
 	tlm_PWM_grab();
 }

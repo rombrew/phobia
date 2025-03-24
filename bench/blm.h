@@ -16,6 +16,7 @@ typedef struct {
 	double		pwm_dT;
 	double		pwm_deadtime;
 	double		pwm_minimal;
+	double		pwm_advance;
 	int		pwm_resolution;
 
 	double		Dtol;
@@ -37,7 +38,7 @@ typedef struct {
 		int	ev;
 		int	comp;
 	}
-	event[8];
+	event[9];
 
 	double		Rs;
 	double		Ld;

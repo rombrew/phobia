@@ -25,26 +25,32 @@ figure 0 9 "m.iC"
 page "DC link Voltage"
 label 1 "(V)"
 figure 0 10 "m.Udc"
-figure 0 14 "m.analog[Udc.A]"
-drawing dash 2
-figure 0 15 "m.analog[Udc.B]"
-drawing dash 2
+figure 0 14 "m.state[Udc.A]"
+figure 0 15 "m.state[Udc.B]"
+figure 0 25 "m.analog_uS"
+drawing line 1
 
-page "ADC Current"
+page "Analog Current"
 label 1 "(A)"
-figure 0 11 "m.analog[iA]"
-drawing dash 2
-figure 0 12 "m.analog[iB]"
-drawing dash 2
-figure 0 13 "m.analog[iC]"
-drawing dash 2
+figure 0 11 "m.state[iA]"
+figure 0 19 "m.analog_iA"
+drawing line 1
+figure 0 12 "m.state[iB]"
+figure 0 20 "m.analog_iB"
+drawing line 1
+figure 0 13 "m.state[iC]"
+figure 0 21 "m.analog_iC"
+drawing line 1
 
-page "ADC Voltage"
+page "Analog Voltage"
 label 1 "(V)"
-figure 0 16 "m.analog[uA]"
-drawing dash 2
-figure 0 17 "m.analog[uB]"
-drawing dash 2
-figure 0 18 "m.analog[uC]"
-drawing dash 2
+figure 0 16 "m.state[uA]"
+figure 0 22 "m.analog_uA"
+drawing line 1
+figure 0 17 "m.state[uB]"
+figure 0 23 "m.analog_uB"
+drawing line 1
+figure 0 18 "m.state[uC]"
+figure 0 24 "m.analog_uC"
+drawing line 1
 
