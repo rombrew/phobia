@@ -9,7 +9,7 @@ float ntc_read_temperature(ntc_t *ntc)
 {
 	float			um, ohm, temp;
 
-	um = ADC_get_sample(ntc->gpio) / hal.ADC_reference_voltage;
+	um = ADC_analog_sample(ntc->gpio) / hal.ADC_reference_voltage;
 
 	switch (ntc->type) {
 

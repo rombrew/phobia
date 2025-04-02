@@ -139,6 +139,11 @@ typedef struct {
 	float		ADC_voltage_B;
 	float		ADC_voltage_C;
 
+#if (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
+	float		ADC_analog_SIN;
+	float		ADC_analog_COS;
+#endif /* ADC_SEQUENCE__ABC_UTT_TSC */
+
 #ifdef HW_HAVE_NETWORK_EPCAN
 	int		CAN_bitfreq;
 	int		CAN_errate;

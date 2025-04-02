@@ -295,7 +295,7 @@ SH_DEF(hal_ADC_scan)
 
 		GPIO_set_mode_ANALOG(xGPIO);
 
-		um = ADC_get_sample(xGPIO);
+		um = ADC_analog_sample(xGPIO);
 
 		printf("P%c%i %4f (V)" EOL, 'A' + XGPIO_GET_PORT(xGPIO),
 				XGPIO_GET_N(xGPIO), &um);

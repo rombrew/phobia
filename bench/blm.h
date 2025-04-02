@@ -16,7 +16,6 @@ typedef struct {
 	double		pwm_dT;
 	double		pwm_deadtime;
 	double		pwm_minimal;
-	double		pwm_advance;
 	int		pwm_resolution;
 
 	double		Dtol;
@@ -58,6 +57,8 @@ typedef struct {
 	double		Mq[4];
 
 	double		adc_Tconv;
+	double		adc_Toffset;
+
 	double		tau_A;
 	double		tau_B;
 	double		range_A;
@@ -70,6 +71,10 @@ typedef struct {
 	double		eabi_Zq;
 
 	double		analog_Zq;
+
+	float		hold_iA;
+	float		hold_iB;
+	float		hold_iC;
 
 	float		analog_iA;
 	float		analog_iB;

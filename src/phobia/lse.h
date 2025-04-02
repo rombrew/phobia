@@ -36,12 +36,12 @@ typedef struct {
 
 	/* Content of the upper-triangular matrix.
 	 * */
-	lse_float_t	*m;
+	lse_float_t	* restrict m;
 
 #if LSE_FAST_GIVENS != 0
 	/* Content of the scale diagonal matrix.
 	 * */
-	lse_float_t	*d;
+	lse_float_t	* restrict d;
 #endif /* LSE_FAST_GIVENS */
 }
 lse_upper_t;
@@ -54,7 +54,7 @@ typedef struct {
 
 	/* Content of the row-vector.
 	 * */
-	lse_float_t	*m;
+	lse_float_t	* restrict m;
 }
 lse_row_t;
 

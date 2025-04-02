@@ -71,7 +71,7 @@ ADC_get_knob_ANG()
 {
 	float			knob;
 
-	knob = ADC_get_sample(GPIO_ADC_KNOB_ANG);
+	knob = ADC_analog_sample(GPIO_ADC_KNOB_ANG);
 
 	return knob * hal.const_ADC.GK;
 }
@@ -82,7 +82,7 @@ ADC_get_knob_BRK()
 {
 	float			knob;
 
-	knob = ADC_get_sample(GPIO_ADC_KNOB_BRK);
+	knob = ADC_analog_sample(GPIO_ADC_KNOB_BRK);
 
 	return knob * hal.const_ADC.GK;
 }
@@ -190,7 +190,7 @@ LD_TASK void task_TEMP(void *pData)
 		 * */
 		vTaskDelayUntil(&xWake, (TickType_t) 100);
 
-		ap.temp_MCU = ADC_get_sample(GPIO_ADC_TEMPINT);
+		ap.temp_MCU = ADC_analog_sample(GPIO_ADC_TEMPINT);
 
 		if (ap.ntc_PCB.type != NTC_NONE) {
 
@@ -1060,6 +1060,11 @@ void ADC_IRQ()
 	fb.voltage_A = hal.ADC_voltage_A;
 	fb.voltage_B = hal.ADC_voltage_B;
 	fb.voltage_C = hal.ADC_voltage_C;
+
+#if (HW_ADC_SAMPLING_SEQUENCE == ADC_SEQUENCE__ABC_UTT_TSC)
+	fb.analog_SIN = hal.ADC_analog_SIN;
+	fb.analog_COS = hal.ADC_analog_COS;
+#endif /* ADC_SEQUENCE__ABC_UTT_TSC */
 
 	fb.pulse_HS = 0;
 	fb.pulse_EP = 0;

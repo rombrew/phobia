@@ -33,24 +33,18 @@ drawing line 1
 page "Analog Current"
 label 1 "(A)"
 figure 0 11 "m.state[iA]"
-figure 0 19 "m.analog_iA"
-drawing line 1
+figure 0 19 "m.hold_iA"
 figure 0 12 "m.state[iB]"
-figure 0 20 "m.analog_iB"
-drawing line 1
+figure 0 20 "m.hold_iB"
 figure 0 13 "m.state[iC]"
-figure 0 21 "m.analog_iC"
-drawing line 1
+figure 0 21 "m.hold_iC"
 
 page "Analog Voltage"
 label 1 "(V)"
 figure 0 16 "m.state[uA]"
 figure 0 22 "m.analog_uA"
-drawing line 1
 figure 0 17 "m.state[uB]"
 figure 0 23 "m.analog_uB"
-drawing line 1
 figure 0 18 "m.state[uC]"
 figure 0 24 "m.analog_uC"
-drawing line 1
 

@@ -822,7 +822,7 @@ pm_flux_detached(pmc_t *pm)
 
 	/* Absolute back EMF voltage.
 	 * */
-	U = m_sqrtf(uX * uX + uY * uY);
+	U = m_hypotf(uX, uY);
 
 	if (U > pm->detach_threshold) {
 
@@ -932,7 +932,7 @@ pm_flux_ortega(pmc_t *pm)
 	fX = pm->flux_X[0] - lX;
 	fY = pm->flux_X[1] - lY;
 
-	E = m_sqrtf(fX * fX + fY * fY);
+	E = m_hypotf(fX, fY);
 
 	pm->flux_lambda = E;
 
@@ -2420,7 +2420,7 @@ void pm_voltage(pmc_t *pm, float uX, float uY)
 	uX *= pm->quick_iU;
 	uY *= pm->quick_iU;
 
-	uDC = m_sqrtf(uX * uX + uY * uY);
+	uDC = m_hypotf(uX, uY);
 
 	pm->vsi_DC = uDC / pm->k_EMAX;
 	pm->vsi_lpf_DC += (pm->vsi_DC - pm->vsi_lpf_DC) * pm->vsi_gain_LP;
@@ -3289,7 +3289,7 @@ pm_loop_speed(pmc_t *pm)
 static void
 pm_loop_location(pmc_t *pm)
 {
-	float		xSP, wSP, eRSU, eABS, blend, gain;
+	float		xSP, wSP, eSP, len, weak, gain;
 
 	xSP = pm->x_setpoint_location;
 	wSP = pm->x_setpoint_speed;
@@ -3315,23 +3315,21 @@ pm_loop_location(pmc_t *pm)
 
 	/* Obtain the location discrepancy.
 	 * */
-	eRSU = pm->x_setpoint_location - pm->lu_location;
-
-	/* Servo is based on constant acceleration formula.
-	 * */
-	eABS = m_fabsf(eRSU);
-	eRSU = (eRSU < 0.f) ? - m_sqrtf(eABS) : m_sqrtf(eABS);
+	eSP = pm->x_setpoint_location - pm->lu_location;
+	len = m_fabsf(eSP);
 
 	/* There is a residual tolerance.
 	 * */
-	eRSU = (eABS > pm->x_track_tol) ? eRSU : 0.f;
+	eSP = (len > pm->x_track_tol) ? eSP : 0.f;
 
-	/* Damping inside NEAR zone.
+	/* Damping inside BOOST zone.
 	 * */
-	blend = (eABS < pm->x_boost_tol) ? eABS * m_fast_recipf(pm->x_boost_tol) : 1.f;
-	gain = pm->x_gain_P * blend + pm->x_gain_D * (1.f - blend);
+	weak = (len < pm->x_boost_tol) ? len * m_fast_recipf(pm->x_boost_tol) : 1.f;
+	gain = pm->x_gain_P * weak + pm->x_gain_D * (1.f - weak);
 
-	wSP += gain * eRSU;
+	/* Based on constant acceleration formula.
+	 * */
+	wSP += gain * eSP * m_rough_rsqrtf(len);
 
 	/* Update speed loop SETPOINT.
 	 * */

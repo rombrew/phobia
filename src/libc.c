@@ -18,25 +18,25 @@ void *memset(void *d, int c, size_t len)
 
 	if (likely(((uint32_t) ld & 3U) == 0U)) {
 
-		const uint32_t	*lt = ld + len / 4U;
+		const uint32_t	*ld_end = ld + len / 4U;
 
 		fill = (uint8_t) c;
 		fill |= (fill << 8);
 		fill |= (fill << 16);
 
-		while (ld < lt) {
+		while (ld < ld_end) {
 
 			* (ld++) = fill;
 		}
 	}
 
 	{
-		uint8_t		*xd = (uint8_t *) ld;
-		const uint8_t	*xt = (const uint8_t *) d + len;
+		uint8_t		*bd = (uint8_t *) ld;
+		const uint8_t	*bd_end = (const uint8_t *) d + len;
 
-		while (xd < xt) {
+		while (bd < bd_end) {
 
-			* (xd++) = (uint8_t) c;
+			* (bd++) = (uint8_t) c;
 		}
 	}
 
@@ -45,28 +45,29 @@ void *memset(void *d, int c, size_t len)
 
 void *memcpy(void *restrict d, const void *restrict s, size_t len)
 {
-	uint32_t	*restrict ld = (uint32_t * restrict) d;
-	const uint32_t	*restrict ls = (const uint32_t * restrict) s;
+	uint32_t	*ld = (uint32_t *) d;
+	const uint32_t	*ls = (const uint32_t *) s;
 
 	if (likely(		   ((uint32_t) ld & 3U) == 0U
 				&& ((uint32_t) ls & 3U) == 0U)) {
 
-		const uint32_t	*restrict lt = ld + len / 4U;
+		const uint32_t	*ld_end = ld + len / 4U;
 
-		while (ld < lt) {
+		while (ld < ld_end) {
 
 			* (ld++) = * (ls++);
 		}
 	}
 
 	{
-		uint8_t		*restrict xd = (uint8_t * restrict) ld;
-		const uint8_t	*restrict xt = (const uint8_t * restrict) d + len;
-		const uint8_t	*restrict xs = (const uint8_t * restrict) ls;
+		uint8_t		*bd = (uint8_t *) ld;
+		const uint8_t	*bs = (const uint8_t *) ls;
 
-		while (xd < xt) {
+		const uint8_t	*bd_end = (const uint8_t *) d + len;
 
-			* (xd++) = * (xs++);
+		while (bd < bd_end) {
+
+			* (bd++) = * (bs++);
 		}
 	}
 

@@ -120,19 +120,20 @@ void SPI_startup(int bus, int freq, int mode)
 	priv_SPI[bus].SPI->CR2 = dsize << SPI_CR2_DS_Pos;
 #endif /* STM32Fx */
 
+	GPIO_set_mode_OUTPUT(priv_SPI[bus].gpio_NSS);
+	GPIO_set_HIGH(priv_SPI[bus].gpio_NSS);
+
+	GPIO_set_mode_SPEED_FAST(priv_SPI[bus].gpio_NSS);
+
 	switch (bus) {
 
 		default:
 		case BUS_ID_SPI1:
 
-			GPIO_set_mode_OUTPUT(GPIO_SPI1_NSS);
-			GPIO_set_HIGH(GPIO_SPI1_NSS);
-
 			GPIO_set_mode_FUNCTION(GPIO_SPI1_SCK);
 			GPIO_set_mode_FUNCTION(GPIO_SPI1_MISO);
 			GPIO_set_mode_FUNCTION(GPIO_SPI1_MOSI);
 
-			GPIO_set_mode_SPEED_FAST(GPIO_SPI1_NSS);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI1_SCK);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI1_MISO);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI1_MOSI);
@@ -140,14 +141,10 @@ void SPI_startup(int bus, int freq, int mode)
 
 		case BUS_ID_SPI2:
 
-			GPIO_set_mode_OUTPUT(GPIO_SPI2_NSS);
-			GPIO_set_HIGH(GPIO_SPI2_NSS);
-
 			GPIO_set_mode_FUNCTION(GPIO_SPI2_SCK);
 			GPIO_set_mode_FUNCTION(GPIO_SPI2_MISO);
 			GPIO_set_mode_FUNCTION(GPIO_SPI2_MOSI);
 
-			GPIO_set_mode_SPEED_FAST(GPIO_SPI2_NSS);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI2_SCK);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI2_MISO);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI2_MOSI);
@@ -155,14 +152,10 @@ void SPI_startup(int bus, int freq, int mode)
 
 		case BUS_ID_SPI3:
 
-			GPIO_set_mode_OUTPUT(GPIO_SPI3_NSS);
-			GPIO_set_HIGH(GPIO_SPI3_NSS);
-
 			GPIO_set_mode_FUNCTION(GPIO_SPI3_SCK);
 			GPIO_set_mode_FUNCTION(GPIO_SPI3_MISO);
 			GPIO_set_mode_FUNCTION(GPIO_SPI3_MOSI);
 
-			GPIO_set_mode_SPEED_FAST(GPIO_SPI3_NSS);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI3_SCK);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI3_MISO);
 			GPIO_set_mode_SPEED_FAST(GPIO_SPI3_MOSI);
@@ -266,12 +259,13 @@ void SPI_halt(int bus)
 	if (priv_SPI[bus].SPI == 0)
 		return ;
 
+	GPIO_set_mode_INPUT(priv_SPI[bus].gpio_NSS);
+
 	switch (bus) {
 
 		default:
 		case BUS_ID_SPI1:
 
-			GPIO_set_mode_INPUT(GPIO_SPI1_NSS);
 			GPIO_set_mode_INPUT(GPIO_SPI1_SCK);
 			GPIO_set_mode_INPUT(GPIO_SPI1_MISO);
 			GPIO_set_mode_INPUT(GPIO_SPI1_MOSI);
@@ -279,7 +273,6 @@ void SPI_halt(int bus)
 
 		case BUS_ID_SPI2:
 
-			GPIO_set_mode_INPUT(GPIO_SPI2_NSS);
 			GPIO_set_mode_INPUT(GPIO_SPI2_SCK);
 			GPIO_set_mode_INPUT(GPIO_SPI2_MISO);
 			GPIO_set_mode_INPUT(GPIO_SPI2_MOSI);
@@ -287,7 +280,6 @@ void SPI_halt(int bus)
 
 		case BUS_ID_SPI3:
 
-			GPIO_set_mode_INPUT(GPIO_SPI3_NSS);
 			GPIO_set_mode_INPUT(GPIO_SPI3_SCK);
 			GPIO_set_mode_INPUT(GPIO_SPI3_MISO);
 			GPIO_set_mode_INPUT(GPIO_SPI3_MOSI);

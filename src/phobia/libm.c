@@ -39,6 +39,24 @@ float m_fast_rsqrtf(float x)
 	return u.f;
 }
 
+float m_rough_rsqrtf(float x)
+{
+	float		q;
+
+	q = m_fast_rsqrtf(x);
+
+	/* This approximation gives an accuracy of ~0.07%.
+	 * */
+	q *= 1.5f - x * q * q * 0.5f;
+
+	return q;
+}
+
+float m_hypotf(float x, float y)
+{
+	return m_sqrtf(x * x + y * y);
+}
+
 void m_rotatef(float x[2], float r)
 {
 	float           q, s, c;
@@ -290,7 +308,7 @@ void m_la_eigf(const float a[3], float v[4], int m)
 	 * */
 
 	b = a[0] + a[2];
-	d = a[0] * a[0] + a[2] * a[2] - 2.f * a[0] * a[2] + 4.f * a[1] * a[1];
+	d = (a[0] - a[2]) * (a[0] - a[2]) + 4.f * a[1] * a[1];
 
 	la = (d > 0.f) ? m_sqrtf(d) : 0.f;
 
@@ -309,32 +327,32 @@ void m_la_eigf(const float a[3], float v[4], int m)
 		b = a[0] - v[3];
 		d = a[1];
 
-		la = m_sqrtf(b * b + d * d);
+		la = m_rough_rsqrtf(b * b + d * d);
 
 		if (b < 0.f) {
 
-			v[0] = - b / la;
-			v[1] = d / la;
+			v[0] = - b * la;
+			v[1] = d * la;
 		}
 		else {
-			v[0] = b / la;
-			v[1] = - d / la;
+			v[0] = b * la;
+			v[1] = - d * la;
 		}
 	}
 	else {
 		b = a[2] - v[3];
 		d = a[1];
 
-		la = m_sqrtf(b * b + d * d);
+		la = m_rough_rsqrtf(b * b + d * d);
 
 		if (d < 0.f) {
 
-			v[0] = - d / la;
-			v[1] = b / la;
+			v[0] = - d * la;
+			v[1] = b * la;
 		}
 		else {
-			v[0] = d / la;
-			v[1] = - b / la;
+			v[0] = d * la;
+			v[1] = - b * la;
 		}
 	}
 }

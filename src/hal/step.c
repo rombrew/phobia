@@ -145,8 +145,7 @@ int STEP_get_POSITION()
 #ifdef STM32F7
 	/* Invalidate D-Cache.
 	 * */
-	SCB_InvalidateDCache_by_Addr((volatile void *) priv_STEP.dmabuf,
-			sizeof(uint16_t) * STEP_DMA_MAX);
+	SCB_InvalidateDCache_by_Addr((volatile void *) priv_STEP.dmabuf, sizeof(priv_STEP.dmabuf));
 #endif /* STM32F7 */
 
 #define XGPIO_GET_STATE(xGPIO, IDR)	((IDR & (1U << XGPIO_GET_N(xGPIO))) ? 1 : 0)

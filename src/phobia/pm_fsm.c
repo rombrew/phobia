@@ -495,9 +495,9 @@ pm_fsm_state_self_test_clearance(pmc_t *pm)
 		case 4:
 			lse_std(ls);
 
-			pm->self_RMSi[0] = m_sqrtf(ls->sol.m[0] * ls->sol.m[0] + ls->std.m[0] * ls->std.m[0]);
-			pm->self_RMSi[1] = m_sqrtf(ls->sol.m[1] * ls->sol.m[1] + ls->std.m[1] * ls->std.m[1]);
-			pm->self_RMSi[2] = m_sqrtf(ls->sol.m[2] * ls->sol.m[2] + ls->std.m[2] * ls->std.m[2]);
+			pm->self_RMSi[0] = m_hypotf(ls->sol.m[0], ls->std.m[0]);
+			pm->self_RMSi[1] = m_hypotf(ls->sol.m[1], ls->std.m[1]);
+			pm->self_RMSi[2] = m_hypotf(ls->sol.m[2], ls->std.m[2]);
 
 			pm->self_RMSu = ls->std.m[3];
 
@@ -1052,10 +1052,12 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 		m_la_eigf(Z, la, 1);
 	}
 	else {
+		Z[0] = (Z[0] + Z[2]) * 0.5f;
+
 		la[0] = 1.f;
 		la[1] = 0.f;
-		la[2] = (Z[0] + Z[2]) / 2.f;
-		la[3] = la[2];
+		la[2] = Z[0];
+		la[3] = Z[0];
 	}
 }
 
@@ -1071,7 +1073,7 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 
 	if (track_HF > M_EPSILON) {
 
-		eHF = track_HF - m_sqrtf(eD * eD + eQ * eQ);
+		eHF = track_HF - m_hypotf(eD, eQ);
 
 		pm->probe_HF[0] += (eHF - pm->probe_HF[0]) * pm->probe_gain_LP;
 
@@ -2105,8 +2107,7 @@ pm_fsm_state_adjust_sensor_hall(pmc_t *pm)
 					pm->hall_ST[HS].X *= l;
 					pm->hall_ST[HS].Y *= l;
 
-					l = m_sqrtf(pm->hall_ST[HS].X * pm->hall_ST[HS].X
-						  + pm->hall_ST[HS].Y * pm->hall_ST[HS].Y);
+					l = m_hypotf(pm->hall_ST[HS].X, pm->hall_ST[HS].Y);
 
 					if (l > 0.5f) {
 
@@ -2187,12 +2188,15 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				}
 				else if (pm->config_EABI_FRONTEND == PM_EABI_ABSOLUTE) {
 
-					if (		   range_bEP[1] > 100
-							&& range_bEP[0] < 100) {
+#define EABI_CONST_EP_MIN	127		/* minimal EABI resolution */
+#define EABI_PADDING_EP		16		/* padding */
 
-						WRAP = range_bEP[1] & 0x1F;
+					if (		   range_bEP[1] > EABI_CONST_EP_MIN
+							&& range_bEP[0] < EABI_CONST_EP_MIN) {
+
+						WRAP = range_bEP[1] % EABI_PADDING_EP;
 						range_bEP[1] += (WRAP != 0)
-							? 0x20 - WRAP : 0;
+							? EABI_PADDING_EP - WRAP : 0;
 					}
 					else {
 						pm->fsm_errno = PM_ERROR_SENSOR_EABI_FAULT;

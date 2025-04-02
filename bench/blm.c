@@ -53,7 +53,6 @@ void blm_enable(blm_t *m)
 	m->pwm_dT = 35.E-6;		/* PWM cycle (Second)    */
 	m->pwm_deadtime = 90.E-9;	/* PWM deadtime (Second) */
 	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
-	m->pwm_advance = 0.2E-6;	/* PWM advance (Second)  */
 	m->pwm_resolution = 2940;	/* PWM resolution        */
 
 	/* Threshold about deadtime (Ampere).
@@ -115,6 +114,10 @@ void blm_enable(blm_t *m)
 	/* ADC conversion time (Second).
 	 * */
 	m->adc_Tconv = 0.643E-6;
+
+	/* ADC sample offset (Second).
+	 * */
+	m->adc_Toffset = 0.2E-6;
 
 	/* Sensor time constant (Second).
 	 * */
@@ -512,12 +515,6 @@ blm_pwm_up_event(blm_t *m, int ev)
 {
 	switch (ev) {
 
-		case 0:
-			m->analog_iA = (float) blm_ADC(m->state[7], - m->range_A, m->range_A);
-			m->analog_iB = (float) blm_ADC(m->state[8], - m->range_A, m->range_A);
-			m->analog_iC = (float) blm_ADC(m->state[9], - m->range_A, m->range_A);
-			break;
-
 		case 1:
 			m->analog_uS = (float) blm_ADC(m->state[11], 0., m->range_B);
 			m->analog_uA = (float) blm_ADC(m->state[12], 0., m->range_B);
@@ -526,6 +523,10 @@ blm_pwm_up_event(blm_t *m, int ev)
 
 		case 2:
 			m->analog_uC = (float) blm_ADC(m->state[14], 0., m->range_B);
+
+			m->analog_iA = m->hold_iA;
+			m->analog_iB = m->hold_iB;
+			m->analog_iC = m->hold_iC;
 
 			blm_sample_analog(m);
 			blm_sample_hall(m);
@@ -571,6 +572,12 @@ static void
 blm_pwm_down_event(blm_t *m, int ev)
 {
 	switch (ev) {
+
+		case 0:
+			m->hold_iA = (float) blm_ADC(m->state[7], - m->range_A, m->range_A);
+			m->hold_iB = (float) blm_ADC(m->state[8], - m->range_A, m->range_A);
+			m->hold_iC = (float) blm_ADC(m->state[9], - m->range_A, m->range_A);
+			break;
 
 		case 3:
 			m->xfet[0] = 0;
@@ -624,14 +631,14 @@ blm_pwm_solve(blm_t *m)
 	xMIN = (int) (m->pwm_minimal * (double) m->pwm_resolution / m->pwm_dT);
 	xMAX = m->pwm_resolution;
 
-	xAD = (int) (m->pwm_advance / dTu);
+	xAD = (int) (m->adc_Toffset / dTu);
 	xCONV = (int) (m->adc_Tconv / dTu);
 
 	/* ADC sampling.
 	 * */
-	m->event[rev[0]].comp = xMAX - (xAD + 0 * xCONV);
-	m->event[rev[1]].comp = xMAX - (xAD + 1 * xCONV);
-	m->event[rev[2]].comp = xMAX - (xAD + 2 * xCONV);
+	m->event[rev[0]].comp = xMAX - xAD;
+	m->event[rev[1]].comp = xMAX + xAD - xCONV;
+	m->event[rev[2]].comp = xMAX + xAD - 2 * xCONV;
 
 	xA = (m->pwm_A < xMIN) ? 0 : m->pwm_A + (int) (m->pwm_deadtime / dTu);
 	xB = (m->pwm_B < xMIN) ? 0 : m->pwm_B + (int) (m->pwm_deadtime / dTu);

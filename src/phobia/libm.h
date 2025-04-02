@@ -22,6 +22,9 @@ int m_isfinitef(float x);
 
 float m_fast_recipf(float x);
 float m_fast_rsqrtf(float x);
+float m_rough_rsqrtf(float x);
+
+float m_hypotf(float x, float y);
 
 void m_rotatef(float x[2], float r);
 void m_normalizef(float x[2]);

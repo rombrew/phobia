@@ -261,9 +261,9 @@ tlm_proc_step(double dT)
 
 	/* Analog feedback.
 	 * */
-	tlm.y[19] = m.analog_iA;
-	tlm.y[20] = m.analog_iB;
-	tlm.y[21] = m.analog_iC;
+	tlm.y[19] = m.hold_iA;
+	tlm.y[20] = m.hold_iB;
+	tlm.y[21] = m.hold_iC;
 	tlm.y[22] = m.analog_uA;
 	tlm.y[23] = m.analog_uB;
 	tlm.y[24] = m.analog_uC;
@@ -419,9 +419,6 @@ void bench_script()
 
 	m.Jm = 17.E-3 * 48. / 10.;
 
-	/*pm.const_im_Ld /= 1.2f;
-	pm.const_im_Lq /= 1.2f;*/
-
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();
 
@@ -439,8 +436,6 @@ void bench_script()
 
 	pm.s_setpoint_speed = 700.f;
 	sim_runtime(1.0);
-
-	/*sim_runtime(2.0);*/
 
 	tlm_PWM_grab();
 }

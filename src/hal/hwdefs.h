@@ -5,9 +5,9 @@
  * samples is made in parallel on different ADCs.
  *
  * 	"ABC"	- A B and C phase currents
- * 	"U"	- Supply voltage
+ * 	"U"	- DC link voltage
  * 	"TTT"	- Terminal voltages
- * 	"SC"	- SIN/COS resolver signals
+ * 	"SC"	- SIN/COS analog signals
  * 	"XX"	- Not used
  *
  * NOTE: AB and U samples are mandatory. Also we MUST sample all of phase

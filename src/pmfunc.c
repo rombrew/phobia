@@ -94,16 +94,16 @@ int pm_wait_settle()
 	TickType_t		xTick = (TickType_t) 0;
 
 	do {
-		float		eRSU;
+		float		eSP;
 
 		vTaskDelay((TickType_t) 50);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
 
-		eRSU = pm.x_setpoint_location - pm.lu_location;
+		eSP = pm.x_setpoint_location - pm.lu_location;
 
-		if (m_fabsf(eRSU) < pm.probe_location_tol)
+		if (m_fabsf(eSP) < pm.probe_location_tol)
 			break;
 
 		if (xTick > (TickType_t) 10000) {

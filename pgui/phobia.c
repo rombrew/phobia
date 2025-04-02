@@ -4116,6 +4116,8 @@ page_application(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	struct nk_color			warning;
+
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
@@ -4165,6 +4167,37 @@ page_application(struct public *pub)
 	}
 
 	reg_enum_toggle(pub, "ap.task_SPI_AS5047", "SPI AS5047 magnetic encoder");
+
+	reg = link_reg_lookup(lp, "ap.task_SPI_AS5047");
+
+	if (		reg != NULL
+			&& reg->lval != 0) {
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg = link_reg_lookup(lp, "hal.DPS_mode");
+
+		if (reg != NULL && reg->lval != 3) {
+
+			warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+			nk_label_colored(ctx, 	"NOTE: Select DPS mode `DPS_DRIVE_ON_SPI`"
+						" on `HAL` page", NK_TEXT_LEFT, warning);
+
+			nk_layout_row_dynamic(ctx, 0, 1);
+			nk_spacer(ctx);
+		}
+
+		reg = link_reg_lookup(lp, "pm.fb_EP");
+		if (reg != NULL) { reg->update = 100; }
+
+		reg_float(pub, "pm.fb_EP", "EP feedback");
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
+
 	reg_enum_toggle(pub, "ap.task_SPI_HX711", "SPI HX711 load cell ADC");
 
 	reg = link_reg_lookup(lp, "ap.task_SPI_HX711");
@@ -4182,6 +4215,22 @@ page_application(struct public *pub)
 	}
 
 	reg_enum_toggle(pub, "ap.task_SPI_MPU6050", "SPI MPU6050 inertial unit");
+
+	reg = link_reg_lookup(lp, "ap.task_SPI_MPU6050");
+
+	if (		reg != NULL
+			&& reg->lval != 0) {
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		warning = nk->table[NK_COLOR_FLICKER_ALERT];
+
+		nk_label_colored(ctx, 	"TODO: Not implemented", NK_TEXT_LEFT, warning);
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+	}
 
 	if (		lp->unable_warning[0] != 0
 			&& pub->popup_enum == POPUP_NONE) {
