@@ -669,6 +669,12 @@ pub_popup_about(struct public *pub, int popup)
 		nk_label(ctx, "License: GPLv3", NK_TEXT_LEFT);
 		nk_spacer(ctx);
 
+#include "../src/hgdef.h"
+
+		nk_spacer(ctx);
+		nk_label(ctx, "Identify: " _HG_IDENTIFY, NK_TEXT_LEFT);
+		nk_spacer(ctx);
+
 		nk_spacer(ctx);
 		nk_label(ctx, "Build: " __DATE__, NK_TEXT_LEFT);
 		nk_spacer(ctx);
