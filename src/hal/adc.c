@@ -333,10 +333,11 @@ void ADC_startup()
 float ADC_analog_sample(int xGPIO)
 {
 	int			xCH, xADC;
-
-	float			um = 0.f;
+	float			analog = -1.f;
 
 	if (xSemaphoreTake(priv_ADC.mutex_sem, (TickType_t) 10) == pdTRUE) {
+
+		int		N = 0;
 
 		DMA2_Stream0->CR &= ~DMA_SxCR_EN;
 
@@ -364,24 +365,33 @@ float ADC_analog_sample(int xGPIO)
 		ADC1->SQR3 = xCH;
 		ADC1->CR2 |= ADC_CR2_SWSTART;
 
-		while ((DMA2->LISR & (DMA_LISR_TCIF0 | DMA_LISR_TEIF0)) == 0U) {
-
+		do {
 			taskYIELD();
+
+			if ((DMA2->LISR & (DMA_LISR_TCIF0 | DMA_LISR_TEIF0)) != 0U)
+				break;
+
+			if (N > 7000)
+				goto ADC_analog_sample_CLEAN;
+
+			N++;
 		}
+		while (1);
 
 		xADC = priv_ADC.dmabuf[0];
 
 		if (xCH == XGPIO_GET_CH(GPIO_ADC_TEMPINT)) {
 
-			um = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
+			analog = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
 		}
 		else {
-			um = (float) (xADC) * hal.const_ADC.GS;
+			analog = (float) (xADC) * hal.const_ADC.GS;
 		}
 
+ADC_analog_sample_CLEAN:
 		xSemaphoreGive(priv_ADC.mutex_sem);
 	}
 
-	return um;
+	return analog;
 }
 

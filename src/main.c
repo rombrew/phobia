@@ -544,7 +544,7 @@ LD_TASK void task_KNOB(void *pData)
 static void
 default_flash_load()
 {
-	float			halt_I, halt_U;
+	float			halt_A, halt_U, tol_A, tol_U;
 
 	hal.USART_baudrate = 57600;
 	hal.USART_parity = PARITY_EVEN;
@@ -731,11 +731,17 @@ default_flash_load()
 
 	ADC_const_build();
 
-	halt_I = m_fabsf(hal.const_ADC.GA * ADC_RESOLUTION / 2.f);
+	halt_A = m_fabsf(hal.const_ADC.GA * ADC_RESOLUTION / 2.f);
 	halt_U = m_fabsf(hal.const_ADC.GU * ADC_RESOLUTION);
 
-	pm.fault_current_halt = (float) (int) (.95f * halt_I);
-	pm.fault_voltage_halt = (float) (int) (.95f * halt_U);
+	tol_A = (float) (int) (0.02f * halt_A);
+	tol_U = (float) (int) (0.02f * halt_U);
+
+	pm.fault_current_tol = (tol_A < 5.f) ? 5.f : tol_A;
+	pm.fault_voltage_tol = (tol_U < 5.f) ? 5.f : tol_U;
+
+	pm.fault_current_halt = (float) (int) (0.95f * halt_A);
+	pm.fault_voltage_halt = (float) (int) (0.95f * halt_U);
 
 	pm.dcu_deadband = HW_PWM_DEADTIME_NS;
 
@@ -1169,7 +1175,8 @@ SH_DEF(ap_version)
 	uint32_t	ld_sizeof, ld_crc32;
 	int		rc;
 
-	printf("Revision \"%s\"" EOL, fw.hwrevision);
+	printf("Revision \"%s\"" EOL, fw.revision);
+	printf("Identify \"%s\"" EOL, fw.identify);
 	printf("Build \"%s\"" EOL, fw.build);
 
 	ld_sizeof = fw.ld_crc32 - fw.ld_begin;
@@ -1177,7 +1184,7 @@ SH_DEF(ap_version)
 
 	rc = (crc32u((const void *) fw.ld_begin, ld_sizeof) == ld_crc32) ? 1 : 0;
 
-	printf("CRC32 %8x (%s)" EOL, ld_crc32, (rc != 0) ? "OK" : "does NOT match");
+	printf("CRC32 %8x (%s)" EOL, ld_crc32, (rc != 0) ? "OK" : "FAULT");
 }
 
 SH_DEF(ap_time)

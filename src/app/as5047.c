@@ -75,7 +75,7 @@ int AS5047_get_EP()
 	return priv_AS5047.EP;
 }
 
-LD_TASK void app_SPI_AS5047(void *pData)
+LD_TASK void app_AS5047(void *pData)
 {
 	volatile int		*lknob = (volatile int *) pData;
 

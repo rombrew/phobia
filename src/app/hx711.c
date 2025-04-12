@@ -11,7 +11,7 @@
 /* This is the helper task that reads HX711 ADC.
  * */
 
-LD_TASK void app_SPI_HX711(void *pData)
+LD_TASK void app_HX711(void *pData)
 {
 	volatile int		*lknob = (volatile int *) pData;
 

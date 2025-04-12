@@ -40,7 +40,7 @@ uint32_t RNG_urand()
 
 		N++;
 	}
-	while (N < 700000U);
+	while (N < 700000);
 
 	return urand;
 }

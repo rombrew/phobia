@@ -51,7 +51,9 @@ const fw_info_t		fw = {
 	(uint32_t) &ld_text_begin,
 	(uint32_t) &ld_end,
 
-	_HW_REV, __DATE__
+#include "hgdef.h"
+
+	_HW_REV, _HG_IDENTIFY, __DATE__
 };
 
 LD_VECTORS void *vtab[] = {

@@ -479,11 +479,11 @@ void serial_enumerate(struct serial_list *ls)
 	serial_port_pattern(ls, "rfcomm");
 	serial_port_pattern(ls, "ttyS");
 
-#ifdef _MACOS
+#ifdef __APPLE__
 	serial_port_pattern(ls, "tty.BT");
 	serial_port_pattern(ls, "tty.Bluetooth");
 	serial_port_pattern(ls, "tty.usbmodem");
-#endif /* _MACOS */
+#endif /* __APPLE__ */
 
 	if (ls->dnum == 0) {
 

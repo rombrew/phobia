@@ -9,7 +9,7 @@
 /* This is the helper task that reads MPU6050 inertial sensor.
  * */
 
-LD_TASK void app_SPI_MPU6050(void *pData)
+LD_TASK void app_MPU6050(void *pData)
 {
 	volatile int		*lknob = (volatile int *) pData;
 

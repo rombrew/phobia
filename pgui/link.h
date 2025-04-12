@@ -87,6 +87,15 @@ struct link_pmc {
 	int			active;
 	int			keep;
 
+	struct {
+
+		char		revision[LINK_NAME_MAX];
+		char		identify[LINK_NAME_MAX];
+		char		build[LINK_NAME_MAX];
+		char		crc32[LINK_NAME_MAX];
+	}
+	hw;
+
 	char			hwinfo[LINK_NAME_MAX];
 	char			network[LINK_NAME_MAX];
 

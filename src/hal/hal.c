@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_FLAG_SIGNATURE	0x2A7CEA64U
+#define HAL_ENABLED		0x3A7CEA65U
 #define HAL_LOG_INC(np)		(((np) < sizeof(log.text) - 1U) ? (np) + 1 : 0)
 
 uint32_t			clock_cpu_hz;
@@ -15,8 +15,8 @@ LOG_t				log		LD_NOINIT;
 
 typedef struct {
 
-	uint32_t	bootload_flag;
-	uint32_t	crystal_disabled;
+	uint32_t	bootload_jump;
+	uint32_t	crystal_fault;
 }
 priv_HAL_t;
 
@@ -28,7 +28,7 @@ void irq_NMI()
 
 	if (RCC->CIR & RCC_CIR_CSSF) {
 
-		noinit_HAL.crystal_disabled = HAL_FLAG_SIGNATURE;
+		noinit_HAL.crystal_fault = HAL_ENABLED;
 
 		RCC->CIR |= RCC_CIR_CSSC;
 
@@ -123,7 +123,8 @@ core_startup()
 	RCC->DCKCFGR2 = 0;
 #endif /* STM32F7 */
 
-	if (noinit_HAL.crystal_disabled != HAL_FLAG_SIGNATURE) {
+	if (		HW_CLOCK_CRYSTAL_HZ != 0U
+			&& noinit_HAL.crystal_fault != HAL_ENABLED) {
 
 		int		N = 0;
 
@@ -139,11 +140,11 @@ core_startup()
 
 			__NOP();
 
-			if (N > 70000U) {
+			if (N > 70000) {
 
 				log_TRACE("HSE not ready" EOL);
 
-				noinit_HAL.crystal_disabled = HAL_FLAG_SIGNATURE;
+				noinit_HAL.crystal_fault = HAL_ENABLED;
 				break;
 			}
 
@@ -175,7 +176,8 @@ core_startup()
 	 * */
 	RCC->CFGR |= RCC_CFGR_HPRE_DIV1 | RCC_CFGR_PPRE1_DIV4 | RCC_CFGR_PPRE2_DIV2;
 
-	if (noinit_HAL.crystal_disabled != HAL_FLAG_SIGNATURE) {
+	if (		HW_CLOCK_CRYSTAL_HZ != 0U
+			&& noinit_HAL.crystal_fault != HAL_ENABLED) {
 
 		CLOCK = HW_CLOCK_CRYSTAL_HZ;
 
@@ -319,9 +321,9 @@ void hal_bootload()
 {
 	const uint32_t		*sysmem;
 
-	if (noinit_HAL.bootload_flag == HAL_FLAG_SIGNATURE) {
+	if (noinit_HAL.bootload_jump == HAL_ENABLED) {
 
-		noinit_HAL.bootload_flag = 0U;
+		noinit_HAL.bootload_jump = 0U;
 
 #ifdef STM32F7
 		SCB_CleanDCache();
@@ -392,7 +394,7 @@ void hal_system_reset()
 
 void hal_bootload_reset()
 {
-	noinit_HAL.bootload_flag = HAL_FLAG_SIGNATURE;
+	noinit_HAL.bootload_jump = HAL_ENABLED;
 
 	hal_system_reset();
 }
@@ -410,15 +412,15 @@ void hal_memory_fence()
 
 int log_status()
 {
-	return (	log.boot_FLAG == HAL_FLAG_SIGNATURE
+	return (	log.boot_FLAG == HAL_ENABLED
 			&& log.text_wp != log.text_rp) ? HAL_FAULT : HAL_OK;
 }
 
 void log_bootup()
 {
-	if (log.boot_FLAG != HAL_FLAG_SIGNATURE) {
+	if (log.boot_FLAG != HAL_ENABLED) {
 
-		log.boot_FLAG = HAL_FLAG_SIGNATURE;
+		log.boot_FLAG = HAL_ENABLED;
 		log.boot_COUNT = 0U;
 
 		log.text_wp = 0;
@@ -431,9 +433,9 @@ void log_bootup()
 
 void log_putc(int c)
 {
-	if (unlikely(log.boot_FLAG != HAL_FLAG_SIGNATURE)) {
+	if (unlikely(log.boot_FLAG != HAL_ENABLED)) {
 
-		log.boot_FLAG = HAL_FLAG_SIGNATURE;
+		log.boot_FLAG = HAL_ENABLED;
 		log.boot_COUNT = 0U;
 
 		log.text_wp = 0;
@@ -451,7 +453,7 @@ void log_flush()
 {
 	int		rp, wp;
 
-	if (log.boot_FLAG == HAL_FLAG_SIGNATURE) {
+	if (log.boot_FLAG == HAL_ENABLED) {
 
 		rp = log.text_rp;
 		wp = log.text_wp;
@@ -469,7 +471,7 @@ void log_flush()
 
 void log_clean()
 {
-	if (log.boot_FLAG == HAL_FLAG_SIGNATURE) {
+	if (log.boot_FLAG == HAL_ENABLED) {
 
 		log.text_wp = 0;
 		log.text_rp = 0;

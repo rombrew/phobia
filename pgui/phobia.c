@@ -25,6 +25,7 @@ SDL_RWops *TTF_RW_droid_sans_normal();
 
 enum {
 	POPUP_NONE			= 0,
+	POPUP_PHOBIA_HWINFO,
 	POPUP_PHOBIA_ABOUT,
 	POPUP_LINK_PROGRESS,
 	POPUP_LINK_COMMAND,
@@ -543,6 +544,92 @@ pub_get_popup_bounds_full(struct public *pub)
 	popup.y = win.h / 2.0f - popup.h / 2.0f;
 
 	return popup;
+}
+
+static void
+pub_popup_hwinfo(struct public *pub, int popup)
+{
+	struct nk_sdl			*nk = pub->nk;
+	struct link_pmc			*lp = pub->lp;
+	struct nk_context		*ctx = &nk->ctx;
+
+	struct nk_rect			bounds;
+
+	if (pub->popup_enum != popup)
+		return ;
+
+	bounds = pub_get_popup_bounds_about(pub);
+
+	if (nk_popup_begin(ctx, NK_POPUP_DYNAMIC, " ", NK_WINDOW_CLOSABLE
+				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
+
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 20);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "HW revision", NK_TEXT_LEFT);
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				lp->hw.revision, 79, nk_filter_default);
+
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "PMC firmware", NK_TEXT_LEFT);
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				lp->hw.identify, 79, nk_filter_default);
+
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "Build date", NK_TEXT_LEFT);
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				lp->hw.build, 79, nk_filter_default);
+
+		nk_spacer(ctx);
+
+		nk_spacer(ctx);
+		nk_label(ctx, "CRC32", NK_TEXT_LEFT);
+
+		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
+				lp->hw.crc32, 79, nk_filter_default);
+
+		nk_spacer(ctx);
+
+		nk_layout_row_dynamic(ctx, pub->fe_font_h / 2, 1);
+		nk_spacer(ctx);
+
+		nk_layout_row_template_begin(ctx, 0);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
+		nk_layout_row_template_push_variable(ctx, 1);
+		nk_layout_row_template_end(ctx);
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "OK")) {
+
+			nk_popup_close(ctx);
+
+			pub->popup_enum = 0;
+		}
+
+		nk_spacer(ctx);
+
+		nk_popup_end(ctx);
+	}
+	else {
+		pub->popup_enum = 0;
+	}
 }
 
 static void
@@ -2541,7 +2628,7 @@ page_serial(struct public *pub)
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
 
-	struct nk_style_button		orange;
+	struct nk_style_button		orange, disabled;
 
 	const char			*ls_baudrate[] = {
 
@@ -2716,6 +2803,39 @@ page_serial(struct public *pub)
 
 	nk_layout_row_template_begin(ctx, 0);
 	nk_layout_row_template_push_variable(ctx, 1);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+	nk_layout_row_template_push_static(ctx, pub->fe_base);
+	nk_layout_row_template_end(ctx);
+
+	nk_spacer(ctx);
+	nk_spacer(ctx);
+
+	disabled = ctx->style.button;
+
+	if (lp->hwinfo[0] == 0) {
+
+		disabled.normal = disabled.active;
+		disabled.hover = disabled.active;
+		disabled.text_normal = disabled.text_active;
+		disabled.text_hover = disabled.text_active;
+	}
+
+	if (nk_button_label_styled(ctx, &disabled, "HW info")) {
+
+		if (lp->hwinfo[0] != 0) {
+
+			pub->popup_enum = POPUP_PHOBIA_HWINFO;
+		}
+	}
+
+	nk_spacer(ctx);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	nk_layout_row_template_begin(ctx, 0);
+	nk_layout_row_template_push_variable(ctx, 1);
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 22);
 	nk_layout_row_template_push_static(ctx, pub->fe_base);
 	nk_layout_row_template_end(ctx);
@@ -2795,6 +2915,7 @@ page_serial(struct public *pub)
 
 	nk_spacer(ctx);
 
+	pub_popup_hwinfo(pub, POPUP_PHOBIA_HWINFO);
 	pub_popup_about(pub, POPUP_PHOBIA_ABOUT);
 
 	if (pub_popup_ok_cancel(pub, POPUP_RESET_DEFAULT,
@@ -2941,14 +3062,14 @@ page_diagnose(struct public *pub)
 			link_command(lp, "hal_PWM_set_DC 0");
 		}
 
-		if (nk_menu_item_label(ctx, "Set PWM to 50%", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "Set PWM to 25%", NK_TEXT_LEFT)) {
 
 			int			dc_resolution = 2940;
 
 			reg = link_reg_lookup(lp, "pm.dc_resolution");
 			if (reg != NULL) { dc_resolution = reg->lval; }
 
-			sprintf(pub->lbuf, "hal_PWM_set_DC %i", dc_resolution / 2);
+			sprintf(pub->lbuf, "hal_PWM_set_DC %i", dc_resolution / 4);
 
 			link_command(lp, pub->lbuf);
 		}
@@ -4166,9 +4287,9 @@ page_application(struct public *pub)
 		}
 	}
 
-	reg_enum_toggle(pub, "ap.task_SPI_AS5047", "SPI AS5047 magnetic encoder");
+	reg_enum_toggle(pub, "ap.task_AS5047", "SPI AS5047 magnetic encoder");
 
-	reg = link_reg_lookup(lp, "ap.task_SPI_AS5047");
+	reg = link_reg_lookup(lp, "ap.task_AS5047");
 
 	if (		reg != NULL
 			&& reg->lval != 0) {
@@ -4198,9 +4319,9 @@ page_application(struct public *pub)
 		nk_spacer(ctx);
 	}
 
-	reg_enum_toggle(pub, "ap.task_SPI_HX711", "SPI HX711 load cell ADC");
+	reg_enum_toggle(pub, "ap.task_HX711", "HX711 load cell ADC");
 
-	reg = link_reg_lookup(lp, "ap.task_SPI_HX711");
+	reg = link_reg_lookup(lp, "ap.task_HX711");
 
 	if (		reg != NULL
 			&& reg->lval != 0) {
@@ -4214,9 +4335,9 @@ page_application(struct public *pub)
 		nk_spacer(ctx);
 	}
 
-	reg_enum_toggle(pub, "ap.task_SPI_MPU6050", "SPI MPU6050 inertial unit");
+	reg_enum_toggle(pub, "ap.task_MPU6050", "MPU6050 inertial unit");
 
-	reg = link_reg_lookup(lp, "ap.task_SPI_MPU6050");
+	reg = link_reg_lookup(lp, "ap.task_MPU6050");
 
 	if (		reg != NULL
 			&& reg->lval != 0) {
@@ -4612,8 +4733,8 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 2);
-	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 2);
+	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 3);
+	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 3);
 	reg_float(pub, "pm.zone_gain_TH", "ZONE hysteresis TH");
 	reg_float(pub, "pm.zone_gain_LP", "ZONE gain LP");
 
@@ -6032,6 +6153,9 @@ page_upgrade(struct public *pub)
 	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	if (pub_popup_ok_cancel(pub, POPUP_SYSTEM_BOOTLOAD,
 				"Please confirm that you really want to"
 				" reboot into embedded bootloader. Note"
@@ -6293,7 +6417,7 @@ int main(int argc, char **argv)
 
 				struct nk_color		header;
 
-				if (strstr(lp->hwinfo, "does NOT match") != NULL) {
+				if (strstr(lp->hwinfo, "FAULT") != NULL) {
 
 					header = nk->table[NK_COLOR_FLICKER_ALERT];
 				}
@@ -6307,7 +6431,7 @@ int main(int argc, char **argv)
 
 				nk->ctx.style.window.header.active = nk_style_item_color(header);
 
-				sprintf(pub->lbuf, " %.77s", lp->hwinfo);
+				sprintf(pub->lbuf, " %.80s", lp->hwinfo);
 
 				if (lp->network[0] != 0) {
 

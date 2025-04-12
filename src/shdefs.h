@@ -52,6 +52,7 @@ SH_DEF(pm_adjust_dcu_voltage)
 SH_DEF(pm_scan_impedance)
 SH_DEF(hal_ADC_scan)
 SH_DEF(hal_PWM_set_DC)
+SH_DEF(hal_PWM_set_Z)
 #ifdef HW_HAVE_FAN_CONTROL
 SH_DEF(hal_FAN_control)
 #endif /* HW_HAVE_FAN_CONTROL */

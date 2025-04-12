@@ -93,9 +93,9 @@ typedef struct {
 	 * */
 	int			task_AUTOSTART;
 	int			task_BUTTON;
-	int			task_SPI_AS5047;
-	int			task_SPI_HX711;
-	int			task_SPI_MPU6050;
+	int			task_AS5047;
+	int			task_HX711;
+	int			task_MPU6050;
 
 	/* Autostart application.
 	 * */

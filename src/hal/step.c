@@ -114,7 +114,7 @@ STEP_halt()
 
 		__NOP();
 
-		if (N > 70000U)
+		if (N > 70000)
 			break;
 
 		N++;

@@ -1,10 +1,6 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#ifdef HW_HAVE_PWM_GATE_FAULT
-static int priv_PWM_fault_CNT;
-#endif /* HW_HAVE_PWM_GATE_FAULT */
-
 void irq_TIM1_UP_TIM10() { }
 
 static int
@@ -64,18 +60,20 @@ void PWM_startup()
 	TIM1->CR1 |= TIM_CR1_CEN;
 	TIM1->RCR = 1;
 
-	/* Enable TIM1 pins.
-	 * */
 #ifdef HW_HAVE_PWM_THREE_WIRE
 	GPIO_set_mode_OUTPUT(GPIO_TIM1_CH1N);
 	GPIO_set_mode_OUTPUT(GPIO_TIM1_CH2N);
 	GPIO_set_mode_OUTPUT(GPIO_TIM1_CH3N);
 
+	/* Only three wire PWM.
+	 * */
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH1);
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH2);
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH3);
 #else /* HW_HAVE_PWM_THREE_WIRE */
 
+	/* Enable TIM1 pins.
+	 * */
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH1N);
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH2N);
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_CH3N);
@@ -135,7 +133,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_LOW(GPIO_TIM1_CH1N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER &= ~(TIM_CCER_CC1NP | TIM_CCER_CC1NE
+				| TIM_CCER_CC1P | TIM_CCER_CC1E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER &= ~(TIM_CCER_CC1NE | TIM_CCER_CC1E);
+#endif
 	}
 	else {
 
@@ -143,7 +146,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_HIGH(GPIO_TIM1_CH1N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER |= (TIM_CCER_CC1NP | TIM_CCER_CC1NE
+				| TIM_CCER_CC1P | TIM_CCER_CC1E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER |= (TIM_CCER_CC1NE | TIM_CCER_CC1E);
+#endif
 	}
 
 	if (Z & LEG_B) {
@@ -152,7 +160,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_LOW(GPIO_TIM1_CH2N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER &= ~(TIM_CCER_CC2NP | TIM_CCER_CC2NE
+				| TIM_CCER_CC2P | TIM_CCER_CC2E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER &= ~(TIM_CCER_CC2NE | TIM_CCER_CC2E);
+#endif
 	}
 	else {
 
@@ -160,7 +173,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_HIGH(GPIO_TIM1_CH2N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER |= (TIM_CCER_CC2NP | TIM_CCER_CC2NE
+				| TIM_CCER_CC2P | TIM_CCER_CC2E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER |= (TIM_CCER_CC2NE | TIM_CCER_CC2E);
+#endif
 	}
 
 #ifdef HW_HAVE_PWM_REVERSED
@@ -173,7 +191,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_LOW(GPIO_TIM1_CH3N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER &= ~(TIM_CCER_CC3NP | TIM_CCER_CC3NE
+				| TIM_CCER_CC3P | TIM_CCER_CC3E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER &= ~(TIM_CCER_CC3NE | TIM_CCER_CC3E);
+#endif
 	}
 	else {
 
@@ -181,7 +204,12 @@ void PWM_set_Z(int Z)
 		GPIO_set_HIGH(GPIO_TIM1_CH3N);
 #endif /* HW_HAVE_PWM_THREE_WIRE */
 
+#ifdef HW_HAVE_PWM_POLARITY
+		TIM1->CCER |= (TIM_CCER_CC3NP | TIM_CCER_CC3NE
+				| TIM_CCER_CC3P | TIM_CCER_CC3E);
+#else /* HW_HAVE_PWM_POLARITY */
 		TIM1->CCER |= (TIM_CCER_CC3NE | TIM_CCER_CC3E);
+#endif
 	}
 
 	TIM1->EGR |= TIM_EGR_COMG;
@@ -189,22 +217,6 @@ void PWM_set_Z(int Z)
 
 int PWM_fault()
 {
-#ifdef HW_HAVE_PWM_GATE_FAULT
-	if (unlikely(priv_PWM_fault_CNT >= 20)) {
-
-		return HAL_FAULT;
-	}
-	else {
-		if (likely(GPIO_get_STATE(GPIO_GATE_FAULT) != 0)) {
-
-			priv_PWM_fault_CNT = 0;
-		}
-		else {
-			priv_PWM_fault_CNT += 1;
-		}
-	}
-#endif /* HW_HAVE_PWM_GATE_FAULT */
-
 #ifdef HW_HAVE_PWM_BREAK
 	if (TIM1->SR & TIM_SR_BIF) {
 

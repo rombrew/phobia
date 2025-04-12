@@ -670,9 +670,9 @@ reg_proc_auto_zone_threshold(const reg_t *reg, rval_t *lval, const rval_t *rval)
 }
 
 static void
-reg_proc_current_halt(const reg_t *reg, rval_t *lval, const rval_t *rval)
+reg_proc_voltage_tol(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
-	float			halt_I;
+	float			halt_U, tol_U;
 
 	if (lval != NULL) {
 
@@ -682,9 +682,59 @@ reg_proc_current_halt(const reg_t *reg, rval_t *lval, const rval_t *rval)
 
 		if (rval->f < - M_EPSILON) {
 
-			halt_I = m_fabsf(hal.const_ADC.GA * ADC_RESOLUTION / 2.f);
+			halt_U = m_fabsf(hal.const_ADC.GU * ADC_RESOLUTION);
 
-			reg->link->f = (float) (int) (.95f * halt_I);
+			tol_U = (float) (int) (0.02f * halt_U);
+
+			reg->link->f = (tol_U < 5.f) ? 5.f : tol_U;
+		}
+		else {
+			reg->link->f = rval->f;
+		}
+	}
+}
+
+static void
+reg_proc_current_tol(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	float			halt_A, tol_A;
+
+	if (lval != NULL) {
+
+		lval->f = reg->link->f;
+	}
+	else if (rval != NULL) {
+
+		if (rval->f < - M_EPSILON) {
+
+			halt_A = m_fabsf(hal.const_ADC.GA * ADC_RESOLUTION / 2.f);
+
+			tol_A = (float) (int) (0.02f * halt_A);
+
+			reg->link->f = (tol_A < 5.f) ? 5.f : tol_A;
+		}
+		else {
+			reg->link->f = rval->f;
+		}
+	}
+}
+
+static void
+reg_proc_current_halt(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	float			halt_A;
+
+	if (lval != NULL) {
+
+		lval->f = reg->link->f;
+	}
+	else if (rval != NULL) {
+
+		if (rval->f < - M_EPSILON) {
+
+			halt_A = m_fabsf(hal.const_ADC.GA * ADC_RESOLUTION / 2.f);
+
+			reg->link->f = (float) (int) (0.95f * halt_A);
 		}
 		else {
 			reg->link->f = rval->f;
@@ -1771,9 +1821,9 @@ const reg_t		regfile[] = {
 
 	REG_DEF(ap.task_AUTOSTART,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 	REG_DEF(ap.task_BUTTON,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_SPI_AS5047,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_SPI_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
-	REG_DEF(ap.task_SPI_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_AS5047,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_HX711,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
+	REG_DEF(ap.task_MPU6050,,,		"",	"%0i",	REG_CONFIG, &reg_proc_task, &reg_format_enum),
 
 	REG_DEF(ap.auto_reg_DATA,,,		"",	"%2f",	REG_CONFIG, NULL, &reg_format_ref_auto),
 	REG_DEF(ap.auto_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
@@ -1879,8 +1929,8 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.probe_gain_P,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.probe_gain_I,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.fault_voltage_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.fault_current_tol,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.fault_voltage_tol,,,		"V",	"%3f",	REG_CONFIG, &reg_proc_voltage_tol, NULL),
+	REG_DEF(pm.fault_current_tol,,,		"A",	"%3f",	REG_CONFIG, &reg_proc_current_tol, NULL),
 	REG_DEF(pm.fault_accuracy_tol,,,	"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.fault_terminal_tol,,,	"V",	"%4f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.fault_current_halt,,,	"A",	"%3f",	REG_CONFIG, &reg_proc_current_halt, NULL),

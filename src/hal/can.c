@@ -80,7 +80,7 @@ CAN_wait_MSR(uint32_t xBITS, uint32_t xSET)
 
 		N++;
 	}
-	while (N < 70000U);
+	while (N < 70000);
 
 	return HAL_FAULT;
 }

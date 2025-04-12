@@ -2,7 +2,6 @@
 
 #define HW_HAVE_LOW_SIDE_SHUNT
 #define HW_HAVE_PWM_THREE_WIRE
-#define HW_HAVE_PWM_GATE_FAULT
 #define HW_HAVE_NTC_ON_PCB
 #define HW_HAVE_NETWORK_EPCAN
 
@@ -47,8 +46,8 @@
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
 #define GPIO_GATE_EN			XGPIO_DEF2('A', 11)
-#define GPIO_GATE_FAULT			XGPIO_DEF2('B', 7)
 #define GPIO_LED_ALERT			XGPIO_DEF2('C', 5)	/* have no LED */
-#define GPIO_485_DE			XGPIO_DEF2('A', 3)
+
+#define GPIO_RS485_DE			XGPIO_DEF2('A', 3)
 #define GPIO_DCDC_EN			XGPIO_DEF2('C', 15)
 

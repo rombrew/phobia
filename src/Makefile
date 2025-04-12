@@ -67,9 +67,9 @@ endif
 
 OBJS	=  app/autostart.o \
 	   app/button.o \
-	   app/spi_as5047.o \
-	   app/spi_hx711.o \
-	   app/spi_mpu6050.o
+	   app/as5047.o \
+	   app/hx711.o \
+	   app/mpu6050.o
 
 ifeq ($(OBJ_LIB_CHERRY), 1)
 OBJS	+= cherry/usb_dc_dwc2.o \

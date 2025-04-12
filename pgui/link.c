@@ -39,10 +39,6 @@ struct link_priv {
 	FILE			*fd_log;
 	FILE			*fd_grab;
 
-	char			hw_revision[LINK_NAME_MAX];
-	char			hw_build[LINK_NAME_MAX];
-	char			hw_crc32[LINK_NAME_MAX];
-
 	char			mb[LINK_ALLOC_MAX];
 	char			*mbflow;
 
@@ -432,22 +428,25 @@ link_fetch_hwinfo(struct link_pmc *lp)
 
 	if (strcmp(tok, "Revision") == 0) {
 
-		sprintf(priv->hw_revision, "%.16s", lk_token(&sp));
+		sprintf(lp->hw.revision, "%.64s", lk_token(&sp));
+	}
+	else if (strcmp(tok, "Identify") == 0) {
+
+		sprintf(lp->hw.identify, "%.64s", lk_token(&sp));
 	}
 	else if (strcmp(tok, "Build") == 0) {
 
-		sprintf(priv->hw_build, "%.16s", lk_token(&sp));
+		sprintf(lp->hw.build, "%.16s", lk_token(&sp));
 	}
 	else if (strcmp(tok, "CRC32") == 0) {
 
-		sprintf(priv->hw_crc32, "%.10s", lk_token(&sp));
+		sprintf(lp->hw.crc32, "%.16s", lk_token(&sp));
 
 		tok = lk_token(&sp);
 
-		sprintf(priv->hw_crc32 + strlen(priv->hw_crc32), " (%.16s)", tok);
+		sprintf(lp->hw.crc32 + strlen(lp->hw.crc32), " (%.16s)", tok);
 
-		sprintf(lp->hwinfo, "%.16s / %.16s / %.36s", priv->hw_revision,
-				priv->hw_build, priv->hw_crc32);
+		sprintf(lp->hwinfo, "%.64s / %.32s", lp->hw.revision, lp->hw.crc32);
 	}
 }
 
@@ -970,7 +969,7 @@ void link_push(struct link_pmc *lp)
 			}
 
 			if (		(reg->mode & LINK_REG_TYPE_ENUMERATE) != 0
-					&& reg->enumerated + 10000 < reg->shown) {
+					&& reg->enumerated + 90000 < reg->shown) {
 
 				sprintf(priv->lbuf, "enum_reg %i" LINK_EOL, reg_ID);
 

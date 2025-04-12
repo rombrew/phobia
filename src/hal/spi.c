@@ -309,7 +309,7 @@ void SPI_halt(int bus)
 
 			__NOP();
 
-			if (N > 70000U)
+			if (N > 70000)
 				break;
 
 			N++;
@@ -358,7 +358,7 @@ uint16_t SPI_transfer(int bus, uint16_t txbuf)
 
 		__NOP();
 
-		if (N > 70000U)
+		if (N > 70000)
 			return 0U;
 
 		N++;

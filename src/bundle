@@ -12,7 +12,8 @@ done
 make -C ../pgui -f Makefile.mingw ARCH=i686   $MAKEOPTS $1	|| exit
 make -C ../pgui -f Makefile.mingw ARCH=x86_64 $MAKEOPTS $1	|| exit
 
-export BUNDLE="pmc-bundle-$(hg id -n)"
+export BUNDLE="pmc-bundle-$(hg log -r tip --template \
+		"{branch}-{node|short}-{date|shortdate}")"
 
 if [ -n "$1" ] && [ "$1" = "clean" ]; then
 
