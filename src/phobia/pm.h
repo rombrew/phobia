@@ -85,6 +85,7 @@ enum {
 enum {
 	PM_HFI_NONE				= 0,
 	PM_HFI_SINE,
+	PM_HFI_SQUARE,
 	PM_HFI_RANDOM
 };
 
@@ -324,7 +325,6 @@ typedef struct {
 
 	float		probe_DFT[8];
 	float		probe_REM[8];
-	float		probe_WS[2];
 	float		probe_HF[2];
 	float		probe_gain_LP;
 	float		probe_HOLD[2];
@@ -436,7 +436,7 @@ typedef struct {
 	float		zone_gain_LP;
 
 	float		hfi_freq;
-	float		hfi_sine;
+	float		hfi_amplitude;
 	float		hfi_wave[2];
 
 	struct {
@@ -508,6 +508,7 @@ typedef struct {
 	float		quick_TiLq;
 	float		quick_TiLu[4];
 	float		quick_HFwS;
+	float		quick_HF[2];
 	float		quick_ZiEP;
 	float		quick_ZiSQ;
 

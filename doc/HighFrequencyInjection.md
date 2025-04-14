@@ -35,7 +35,7 @@ high frequency and amplitude makes HFI operation is more stable. Beware of sine
 degeneracy at frequencies close to the PWM frequency.
 
 	(pmc) reg pm.hfi_freq <Hz>
-	(pmc) reg pm.hfi_sine <A>
+	(pmc) reg pm.hfi_amplitude <A>
 
 If the machine loses its magnetic anisotropy at high current you can limit
 machine current in case of HFI operation mode. This gives reliable operation at
@@ -43,14 +43,21 @@ the cost of reduced torque production.
 
 	(pmc) reg pm.i_maximal_on_HFI <A>
 
-If you are concerned about increased levels of acoustic noise and vibration you
-can select RANDOM waveform and adjust an amplitude.
+If you are concerned about acoustic noise and vibration you can select SQUARE
+waveform and adjust an amplitude. In this case injection frequency is not
+configurable and always at maximum (half of PWM frequency).
 
 	(pmc) reg pm.config_HFI_WAVETYPE 2
 
+Also try RANDOM waveform that can provide a bit more reliable estimate at high
+machine current. In this case better to use a high injection frequency.
+
+	(pmc) reg pm.config_HFI_WAVETYPE 3
+	(pmc) reg pm.hfi_freq 15000
+
 Note on HFI operation it is possible to detect only direction of the rotor flux
-axis but not its orientation or flux polarity. So you should bootstrap from
-forced alignment or flux observer estimate.
+axis but not its orientation or flux polarity. So we bootstrap from forced
+alignment or flux observer estimate.
 
 ## Permanent injection
 

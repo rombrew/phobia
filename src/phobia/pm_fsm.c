@@ -1138,7 +1138,7 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 
 				lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
 
-				pm->probe_WS[0] = 1.f / pm->dcu_deadband;
+				pm->quick_HF[0] = 1.f / pm->dcu_deadband;
 
 				pm->probe_HF[0] = 0.f;
 				pm->probe_HF[1] = 0.f;
@@ -1197,13 +1197,13 @@ pm_fsm_state_adjust_dcu_voltage(pmc_t *pm)
 		case 3:
 		case 5:
 			v[0] = pm->lu_iX;
-			v[1] = pm->dcu_DX * pm->probe_WS[0];
+			v[1] = pm->dcu_DX * pm->quick_HF[0];
 			v[2] = pm->vsi_X;
 
 			lse_insert(ls, v);
 
 			v[0] = pm->lu_iY;
-			v[1] = pm->dcu_DY * pm->probe_WS[0];
+			v[1] = pm->dcu_DY * pm->quick_HF[0];
 			v[2] = pm->vsi_Y;
 
 			lse_insert(ls, v);
@@ -1480,8 +1480,8 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 
 			pm->quick_HFwS = M_2_PI_F * pm->probe_freq_sine;
 
-			pm->probe_WS[0] = m_cosf(pm->quick_HFwS * pm->m_dT * 0.5f);
-			pm->probe_WS[1] = m_sinf(pm->quick_HFwS * pm->m_dT * 0.5f);
+			pm->quick_HF[0] = m_cosf(pm->quick_HFwS * pm->m_dT * 0.5f);
+			pm->quick_HF[1] = m_sinf(pm->quick_HFwS * pm->m_dT * 0.5f);
 
 			pm->probe_HF[0] = 0.f;
 			pm->probe_HF[1] = 0.f;
@@ -1509,8 +1509,8 @@ pm_fsm_state_probe_const_inductance(pmc_t *pm)
 			iX = pm->lu_iX;
 			iY = pm->lu_iY;
 
-			uX = pm->dcu_X * pm->probe_WS[0] + pm->dcu_Y * pm->probe_WS[1];
-			uY = pm->dcu_Y * pm->probe_WS[0] - pm->dcu_X * pm->probe_WS[1];
+			uX = pm->dcu_X * pm->quick_HF[0] + pm->dcu_Y * pm->quick_HF[1];
+			uY = pm->dcu_Y * pm->quick_HF[0] - pm->dcu_X * pm->quick_HF[1];
 
 			m_rsumf(&pm->probe_DFT[0], &pm->probe_REM[0], iX * pm->hfi_wave[0]);
 			m_rsumf(&pm->probe_DFT[1], &pm->probe_REM[1], iX * pm->hfi_wave[1]);

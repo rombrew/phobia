@@ -100,9 +100,10 @@ static void
 usbd_cdc_acm_bulk_out(uint8_t ep, uint32_t nbytes)
 {
 	BaseType_t		xWoken = pdFALSE;
-	int			n;
 
 	if (nbytes > 0) {
+
+		int		n;
 
 		for (n = 0; n < nbytes; ++n) {
 
@@ -164,50 +165,39 @@ void usbd_cdc_acm_get_line_coding(uint8_t intf, struct cdc_line_coding *line_cod
 	line_coding->bCharFormat = 0;
 }
 
-static void
-task_cdc_acm_flag_poll()
-{
-	int			len;
-
-	if (priv_USB.rx_flag == 0) {
-
-		if (uxQueueSpacesAvailable(priv_USB.rx_queue) >= CDC_DATA_SZ) {
-
-			priv_USB.rx_flag = 1;
-
-			usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
-		}
-	}
-
-	if (priv_USB.tx_flag == 0) {
-
-		len = 0;
-
-		while (		len < CDC_DATA_SZ
-				&& xQueueReceive(priv_USB.tx_queue,
-					&priv_USB.tx_buf[len],
-					(TickType_t) 10) == pdTRUE) {
-			len++;
-		}
-
-		if (len > 0) {
-
-			priv_USB.tx_flag = 1;
-
-			usbd_ep_start_write(CDC_IN_EP, priv_USB.tx_buf, len);
-		}
-	}
-}
-
 LD_TASK void task_USB_IN(void *pData)
 {
-	priv_USB.rx_flag = 1;
-	priv_USB.tx_flag = 1;
-
 	do {
 		vTaskDelay((TickType_t) 10);
 
-		task_cdc_acm_flag_poll();
+		if (priv_USB.rx_flag == 0) {
+
+			if (uxQueueSpacesAvailable(priv_USB.rx_queue) >= CDC_DATA_SZ) {
+
+				priv_USB.rx_flag = 1;
+
+				usbd_ep_start_read(CDC_OUT_EP, priv_USB.rx_buf, CDC_DATA_SZ);
+			}
+		}
+
+		if (priv_USB.tx_flag == 0) {
+
+			int	len = 0;
+
+			while (		len < CDC_DATA_SZ
+					&& xQueueReceive(priv_USB.tx_queue,
+						&priv_USB.tx_buf[len],
+						(TickType_t) 10) == pdTRUE) {
+				len++;
+			}
+
+			if (len > 0) {
+
+				priv_USB.tx_flag = 1;
+
+				usbd_ep_start_write(CDC_IN_EP, priv_USB.tx_buf, len);
+			}
+		}
 	}
 	while (1);
 }
@@ -240,10 +230,13 @@ void USB_startup()
 	GPIO_set_mode_SPEED_FAST(GPIO_OTG_FS_DM);
 	GPIO_set_mode_SPEED_FAST(GPIO_OTG_FS_DP);
 
-	/* Alloc queues.
+	/* Create queues.
 	 * */
 	priv_USB.rx_queue = USART_public_rx_queue();
-	priv_USB.tx_queue = xQueueCreate(320, sizeof(char));
+	priv_USB.tx_queue = xQueueCreate(512, sizeof(char));
+
+	priv_USB.rx_flag = 1;
+	priv_USB.tx_flag = 1;
 
 	/* Create USB_IN task.
 	 * */

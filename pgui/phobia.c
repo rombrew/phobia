@@ -211,6 +211,7 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.watt_wA_maximal",
 		"pm.watt_wA_reverse",
 		"pm.watt_capacity_Ah",
+		"pm.i_maximal_on_HFI",
 		"pm.i_damping",
 		"pm.weak_maximal",
 		"pm.s_maximal",
@@ -3150,9 +3151,9 @@ page_diagnose(struct public *pub)
 	}
 
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
-	reg_float(pub, "pm.scale_iA0", "A sensor drift");
-	reg_float(pub, "pm.scale_iB0", "B sensor drift");
-	reg_float(pub, "pm.scale_iC0", "C sensor drift");
+	reg_float(pub, "pm.scale_iA0", "A current drift");
+	reg_float(pub, "pm.scale_iB0", "B current drift");
+	reg_float(pub, "pm.scale_iC0", "C current drift");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3168,9 +3169,9 @@ page_diagnose(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.scale_iA1", "A sensor scale");
-	reg_float(pub, "pm.scale_iB1", "B sensor scale");
-	reg_float(pub, "pm.scale_iC1", "C sensor scale");
+	reg_float(pub, "pm.scale_iA1", "A current scale");
+	reg_float(pub, "pm.scale_iB1", "B current scale");
+	reg_float(pub, "pm.scale_iC1", "C current scale");
 	reg_float(pub, "pm.scale_uA0", "A voltage offset");
 	reg_float(pub, "pm.scale_uA1", "A voltage scale");
 	reg_float(pub, "pm.scale_uB0", "B voltage offset");
@@ -3420,7 +3421,7 @@ page_probe(struct public *pub)
 
 	reg_float(pub, "pm.probe_current_hold", "Probe hold current");
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
-	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 0);
+	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 1);
 	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
 	reg_float(pub, "pm.i_maximal", "Maximal machine current");
 
@@ -4521,8 +4522,8 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 		reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux WEAKENING control");
 
-		reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "CC brake (no reverse)");
-		reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "CC speed tracking");
+		reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake (no reverse)");
+		reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "DRIVE speed tracking");
 
 		reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
 		reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
@@ -4857,8 +4858,9 @@ page_lu_hfi(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.i_maximal_on_HFI", "Maximal current on HFI");
 	reg_float(pub, "pm.hfi_freq", "HF injection frequency");
-	reg_float(pub, "pm.hfi_sine", "HF injection current");
+	reg_float(pub, "pm.hfi_amplitude", "HF injection current");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);

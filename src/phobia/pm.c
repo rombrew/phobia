@@ -53,7 +53,13 @@ void pm_quick_build(pmc_t *pm)
 		pm->quick_TiLu[3] = pm->m_dT * (1.f - Lq * pm->quick_iLd);
 	}
 
-	pm->quick_HFwS = M_2_PI_F * pm->hfi_freq;
+	if (pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
+
+		pm->quick_HFwS = M_2_PI_F * pm->hfi_freq;
+
+		pm->quick_HF[0] = m_cosf(pm->quick_HFwS * pm->m_dT);
+		pm->quick_HF[1] = m_sinf(pm->quick_HFwS * pm->m_dT);
+	}
 
 	if (		   pm->eabi_const_Zq != 0
 			&& pm->eabi_const_EP != 0) {
@@ -215,8 +221,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->zone_gain_TH = 0.7f;
 	pm->zone_gain_LP = 5.E-3f;
 
-	pm->hfi_freq = 2380.f;			/* (Hz) */
-	pm->hfi_sine = 5.f;			/* (A) */
+	pm->hfi_freq = 4761.f;			/* (Hz) */
+	pm->hfi_amplitude = 5.f;		/* (A) */
 
 	pm->hall_trip_tol = 200.f;		/* (rad/s) */
 	pm->hall_gain_LO = 5.E-4f;
@@ -269,7 +275,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->watt_gain_LP = 5.E-3f;
 	pm->watt_gain_WF = 5.E-2f;
 
-	pm->i_maximal_on_HFI = 10.f;		/* (A) */
+	pm->i_maximal_on_HFI = 20.f;		/* (A) */
 	pm->i_slew_rate = 10000.f;		/* (A/s) */
 	pm->i_damping = 1.f;
 	pm->i_gain_P = 2.E-1f;
@@ -1496,15 +1502,36 @@ pm_estimate(pmc_t *pm)
 	}
 }
 
-static void
+static float
 pm_hfi_wave(pmc_t *pm)
 {
+	float		uHF, hCOS, hSIN;
+
 	if (pm->config_HFI_WAVETYPE == PM_HFI_SINE) {
 
-		/* HF sine wave synthesis.
+		const float	*HF = pm->quick_HF;
+
+		/* HF sine wavetype.
 		 * */
-		m_rotatef(pm->hfi_wave, pm->quick_HFwS * pm->m_dT);
+		hCOS = HF[0] * pm->hfi_wave[0] - HF[1] * pm->hfi_wave[1];
+		hSIN = HF[1] * pm->hfi_wave[0] + HF[0] * pm->hfi_wave[1];
+
+		pm->hfi_wave[0] = hCOS;
+		pm->hfi_wave[1] = hSIN;
+
 		m_normalizef(pm->hfi_wave);
+
+		uHF = pm->hfi_wave[0] * pm->hfi_amplitude
+			* pm->quick_HFwS * pm->const_im_Ld;
+	}
+	else if (pm->config_HFI_WAVETYPE == PM_HFI_SQUARE) {
+
+		/* HF square wavetype.
+		 * */
+		pm->hfi_wave[0] = (pm->hfi_wave[0] < 0.f) ? 2.1f : - 2.1f;
+
+		uHF = pm->hfi_wave[0] * pm->hfi_amplitude
+			* pm->m_freq * pm->const_im_Ld;
 	}
 	else if (pm->config_HFI_WAVETYPE == PM_HFI_RANDOM) {
 
@@ -1512,18 +1539,23 @@ pm_hfi_wave(pmc_t *pm)
 		 * */
 		if (pm->hfi_wave[1] > M_PI_F) {
 
-			pm->hfi_wave[0] = m_lf_gaussf(&pm->lfseed) * 0.33f;
+			pm->hfi_wave[0] = m_lf_gaussf(&pm->lfseed) * 0.2f;
 			pm->hfi_wave[1] += - M_PI_F;
 		}
 
 		pm->hfi_wave[1] += pm->quick_HFwS * pm->m_dT;
+
+		uHF = pm->hfi_wave[0] * pm->hfi_amplitude
+			* pm->m_freq * pm->const_im_Ld;
 	}
 	else {
-		/* No HF wave injection.
+		/* No HF wave.
 		 * */
 		pm->hfi_wave[0] = 0.f;
 		pm->hfi_wave[1] = 1.f;
 	}
+
+	return uHF;
 }
 
 static void
@@ -3217,17 +3249,9 @@ pm_loop_current(pmc_t *pm)
 	if (		pm->config_HFI_PERMANENT == PM_ENABLED
 			|| pm->lu_MODE == PM_LU_ON_HFI) {
 
-		float		uHF;
-
-		/* HF waveform synthesis.
-		 * */
-		pm_hfi_wave(pm);
-
-		uHF = pm->hfi_sine * pm->quick_HFwS * pm->const_im_Ld;
-
 		/* HF voltage injection.
 		 * */
-		uD += pm->hfi_wave[0] * uHF;
+		uD += pm_hfi_wave(pm);
 	}
 
 	/* Go to XY-axes.

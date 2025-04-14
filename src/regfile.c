@@ -1137,93 +1137,93 @@ reg_format_ref_auto(const reg_t *reg, const rval_t *rval)
 }
 
 #undef PM_SFI_CASE
-#define PM_SFI_CASE(val)	case val: printf(" (%s)", PM_SFI(val)); um = 1; break
+#define PM_SFI_CASE(msg)	case msg: printf(" (%s)", PM_SFI(msg)); break
 
 static int
-reg_format_enumerate(const reg_t *reg, const rval_t *rval)
+reg_format_textual(const reg_t *reg, const rval_t *rval)
 {
-	int			reg_ID, val, um = 0;
+	int			reg_ID, msg, blank = 0;
 
 	reg_ID = (int) (reg - regfile);
-	val = (int) rval->i;
+	msg = (int) rval->i;
 
-	printf("%i", val);
+	printf("%i", msg);
 
 	switch (reg_ID) {
 
 		case ID_HAL_MCU_ID:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(MCU_ID_UNKNOWN);
 				PM_SFI_CASE(MCU_ID_STM32F405);
 				PM_SFI_CASE(MCU_ID_STM32F722);
 				PM_SFI_CASE(MCU_ID_GD32F405);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_HAL_USART_PARITY:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PARITY_NONE);
 				PM_SFI_CASE(PARITY_EVEN);
 				PM_SFI_CASE(PARITY_ODD);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_HAL_ADC_SAMPLE_TIME:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(ADC_SMP_3);
 				PM_SFI_CASE(ADC_SMP_15);
 				PM_SFI_CASE(ADC_SMP_28);
 				PM_SFI_CASE(ADC_SMP_56);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_HAL_DPS_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(DPS_DISABLED);
 				PM_SFI_CASE(DPS_DRIVE_HALL);
 				PM_SFI_CASE(DPS_DRIVE_EABI);
 				PM_SFI_CASE(DPS_DRIVE_ON_SPI);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_HAL_PPM_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PPM_DISABLED);
 				PM_SFI_CASE(PPM_PULSE_WIDTH);
 				PM_SFI_CASE(PPM_PULSE_OUTPUT);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 #ifdef HW_HAVE_STEP_DIR_KNOB
 		case ID_HAL_STEP_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(STEP_DISABLED);
 				PM_SFI_CASE(STEP_ON_STEP_DIR);
 				PM_SFI_CASE(STEP_ON_CW_CCW);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 #endif /* HW_HAVE_STEP_DIR_KNOB */
@@ -1231,24 +1231,24 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 #ifdef HW_HAVE_DRV_ON_PCB
 		case ID_HAL_DRV_PARTNO:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(DRV_NONE);
 				PM_SFI_CASE(DRV_PART_DRV8301);
 				PM_SFI_CASE(DRV_PART_DRV8305);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_HAL_DRV_AUTO_RESTART:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 #endif /* HW_HAVE_DRV_ON_PCB */
@@ -1257,12 +1257,12 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_HAL_OPT_FILTER_CURRENT:
 		case ID_HAL_OPT_FILTER_VOLTAGE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 #endif /* HW_HAVE_OPT_FILTER */
@@ -1270,13 +1270,13 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(EPCAN_LOG_DISABLED);
 				PM_SFI_CASE(EPCAN_LOG_FILTERED);
 				PM_SFI_CASE(EPCAN_LOG_PROMISCUOUS);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1285,14 +1285,14 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_MODE:
 		case ID_NET_EP3_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(EPCAN_PIPE_DISABLED);
 				PM_SFI_CASE(EPCAN_PIPE_INCOMING);
 				PM_SFI_CASE(EPCAN_PIPE_OUTGOING_REGULAR);
 				PM_SFI_CASE(EPCAN_PIPE_OUTGOING_INJECTED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1301,12 +1301,12 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_STARTUP:
 		case ID_NET_EP3_STARTUP:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1315,12 +1315,12 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP2_PAYLOAD:
 		case ID_NET_EP3_PAYLOAD:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
 				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 #endif /* HW_HAVE_NETWORK_EPCAN */
@@ -1337,12 +1337,12 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_AP_KNOB_STARTUP:
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1352,7 +1352,7 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_AP_NTC_EXT_TYPE:
 #endif /* HW_HAVE_NTC_MACHINE */
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(NTC_NONE);
 				PM_SFI_CASE(NTC_ON_GND);
@@ -1361,7 +1361,7 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 				PM_SFI_CASE(NTC_KTY83_GND);
 				PM_SFI_CASE(NTC_KTY84_GND);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1369,36 +1369,36 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 #define APP_DEF(name)		case ID_AP_TASK_ ## name:
 #include "app/apdefs.h"
 
-		switch (val) {
+			switch (msg) {
 
-			PM_SFI_CASE(PM_DISABLED);
-			PM_SFI_CASE(PM_ENABLED);
+				PM_SFI_CASE(PM_DISABLED);
+				PM_SFI_CASE(PM_ENABLED);
 
-			default: break;
-		}
-		break;
+				default: blank = 1; break;
+			}
+			break;
 
 		case ID_PM_CONFIG_NOP:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_NOP_THREE_PHASE);
 				PM_SFI_CASE(PM_NOP_TWO_PHASE);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_IFB:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_IFB_AB_INLINE);
 				PM_SFI_CASE(PM_IFB_AB_GND);
 				PM_SFI_CASE(PM_IFB_ABC_INLINE);
 				PM_SFI_CASE(PM_IFB_ABC_GND);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
@@ -1414,144 +1414,144 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 		case ID_PM_CONFIG_CC_BRAKE_STOP:
 		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_VSI_ZERO:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_VSI_GND);
 				PM_SFI_CASE(PM_VSI_CENTER);
 				PM_SFI_CASE(PM_VSI_EXTREME);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_LU_ESTIMATE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_FLUX_NONE);
 				PM_SFI_CASE(PM_FLUX_ORTEGA);
 				PM_SFI_CASE(PM_FLUX_KALMAN);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_LU_SENSOR:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_SENSOR_NONE);
 				PM_SFI_CASE(PM_SENSOR_HALL);
 				PM_SFI_CASE(PM_SENSOR_EABI);
 				PM_SFI_CASE(PM_SENSOR_SINCOS);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_LU_LOCATION:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_LOCATION_NONE);
 				PM_SFI_CASE(PM_LOCATION_INHERITED);
 				PM_SFI_CASE(PM_LOCATION_EABI);
 				PM_SFI_CASE(PM_LOCATION_SINCOS);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_LU_DRIVE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DRIVE_CURRENT);
 				PM_SFI_CASE(PM_DRIVE_TORQUE);
 				PM_SFI_CASE(PM_DRIVE_SPEED);
 				PM_SFI_CASE(PM_DRIVE_LOCATION);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_HFI_WAVETYPE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_HFI_NONE);
 				PM_SFI_CASE(PM_HFI_SINE);
+				PM_SFI_CASE(PM_HFI_SQUARE);
 				PM_SFI_CASE(PM_HFI_RANDOM);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_EXCITATION:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_EXCITATION_NONE);
 				PM_SFI_CASE(PM_EXCITATION_CONST);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_SALIENCY:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_SALIENCY_NONE);
 				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
 				PM_SFI_CASE(PM_SALIENCY_POSITIVE);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_EABI_FRONTEND:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_EABI_INCREMENTAL);
 				PM_SFI_CASE(PM_EABI_ABSOLUTE);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_CONFIG_SINCOS_FRONTEND:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_SINCOS_ANALOG);
 				PM_SFI_CASE(PM_SINCOS_RESOLVER);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
-
 		case ID_PM_FSM_ERRNO:
 
-			printf(" (%s)", pm_strerror(val));
+			printf(" (%s)", pm_strerror(msg)); blank = 1;
 			break;
 
 		case ID_PM_LU_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_LU_DISABLED);
 				PM_SFI_CASE(PM_LU_DETACHED);
@@ -1562,69 +1562,69 @@ reg_format_enumerate(const reg_t *reg, const rval_t *rval)
 				PM_SFI_CASE(PM_LU_SENSOR_EABI);
 				PM_SFI_CASE(PM_LU_SENSOR_SINCOS);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_FLUX_ZONE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_ZONE_NONE);
 				PM_SFI_CASE(PM_ZONE_UNCERTAIN);
 				PM_SFI_CASE(PM_ZONE_HIGH);
 				PM_SFI_CASE(PM_ZONE_LOCKED_IN_DETACH);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_EABI_ADJUST:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_PM_WATT_DC_MAX:
 		case ID_PM_WATT_DC_MIN:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(PM_DISABLED);
 				PM_SFI_CASE(PM_ENABLED);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
 		case ID_TLM_MODE:
 
-			switch (val) {
+			switch (msg) {
 
 				PM_SFI_CASE(TLM_MODE_DISABLED);
 				PM_SFI_CASE(TLM_MODE_GRAB);
 				PM_SFI_CASE(TLM_MODE_WATCH);
 				PM_SFI_CASE(TLM_MODE_LIVE);
 
-				default: break;
+				default: blank = 1; break;
 			}
 			break;
 
-		default: break;
+		default: blank = 1; break;
 	}
 
-	return um;
+	return blank;
 }
 
 static void
 reg_format_enum(const reg_t *reg, const rval_t *rval)
 {
-	(void) reg_format_enumerate(reg, rval);
+	(void) reg_format_textual(reg, rval);
 }
 
 const reg_t		regfile[] = {
@@ -2033,7 +2033,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hfi_freq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.hfi_sine,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.hfi_amplitude,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.hall_ST, 1_X, [1].X,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
 	REG_DEF(pm.hall_ST, 1_Y, [1].Y,"",	"%3f",	REG_CONFIG | REG_READ_ONLY | REG_HIDDEN, NULL, NULL),
@@ -2518,7 +2518,7 @@ SH_DEF(enum_reg)
 	rval_t			rval;
 	const reg_t		*reg;
 
-	int			reg_ID, um;
+	int			reg_ID, blank;
 
 	reg = reg_search_fuzzy(s);
 
@@ -2532,11 +2532,11 @@ SH_DEF(enum_reg)
 			printf("%2i [%-3i] %s = ", reg->mode
 					| REG_HIDDEN, reg_ID, reg->sym);
 
-			um = reg_format_enumerate(reg, &rval);
+			blank = reg_format_textual(reg, &rval);
 
 			puts(EOL);
 
-			if (um == 0)
+			if (blank != 0)
 				break;
 		}
 

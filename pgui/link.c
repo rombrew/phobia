@@ -969,14 +969,15 @@ void link_push(struct link_pmc *lp)
 			}
 
 			if (		(reg->mode & LINK_REG_TYPE_ENUMERATE) != 0
-					&& reg->enumerated + 90000 < reg->shown) {
+					&& (reg->enumerated + 10000 < reg->fetched
+						|| reg->enumerated == 0)) {
 
 				sprintf(priv->lbuf, "enum_reg %i" LINK_EOL, reg_ID);
 
 				if (serial_fputs(priv->fd, priv->lbuf) == SERIAL_OK) {
 
-					reg->queued = lp->clock;
 					reg->enumerated = lp->clock;
+					reg->queued = lp->clock;
 
 					lp->locked = lp->clock;
 
