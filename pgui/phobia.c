@@ -578,15 +578,15 @@ pub_popup_hwinfo(struct public *pub, int popup)
 		nk_label(ctx, "HW revision", NK_TEXT_LEFT);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-				lp->hw.revision, 79, nk_filter_default);
+				lp->hw.hardware, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 
 		nk_spacer(ctx);
-		nk_label(ctx, "PMC firmware", NK_TEXT_LEFT);
+		nk_label(ctx, "FW revision", NK_TEXT_LEFT);
 
 		nk_edit_string_zero_terminated(ctx, NK_EDIT_SELECTABLE,
-				lp->hw.identify, 79, nk_filter_default);
+				lp->hw.revision, 79, nk_filter_default);
 
 		nk_spacer(ctx);
 
@@ -673,7 +673,7 @@ pub_popup_about(struct public *pub, int popup)
 #include "../src/hgdef.h"
 
 		nk_spacer(ctx);
-		nk_label(ctx, "Identify: " _HG_IDENTIFY, NK_TEXT_LEFT);
+		nk_label(ctx, "Revision: " _HG_REV, NK_TEXT_LEFT);
 		nk_spacer(ctx);
 
 		nk_spacer(ctx);
@@ -4646,6 +4646,12 @@ page_lu_forced(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_enum_toggle(pub, "pm.config_LU_FORCED", "FORCED control");
+	reg_enum_toggle(pub, "pm.config_LU_FREEWHEEL", "Allow FREEWHEELING");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "pm.forced_hold_D", "FORCED hold current");
 	reg_float(pub, "pm.forced_weak_D", "FORCED weak current");
 	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 1);
@@ -4710,6 +4716,11 @@ page_lu_flux(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_enum_errno(pub, "pm.fsm_errno", "FSM error code", 1);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_enum_combo(pub, "pm.config_LU_ESTIMATE", "SENSORLESS estimate", 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -5160,6 +5171,11 @@ page_lu_eabi(struct public *pub)
 		nk_spacer(ctx);
 	}
 
+	reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float(pub, "pm.eabi_F0", "EABI adjustment position");
 	reg_float(pub, "pm.eabi_const_EP", "EABI pulse resolution");
 	reg_float(pub, "pm.eabi_const_Zs", "Gear teeth number S");
@@ -5323,6 +5339,11 @@ page_lu_sincos(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 	}
+
+	reg_enum_combo(pub, "pm.config_SINCOS_FRONTEND", "SINCOS frontend", 0);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 
 	reg_float(pub, "pm.sincos_const_Zs", "Gear teeth number S");
 	reg_float(pub, "pm.sincos_const_Zq", "Gear teeth number Q");
@@ -5517,7 +5538,8 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.i_maximal_on_HFI", "Maximal current on HFI");
+	reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake (no reverse)");
+	reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "DRIVE speed tracking");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -5690,6 +5712,11 @@ page_lp_location(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 	}
+
+	reg_enum_combo(pub, "pm.config_LU_LOCATION", "Servo LOCATION source", 1);
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
 
 	reg = link_reg_lookup(lp, "pm.const_ld_Sm");
 	if (reg != NULL && reg->fval > 0.f) { um_def = 2; }

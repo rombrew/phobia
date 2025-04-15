@@ -426,13 +426,13 @@ link_fetch_hwinfo(struct link_pmc *lp)
 
 	tok = lk_token(&sp);
 
-	if (strcmp(tok, "Revision") == 0) {
+	if (strcmp(tok, "Hardware") == 0) {
+
+		sprintf(lp->hw.hardware, "%.64s", lk_token(&sp));
+	}
+	else if (strcmp(tok, "Revision") == 0) {
 
 		sprintf(lp->hw.revision, "%.64s", lk_token(&sp));
-	}
-	else if (strcmp(tok, "Identify") == 0) {
-
-		sprintf(lp->hw.identify, "%.64s", lk_token(&sp));
 	}
 	else if (strcmp(tok, "Build") == 0) {
 
@@ -446,7 +446,7 @@ link_fetch_hwinfo(struct link_pmc *lp)
 
 		sprintf(lp->hw.crc32 + strlen(lp->hw.crc32), " (%.16s)", tok);
 
-		sprintf(lp->hwinfo, "%.64s / %.32s", lp->hw.revision, lp->hw.crc32);
+		sprintf(lp->hwinfo, "%.64s / %.32s", lp->hw.hardware, lp->hw.crc32);
 	}
 }
 

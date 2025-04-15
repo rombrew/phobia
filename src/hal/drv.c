@@ -7,9 +7,9 @@
 #define HW_DRV_FREQUENCY		2000000U	/* (Hz) */
 #endif /* HW_DRV_FREQUENCY */
 
-#ifndef HW_DRV_FAULT_SAFETY
-#define HW_DRV_FAULT_SAFETY		20
-#endif /* HW_DRV_FAULT_SAFETY */
+#ifndef HW_DRV_FAULT_THRESHOLD
+#define HW_DRV_FAULT_THRESHOLD		20
+#endif /* HW_DRV_FAULT_THRESHOLD */
 
 static int
 DRV_read_reg(int addr)
@@ -166,7 +166,7 @@ int DRV_fault()
 {
 	if (hal.DRV.partno_ENABLED != DRV_NONE) {
 
-		if (unlikely(hal.DRV.fault_CNT >= HW_DRV_FAULT_SAFETY)) {
+		if (unlikely(hal.DRV.fault_CNT >= HW_DRV_FAULT_THRESHOLD)) {
 
 			return HAL_FAULT;
 		}

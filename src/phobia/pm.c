@@ -3313,7 +3313,7 @@ pm_loop_speed(pmc_t *pm)
 static void
 pm_loop_location(pmc_t *pm)
 {
-	float		xSP, wSP, eSP, len, weak, gain;
+	float		xSP, wSP, eSP, eDS, weak, gain;
 
 	xSP = pm->x_setpoint_location;
 	wSP = pm->x_setpoint_speed;
@@ -3340,20 +3340,23 @@ pm_loop_location(pmc_t *pm)
 	/* Obtain the location discrepancy.
 	 * */
 	eSP = pm->x_setpoint_location - pm->lu_location;
-	len = m_fabsf(eSP);
+
+	/* Absolute distance to the location setpoint.
+	 * */
+	eDS = m_fabsf(eSP);
 
 	/* There is a residual tolerance.
 	 * */
-	eSP = (len > pm->x_track_tol) ? eSP : 0.f;
+	eSP = (eDS > pm->x_track_tol) ? eSP : 0.f;
 
 	/* Damping inside BOOST zone.
 	 * */
-	weak = (len < pm->x_boost_tol) ? len * m_fast_recipf(pm->x_boost_tol) : 1.f;
+	weak = (eDS < pm->x_boost_tol) ? eDS * m_fast_recipf(pm->x_boost_tol) : 1.f;
 	gain = pm->x_gain_P * weak + pm->x_gain_D * (1.f - weak);
 
 	/* Based on constant acceleration formula.
 	 * */
-	wSP += gain * eSP * m_rough_rsqrtf(len);
+	wSP += gain * eSP * m_rough_rsqrtf(eDS);
 
 	/* Update speed loop SETPOINT.
 	 * */

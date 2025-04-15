@@ -89,8 +89,8 @@ struct link_pmc {
 
 	struct {
 
+		char		hardware[LINK_NAME_MAX];
 		char		revision[LINK_NAME_MAX];
-		char		identify[LINK_NAME_MAX];
 		char		build[LINK_NAME_MAX];
 		char		crc32[LINK_NAME_MAX];
 	}

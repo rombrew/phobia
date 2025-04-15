@@ -108,16 +108,16 @@ def mkhgdef():
     rc = -1
 
     if os.path.isdir('../.hg') == True:
-        rc = os.system('hg log -r tip --template "#define _HG_IDENTIFY\t\
-\\"{branch}-{node|short}-{date|shortdate}\\"\n" > hgdef.h')
+        rc = os.system('hg log -r tip --template "#define _HG_REV \
+\\"{branch}-{rev}-{node|short} ({date|shortdate})\\"\n" > hgdef.h')
 
     if os.path.isdir('../.git') == True:
-        rc = os.system('git log -1 --pretty=format:"#define _HG_IDENTIFY\t\
-\\"git-%h-%cd\\"\n" --date=short > hgdef.h')
+        rc = os.system('git log -1 --pretty=format:"#define _HG_REV \
+\\"git-%h (%cd)\\"\n" --date=short > hgdef.h')
 
     if rc != 0:
         f = open('hgdef.h', 'w')
-        f.write('#define _HG_IDENTIFY\t"none"\n')
+        f.write('#define _HG_REV "none"\n')
         f.close()
 
 

@@ -17,7 +17,7 @@ SECTIONS
 	{
 		ld_text_begin = . ;
 
-		KEEP(*(.vectors))
+		KEEP(*(.vtab))
 		. = ALIGN(8);
 
 		*(.text)
@@ -59,7 +59,7 @@ SECTIONS
 
 	.endstub (NOLOAD) : ALIGN(8)
 	{
-		ld_end = . ;
+		ld_crc32_stub = . ;
 
 	} > ITCM_FLASH
 

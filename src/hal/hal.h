@@ -102,8 +102,8 @@ typedef struct {
 	uint32_t	ld_begin;
 	uint32_t	ld_crc32;
 
+	const char	hardware[64];
 	const char	revision[64];
-	const char	identify[64];
 	const char	build[16];
 }
 fw_info_t;

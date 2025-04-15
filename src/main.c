@@ -1175,8 +1175,8 @@ SH_DEF(ap_version)
 	uint32_t	ld_sizeof, ld_crc32;
 	int		rc;
 
+	printf("Hardware \"%s\"" EOL, fw.hardware);
 	printf("Revision \"%s\"" EOL, fw.revision);
-	printf("Identify \"%s\"" EOL, fw.identify);
 	printf("Build \"%s\"" EOL, fw.build);
 
 	ld_sizeof = fw.ld_crc32 - fw.ld_begin;

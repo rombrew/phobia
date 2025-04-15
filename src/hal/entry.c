@@ -1,7 +1,7 @@
 #include "hal.h"
 #include "cmsis/stm32xx.h"
 
-#define LD_VECTORS		__attribute__ ((section(".vectors"), used))
+#define LD_VTABLE		__attribute__ ((section(".vtab"), used))
 #define LD_IRQ_WEAK		__attribute__ ((weak, alias("irq_Weak")))
 
 extern uint32_t ld_stack;
@@ -17,7 +17,7 @@ extern uint32_t ld_bss_begin;
 extern uint32_t ld_bss_end;
 extern uint32_t ld_ccm_begin;
 extern uint32_t ld_ccm_end;
-extern uint32_t ld_end;
+extern uint32_t ld_crc32_stub;
 
 void irq_Reset();
 void irq_NMI();
@@ -49,14 +49,14 @@ void irq_OTG_FS() LD_IRQ_WEAK;
 const fw_info_t		fw = {
 
 	(uint32_t) &ld_text_begin,
-	(uint32_t) &ld_end,
+	(uint32_t) &ld_crc32_stub,
 
 #include "hgdef.h"
 
-	_HW_REV, _HG_IDENTIFY, __DATE__
+	_HW_REV, _HG_REV, __DATE__
 };
 
-LD_VECTORS void *vtab[] = {
+LD_VTABLE void *vtab[] = {
 
 	(void *) &ld_stack,
 
