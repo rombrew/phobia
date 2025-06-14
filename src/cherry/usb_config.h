@@ -16,12 +16,12 @@
 #define CONFIG_USB_DBG_LEVEL		USB_DBG_ERROR
 #endif
 
-#ifndef CONFIG_USB_ALIGN_SIZE
-#define CONFIG_USB_ALIGN_SIZE		4
+#ifndef CONFIG_USB_ALIGN
+#define CONFIG_USB_ALIGN		4
 #endif
 
 #define USB_NOCACHE_RAM_SECTION
-#define USB_MEM_ALIGN			__attribute__ ((aligned(CONFIG_USB_ALIGN_SIZE)))
+#define USB_MEM_ALIGN			__attribute__ ((aligned(CONFIG_USB_ALIGN)))
 
 /* ================ USB Device Stack Configuration ============== */
 

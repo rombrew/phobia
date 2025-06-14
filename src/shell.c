@@ -127,11 +127,11 @@ sh_cyclic_match(priv_sh_t *sh, int xd)
 
 		id = cmd->sym;
 
-		if (strcmpe(sh->cline, id) == 0) {
+		if (strcmps(sh->cline, id) == 0) {
 
 			/* Copy the command name.
 			 * */
-			strcpyn(sh->cline, id, SH_CLINE_MAX - 2);
+			strncpy(sh->cline, id, SH_CLINE_MAX - 2);
 
 			break;
 		}
@@ -150,10 +150,10 @@ static void
 sh_common_match(priv_sh_t *sh)
 {
 	const sh_cmd_t		*cmd;
-	const char		*id, *sp;
+	const char		*id, *com;
 	int			len;
 
-	sp = NULL;
+	com = NULL;
 	cmd = cmLIST;
 
 	sh->cnum = 0;
@@ -164,10 +164,10 @@ sh_common_match(priv_sh_t *sh)
 		if (id == NULL)
 			break;
 
-		if (strcmpe(sh->cline, id) == 0) {
+		if (strcmps(sh->cline, id) == 0) {
 
-			len = (sp != NULL) ? strcmpn(sp, id, len) : strlen(id);
-			sp = id;
+			len = (com != NULL) ? strclen(com, id, len) : strlen(id);
+			com = id;
 
 			sh->cnum++;
 		}
@@ -176,11 +176,11 @@ sh_common_match(priv_sh_t *sh)
 	}
 	while (1);
 
-	if (sp != NULL) {
+	if (com != NULL) {
 
 		len = (len > SH_CLINE_MAX - 2) ? SH_CLINE_MAX - 2 : len;
 
-		strcpyn(sh->cline, sp, len);
+		strncpy(sh->cline, com, len);
 		sh->ceon = len;
 	}
 	else {

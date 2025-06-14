@@ -988,8 +988,8 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	 * [R - iZ(0)      iZ(1)] * [IX] = [UX]
 	 * [    iZ(1)  R - iZ(2)]   [IY]   [UY], where
 	 *
-	 * IX = [DFT(0) + iDFT(1)],  UX = [DFT(2) + iDFT(3)],
-	 * IY = [DFT(4) + iDFT(5)],  UY = [DFT(6) + iDFT(7)].
+	 * IX = [DFT(0) + iDFT(1)]  UX = [DFT(2) + iDFT(3)]
+	 * IY = [DFT(4) + iDFT(5)]  UY = [DFT(6) + iDFT(7)].
 	 *
 	 * We rewrite it with respect to the impedance components.
 	 *
@@ -1066,6 +1066,15 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 {
 	float		eD, eQ, eHF, uD, uQ, uHF, uMAX;
 
+	/* Observe maximal current constraint.
+	 * */
+	pm->i_track_D = (pm->i_track_D > pm->i_maximal) ? pm->i_maximal
+		: (pm->i_track_D < - pm->i_maximal) ? - pm->i_maximal : pm->i_track_D;
+	pm->i_track_Q = (pm->i_track_Q > pm->i_maximal) ? pm->i_maximal
+		: (pm->i_track_Q < - pm->i_maximal) ? - pm->i_maximal : pm->i_track_Q;
+
+	/* Obtain the current discrepancy.
+	 * */
 	eD = pm->i_track_D - pm->lu_iX;
 	eQ = pm->i_track_Q - pm->lu_iY;
 
@@ -1073,6 +1082,8 @@ pm_fsm_probe_loop_current(pmc_t *pm, float track_HF)
 
 	if (track_HF > M_EPSILON) {
 
+		/* HF discrepancy.
+		 * */
 		eHF = track_HF - m_hypotf(eD, eQ);
 
 		pm->probe_HF[0] += (eHF - pm->probe_HF[0]) * pm->probe_gain_LP;
@@ -1636,7 +1647,7 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 					pm->flux_LINKAGE = PM_ENABLED;
 				}
-				else if (pm->config_EXCITATION == PM_EXCITATION_NONE) {
+				else if (pm->config_EXCITATION == PM_MAGNET_NONE) {
 
 					pm->flux_LINKAGE = PM_ENABLED;
 				}
@@ -1722,8 +1733,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 
 				pm->mtpa_setpoint_Q = 0.f;
 				pm->mtpa_load_Q = 0.f;
-				pm->mtpa_D = 0.f;
-				pm->weak_D = 0.f;
+				pm->mtpa_track_D = 0.f;
+				pm->weak_track_D = 0.f;
 
 				pm->s_setpoint_speed = 0.f;
 				pm->s_track = 0.f;

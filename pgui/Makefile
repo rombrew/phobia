@@ -46,7 +46,7 @@ OBJS	+= gp/async.o \
 	   gp/scheme.o \
 	   gp/svg.o
 
-PMCFE_OBJS = $(addprefix $(BUILD)/, $(OBJS))
+BUILD_OBJS = $(addprefix $(BUILD)/, $(OBJS))
 
 all: $(TARGET)
 
@@ -55,7 +55,7 @@ $(BUILD)/%.o: %.c
 	@ $(MK) $(dir $@)
 	@ $(CC) -c $(CFLAGS) -MMD -o $@ $<
 
-$(TARGET): $(PMCFE_OBJS)
+$(TARGET): $(BUILD_OBJS)
 	@ echo "  LD    " $(notdir $@)
 	@ $(LD) $(CFLAGS) -o $@ $^ $(LFLAGS)
 

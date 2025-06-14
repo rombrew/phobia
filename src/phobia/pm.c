@@ -131,7 +131,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_LU_DRIVE = PM_DRIVE_SPEED;
 	pm->config_HFI_WAVETYPE = PM_HFI_NONE;
 	pm->config_HFI_PERMANENT = PM_DISABLED;
-	pm->config_EXCITATION = PM_EXCITATION_CONST;
+	pm->config_SATURATION = PM_IRON_NONE;
+	pm->config_EXCITATION = PM_MAGNET_PERMANENT;
 	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
@@ -173,7 +174,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_weak_level = 0.5f;
 	pm->probe_hold_angle = 0.f;
 	pm->probe_current_sine = 10.f;		/* (A) */
-	pm->probe_current_bias = 0.f;		/* (A) */
+	pm->probe_current_bias = 10.f;		/* (A) */
 	pm->probe_freq_sine = 1100.f;		/* (Hz) */
 	pm->probe_speed_hold = 900.f;		/* (rad/s) */
 	pm->probe_speed_tol = 50.f;		/* (rad/s) */
@@ -221,6 +222,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->zone_gain_TH = 0.7f;
 	pm->zone_gain_LP = 5.E-3f;
 
+	pm->hfi_maximal = 20.f;			/* (A) */
 	pm->hfi_freq = 4761.f;			/* (Hz) */
 	pm->hfi_amplitude = 5.f;		/* (A) */
 
@@ -275,13 +277,12 @@ pm_auto_config_default(pmc_t *pm)
 	pm->watt_gain_LP = 5.E-3f;
 	pm->watt_gain_WF = 5.E-2f;
 
-	pm->i_maximal_on_HFI = 20.f;		/* (A) */
 	pm->i_slew_rate = 10000.f;		/* (A/s) */
 	pm->i_damping = 1.f;
 	pm->i_gain_P = 2.E-1f;
 	pm->i_gain_I = 5.E-3f;
 
-	pm->mtpa_tol = 50.f;			/* (A) */
+	pm->mtpa_revstep = 50.f;		/* (A) */
 	pm->mtpa_gain_LP = 5.E-2f;
 
 	pm->weak_maximal = 50.f;		/* (A) */
@@ -304,7 +305,7 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->x_maximal = 100.f;			/* (rad) */
 	pm->x_minimal = - pm->x_maximal;	/* (rad) */
-	pm->x_boost_tol= 0.10f;			/* (rad) */
+	pm->x_boost_tol = 0.1f;			/* (rad) */
 	pm->x_track_tol = 0.f;			/* (rad) */
 	pm->x_gain_P = 35.f;
 	pm->x_gain_D = 10.f;
@@ -415,13 +416,22 @@ pm_auto_maximal_current(pmc_t *pm)
 		pm->forced_hold_D = maximal_A;
 	}
 
-	/* Sine current based on maximal machine current.
+	/* Sine current based on machine probing current.
 	 * */
-	maximal_A = pm->i_maximal * 0.2f;
+	maximal_A = pm->probe_current_hold * 0.5f;
 
 	if (pm->probe_current_sine > maximal_A) {
 
 		pm->probe_current_sine = maximal_A;
+	}
+
+	/* Bias current based on machine probing current.
+	 * */
+	maximal_A = pm->probe_current_hold * 0.5f;
+
+	if (pm->probe_current_bias > maximal_A) {
+
+		pm->probe_current_bias = maximal_A;
 	}
 }
 
@@ -725,7 +735,7 @@ pm_lu_current(pmc_t *pm, float mSP, float *Q)
 		iQ = *Q;
 		mQ = pm_torque_equation(pm, pm_torque_MTPA(pm, iQ), iQ);
 
-		iQd = (mSP < mQ) ? iQ - pm->mtpa_tol : iQ + pm->mtpa_tol;
+		iQd = (mSP < mQ) ? iQ - pm->mtpa_revstep : iQ + pm->mtpa_revstep;
 		mQd = pm_torque_equation(pm, pm_torque_MTPA(pm, iQd), iQd);
 
 		iQ += (mSP - mQ) * (iQd - iQ) * m_fast_recipf(mQd - mQ);
@@ -2982,11 +2992,11 @@ pm_loop_current(pmc_t *pm)
 			float		iD;
 
 			iD = pm_torque_MTPA(pm, pm->lu_iQ);
-			pm->mtpa_D += (iD - pm->mtpa_D) * pm->mtpa_gain_LP;
+			pm->mtpa_track_D += (iD - pm->mtpa_track_D) * pm->mtpa_gain_LP;
 
 			/* Maximum Torque Per Ampere (MTPA) control.
 			 * */
-			track_D += pm->mtpa_D;
+			track_D += pm->mtpa_track_D;
 		}
 
 		if (pm->config_WEAKENING == PM_ENABLED) {
@@ -2997,16 +3007,21 @@ pm_loop_current(pmc_t *pm)
 			eDC = (1.f - pm->vsi_DC) * pm->const_fb_U;
 
 			if (		pm->const_fb_U > uMAX
-					&& pm->weak_D < - M_EPSILON) {
+					&& pm->weak_track_D < - M_EPSILON) {
 
 				eDC = (eDC < 0.f) ? eDC : 0.f;
 			}
 
-			pm->weak_D += eDC * pm->weak_gain_EU;
-			pm->weak_D = (pm->weak_D < - pm->weak_maximal) ? - pm->weak_maximal
-				: (pm->weak_D > 0.f) ? 0.f : pm->weak_D;
+			/* Maximal weakening current.
+			 * */
+			iMAX = 0.f;
+			iREV = - pm->weak_maximal;
 
-			if (pm->weak_D < - M_EPSILON) {
+			pm->weak_track_D += eDC * pm->weak_gain_EU;
+			pm->weak_track_D = (pm->weak_track_D > iMAX) ? iMAX
+				: (pm->weak_track_D < iREV) ? iREV : pm->weak_track_D;
+
+			if (pm->weak_track_D < - M_EPSILON) {
 
 				eDC = pm->k_EMAX * pm->const_fb_U;
 				wLS = pm->lu_wS * pm->const_im_Lq;
@@ -3018,7 +3033,7 @@ pm_loop_current(pmc_t *pm)
 
 				/* Flux weakening control.
 				 * */
-				track_D += pm->weak_D;
+				track_D += pm->weak_track_D;
 			}
 		}
 	}
@@ -3038,7 +3053,7 @@ pm_loop_current(pmc_t *pm)
 
 	if (pm->lu_MODE == PM_LU_ON_HFI) {
 
-		iMAX = pm->i_maximal_on_HFI;
+		iMAX = pm->hfi_maximal;
 
 		/* Add current constraint from HFI.
 		 * */
@@ -3052,7 +3067,7 @@ pm_loop_current(pmc_t *pm)
 
 	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < - iMAX) ? - iMAX : track_Q;
 
-	if (pm->weak_D > - M_EPSILON) {
+	if (pm->weak_track_D > - M_EPSILON) {
 
 		/* In case of no flux weakening also constraint D-axis current.
 		 * */
@@ -3145,7 +3160,7 @@ pm_loop_current(pmc_t *pm)
 	 * */
 	if (unlikely(wP < wREV)) {
 
-		if (pm->weak_D > - M_EPSILON) {
+		if (pm->weak_track_D > - M_EPSILON) {
 
 			wREV /= wP;
 
@@ -3170,7 +3185,7 @@ pm_loop_current(pmc_t *pm)
 	 * */
 	if (unlikely(wP > wMAX)) {
 
-		if (pm->weak_D > - M_EPSILON) {
+		if (pm->weak_track_D > - M_EPSILON) {
 
 			wMAX /= wP;
 
@@ -3563,7 +3578,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		pm->quick_iU = 1.f / pm->const_fb_U;
 
 		if (unlikely(		pm->const_fb_U > pm->fault_voltage_halt
-					&& pm->weak_D > - M_EPSILON)) {
+					&& pm->weak_track_D > - M_EPSILON)) {
 
 			pm->fsm_errno = PM_ERROR_DC_LINK_OVERVOLTAGE;
 			pm->fsm_req = PM_STATE_HALT;

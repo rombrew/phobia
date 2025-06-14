@@ -61,27 +61,7 @@ struct usbd_interface {
     uint8_t intf_num;
 };
 
-struct usb_descriptor {
-    const uint8_t *(*device_descriptor_callback)(uint8_t speed);
-    const uint8_t *(*config_descriptor_callback)(uint8_t speed);
-    const uint8_t *(*device_quality_descriptor_callback)(uint8_t speed);
-    const uint8_t *(*other_speed_descriptor_callback)(uint8_t speed);
-    const uint8_t *(*string_descriptor_callback)(uint8_t speed, uint8_t index);
-    const struct usb_msosv1_descriptor *msosv1_descriptor;
-    const struct usb_msosv2_descriptor *msosv2_descriptor;
-    const struct usb_webusb_url_ex_descriptor *webusb_url_descriptor;
-    const struct usb_bos_descriptor *bos_descriptor;
-};
-
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-void usbd_desc_register(const struct usb_descriptor *desc);
-#else
 void usbd_desc_register(const uint8_t *desc);
-void usbd_msosv1_desc_register(struct usb_msosv1_descriptor *desc);
-void usbd_msosv2_desc_register(struct usb_msosv2_descriptor *desc);
-void usbd_bos_desc_register(struct usb_bos_descriptor *desc);
-#endif
-
 void usbd_add_interface(struct usbd_interface *intf);
 void usbd_add_endpoint(const struct usbd_endpoint *ep);
 

@@ -213,7 +213,7 @@ void ts_probe_spinup()
 			break;
 
 		if (		pm.flux_LINKAGE != PM_ENABLED
-				&& pm.config_EXCITATION == PM_EXCITATION_CONST) {
+				&& pm.config_EXCITATION == PM_MAGNET_PERMANENT) {
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -258,7 +258,7 @@ void ts_probe_spinup()
 			break;
 		}
 
-		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
+		if (pm.config_EXCITATION == PM_MAGNET_PERMANENT) {
 
 			sim_runtime(200 / (double) TS_TICK_RATE);
 

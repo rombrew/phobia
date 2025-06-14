@@ -88,11 +88,11 @@ uncertainty in the output voltage `DTu` expressed as follows.
 ```
 
 The voltage divider (R1, R2) and filter capacitor (C1) are used to measure the
-terminal voltage (uA, uB, uC) and supply voltage (uS). This RC scheme forms an
+terminal voltage (uA, uB, uC) and DC link voltage (uS). This RC scheme forms an
 exponential integrator that allows us to restore the pulse width by measured
 voltage. Additional resistor R3 can be used to bias the zero voltage into the
 linear region. You can skip the terminal voltage sensing if you do not need
-related features but supply voltage measuring is mandatory.
+related features but DC link voltage measuring is mandatory.
 
 
 ```
@@ -145,7 +145,8 @@ measurement you will need to configure the software appropriately.
 
 Machine currents are sampled strictly in the middle of PWM period
 simultaneously using three ADCs. Then the voltages and other signals are
-sampled depending on particular sampling scheme selected.
+sampled depending on particular sampling scheme selected in hardware
+description.
 
 The values obtained are passed to the main IRQ handler to process. The MCU
 software calculates a new value of duty cycle and load it to TIM. This value
@@ -162,8 +163,8 @@ will be used at the next PWM period.
 	  ---*--*--*-----------------------------+-------------*--*--*--------
 	     |  |  |                             |             |  |  |
 	     iA uS uC         preload DC         |             iA uS uC
-	     iB uA u?          to HW timer -->  TIM            iB uA u?
-         iC uB u?                                          iC uB u?
+	     iB uA uSIN        to HW timer -->  TIM            iB uA uSIN
+	     iC uB uCOS                                        iC uB uCOS
 	             \                          /                      \ ...
 	              pm_feedback()            /
 	                proc_set_DC(xA, xB, xC)
@@ -172,7 +173,7 @@ will be used at the next PWM period.
 ## Clean zones
 
 We typically need about 5 us before current samples to be clean. If MOSFETs
-switching occur at this time then ADC result is discarded.
+switching occur at this time window then ADC result is discarded.
 
 ```
 	                // ADC sample clean zones //

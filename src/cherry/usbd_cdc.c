@@ -8,13 +8,13 @@
 
 static int cdc_acm_class_interface_request_handler(struct usb_setup_packet *setup, uint8_t **data, uint32_t *len)
 {
-    USB_LOG_DBG("CDC Class request: "
-                "bRequest 0x%02x\r\n",
-                setup->bRequest);
-
     struct cdc_line_coding line_coding;
     int dtr, rts;
     uint8_t intf_num = LO_BYTE(setup->wIndex);
+
+    USB_LOG_DBG("CDC Class request: "
+                "bRequest 0x%02x\r\n",
+                setup->bRequest);
 
     switch (setup->bRequest) {
         case CDC_REQUEST_SET_LINE_CODING:

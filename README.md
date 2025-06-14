@@ -153,6 +153,7 @@ There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
 
 ## TODO
 
+- Investigate iron saturation effect on sensorless operation.
 - Make a detailed documentation.
 - Improve PGUI software.
 - Add pulse output signal.

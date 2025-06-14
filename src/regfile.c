@@ -1499,12 +1499,23 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 			}
 			break;
 
+		case ID_PM_CONFIG_SATURATION:
+
+			switch (msg) {
+
+				PM_SFI_CASE(PM_IRON_NONE);
+				PM_SFI_CASE(PM_IRON_SATURATION);
+
+				default: blank = 1; break;
+			}
+			break;
+
 		case ID_PM_CONFIG_EXCITATION:
 
 			switch (msg) {
 
-				PM_SFI_CASE(PM_EXCITATION_NONE);
-				PM_SFI_CASE(PM_EXCITATION_CONST);
+				PM_SFI_CASE(PM_MAGNET_NONE);
+				PM_SFI_CASE(PM_MAGNET_PERMANENT);
 
 				default: blank = 1; break;
 			}
@@ -1860,6 +1871,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.config_LU_DRIVE,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI_WAVETYPE,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_HFI_PERMANENT,,,	"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(pm.config_SATURATION,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_EXCITATION,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_SALIENCY,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(pm.config_RELUCTANCE,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -2032,6 +2044,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.zone_gain_TH,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 	REG_DEF(pm.zone_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
+	REG_DEF(pm.hfi_maximal,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_freq,,,			"Hz",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.hfi_amplitude,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 
@@ -2151,7 +2164,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_setpoint_torque,,,		"Nm",	"%3f",	0, &reg_proc_load_nm, NULL),
 	REG_DEF(pm.i_setpoint_torque, _pc,,	"%",	"%2f",	0, &reg_proc_torque_pc, NULL),
 	REG_DEF(pm.i_maximal,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
-	REG_DEF(pm.i_maximal_on_HFI,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_reverse,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_track_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.i_track_Q,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
@@ -2160,13 +2172,13 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.i_gain_P,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.i_gain_I,,,			"",	"%2e",	REG_CONFIG, NULL, NULL),
 
-	REG_DEF(pm.mtpa_tol,,,			"A",	"%3f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.mtpa_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.mtpa_revstep,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.mtpa_track_D,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.mtpa_gain_LP,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.weak_maximal,,,		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.weak_maximal, _pc,,		"%",	"%2f",	0, &reg_proc_weakening, NULL),
-	REG_DEF(pm.weak_D,,,			"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
+	REG_DEF(pm.weak_track_D,,,		"A",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.weak_gain_EU,,,		"",	"%2e",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.v_maximal,,,			"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -2230,6 +2242,7 @@ const reg_t		regfile[] = {
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_watch,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_live,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
+	REG_DEF(tlm.lufsm,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(tlm.mode,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 
 	REG_DEF(tlm.reg_ID, 0, [0],		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),

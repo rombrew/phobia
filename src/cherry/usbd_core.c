@@ -41,14 +41,7 @@ USB_NOCACHE_RAM_SECTION struct usbd_core_priv {
     /** Zero length packet flag of control transfer */
     int zlp_flag;
     /** Pointer to registered descriptors */
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-    const struct usb_descriptor *descriptors;
-#else
     const uint8_t *descriptors;
-    struct usb_msosv1_descriptor *msosv1_desc;
-    struct usb_msosv2_descriptor *msosv2_desc;
-    struct usb_bos_descriptor *bos_desc;
-#endif
     /* Buffer used for storing standard, class and vendor request data */
     USB_MEM_ALIGNX uint8_t req_data[CONFIG_USBDEV_REQUEST_BUFFER_LEN];
 
@@ -133,100 +126,6 @@ static int usbd_reset_endpoint(const struct usb_endpoint_descriptor *ep)
  *
  * @return 1 if the descriptor was found, 0 otherwise
  */
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-static int usbd_get_descriptor(uint16_t type_index, uint8_t **data, uint32_t *len)
-{
-    uint8_t type = 0U;
-    uint8_t index = 0U;
-    int found = 1;
-    uint32_t desc_len = 0;
-    const uint8_t *desc = NULL;
-
-    type = HI_BYTE(type_index);
-    index = LO_BYTE(type_index);
-
-    switch (type) {
-        case USB_DESCRIPTOR_TYPE_DEVICE:
-            desc = g_usbd_core.descriptors->device_descriptor_callback(g_usbd_core.speed);
-            if (desc == NULL) {
-                found = 0;
-                break;
-            }
-            desc_len = desc[0];
-            break;
-        case USB_DESCRIPTOR_TYPE_CONFIGURATION:
-            desc = g_usbd_core.descriptors->config_descriptor_callback(g_usbd_core.speed);
-            if (desc == NULL) {
-                found = 0;
-                break;
-            }
-            desc_len = ((desc[CONF_DESC_wTotalLength]) | (desc[CONF_DESC_wTotalLength + 1] << 8));
-            break;
-        case USB_DESCRIPTOR_TYPE_STRING:
-            if (index == USB_OSDESC_STRING_DESC_INDEX) {
-                USB_LOG_INFO("read MS OS 2.0 descriptor string\r\n");
-
-                if (!g_usbd_core.descriptors->msosv1_descriptor) {
-                    found = 0;
-                    break;
-                }
-
-                desc = (uint8_t *)g_usbd_core.descriptors->msosv1_descriptor->string;
-                desc_len = g_usbd_core.descriptors->msosv1_descriptor->string[0];
-            } else {
-                desc = g_usbd_core.descriptors->string_descriptor_callback(g_usbd_core.speed, index);
-                if (desc == NULL) {
-                    found = 0;
-                    break;
-                }
-                desc_len = desc[0];
-            }
-            break;
-        case USB_DESCRIPTOR_TYPE_DEVICE_QUALIFIER:
-            desc = g_usbd_core.descriptors->device_quality_descriptor_callback(g_usbd_core.speed);
-            if (desc == NULL) {
-                found = 0;
-                break;
-            }
-            desc_len = desc[0];
-            break;
-        case USB_DESCRIPTOR_TYPE_OTHER_SPEED:
-            desc = g_usbd_core.descriptors->other_speed_descriptor_callback(g_usbd_core.speed);
-            if (desc == NULL) {
-                found = 0;
-                break;
-            }
-            desc_len = ((desc[CONF_DESC_wTotalLength]) | (desc[CONF_DESC_wTotalLength + 1] << 8));
-            break;
-
-        case USB_DESCRIPTOR_TYPE_BINARY_OBJECT_STORE:
-            USB_LOG_INFO("read BOS descriptor string\r\n");
-
-            if (!g_usbd_core.descriptors->bos_descriptor) {
-                found = 0;
-                break;
-            }
-
-            desc = (uint8_t *)g_usbd_core.descriptors->bos_descriptor->string;
-            desc_len = g_usbd_core.descriptors->bos_descriptor->string_len;
-            break;
-
-        default:
-            found = 0;
-            break;
-    }
-
-    if (found == 0) {
-        /* nothing found */
-        USB_LOG_ERR("descriptor <type:%x,index:%x> not found!\r\n", type, index);
-    } else {
-        // *data = desc;
-        memcpy(*data, desc, desc_len);
-        *len = desc_len;
-    }
-    return found;
-}
-#else
 static int usbd_get_descriptor(uint16_t type_index, uint8_t **data, uint32_t *len)
 {
     uint8_t type = 0U;
@@ -238,35 +137,11 @@ static int usbd_get_descriptor(uint16_t type_index, uint8_t **data, uint32_t *le
     type = HI_BYTE(type_index);
     index = LO_BYTE(type_index);
 
-    if ((type == USB_DESCRIPTOR_TYPE_STRING) && (index == USB_OSDESC_STRING_DESC_INDEX)) {
-        USB_LOG_INFO("read MS OS 2.0 descriptor string\r\n");
-
-        if (!g_usbd_core.msosv1_desc) {
-            return 0;
-        }
-
-        //*data = (uint8_t *)g_usbd_core.msosv1_desc->string;
-        memcpy(*data, (uint8_t *)g_usbd_core.msosv1_desc->string, g_usbd_core.msosv1_desc->string[0]);
-        *len = g_usbd_core.msosv1_desc->string[0];
-
-        return 1;
-    } else if (type == USB_DESCRIPTOR_TYPE_BINARY_OBJECT_STORE) {
-        USB_LOG_INFO("read BOS descriptor string\r\n");
-
-        if (!g_usbd_core.bos_desc) {
-            return 0;
-        }
-
-        //*data = g_usbd_core.bos_desc->string;
-        memcpy(*data, (uint8_t *)g_usbd_core.bos_desc->string, g_usbd_core.bos_desc->string_len);
-        *len = g_usbd_core.bos_desc->string_len;
-        return 1;
-    }
     /*
      * Invalid types of descriptors,
      * see USB Spec. Revision 2.0, 9.4.3 Get Descriptor
      */
-    else if ((type == USB_DESCRIPTOR_TYPE_INTERFACE) || (type == USB_DESCRIPTOR_TYPE_ENDPOINT) ||
+    if ((type == USB_DESCRIPTOR_TYPE_INTERFACE) || (type == USB_DESCRIPTOR_TYPE_ENDPOINT) ||
 #ifndef CONFIG_USB_HS
              (type > USB_DESCRIPTOR_TYPE_ENDPOINT)) {
 #else
@@ -312,7 +187,6 @@ static int usbd_get_descriptor(uint16_t type_index, uint8_t **data, uint32_t *le
 
     return found;
 }
-#endif
 
 /**
  * @brief set USB configuration
@@ -335,11 +209,8 @@ static int usbd_set_configuration(uint8_t config_index, uint8_t alt_setting)
     uint32_t desc_len = 0;
     uint32_t current_desc_len = 0;
 
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-    p = g_usbd_core.descriptors->config_descriptor_callback(g_usbd_core.speed);
-#else
     p = (uint8_t *)g_usbd_core.descriptors;
-#endif
+
     /* configure endpoints for this configuration/altsetting */
     while (p[DESC_bLength] != 0U) {
         switch (p[DESC_bDescriptorType]) {
@@ -406,11 +277,8 @@ static int usbd_set_interface(uint8_t iface, uint8_t alt_setting)
     uint32_t desc_len = 0;
     uint32_t current_desc_len = 0;
 
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-    p = g_usbd_core.descriptors->config_descriptor_callback(g_usbd_core.speed);
-#else
     p = (uint8_t *)g_usbd_core.descriptors;
-#endif
+
     USB_LOG_DBG("iface %u alt_setting %u\r\n", iface, alt_setting);
 
     while (p[DESC_bLength] != 0U) {
@@ -764,116 +632,6 @@ static int usbd_class_request_handler(struct usb_setup_packet *setup, uint8_t **
  */
 static int usbd_vendor_request_handler(struct usb_setup_packet *setup, uint8_t **data, uint32_t *len)
 {
-    uint32_t desclen;
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-    if (g_usbd_core.descriptors->msosv1_descriptor) {
-        if (setup->bRequest == g_usbd_core.descriptors->msosv1_descriptor->vendor_code) {
-            switch (setup->wIndex) {
-                case 0x04:
-                    USB_LOG_INFO("get Compat ID\r\n");
-                    desclen = g_usbd_core.descriptors->msosv1_descriptor->compat_id[0] +
-                              (g_usbd_core.descriptors->msosv1_descriptor->compat_id[1] << 8) +
-                              (g_usbd_core.descriptors->msosv1_descriptor->compat_id[2] << 16) +
-                              (g_usbd_core.descriptors->msosv1_descriptor->compat_id[3] << 24);
-
-                    //*data = (uint8_t *)g_usbd_core.descriptors->msosv1_descriptor->compat_id;
-                    memcpy(*data, g_usbd_core.descriptors->msosv1_descriptor->compat_id, desclen);
-                    *len = desclen;
-                    return 0;
-                case 0x05:
-                    USB_LOG_INFO("get Compat id properties\r\n");
-                    desclen = g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue][0] +
-                              (g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue][1] << 8) +
-                              (g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue][2] << 16) +
-                              (g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue][3] << 24);
-
-                    //*data = (uint8_t *)g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue];
-                    memcpy(*data, g_usbd_core.descriptors->msosv1_descriptor->comp_id_property[setup->wValue], desclen);
-                    *len = desclen;
-                    return 0;
-                default:
-                    USB_LOG_ERR("unknown vendor code\r\n");
-                    return -1;
-            }
-        }
-    } else if (g_usbd_core.descriptors->msosv2_descriptor) {
-        if (setup->bRequest == g_usbd_core.descriptors->msosv2_descriptor->vendor_code) {
-            switch (setup->wIndex) {
-                case WINUSB_REQUEST_GET_DESCRIPTOR_SET:
-                    USB_LOG_INFO("GET MS OS 2.0 Descriptor\r\n");
-
-                    desclen = g_usbd_core.descriptors->msosv2_descriptor->compat_id_len;
-                    //*data = (uint8_t *)g_usbd_core.descriptors->msosv2_descriptor->compat_id;
-                    memcpy(*data, g_usbd_core.descriptors->msosv2_descriptor->compat_id, desclen);
-                    *len = g_usbd_core.descriptors->msosv2_descriptor->compat_id_len;
-                    return 0;
-                default:
-                    USB_LOG_ERR("unknown vendor code\r\n");
-                    return -1;
-            }
-        }
-    } else if (g_usbd_core.descriptors->webusb_url_descriptor) {
-        if (setup->bRequest == g_usbd_core.descriptors->webusb_url_descriptor->vendor_code) {
-            switch (setup->wIndex) {
-                case WINUSB_REQUEST_GET_DESCRIPTOR_SET:
-                    USB_LOG_INFO("GET Webusb url Descriptor\r\n");
-
-                    desclen = g_usbd_core.descriptors->webusb_url_descriptor->string_len;
-                    //*data = (uint8_t *)g_usbd_core.descriptors->webusb_url_descriptor->string;
-                    memcpy(*data, g_usbd_core.descriptors->webusb_url_descriptor->string, desclen);
-                    *len = desclen;
-                    return 0;
-                default:
-                    USB_LOG_ERR("unknown vendor code\r\n");
-                    return -1;
-            }
-        }
-    }
-#else
-    if (g_usbd_core.msosv1_desc) {
-        if (setup->bRequest == g_usbd_core.msosv1_desc->vendor_code) {
-            switch (setup->wIndex) {
-                case 0x04:
-                    USB_LOG_INFO("get Compat ID\r\n");
-                    //*data = (uint8_t *)msosv1_desc->compat_id;
-                    desclen = g_usbd_core.msosv1_desc->compat_id[0] +
-                              (g_usbd_core.msosv1_desc->compat_id[1] << 8) +
-                              (g_usbd_core.msosv1_desc->compat_id[2] << 16) +
-                              (g_usbd_core.msosv1_desc->compat_id[3] << 24);
-                    memcpy(*data, g_usbd_core.msosv1_desc->compat_id, desclen);
-                    *len = desclen;
-                    return 0;
-                case 0x05:
-                    USB_LOG_INFO("get Compat id properties\r\n");
-                    //*data = (uint8_t *)msosv1_desc->comp_id_property[setup->wValue];
-                    desclen = g_usbd_core.msosv1_desc->comp_id_property[setup->wValue][0] +
-                              (g_usbd_core.msosv1_desc->comp_id_property[setup->wValue][1] << 8) +
-                              (g_usbd_core.msosv1_desc->comp_id_property[setup->wValue][2] << 16) +
-                              (g_usbd_core.msosv1_desc->comp_id_property[setup->wValue][3] << 24);
-                    memcpy(*data, g_usbd_core.msosv1_desc->comp_id_property[setup->wValue], desclen);
-                    *len = desclen;
-                    return 0;
-                default:
-                    USB_LOG_ERR("unknown vendor code\r\n");
-                    return -1;
-            }
-        }
-    } else if (g_usbd_core.msosv2_desc) {
-        if (setup->bRequest == g_usbd_core.msosv2_desc->vendor_code) {
-            switch (setup->wIndex) {
-                case WINUSB_REQUEST_GET_DESCRIPTOR_SET:
-                    USB_LOG_INFO("GET MS OS 2.0 Descriptor\r\n");
-                    //*data = (uint8_t *)msosv2_desc->compat_id;
-                    memcpy(*data, g_usbd_core.msosv2_desc->compat_id, g_usbd_core.msosv2_desc->compat_id_len);
-                    *len = g_usbd_core.msosv2_desc->compat_id_len;
-                    return 0;
-                default:
-                    USB_LOG_ERR("unknown vendor code\r\n");
-                    return -1;
-            }
-        }
-    }
-#endif
     for (uint8_t i = 0; i < g_usbd_core.intf_offset; i++) {
         struct usbd_interface *intf = g_usbd_core.intf[i];
 
@@ -1132,20 +890,6 @@ void usbd_event_ep_out_complete_handler(uint8_t ep, uint32_t nbytes)
     }
 }
 
-#ifdef CONFIG_USBDEV_ADVANCE_DESC
-void usbd_desc_register(const struct usb_descriptor *desc)
-{
-    memset(&g_usbd_core, 0, sizeof(struct usbd_core_priv));
-
-    g_usbd_core.descriptors = desc;
-    g_usbd_core.intf_offset = 0;
-
-    g_usbd_core.tx_msg[0].ep = 0x80;
-    g_usbd_core.tx_msg[0].cb = usbd_event_ep0_in_complete_handler;
-    g_usbd_core.rx_msg[0].ep = 0x00;
-    g_usbd_core.rx_msg[0].cb = usbd_event_ep0_out_complete_handler;
-}
-#else
 void usbd_desc_register(const uint8_t *desc)
 {
     memset(&g_usbd_core, 0, sizeof(struct usbd_core_priv));
@@ -1158,24 +902,6 @@ void usbd_desc_register(const uint8_t *desc)
     g_usbd_core.rx_msg[0].ep = 0x00;
     g_usbd_core.rx_msg[0].cb = usbd_event_ep0_out_complete_handler;
 }
-
-/* Register MS OS Descriptors version 1 */
-void usbd_msosv1_desc_register(struct usb_msosv1_descriptor *desc)
-{
-    g_usbd_core.msosv1_desc = desc;
-}
-
-/* Register MS OS Descriptors version 2 */
-void usbd_msosv2_desc_register(struct usb_msosv2_descriptor *desc)
-{
-    g_usbd_core.msosv2_desc = desc;
-}
-
-void usbd_bos_desc_register(struct usb_bos_descriptor *desc)
-{
-    g_usbd_core.bos_desc = desc;
-}
-#endif
 
 void usbd_add_interface(struct usbd_interface *intf)
 {

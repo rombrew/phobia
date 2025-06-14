@@ -40,6 +40,7 @@ float m_logf(float x);
 float m_exp2f(float x);
 float m_exp10f(float x);
 float m_expf(float x);
+float m_powf(float x, float y);
 
 void m_la_eigf(const float a[3], float v[4], int m);
 

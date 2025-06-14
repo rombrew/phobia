@@ -100,7 +100,7 @@
 #elif CONFIG_USB_DWC2_RAM_SIZE == 4096
 
 #ifdef CONFIG_USB_DWC2_DMA_ENABLE
-#warning "if you enable dcache,please add .nocacheble section in your sct or ld or icf"
+#warning "if you enable dcache, please add .nocacheble section in your sct or ld or icf"
 #endif
 
 /*FIFO sizes in bytes (total available memory for FIFOs is 4KB )*/

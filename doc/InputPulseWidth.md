@@ -90,3 +90,4 @@ To ensure a safe startup it is required to hold low pulse signal for
 `ap.timeout_DISARM` milliseconds until disarmed state was reset.
 
 	(pmc) reg ap.timeout_DISARM <ms>
+

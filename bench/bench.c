@@ -205,8 +205,8 @@ tlm_plot_grab()
 
 	fmt_GP(pm.mtpa_setpoint_Q, "A");
 	fmt_GP(pm.mtpa_load_Q, "A");
-	fmt_GP(pm.mtpa_D, "A");
-	fmt_GP(pm.weak_D, "A");
+	fmt_GP(pm.mtpa_track_D, "A");
+	fmt_GP(pm.weak_track_D, "A");
 
 	fmk_GP(pm.s_setpoint_speed, kRPM, "rpm");
 	fmk_GP(pm.s_track, kRPM, "rpm");
@@ -402,39 +402,25 @@ void bench_script()
 	ts_script_base();
 	blm_restart(&m);
 
-	ts_adjust_sensor_hall();
-	blm_restart(&m);
-
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
-	pm.config_LU_SENSOR = PM_SENSOR_HALL;
 	pm.config_RELUCTANCE = PM_ENABLED;
 
 	pm.watt_wA_maximal = 80.f;
 	pm.watt_wA_reverse = 80.f;
 
-	pm.zone_threshold *= 2.f;
-
-	pm.hall_gain_IF = 0.1f;
-	pm.flux_gain_IF = 0.1f;
-
-	m.Jm = 17.E-3 * 48. / 10.;
-
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();
 
-	pm.s_setpoint_speed = 10.f;
-	sim_runtime(1.0);
-
-	pm.s_setpoint_speed = 100.f;
+	pm.s_setpoint_speed = 200.f;
 	sim_runtime(2.0);
 
-	pm.s_setpoint_speed = 700.f;
-	sim_runtime(1.0);
+	m.Mq[2] = 2.E-4;
 
-	pm.s_setpoint_speed = - 700.f;
-	sim_runtime(1.0);
+	pm.s_setpoint_speed = 1000.f;
+	sim_runtime(2.0);
 
-	pm.s_setpoint_speed = 700.f;
+	m.Lq = 25.E-6 * 1.7;
+
 	sim_runtime(1.0);
 
 	tlm_PWM_grab();

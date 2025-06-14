@@ -22,12 +22,12 @@ directory to find out actual pin mapping and voltage levels of your port.
 
 Enable the appropriate mode of the STEP interface in HAL configuration.
 
-    (pmc) reg hal.STEP_mode 1
+	(pmc) reg hal.STEP_mode 1
 
 Now you can see how the controller receives the control signal. If variable
 `ap.step_POS` is changing then the STEP pulses are counted.
 
-    (pmc) reg ap.step_POS
+	(pmc) reg ap.step_POS
 
 Choose what parameter you want to control. You can choose any of the registers
 available for writing. By default the `pm.x_setpoint_location` register is

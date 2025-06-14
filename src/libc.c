@@ -14,29 +14,28 @@ uint32_t		rseed;
 
 void *memset(void *d, int c, size_t len)
 {
-	uint32_t	fill, *ld = (uint32_t *) d;
+	if (likely(		((uint32_t) d & 3U) == 0U
+				&& (len & 3U) == 0U)) {
 
-	if (likely(((uint32_t) ld & 3U) == 0U)) {
+		uint32_t	fwd, *ld = (uint32_t *) d;
+		const uint32_t	*ldend = ld + len / 4U;
 
-		const uint32_t	*ld_end = ld + len / 4U;
+		fwd = (uint8_t) c;
+		fwd |= (fwd << 8);
+		fwd |= (fwd << 16);
 
-		fill = (uint8_t) c;
-		fill |= (fill << 8);
-		fill |= (fill << 16);
+		while (ld < ldend) {
 
-		while (ld < ld_end) {
-
-			* (ld++) = fill;
+			* (ld++) = fwd;
 		}
 	}
+	else {
+		uint8_t		*ld = (uint8_t *) d;
+		const uint8_t	*ldend = ld + len;
 
-	{
-		uint8_t		*bd = (uint8_t *) ld;
-		const uint8_t	*bd_end = (const uint8_t *) d + len;
+		while (ld < ldend) {
 
-		while (bd < bd_end) {
-
-			* (bd++) = (uint8_t) c;
+			* (ld++) = (uint8_t) c;
 		}
 	}
 
@@ -45,29 +44,27 @@ void *memset(void *d, int c, size_t len)
 
 void *memcpy(void *restrict d, const void *restrict s, size_t len)
 {
-	uint32_t	*ld = (uint32_t *) d;
-	const uint32_t	*ls = (const uint32_t *) s;
+	if (likely(		   ((uint32_t) d & 3U) == 0U
+				&& ((uint32_t) s & 3U) == 0U
+				&& (len & 3U) == 0U)) {
 
-	if (likely(		   ((uint32_t) ld & 3U) == 0U
-				&& ((uint32_t) ls & 3U) == 0U)) {
+		uint32_t	*ld = (uint32_t *) d;
+		const uint32_t	*ls = (const uint32_t *) s;
+		const uint32_t	*ldend = ld + len / 4U;
 
-		const uint32_t	*ld_end = ld + len / 4U;
-
-		while (ld < ld_end) {
+		while (ld < ldend) {
 
 			* (ld++) = * (ls++);
 		}
 	}
+	else {
+		uint8_t		*ld = (uint8_t *) d;
+		const uint8_t	*ls = (const uint8_t *) s;
+		const uint8_t	*ldend = ld + len;
 
-	{
-		uint8_t		*bd = (uint8_t *) ld;
-		const uint8_t	*bs = (const uint8_t *) ls;
+		while (ld < ldend) {
 
-		const uint8_t	*bd_end = (const uint8_t *) d + len;
-
-		while (bd < bd_end) {
-
-			* (bd++) = * (bs++);
+			* (ld++) = * (ls++);
 		}
 	}
 
@@ -92,7 +89,7 @@ int strcmp(const char *s, const char *p)
 	return c;
 }
 
-int strcmpe(const char *s, const char *p)
+int strcmps(const char *s, const char *p)
 {
 	char		c;
 
@@ -113,13 +110,13 @@ int strcmpe(const char *s, const char *p)
 	return c;
 }
 
-int strcmpn(const char *s, const char *p, int n)
+int strclen(const char *s, const char *p, int len)
 {
 	char		c;
 	int		l = 0;
 
 	do {
-		if (l >= n)
+		if (l >= len)
 			break;
 
 		c = *s - *p;
@@ -179,10 +176,10 @@ char *strcpy(char *restrict d, const char *restrict s)
 	return d;
 }
 
-char *strcpyn(char *restrict d, const char *restrict s, int len)
+char *strncpy(char *restrict d, const char *restrict s, int len)
 {
 	do {
-		if (len < 1) {
+		if (--len < 0) {
 
 			*d = 0;
 			break;
@@ -193,7 +190,6 @@ char *strcpyn(char *restrict d, const char *restrict s, int len)
 
 		++d;
 		++s;
-		--len;
 	}
 	while (1);
 
@@ -384,6 +380,7 @@ fmt_fp_fixed(io_ops_t *io, float x, int n)
 	u = { x };
 
 	int		i, v;
+
 	float		h;
 
 	if (x < 0.f) {
@@ -458,6 +455,7 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 	u = { x };
 
 	int		i, v;
+
 	float		h;
 
 	if (x < 0.f) {
@@ -542,6 +540,7 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 	u = { x };
 
 	int		i, v;
+
 	float		h;
 
 	if (x < 0.f) {
@@ -619,12 +618,14 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 		io->putc('0' + i);
 	}
 
-	if (v == - 9) io->putc('n');
+	if (v == - 12) io->putc('p');
+	else if (v == - 9) io->putc('n');
 	else if (v == - 6) io->putc('u');
 	else if (v == - 3) io->putc('m');
 	else if (v == 3) io->putc('K');
 	else if (v == 6) io->putc('M');
 	else if (v == 9) io->putc('G');
+	else if (v == 12) io->putc('T');
 	else if (v != 0) {
 
 		io->putc('E');
@@ -817,6 +818,7 @@ const char *htoi(int *x, const char *s)
 const char *stof(float *x, const char *s)
 {
 	int		n, d, v, e;
+
 	float		f;
 
 	if (*s == '-') { n = - 1; s++; }
@@ -846,12 +848,14 @@ const char *stof(float *x, const char *s)
 
 	if (d == 0) { return NULL; }
 
-	if (*s == 'n') { v += - 9; s++; }
+	if (*s == 'p') { v += - 12; s++; }
+	else if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
 	else if (*s == 'm') { v += - 3; s++; }
 	else if (*s == 'K') { v += 3; s++; }
 	else if (*s == 'M') { v += 6; s++; }
 	else if (*s == 'G') { v += 9; s++; }
+	else if (*s == 'T') { v += 12; s++; }
 	else if (*s == 'e' || *s == 'E') {
 
 		s = stoi(&e, s + 1);

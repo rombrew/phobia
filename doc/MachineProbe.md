@@ -1,7 +1,7 @@
 ## Overview
 
-This page describes how to identify the machine parameters by means of PMC. The
-knowledge of parameters is necessary to control.
+This page describes how to identify the machine constants by means of PMC. The
+knowledge of constants is necessary to control.
 
 **WARNING**: Any new machine connected to the PMC should be identified before
 run in closed control loop.
@@ -9,8 +9,8 @@ run in closed control loop.
 ## Preparation
 
 You may need to adjust some parameters in accordance with the capabilities of
-the machine to not burn it. Default is acceptable for most large RC motors but
-be aware. These parameters are used to probe the machine.
+the machine to not burn it out. Default is acceptable for most large RC motors
+but be aware. These parameters are used to probe the machine.
 
 	(pmc) reg pm.probe
 
@@ -19,9 +19,12 @@ we believe that they will need a change only in a complicated case. Most likely
 you will need to decrease probing currents for a small machine.
 
 - `pm.probe_current_hold` - Machine probing current that is used to estimate
-  stator resistance. Note it must be large enough to get perceptible voltage drop.
+  stator resistance on DC current. Note it must be large enough to get
+  perceptible voltage drop.
 - `pm.probe_current_sine` - Sine wave probing signal amplitude that is used to
   estimate stator winding impedance.
+- `pm.probe_current_bias` - DC bias of probing signal that is used to estimate
+  stator winding impedance.
 - `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
   flux linkage and noise threshold will be estimated.
 - `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
@@ -35,16 +38,16 @@ the wattage limit settings.
 - `pm.watt_wA_reverse` - Maximal reverse current on DC link.
 - `pm.watt_uDC_maximal` - Maximal overvoltage on DC link.
 
-Also do not forget to reset the machine parameters if you have previously run
+Also do not forget to reset the machine constants if you have previously run
 another machine.
 
-    (pmc) pm_default_machine
+	(pmc) pm_default_machine
 
 ## Sensors adjustment
 
 To achieve the best accuracy PMC has the ability of self-adjust voltage and
 current onboard sensors. The self-adjustment procedure allows you to match
-measurement channels between phases.
+measurement channels across phases.
 
 	(pmc) pm_self_adjust
 
@@ -69,21 +72,28 @@ estimate `Zp` and set it later.
 
 ## Impedance of stator windings
 
-We measure the resistance `pm.const_Rs` by difference of voltage drop on two
+We measure DC resistance `pm.const_Rs` by difference of voltage drop on two
 values of holding current. For more accuracy you need to increase the probing
 current or reduce DC link voltage.
 
-Then we inject a high frequency sinusoidal signal to measure the full impedance
-tensor and calculate DQ inductances `pm.const_im_Ld` and `pm.const_im_Lq`.
+We inject a high frequency sinusoidal signal to measure the full impedance
+tensor and calculate inductance in principal axes. Depending on machine
+saliency type we assign `pm.const_im_Ld` and `pm.const_im_Lq` from principal
+axes inductances. In addition we estimate principal angle and AC resistance.
 
 	(pmc) pm_probe_impedance
 
-If the procedure fails with an error code sure that probing currents are
+Note that non-salient machine implies `Ld = Lq`, negative saliency (BLDC)
+implies `Ld < Lq`, positive saliency (IPM, SynRM) implies `Ld > Lq`. Also
+look into [HFI](HighFrequencyInjection.md) page about machine saliency
+configuration.
+
+If the procedure fails with an error code make sure that probing currents are
 suitable for your machine.
 
 ## Rotor flux linkage
 
-This parameter also known as `Kv` rating. Internal representation is
+This constant also known as `Kv` rating. Internal representation is
 `pm.const_lambda` that linked with `Kv` by following equation.
 
 ```
@@ -100,7 +110,7 @@ to reach this condition.
 
 If the procedure fails to spinup the machine try to adjust forced control
 parameters. Also you can specify Kv manually if you know it exactly and Zp
-number is already configured correcly.
+number is already configured correctly.
 
 	(pmc) reg pm.const_lambda_kv <rpm/V>
 
@@ -125,14 +135,14 @@ PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 ## Speed noise threshold
 
 In case of you use `pm_probe_spinup` after a flux linkage we estimate speed
-noise level to know the lower bound of flux observer operation. As a result
-these threshold values are calculated.
+noise level to know the lower bound of reliable sensorless operation. As a
+result these threshold values are updated.
 
 	(pmc) reg pm.zone_noise
 	(pmc) reg pm.zone_threshold
 
 If you have estimated flux linkage in detached mode or specified Kv manually
-you should probe the noise threshold manually when the machine is in run.
+you should probe the noise threshold manually when the machine is running.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>

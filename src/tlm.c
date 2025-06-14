@@ -16,8 +16,8 @@ void tlm_reg_default(tlm_t *tlm)
 	tlm->rate_live =  (int) (hal.PWM_frequency / 10.f   + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
-	tlm->reg_ID[1] = ID_AP_TEMP_PCB;
-	tlm->reg_ID[2] = ID_PM_FSM_STATE;
+	tlm->reg_ID[1] = ID_TLM_LUFSM;
+	tlm->reg_ID[2] = ID_AP_TEMP_PCB;
 	tlm->reg_ID[3] = ID_PM_FB_IA;
 	tlm->reg_ID[4] = ID_PM_FB_IB;
 	tlm->reg_ID[5] = ID_PM_FB_IC;
@@ -29,13 +29,13 @@ void tlm_reg_default(tlm_t *tlm)
 	tlm->reg_ID[10] = ID_PM_VSI_A0;
 	tlm->reg_ID[11] = ID_PM_VSI_B0;
 	tlm->reg_ID[12] = ID_PM_VSI_C0;
-	tlm->reg_ID[13] = ID_PM_LU_MODE;
-	tlm->reg_ID[14] = ID_PM_LU_ID;
-	tlm->reg_ID[15] = ID_PM_LU_IQ;
-	tlm->reg_ID[16] = ID_PM_LU_WS_RPM;
-	tlm->reg_ID[17] = ID_PM_LU_MQ_LOAD;
-	tlm->reg_ID[18] = ID_PM_CONST_FB_U;
-	tlm->reg_ID[19] = ID_PM_WATT_DRAIN_WA;
+	tlm->reg_ID[13] = ID_PM_LU_ID;
+	tlm->reg_ID[14] = ID_PM_LU_IQ;
+	tlm->reg_ID[15] = ID_PM_LU_WS_RPM;
+	tlm->reg_ID[16] = ID_PM_LU_MQ_LOAD;
+	tlm->reg_ID[17] = ID_PM_CONST_FB_U;
+	tlm->reg_ID[18] = ID_PM_WATT_DRAIN_WA;
+	tlm->reg_ID[19] = ID_PM_KALMAN_BIAS_Q;
 }
 
 void tlm_reg_grab(tlm_t *tlm)
@@ -48,6 +48,9 @@ void tlm_reg_grab(tlm_t *tlm)
 	if (tlm->skip == 0) {
 
 		rval_t		*rdata = tlm->rdata + tlm->layout_N * tlm->line;
+
+		tlm->lufsm =	  (pm.fsm_state << 4)
+				| (pm.lu_MODE   << 0);
 
 		for (N = 0; N < tlm->layout_N; ++N) {
 

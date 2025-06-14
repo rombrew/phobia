@@ -12,7 +12,7 @@ If something goes wrong PMC stops and gives the error code in `pm.fsm_errno`.
 ## Internal PMC codes
 
 `PM_ERROR_ZERO_DRIFT_FAULT` - Zero drift of current sensor is above the fault
-threshold. This may happen if current sensing circuit is broken.
+threshold. This may happen if current sensing circuit is broken or inaccurate.
 
 `PM_ERROR_NO_MOTOR_CONNECTED` - Power stages are OK but no machine detected at
 the output terminals. Ignore this error if you know that.
@@ -27,14 +27,14 @@ broken.
 
 `PM_ERROR_LOW_CURRENT_ACCURACY` - Result of current sensor adjustment shows the
 deviation is above the fault threshold. Check your current measurement circuit
-or increse the fault threshold.
+or increase the fault threshold if you are sure that everything is OK.
 
 `PM_ERROR_LOW_VOLTAGE_ACCURACY` - Result of voltage circuit adjustment shows
 the deviation is above the fault threshold. Check your voltage measurement
-circuit or increse the fault threshold.
+circuit or increase the fault threshold if you are sure that everything is OK.
 
 `PM_ERROR_LOW_DEADBAND_ACCURACY` - Result of deadband distortion adjustment
-shows the deviation is above the fault threshold. If your motor winding
+shows the deviation is above the fault threshold. If your machine stator
 resistance is too high (over ~0.1 Ohm) consider to disable DCU compensation.
 
 `PM_ERROR_CURRENT_LOOP_FAULT` - This means that we apply the full voltage but

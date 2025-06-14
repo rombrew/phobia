@@ -41,6 +41,11 @@ firmware to MCU.
 VESC does not have voltage dividers on ADC pins. You should use external
 dividers or specify 3.3v levels in analog knob range configuration.
 
+## Bluetooth
+
+PMC does not provide firmware for BT modules. You should have a BT to USART
+transparent bridge to use PMC CLI.
+
 ## References
 
 Get more info about original VESC motor controllers from official

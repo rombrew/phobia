@@ -294,6 +294,11 @@ float m_expf(float x)
 	return m_exp2f(x / M_LOG_E);
 }
 
+float m_powf(float x, float y)
+{
+	return m_exp2f(y * m_log2f(x));
+}
+
 void m_la_eigf(const float a[3], float v[4], int m)
 {
 	float           b, d, la;

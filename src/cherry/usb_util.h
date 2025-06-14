@@ -203,6 +203,6 @@
         19, 18, 17, 16, 15, 14, 13, 12, 11, 10, \
         9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
-#define USB_MEM_ALIGNX __attribute__((aligned(CONFIG_USB_ALIGN_SIZE)))
+#define USB_MEM_ALIGNX __attribute__((aligned(CONFIG_USB_ALIGN)))
 
 #endif /* USB_UTIL_H */

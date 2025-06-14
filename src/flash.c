@@ -74,10 +74,10 @@ flash_prog_u32(flash_prog_t *pg, uint32_t l)
 }
 
 static const char *
-flash_strcpyn(char *d, const char *s, int len)
+flash_strncpy(char *d, const char *s, int len)
 {
 	do {
-		if (len < 1) {
+		if (--len < 0) {
 
 			*d = 0;
 			break;
@@ -91,7 +91,6 @@ flash_strcpyn(char *d, const char *s, int len)
 		}
 
 		*d++ = *s++;
-		--len;
 	}
 	while (1);
 
@@ -157,7 +156,7 @@ int flash_block_regs_load()
 
 	while (*lsym != 0xFF) {
 
-		lsym = flash_strcpyn(symbuf, lsym, REGS_SYM_MAX);
+		lsym = flash_strncpy(symbuf, lsym, REGS_SYM_MAX);
 
 		/* Search for an exact match of symbolic name.
 		 * */
@@ -165,7 +164,7 @@ int flash_block_regs_load()
 
 		if (*lsym == 0xBF) {
 
-			lsym = flash_strcpyn(symbuf, lsym + 1, REGS_SYM_MAX);
+			lsym = flash_strncpy(symbuf, lsym + 1, REGS_SYM_MAX);
 
 			if (reg != NULL && reg->mode & REG_CONFIG
 					&& reg->mode & REG_LINKED) {

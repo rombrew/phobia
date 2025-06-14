@@ -49,11 +49,11 @@ void *memset(void *d, int c, size_t len) LD_LIBC;
 void *memcpy(void *restrict d, const void *restrict s, size_t len) LD_LIBC;
 
 int strcmp(const char *s, const char *p);
-int strcmpe(const char *s, const char *p);
-int strcmpn(const char *s, const char *p, int n);
+int strcmps(const char *s, const char *p);
+int strclen(const char *s, const char *p, int len);
 const char *strstr(const char *s, const char *p);
 char *strcpy(char *restrict d, const char *restrict s);
-char *strcpyn(char *restrict d, const char *restrict s, int len);
+char *strncpy(char *restrict d, const char *restrict s, int len);
 int strlen(const char *s);
 const char *strchr(const char *s, int c);
 

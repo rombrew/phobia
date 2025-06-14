@@ -201,8 +201,10 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.scale_uS1",
 		"pm.probe_current_hold",
 		"pm.probe_current_sine",
+		"pm.probe_current_bias",
 		"pm.probe_loss_maximal",
 		"pm.forced_hold_D",
+		"pm.hfi_maximal",
 		"pm.eabi_const_Zq",
 		"pm.const_Zp",
 		"pm.const_ld_Sm",
@@ -211,7 +213,6 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.watt_wA_maximal",
 		"pm.watt_wA_reverse",
 		"pm.watt_capacity_Ah",
-		"pm.i_maximal_on_HFI",
 		"pm.i_damping",
 		"pm.weak_maximal",
 		"pm.s_maximal",
@@ -2172,7 +2173,7 @@ reg_um_get_item(void *userdata, int n, const char **item)
 }
 
 static void
-reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
+reg_float_um(struct public *pub, const char *sym, const char *name, int range, int defsel)
 {
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
@@ -2193,16 +2194,16 @@ reg_float_um(struct public *pub, const char *sym, const char *name, int defsel)
 	nk_layout_row_template_push_static(ctx, pub->fe_base * 2);
 	nk_layout_row_template_end(ctx);
 
-	if (sym[0] >= '0' && sym[0] <= '9' && sym[1] == '/') {
+	if (range != 0) {
 
-		reg = link_reg_lookup(lp, sym + 2);
+		reg = link_reg_lookup(lp, sym);
 
 		if (reg != NULL) {
 
-			rc = (int) (sym[0] - '1');
+			rc = 1;
 
 			min_ID = (int) (reg - lp->reg);
-			max_ID = min_ID + rc;
+			max_ID = min_ID + range;
 		}
 		else {
 			rc = 0;
@@ -3421,7 +3422,8 @@ page_probe(struct public *pub)
 
 	reg_float(pub, "pm.probe_current_hold", "Probe hold current");
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
-	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 1);
+	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
+	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 0, 1);
 	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
 	reg_float(pub, "pm.i_maximal", "Maximal machine current");
 
@@ -3454,10 +3456,10 @@ page_probe(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
-	reg_float_um(pub, "pm.const_lambda", "Flux linkage", 1);
+	reg_float_um(pub, "pm.const_lambda", "Flux linkage", 0, 1);
 	reg_float(pub, "pm.const_Rs", "Winding resistance");
 	reg_float(pub, "pm.const_Zp", "Rotor pole pairs number");
-	reg_float_um(pub, "pm.const_Ja", "Moment of inertia", 1);
+	reg_float_um(pub, "pm.const_Ja", "Moment of inertia", 0, 1);
 	reg_float(pub, "pm.const_im_Ld", "Inductance D");
 	reg_float(pub, "pm.const_im_Lq", "Inductance Q");
 	reg_float(pub, "pm.const_im_A", "Principal angle");
@@ -3482,8 +3484,8 @@ page_probe(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 3);
-	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 3);
+	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 0, 3);
+	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 0, 3);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3570,7 +3572,7 @@ page_probe(struct public *pub)
 
 		reg_float(pub, "pm.lu_iD", "LU current D");
 		reg_float(pub, "pm.lu_iQ", "LU current Q");
-		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+		reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, 1);
 		reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
@@ -3578,15 +3580,15 @@ page_probe(struct public *pub)
 
 		if (config_LU_DRIVE == LU_DRIVE_CURRENT) {
 
-			reg_float_um(pub, "pm.i_setpoint_current", "Current SETPOINT", 0);
+			reg_float_um(pub, "pm.i_setpoint_current", "Current SETPOINT", 0, 0);
 		}
 		else if (config_LU_DRIVE == LU_DRIVE_TORQUE) {
 
-			reg_float_um(pub, "pm.i_setpoint_torque", "Torque SETPOINT", 0);
+			reg_float_um(pub, "pm.i_setpoint_torque", "Torque SETPOINT", 0, 0);
 		}
 		else if (config_LU_DRIVE == LU_DRIVE_SPEED) {
 
-			reg_float_um(pub, "pm.s_setpoint_speed", "Speed SETPOINT", 1);
+			reg_float_um(pub, "pm.s_setpoint_speed", "Speed SETPOINT", 0, 1);
 		}
 	}
 
@@ -4059,7 +4061,7 @@ page_in_stepdir(struct public *pub)
 
 	reg_linked(pub, "ap.step_reg_ID", "Control register ID");
 	reg_enum_toggle(pub, "ap.step_STARTUP", "Startup control");
-	reg_float_um(pub, "ap.step_const_Sm", "STEP length constant", 0);
+	reg_float_um(pub, "ap.step_const_Sm", "STEP length constant", 0, 0);
 
 	reg = link_reg_lookup(lp, "ap.step_reg_ID");
 
@@ -4517,6 +4519,7 @@ page_config(struct public *pub)
 		reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
 		reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
 
+		reg_enum_combo(pub, "pm.config_SATURATION", "Iron SATURATION", 0);
 		reg_enum_combo(pub, "pm.config_EXCITATION", "Machine EXCITATION", 0);
 		reg_enum_combo(pub, "pm.config_SALIENCY", "Machine SALIENCY", 0);
 		reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
@@ -4554,9 +4557,9 @@ page_config(struct public *pub)
 		reg_float(pub, "pm.probe_current_sine", "Probe sine current");
 		reg_float(pub, "pm.probe_current_bias", "Probe bias current");
 		reg_float(pub, "pm.probe_freq_sine", "Probe sine frequency");
-		reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 1);
-		reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 1);
-		reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0);
+		reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 0, 1);
+		reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 0, 1);
+		reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0, 0);
 		reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
 		reg_float(pub, "pm.probe_gain_P", "Probe loop GAIN P");
 		reg_float(pub, "pm.probe_gain_I", "Probe loop GAIN I");
@@ -4613,6 +4616,7 @@ page_lu_forced(struct public *pub)
 	struct nk_sdl			*nk = pub->nk;
 	struct link_pmc			*lp = pub->lp;
 	struct nk_context		*ctx = &nk->ctx;
+	struct link_reg			*reg;
 
 	nk_menubar_begin(ctx);
 
@@ -4630,6 +4634,15 @@ page_lu_forced(struct public *pub)
 
 			link_command(lp, "reg pm.forced_maximal -1" "\r\n"
 					 "reg pm.forced_accel -1");
+
+			reg = link_reg_lookup(lp, "pm.forced_maximal");
+			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+			reg = link_reg_lookup(lp, "pm.forced_reverse");
+			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+			reg = link_reg_lookup(lp, "pm.forced_accel");
+			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 		}
 
 		nk_menu_end(ctx);
@@ -4654,9 +4667,9 @@ page_lu_forced(struct public *pub)
 
 	reg_float(pub, "pm.forced_hold_D", "FORCED hold current");
 	reg_float(pub, "pm.forced_weak_D", "FORCED weak current");
-	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 1);
-	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 1);
-	reg_float_um(pub, "pm.forced_accel", "FORCED acceleration", 1);
+	reg_float_um(pub, "pm.forced_maximal", "Maximal forward speed", 0, 1);
+	reg_float_um(pub, "pm.forced_reverse", "Maximal reverse speed", 0, 1);
+	reg_float_um(pub, "pm.forced_accel", "FORCED acceleration", 0, 1);
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
 	reg_float(pub, "pm.forced_fall_rate", "Current fall rate");
 	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
@@ -4751,8 +4764,8 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 3);
-	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 3);
+	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 0, 3);
+	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 0, 3);
 	reg_float(pub, "pm.zone_gain_TH", "ZONE hysteresis TH");
 	reg_float(pub, "pm.zone_gain_LP", "ZONE gain LP");
 
@@ -4801,7 +4814,7 @@ page_lu_flux(struct public *pub)
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 	reg_enum_errno(pub, "pm.flux_ZONE", "FLUX speed ZONE", 0);
 
-	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 1);
+	reg_float_um(pub, "pm.flux_wS", "FLUX speed estimate", 0, 1);
 	reg_float(pub, "pm.flux_lambda", "FLUX linkage estimate");
 	reg_float(pub, "pm.kalman_bias_Q", "Q relaxation bias");
 
@@ -4869,7 +4882,7 @@ page_lu_hfi(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.i_maximal_on_HFI", "Maximal current on HFI");
+	reg_float(pub, "pm.hfi_maximal", "Maximal current on HFI");
 	reg_float(pub, "pm.hfi_freq", "HF injection frequency");
 	reg_float(pub, "pm.hfi_amplitude", "HF injection current");
 
@@ -4901,7 +4914,7 @@ page_lu_hfi(struct public *pub)
 
 	reg_float(pub, "pm.lu_F0", "LU position cosine");
 	reg_float(pub, "pm.lu_F1", "LU position sine");
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -5045,7 +5058,7 @@ page_lu_hall(struct public *pub)
 
 	reg_float(pub, "pm.lu_F0", "LU position cosine");
 	reg_float(pub, "pm.lu_F1", "LU position sine");
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, 1);
 	reg_float(pub, "pm.fb_HS", "HALL feedback");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5216,8 +5229,8 @@ page_lu_eabi(struct public *pub)
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 
-	reg_float_um(pub, "pm.lu_location", "LU location", 1);
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+	reg_float_um(pub, "pm.lu_location", "LU location", 0, 1);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, 1);
 	reg_float(pub, "pm.fb_EP", "EP feedback");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5383,8 +5396,8 @@ page_lu_sincos(struct public *pub)
 
 	reg_enum_errno(pub, "pm.lu_MODE", "LU operation mode", 0);
 
-	reg_float_um(pub, "pm.lu_location", "LU location", 1);
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 1);
+	reg_float_um(pub, "pm.lu_location", "LU location", 0, 1);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, 1);
 	reg_float(pub, "pm.fb_SIN", "SIN feedback");
 	reg_float(pub, "pm.fb_COS", "COS feedback");
 
@@ -5457,8 +5470,8 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "2/pm.watt_wP_maximal", "Maximal consumption", 1);
-	reg_float_um(pub, "2/pm.watt_wP_reverse", "Maximal regeneration", 1);
+	reg_float_um(pub, "pm.watt_wP_maximal", "Maximal consumption", 1, 1);
+	reg_float_um(pub, "pm.watt_wP_reverse", "Maximal regeneration", 1, 1);
 	reg_float(pub, "pm.watt_uDC_maximal", "DC link voltage HIGH");
 	reg_float(pub, "pm.watt_uDC_minimal", "DC link voltage LOW");
 
@@ -5510,15 +5523,15 @@ page_wattage(struct public *pub)
 	}
 
 	reg_float(pub, "pm.const_fb_U", "DC link voltage");
-	reg_float_um(pub, "pm.watt_drain", "DC link consumption", 1);
+	reg_float_um(pub, "pm.watt_drain", "DC link consumption", 0, 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
 	reg_float(pub, "pm.lu_total_revol", "Total electrical revolutions");
-	reg_float_um(pub, "pm.watt_traveled", "Total distance traveled", 1);
-	reg_float_um(pub, "pm.watt_consumed", "Total consumed energy", 0);
-	reg_float_um(pub, "pm.watt_reverted", "Total reverted energy", 0);
+	reg_float_um(pub, "pm.watt_traveled", "Total distance traveled", 0, 1);
+	reg_float_um(pub, "pm.watt_consumed", "Total consumed energy", 0, 0);
+	reg_float_um(pub, "pm.watt_reverted", "Total reverted energy", 0, 0);
 	reg_float(pub, "pm.watt_capacity_Ah", "Battery full capacity");
 	reg_float(pub, "pm.watt_fuel_gauge", "Fuel gauge");
 
@@ -5582,9 +5595,9 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.mtpa_tol", "MTPA tolerance");
+	reg_float(pub, "pm.mtpa_revstep", "MTPA reverse step");
 	reg_float(pub, "pm.mtpa_gain_LP", "MTPA gain LP");
-	reg_float_um(pub, "pm.weak_maximal", "Maximal WEAKENING", 0);
+	reg_float_um(pub, "pm.weak_maximal", "Maximal WEAKENING", 0, 0);
 	reg_float(pub, "pm.weak_gain_EU", "WEAKENING gain EU");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5609,15 +5622,15 @@ page_lp_speed(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 1);
-	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 1);
-	reg_float_um(pub, "pm.s_accel_forward", "Maximal forward acceleration", 1);
-	reg_float_um(pub, "pm.s_accel_reverse", "Maximal reverse acceleration", 1);
+	reg_float_um(pub, "pm.s_maximal", "Maximal forward speed", 0, 1);
+	reg_float_um(pub, "pm.s_reverse", "Maximal reverse speed", 0, 1);
+	reg_float_um(pub, "pm.s_accel_forward", "Maximal forward acceleration", 0, 1);
+	reg_float_um(pub, "pm.s_accel_reverse", "Maximal reverse acceleration", 0, 1);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.l_track_tol", "TRACKING tolerance", 1);
+	reg_float_um(pub, "pm.l_track_tol", "TRACKING tolerance", 0, 1);
 	reg_float(pub, "pm.l_gain_LP", "TRACKING blend gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5721,11 +5734,11 @@ page_lp_location(struct public *pub)
 	reg = link_reg_lookup(lp, "pm.const_ld_Sm");
 	if (reg != NULL && reg->fval > 0.f) { um_def = 2; }
 
-	reg_float_um(pub, "pm.x_maximal", "Maximal location", um_def);
-	reg_float_um(pub, "pm.x_minimal", "Minimal location", um_def);
-	reg_float_um(pub, "pm.x_boost_tol", "Regulation tolerance", 0);
-	reg_float_um(pub, "pm.x_track_tol", "Tracking tolerance", 0);
-	reg_float_um(pub, "pm.x_gain_P", "Proportional GAIN", 0);
+	reg_float_um(pub, "pm.x_maximal", "Maximal location", 0, um_def);
+	reg_float_um(pub, "pm.x_minimal", "Minimal location", 0, um_def);
+	reg_float_um(pub, "pm.x_boost_tol", "Regulation tolerance", 0, 0);
+	reg_float_um(pub, "pm.x_track_tol", "Tracking tolerance", 0, 0);
+	reg_float_um(pub, "pm.x_gain_P", "Proportional GAIN", 0, 0);
 	reg_float(pub, "pm.x_gain_D", "Damped GAIN");
 
 	reg = link_reg_lookup(lp, "pm.x_maximal");
@@ -5833,7 +5846,7 @@ page_lp_location(struct public *pub)
 
 	reg_float(pub, "pm.lu_iD", "LU current D");
 	reg_float(pub, "pm.lu_iQ", "LU current Q");
-	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", um_def);
+	reg_float_um(pub, "pm.lu_wS", "LU speed estimate", 0, um_def);
 	reg_float(pub, "pm.lu_mq_load", "LU load torque estimate");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5870,7 +5883,7 @@ page_lp_location(struct public *pub)
 	reg_float_prog_um(pub, "pm.x_setpoint_location", "Location SETPOINT",
 			ld_range[0], ld_range[1], um_def);
 
-	reg_float_um(pub, "pm.x_setpoint_speed", "Speed SETPOINT", um_def);
+	reg_float_um(pub, "pm.x_setpoint_speed", "Speed SETPOINT", 0, um_def);
 
 	if (		lp->unable_warning[0] != 0
 			&& pub->popup_enum == POPUP_NONE) {
@@ -5949,7 +5962,7 @@ page_telemetry(struct public *pub)
 
 		reg_float(pub, "tlm.rate_grab", "Grab into RAM frequency");
 		reg_float(pub, "tlm.rate_watch", "Watch frequency");
-		reg_float(pub, "tlm.rate_live", "Live frequency");
+		reg_float(pub, "tlm.rate_live", "Live streaming frequency");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);

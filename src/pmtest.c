@@ -39,16 +39,16 @@ SH_DEF(pm_self_test)
 
 		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
 
-			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
-			pm_wait_IDLE();
-
-			reg_OUTP(ID_PM_SELF_BST);
-			reg_OUTP(ID_PM_FSM_ERRNO);
-
 			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
 			pm_wait_IDLE();
 
 			reg_OUTP(ID_PM_SELF_IST);
+			reg_OUTP(ID_PM_FSM_ERRNO);
+
+			pm.fsm_req = PM_STATE_SELF_TEST_BOOTSTRAP;
+			pm_wait_IDLE();
+
+			reg_OUTP(ID_PM_SELF_BST);
 			reg_OUTP(ID_PM_FSM_ERRNO);
 		}
 

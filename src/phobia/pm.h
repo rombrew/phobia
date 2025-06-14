@@ -90,8 +90,13 @@ enum {
 };
 
 enum {
-	PM_EXCITATION_NONE			= 0,
-	PM_EXCITATION_CONST
+	PM_IRON_NONE				= 0,
+	PM_IRON_SATURATION
+};
+
+enum {
+	PM_MAGNET_NONE				= 0,
+	PM_MAGNET_PERMANENT
 };
 
 enum {
@@ -259,6 +264,7 @@ typedef struct {
 	int		config_LU_DRIVE;
 	int		config_HFI_WAVETYPE;
 	int		config_HFI_PERMANENT;
+	int		config_SATURATION;
 	int		config_EXCITATION;
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
@@ -435,6 +441,7 @@ typedef struct {
 	float		zone_gain_TH;
 	float		zone_gain_LP;
 
+	float		hfi_maximal;
 	float		hfi_freq;
 	float		hfi_amplitude;
 	float		hfi_wave[2];
@@ -543,7 +550,6 @@ typedef struct {
 	float		i_setpoint_current;
 	float		i_setpoint_torque;
 	float		i_maximal;
-	float		i_maximal_on_HFI;
 	float		i_maximal_on_PCB;
 	float		i_reverse;
 	float		i_track_D;
@@ -555,14 +561,14 @@ typedef struct {
 	float		i_gain_P;
 	float		i_gain_I;
 
-	float		mtpa_tol;
+	float		mtpa_revstep;
 	float		mtpa_setpoint_Q;
 	float		mtpa_load_Q;
-	float		mtpa_D;
+	float		mtpa_track_D;
 	float		mtpa_gain_LP;
 
 	float		weak_maximal;
-	float		weak_D;
+	float		weak_track_D;
 	float		weak_gain_EU;
 
 	float		v_maximal;

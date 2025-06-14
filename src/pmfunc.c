@@ -207,7 +207,7 @@ SH_DEF(pm_probe_spinup)
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		if (		pm.flux_LINKAGE != PM_ENABLED
-				&& pm.config_EXCITATION == PM_EXCITATION_CONST) {
+				&& pm.config_EXCITATION == PM_MAGNET_PERMANENT) {
 
 			reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -244,7 +244,7 @@ SH_DEF(pm_probe_spinup)
 			break;
 		}
 
-		if (pm.config_EXCITATION == PM_EXCITATION_CONST) {
+		if (pm.config_EXCITATION == PM_MAGNET_PERMANENT) {
 
 			vTaskDelay((TickType_t) 200);
 
@@ -324,9 +324,9 @@ SH_DEF(pm_probe_detached)
 		return;
 	}
 
-	if (pm.config_EXCITATION != PM_EXCITATION_CONST) {
+	if (pm.config_EXCITATION != PM_MAGNET_PERMANENT) {
 
-		printf("Unable when EXCITATION is not CONST" EOL);
+		printf("Unable when EXCITATION is not PERMANENT" EOL);
 		return;
 	}
 
@@ -370,9 +370,9 @@ SH_DEF(pm_probe_const_flux_linkage)
 		return;
 	}
 
-	if (pm.config_EXCITATION != PM_EXCITATION_CONST) {
+	if (pm.config_EXCITATION != PM_MAGNET_PERMANENT) {
 
-		printf("Unable when EXCITATION is not CONST" EOL);
+		printf("Unable when EXCITATION is not PERMANENT" EOL);
 		return;
 	}
 
