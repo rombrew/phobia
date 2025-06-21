@@ -1,10 +1,9 @@
 #define HW_MCU_STM32F405
 
-#define HW_HAVE_PWM_REVERSED
-#define HW_HAVE_PWM_POLARITY
 #define HW_HAVE_NTC_ON_PCB
+#define HW_HAVE_NETWORK_EPCAN
 
-#define HW_CLOCK_CRYSTAL_HZ		0U		/* TODO: Add crystall */
+#define HW_CLOCK_CRYSTAL_HZ		12000000U
 
 #define HW_PWM_FREQUENCY_HZ		28571.f
 #define HW_PWM_DEADTIME_NS		440.f		/* CRSS037N10N */
@@ -12,12 +11,12 @@
 #define HW_PWM_MINIMAL_PULSE		0.2f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
 #define HW_PWM_SKIP_ZONE		2.0f
-#define HW_PWM_BOOTSTRAP_RETENTION	90.f		/* U3216 */
+#define HW_PWM_BOOTSTRAP_RETENTION	50.f		/* U3216 */
 
 #define HW_ADC_SAMPLING_SEQUENCE	ADC_SEQUENCE__ABU_TTT
 
 #define HW_ADC_REFERENCE_VOLTAGE	3.3f
-#define HW_ADC_SHUNT_RESISTANCE		0.002f		/* ??? */
+#define HW_ADC_SHUNT_RESISTANCE		0.0052f		/* SS495A */
 #define HW_ADC_AMPLIFIER_GAIN		-1.f
 
 #define HW_ADC_VOLTAGE_R1		40000.f		/* R62 + R67 */
@@ -27,7 +26,7 @@
 #define HW_NTC_PCB_BALANCE		2000.f		/* R15 */
 #define HW_NTC_PCB_NTC0			10000.f		/* R31 (on power_pcb) */
 #define HW_NTC_PCB_TA0			25.f
-#define HW_NTC_PCB_BETTA		3435.f		/* ??? R31 betta */
+#define HW_NTC_PCB_BETTA		3435.f		/* R31 betta */
 
 #define GPIO_ADC_CURRENT_A		XGPIO_DEF3('A', 6, 6)
 #define GPIO_ADC_CURRENT_B		XGPIO_DEF3('A', 5, 5)
@@ -43,5 +42,5 @@
 #define GPIO_CAN_RX			XGPIO_DEF4('B', 8, 0, 9)
 #define GPIO_CAN_TX			XGPIO_DEF4('B', 9, 0, 9)
 
-#define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)	/* TODO: Add LED */
+#define GPIO_LED_ALERT			XGPIO_DEF2('C', 12)
 
