@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@
 
 #define GP_FILE_ENT_MAX		4000
 
-#define GP_CONFIG_VERSION	17
+#define GP_CONFIG_VERSION	18
 #define GP_CONFIG_FILE		"gprc"
 
 enum {
@@ -367,7 +367,7 @@ gpWriteFile(gpcon_t *gp)
 		fprintf(fd, "shortfilename %i\n", rd->shortfilename);
 		fprintf(fd, "fastdraw %i\n", rd->fastdraw);
 		fprintf(fd, "interpolation %i\n", pl->interpolation);
-		fprintf(fd, "defungap %i\n", pl->defungap);
+		fprintf(fd, "defungap %.5g\n", pl->defungap);
 		fprintf(fd, "lz4_compress %i\n", pl->lz4_compress);
 
 #ifdef _WINDOWS
@@ -547,8 +547,8 @@ gpFontToggle(gpcon_t *gp, int toggle, int font_pt)
 
 	style = TTF_STYLE_NORMAL;
 
-	style |= (gp->ctrl_on == 1) ? TTF_STYLE_BOLD : 0;
-	style |= (gp->shift_on == 1) ? TTF_STYLE_ITALIC : 0;
+	style |= (gp->ctrl_on != 0) ? TTF_STYLE_BOLD : 0;
+	style |= (gp->shift_on != 0) ? TTF_STYLE_ITALIC : 0;
 
 	plotFontDefault(pl, pl->layout_font_ttf, font_pt, style);
 
@@ -1054,7 +1054,7 @@ gpMakeColumnSelectMenu(gpcon_t *gp, int dN)
 			sN = cN - rd->data[dN].column_N;
 
 			sprintf(gp->sbuf[0], "[%3i] %c ", cN,
-					" TFSEPRAXHDIBLM?" [gp->pl->data[dN].sub[sN].busy]);
+					" TFSEPRAXHDIBLMU?" [gp->pl->data[dN].sub[sN].busy]);
 
 			if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_TIME_MEDIAN) {
 
@@ -1107,28 +1107,35 @@ gpMakeColumnSelectMenu(gpcon_t *gp, int dN)
 						gp->pl->data[dN].sub[sN].op.filter.column_X,
 						gp->pl->data[dN].sub[sN].op.filter.column_Y);
 			}
-			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_BITMASK) {
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_BITFIELD) {
 
-				int	bf[2] = { 0, (int) gp->pl->data[dN].sub[sN].op.filter.gain };
+				int	argi[2] = { 0, (int) gp->pl->data[dN].sub[sN].op.filter.value };
 
-				bf[0] = bf[1] & 0xFFU;
-				bf[1] = bf[1] >> 8;
+				argi[0] = argi[1] & 0xFFU;
+				argi[1] = argi[1] >> 8;
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i, %i)",
 						gp->pl->data[dN].sub[sN].op.filter.column_Y,
-						(int) bf[0], (int) bf[1]);
+						(int) argi[0], (int) argi[1]);
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_LOW_PASS) {
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %.2E)",
 						gp->pl->data[dN].sub[sN].op.filter.column_Y,
-						gp->pl->data[dN].sub[sN].op.filter.gain);
+						gp->pl->data[dN].sub[sN].op.filter.value);
 			}
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_MEDIAN) {
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i)",
 						gp->pl->data[dN].sub[sN].op.median.column_Y,
 						(int) gp->pl->data[dN].sub[sN].op.median.length);
+			}
+			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i, %i)",
+						gp->pl->data[dN].sub[sN].op.filter.column_X,
+						gp->pl->data[dN].sub[sN].op.filter.column_Y,
+						(int) gp->pl->data[dN].sub[sN].op.filter.value);
 			}
 
 			strcpy(la, gp->sbuf[0]);
@@ -1611,7 +1618,7 @@ legacy_SetClipboard(SDL_Surface *surface)
 static void
 gpYankScreen(gpcon_t *gp)
 {
-	if (gp->screen_yank == 1) {
+	if (gp->screen_yank != 0) {
 
 #ifdef _WINDOWS
 		legacy_SetClipboard(gp->surface);
@@ -1919,7 +1926,7 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 
 			case 1:
 				plotDataSubtractAlternate(pl);
-				plotTotalSubtractGarbage(pl);
+				plotFigureSubtractGarbage(pl);
 				break;
 
 			case 2:
@@ -2548,6 +2555,11 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 					mu->hidden_N[3] = 8;
 				}
 
+				if (N < 2) {
+
+					mu->hidden_N[0] = 14;
+				}
+
 				gp->stat = GP_MENU;
 				break;
 
@@ -2672,6 +2684,13 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 			case 13:
 				editRaise(ed, 19, gp->la->median_unwrap_edit,
 						"15", mu->box_X, mu->box_Y);
+
+				gp->stat = GP_EDIT;
+				break;
+
+			case 14:
+				editRaise(ed, 27, gp->la->demultiplex_edit,
+						"0", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
@@ -2977,7 +2996,7 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 				break;
 
 			case 5:
-				sprintf(gp->sbuf[0], "%i", pl->defungap);
+				sprintf(gp->sbuf[0], "%.3f", pl->defungap);
 
 				editRaise(ed, 26, gp->la->time_threshold_edit,
 						gp->sbuf[0], mu->box_X, mu->box_Y);
@@ -3098,7 +3117,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 	menu_t		*mu = gp->mu;
 	svg_t		*g;
 
-	double		scale, offset, fmin, fmax, gain;
+	double		scale, offset, fmin, fmax, value;
 	int		N, args[2], len, n;
 
 	if (edit_N == 1) {
@@ -3154,6 +3173,8 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 				plotFigureSubtractScale(pl, gp->fig_N,
 						aBUSY, scale, offset);
 			}
+
+			plotFigureScaleMerge(pl);
 		}
 	}
 	else if (edit_N == 7) {
@@ -3203,7 +3224,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 					&& args[0] <= args[1]) {
 
 				plotFigureSubtractFilter(pl, gp->fig_N,
-						SUBTRACT_FILTER_BITMASK,
+						SUBTRACT_FILTER_BITFIELD,
 						(double) (args[0] | (args[1] << 8)));
 			}
 		}
@@ -3284,12 +3305,12 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 13) {
 
-		n = sscanf(text, "%le", &gain);
+		n = sscanf(text, "%le", &value);
 
 		if (n != 0) {
 
 			plotFigureSubtractFilter(pl, gp->fig_N,
-					SUBTRACT_FILTER_LOW_PASS, gain);
+					SUBTRACT_FILTER_LOW_PASS, value);
 		}
 	}
 	else if (edit_N == 14) {
@@ -3537,13 +3558,13 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 	}
 	else if (edit_N == 26) {
 
-		n = sscanf(text, "%d", &len);
+		n = sscanf(text, "%le", &value);
 
 		if (n == 1) {
 
-			if (len >= 0) {
+			if (value >= 0.) {
 
-				pl->defungap = len;
+				pl->defungap = value;
 			}
 		}
 
@@ -3553,6 +3574,16 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 		menuSelect(mu, 5);
 
 		gp->stat = GP_MENU;
+	}
+	else if (edit_N == 27) {
+
+		n = sscanf(text, "%d", &N);
+
+		if (n != 0) {
+
+			plotFigureSubtractDemux(pl, gp->fig_N,
+					SUBTRACT_FILTER_DEMULTIPLEX, N);
+		}
 	}
 }
 
@@ -4067,7 +4098,7 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 				gp->data_box_drag = 0;
 				gp->ax_N = -1;
 
-				if (gp->box_X == ev->button.x && gp->box_Y == ev->button.y
+				if (		gp->box_X == ev->button.x && gp->box_Y == ev->button.y
 						&& clipBoxTest(&pl->viewport, gp->box_X, gp->box_Y)) {
 
 					if (pl->slice_on != 0) {
@@ -4159,8 +4190,10 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 			gp->cur_X = ev->button.x;
 			gp->cur_Y = ev->button.y;
 
-			if (ev->button.button == SDL_BUTTON_RIGHT)
+			if (ev->button.button == SDL_BUTTON_RIGHT) {
+
 				gp->stat = GP_IDLE;
+			}
 			else if (ev->button.button == SDL_BUTTON_LEFT) {
 
 				if (gp->box_X != gp->cur_X || gp->box_Y != gp->cur_Y) {
@@ -4190,6 +4223,8 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 
 							plotAxisScaleAutoCond(pl, pl->on_Y, pl->on_X);
 						}
+
+						pl->axis[pl->on_X].lock_scale = LOCK_FREE;
 					}
 					else {
 						fmin = plotAxisConvBackward(pl, pl->on_Y, gp->box_Y);
@@ -4201,10 +4236,9 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 
 							plotAxisScaleAutoCond(pl, pl->on_X, pl->on_Y);
 						}
-					}
 
-					pl->axis[pl->on_X].lock_scale = LOCK_FREE;
-					pl->axis[pl->on_Y].lock_scale = LOCK_FREE;
+						pl->axis[pl->on_Y].lock_scale = LOCK_FREE;
+					}
 				}
 
 				gp->stat = GP_IDLE;
@@ -4483,15 +4517,15 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 
 				editEvent(ed, EDIT_EVNO_DELETE, gp->cur_X, gp->cur_Y);
 			}
-			else if (ev->key.keysym.sym == SDLK_x && gp->ctrl_on == 1) {
+			else if (ev->key.keysym.sym == SDLK_x && gp->ctrl_on != 0) {
 
 				editEvent(ed, EDIT_EVNO_CTRL_X, gp->cur_X, gp->cur_Y);
 			}
-			else if (ev->key.keysym.sym == SDLK_c && gp->ctrl_on == 1) {
+			else if (ev->key.keysym.sym == SDLK_c && gp->ctrl_on != 0) {
 
 				editEvent(ed, EDIT_EVNO_CTRL_C, gp->cur_X, gp->cur_Y);
 			}
-			else if (ev->key.keysym.sym == SDLK_v && gp->ctrl_on == 1) {
+			else if (ev->key.keysym.sym == SDLK_v && gp->ctrl_on != 0) {
 
 				editEvent(ed, EDIT_EVNO_CTRL_V, gp->cur_X, gp->cur_Y);
 			}
@@ -4888,10 +4922,12 @@ int gp_DataAdd(gpcon_t *gp, int dN, const double *payload)
 	plot_t		*pl = gp->pl;
 	read_t		*rd = gp->rd;
 
-	int		rc, N = 0;
+	int		N = 0;
 
 	if (		dN >= 0 && dN < PLOT_DATASET_MAX
 			&& rd->data[dN].format == FORMAT_STUB_DATA) {
+
+		int		rc;
 
 		rc = async_write(rd->data[dN].afd, (void *) payload,
 				pl->data[dN].column_N * sizeof(double));
@@ -4951,6 +4987,8 @@ void gp_AxisRange(gpcon_t *gp, int aN, double min, double max)
 {
 	plot_t		*pl = gp->pl;
 
+	int		N;
+
 	if (aN < 0 || aN >= PLOT_AXES_MAX) {
 
 		ERROR("Axis number is out of range\n");
@@ -4959,8 +4997,23 @@ void gp_AxisRange(gpcon_t *gp, int aN, double min, double max)
 
 	plotAxisScaleManual(pl, aN, min, max);
 
+	for (N = 0; N < PLOT_AXES_MAX; ++N) {
+
+		if (		pl->axis[N].busy == AXIS_BUSY_Y
+				&& pl->axis[N].lock_scale == LOCK_AUTO
+				&& pl->axis[aN].busy == AXIS_BUSY_X) {
+
+			pl->axis[N].lock_scale = LOCK_CONDITION;
+		}
+		else if (	pl->axis[N].busy == AXIS_BUSY_X
+				&& pl->axis[N].lock_scale == LOCK_AUTO
+				&& pl->axis[aN].busy == AXIS_BUSY_Y) {
+
+			pl->axis[N].lock_scale = LOCK_CONDITION;
+		}
+	}
+
 	pl->axis[aN].lock_scale = LOCK_FREE;
-	pl->axis[aN].lock_tick = 0;
 }
 
 int gp_IsQuit(gpcon_t *gp)
@@ -5216,7 +5269,7 @@ gpUsageHelp()
 		"  -x[n]          Time column default\n"
 		"  -l[n]          Color scheme number\n"
 		"  -pcn[n]        Select and combine pages\n"
-		"  -a[n] min max  Axis zoom to specified range\n"
+		"  -z[n] min max  Zoom axis to specified range\n"
 		"  -g    file     Save to PNG/SVG file\n"
 		"  -q             Do not open window\n");
 }
@@ -5428,7 +5481,7 @@ gpGetCMD(gpcon_t *gp, int argn, char *argv[])
 					}
 				}
 			}
-			else if (*op == 'a') {
+			else if (*op == 'z') {
 
 				double		fmin, fmax;
 

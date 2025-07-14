@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ plot_t *plotAlloc(draw_t *dw, scheme_t *sch)
 	pl->layout_fence_point = 10;
 
 	pl->interpolation = 1;
-	pl->defungap = 10;
+	pl->defungap = 10.;
 
 	pl->mark_size = 40;
 	pl->mark_density = 40;
@@ -1242,7 +1242,7 @@ static void
 plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int rN_end)
 {
 	fval_t		*row, X1, X2, X3, X4;
-	double		scale, offset, gain;
+	double		scale, offset, value;
 	int		cN, rN, id_N, cNX, cNY, cNT, mode;
 
 	mode = pl->data[dN].sub[sN].busy;
@@ -1598,12 +1598,12 @@ plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int 
 		pl->data[dN].sub[sN].op.filter.state[0] = (double) X3;
 		pl->data[dN].sub[sN].op.filter.state[1] = (double) X4;
 	}
-	else if (mode == SUBTRACT_FILTER_BITMASK) {
+	else if (mode == SUBTRACT_FILTER_BITFIELD) {
 
 		unsigned long	shift, mask, ulval;
 
 		cNX = pl->data[dN].sub[sN].op.filter.column_Y;
-		ulval = (unsigned long) pl->data[dN].sub[sN].op.filter.gain;
+		ulval = (unsigned long) pl->data[dN].sub[sN].op.filter.value;
 
 		shift = ulval & 0xFFU;
 		ulval = ulval >> 8;
@@ -1636,7 +1636,7 @@ plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int 
 		}
 
 		cNX = pl->data[dN].sub[sN].op.filter.column_Y;
-		gain = pl->data[dN].sub[sN].op.filter.gain;
+		value = pl->data[dN].sub[sN].op.filter.value;
 
 		X2 = (fval_t) pl->data[dN].sub[sN].op.filter.state[0];
 
@@ -1652,7 +1652,7 @@ plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int 
 
 				if (fp_isfinite(X2)) {
 
-					X2 += (X1 - X2) * gain;
+					X2 += (X1 - X2) * value;
 				}
 				else {
 					X2 = X1;
@@ -1708,6 +1708,44 @@ plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int 
 				break;
 		}
 		while (1);
+	}
+	else if (mode == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+		if (rN_beg == pl->data[dN].head_N) {
+
+			pl->data[dN].sub[sN].op.filter.state[0] = FP_NAN;
+		}
+
+		cNX = pl->data[dN].sub[sN].op.filter.column_X;
+		cNY = pl->data[dN].sub[sN].op.filter.column_Y;
+		cNT = (int) pl->data[dN].sub[sN].op.filter.value;
+
+		X3 = (fval_t) pl->data[dN].sub[sN].op.filter.state[0];
+
+		do {
+			row = plotDataWrite(pl, dN, &rN);
+
+			if (row == NULL)
+				break;
+
+			X1 = (cNX < 0) ? id_N : row[cNX];
+			X2 = (cNY < 0) ? id_N : row[cNY];
+
+			if ((int) X1 == cNT) {
+
+				X3 = X2;
+			}
+
+			row[cN] = X3;
+
+			id_N++;
+
+			if (rN == rN_end)
+				break;
+		}
+		while (1);
+
+		pl->data[dN].sub[sN].op.filter.state[0] = (double) X3;
 	}
 }
 
@@ -1784,13 +1822,15 @@ void plotDataSubtractCompute(plot_t *pl, int dN, int sN)
 
 void plotDataSubtractResidual(plot_t *pl, int dN)
 {
-	int		rN, id_N, rN_end;
+	int		N, lN, rN, id_N, rN_end;
 
 	if (dN < 0 || dN >= PLOT_DATASET_MAX) {
 
 		ERROR("Dataset number is out of range\n");
 		return ;
 	}
+
+	lN = pl->data[dN].length_N;
 
 	rN = pl->data[dN].sub_N;
 	id_N = pl->data[dN].id_N;
@@ -1799,6 +1839,11 @@ void plotDataSubtractResidual(plot_t *pl, int dN)
 
 	if (rN == rN_end)
 		return ;
+
+	N = rN - pl->data[dN].head_N;
+	N = (N < 0) ? N + lN : N;
+
+	id_N += N;
 
 	plotDataSubtractWriteSeq(pl, dN, rN, id_N, rN_end);
 
@@ -3218,7 +3263,7 @@ void plotAxisScaleAutoCond(plot_t *pl, int aN, int bN)
 			plotAxisScaleManual(pl, aN, fmin, fmax);
 		}
 
-		pl->axis[aN].lock_scale = LOCK_FREE;
+		pl->axis[aN].lock_scale = LOCK_CONDITION;
 		pl->axis[aN].lock_tick = 0;
 	}
 }
@@ -3233,25 +3278,32 @@ void plotAxisScaleLock(plot_t *pl, int knob)
 
 void plotAxisScaleDefault(plot_t *pl)
 {
-	int		aN;
+	int		aN, job = 0;
 
 	for (aN = 0; aN < PLOT_AXES_MAX; ++aN) {
 
-		if (		pl->axis[aN].busy != AXIS_FREE
-				&& pl->axis[aN].lock_scale == LOCK_AUTO) {
+		if (pl->axis[aN].busy != AXIS_FREE) {
 
-			plotAxisScaleAuto(pl, aN);
+			if (pl->axis[aN].lock_scale == LOCK_AUTO) {
+
+				plotAxisScaleAuto(pl, aN);
+			}
+			else if (pl->axis[aN].lock_scale == LOCK_CONDITION) {
+
+				plotAxisScaleAutoCond(pl, aN, -1);
+			}
 		}
-	}
-
-	for (aN = 0; aN < PLOT_AXES_MAX; ++aN) {
 
 		if (		pl->axis[aN].busy == AXIS_BUSY_Y
 				&& pl->axis[aN].lock_scale == LOCK_STACKED) {
 
-			plotAxisScaleStacked(pl, -1);
-			break;
+			job = 1;
 		}
+	}
+
+	if (job != 0) {
+
+		plotAxisScaleStacked(pl, -1);
 	}
 }
 
@@ -4004,40 +4056,35 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 
 			if (cN == pl->data[dN].sub[sN].op.median.column_X) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (pl->data[dN].sub[sN].busy == SUBTRACT_DATA_MEDIAN) {
 
 			if (cN == pl->data[dN].sub[sN].op.median.column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (pl->data[dN].sub[sN].busy == SUBTRACT_SCALE) {
 
 			if (cN == pl->data[dN].sub[sN].op.scale.column_X) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (pl->data[dN].sub[sN].busy == SUBTRACT_RESAMPLE) {
 
 			if (cN == pl->data[dN].sub[sN].op.resample.column_X) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (pl->data[dN].sub[sN].busy == SUBTRACT_POLYFIT) {
 
 			if (cN == pl->data[dN].sub[sN].op.polyfit.column_X) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (	pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_SUBTRACTION
@@ -4048,8 +4095,7 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 			if (		cN == pl->data[dN].sub[sN].op.binary.column_X
 					|| cN == pl->data[dN].sub[sN].op.binary.column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (	pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_DIFFERENCE
@@ -4058,25 +4104,30 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 			if (		cN == pl->data[dN].sub[sN].op.filter.column_X
 					|| cN == pl->data[dN].sub[sN].op.filter.column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
-		else if (	pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_BITMASK
+		else if (	pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_BITFIELD
 				|| pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_LOW_PASS) {
 
 			if (cN == pl->data[dN].sub[sN].op.filter.column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 		}
 		else if (pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_MEDIAN) {
 
 			if (cN == pl->data[dN].sub[sN].op.median.column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
+			}
+		}
+		else if (pl->data[dN].sub[sN].busy == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+			if (		cN == pl->data[dN].sub[sN].op.filter.column_X
+					|| cN == pl->data[dN].sub[sN].op.filter.column_Y) {
+
+				linked++;
 			}
 		}
 	}
@@ -4088,8 +4139,7 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 			if (		cN == pl->figure[fN].column_X
 					|| cN == pl->figure[fN].column_Y) {
 
-				linked = 1;
-				break;
+				linked++;
 			}
 
 			dNf = pl->figure[fN].data_N;
@@ -4101,20 +4151,15 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 					if (		dN == pl->data[dNf].sub[sN].op.resample.in_data_N
 							&& cN == pl->data[dNf].sub[sN].op.resample.in_column_X) {
 
-						linked = 1;
-						break;
+						linked++;
 					}
 					else if (	dN == pl->data[dNf].sub[sN].op.resample.in_data_N
 							&& cN == pl->data[dNf].sub[sN].op.resample.in_column_Y) {
 
-						linked = 1;
-						break;
+						linked++;
 					}
 				}
 			}
-
-			if (linked != 0)
-				break;
 		}
 	}
 
@@ -4148,7 +4193,7 @@ plotSubtractGarbage(plot_t *pl, int dN)
 }
 
 static int
-plotSubtractOriginal(plot_t *pl, int dN, int cN)
+plotSubtractUnclone(plot_t *pl, int dN, int cN)
 {
 	int		fN, sN, cN1, modified;
 
@@ -4166,7 +4211,7 @@ plotSubtractOriginal(plot_t *pl, int dN, int cN)
 					&& pl->data[dN].sub[sN].op.scale.offset == (double) 0.) {
 
 				cN = cN1;
-				goto plotSubtractMerge_END;
+				goto plotSubtractUnclone_END;
 			}
 		}
 
@@ -4187,7 +4232,7 @@ plotSubtractOriginal(plot_t *pl, int dN, int cN)
 						if (plotDataCompareMatch(pl, dN, cN, pl->figure[fN].column_X) == 0) {
 
 							cN = pl->figure[fN].column_X;
-							goto plotSubtractMerge_END;
+							goto plotSubtractUnclone_END;
 						}
 					}
 				}
@@ -4208,7 +4253,7 @@ plotSubtractOriginal(plot_t *pl, int dN, int cN)
 						if (plotDataCompareMatch(pl, dN, cN, pl->figure[fN].column_Y) == 0) {
 
 							cN = pl->figure[fN].column_Y;
-							goto plotSubtractMerge_END;
+							goto plotSubtractUnclone_END;
 						}
 					}
 				}
@@ -4216,12 +4261,12 @@ plotSubtractOriginal(plot_t *pl, int dN, int cN)
 		}
 	}
 
-plotSubtractMerge_END:
+plotSubtractUnclone_END:
 
 	return cN;
 }
 
-void plotTotalSubtractGarbage(plot_t *pl)
+void plotFigureSubtractGarbage(plot_t *pl)
 {
 	int		N, fN, dN, sN, cNX, cNY;
 
@@ -4237,8 +4282,8 @@ void plotTotalSubtractGarbage(plot_t *pl)
 				cNX = pl->figure[fN].column_X;
 				cNY = pl->figure[fN].column_Y;
 
-				cNX = plotSubtractOriginal(pl, dN, cNX);
-				cNY = plotSubtractOriginal(pl, dN, cNY);
+				cNX = plotSubtractUnclone(pl, dN, cNX);
+				cNY = plotSubtractUnclone(pl, dN, cNY);
 
 				pl->figure[fN].column_X = cNX;
 				pl->figure[fN].column_Y = cNY;
@@ -4261,6 +4306,80 @@ void plotTotalSubtractGarbage(plot_t *pl)
 		}
 	}
 	while (N != 0);
+}
+
+void plotFigureScaleMerge(plot_t *pl)
+{
+	double		scale, offset;
+	int		fN, dN, cN, sN, sNd;
+
+	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
+
+		if (pl->figure[fN].busy != 0) {
+
+			dN = pl->figure[fN].data_N;
+
+			cN = pl->figure[fN].column_X;
+			sN = cN - pl->data[dN].column_N;
+
+			if (		sN >= 0 && sN < PLOT_SUBTRACT
+					&& pl->data[dN].sub[sN].busy == SUBTRACT_SCALE) {
+
+				cN = pl->data[dN].sub[sN].op.scale.column_X;
+				sNd = cN - pl->data[dN].column_N;
+
+				if (		sNd >= 0 && sNd < PLOT_SUBTRACT
+						&& pl->data[dN].sub[sNd].busy == SUBTRACT_SCALE
+						&& plotCheckColumnLinked(pl, dN, cN) < 2) {
+
+					scale = pl->data[dN].sub[sNd].op.scale.scale;
+					offset = pl->data[dN].sub[sNd].op.scale.offset;
+
+					scale *= pl->data[dN].sub[sN].op.scale.scale;
+					offset = pl->data[dN].sub[sN].op.scale.scale * offset
+							+ pl->data[dN].sub[sN].op.scale.offset;
+
+					pl->data[dN].sub[sNd].busy = SUBTRACT_FREE;
+
+					cN = pl->data[dN].sub[sNd].op.scale.column_X;
+
+					pl->data[dN].sub[sN].op.scale.column_X = cN;
+					pl->data[dN].sub[sN].op.scale.scale = scale;
+					pl->data[dN].sub[sN].op.scale.offset = offset;
+				}
+			}
+
+			cN = pl->figure[fN].column_Y;
+			sN = cN - pl->data[dN].column_N;
+
+			if (		sN >= 0 && sN < PLOT_SUBTRACT
+					&& pl->data[dN].sub[sN].busy == SUBTRACT_SCALE) {
+
+				cN = pl->data[dN].sub[sN].op.scale.column_X;
+				sNd = cN - pl->data[dN].column_N;
+
+				if (		sNd >= 0 && sNd < PLOT_SUBTRACT
+						&& pl->data[dN].sub[sNd].busy == SUBTRACT_SCALE
+						&& plotCheckColumnLinked(pl, dN, cN) < 2) {
+
+					scale = pl->data[dN].sub[sNd].op.scale.scale;
+					offset = pl->data[dN].sub[sNd].op.scale.offset;
+
+					scale *= pl->data[dN].sub[sN].op.scale.scale;
+					offset = pl->data[dN].sub[sN].op.scale.scale * offset
+							+ pl->data[dN].sub[sN].op.scale.offset;
+
+					pl->data[dN].sub[sNd].busy = SUBTRACT_FREE;
+
+					cN = pl->data[dN].sub[sNd].op.scale.column_X;
+
+					pl->data[dN].sub[sN].op.scale.column_X = cN;
+					pl->data[dN].sub[sN].op.scale.scale = scale;
+					pl->data[dN].sub[sN].op.scale.offset = offset;
+				}
+			}
+		}
+	}
 }
 
 void plotFigureRemove(plot_t *pl, int fN)
@@ -4481,25 +4600,25 @@ void plotFigureMakeIndividualAxes(plot_t *pl, int fN)
 	}
 }
 
-void plotFigureExchange(plot_t *pl, int fN, int fN_1)
+void plotFigureExchange(plot_t *pl, int fN_1, int fN_2)
 {
-	char		backup[sizeof(pl->figure[0])];
+	unsigned char	figbackup[sizeof(pl->figure[0])];
 
-	if (fN < 0 || fN >= PLOT_FIGURE_MAX) {
+	if (fN_1 < 0 || fN_1 >= PLOT_FIGURE_MAX) {
 
 		ERROR("Figure number is out of range\n");
 		return ;
 	}
 
-	if (fN_1 < 0 || fN_1 >= PLOT_FIGURE_MAX) {
+	if (fN_2 < 0 || fN_2 >= PLOT_FIGURE_MAX) {
 
 		ERROR("Figure number (exchange) is out of range\n");
 		return ;
 	}
 
-	memcpy(backup, &pl->figure[fN_1], sizeof(pl->figure[0]));
-	memcpy(&pl->figure[fN_1], &pl->figure[fN], sizeof(pl->figure[0]));
-	memcpy(&pl->figure[fN], backup, sizeof(pl->figure[0]));
+	memcpy(figbackup, &pl->figure[fN_2], sizeof(pl->figure[0]));
+	memcpy(&pl->figure[fN_2], &pl->figure[fN_1], sizeof(pl->figure[0]));
+	memcpy(&pl->figure[fN_1], figbackup, sizeof(pl->figure[0]));
 }
 
 int plotFigureSelected(plot_t *pl)
@@ -4685,7 +4804,8 @@ int plotGetSubtractScale(plot_t *pl, int dN, int cN, double scale, double offset
 		sN = cN - pl->data[dN].column_N;
 
 		if (		sN >= 0 && sN < PLOT_SUBTRACT
-				&& pl->data[dN].sub[sN].busy == SUBTRACT_SCALE) {
+				&& pl->data[dN].sub[sN].busy == SUBTRACT_SCALE
+				&& plotCheckColumnLinked(pl, dN, cN) < 2) {
 
 			offset = scale * pl->data[dN].sub[sN].op.scale.offset + offset;
 			scale *= pl->data[dN].sub[sN].op.scale.scale;
@@ -4823,7 +4943,7 @@ int plotGetSubtractBinary(plot_t *pl, int dN, int opSUB, int cN1, int cN2)
 	return cN;
 }
 
-int plotGetSubtractFilter(plot_t *pl, int dN, int cNX, int cNY, int opSUB, double gain)
+int plotGetSubtractFilter(plot_t *pl, int dN, int cNX, int cNY, int opSUB, double value)
 {
 	int		sN;
 
@@ -4856,7 +4976,7 @@ int plotGetSubtractFilter(plot_t *pl, int dN, int cNX, int cNY, int opSUB, doubl
 	pl->data[dN].sub[sN].busy = opSUB;
 	pl->data[dN].sub[sN].op.filter.column_X = cNX;
 	pl->data[dN].sub[sN].op.filter.column_Y = cNY;
-	pl->data[dN].sub[sN].op.filter.gain = gain;
+	pl->data[dN].sub[sN].op.filter.value = value;
 
 	plotDataSubtractCompute(pl, dN, sN);
 
@@ -5141,23 +5261,23 @@ plotFigureSubtractAdd(plot_t *pl, int fN, int fN_1, int fN_2, int opSUB)
 	return AXIS_BUSY_Y;
 }
 
-void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain)
+void plotFigureSubtractFilter(plot_t *pl, int fN, int opSUB, double value)
 {
-	int		fN, dN, cNX, cNY, aN;
+	int		fN_lpf, dN, cNX, cNY, aN;
 
-	if (fN_1 < 0 || fN_1 >= PLOT_FIGURE_MAX) {
+	if (fN < 0 || fN >= PLOT_FIGURE_MAX) {
 
 		ERROR("Figure number is out of range\n");
 		return ;
 	}
 
-	dN = pl->figure[fN_1].data_N;
-	cNX = pl->figure[fN_1].column_X;
-	cNY = pl->figure[fN_1].column_Y;
+	dN = pl->figure[fN].data_N;
+	cNX = pl->figure[fN].column_X;
+	cNY = pl->figure[fN].column_Y;
 
-	fN = plotGetFreeFigure(pl);
+	fN_lpf = plotGetFreeFigure(pl);
 
-	if (fN < 0) {
+	if (fN_lpf < 0) {
 
 		ERROR("Unable to get free figure to subtract\n");
 		return ;
@@ -5165,10 +5285,10 @@ void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain)
 
 	if (opSUB == SUBTRACT_FILTER_MEDIAN) {
 
-		cNY = plotGetSubtractMedian(pl, dN, cNY, opSUB, (int) gain);
+		cNY = plotGetSubtractMedian(pl, dN, cNY, opSUB, (int) value);
 	}
 	else {
-		cNY = plotGetSubtractFilter(pl, dN, cNX, cNY, opSUB, gain);
+		cNY = plotGetSubtractFilter(pl, dN, cNX, cNY, opSUB, value);
 	}
 
 	if (cNY < 0) {
@@ -5179,7 +5299,7 @@ void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain)
 	if (		opSUB == SUBTRACT_FILTER_LOW_PASS
 			|| opSUB == SUBTRACT_FILTER_MEDIAN) {
 
-		aN = pl->figure[fN_1].axis_Y;
+		aN = pl->figure[fN].axis_Y;
 	}
 	else {
 		aN = plotGetFreeAxis(pl);
@@ -5187,63 +5307,63 @@ void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain)
 		if (aN != -1) {
 
 			pl->axis[aN].busy = AXIS_BUSY_Y;
-			plotAxisLabel(pl, aN, pl->axis[pl->figure[fN_1].axis_Y].label);
+			plotAxisLabel(pl, aN, pl->axis[pl->figure[fN].axis_Y].label);
 		}
 		else {
-			aN = pl->figure[fN_1].axis_Y;
+			aN = pl->figure[fN].axis_Y;
 		}
 	}
 
-	plotFigureAdd(pl, fN, dN, cNX, cNY, pl->figure[fN_1].axis_X, aN, "");
+	plotFigureAdd(pl, fN_lpf, dN, cNX, cNY, pl->figure[fN].axis_X, aN, "");
 
 	if (opSUB == SUBTRACT_FILTER_DIFFERENCE) {
 
-		sprintf(pl->figure[fN].label, "D: %.75s", pl->figure[fN_1].label);
+		sprintf(pl->figure[fN_lpf].label, "D: %.75s", pl->figure[fN].label);
 	}
 	else if (opSUB == SUBTRACT_FILTER_CUMULATIVE) {
 
-		sprintf(pl->figure[fN].label, "I: %.75s", pl->figure[fN_1].label);
+		sprintf(pl->figure[fN_lpf].label, "I: %.75s", pl->figure[fN].label);
 	}
-	else if (opSUB == SUBTRACT_FILTER_BITMASK) {
+	else if (opSUB == SUBTRACT_FILTER_BITFIELD) {
 
-		int	bf[2] = { 0, (int) gain };
+		int	argi[2] = { 0, (int) value };
 
-		bf[0] = bf[1] & 0xFFU;
-		bf[1] = bf[1] >> 8;
+		argi[0] = argi[1] & 0xFFU;
+		argi[1] = argi[1] >> 8;
 
-		if (bf[0] == bf[1]) {
+		if (argi[0] == argi[1]) {
 
-			sprintf(pl->figure[fN].label, "B(%d): %.75s",
-					(int) bf[0], pl->figure[fN_1].label);
+			sprintf(pl->figure[fN_lpf].label, "B(%d): %.75s",
+					(int) argi[0], pl->figure[fN].label);
 		}
 		else {
-			sprintf(pl->figure[fN].label, "B(%d-%d): %.75s",
-					(int) bf[0], (int) bf[1], pl->figure[fN_1].label);
+			sprintf(pl->figure[fN_lpf].label, "B(%d-%d): %.75s",
+					(int) argi[0], (int) argi[1], pl->figure[fN].label);
 		}
 	}
 	else if (opSUB == SUBTRACT_FILTER_LOW_PASS) {
 
-		sprintf(pl->figure[fN].label, "L(%.2E): %.75s",
-				gain, pl->figure[fN_1].label);
+		sprintf(pl->figure[fN_lpf].label, "L(%.2E): %.75s",
+				value, pl->figure[fN].label);
 	}
 	else if (opSUB == SUBTRACT_FILTER_MEDIAN) {
 
-		sprintf(pl->figure[fN].label, "M(%d): %.75s",
-				(int) gain, pl->figure[fN_1].label);
+		sprintf(pl->figure[fN_lpf].label, "M(%d): %.75s",
+				(int) value, pl->figure[fN].label);
 	}
 
-	pl->figure[fN].drawing = pl->figure[fN_1].drawing;
-	pl->figure[fN].width = pl->figure[fN_1].width;
+	pl->figure[fN_lpf].drawing = pl->figure[fN].drawing;
+	pl->figure[fN_lpf].width = pl->figure[fN].width;
 
 	if (opSUB == SUBTRACT_FILTER_LOW_PASS) {
 
 		/* Do nothing */
 	}
 	else {
-		plotAxisScaleAutoCond(pl, pl->figure[fN].axis_Y, pl->figure[fN].axis_X);
+		plotAxisScaleAutoCond(pl, pl->figure[fN_lpf].axis_Y, pl->figure[fN_lpf].axis_X);
 
-		pl->on_X = pl->figure[fN].axis_X;
-		pl->on_Y = pl->figure[fN].axis_Y;
+		pl->on_X = pl->figure[fN_lpf].axis_X;
+		pl->on_Y = pl->figure[fN_lpf].axis_Y;
 
 		if (pl->axis[pl->on_X].slave != 0) {
 
@@ -5253,6 +5373,73 @@ void plotFigureSubtractFilter(plot_t *pl, int fN_1, int opSUB, double gain)
 		if (pl->axis[pl->on_Y].slave != 0) {
 
 			pl->on_Y = pl->axis[pl->on_Y].slave_N;
+		}
+	}
+}
+
+void plotFigureSubtractDemux(plot_t *pl, int fN, int opSUB, int N)
+{
+	int		dN, cN, cN1, sN, fN_dem;
+
+	if (fN < 0 || fN >= PLOT_FIGURE_MAX) {
+
+		ERROR("Figure number is out of range\n");
+		return ;
+	}
+
+	dN = pl->figure[fN].data_N;
+	cN = pl->figure[fN].column_Y;
+
+	for (fN_dem = 0; fN_dem < PLOT_FIGURE_MAX; ++fN_dem) {
+
+		if (		fN_dem != fN && pl->figure[fN_dem].busy != 0
+				&& pl->figure[fN_dem].hidden == 0
+				&& dN == pl->figure[fN_dem].data_N) {
+
+			cN1 = pl->figure[fN_dem].column_Y;
+			sN = cN1 - pl->data[dN].column_N;
+
+			if (		sN >= 0 && sN < PLOT_SUBTRACT
+					&& pl->data[dN].sub[sN].busy == opSUB
+					&& pl->data[dN].sub[sN].op.filter.column_X == cN) {
+
+				pl->data[dN].sub[sN].op.filter.value = (double) N;
+
+				plotDataSubtractCompute(pl, dN, sN);
+
+				if (opSUB == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+					char		labelbuf[PLOT_STRING_MAX], *label;
+
+					label = strchr(pl->figure[fN_dem].label, ' ');
+					label = (*label != 0) ? label + 1 : label;
+
+					strcpy(labelbuf, label);
+
+					sprintf(pl->figure[fN_dem].label,
+							"U(%d): %.75s", N, labelbuf);
+				}
+			}
+			else {
+				cN1 = plotGetSubtractFilter(pl, dN, cN, cN1, opSUB, (double) N);
+
+				if (cN1 < 0) {
+
+					return ;
+				}
+
+				pl->figure[fN_dem].column_Y = cN1;
+
+				if (opSUB == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+					char		labelbuf[PLOT_STRING_MAX];
+
+					strcpy(labelbuf, pl->figure[fN_dem].label);
+
+					sprintf(pl->figure[fN_dem].label,
+							"U(%d): %.75s", N, labelbuf);
+				}
+			}
 		}
 	}
 }
@@ -5348,7 +5535,8 @@ void plotFigureSubtractSwitch(plot_t *pl, int opSUB)
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
-		if (pl->figure[fN].busy != 0 && pl->figure[fN].hidden == 0) {
+		if (		pl->figure[fN].busy != 0
+				&& pl->figure[fN].hidden == 0) {
 
 			if (N < 2) {
 
@@ -5606,12 +5794,12 @@ int plotDataBoxPolyfit(plot_t *pl, int fN)
 	return 1;
 }
 
-void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
+void plotFigureSubtractPolyfit(plot_t *pl, int fN, int N0, int N1)
 {
-	int		N, fN, dN, sN, cN, aN, bN;
+	int		N, fN_pol, dN, sN, cN, aN, bN;
 	double		scale_X, offset_X, scale_Y, offset_Y;
 
-	if (fN_1 < 0 || fN_1 >= PLOT_FIGURE_MAX) {
+	if (fN < 0 || fN >= PLOT_FIGURE_MAX) {
 
 		ERROR("Figure number is out of range\n");
 		return ;
@@ -5629,15 +5817,15 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 		return ;
 	}
 
-	fN = plotGetFreeFigure(pl);
+	fN_pol = plotGetFreeFigure(pl);
 
-	if (fN < 0) {
+	if (fN_pol < 0) {
 
 		ERROR("Unable to get free figure to subtract\n");
 		return ;
 	}
 
-	dN = pl->figure[fN_1].data_N;
+	dN = pl->figure[fN].data_N;
 	sN = plotGetFreeSubtract(pl, dN);
 
 	if (sN < 0) {
@@ -5646,7 +5834,7 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 		return ;
 	}
 
-	aN = pl->figure[fN_1].axis_X;
+	aN = pl->figure[fN].axis_X;
 
 	scale_X = pl->axis[aN].scale;
 	offset_X = pl->axis[aN].offset;
@@ -5658,7 +5846,7 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 		offset_X = offset_X * pl->axis[bN].scale + pl->axis[bN].offset;
 	}
 
-	aN = pl->figure[fN_1].axis_Y;
+	aN = pl->figure[fN].axis_Y;
 
 	scale_Y = pl->axis[aN].scale;
 	offset_Y = pl->axis[aN].offset;
@@ -5670,12 +5858,12 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 		offset_Y = offset_X * pl->axis[bN].scale + pl->axis[bN].offset;
 	}
 
-	plotDataPolyfit(pl, dN, pl->figure[fN_1].column_X, pl->figure[fN_1].column_Y,
+	plotDataPolyfit(pl, dN, pl->figure[fN].column_X, pl->figure[fN].column_Y,
 			scale_X, offset_X, scale_Y, offset_Y, N0, N1);
 
 	pl->data[dN].sub[sN].busy = SUBTRACT_POLYFIT;
-	pl->data[dN].sub[sN].op.polyfit.column_X = pl->figure[fN_1].column_X;
-	pl->data[dN].sub[sN].op.polyfit.column_Y = pl->figure[fN_1].column_Y;
+	pl->data[dN].sub[sN].op.polyfit.column_X = pl->figure[fN].column_X;
+	pl->data[dN].sub[sN].op.polyfit.column_Y = pl->figure[fN].column_Y;
 	pl->data[dN].sub[sN].op.polyfit.poly_N0 = N0;
 	pl->data[dN].sub[sN].op.polyfit.poly_N1 = N1;
 
@@ -5689,17 +5877,17 @@ void plotFigureSubtractPolyfit(plot_t *pl, int fN_1, int N0, int N1)
 	plotDataSubtractCompute(pl, dN, sN);
 
 	cN = sN + pl->data[dN].column_N;
-	aN = pl->figure[fN_1].axis_Y;
+	aN = pl->figure[fN].axis_Y;
 
-	plotFigureAdd(pl, fN, dN, pl->figure[fN_1].column_X, cN,
-			pl->figure[fN_1].axis_X, aN, "");
+	plotFigureAdd(pl, fN_pol, dN, pl->figure[fN].column_X, cN,
+			pl->figure[fN].axis_X, aN, "");
 
-	sprintf(pl->figure[fN].label, "P: %.75s", pl->figure[fN_1].label);
+	sprintf(pl->figure[fN_pol].label, "P: %.75s", pl->figure[fN].label);
 
-	pl->figure[fN].drawing = pl->figure[fN_1].drawing;
-	pl->figure[fN].width = pl->figure[fN_1].width;
+	pl->figure[fN_pol].drawing = pl->figure[fN].drawing;
+	pl->figure[fN_pol].width = pl->figure[fN].width;
 
-	plotDataBoxPolyfit(pl, fN);
+	plotDataBoxPolyfit(pl, fN_pol);
 }
 
 static void
@@ -5754,9 +5942,14 @@ plotLabelFusedCSV(plot_t *pl, char *label, const char *name, const char *unit)
 	*l = 0;
 }
 
+#define PLOT_CSV_COLUMN_MAX		(PLOT_FIGURE_MAX * 2)
+
 int plotFigureExportCSV(plot_t *pl, const char *file)
 {
-	int		list_dN[20], list_cN[20], list_fN[20];
+	int		list_dN[PLOT_CSV_COLUMN_MAX];
+	int		list_cN[PLOT_CSV_COLUMN_MAX];
+	int		list_fN[PLOT_CSV_COLUMN_MAX];
+
 	int		N, fN, aN, job, len_N = 0;
 
 	for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
@@ -6909,8 +7102,8 @@ void plotBrushErase(plot_t *pl)
 
 				plotDataErase(pl, dN, cNX, cNY, fmin_X, fmin_Y, fmax_X, fmax_Y);
 
-				cNX = plotSubtractOriginal(pl, dN, cNX);
-				cNY = plotSubtractOriginal(pl, dN, cNY);
+				cNX = plotSubtractUnclone(pl, dN, cNX);
+				cNY = plotSubtractUnclone(pl, dN, cNY);
 
 				pl->figure[fN].column_X = cNX;
 				pl->figure[fN].column_Y = cNY;

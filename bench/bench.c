@@ -402,6 +402,7 @@ void bench_script()
 	ts_script_base();
 	blm_restart(&m);
 
+	pm.config_VSI_CLAMP = PM_ENABLED;
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_RELUCTANCE = PM_ENABLED;
 
@@ -414,14 +415,15 @@ void bench_script()
 	pm.s_setpoint_speed = 200.f;
 	sim_runtime(2.0);
 
-	m.Mq[2] = 2.E-4;
+	//m.Mq[2] = 2.E-4;
+	m.Mq[0] = - 1.5 * m.Zp * m.lambda * 40.f;
 
-	pm.s_setpoint_speed = 1000.f;
+	pm.s_setpoint_speed = 4000.f;
 	sim_runtime(2.0);
 
-	m.Lq = 25.E-6 * 1.7;
+	//m.Lq = 25.E-6 * 1.7;
 
-	sim_runtime(1.0);
+	sim_runtime(2.0);
 
 	tlm_PWM_grab();
 }

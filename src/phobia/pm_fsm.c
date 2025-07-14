@@ -343,6 +343,7 @@ pm_fsm_state_self_test_power_stage(pmc_t *pm)
 			if (pm->tm_value >= pm->tm_end) {
 
 				lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+				lse_nostd(ls);
 
 				pm->tm_value = 0;
 				pm->tm_end = PM_TSMS(pm, pm->tm_instant_probe);
@@ -719,6 +720,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 			v[3] = v[0] + v[1] + v[2];
 
 			lse_insert(lb, v);
+			lse_nostd(lb);
 
 			pm->fsm_subi = 0;
 
@@ -736,6 +738,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 						pm->proc_set_Z(PM_Z_C);
 
 						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+						lse_nostd(ls);
 
 						pm->i_integral_D = 0.f;
 
@@ -754,6 +757,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 						pm->proc_set_Z(PM_Z_B);
 
 						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+						lse_nostd(ls);
 
 						pm->i_integral_D = 0.f;
 
@@ -772,6 +776,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 						pm->proc_set_Z(PM_Z_A);
 
 						lse_construct(ls, LSE_CASCADE_MAX, 1, 3);
+						lse_nostd(ls);
 
 						pm->i_integral_D = 0.f;
 
@@ -1001,6 +1006,7 @@ pm_fsm_probe_impedance_DFT(pmc_t *pm, float la[5])
 	 * */
 
 	lse_construct(ls, 1, 4, 1);
+	lse_nostd(ls);
 
 	v[0] = DFT[0];
 	v[1] = DFT[1];
@@ -1330,6 +1336,7 @@ pm_fsm_state_probe_const_resistance(pmc_t *pm)
 			pm->proc_set_Z(PM_Z_NONE);
 
 			lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+			lse_nostd(ls);
 
 			pm->probe_HF[0] = 0.f;
 			pm->probe_HF[1] = 0.f;
@@ -1837,6 +1844,7 @@ pm_fsm_state_probe_const_flux_linkage(pmc_t *pm)
 
 		case 0:
 			lse_construct(ls, LSE_CASCADE_MAX, 1, 1);
+			lse_nostd(ls);
 
 			if (pm->lu_MODE == PM_LU_DETACHED) {
 
@@ -1940,6 +1948,7 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 			m[3] = 0.f;
 
 			lse_construct(ls, LSE_CASCADE_MAX, 3, 1);
+			lse_nostd(ls);
 
 			pm->tm_value = 0;
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_inertia);
@@ -2225,6 +2234,7 @@ pm_fsm_state_adjust_sensor_eabi(pmc_t *pm)
 				pm_quick_build(pm);
 
 				lse_construct(ls, LSE_CASCADE_MAX, 2, 1);
+				lse_nostd(ls);
 
 				pm->lu_revol = 0;
 
@@ -2350,6 +2360,7 @@ pm_fsm_state_adjust_sensor_sincos(pmc_t *pm)
 			if (pm->config_SINCOS_FRONTEND == PM_SINCOS_ANALOG) {
 
 				lse_construct(ls, LSE_CASCADE_MAX, 8, 2);
+				lse_nostd(ls);
 
 				pm->lu_revol = 0;
 

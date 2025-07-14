@@ -400,6 +400,7 @@ typedef struct {
 	float		forced_fall_rate;
 	float		forced_track_D;
 	float		forced_stop_DC;
+	float		forced_gain_LS;
 
 	int		flux_DETACH;
 	int		flux_LINKAGE;

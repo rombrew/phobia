@@ -4673,6 +4673,7 @@ page_lu_forced(struct public *pub)
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
 	reg_float(pub, "pm.forced_fall_rate", "Current fall rate");
 	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
+	reg_float(pub, "pm.forced_gain_LS", "Load torque GAIN");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);

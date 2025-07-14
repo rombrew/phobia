@@ -26,7 +26,11 @@ typedef struct {
 	 * */
 	int		len;
 
-	/* The number of data rows that matrix keep.
+	/* The number of rows in actual use.
+	 * */
+	int		rows;
+
+	/* The number of data rows that matrix keeps.
 	 * */
 	int		keep;
 
@@ -97,7 +101,7 @@ typedef struct {
 	 * */
 	lse_row_t	std;
 
-	/* Approximate extremal singular values of \RX.
+	/* Extremal singular values of \RX.
 	 * */
 	struct {
 
@@ -126,6 +130,11 @@ int lse_getsize(int n_cascades, int n_full);
 /* The function construct the instance of LSE.
  * */
 void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z);
+
+/* The function indicates the LSE instance that you will not calculate the
+ * standard deviation. This allows QR updates to be made faster.
+ * */
+void lse_nostd(lse_t *ls);
 
 /* The function updates \rm with a new data row-vector \xz which contains \x
  * and \z concatenated. We are doing QR update of \rm by orthogonal

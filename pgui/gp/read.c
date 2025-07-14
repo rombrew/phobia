@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -156,12 +156,14 @@ char *stod(const markup_t *mk, double *x, char *s)
 
 	if (d == 0) { return NULL; }
 
-	if (*s == 'n') { v += - 9; s++; }
+	if (*s == 'p') { v += - 12; s++; }
+	else if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
 	else if (*s == 'm') { v += - 3; s++; }
 	else if (*s == 'K') { v += 3; s++; }
 	else if (*s == 'M') { v += 6; s++; }
 	else if (*s == 'G') { v += 9; s++; }
+	else if (*s == 'T') { v += 12; s++; }
 	else if (*s == 'e' || *s == 'E') {
 
 		s = stoi(mk, &e, s + 1);
@@ -727,7 +729,7 @@ readCSVGetBuf(char *s, int len, FILE *fd, int timeout)
 
 				eol = (nq > 0) ? 1 : 0;
 			}
-			else if (eol == 1) {
+			else if (eol != 0) {
 
 				ungetc(c, fd);
 				break;
@@ -2223,17 +2225,17 @@ configParseFSM(read_t *rd, parse_t *pa)
 				do {
 					rc = configToken(rd, pa);
 
-					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					if (rc == 0 && stod(&rd->mk_config, &argd[0], tbuf) != NULL) ;
 					else break;
 
-					if (argi[0] >= 0) {
+					if (argd[0] >= 0.) {
 
 						failed = 0;
 
-						rd->pl->defungap = argi[0];
+						rd->pl->defungap = argd[0];
 					}
 					else {
-						sprintf(msg_tbuf, "invalid defungap %i", argi[0]);
+						sprintf(msg_tbuf, "invalid defungap %.3f", argd[0]);
 					}
 				}
 				while (0);
@@ -2948,10 +2950,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 						break;
 					}
 
-					if (argi[0] < -1 || argi[0] >= rd->pl->data[rd->bind_N].column_N
-						|| argi[1] < -1 || argi[1] >= rd->pl->data[rd->bind_N].column_N) {
+					if (argi[0] < -1 || argi[0] >= rd->pl->data[rd->bind_N].column_N) {
 
-						sprintf(msg_tbuf, "column numbers %i %i are out of range", argi[0], argi[1]);
+						sprintf(msg_tbuf, "column number %i is out of range", argi[0]);
+						break;
+					}
+
+					if (argi[1] < -1 || argi[1] >= rd->pl->data[rd->bind_N].column_N) {
+
+						sprintf(msg_tbuf, "column number %i is out of range",  argi[1]);
 						break;
 					}
 
@@ -3015,7 +3022,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (	strcmp(tbuf, "xscale") == 0
+			else if (	   strcmp(tbuf, "xscale") == 0
 					|| strcmp(tbuf, "yscale") == 0) {
 
 				failed = 1;
@@ -3074,12 +3081,14 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-			else if (	strcmp(tbuf, "xsubtract") == 0
+			else if (	   strcmp(tbuf, "xsubtract") == 0
 					|| strcmp(tbuf, "ysubtract") == 0) {
 
 				failed = 1;
 
 				do {
+					int		dN_remap, resample = 0;
+
 					argi[0] = (int) tbuf[0];
 
 					rc = configToken(rd, pa);
@@ -3110,7 +3119,66 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 					rc = configToken(rd, pa);
 
-					if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+					if (rc == 0) {
+
+						if (strcmp(tbuf, "resample") == 0) {
+
+							rc = configToken(rd, pa);
+
+							if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else break;
+
+							if (argi[2] >= 0 && argi[2] < PLOT_DATASET_MAX) {
+
+								dN_remap = pa->dmap[argi[2]];
+
+								if (		dN_remap >= 0 &&
+										rd->data[dN_remap].format != FORMAT_NONE) {
+								}
+								else {
+									sprintf(msg_tbuf, "no dataset has a number %i", argi[2]);
+									break;
+								}
+							}
+							else {
+								sprintf(msg_tbuf, "dataset number %i is out of range", argi[2]);
+								break;
+							}
+
+							rc = configToken(rd, pa);
+
+							if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else break;
+
+							if (argi[2] < -1 || argi[2] >= rd->pl->data[dN_remap].column_N) {
+
+								sprintf(msg_tbuf, "column number %i is out of range", argi[2]);
+								break;
+							}
+
+							rc = configToken(rd, pa);
+
+							if (rc == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
+							else break;
+
+							if (argi[3] < -1 || argi[3] >= rd->pl->data[dN_remap].column_N) {
+
+								sprintf(msg_tbuf, "column number %i is out of range", argi[3]);
+								break;
+							}
+
+							resample = 1;
+						}
+						else if (stoi(&rd->mk_config, &argi[2], tbuf) != NULL) {
+
+							if (argi[2] < -1 || argi[2] >= rd->pl->data[rd->bind_N].column_N) {
+
+								sprintf(msg_tbuf, "column number %i is out of range", argi[2]);
+								break;
+							}
+						}
+						else break;
+					}
 					else break;
 
 					if (rd->figure_N < 0) {
@@ -3130,8 +3198,19 @@ configParseFSM(read_t *rd, parse_t *pa)
 						else {
 							failed = 0;
 
-							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
-							rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_Y = argi[2];
+							if (resample != 0) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].resample = resample;
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].data_N = dN_remap;
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_X = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_Y = argi[3];
+							}
+							else {
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].resample = 0;
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_Y = argi[2];
+							}
 						}
 					}
 					else if (argi[0] == 'y') {
@@ -3145,14 +3224,25 @@ configParseFSM(read_t *rd, parse_t *pa)
 						else {
 							failed = 0;
 
-							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
-							rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_Y = argi[2];
+							if (resample != 0) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].resample = resample;
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].data_N = dN_remap;
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_X = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_Y = argi[3];
+							}
+							else {
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].resample = 0;
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_Y = argi[2];
+							}
 						}
 					}
 				}
 				while (0);
 			}
-			else if (	strcmp(tbuf, "xfilter") == 0
+			else if (	   strcmp(tbuf, "xfilter") == 0
 					|| strcmp(tbuf, "yfilter") == 0) {
 
 				failed = 1;
@@ -3174,7 +3264,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 						}
 						else if (strcmp(tbuf, "bf") == 0) {
 
-							argi[1] = SUBTRACT_FILTER_BITMASK;
+							argi[1] = SUBTRACT_FILTER_BITFIELD;
 
 							rc = configToken(rd, pa);
 
@@ -3216,6 +3306,26 @@ configParseFSM(read_t *rd, parse_t *pa)
 								break;
 							}
 						}
+						else if (strcmp(tbuf, "dem") == 0) {
+
+							argi[1] = SUBTRACT_FILTER_DEMULTIPLEX;
+
+							rc = configToken(rd, pa);
+
+							if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else break;
+
+							if (argi[2] < -1 || argi[2] >= rd->pl->data[rd->bind_N].column_N) {
+
+								sprintf(msg_tbuf, "column number %i is out of range", argi[2]);
+								break;
+							}
+
+							rc = configToken(rd, pa);
+
+							if (rc == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
+							else break;
+						}
 						else {
 							sprintf(msg_tbuf, "invalid filter operation \"%.80s\"", tbuf);
 							break;
@@ -3241,7 +3351,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							rd->page[rd->page_N].fig[rd->figure_N].bX[N].busy = argi[1];
 
-							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
+							if (argi[1] == SUBTRACT_FILTER_BITFIELD) {
 
 								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argi[2];
 								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[1] = argi[3];
@@ -3253,6 +3363,11 @@ configParseFSM(read_t *rd, parse_t *pa)
 							else if (argi[1] == SUBTRACT_FILTER_MEDIAN) {
 
 								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argi[2];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].column_X = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bX[N].args[0] = argi[3];
 							}
 						}
 					}
@@ -3269,7 +3384,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							rd->page[rd->page_N].fig[rd->figure_N].bY[N].busy = argi[1];
 
-							if (argi[1] == SUBTRACT_FILTER_BITMASK) {
+							if (argi[1] == SUBTRACT_FILTER_BITFIELD) {
 
 								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[2];
 								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[1] = argi[3];
@@ -3281,6 +3396,11 @@ configParseFSM(read_t *rd, parse_t *pa)
 							else if (argi[1] == SUBTRACT_FILTER_MEDIAN) {
 
 								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[2];
+							}
+							else if (argi[1] == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].column_X = argi[2];
+								rd->page[rd->page_N].fig[rd->figure_N].bY[N].args[0] = argi[3];
 							}
 						}
 					}
@@ -3793,7 +3913,6 @@ readTimeDataMap(plot_t *pl, int dN, int cNX, int cNY)
 			if (uMAP.X != -1) {
 
 				pl->data[dN].map[uMAP.X] = gN;
-
 				uN = uMAP;
 			}
 		}
@@ -3859,20 +3978,114 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 
 			/* TODO */
 		}
-		else if (	sb[N].busy == SUBTRACT_BINARY_SUBTRACTION
+		else if (	   sb[N].busy == SUBTRACT_BINARY_SUBTRACTION
 				|| sb[N].busy == SUBTRACT_BINARY_ADDITION
 				|| sb[N].busy == SUBTRACT_BINARY_MULTIPLICATION
 				|| sb[N].busy == SUBTRACT_BINARY_HYPOTENUSE) {
 
-			cMAP = plotGetSubtractBinary(pl, dN, sb[N].busy,
-					cN, sb[N].column_Y);
+			int		cNY, dNT;
+
+			cNY = sb[N].column_Y;
+
+			if (sb[N].resample != 0) {
+
+				tuple_t		uMAP, uN = { sb[N].column_X, sb[N].column_Y };
+
+				dNT = sb[N].data_N;
+
+				if (dNT < 0 || dNT >= PLOT_DATASET_MAX) {
+
+					ERROR("Dataset number is out of range\n");
+					return cN;
+				}
+
+				if (uN.X < -1 || uN.X >= pl->data[dNT].column_N + PLOT_SUBTRACT) {
+
+					ERROR("Column number %i is out of range\n", uN.X);
+					return cN;
+				}
+
+				if (uN.Y < -1 || uN.Y >= pl->data[dNT].column_N + PLOT_SUBTRACT) {
+
+					ERROR("Column number %i is out of range\n", uN.Y);
+					return cN;
+				}
+
+				if (pl->data[dNT].map == NULL) {
+
+					ERROR("Dataset number %i was not allocated\n", dNT);
+					return cN;
+				}
+
+				if (dN != dNT || cNT != uN.X) {
+
+					gN = pl->data[dNT].map[uN.X];
+
+					if (gN != -1) {
+
+						if (pl->group[gN].op_time_median != 0) {
+
+							uMAP = plotGetSubtractTimeMedian(pl, dNT, uN.X, uN.Y,
+									pl->group[gN].length, pl->group[gN].op_time_unwrap,
+									pl->group[gN].op_time_opdata);
+
+							if (uMAP.X != -1) {
+
+								pl->data[dNT].map[uMAP.X] = gN;
+								uN = uMAP;
+							}
+						}
+
+						if (pl->group[gN].op_scale != 0) {
+
+							cMAP = plotGetSubtractScale(pl, dNT, uN.X,
+									pl->group[gN].scale,
+									pl->group[gN].offset);
+
+							if (cMAP != -1) {
+
+								pl->data[dNT].map[cMAP] = gN;
+								uN.X = cMAP;
+							}
+						}
+					}
+
+					gN = pl->data[dNT].map[uN.Y];
+
+					if (gN != -1) {
+
+						if (pl->group[gN].op_scale != 0) {
+
+							cMAP = plotGetSubtractScale(pl, dNT, uN.Y,
+									pl->group[gN].scale,
+									pl->group[gN].offset);
+
+							if (cMAP != -1) {
+
+								pl->data[dNT].map[cMAP] = gN;
+								uN.Y = cMAP;
+							}
+						}
+					}
+
+					cNY = plotGetSubtractResample(pl, dN, cNT, dNT, uN.X, uN.Y);
+
+					if (cNY < 0) {
+
+						ERROR("Unable to get resample subtract\n");
+						return cN;
+					}
+				}
+			}
+
+			cMAP = plotGetSubtractBinary(pl, dN, sb[N].busy, cN, cNY);
 
 			if (cMAP != -1) {
 
 				cN = cMAP;
 			}
 		}
-		else if (	sb[N].busy == SUBTRACT_FILTER_DIFFERENCE
+		else if (	   sb[N].busy == SUBTRACT_FILTER_DIFFERENCE
 				|| sb[N].busy == SUBTRACT_FILTER_CUMULATIVE
 				|| sb[N].busy == SUBTRACT_FILTER_LOW_PASS) {
 
@@ -3884,10 +4097,12 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 				cN = cMAP;
 			}
 		}
-		else if (sb[N].busy == SUBTRACT_FILTER_BITMASK) {
+		else if (sb[N].busy == SUBTRACT_FILTER_BITFIELD) {
+
+			int	argi[2] = { (int) sb[N].args[0], (int) sb[N].args[1] };
 
 			cMAP = plotGetSubtractFilter(pl, dN, cNT, cN, sb[N].busy,
-					sb[N].args[0] + sb[N].args[1] * (double) 0x100U);
+					(double) (argi[0] | (argi[1] << 8)));
 
 			if (cMAP != -1) {
 
@@ -3898,6 +4113,16 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 
 			cMAP = plotGetSubtractMedian(pl, dN, cN,
 					sb[N].busy, (int) sb[N].args[0]);
+
+			if (cMAP != -1) {
+
+				cN = cMAP;
+			}
+		}
+		else if (sb[N].busy == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+			cMAP = plotGetSubtractFilter(pl, dN, sb[N].column_X, cN,
+					sb[N].busy, sb[N].args[0]);
 
 			if (cMAP != -1) {
 

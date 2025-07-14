@@ -2004,6 +2004,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.forced_slew_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_fall_rate,,,		"A/s",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.forced_stop_DC,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
+	REG_DEF(pm.forced_gain_LS,,,		"%",	"%1f",	REG_CONFIG, &reg_proc_percent, NULL),
 
 	REG_DEF(pm.detach_threshold,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.detach_trip_tol,,,		"V",	"%3f",	REG_CONFIG, NULL, NULL),

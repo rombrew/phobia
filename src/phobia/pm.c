@@ -196,9 +196,10 @@ pm_auto_config_default(pmc_t *pm)
 	pm->forced_maximal = 280.f;		/* (rad/s) */
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;		/* (rad/s2) */
-	pm->forced_slew_rate = 50.f;		/* (A/s) */
+	pm->forced_slew_rate = 100.f;		/* (A/s) */
 	pm->forced_fall_rate = 5000.f;		/* (A/s) */
 	pm->forced_stop_DC = 0.7f;
+	pm->forced_gain_LS = 0.2f;
 
 	pm->detach_threshold = 1.f;		/* (V) */
 	pm->detach_trip_tol = 5.f;		/* (V) */
@@ -2374,12 +2375,18 @@ pm_lu_FSM(pmc_t *pm)
 
 	if (pm->lu_MODE == PM_LU_FORCED) {
 
-		pm->lu_mq_load = 0.f;
+		float		mQ_maximal;
+
+		/* Get the maximal torque in FORCED control.
+		 * */
+		mQ_maximal = pm_torque_maximal(pm, pm->forced_track_D);
+
+		pm->lu_mq_load = pm->forced_gain_LS * mQ_maximal;
 	}
 	else {
 		float		mQ_load, wS_accel;
 
-		/* Get an external mechanical LOAD torque estimate.
+		/* Get the external mechanical LOAD torque estimate.
 		 * */
 		wS_accel = (pm->lu_wS - pm->lu_wS_prev) * pm->m_freq;
 		mQ_load = pm->lu_mq_produce - wS_accel * pm->const_Ja;
@@ -2805,7 +2812,7 @@ pm_form_SP(pmc_t *pm, float eSP)
 	 * */
 	iSP = pm->s_gain_P * eSP + pm->s_integral;
 
-	/* Add an load torque estimate as feed forward term.
+	/* Add the load torque estimate as feed forward term.
 	 * */
 	iSP += pm_lu_current(pm, pm->lu_mq_load, &pm->mtpa_load_Q);
 

@@ -173,6 +173,8 @@ SH_DEF(pm_adjust_dcu_voltage)
 		pm.fsm_req = PM_STATE_ZERO_DRIFT;
 		pm_wait_IDLE();
 
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
 		reg_OUTP(ID_PM_CONST_FB_U);
 		reg_OUTP(ID_PM_SCALE_IA0);
 		reg_OUTP(ID_PM_SCALE_IB0);
@@ -203,6 +205,8 @@ SH_DEF(pm_adjust_dcu_voltage)
 	while (0);
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_scan_impedance)

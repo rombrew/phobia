@@ -34,13 +34,20 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 	lse_float_t	di;
 #endif /* LSE_FAST_GIVENS */
 
-	n = (rm->len < rm->keep) ? rm->len : rm->keep;
+	n = (rm->rows < rm->keep) ? rm->rows : rm->keep;
 
 	/* Do we have leading zeros?
 	 * */
 	if (unlikely(nz > 0)) {
 
-		m += nz * rm->len - nz * (nz - 1) / 2;
+		if (likely(n >= nz)) {
+
+			m += nz * rm->len - nz * (nz - 1) / 2;
+		}
+		else if (unlikely(n < rm->rows)) {
+
+			m += n * rm->len - n * (n - 1) / 2;
+		}
 	}
 
 	for (i = nz; i < n; ++i) {
@@ -158,7 +165,7 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 		m += rm->len;
 	}
 
-	if (unlikely(n < rm->len)) {
+	if (unlikely(n < rm->rows)) {
 
 		m += - n;
 
@@ -174,10 +181,20 @@ lse_qrupdate(lse_t *ls, lse_upper_t *rm, lse_float_t *xz, int nz)
 #endif
 		}
 
-		/* Copy the tail content.
-		 * */
-		for (i = n; i < rm->len; ++i)
-			m[i] = xz[i];
+		if (likely(n >= nz)) {
+
+			/* Copy the tail content.
+			 * */
+			for (i = n; i < rm->len; ++i)
+				m[i] = xz[i];
+		}
+		else {
+			for (i = n; i < nz; ++i)
+				m[i] = (lse_float_t) 0;
+
+			for (i = nz; i < rm->len; ++i)
+				m[i] = xz[i];
+		}
 
 #if LSE_FAST_GIVENS != 0
 		d[n] = d0;
@@ -214,12 +231,12 @@ lse_qrmerge(lse_t *ls, lse_upper_t *rm, lse_upper_t *um)
 	lse_float_t	*d = um->d;
 #endif /* LSE_FAST_GIVENS */
 
-	int		n0, i;
+	int		n, i;
 
-	n0 = (um->lazy != 0) ? um->len
-		: (um->len < um->keep) ? um->len : um->keep;
+	n = (um->lazy != 0) ? um->rows
+		: (um->rows < um->keep) ? um->rows : um->keep;
 
-	for (i = 0; i < n0; ++i) {
+	for (i = 0; i < n; ++i) {
 
 		m += - i;
 
@@ -240,11 +257,11 @@ lse_qrmerge(lse_t *ls, lse_upper_t *rm, lse_upper_t *um)
 }
 
 static void
-lse_qrflush(lse_t *ls)
+lse_qrfinal(lse_t *ls)
 {
 	lse_upper_t	*rm = LSE_RM_TOP(ls);
 
-	int		i, len, nul;
+	int		len, nul, i;
 
 	for (i = 0; i < ls->n_cascades - 1; ++i) {
 
@@ -253,22 +270,22 @@ lse_qrflush(lse_t *ls)
 		lse_qrmerge(ls, &ls->rm[i + 1], &ls->rm[i]);
 	}
 
-	if (unlikely(rm->keep < rm->len)) {
+	if (unlikely(rm->keep < rm->rows)) {
 
 		/* Zero out uninitialized tail content.
 		 * */
 		len = rm->keep * rm->len - rm->keep * (rm->keep - 1) / 2;
-		nul = rm->len * (rm->len + 1) / 2;
+		nul = rm->rows * rm->len - rm->rows * (rm->rows - 1) / 2;
 
 		for (i = len; i < nul; ++i)
 			rm->m[i] = (lse_float_t) 0;
 
 #if LSE_FAST_GIVENS != 0
-		for (i = rm->keep; i < rm->len; ++i)
+		for (i = rm->keep; i < rm->rows; ++i)
 			rm->d[i] = (lse_float_t) 1;
 #endif /* LSE_FAST_GIVENS */
 
-		rm->keep = rm->len;
+		rm->keep = rm->rows;
 	}
 }
 
@@ -286,10 +303,10 @@ lse_qrstep(lse_t *ls, lse_upper_t *um, lse_upper_t *im, lse_float_t *u)
 	um->keep = 0;
 	um->lazy = 0;
 
-	/* Here we transpose the input matrix \im and bring it to the
+	/* We transpose the input matrix \im and bring it to the
 	 * upper-triangular form again and store into \um.
 	 * */
-	for (i = 0; i < um->len; ++i) {
+	for (i = 0; i < um->rows; ++i) {
 
 		m = mq;
 
@@ -333,7 +350,7 @@ void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)
 {
 	lse_float_t	*vm = ls->vm;
 
-	int		i, n_full;
+	int		n_full, i;
 
 	ls->n_cascades = n_cascades;
 	ls->n_len_of_x = n_len_of_x;
@@ -341,12 +358,13 @@ void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)
 
 	n_full = n_len_of_x + n_len_of_z;
 
-	ls->n_threshold = n_full * 4;
+	ls->n_threshold = n_full * 2;
 	ls->n_total = 0;
 
 	for (i = 0; i < ls->n_cascades; ++i) {
 
 		ls->rm[i].len = n_full;
+		ls->rm[i].rows = n_full;
 		ls->rm[i].keep = 0;
 		ls->rm[i].lazy = 0;
 		ls->rm[i].m = vm;
@@ -369,6 +387,22 @@ void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z)
 	ls->esv.min = (lse_float_t) 0;
 }
 
+void lse_nostd(lse_t *ls)
+{
+	int		n_full, i;
+
+	/* Do not update lower triangle block.
+	 * */
+	n_full = ls->n_len_of_x;
+
+	ls->n_threshold = n_full * 2;
+
+	for (i = 0; i < ls->n_cascades; ++i) {
+
+		ls->rm[i].rows = n_full;
+	}
+}
+
 void lse_insert(lse_t *ls, lse_float_t *xz)
 {
 #if LSE_FAST_GIVENS != 0
@@ -386,7 +420,7 @@ void lse_ridge(lse_t *ls, lse_float_t la)
 
 	int		i, j;
 
-	/* Add bias using the unity matrix multiplied by \la.
+	/* We add bias using the identity matrix multiplied by \la.
 	 * */
 	for (i = 0; i < ls->n_len_of_x; ++i) {
 
@@ -407,18 +441,18 @@ void lse_forget(lse_t *ls, lse_float_t la)
 {
 	lse_upper_t	*rm;
 
-	int		n0, i, j, len;
+	int		n, len, i, j;
 
 	for (i = 0; i < ls->n_cascades; ++i) {
 
 		rm = &ls->rm[i];
 
-		n0 = (rm->lazy != 0) ? rm->len
-			: (rm->len < rm->keep) ? rm->len : rm->keep;
+		n = (rm->lazy != 0) ? rm->rows
+			: (rm->rows < rm->keep) ? rm->rows : rm->keep;
 
-		if (n0 != 0) {
+		if (n != 0) {
 
-			len = n0 * rm->len - n0 * (n0 - 1) / 2;
+			len = n * rm->len - n * (n - 1) / 2;
 
 			/* We just scale \rm matrices with factor \la.
 			 * */
@@ -439,9 +473,9 @@ void lse_merge(lse_t *ls, lse_t *lb)
 
 	int		i;
 
-	lse_qrflush(lb);
+	lse_qrfinal(lb);
 
-	for (i = 0; i < um->len; ++i) {
+	for (i = 0; i < um->rows; ++i) {
 
 		m += - i;
 
@@ -470,7 +504,7 @@ void lse_solve(lse_t *ls)
 
 	int		n, i, j;
 
-	lse_qrflush(ls);
+	lse_qrfinal(ls);
 
 	mq = rm->m + (ls->n_len_of_x - 1) * rm->len
 		- ls->n_len_of_x * (ls->n_len_of_x - 1) / 2;
@@ -510,7 +544,7 @@ void lse_std(lse_t *ls)
 
 	int		i, j;
 
-	lse_qrflush(ls);
+	lse_qrfinal(ls);
 
 	mq = rm->m + ls->n_len_of_x * rm->len
 		- ls->n_len_of_x * (ls->n_len_of_x - 1) / 2;
@@ -553,7 +587,7 @@ void lse_esv(lse_t *ls, int n_approx)
 
 	int		len, i;
 
-	lse_qrflush(ls);
+	lse_qrfinal(ls);
 
 	len = ls->n_len_of_x * (ls->n_len_of_x + 1) + ls->n_len_of_x * 3;
 
@@ -572,6 +606,7 @@ void lse_esv(lse_t *ls, int n_approx)
 	}
 
 	um.len = ls->n_len_of_x;
+	um.rows = ls->n_len_of_x;
 	um.m = m;
 
 	m += ls->n_len_of_x * (ls->n_len_of_x + 1) / 2;
@@ -582,6 +617,7 @@ void lse_esv(lse_t *ls, int n_approx)
 #endif /* LSE_FAST_GIVENS */
 
 	im.len = ls->n_len_of_x;
+	im.rows = ls->n_len_of_x;
 	im.m = m;
 
 	m += ls->n_len_of_x * (ls->n_len_of_x + 1) / 2;

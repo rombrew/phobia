@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -169,6 +169,7 @@ void langFill(lang_t *la, int lang)
 			"    Add F bit field ...\0"
 			"    Add F low pass ...\0"
 			"    Add F median ...\0"
+			"    Add F demultiplex ...\0"
 
 			"\0";
 
@@ -189,7 +190,7 @@ void langFill(lang_t *la, int lang)
 		la->resample_menu[2] = "    Time range      [ %s ]";
 		la->resample_menu[3] = "    Time step       [ %s ]";
 		la->resample_menu[4] = "    Interpolation   [ %s ]";
-		la->resample_menu[5] = "    Threshold       [ %2i ]";
+		la->resample_menu[5] = "    Threshold       [ %.3f ]";
 		la->resample_menu[6] = "    [ OK ]";
 
 		la->databox_menu =
@@ -226,6 +227,7 @@ void langFill(lang_t *la, int lang)
 		la->precision_edit = "Precision";
 		la->time_step_edit = "Time step";
 		la->time_threshold_edit = "Time threshold";
+		la->demultiplex_edit = "Demultiplex number";
 	}
 	else if (lang == LANG_RU) {
 
@@ -376,6 +378,7 @@ void langFill(lang_t *la, int lang)
 			"    Добавить F битовое поле ...\0"
 			"    Добавить F фильтр НЧ ...\0"
 			"    Добавить F медиану ...\0"
+			"    Добавить F демультиплекс ...\0"
 
 			"\0";
 
@@ -396,7 +399,7 @@ void langFill(lang_t *la, int lang)
 		la->resample_menu[2] = "    Диапазон времени  [ %s ]";
 		la->resample_menu[3] = "    Шаг времени       [ %s ]";
 		la->resample_menu[4] = "    Интерполяция      [ %s ]";
-		la->resample_menu[5] = "    Пороговое         [ %2i ]";
+		la->resample_menu[5] = "    Пороговое         [ %.3f ]";
 		la->resample_menu[6] = "    [ OK ]";
 
 		la->databox_menu =
@@ -433,6 +436,7 @@ void langFill(lang_t *la, int lang)
 		la->precision_edit = "Точность";
 		la->time_step_edit = "Шаг времени";
 		la->time_threshold_edit = "Порог времени";
+		la->demultiplex_edit = "Номер демультиплекса";
 	}
 
 	la->figure_edit_color_menu =

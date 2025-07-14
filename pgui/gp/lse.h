@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,11 @@ typedef struct {
 	 * */
 	int		len;
 
-	/* The number of data rows that matrix keep.
+	/* The number of rows in actual use.
+	 * */
+	int		rows;
+
+	/* The number of data rows that matrix keeps.
 	 * */
 	int		keep;
 
@@ -54,12 +58,12 @@ typedef struct {
 
 	/* Content of the upper-triangular matrix.
 	 * */
-	lse_float_t	*m;
+	lse_float_t	* restrict m;
 
 #if LSE_FAST_GIVENS != 0
 	/* Content of the scale diagonal matrix.
 	 * */
-	lse_float_t	*d;
+	lse_float_t	* restrict d;
 #endif /* LSE_FAST_GIVENS */
 }
 lse_upper_t;
@@ -72,7 +76,7 @@ typedef struct {
 
 	/* Content of the row-vector.
 	 * */
-	lse_float_t	*m;
+	lse_float_t	* restrict m;
 }
 lse_row_t;
 
@@ -115,7 +119,7 @@ typedef struct {
 	 * */
 	lse_row_t	std;
 
-	/* Approximate extremal singular values of \RX.
+	/* Extremal singular values of \RX.
 	 * */
 	struct {
 
@@ -144,6 +148,11 @@ int lse_getsize(int n_cascades, int n_full);
 /* The function construct the instance of LSE.
  * */
 void lse_construct(lse_t *ls, int n_cascades, int n_len_of_x, int n_len_of_z);
+
+/* The function indicates the LSE instance that you will not calculate the
+ * standard deviation. This allows QR updates to be made faster.
+ * */
+void lse_nostd(lse_t *ls);
 
 /* The function updates \rm with a new data row-vector \xz which contains \x
  * and \z concatenated. We are doing QR update of \rm by orthogonal

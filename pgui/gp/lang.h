@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2024 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ typedef struct {
 	const char	*precision_edit;
 	const char	*time_step_edit;
 	const char	*time_threshold_edit;
+	const char	*demultiplex_edit;
 }
 lang_t;
 
