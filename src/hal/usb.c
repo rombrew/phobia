@@ -233,7 +233,7 @@ void USB_startup()
 	/* Create queues.
 	 * */
 	priv_USB.rx_queue = USART_public_rx_queue();
-	priv_USB.tx_queue = xQueueCreate(512, sizeof(char));
+	priv_USB.tx_queue = xQueueCreate(1024, sizeof(char));
 
 	priv_USB.rx_flag = 1;
 	priv_USB.tx_flag = 1;

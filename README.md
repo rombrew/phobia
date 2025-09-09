@@ -14,7 +14,7 @@ third-party hardware to work with PMC or use our original hardware.
 
 Read further in [doc/GettingStarted](doc/GettingStarted.md).
 
-There are a few videos about PMC on [youtube](https://www.youtube.com/@romblv).
+There are a few videos about PMC on [YouTube](https://www.youtube.com/@romblv).
 
 ## Software features
 

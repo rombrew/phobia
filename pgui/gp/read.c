@@ -213,6 +213,7 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 
 #ifdef _WINDOWS
 	rd->legacy_label = 1;
+	rd->legacy_console = 0;
 #endif /* _WINDOWS */
 
 	rd->preload = 8388608;
@@ -1646,8 +1647,7 @@ configDataMap(read_t *rd, parse_t *pa)
 
 	for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
 
-		if (		rd->data[dN].format == FORMAT_NONE
-				&& rd->data[dN].file[0] == 0) {
+		if (rd->data[dN].format == FORMAT_NONE) {
 
 			pa->dmap[N++] = dN;
 		}
@@ -1680,6 +1680,70 @@ configGetSubtract(read_t *rd, int pN, int fN, int axis)
 	}
 
 	return sN;
+}
+
+static int
+configFuzzyLabel(read_t *rd, int dN, const char *fu)
+{
+	char		ubuf[8];
+	const char	*label, *rs, *next;
+
+	int		N, Nb, Npe, cN = -1;
+
+	if (		dN < 0 || (rd->data[dN].format != FORMAT_TEXT_STDIN
+				&& rd->data[dN].format != FORMAT_TEXT_CSV)) {
+
+		return cN;
+	}
+
+	for (N = 0; N < rd->data[dN].column_N; ++N) {
+
+		label = rd->data[dN].label[N];
+
+		rs = strstr(label, fu);
+
+		if (rs == NULL) {
+
+			rs = fu;
+			Npe = 0;
+
+			while (*rs != 0) {
+
+				ubuf[0] = 0;
+
+				next = utf8_go_next(rs);
+				strncat(ubuf, rs, next - rs);
+				rs = next;
+
+				next = strstr(label, ubuf);
+
+				if (next == NULL) {
+
+					label = NULL;
+					break;
+				}
+				else {
+					Npe += next - label;
+					label = utf8_go_next(next);
+				}
+			}
+
+			if (label != NULL) {
+
+				if (cN < 0 || Npe < Nb) {
+
+					Nb = Npe;
+					cN = N;
+				}
+			}
+		}
+		else {
+			cN = N;
+			break;
+		}
+	}
+
+	return cN;
 }
 
 static void
@@ -1844,7 +1908,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-
 #ifdef _WINDOWS
 			else if (strcmp(tbuf, "legacy_label") == 0) {
 
@@ -1862,8 +1925,23 @@ configParseFSM(read_t *rd, parse_t *pa)
 				}
 				while (0);
 			}
-#endif /* _WINDOWS */
+			else if (strcmp(tbuf, "legacy_console") == 0) {
 
+				failed = 1;
+
+				do {
+					rc = configToken(rd, pa);
+
+					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					failed = 0;
+
+					rd->legacy_console = argi[0];
+				}
+				while (0);
+			}
+#endif /* _WINDOWS */
 			else if (strcmp(tbuf, "preload") == 0) {
 
 				failed = 1;
@@ -2138,7 +2216,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 					rc = configToken(rd, pa);
 
 					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					else {
+						argi[0] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+						if (argi[0] < 0) {
+
+							sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+							break;
+						}
+					}
 
 					if (argi[0] >= -1 && argi[0] < READ_COLUMN_MAX) {
 
@@ -2505,6 +2591,12 @@ configParseFSM(read_t *rd, parse_t *pa)
 							break;
 						}
 
+						if (rd->data[dN_remap].format != FORMAT_NONE) {
+
+							sprintf(msg_tbuf, "dataset %i was already opened", argi[0]);
+							break;
+						}
+
 						readOpenUnified(rd, dN_remap, argi[3], argi[1], "", argi[2]);
 
 						if (rd->data[dN_remap].fd == NULL) {
@@ -2544,6 +2636,12 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							sprintf(lpath, "%s/%s", pa->path, tbuf);
 							lbuf = lpath;
+						}
+
+						if (rd->data[dN_remap].format != FORMAT_NONE) {
+
+							sprintf(msg_tbuf, "dataset %i was already opened", argi[0]);
+							break;
 						}
 
 						readOpenUnified(rd, dN_remap, argi[3], argi[1], lbuf, argi[2]);
@@ -2632,7 +2730,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 						}
 
 						if (stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
-						else break;
+						else {
+							argi[1] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+							if (argi[1] < 0) {
+
+								sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+								break;
+							}
+						}
 
 						if (argi[1] >= -1 && argi[1] < rd->pl->data[rd->bind_N].column_N) {
 
@@ -2820,7 +2926,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 					rc = configToken(rd, pa);
 
 					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					else {
+						argi[0] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+						if (argi[0] < 0) {
+
+							sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+							break;
+						}
+					}
 
 					if (rd->bind_N < 0) {
 
@@ -2929,12 +3043,28 @@ configParseFSM(read_t *rd, parse_t *pa)
 					rc = configToken(rd, pa);
 
 					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
-					else break;
+					else {
+						argi[0] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+						if (argi[0] < 0) {
+
+							sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+							break;
+						}
+					}
 
 					rc = configToken(rd, pa);
 
 					if (rc == 0 && stoi(&rd->mk_config, &argi[1], tbuf) != NULL) ;
-					else break;
+					else {
+						argi[1] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+						if (argi[1] < 0) {
+
+							sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+							break;
+						}
+					}
 
 					rc = configToken(rd, pa);
 
@@ -3148,7 +3278,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rc = configToken(rd, pa);
 
 							if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
-							else break;
+							else {
+								argi[2] = configFuzzyLabel(rd, dN_remap, tbuf);
+
+								if (argi[2] < 0) {
+
+									sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+									break;
+								}
+							}
 
 							if (argi[2] < -1 || argi[2] >= rd->pl->data[dN_remap].column_N) {
 
@@ -3159,7 +3297,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rc = configToken(rd, pa);
 
 							if (rc == 0 && stoi(&rd->mk_config, &argi[3], tbuf) != NULL) ;
-							else break;
+							else {
+								argi[3] = configFuzzyLabel(rd, dN_remap, tbuf);
+
+								if (argi[3] < 0) {
+
+									sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+									break;
+								}
+							}
 
 							if (argi[3] < -1 || argi[3] >= rd->pl->data[dN_remap].column_N) {
 
@@ -3169,7 +3315,17 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							resample = 1;
 						}
-						else if (stoi(&rd->mk_config, &argi[2], tbuf) != NULL) {
+						else {
+							if (stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
+							else {
+								argi[2] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+								if (argi[2] < 0) {
+
+									sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+									break;
+								}
+							}
 
 							if (argi[2] < -1 || argi[2] >= rd->pl->data[rd->bind_N].column_N) {
 
@@ -3177,7 +3333,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 								break;
 							}
 						}
-						else break;
 					}
 					else break;
 
@@ -3313,7 +3468,15 @@ configParseFSM(read_t *rd, parse_t *pa)
 							rc = configToken(rd, pa);
 
 							if (rc == 0 && stoi(&rd->mk_config, &argi[2], tbuf) != NULL) ;
-							else break;
+							else {
+								argi[2] = configFuzzyLabel(rd, rd->bind_N, tbuf);
+
+								if (argi[2] < 0) {
+
+									sprintf(msg_tbuf, "no fuzzy match \"%s\"", tbuf);
+									break;
+								}
+							}
 
 							if (argi[2] < -1 || argi[2] >= rd->pl->data[rd->bind_N].column_N) {
 
@@ -3774,8 +3937,10 @@ void readDatasetClean(read_t *rd, int dN)
 
 int readGetTimeColumn(read_t *rd, int dN)
 {
+	plot_t		*pl = rd->pl;
 	page_t		*pg;
-	int		cNP, pN;
+
+	int		cNP, pN, cN, gN;
 
 	cNP = -2;
 	pN = 1;
@@ -3783,6 +3948,12 @@ int readGetTimeColumn(read_t *rd, int dN)
 	if (dN < 0 || dN >= PLOT_DATASET_MAX) {
 
 		ERROR("Dataset number is out of range\n");
+		return cNP;
+	}
+
+	if (rd->data[dN].format == FORMAT_NONE) {
+
+		ERROR("Dataset number %i was not allocated\n", dN);
 		return cNP;
 	}
 
@@ -3805,11 +3976,43 @@ int readGetTimeColumn(read_t *rd, int dN)
 	}
 	while (1);
 
+	if (cNP < -1) {
+
+		pN = 1;
+
+		do {
+			if (rd->page[pN].busy != 0) {
+
+				pg = rd->page + pN;
+
+				if (pg->fig[0].dN == dN) {
+
+					cN = pg->fig[0].cX;
+					gN = pl->data[dN].map[cN];
+
+					if (gN >= 0 && gN < PLOT_GROUP_MAX) {
+
+						cNP = cN;
+						break;
+					}
+				}
+			}
+
+			pN += 1;
+
+			if (pN >= READ_PAGE_MAX)
+				break;
+		}
+		while (1);
+	}
+
 	return cNP;
 }
 
 void readSetTimeColumn(read_t *rd, int dN, int cX)
 {
+	plot_t		*pl = rd->pl;
+
 	char		tbuf[READ_TOKEN_MAX];
 	page_t		*pg;
 	int		gN, cNP, pN;
@@ -3823,6 +4026,12 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 	if (cX < -1 || cX >= rd->pl->data[dN].column_N + PLOT_SUBTRACT) {
 
 		ERROR("Time column number %i is out of range\n", cX);
+		return ;
+	}
+
+	if (rd->data[dN].format == FORMAT_NONE) {
+
+		ERROR("Dataset number %i was not allocated\n", dN);
 		return ;
 	}
 
@@ -3860,12 +4069,12 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 
 	if (cNP != -2) {
 
-		gN = rd->pl->data[dN].map[cNP];
+		gN = pl->data[dN].map[cNP];
 
 		if (gN != -1) {
 
-			rd->pl->data[dN].map[cNP] = -1;
-			rd->pl->data[dN].map[cX] = gN;
+			pl->data[dN].map[cNP] = -1;
+			pl->data[dN].map[cX] = gN;
 		}
 	}
 }
@@ -3894,7 +4103,7 @@ readTimeDataMap(plot_t *pl, int dN, int cNX, int cNY)
 		return uN;
 	}
 
-	if (pl->data[dN].map == NULL) {
+	if (pl->data[dN].column_N == 0) {
 
 		ERROR("Dataset number %i was not allocated\n", dN);
 		return uN;
@@ -3938,7 +4147,7 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 		return cN;
 	}
 
-	if (pl->data[dN].map == NULL) {
+	if (pl->data[dN].column_N == 0) {
 
 		ERROR("Dataset number %i was not allocated\n", dN);
 		return cN;
@@ -4011,7 +4220,7 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 					return cN;
 				}
 
-				if (pl->data[dNT].map == NULL) {
+				if (pl->data[dNT].column_N == 0) {
 
 					ERROR("Dataset number %i was not allocated\n", dNT);
 					return cN;

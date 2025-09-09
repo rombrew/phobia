@@ -16,7 +16,7 @@ void tlm_reg_default(tlm_t *tlm)
 	tlm->rate_live =  (int) (hal.PWM_frequency / 10.f   + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
-	tlm->reg_ID[1] = ID_TLM_LUFSM;
+	tlm->reg_ID[1] = ID_PM_FSM_STATE;
 	tlm->reg_ID[2] = ID_AP_TEMP_PCB;
 	tlm->reg_ID[3] = ID_PM_FB_IA;
 	tlm->reg_ID[4] = ID_PM_FB_IB;
@@ -48,9 +48,6 @@ void tlm_reg_grab(tlm_t *tlm)
 	if (tlm->skip == 0) {
 
 		rval_t		*rdata = tlm->rdata + tlm->layout_N * tlm->line;
-
-		tlm->lufsm =	  (pm.fsm_state << 4)
-				| (pm.lu_MODE   << 0);
 
 		for (N = 0; N < tlm->layout_N; ++N) {
 
@@ -122,6 +119,18 @@ void tlm_halt(tlm_t *tlm)
 	hal_memory_fence();
 }
 
+void tlm_wipe(tlm_t *tlm)
+{
+	tlm->mode = TLM_MODE_DISABLED;
+
+	tlm->clock = 0;
+	tlm->skip = 0;
+
+	tlm->line = 0;
+
+	memset(&tlm->rdata, 0, sizeof(tlm->rdata));
+}
+
 SH_DEF(tlm_default)
 {
 	tlm_reg_default(&tlm);
@@ -148,6 +157,11 @@ SH_DEF(tlm_watch)
 SH_DEF(tlm_stop)
 {
 	tlm_halt(&tlm);
+}
+
+SH_DEF(tlm_clean)
+{
+	tlm_wipe(&tlm);
 }
 
 static void
@@ -252,7 +266,7 @@ SH_DEF(tlm_live_sync)
 
 	if (stoi(&rate, s) != NULL) {
 
-		int		rate_minimal = (int) (hal.PWM_frequency / 100.f + 0.5f);
+		int		rate_minimal = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 		rate =    (rate < rate_minimal) ? rate_minimal
 			: (rate > tlm.rate_live) ? tlm.rate_live : rate;

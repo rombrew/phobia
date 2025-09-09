@@ -54,10 +54,10 @@ Consider using one of the advanced waveform types instead of `SINE`.
 
 `PM_HFI_NONE`   - No HF injection.
 `PM_HFI_SINE`   - Sinusoidal wavefore with configurable frequency.
-`PM_HFI_SQUARE` - Square waveform at maximal frequency.
+`PM_HFI_SILENT` - Non audible waveform at maximum frequency.
 `PM_HFI_RANDOM` - Random sequence with configurable frequency.
 
-If you are concerned about acoustic noise and vibration you can select `SQUARE`
+If you are concerned about acoustic noise and vibration you can select `SILENT`
 waveform and adjust an amplitude. In this case injection frequency is not
 configurable and always at maximum (half of PWM frequency).
 

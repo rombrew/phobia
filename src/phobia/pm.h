@@ -85,7 +85,7 @@ enum {
 enum {
 	PM_HFI_NONE				= 0,
 	PM_HFI_SINE,
-	PM_HFI_SQUARE,
+	PM_HFI_SILENT,
 	PM_HFI_RANDOM
 };
 
@@ -143,7 +143,7 @@ enum {
 	PM_STATE_LU_SHUTDOWN,
 	PM_STATE_PROBE_CONST_FLUX_LINKAGE,
 	PM_STATE_PROBE_CONST_INERTIA,
-	PM_STATE_PROBE_NOISE_THRESHOLD,
+	PM_STATE_PROBE_THRESHOLD_TOL,
 	PM_STATE_ADJUST_SENSOR_HALL,
 	PM_STATE_ADJUST_SENSOR_EABI,
 	PM_STATE_ADJUST_SENSOR_SINCOS,
@@ -400,7 +400,7 @@ typedef struct {
 	float		forced_fall_rate;
 	float		forced_track_D;
 	float		forced_stop_DC;
-	float		forced_gain_LS;
+	float		forced_gain_AQ;
 
 	int		flux_DETACH;
 	int		flux_LINKAGE;
@@ -413,10 +413,11 @@ typedef struct {
 	int		flux_TYPE;
 	int		flux_ZONE;
 
+	float		flux_uncertain;
 	float		flux_X[2];
 	float		flux_F[2];
-	float		flux_wS;
 	float		flux_lambda;
+	float		flux_wS;
 	float		flux_trip_tol;
 	float		flux_gain_IN;
 	float		flux_gain_LO;
@@ -436,10 +437,9 @@ typedef struct {
 	float		kalman_gain_Q[4];
 	float		kalman_gain_R;
 
-	float		zone_noise;
 	float		zone_threshold;
+	float		zone_tol;
 	float		zone_lpf_wS;
-	float		zone_gain_TH;
 	float		zone_gain_LP;
 
 	float		hfi_maximal;

@@ -230,8 +230,9 @@ SH_DEF(pm_probe_spinup)
 
 		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
 		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
-		reg_OUTP(ID_PM_ZONE_NOISE_U);
+
 		reg_OUTP(ID_PM_ZONE_THRESHOLD_U);
+		reg_OUTP(ID_PM_ZONE_TOL_U);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -258,7 +259,7 @@ SH_DEF(pm_probe_spinup)
 
 		vTaskDelay((TickType_t) 200);
 
-		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
+		pm.fsm_req = PM_STATE_PROBE_THRESHOLD_TOL;
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
@@ -269,8 +270,9 @@ SH_DEF(pm_probe_spinup)
 
 		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
 		reg_OUTP(ID_PM_FORCED_MAXIMAL_RPM);
-		reg_OUTP(ID_PM_ZONE_NOISE_U);
+
 		reg_OUTP(ID_PM_ZONE_THRESHOLD_U);
+		reg_OUTP(ID_PM_ZONE_TOL_U);
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
@@ -443,7 +445,7 @@ SH_DEF(pm_probe_const_inertia)
 	tlm_halt(&tlm);
 }
 
-SH_DEF(pm_probe_noise_threshold)
+SH_DEF(pm_probe_threshold_tol)
 {
 	if (pm.lu_MODE == PM_LU_DISABLED) {
 
@@ -460,12 +462,12 @@ SH_DEF(pm_probe_noise_threshold)
 	do {
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
-		pm.fsm_req = PM_STATE_PROBE_NOISE_THRESHOLD;
+		pm.fsm_req = PM_STATE_PROBE_THRESHOLD_TOL;
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
-		reg_OUTP(ID_PM_ZONE_NOISE);
+		reg_OUTP(ID_PM_ZONE_TOL_U);
 	}
 	while (0);
 
@@ -765,6 +767,8 @@ SH_DEF(pm_fsm_detached)
 	pm.fsm_req = PM_STATE_LU_DETACHED;
 	pm_wait_IDLE();
 
+	tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
 	reg_OUTP(ID_PM_FSM_ERRNO);
 }
 
@@ -773,6 +777,8 @@ SH_DEF(pm_fsm_startup)
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	pm_wait_IDLE();
 
+	tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
 	reg_OUTP(ID_PM_FSM_ERRNO);
 }
 
@@ -780,6 +786,8 @@ SH_DEF(pm_fsm_shutdown)
 {
 	pm.fsm_req = PM_STATE_LU_SHUTDOWN;
 	pm_wait_IDLE();
+
+	tlm_halt(&tlm);
 
 	reg_OUTP(ID_PM_FSM_ERRNO);
 }

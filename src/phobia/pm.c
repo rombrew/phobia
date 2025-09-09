@@ -114,7 +114,7 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->i_maximal = 120.f;			/* (A) */
 	pm->i_reverse = pm->i_maximal;
 
-	m_lf_randseed(&pm->lfseed, 80);		/* NOTE: lfg initial random seed. */
+	m_lf_randseed(&pm->lfseed, 80);		/* Initial random SEED. */
 }
 
 static void
@@ -196,15 +196,16 @@ pm_auto_config_default(pmc_t *pm)
 	pm->forced_maximal = 280.f;		/* (rad/s) */
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;		/* (rad/s2) */
-	pm->forced_slew_rate = 100.f;		/* (A/s) */
+	pm->forced_slew_rate = 200.f;		/* (A/s) */
 	pm->forced_fall_rate = 5000.f;		/* (A/s) */
 	pm->forced_stop_DC = 0.7f;
-	pm->forced_gain_LS = 0.2f;
+	pm->forced_gain_AQ = 0.2f;
 
 	pm->detach_threshold = 1.f;		/* (V) */
 	pm->detach_trip_tol = 5.f;		/* (V) */
 	pm->detach_gain_SF = 5.E-2f;
 
+	pm->flux_uncertain = 0.f;		/* (A) */
 	pm->flux_trip_tol = 5.f;		/* (V) */
 	pm->flux_gain_IN = 5.E-3f;
 	pm->flux_gain_LO = 2.E-6f;
@@ -218,9 +219,8 @@ pm_auto_config_default(pmc_t *pm)
 	pm->kalman_gain_Q[3] = 2.E-1f;
 	pm->kalman_gain_R = 5.E-1f;
 
-	pm->zone_noise = 50.f;			/* (rad/s) */
 	pm->zone_threshold = 90.f;		/* (rad/s) */
-	pm->zone_gain_TH = 0.7f;
+	pm->zone_tol = 50.f;			/* (rad/s) */
 	pm->zone_gain_LP = 5.E-3f;
 
 	pm->hfi_maximal = 20.f;			/* (A) */
@@ -323,8 +323,8 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->forced_reverse = pm->forced_maximal;
 	pm->forced_accel = 400.f;
 
-	pm->zone_noise = 50.f;
 	pm->zone_threshold = 90.f;
+	pm->zone_tol = 50.f;
 
 	pm->const_lambda = 0.f;
 	pm->const_Rs = 0.f;
@@ -441,7 +441,7 @@ pm_auto_probe_speed_hold(pmc_t *pm)
 {
 	float			probe_MAX, probe_MIN;
 
-	probe_MIN = 1.5f * (pm->zone_threshold + pm->zone_noise);
+	probe_MIN = 1.1f * (pm->zone_threshold + pm->zone_tol);
 
 	if (pm->probe_speed_hold < probe_MIN) {
 
@@ -464,7 +464,7 @@ pm_auto_forced_maximal(pmc_t *pm)
 {
 	float		forced_MAX;
 
-	pm->forced_maximal = 1.5f * (pm->zone_threshold + pm->zone_noise);
+	pm->forced_maximal = 1.1f * (pm->zone_threshold + pm->zone_tol);
 	pm->forced_reverse = pm->forced_maximal;
 
 	if (pm->const_lambda > M_EPSILON) {
@@ -501,35 +501,35 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 	if (pm->const_Rs > M_EPSILON) {
 
-		/* Allowable range of the noise threshold.
+		/* Absolute range of ZONE tolerance.
 		 * */
-		thld_MAX = 400.f;			/* (rad/s) */
+		thld_MAX = 200.f;			/* (rad/s) */
 		thld_MIN = 10.f;			/* (rad/s) */
 
-		if (pm->zone_noise > thld_MAX) {
+		if (pm->zone_tol > thld_MAX) {
 
-			pm->zone_noise = thld_MAX;
+			pm->zone_tol = thld_MAX;
 		}
 
-		if (pm->zone_noise < thld_MIN) {
+		if (pm->zone_tol < thld_MIN) {
 
-			pm->zone_noise = thld_MIN;
+			pm->zone_tol = thld_MIN;
 		}
 
 		if (pm->const_lambda > M_EPSILON) {
 
 			thld_MAX = 10.f / pm->const_lambda;
 
-			if (pm->zone_noise > thld_MAX) {
+			if (pm->zone_tol > thld_MAX) {
 
-				pm->zone_noise = thld_MAX;
+				pm->zone_tol = thld_MAX;
 			}
 
 			thld_MIN = pm->fault_terminal_tol / pm->const_lambda;
 
-			if (pm->zone_noise < thld_MIN) {
+			if (pm->zone_tol < thld_MIN) {
 
-				pm->zone_noise = thld_MIN;
+				pm->zone_tol = thld_MIN;
 			}
 		}
 
@@ -560,6 +560,15 @@ pm_auto_zone_threshold(pmc_t *pm)
 
 			pm->zone_threshold = thld_MAX;
 		}
+
+		if (pm->zone_threshold < thld_MIN) {
+
+			pm->zone_threshold = thld_MIN;
+		}
+
+		/* Lower bound of ZONE threshold.
+		 * */
+		thld_MIN = 1.5f * pm->zone_tol;
 
 		if (pm->zone_threshold < thld_MIN) {
 
@@ -604,11 +613,11 @@ pm_auto_loop_speed(pmc_t *pm)
 {
 	float		Df, Nf, mq_LP, Kp, Kd;
 
-	if (		pm->zone_noise > M_EPSILON
+	if (		pm->zone_tol > M_EPSILON
 			&& pm->const_Ja > 0.f) {
 
 		Df = pm->s_damping;
-		Nf = 1.f / pm->zone_noise;
+		Nf = 1.f / pm->zone_tol;
 
 		mq_LP = 0.02f * Nf * pm->m_dT / pm->const_Ja;
 		mq_LP =   (mq_LP > 5.E-3f) ? 5.E-3f
@@ -1252,8 +1261,6 @@ pm_kalman_update(pmc_t *pm)
 static void
 pm_kalman_lockout_guard(pmc_t *pm, float dA)
 {
-	float		thld_wS;
-
 	/* Get speed LPF of actual DQ-axes.
 	 * */
 	pm->kalman_lpf_wS += (dA * pm->m_freq - pm->kalman_lpf_wS) * pm->zone_gain_LP;
@@ -1261,9 +1268,7 @@ pm_kalman_lockout_guard(pmc_t *pm, float dA)
 	if (		   pm->flux_ZONE == PM_ZONE_NONE
 			|| pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
-		thld_wS = pm->zone_threshold * pm->zone_gain_TH;
-
-		if (m_fabsf(pm->kalman_lpf_wS) > thld_wS) {
+		if (m_fabsf(pm->kalman_lpf_wS) > pm->zone_threshold) {
 
 			/* Restart Kalman and flip DQ-axes.
 			 * */
@@ -1382,14 +1387,14 @@ pm_flux_zone(pmc_t *pm)
 {
 	float			thld_wS;
 
-	/* Get FLUX speed LPF to switch ZONE.
+	/* Get speed LPF to detect operation ZONE.
 	 * */
 	pm->zone_lpf_wS += (pm->flux_wS - pm->zone_lpf_wS) * pm->zone_gain_LP;
 
 	if (		   pm->flux_ZONE == PM_ZONE_NONE
 			|| pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
-		thld_wS = pm->zone_threshold + pm->zone_noise;
+		thld_wS = pm->zone_threshold + pm->zone_tol;
 
 		if (pm->lu_MODE == PM_LU_DETACHED) {
 
@@ -1416,7 +1421,7 @@ pm_flux_zone(pmc_t *pm)
 	}
 	else if (pm->flux_ZONE == PM_ZONE_HIGH) {
 
-		thld_wS = pm->zone_threshold * pm->zone_gain_TH;
+		thld_wS = pm->zone_threshold - pm->zone_tol;
 
 		if (pm->lu_MODE == PM_LU_DETACHED) {
 
@@ -1502,8 +1507,9 @@ pm_estimate(pmc_t *pm)
 		pm_flux_zone(pm);
 	}
 	else {
-		/* NOTE: No sensorless observer selected. It is ok when you
-		 * only need a SENSORED drive */
+		/* No sensorless observer selected. It is acceptable if you
+		 * only need a SENSORED drive.
+		 * */
 
 		if (pm->flux_TYPE != PM_FLUX_NONE) {
 
@@ -1535,9 +1541,9 @@ pm_hfi_wave(pmc_t *pm)
 		uHF = pm->hfi_wave[0] * pm->hfi_amplitude
 			* pm->quick_HFwS * pm->const_im_Ld;
 	}
-	else if (pm->config_HFI_WAVETYPE == PM_HFI_SQUARE) {
+	else if (pm->config_HFI_WAVETYPE == PM_HFI_SILENT) {
 
-		/* HF square wavetype.
+		/* HF non audible wavetype.
 		 * */
 		pm->hfi_wave[0] = (pm->hfi_wave[0] < 0.f) ? 2.1f : - 2.1f;
 
@@ -2148,7 +2154,7 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->config_LU_FORCED == PM_ENABLED) {
 
 				if (		pm->config_LU_FREEWHEEL == PM_ENABLED
-					&& m_fabsf(pm->s_setpoint_speed) < M_EPSILON) {
+						&& pm->forced_track_D < M_EPSILON) {
 
 					if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
@@ -2281,8 +2287,7 @@ pm_lu_FSM(pmc_t *pm)
 
 		if (A < M_EPSILON) {
 
-			/* NOTE: We reset current loop integrals in
-			 * case of position flip.
+			/* We reset current loop integrals in this case.
 			 * */
 			pm->i_integral_D = 0.f;
 			pm->i_integral_Q = 0.f;
@@ -2381,7 +2386,7 @@ pm_lu_FSM(pmc_t *pm)
 		 * */
 		mQ_maximal = pm_torque_maximal(pm, pm->forced_track_D);
 
-		pm->lu_mq_load = pm->forced_gain_LS * mQ_maximal;
+		pm->lu_mq_load = pm->forced_gain_AQ * mQ_maximal;
 	}
 	else {
 		float		mQ_load, wS_accel;
@@ -2926,9 +2931,7 @@ pm_loop_current(pmc_t *pm)
 	track_D = pm->forced_track_D;
 	track_Q = 0.f;
 
-	if (		pm->lu_MODE == PM_LU_FORCED
-			|| (	pm->lu_MODE == PM_LU_ESTIMATE
-				&& pm->flux_ZONE != PM_ZONE_HIGH)) {
+	if (pm->lu_MODE == PM_LU_FORCED) {
 
 		if (		pm->config_CC_SPEED_TRACK == PM_ENABLED
 				&& (	   pm->config_LU_DRIVE == PM_DRIVE_CURRENT
@@ -3058,11 +3061,21 @@ pm_loop_current(pmc_t *pm)
 	track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
 	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
 
-	if (pm->lu_MODE == PM_LU_ON_HFI) {
+	if (		pm->lu_MODE == PM_LU_ESTIMATE
+			&& pm->flux_ZONE != PM_ZONE_HIGH) {
+
+		iMAX = pm->flux_uncertain;
+
+		/* Add current constraint in uncertain ZONE.
+		 * */
+		track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
+		track_Q = (track_Q > iMAX) ? iMAX : (track_Q < - iMAX) ? - iMAX : track_Q;
+	}
+	else if (pm->lu_MODE == PM_LU_ON_HFI) {
 
 		iMAX = pm->hfi_maximal;
 
-		/* Add current constraint from HFI.
+		/* Add current constraint in HFI mode.
 		 * */
 		track_D = (track_D > iMAX) ? iMAX : (track_D < - iMAX) ? - iMAX : track_D;
 		track_Q = (track_Q > iMAX) ? iMAX : (track_Q < - iMAX) ? - iMAX : track_Q;

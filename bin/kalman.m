@@ -1,4 +1,5 @@
 #!/usr/bin/octave -q
+# vi: syntax=matlab
 
 pkg load symbolic
 

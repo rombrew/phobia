@@ -26,5 +26,5 @@ install -m 0664 -Dt /tmp/$BUNDLE/doc ../doc/*.md 			|| exit
 install -m 0664 -Dt /tmp/$BUNDLE/firmware /tmp/pmc-*/pmc-*.bin		|| exit
 install -m 0664 -Dt /tmp/$BUNDLE/pgui /tmp/pgui/*/pgui-*.exe 		|| exit
 
-tar -cJf /tmp/$BUNDLE.tar.xz -C /tmp $BUNDLE
+tar -cJvf /tmp/$BUNDLE.tar.xz -C /tmp $BUNDLE
 

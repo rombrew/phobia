@@ -1937,11 +1937,6 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 	switch (pm->fsm_phase) {
 
 		case 0:
-			pm->fsm_errno = PM_OK;
-			pm->fsm_phase = 1;
-			break;
-
-		case 1:
 			m[0] = 0.f;
 			m[1] = 0.f;
 			m[2] = 0.f;
@@ -1954,10 +1949,10 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 			pm->tm_end = PM_TSMS(pm, pm->tm_average_inertia);
 
 			pm->fsm_errno = PM_OK;
-			pm->fsm_phase = 2;
+			pm->fsm_phase = 1;
 			break;
 
-		case 2:
+		case 1:
 			mQ = pm_torque_equation(pm, pm->lu_iD, pm->lu_iQ);
 
 			m_rsumf(&m[0], &m[2], mQ);
@@ -1978,7 +1973,7 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 			}
 			break;
 
-		case 3:
+		case 2:
 			lse_solve(ls);
 
 			temp_Ja = pm->m_dT / ls->sol.m[0];
@@ -1999,7 +1994,7 @@ pm_fsm_state_probe_const_inertia(pmc_t *pm)
 }
 
 static void
-pm_fsm_state_probe_noise_threshold(pmc_t *pm)
+pm_fsm_state_probe_threshold_tol(pmc_t *pm)
 {
 	lse_t			*ls = &pm->lse[0];
 	lse_float_t		v[3];
@@ -2037,7 +2032,7 @@ pm_fsm_state_probe_noise_threshold(pmc_t *pm)
 			if (		m_isfinitef(ls->std.m[0]) != 0
 					&& ls->std.m[0] > M_EPSILON) {
 
-				pm->zone_noise = ls->std.m[0] * 4.f;
+				pm->zone_tol = ls->std.m[0] * 3.f;
 			}
 			else {
 				pm->fsm_errno = PM_ERROR_UNCERTAIN_RESULT;
@@ -2521,7 +2516,7 @@ void pm_FSM(pmc_t *pm)
 		case PM_STATE_LU_SHUTDOWN:
 		case PM_STATE_PROBE_CONST_FLUX_LINKAGE:
 		case PM_STATE_PROBE_CONST_INERTIA:
-		case PM_STATE_PROBE_NOISE_THRESHOLD:
+		case PM_STATE_PROBE_THRESHOLD_TOL:
 		case PM_STATE_ADJUST_SENSOR_HALL:
 		case PM_STATE_ADJUST_SENSOR_EABI:
 		case PM_STATE_ADJUST_SENSOR_SINCOS:
@@ -2615,8 +2610,8 @@ void pm_FSM(pmc_t *pm)
 			pm_fsm_state_probe_const_inertia(pm);
 			break;
 
-		case PM_STATE_PROBE_NOISE_THRESHOLD:
-			pm_fsm_state_probe_noise_threshold(pm);
+		case PM_STATE_PROBE_THRESHOLD_TOL:
+			pm_fsm_state_probe_threshold_tol(pm);
 			break;
 
 		case PM_STATE_ADJUST_SENSOR_HALL:

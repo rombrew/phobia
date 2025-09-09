@@ -31,50 +31,51 @@ const char *utf8_go_next(const char *s);
 char *utf8_backspace(char *s);
 
 static int
-menuFuzzyMatch(menu_t *mu, const char *s, const char *fu, int light[])
+menuFuzzy(menu_t *mu, const char *list, const char *fu, int light[])
 {
-	const char	*b, *fue;
-	char		ubuf[8], sbuf[MENU_STRING_MAX + 1];
-	int		bX, bY, rc, lk = 0;
+	char		ubuf[8], lbuf[MENU_STRING_MAX + 1];
+	const char	*back;
 
-	sbuf[0] = 0;
+	int		bX, bY, lk = 0;
 
-	b = s;
-	s = strstr(s, fu);
+	lbuf[0] = 0;
 
-	if (s == NULL) {
+	back = list;
+	list = strstr(list, fu);
 
-		s = b;
+	if (list == NULL) {
+
+		list = back;
 
 		while (*fu != 0) {
 
 			ubuf[0] = 0;
 
-			fue = utf8_go_next(fu);
-			strncat(ubuf, fu, fue - fu);
-			fu = fue;
+			back = utf8_go_next(fu);
+			strncat(ubuf, fu, back - fu);
+			fu = back;
 
-			b = s;
-			s = strstr(s, ubuf);
+			back = list;
+			list = strstr(list, ubuf);
 
-			if (s == NULL)
+			if (list == NULL)
 				break;
 			else {
 				if (light != NULL) {
 
-					strncat(sbuf, b, s - b);
-					TTF_SizeUTF8(mu->font, sbuf, &bX, &bY);
+					strncat(lbuf, back, list - back);
+					TTF_SizeUTF8(mu->font, lbuf, &bX, &bY);
 					light[lk++] = bX;
 
-					b = s;
-					s = utf8_go_next(s);
+					back = list;
+					list = utf8_go_next(list);
 
-					strncat(sbuf, b, s - b);
-					TTF_SizeUTF8(mu->font, sbuf, &bX, &bY);
+					strncat(lbuf, back, list - back);
+					TTF_SizeUTF8(mu->font, lbuf, &bX, &bY);
 					light[lk++] = bX;
 				}
 				else {
-					s = utf8_go_next(s);
+					list = utf8_go_next(list);
 				}
 			}
 		}
@@ -84,50 +85,48 @@ menuFuzzyMatch(menu_t *mu, const char *s, const char *fu, int light[])
 
 			while (*fu != 0) {
 
-				strncat(sbuf, b, s - b);
-				TTF_SizeUTF8(mu->font, sbuf, &bX, &bY);
+				strncat(lbuf, back, list - back);
+				TTF_SizeUTF8(mu->font, lbuf, &bX, &bY);
 				light[lk++] = bX;
 
-				b = s;
-				s = utf8_go_next(s);
+				back = list;
+				list = utf8_go_next(list);
 
-				strncat(sbuf, b, s - b);
-				TTF_SizeUTF8(mu->font, sbuf, &bX, &bY);
+				strncat(lbuf, back, list - back);
+				TTF_SizeUTF8(mu->font, lbuf, &bX, &bY);
 				light[lk++] = bX;
 
-				b = s;
+				back = list;
 				fu = utf8_go_next(fu);
 			}
 		}
 	}
 
-	rc = (s != NULL) ? 1 : 0;
-
-	return rc;
+	return (list != NULL) ? 1 : 0;
 }
 
 static void
 menuBuild(menu_t *mu, int rep)
 {
 	int			bX, bY, size_X, size_Y;
-	const char		*s;
+	const char		*list;
 
-	s = mu->list;
+	list = mu->list;
 
 	size_X = 0;
 	mu->size_N = 0;
 
-	while (*s != 0) {
+	while (*list != 0) {
 
-		TTF_SizeUTF8(mu->font, s, &bX, &bY);
+		TTF_SizeUTF8(mu->font, list, &bX, &bY);
 
-		if (menuFuzzyMatch(mu, s, mu->fuzzy, NULL))
+		if (menuFuzzy(mu, list, mu->fuzzy, NULL))
 			mu->size_N++;
 
 		size_X = (size_X < bX) ? bX : size_X;
 
-		while (*s != 0) ++s;
-		++s;
+		while (*list != 0) ++list;
+		++list;
 	}
 
 	mu->size_X = size_X + mu->layout_height + mu->layout_height / 4;
@@ -280,16 +279,17 @@ void menuSelect(menu_t *mu, int item_N)
 static int
 menuItemHover(menu_t *mu)
 {
-	const char		*s = mu->list;
+	const char		*list = mu->list;
+
 	int			N = 0, N_visible, rN = -1;
 	int			topY, botY, baseX;
 
 	baseX = (mu->scroll_limit != 0) ? mu->size_X - mu->layout_height : mu->size_X;
 	N_visible = mu->size_Y / mu->layout_height;
 
-	while (*s != 0) {
+	while (*list != 0) {
 
-		if (menuFuzzyMatch(mu, s, mu->fuzzy, NULL)) {
+		if (menuFuzzy(mu, list, mu->fuzzy, NULL)) {
 
 			topY = mu->box_Y + N * mu->layout_height;
 			botY = topY + mu->layout_height;
@@ -309,8 +309,8 @@ menuItemHover(menu_t *mu)
 			N++;
 		}
 
-		while (*s != 0) ++s;
-		++s;
+		while (*list != 0) ++list;
+		++list;
 	}
 
 	return rN;
@@ -319,7 +319,7 @@ menuItemHover(menu_t *mu)
 static int
 menuConvFuzzy(menu_t *mu, int fuzzy_N)
 {
-	const char		*s = mu->list;
+	const char		*list = mu->list;
 	int			N = 0, K = 0, rN = -1;
 
 	if (fuzzy_N < 0) {
@@ -327,9 +327,9 @@ menuConvFuzzy(menu_t *mu, int fuzzy_N)
 	}
 	else if (mu->fuzzy[0] != 0) {
 
-		while (*s != 0) {
+		while (*list != 0) {
 
-			if (menuFuzzyMatch(mu, s, mu->fuzzy, NULL)) {
+			if (menuFuzzy(mu, list, mu->fuzzy, NULL)) {
 
 				if (K == fuzzy_N) {
 
@@ -341,8 +341,8 @@ menuConvFuzzy(menu_t *mu, int fuzzy_N)
 
 			N++;
 
-			while (*s != 0) ++s;
-			++s;
+			while (*list != 0) ++list;
+			++list;
 		}
 	}
 	else {
@@ -535,7 +535,8 @@ void menuEventText(menu_t *mu, const char *tx)
 
 void menuDraw(menu_t *mu, SDL_Surface *surface)
 {
-	const char		*fu, *s = mu->list;
+	const char		*fu, *list = mu->list;
+
 	int			light[MENU_FUZZY_SIZE * 2], N_fu;
 	int			topY, baseX, baseY, margin, side;
 	int			N = 0, N_visible, N_conv, hN;
@@ -593,9 +594,9 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 				baseX + margin, baseY + side, mu->sch->menu_scrollbar);
 	}
 
-	while (*s != 0) {
+	while (*list != 0) {
 
-		if (menuFuzzyMatch(mu, s, mu->fuzzy, NULL)) {
+		if (menuFuzzy(mu, list, mu->fuzzy, NULL)) {
 
 			if (N >= mu->scroll_shift)
 				break;
@@ -603,8 +604,8 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 			N++;
 		}
 
-		while (*s != 0) ++s;
-		++s;
+		while (*list != 0) ++list;
+		++list;
 	}
 
 	SDL_UnlockSurface(surface);
@@ -615,9 +616,9 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 	margin = mu->layout_height / 4;
 	side = mu->layout_height / 2;
 
-	while (*s != 0) {
+	while (*list != 0) {
 
-		if (menuFuzzyMatch(mu, s, mu->fuzzy, light)) {
+		if (menuFuzzy(mu, list, mu->fuzzy, light)) {
 
 			topY = mu->box_Y + N * mu->layout_height;
 
@@ -670,10 +671,10 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 						topY + mu->layout_height - margin, iCol);
 			}
 			else {
-				const char	*text = s;
+				const char	*text = list;
 				char		sbuf[MENU_STRING_MAX + 1];
 
-				if (strncmp(s, "---", 3) != 0) {
+				if (strncmp(list, "---", 3) != 0) {
 
 					iCol = mu->sch->menu_item_text;
 				}
@@ -689,8 +690,8 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 					}
 					else if (N_conv == mu->mark[hN].N) {
 
-						strcpy(sbuf, s);
-						sprintf(sbuf, s, mu->mark[hN].subs);
+						strcpy(sbuf, list);
+						sprintf(sbuf, list, mu->mark[hN].subs);
 
 						text = sbuf;
 					}
@@ -703,8 +704,8 @@ void menuDraw(menu_t *mu, SDL_Surface *surface)
 			N++;
 		}
 
-		while (*s != 0) ++s;
-		++s;
+		while (*list != 0) ++list;
+		++list;
 	}
 
 	if (mu->fuzzy[0] != 0) {

@@ -46,7 +46,7 @@
 
 #define GP_FILE_ENT_MAX		4000
 
-#define GP_CONFIG_VERSION	18
+#define GP_CONFIG_VERSION	19
 #define GP_CONFIG_FILE		"gprc"
 
 enum {
@@ -306,7 +306,8 @@ gpDefaultFile(gpcon_t *gp)
 				"lz4_compress 1\n");
 
 #ifdef _WINDOWS
-		fprintf(fd,	"legacy_label 1\n");
+		fprintf(fd,	"legacy_label 1\n"
+				"legacy_console 0\n");
 #endif /* _WINDOWS */
 
 		fclose(fd);
@@ -372,6 +373,7 @@ gpWriteFile(gpcon_t *gp)
 
 #ifdef _WINDOWS
 		fprintf(fd, "legacy_label %i\n", rd->legacy_label);
+		fprintf(fd, "legacy_console %i\n", rd->legacy_console);
 #endif /* _WINDOWS */
 
 		fclose(fd);
@@ -2555,9 +2557,11 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 					mu->hidden_N[3] = 8;
 				}
 
-				if (N < 2) {
+				N = plotFigureAnother(pl, gp->fig_N);
 
-					mu->hidden_N[0] = 14;
+				if (N < 1) {
+
+					mu->hidden_N[4] = 14;
 				}
 
 				gp->stat = GP_MENU;
@@ -3136,7 +3140,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%le %le", &scale, &offset);
 
-		if (n == 2) {
+		if (n >= 2) {
 
 			pl->axis[gp->ax_N].scale = scale;
 			pl->axis[gp->ax_N].offset = offset;
@@ -3148,7 +3152,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%le %le", &scale, &offset);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (n < 2) {
 
@@ -3212,7 +3216,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d %d", &args[0], &args[1]);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (n == 1) {
 
@@ -3283,7 +3287,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len >= 0) {
 
@@ -3307,7 +3311,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%le", &value);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			plotFigureSubtractFilter(pl, gp->fig_N,
 					SUBTRACT_FILTER_LOW_PASS, value);
@@ -3317,7 +3321,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%i", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len >= 0 && len <= 16) {
 
@@ -3329,7 +3333,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			gpFontToggle(gp, 0, len);
 
@@ -3347,7 +3351,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d %d", &args[0], &args[1]);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (n == 1) {
 
@@ -3368,7 +3372,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			int		unwrap = pl->group[gp->grp_N].op_time_unwrap;
 			int		opdata = pl->group[gp->grp_N].op_time_opdata;
@@ -3397,7 +3401,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d %d %d", &len, &args[0], &args[1]);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len >= 0 && len <= PLOT_MEDIAN_MAX) {
 
@@ -3410,7 +3414,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len >= 3 && len <= PLOT_MEDIAN_MAX) {
 
@@ -3451,7 +3455,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len > 0 && len < 1000) {
 
@@ -3491,7 +3495,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			if (len >= 1 && len <= 16) {
 
@@ -3511,7 +3515,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &len);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			N = (rd->data[gp->blank_N].format == FORMAT_BLANK_DATA)
 				? rd->data[gp->blank_N].length_N
@@ -3534,7 +3538,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%le", &offset);
 
-		if (n != 0) {
+		if (n >= 1) {
 
 			N = (rd->data[gp->blank_N].format == FORMAT_BLANK_DATA)
 				? rd->data[gp->blank_N].length_N
@@ -3560,7 +3564,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%le", &value);
 
-		if (n == 1) {
+		if (n >= 1) {
 
 			if (value >= 0.) {
 
@@ -3579,10 +3583,12 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		n = sscanf(text, "%d", &N);
 
-		if (n != 0) {
+		if (n >= 1) {
 
-			plotFigureSubtractDemux(pl, gp->fig_N,
-					SUBTRACT_FILTER_DEMULTIPLEX, N);
+			plotFigureSubtractDemux(pl, gp->fig_N, SUBTRACT_FILTER_DEMULTIPLEX, N);
+		}
+		else {
+			plotFigureSubtractClean(pl, gp->fig_N, SUBTRACT_FILTER_DEMULTIPLEX);
 		}
 	}
 }
@@ -5744,7 +5750,10 @@ int main(int argn, char *argv[])
 	(void) gp_OpenWindow(gp);
 
 #ifdef _WINDOWS
-	legacy_CloseConsole();
+	if (gp->rd->legacy_console == 0) {
+
+		legacy_CloseConsole();
+	}
 #endif /* _WINDOWS */
 
 	while (gp_IsQuit(gp) == 0) {

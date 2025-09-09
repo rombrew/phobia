@@ -554,6 +554,7 @@ void plotFigureMakeIndividualAxes(plot_t *pl, int fN);
 void plotFigureExchange(plot_t *pl, int fN_1, int fN_2);
 
 int plotFigureSelected(plot_t *pl);
+int plotFigureAnother(plot_t *pl, int fN);
 int plotFigureAnyData(plot_t *pl);
 int plotFigureHaveData(plot_t *pl, int dN);
 
@@ -570,6 +571,7 @@ void plotFigureSubtractTimeMedian(plot_t *pl, int fN, int length, int unwrap, in
 void plotFigureSubtractScale(plot_t *pl, int fN, int aBUSY, double scale, double offset);
 void plotFigureSubtractFilter(plot_t *pl, int fN, int opSUB, double value);
 void plotFigureSubtractDemux(plot_t *pl, int fN, int opSUB, int N);
+void plotFigureSubtractClean(plot_t *pl, int fN, int opSUB);
 void plotFigureSubtractSwitch(plot_t *pl, int opSUB);
 void plotTotalSubtractResample(plot_t *pl, int dN, double tmin, double tmax);
 

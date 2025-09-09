@@ -132,22 +132,22 @@ manually in this case.
 
 PMC will wait for the machine to reach at least `pm.zone_threshold` speed.
 
-## Speed noise threshold
+## Speed threshold
 
 In case of you use `pm_probe_spinup` after a flux linkage we estimate speed
-noise level to know the lower bound of reliable sensorless operation. As a
-result these threshold values are updated.
+threshold to know the lower bound of reliable sensorless operation. As a result
+these values are updated.
 
-	(pmc) reg pm.zone_noise
 	(pmc) reg pm.zone_threshold
+	(pmc) reg pm.zone_tol
 
 If you have estimated flux linkage in detached mode or specified Kv manually
-you should probe the noise threshold manually when the machine is running.
+you should probe the tolerance manually when the machine is running.
 
 	(pmc) pm_fsm_startup
 	(pmc) reg pm.s_setpoint_rpm <rpm>
 	...
-	(pmc) pm_probe_noise_threshold
+	(pmc) pm_probe_threshold_tol
 
 ## Moment of inertia
 

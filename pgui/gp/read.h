@@ -168,6 +168,7 @@ typedef struct {
 
 #ifdef _WINDOWS
 	int		legacy_label;
+	int		legacy_console;
 #endif /* _WINDOWS */
 
 	int		preload;

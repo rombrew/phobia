@@ -47,7 +47,7 @@
 static const char *
 nk_sdl_nullstr(const char *text, int len)
 {
-	static char		nbuf[1024];
+	static char		nbuf[2048];
 
 	len = NK_MIN(len, sizeof(nbuf));
 
@@ -338,11 +338,27 @@ NK_API void nk_sdl_style_custom(struct nk_sdl *nk)
 NK_API float nk_sdl_text_width(nk_handle font, float height, const char *text, int len)
 {
 	TTF_Font	*ttf_font = (TTF_Font *) font.ptr;
-	int		text_w = 0, text_h = 0;
+	int		width = 0;
 
-	TTF_SizeUTF8(ttf_font, nk_sdl_nullstr(text, len), &text_w, &text_h);
+	if (len >= 4) {
 
-	return (float) text_w;
+		TTF_SizeUTF8(ttf_font, nk_sdl_nullstr(text, len), &width, NULL);
+
+		return (float) width;
+	}
+	else {
+		char	nbuf[8] = "________";
+		int	sub = 0;
+
+		memcpy(nbuf + 1, text, len);
+
+		nbuf[len + 2] = 0;
+
+		TTF_SizeUTF8(ttf_font, nbuf, &width, NULL);
+		TTF_SizeUTF8(ttf_font, "__", &sub, NULL);
+
+		return (float) (width - sub);
+	}
 }
 
 static Uint32

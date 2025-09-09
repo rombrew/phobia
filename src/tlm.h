@@ -21,8 +21,6 @@ typedef struct {
 	int		rate_watch;
 	int		rate_live;
 
-	int		lufsm;
-
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 
@@ -45,6 +43,7 @@ void tlm_reg_default(tlm_t *tlm);
 void tlm_reg_grab(tlm_t *tlm);
 void tlm_startup(tlm_t *tlm, int rate, int mode);
 void tlm_halt(tlm_t *tlm);
+void tlm_wipe(tlm_t *tlm);
 
 #endif /* _H_TLM_ */
 

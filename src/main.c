@@ -168,14 +168,14 @@ LD_TASK void task_TEMP(void *pData)
 		GPIO_set_mode_ANALOG(ap.ntc_EXT.gpio);
 	}
 
-#ifdef HW_HAVE_OPT_FILTER
-#ifdef GPIO_FILTER_CURRENT
-	GPIO_set_mode_OUTPUT(GPIO_FILTER_CURRENT);
-#endif /* GPIO_FILTER_CURRENT */
-#ifdef GPIO_FILTER_VOLTAGE
-	GPIO_set_mode_OUTPUT(GPIO_FILTER_VOLTAGE);
-#endif /* GPIO_FILTER_VOLTAGE */
-#endif /* HW_HAVE_OPT_FILTER  */
+#ifdef HW_HAVE_ALT_GPIO
+#ifdef GPIO_ALT_CURRENT
+	GPIO_set_mode_OUTPUT(GPIO_ALT_CURRENT);
+#endif /* GPIO_ALT_CURRENT */
+#ifdef GPIO_ALT_VOLTAGE
+	GPIO_set_mode_OUTPUT(GPIO_ALT_VOLTAGE);
+#endif /* GPIO_ALT_VOLTAGE */
+#endif /* HW_HAVE_ALT_GPIO  */
 
 	xWake = xTaskGetTickCount();
 
@@ -297,26 +297,26 @@ LD_TASK void task_TEMP(void *pData)
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_OPT_FILTER
-#ifdef GPIO_FILTER_CURRENT
-		if (hal.OPT_filter_current == PM_ENABLED) {
+#ifdef HW_HAVE_ALT_GPIO
+#ifdef GPIO_ALT_CURRENT
+		if (hal.ALT_current == PM_ENABLED) {
 
-			GPIO_set_HIGH(GPIO_FILTER_CURRENT);
+			GPIO_set_HIGH(GPIO_ALT_CURRENT);
 		}
 		else {
-			GPIO_set_LOW(GPIO_FILTER_CURRENT);
+			GPIO_set_LOW(GPIO_ALT_CURRENT);
 		}
-#endif /* GPIO_FILTER_CURRENT */
-#ifdef GPIO_FILTER_VOLTAGE
-		if (hal.OPT_filter_voltage == PM_ENABLED) {
+#endif /* GPIO_ALT_CURRENT */
+#ifdef GPIO_ALT_VOLTAGE
+		if (hal.ALT_voltage == PM_ENABLED) {
 
-			GPIO_set_HIGH(GPIO_FILTER_VOLTAGE);
+			GPIO_set_HIGH(GPIO_ALT_VOLTAGE);
 		}
 		else {
-			GPIO_set_LOW(GPIO_FILTER_VOLTAGE);
+			GPIO_set_LOW(GPIO_ALT_VOLTAGE);
 		}
-#endif /* GPIO_FILTER_VOLTAGE */
-#endif /* HW_HAVE_OPT_FILTER  */
+#endif /* GPIO_ALT_VOLTAGE */
+#endif /* HW_HAVE_ALT_GPIO  */
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -595,10 +595,10 @@ default_flash_load()
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_OPT_FILTER
-	hal.OPT_filter_current = PM_DISABLED;
-	hal.OPT_filter_voltage = PM_DISABLED;
-#endif /* HW_HAVE_OPT_FILTER */
+#ifdef HW_HAVE_ALT_GPIO
+	hal.ALT_current = PM_DISABLED;
+	hal.ALT_voltage = PM_DISABLED;
+#endif /* HW_HAVE_ALT_GPIO */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.node_ID = 0;

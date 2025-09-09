@@ -106,12 +106,14 @@ const char *lk_stod(double *x, const char *s)
 
 	if (d == 0) { return NULL; }
 
-	if (*s == 'n') { v += - 9; s++; }
+	if (*s == 'p') { v += - 12; s++; }
+	else if (*s == 'n') { v += - 9; s++; }
 	else if (*s == 'u') { v += - 6; s++; }
 	else if (*s == 'm') { v += - 3; s++; }
 	else if (*s == 'K') { v += 3; s++; }
 	else if (*s == 'M') { v += 6; s++; }
 	else if (*s == 'G') { v += 9; s++; }
+	else if (*s == 'T') { v += 12; s++; }
 	else if (*s == 'e' || *s == 'E') {
 
 		s = lk_stoi(&e, s + 1);

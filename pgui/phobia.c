@@ -180,7 +180,7 @@ pub_font_layout(struct public *pub)
 		TTF_CloseFont(nk->ttf_font);
 	}
 
-	nk->ttf_font = TTF_OpenFontRW(TTF_RW_droid_sans_normal(), 1, pub->fe_font_h);
+	nk->ttf_font = TTF_OpenFontDPIRW(TTF_RW_droid_sans_normal(), 1, pub->fe_font_h, 72, 72);
 
 	TTF_SetFontHinting(nk->ttf_font, TTF_HINTING_NORMAL);
 
@@ -204,6 +204,7 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.probe_current_bias",
 		"pm.probe_loss_maximal",
 		"pm.forced_hold_D",
+		"pm.flux_uncertain",
 		"pm.hfi_maximal",
 		"pm.eabi_const_Zq",
 		"pm.const_Zp",
@@ -1072,6 +1073,10 @@ pub_open_GP(struct public *pub, const char *file)
 }
 
 static void
+reg_float_prog_um(struct public *pub, const char *sym, const char *name,
+		float fmin, float fmax, int defsel);
+
+static void
 pub_popup_telemetry_grab(struct public *pub, int popup)
 {
 	struct nk_sdl			*nk = pub->nk;
@@ -1092,14 +1097,22 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 	if (nk_popup_begin(ctx, NK_POPUP_STATIC, " ", NK_WINDOW_CLOSABLE
 				| NK_WINDOW_NO_SCROLLBAR, bounds)) {
 
-		struct link_reg			*reg_tlm;
+		struct link_reg			*reg_mode, *reg_line, *reg_MAX;
 
-		reg_tlm = link_reg_lookup(lp, "tlm.mode");
+		reg_mode = link_reg_lookup(lp, "tlm.mode");
+		reg_line = link_reg_lookup(lp, "tlm.line");
+		reg_MAX  = link_reg_lookup(lp, "tlm.length_MAX");
 
-		if (reg_tlm != NULL) {
+		if (reg_mode != NULL) {
 
-			reg_tlm->update = (reg_tlm->lval != 0) ? 100 : 1000;
-			reg_tlm->shown = lp->clock;
+			reg_mode->update = (reg_mode->lval != 0) ? 100 : 1000;
+			reg_mode->shown = lp->clock;
+		}
+
+		if (reg_line != NULL) {
+
+			reg_line->update = (reg_mode->lval != 0) ? 100 : 1000;
+			reg_line->shown = lp->clock;
 		}
 
 		nk_layout_row_dynamic(ctx, pub->fe_base, 1);
@@ -1107,43 +1120,59 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 10);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 6);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 9);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 6);
+		nk_layout_row_template_push_static(ctx, pub->fe_base);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 7);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 6);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_end(ctx);
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Grab into RAM")) {
+		if (nk_button_label(ctx, "Grab")) {
 
-			link_command(lp, "tlm_grab");
+			if (link_command(lp, "tlm_grab") != 0) {
 
-			if (reg_tlm != NULL) {
+				if (reg_mode != NULL) {
 
-				reg_tlm->lval = 1;
+					reg_mode->lval = 1;
+				}
+
+				if (reg_MAX != NULL) {
+
+					reg_MAX->shown = lp->clock;
+					reg_MAX->onefetch = 1;
+				}
 			}
 		}
 
 		nk_spacer(ctx);
 
-		if (nk_button_label(ctx, "Watch on PM")) {
+		if (nk_button_label(ctx, "Watch")) {
 
-			link_command(lp, "tlm_watch");
+			if (link_command(lp, "tlm_watch") != 0) {
 
-			if (reg_tlm != NULL) {
+				if (reg_mode != NULL) {
 
-				reg_tlm->lval = 1;
+					reg_mode->lval = 1;
+				}
+
+				if (reg_MAX != NULL) {
+
+					reg_MAX->shown = lp->clock;
+					reg_MAX->onefetch = 1;
+				}
 			}
 		}
 
 		nk_spacer(ctx);
 
-		if (reg_tlm != NULL && reg_tlm->lval == 0) {
+		if (reg_mode != NULL && reg_mode->lval == 0) {
 
 			if (nk_button_label(ctx, "Flush GP")) {
 
@@ -1175,9 +1204,14 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 				link_command(lp, "tlm_stop");
 
-				if (reg_tlm != NULL) {
+				if (reg_mode != NULL) {
 
-					reg_tlm->lval = 0;
+					reg_mode->lval = 0;
+				}
+
+				if (reg_line != NULL) {
+
+					reg_line->onefetch = 1;
 				}
 			}
 		}
@@ -1198,12 +1232,31 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 					pub->telemetry.wait_GP = 1;
 				}
 
-				if (reg_tlm != NULL) {
+				if (reg_mode != NULL) {
 
-					reg_tlm->lval = 1;
+					reg_mode->lval = 1;
+				}
+
+				if (reg_MAX != NULL) {
+
+					reg_MAX->shown = lp->clock;
+					reg_MAX->onefetch = 1;
 				}
 
 				pub_directory_scan(pub, FILE_TLM_EXT);
+			}
+		}
+
+		nk_spacer(ctx);
+
+		if (nk_button_label(ctx, "Clean")) {
+
+			if (link_command(lp, "tlm_clean") != 0) {
+
+				if (reg_line != NULL) {
+
+					reg_line->onefetch = 1;
+				}
 			}
 		}
 
@@ -1214,7 +1267,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		nk_layout_row_template_begin(ctx, 0);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
-		nk_layout_row_template_push_static(ctx, pub->fe_base * 5);
+		nk_layout_row_template_push_static(ctx, pub->fe_base * 8);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
 		nk_layout_row_template_push_variable(ctx, 1);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
@@ -1222,7 +1275,17 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 
 		nk_spacer(ctx);
 
-		sprintf(pub->lbuf, "# %i", lp->grab_N);
+		nk_label(ctx, "RAM", NK_TEXT_LEFT);
+
+		nk_spacer(ctx);
+
+		nk_prog(ctx,	(reg_line != NULL) ? reg_line->fval : 0.f,
+				(reg_MAX  != NULL) ? reg_MAX->fval  : 1.f, nk_false);
+
+		nk_spacer(ctx);
+		nk_spacer(ctx);
+
+		sprintf(pub->lbuf, "Grab # %i", lp->grab_N);
 		nk_label(ctx, pub->lbuf, NK_TEXT_LEFT);
 
 		nk_spacer(ctx);
@@ -1249,7 +1312,7 @@ pub_popup_telemetry_grab(struct public *pub, int popup)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		height = ctx->current->bounds.h - ctx->current->layout->row.height * 8;
+		height = ctx->current->bounds.h - ctx->current->layout->row.height * 9;
 
 		nk_layout_row_template_begin(ctx, height);
 		nk_layout_row_template_push_static(ctx, pub->fe_base);
@@ -2513,16 +2576,21 @@ reg_float_prog_um(struct public *pub, const char *sym, const char *name,
 
 			/* Use external range */
 		}
-		else if (reg->um[0] == '%') {
-
-			fmin = 0.f;
-			fmax = 100.f;
-		}
 		else if (	reg->started != 0
 				&& reg->fmin < reg->fmax) {
 
 			fmin = reg->fmin;
 			fmax = reg->fmax;
+
+			if (reg->um[0] == '%') {
+
+				fmin = (  0.f < fmin) ?   0.f : fmin;
+				fmax = (100.f > fmax) ? 100.f : fmax;
+			}
+		}
+		else {
+			fmin = reg->fval - 1.f;
+			fmax = reg->fval + 1.f;
 		}
 
 		pce = (int) (1000.f * (reg->fval - fmin) / (fmax - fmin));
@@ -3027,7 +3095,7 @@ page_diagnose(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "AC frequency scan", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "AC frequency scan ...", NK_TEXT_LEFT)) {
 
 			config_storage_path(pub->fe, pub->lbuf, FILE_TLM_IMPEDANCE);
 
@@ -3347,6 +3415,18 @@ page_probe(struct public *pub)
 			if (link_command(lp, "pm_probe_spinup") != 0) {
 
 				lp->command_state = LINK_COMMAND_PENDING;
+
+				reg = link_reg_lookup(lp, "pm.const_lambda");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+				reg = link_reg_lookup(lp, "pm.const_Ja");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+				reg = link_reg_lookup(lp, "pm.zone_threshold");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+				reg = link_reg_lookup(lp, "pm.zone_tol");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 		}
 
@@ -3371,6 +3451,9 @@ page_probe(struct public *pub)
 			if (link_command(lp, "pm_probe_const_flux_linkage") != 0) {
 
 				lp->command_state = LINK_COMMAND_PENDING;
+
+				reg = link_reg_lookup(lp, "pm.const_lambda");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 		}
 
@@ -3379,14 +3462,23 @@ page_probe(struct public *pub)
 			if (link_command(lp, "pm_probe_const_inertia") != 0) {
 
 				lp->command_state = LINK_COMMAND_PENDING;
+
+				reg = link_reg_lookup(lp, "pm.const_Ja");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "NT noise threshold", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "NT zone tolerance", NK_TEXT_LEFT)) {
 
-			if (link_command(lp, "pm_probe_noise_threshold") != 0) {
+			if (link_command(lp, "pm_probe_threshold_tol") != 0) {
 
 				lp->command_state = LINK_COMMAND_PENDING;
+
+				reg = link_reg_lookup(lp, "pm.zone_threshold");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+				reg = link_reg_lookup(lp, "pm.zone_tol");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 			}
 		}
 
@@ -3424,7 +3516,7 @@ page_probe(struct public *pub)
 	reg_float(pub, "pm.probe_current_sine", "Probe sine current");
 	reg_float(pub, "pm.probe_current_bias", "Probe bias current");
 	reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 0, 1);
-	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
+	reg_float(pub, "pm.probe_loss_maximal", "Maximal heating losses");
 	reg_float(pub, "pm.i_maximal", "Maximal machine current");
 
 	reg = link_reg_lookup(lp, "pm.config_LU_FORCED");
@@ -3484,8 +3576,8 @@ page_probe(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 0, 3);
 	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 0, 3);
+	reg_float_um(pub, "pm.zone_tol", "ZONE tolerance", 0, 3);
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3580,15 +3672,15 @@ page_probe(struct public *pub)
 
 		if (config_LU_DRIVE == LU_DRIVE_CURRENT) {
 
-			reg_float_um(pub, "pm.i_setpoint_current", "Current SETPOINT", 0, 0);
+			reg_float_prog_um(pub, "pm.i_setpoint_current", "Current SETPOINT", 0.f, 0.f, 0);
 		}
 		else if (config_LU_DRIVE == LU_DRIVE_TORQUE) {
 
-			reg_float_um(pub, "pm.i_setpoint_torque", "Torque SETPOINT", 0, 0);
+			reg_float_prog_um(pub, "pm.i_setpoint_torque", "Torque SETPOINT", 0.f, 0.f, 0);
 		}
 		else if (config_LU_DRIVE == LU_DRIVE_SPEED) {
 
-			reg_float_um(pub, "pm.s_setpoint_speed", "Speed SETPOINT", 0, 1);
+			reg_float_prog_um(pub, "pm.s_setpoint_speed", "Speed SETPOINT", 0.f, 0.f, 1);
 		}
 	}
 
@@ -3600,6 +3692,9 @@ page_probe(struct public *pub)
 		if (link_command(lp, "pm_probe_detached") != 0) {
 
 			lp->command_state = LINK_COMMAND_PENDING;
+
+			reg = link_reg_lookup(lp, "pm.const_lambda");
+			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 		}
 	}
 
@@ -3707,8 +3802,8 @@ page_hal(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "hal.OPT_filter_current", "OPT current filter");
-	reg_enum_toggle(pub, "hal.OPT_filter_voltage", "OPT voltage filter");
+	reg_enum_toggle(pub, "hal.ALT_current", "ALT current option");
+	reg_enum_toggle(pub, "hal.ALT_voltage", "ALT voltage option");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4560,7 +4655,7 @@ page_config(struct public *pub)
 		reg_float_um(pub, "pm.probe_speed_hold", "Probe hold speed", 0, 1);
 		reg_float_um(pub, "pm.probe_speed_tol", "Settle speed tolerance", 0, 1);
 		reg_float_um(pub, "pm.probe_location_tol", "Settle location tolerance", 0, 0);
-		reg_float(pub, "pm.probe_loss_maximal", "Maximal heating LOSSES");
+		reg_float(pub, "pm.probe_loss_maximal", "Maximal heating losses");
 		reg_float(pub, "pm.probe_gain_P", "Probe loop GAIN P");
 		reg_float(pub, "pm.probe_gain_I", "Probe loop GAIN I");
 
@@ -4571,8 +4666,8 @@ page_config(struct public *pub)
 		reg_float(pub, "pm.fault_current_tol", "Current fault tolerance");
 		reg_float(pub, "pm.fault_accuracy_tol", "Accuracy fault tolerance");
 		reg_float(pub, "pm.fault_terminal_tol", "Terminal fault tolerance");
-		reg_float(pub, "pm.fault_current_halt", "Current halt threshold");
-		reg_float(pub, "pm.fault_voltage_halt", "Voltage halt threshold");
+		reg_float(pub, "pm.fault_current_halt", "Halt current threshold");
+		reg_float(pub, "pm.fault_voltage_halt", "Halt voltage threshold");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -4632,17 +4727,18 @@ page_lu_forced(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "FORCED self-adjustment", NK_TEXT_LEFT)) {
 
-			link_command(lp, "reg pm.forced_maximal -1" "\r\n"
-					 "reg pm.forced_accel -1");
+			if (link_command(lp,	"reg pm.forced_maximal -1" "\r\n"
+						"reg pm.forced_accel -1") != 0) {
 
-			reg = link_reg_lookup(lp, "pm.forced_maximal");
-			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+				reg = link_reg_lookup(lp, "pm.forced_maximal");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 
-			reg = link_reg_lookup(lp, "pm.forced_reverse");
-			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+				reg = link_reg_lookup(lp, "pm.forced_reverse");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
 
-			reg = link_reg_lookup(lp, "pm.forced_accel");
-			if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+				reg = link_reg_lookup(lp, "pm.forced_accel");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+			}
 		}
 
 		nk_menu_end(ctx);
@@ -4673,7 +4769,7 @@ page_lu_forced(struct public *pub)
 	reg_float(pub, "pm.forced_slew_rate", "Current slew rate");
 	reg_float(pub, "pm.forced_fall_rate", "Current fall rate");
 	reg_float(pub, "pm.forced_stop_DC", "Stop DC threshold");
-	reg_float(pub, "pm.forced_gain_LS", "Load torque GAIN");
+	reg_float(pub, "pm.forced_gain_AQ", "Load torque GAIN");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4699,25 +4795,16 @@ page_lu_flux(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "JA inertia probing", NK_TEXT_LEFT)) {
-
-			if (link_command(lp, "pm_probe_const_inertia") != 0) {
-
-				lp->command_state = LINK_COMMAND_PENDING;
-			}
-		}
-
-		if (nk_menu_item_label(ctx, "NT noise threshold", NK_TEXT_LEFT)) {
-
-			if (link_command(lp, "pm_probe_noise_threshold") != 0) {
-
-				lp->command_state = LINK_COMMAND_PENDING;
-			}
-		}
-
 		if (nk_menu_item_label(ctx, "ZONE self-adjustment", NK_TEXT_LEFT)) {
 
-			link_command(lp, "reg pm.zone_threshold -1");
+			if (link_command(lp, "reg pm.zone_threshold -1") != 0) {
+
+				reg = link_reg_lookup(lp, "pm.zone_threshold");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+
+				reg = link_reg_lookup(lp, "pm.zone_tol");
+				if (reg != NULL) { reg += reg->um_sel; reg->onefetch = 1; }
+			}
 		}
 
 		nk_menu_end(ctx);
@@ -4746,6 +4833,7 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.flux_uncertain", "Maximal on UNCERTAIN");
 	reg_float(pub, "pm.flux_trip_tol", "ORTEGA trip tolerance");
 	reg_float(pub, "pm.flux_gain_IN", "ORTEGA initial gain");
 	reg_float(pub, "pm.flux_gain_LO", "ORTEGA flux gain LO");
@@ -4765,9 +4853,8 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float_um(pub, "pm.zone_noise", "ZONE noise level", 0, 3);
 	reg_float_um(pub, "pm.zone_threshold", "ZONE threshold", 0, 3);
-	reg_float(pub, "pm.zone_gain_TH", "ZONE hysteresis TH");
+	reg_float_um(pub, "pm.zone_tol", "ZONE tolerance", 0, 3);
 	reg_float(pub, "pm.zone_gain_LP", "ZONE gain LP");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -5149,7 +5236,7 @@ page_lu_eabi(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "EABI position discard", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "EABI discard", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "reg pm.eabi_ADJUST 0") != 0) {
 
@@ -5471,6 +5558,11 @@ page_wattage(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "pm.fault_voltage_halt", "Halt voltage threshold");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	reg_float_um(pub, "pm.watt_wP_maximal", "Maximal consumption", 1, 1);
 	reg_float_um(pub, "pm.watt_wP_reverse", "Maximal regeneration", 1, 1);
 	reg_float(pub, "pm.watt_uDC_maximal", "DC link voltage HIGH");
@@ -5554,6 +5646,11 @@ page_lp_current(struct public *pub)
 
 	reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake (no reverse)");
 	reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "DRIVE speed tracking");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
+	reg_float(pub, "pm.fault_current_halt", "Halt current threshold");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);

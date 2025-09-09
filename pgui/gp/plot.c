@@ -1778,15 +1778,22 @@ plotDataSubtractWriteSeq(plot_t *pl, int dN, int rN_beg, int id_N_beg, int rN_en
 	}
 }
 
-static void
+static int
 plotDataSubtractResampleSeq(plot_t *pl, int dN)
 {
-	int		N;
+	int		N, linked = 0;
 
 	for (N = 0; N < PLOT_SUBTRACT; ++N) {
 
-		plotDataSubtractResample(pl, dN, N);
+		if (pl->data[dN].sub[N].busy == SUBTRACT_RESAMPLE) {
+
+			plotDataSubtractResample(pl, dN, N);
+
+			linked++;
+		}
 	}
+
+	return linked;
 }
 
 void plotDataSubtractCompute(plot_t *pl, int dN, int sN)
@@ -1907,11 +1914,40 @@ void plotDataSubtractAlternate(plot_t *pl)
 				while (rN != pl->data[dN].tail_N);
 
 				pl->data[dN].sub_N = rN_end;
-
-				plotDataSubtractResampleSeq(pl, dN);
 			}
 
 			pl->data[dN].sub_paused = 0;
+		}
+	}
+
+	for (dN = 0; dN < PLOT_DATASET_MAX; ++dN) {
+
+		if (pl->data[dN].column_N != 0) {
+
+			if (plotDataSubtractResampleSeq(pl, dN) != 0) {
+
+				rN = pl->data[dN].head_N;
+				id_N = pl->data[dN].id_N;
+
+				if (rN != pl->data[dN].tail_N) {
+
+					lCHUNK = (1UL << pl->data[dN].chunk_SHIFT);
+
+					rN_end = rN;
+					id_N_end = id_N;
+
+					do {
+						plotDataSkip(pl, dN, &rN_end, &id_N_end, lCHUNK);
+						plotDataSubtractWriteSeq(pl, dN, rN, id_N, rN_end);
+
+						rN = rN_end;
+						id_N = id_N_end;
+					}
+					while (rN != pl->data[dN].tail_N);
+
+					pl->data[dN].sub_N = rN_end;
+				}
+			}
 		}
 	}
 }
@@ -4637,6 +4673,22 @@ int plotFigureSelected(plot_t *pl)
 	return N;
 }
 
+int plotFigureAnother(plot_t *pl, int fN)
+{
+	int		fN_any, N = 0;
+
+	for (fN_any = 0; fN_any < PLOT_FIGURE_MAX; ++fN_any) {
+
+		if (		fN != fN_any && pl->figure[fN_any].busy != 0
+				&& pl->figure[fN_any].hidden == 0) {
+
+			N++;
+		}
+	}
+
+	return N;
+}
+
 int plotFigureAnyData(plot_t *pl)
 {
 	int		fN, dN = 0;
@@ -5444,6 +5496,52 @@ void plotFigureSubtractDemux(plot_t *pl, int fN, int opSUB, int N)
 	}
 }
 
+void plotFigureSubtractClean(plot_t *pl, int fN, int opSUB)
+{
+	int		dN, cN, cN1, sN, fN_dem;
+
+	if (fN < 0 || fN >= PLOT_FIGURE_MAX) {
+
+		ERROR("Figure number is out of range\n");
+		return ;
+	}
+
+	dN = pl->figure[fN].data_N;
+	cN = pl->figure[fN].column_Y;
+
+	for (fN_dem = 0; fN_dem < PLOT_FIGURE_MAX; ++fN_dem) {
+
+		if (		fN_dem != fN && pl->figure[fN_dem].busy != 0
+				&& pl->figure[fN_dem].hidden == 0
+				&& dN == pl->figure[fN_dem].data_N) {
+
+			cN1 = pl->figure[fN_dem].column_Y;
+			sN = cN1 - pl->data[dN].column_N;
+
+			if (		sN >= 0 && sN < PLOT_SUBTRACT
+					&& pl->data[dN].sub[sN].busy == opSUB
+					&& pl->data[dN].sub[sN].op.filter.column_X == cN) {
+
+				pl->data[dN].sub[sN].busy = SUBTRACT_FREE;
+
+				cN1 = pl->data[dN].sub[sN].op.filter.column_Y;
+				pl->figure[fN_dem].column_Y = cN1;
+
+				if (opSUB == SUBTRACT_FILTER_DEMULTIPLEX) {
+
+					char		labelbuf[PLOT_STRING_MAX], *label;
+
+					label = strchr(pl->figure[fN_dem].label, ' ');
+					label = (*label != 0) ? label + 1 : label;
+
+					strcpy(labelbuf, label);
+					strcpy(pl->figure[fN_dem].label, labelbuf);
+				}
+			}
+		}
+	}
+}
+
 static void
 plotFigureSubtractBinaryLinked(plot_t *pl, int fN, int opSUB, int fNP[2])
 {
@@ -5506,7 +5604,8 @@ plotFigureSubtractBinaryLinked(plot_t *pl, int fN, int opSUB, int fNP[2])
 
 		for (fN = 0; fN < PLOT_FIGURE_MAX; ++fN) {
 
-			if (pl->figure[fN].busy != 0) {
+			if (		fN != fN_1
+					&& pl->figure[fN].busy != 0) {
 
 				if (		dN == pl->figure[fN].data_N
 						&& cN == pl->figure[fN].column_Y) {
