@@ -1493,6 +1493,29 @@ plotDataSubtractWrite(plot_t *pl, int dN, int sN, int rN_beg, int id_N_beg, int 
 		}
 		while (1);
 	}
+	else if (mode == SUBTRACT_BINARY_DIVISION) {
+
+		cNX = pl->data[dN].sub[sN].op.binary.column_X;
+		cNY = pl->data[dN].sub[sN].op.binary.column_Y;
+
+		do {
+			row = plotDataWrite(pl, dN, &rN);
+
+			if (row == NULL)
+				break;
+
+			X1 = (cNX < 0) ? id_N : row[cNX];
+			X2 = (cNY < 0) ? id_N : row[cNY];
+
+			row[cN] = X1 / X2;
+
+			id_N++;
+
+			if (rN == rN_end)
+				break;
+		}
+		while (1);
+	}
 	else if (mode == SUBTRACT_BINARY_HYPOTENUSE) {
 
 		cNX = pl->data[dN].sub[sN].op.binary.column_X;
@@ -4126,6 +4149,7 @@ plotCheckColumnLinked(plot_t *pl, int dN, int cN)
 		else if (	pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_SUBTRACTION
 				|| pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_ADDITION
 				|| pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_MULTIPLICATION
+				|| pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_DIVISION
 				|| pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_HYPOTENUSE) {
 
 			if (		cN == pl->data[dN].sub[sN].op.binary.column_X
@@ -5301,6 +5325,10 @@ plotFigureSubtractAdd(plot_t *pl, int fN, int fN_1, int fN_2, int opSUB)
 	else if (opSUB == SUBTRACT_BINARY_MULTIPLICATION) {
 
 		sprintf(pl->figure[fN].label, "X: %.35s * %.35s", label_1, label_2);
+	}
+	else if (opSUB == SUBTRACT_BINARY_DIVISION) {
+
+		sprintf(pl->figure[fN].label, "N: %.35s / %.35s", label_1, label_2);
 	}
 	else if (opSUB == SUBTRACT_BINARY_HYPOTENUSE) {
 

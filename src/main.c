@@ -12,6 +12,8 @@
 #include "regfile.h"
 #include "shell.h"
 
+#include "app/taskdefs.h"
+
 app_t				ap;
 pmc_t 				pm LD_CCRAM;
 tlm_t				tlm;
@@ -601,22 +603,24 @@ default_flash_load()
 #endif /* HW_HAVE_ALT_GPIO */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
+	net.offset_ID = EPCAN_OFFSET_DEFAULT;
 	net.node_ID = 0;
-	net.log_MODE = EPCAN_LOG_DISABLED;
+	net.log_MSG = EPCAN_LOG_DISABLED;
 	net.timeout_EP = 100 * HW_PWM_FREQUENCY_HZ / 1000;
-	net.ep[0].ID = 10;
+	net.tlm_ID = EPCAN_TLM_ID_DEFAULT;
+	net.ep[0].ID = 0;
 	net.ep[0].rate = HW_PWM_FREQUENCY_HZ / 1000;
 	net.ep[0].range[0] = 0.f;
 	net.ep[0].range[1] = 1.f;
-	net.ep[1].ID = 20;
+	net.ep[1].ID = 0;
 	net.ep[1].rate = net.ep[0].rate;
 	net.ep[1].range[0] = 0.f;
 	net.ep[1].range[1] = 1.f;
-	net.ep[2].ID = 30;
+	net.ep[2].ID = 0;
 	net.ep[2].rate = net.ep[0].rate;
 	net.ep[2].range[0] = 0.f;
 	net.ep[2].range[1] = 1.f;
-	net.ep[3].ID = 40;
+	net.ep[3].ID = 0;
 	net.ep[3].rate = net.ep[0].rate;
 	net.ep[3].range[0] = 0.f;
 	net.ep[3].range[1] = 1.f;
@@ -875,7 +879,7 @@ LD_TASK void task_INIT(void *pData)
 	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	xTaskCreate(task_CMDSH, "CMDSH", 240, NULL, 1, NULL);
+	xTaskCreate(task_CMDSH, "CMDSH", configHUGE_STACK_SIZE, NULL, 1, NULL);
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
@@ -1152,7 +1156,9 @@ void app_control(const reg_t *reg, void (* pvTask) (void *), const char *pcName)
 
 		if (xHandle == NULL) {
 
-			xTaskCreate(pvTask, pcName, 140, (void * const) reg->link, 1, NULL);
+			xTaskCreate(pvTask, pcName, configMINIMAL_STACK_SIZE,
+					(void *) reg->link, AP_TASK_PRIORITY, NULL);
+
 			vTaskDelay((TickType_t) 10);
 		}
 	}
@@ -1187,9 +1193,9 @@ SH_DEF(ap_version)
 	printf("CRC32 %8x (%s)" EOL, ld_crc32, (rc != 0) ? "OK" : "FAULT");
 }
 
-SH_DEF(ap_time)
+SH_DEF(ap_gettick)
 {
-	printf("TCN %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
+	printf("TN %i %i" EOL, log.boot_COUNT, xTaskGetTickCount());
 }
 
 SH_DEF(ap_dbg_task)

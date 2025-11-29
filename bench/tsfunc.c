@@ -108,11 +108,13 @@ void ts_self_adjust()
 
 		printf("const_fb_U = %.3f (V)\n", pm.const_fb_U);
 
-		printf("scale_i_0 = %.3f %.3f %.3f (A)\n", pm.scale_iA[0],
-				pm.scale_iB[0], pm.scale_iC[0]);
-
 		printf("self_STDi = %.3f %.3f %.3f (A)\n", pm.self_STDi[0],
 				pm.self_STDi[1], pm.self_STDi[2]);
+
+		printf("scale_iABC0 = %.3f %.3f %.3f (A)\n", pm.scale_iA[0],
+				pm.scale_iB[0], pm.scale_iC[0]);
+
+		printf("probe_current_hold = %.3f (A)\n", pm.probe_current_hold);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -161,6 +163,12 @@ void ts_probe_impedance()
 		m.Mq[3] = 5.E-1;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
+
+		printf("probe_current_hold = %.3f (A)\n", pm.probe_current_hold);
+		printf("probe_current_sine = %.3f (A)\n", pm.probe_current_sine);
+		printf("probe_current_bias = %.3f (A)\n", pm.probe_current_bias);
+		printf("probe_freq_sine = %.1f (Hz)\n", pm.probe_freq_sine);
+		printf("probe_loss_maximal = %.1f (W)\n", pm.probe_loss_maximal);
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
@@ -217,6 +225,8 @@ void ts_probe_spinup()
 
 			pm.s_setpoint_speed = pm.probe_speed_hold;
 
+			printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+
 			if (ts_wait_spinup() != PM_OK)
 				break;
 
@@ -229,6 +239,7 @@ void ts_probe_spinup()
 
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
+			printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
 		}
 
@@ -269,6 +280,7 @@ void ts_probe_spinup()
 
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
+			printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
 
 			TS_assert_relative(pm.const_lambda, m.lambda);
@@ -298,12 +310,16 @@ void ts_probe_spinup()
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
+
 		sim_runtime(100 / (double) TS_TICK_RATE);
 
 		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
 				* pm.const_fb_U / pm.const_lambda;
 
 		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -312,6 +328,7 @@ void ts_probe_spinup()
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 		printf("const_Ja = %.4E (kgm2) \n", pm.const_Ja * pm.const_Zp * pm.const_Zp);
 
 		TS_assert_relative(pm.const_Ja * pm.const_Zp * pm.const_Zp, m.Jm);
@@ -347,6 +364,8 @@ void ts_adjust_sensor_hall()
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
+		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
@@ -359,6 +378,8 @@ void ts_adjust_sensor_hall()
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
+
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 
 		for (N = 1; N < 7; ++N) {
 
@@ -394,6 +415,8 @@ void ts_adjust_sensor_eabi()
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		printf("zone_threshold = %.2f (rad/s)\n", pm.zone_threshold);
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
@@ -440,6 +463,8 @@ void ts_adjust_sensor_sincos()
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
+		printf("probe_speed_hold = %.2f (rad/s)\n", pm.probe_speed_hold);
+
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
@@ -450,21 +475,29 @@ void ts_adjust_sensor_sincos()
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_SINCOS;
 
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
+
 		sim_runtime(400 / (double) TS_TICK_RATE);
 
 		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
 				* pm.const_fb_U / pm.const_lambda;
 
 		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
 		sim_runtime(400 / (double) TS_TICK_RATE);
 
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
+
 		pm.s_setpoint_speed = 110.f * pm.k_EMAX / 100.f
 				* pm.const_fb_U / pm.const_lambda;
 
 		sim_runtime(400 / (double) TS_TICK_RATE);
+
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 
 		pm.s_setpoint_speed = pm.probe_speed_hold;
 
@@ -472,6 +505,8 @@ void ts_adjust_sensor_sincos()
 
 		if (ts_wait_IDLE() != PM_OK)
 			break;
+
+		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
 
 		for (N = 0; N < 16; ++N) {
 

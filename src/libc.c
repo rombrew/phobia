@@ -878,8 +878,10 @@ const char *stof(float *x, const char *s)
 
 uint32_t crc32u(const void *raw, size_t len)
 {
-	const uint32_t		*ip = (const uint32_t *) raw;
-	uint32_t		crcsum, seq;
+	const uint8_t		*ip = (uint8_t *) raw;
+	const uint8_t		*ipend = ip + len;
+
+	uint32_t		crcsum = 0xFFFFFFFFU;
 
 	static const uint32_t	lt[16] = {
 
@@ -889,21 +891,10 @@ uint32_t crc32u(const void *raw, size_t len)
 		0x9B64C2B0U, 0x86D3D2D4U, 0xA00AE278U, 0xBDBDF21CU
 	};
 
-	crcsum = 0xFFFFFFFFU;
+	while (ip < ipend) {
 
-	while (len >= 4U) {
+		crcsum = crcsum ^ (uint32_t) * (ip++);
 
-		seq = *ip++;
-		len += - 4U;
-
-		crcsum = crcsum ^ seq;
-
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
-		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
 		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
 		crcsum = (crcsum >> 4) ^ lt[crcsum & 0x0FU];
 	}

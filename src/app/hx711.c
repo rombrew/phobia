@@ -8,12 +8,14 @@
 #include "regfile.h"
 #include "shell.h"
 
+#include "taskdefs.h"
+
 /* This is the helper task that reads HX711 ADC.
  * */
 
-LD_TASK void app_HX711(void *pData)
+AP_TASK_DEF(HX711)
 {
-	volatile int		*lknob = (volatile int *) pData;
+	AP_KNOB(knob);
 
 	const int		gpio_DOUT = GPIO_SPI1_MISO;
 	const int		gpio_PD_SCK = GPIO_SPI1_SCK;
@@ -24,8 +26,7 @@ LD_TASK void app_HX711(void *pData)
 
 		printf("Unable to start application when SPI is busy" EOL);
 
-		*lknob = PM_DISABLED;
-		vTaskDelete(NULL);
+		AP_TERMINATE(knob);
 	}
 
 	SPI_startup(HW_SPI_EXT_ID, 0, 0);
@@ -59,7 +60,7 @@ LD_TASK void app_HX711(void *pData)
 			for (N = 0; N < 25; ++N) {
 
 				GPIO_set_HIGH(gpio_PD_SCK);
-				TIM_wait_ns(500);
+				TIM_wait_ns(550);
 
 				DOUT = GPIO_get_STATE(gpio_DOUT);
 
@@ -74,7 +75,7 @@ LD_TASK void app_HX711(void *pData)
 				}
 
 				GPIO_set_LOW(gpio_PD_SCK);
-				TIM_wait_ns(500);
+				TIM_wait_ns(550);
 			}
 
 			/* Store the ADC code in a register.
@@ -82,13 +83,13 @@ LD_TASK void app_HX711(void *pData)
 			ap.load_HX711 = ADC;
 		}
 	}
-	while (*lknob == PM_ENABLED);
+	while (AP_CONDITION(knob));
 
 	GPIO_set_mode_INPUT(gpio_DOUT);
 	GPIO_set_mode_INPUT(gpio_PD_SCK);
 
 	SPI_halt(HW_SPI_EXT_ID);
 
-	vTaskDelete(NULL);
+	AP_TERMINATE(knob);
 }
 

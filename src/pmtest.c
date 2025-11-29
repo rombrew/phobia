@@ -26,10 +26,10 @@ SH_DEF(pm_self_test)
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SELF_STDI);
 		reg_OUTP(ID_PM_SCALE_IA0);
 		reg_OUTP(ID_PM_SCALE_IB0);
 		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
 
 		if (pm.fsm_errno != PM_OK) {
 
@@ -103,10 +103,12 @@ SH_DEF(pm_self_adjust)
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SELF_STDI);
 		reg_OUTP(ID_PM_SCALE_IA0);
 		reg_OUTP(ID_PM_SCALE_IB0);
 		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
+
+		reg_OUTP(ID_PM_PROBE_CURRENT_HOLD);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -176,10 +178,12 @@ SH_DEF(pm_adjust_dcu_voltage)
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SELF_STDI);
 		reg_OUTP(ID_PM_SCALE_IA0);
 		reg_OUTP(ID_PM_SCALE_IB0);
 		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
+
+		reg_OUTP(ID_PM_PROBE_CURRENT_HOLD);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -234,7 +238,7 @@ SH_DEF(pm_scan_impedance)
 		return;
 	}
 
-	tlm_startup(&tlm, tlm.rate_live, TLM_MODE_WATCH);
+	tlm_startup(&tlm, tlm.rate_stream, TLM_MODE_WATCH);
 
 	usual_freq = pm.probe_freq_sine;
 	pm.probe_freq_sine = pm.m_freq / 6.f;
@@ -333,11 +337,11 @@ SH_DEF(hal_PWM_set_Z)
 #ifdef HW_HAVE_FAN_CONTROL
 SH_DEF(hal_FAN_control)
 {
-	int			control;
+	int			fan;
 
-	if (stoi(&control, s) != NULL) {
+	if (stoi(&fan, s) != NULL) {
 
-		if (control != 0) {
+		if (fan != 0) {
 
 			GPIO_set_HIGH(GPIO_FAN_EN);
 		}

@@ -6,6 +6,8 @@
 #include "libc.h"
 #include "main.h"
 
+#include "taskdefs.h"
+
 /* This is the helper task that reads AS5047 magnetic rotary encoder.
  * */
 
@@ -75,16 +77,15 @@ int AS5047_get_EP()
 	return priv_AS5047.EP;
 }
 
-LD_TASK void app_AS5047(void *pData)
+AP_TASK_DEF(AS5047)
 {
-	volatile int		*lknob = (volatile int *) pData;
+	AP_KNOB(knob);
 
 	if (SPI_is_halted(HW_SPI_EXT_ID) != HAL_OK) {
 
 		printf("Unable to start application when SPI is busy" EOL);
 
-		*lknob = PM_DISABLED;
-		vTaskDelete(NULL);
+		AP_TERMINATE(knob);
 	}
 
 	SPI_startup(HW_SPI_EXT_ID, AS5047_FREQUENCY, SPI_LOW_FALLING | SPI_DMA | SPI_NSS_ON);
@@ -118,7 +119,7 @@ LD_TASK void app_AS5047(void *pData)
 			priv_AS5047.PA_errcnt = 0;
 		}
 	}
-	while (*lknob == PM_ENABLED);
+	while (AP_CONDITION(knob));
 
 	ap.proc_get_EP = NULL;
 
@@ -126,6 +127,6 @@ LD_TASK void app_AS5047(void *pData)
 
 	SPI_halt(HW_SPI_EXT_ID);
 
-	vTaskDelete(NULL);
+	AP_TERMINATE(knob);
 }
 

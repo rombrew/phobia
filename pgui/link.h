@@ -5,10 +5,12 @@
 
 #define LINK_REGS_MAX		900
 #define LINK_NAME_MAX		80
-#define LINK_MESSAGE_MAX	500
 #define LINK_COMBO_MAX		40
 #define LINK_EPCAN_MAX		32
 #define LINK_FLASH_MAX		10
+
+#define LINK_LINE_MAX		400
+#define LINK_DATA_MAX		40000
 
 enum {
 	LINK_REG_CONFIG		= 1U,
@@ -80,7 +82,7 @@ struct link_pmc {
 	int			baudrate;
 
 	int			linked;
-	int			uptime;
+	int			time;
 
 	int			clock;
 	int			locked;
@@ -112,10 +114,11 @@ struct link_pmc {
 	}
 	flash[LINK_FLASH_MAX];
 
-	char			unable_warning[LINK_MESSAGE_MAX];
-	int			uptime_warning;
+	int			unable_warning;
+	int			time_warning;
 
 	int			command_state;
+	char			command_grab[LINK_DATA_MAX];
 
 	int			line_N;
 	int			grab_N;

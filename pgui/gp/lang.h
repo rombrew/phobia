@@ -36,6 +36,7 @@ typedef struct {
 	const char	*figure_edit_drawing_menu;
 	const char	*figure_edit_color_menu;
 	const char	*figure_operation_menu;
+	const char	*figure_binary_menu;
 	const char	*legend_menu;
 	const char	*resample_menu[7];
 	const char	*databox_menu;

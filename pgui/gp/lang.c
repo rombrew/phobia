@@ -161,15 +161,22 @@ void langFill(lang_t *la, int lang)
 			"    Scale on Y ...\0"
 			"    Add P polynomial ...\0"
 			"R   Add B subtraction\0"
-			"    Add B addition\0"
-			"    Add B multiplication\0"
-			"    Add B hypotenuse\0"
+			"    Add B operation ...\0"
 			"    Add F differences\0"
 			"    Add F integral\0"
 			"    Add F bit field ...\0"
 			"    Add F low pass ...\0"
 			"    Add F median ...\0"
 			"    Add F demultiplex ...\0"
+
+			"\0";
+
+		la->figure_binary_menu =
+
+			"    Add B addition\0"
+			"    Add B multiplication\0"
+			"    Add B division\0"
+			"    Add B hypotenuse\0"
 
 			"\0";
 
@@ -370,15 +377,22 @@ void langFill(lang_t *la, int lang)
 			"    Масштаб по Y ...\0"
 			"    Добавить P полином ...\0"
 			"R   Добавить B вычитание\0"
-			"    Добавить B сложение\0"
-			"    Добавить B умножение\0"
-			"    Добавить B гипотенузу\0"
+			"    Добавить B операцию ...\0"
 			"    Добавить F производную\0"
 			"    Добавить F интеграл\0"
 			"    Добавить F битовое поле ...\0"
 			"    Добавить F фильтр НЧ ...\0"
 			"    Добавить F медиану ...\0"
 			"    Добавить F демультиплекс ...\0"
+
+			"\0";
+
+		la->figure_binary_menu =
+
+			"    Добавить B сложение\0"
+			"    Добавить B умножение\0"
+			"    Добавить B деление\0"
+			"    Добавить B гипотенузу\0"
 
 			"\0";
 

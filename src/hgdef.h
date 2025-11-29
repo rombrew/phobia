@@ -1,1 +1,1 @@
-#define _HG_REV "default-499-4bae9174772c (2025-08-01)"
+#define _HG_REV "default-503-a487cb5ae3b8 (2025-11-29)"

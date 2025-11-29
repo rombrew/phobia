@@ -12,14 +12,14 @@ enum {
 	TLM_MODE_DISABLED	= 0,
 	TLM_MODE_GRAB,
 	TLM_MODE_WATCH,
-	TLM_MODE_LIVE
+	TLM_MODE_STREAM
 };
 
 typedef struct {
 
 	int		rate_grab;
 	int		rate_watch;
-	int		rate_live;
+	int		rate_stream;
 
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];

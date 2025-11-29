@@ -179,7 +179,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_speed_hold = 900.f;		/* (rad/s) */
 	pm->probe_speed_tol = 50.f;		/* (rad/s) */
 	pm->probe_location_tol = 0.10f;		/* (rad) */
-	pm->probe_loss_maximal = 400.f;		/* (Watt) */
+	pm->probe_loss_maximal = 500.f;		/* (Watt) */
 	pm->probe_gain_P = 5.E-2f;
 	pm->probe_gain_I = 5.E-4f;
 
@@ -403,36 +403,39 @@ pm_auto_maximal_current(pmc_t *pm)
 		pm->i_reverse = pm->i_maximal;
 	}
 
-	/* Hold current based on maximal machine current.
-	 * */
-	maximal_A = pm->i_maximal * 0.8f;
+	if (pm->probe_loss_maximal > M_EPSILON) {
 
-	if (pm->probe_current_hold > maximal_A) {
+		/* Hold current based on maximal machine current.
+		 * */
+		maximal_A = pm->i_maximal * 0.8f;
 
-		pm->probe_current_hold = maximal_A;
-	}
+		if (pm->probe_current_hold > maximal_A) {
 
-	if (pm->forced_hold_D > maximal_A) {
+			pm->probe_current_hold = maximal_A;
+		}
 
-		pm->forced_hold_D = maximal_A;
-	}
+		if (pm->forced_hold_D > maximal_A) {
 
-	/* Sine current based on machine probing current.
-	 * */
-	maximal_A = pm->probe_current_hold * 0.5f;
+			pm->forced_hold_D = maximal_A;
+		}
 
-	if (pm->probe_current_sine > maximal_A) {
+		/* Sine current based on machine probing current.
+		 * */
+		maximal_A = pm->probe_current_hold * 0.5f;
 
-		pm->probe_current_sine = maximal_A;
-	}
+		if (pm->probe_current_sine > maximal_A) {
 
-	/* Bias current based on machine probing current.
-	 * */
-	maximal_A = pm->probe_current_hold * 0.5f;
+			pm->probe_current_sine = maximal_A;
+		}
 
-	if (pm->probe_current_bias > maximal_A) {
+		/* Bias current based on machine probing current.
+		 * */
+		maximal_A = pm->probe_current_hold * 0.5f;
 
-		pm->probe_current_bias = maximal_A;
+		if (pm->probe_current_bias > maximal_A) {
+
+			pm->probe_current_bias = maximal_A;
+		}
 	}
 }
 
@@ -2273,25 +2276,13 @@ pm_lu_FSM(pmc_t *pm)
 	A = lu_F[0] * pm->lu_F[0] + lu_F[1] * pm->lu_F[1];
 	B = lu_F[1] * pm->lu_F[0] - lu_F[0] * pm->lu_F[1];
 
-	if (A > M_EPSILON && B < - hS) {
+	if (likely(A > 0.f && m_fabsf(B) < hS)) {
 
-		m_rotatef(pm->lu_F, - hS);
-	}
-	else if (A > M_EPSILON && B > hS) {
-
-		m_rotatef(pm->lu_F, hS);
-	}
-	else {
 		pm->lu_F[0] = lu_F[0];
 		pm->lu_F[1] = lu_F[1];
-
-		if (A < M_EPSILON) {
-
-			/* We reset current loop integrals in this case.
-			 * */
-			pm->i_integral_D = 0.f;
-			pm->i_integral_Q = 0.f;
-		}
+	}
+	else {
+		m_rotatef(pm->lu_F, (B < 0.f) ? - hS : hS);
 	}
 
 	/* Track the position to get full number of revolutions.

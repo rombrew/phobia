@@ -5,7 +5,7 @@
 
 #include "cmsis/stm32xx.h"
 
-#define HAL_ENABLED		0x3A7CEA65U
+#define HAL_ENABLED		0xDAA92EE2U
 #define HAL_LOG_INC(np)		(((np) < sizeof(log.text) - 1U) ? (np) + 1 : 0)
 
 uint32_t			clock_cpu_hz;
@@ -22,7 +22,7 @@ priv_HAL_t;
 
 static volatile priv_HAL_t	noinit_HAL	LD_NOINIT;
 
-void irq_NMI()
+LD_IRQ void irq_NMI()
 {
 	log_TRACE("IRQ NMI" EOL);
 
@@ -38,35 +38,65 @@ void irq_NMI()
 	hal_system_reset();
 }
 
-void irq_HardFault()
+LD_IRQ void irq_HardFault(void)
 {
+	uint32_t		*sp, lr;
+
+	__asm volatile
+	(
+		 "	tst lr, #4		\n"
+		 "	ite eq			\n"
+		 "	mrseq %0, msp		\n"
+		 "	mrsne %0, psp		\n"
+		 "	mov %1, lr		\n"
+
+		 : "=r" (sp), "=r" (lr) :: "memory"
+	);
+
 	log_TRACE("IRQ HardFault" EOL);
+
+	log_TRACE(" SP   %8x" EOL, (uint32_t) sp);
+	log_TRACE(" EX   %8x" EOL, (uint32_t) lr);
+
+	log_TRACE(" R0   %8x" EOL, sp[0]);
+	log_TRACE(" R1   %8x" EOL, sp[1]);
+	log_TRACE(" R2   %8x" EOL, sp[2]);
+	log_TRACE(" R3   %8x" EOL, sp[3]);
+	log_TRACE(" R12  %8x" EOL, sp[4]);
+	log_TRACE(" LR   %8x" EOL, sp[5]);
+	log_TRACE(" PC   %8x" EOL, sp[6]);
+	log_TRACE(" PSR  %8x" EOL, sp[7]);
+
+	log_TRACE(" HFSR %8x" EOL, SCB->HFSR);
+	log_TRACE(" CFSR %8x" EOL, SCB->CFSR);
+	log_TRACE(" MFAR %8x" EOL, SCB->MMFAR);
+	log_TRACE(" BFAR %8x" EOL, SCB->BFAR);
 
 	hal_system_reset();
 }
 
-void irq_MemoryFault()
+LD_IRQ void irq_MemoryFault()
 {
 	log_TRACE("IRQ MemoryFault" EOL);
 
 	hal_system_reset();
 }
 
-void irq_BusFault()
+LD_IRQ void irq_BusFault()
 {
 	log_TRACE("IRQ BusFault" EOL);
 
 	hal_system_reset();
 }
 
-void irq_UsageFault()
+LD_IRQ void irq_UsageFault()
 {
 	log_TRACE("IRQ UsageFault" EOL);
 
 	hal_system_reset();
 }
 
-void irq_Default()
+LD_IRQ void irq_Default()
 {
 	log_TRACE("IRQ Default" EOL);
 

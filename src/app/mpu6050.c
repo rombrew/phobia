@@ -6,26 +6,27 @@
 #include "libc.h"
 #include "main.h"
 
+#include "taskdefs.h"
+
 /* This is the helper task that reads MPU6050 inertial sensor.
  * */
 
-LD_TASK void app_MPU6050(void *pData)
+AP_TASK_DEF(MPU6050)
 {
-	volatile int		*lknob = (volatile int *) pData;
+	AP_KNOB(knob);
 
 	if (SPI_is_halted(HW_SPI_EXT_ID) != HAL_OK) {
 
 		printf("Unable to start application when SPI is busy" EOL);
 
-		*lknob = PM_DISABLED;
-		vTaskDelete(NULL);
+		AP_TERMINATE(knob);
 	}
 
 	do {
 		/* TODO */
 	}
-	while (*lknob == PM_ENABLED);
+	while (AP_CONDITION(knob));
 
-	vTaskDelete(NULL);
+	AP_TERMINATE(knob);
 }
 

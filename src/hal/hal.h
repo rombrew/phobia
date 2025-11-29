@@ -29,6 +29,7 @@
 #endif /* HW_HAVE_USB_CDC_ACM */
 #include "wd.h"
 
+#define LD_IRQ				__attribute__ ((naked))
 #define LD_RAMFUNC			__attribute__ ((section(".ramfunc")))	\
 					__attribute__ ((noinline, used))
 

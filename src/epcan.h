@@ -1,45 +1,44 @@
 #ifndef _H_EPCAN_
 #define _H_EPCAN_
 
-#define EPCAN_ID(node_ID, func)		(1024U | (node_ID) << 5 | (func))
+#define EPCAN_ID_UNMASK			(0x1FFFFE00U)
 
-#define EPCAN_GET_NODE(ID)		(((ID) >> 5) & 31U)
-#define EPCAN_GET_FUNC(ID)		((ID) & 31U)
+#define EPCAN_ID_OFFSET(numb)		(net.offset_ID + (numb))
+#define EPCAN_ID_NODE(node, func)	(((node) << 3) | (func))
 
-/* Network functions.
- * */
-#define EPCAN_ID_NET_SURVEY		EPCAN_ID(31U, 31U)
-#define EPCAN_ID_NET_ASSIGN		EPCAN_ID(31U, 29U)
+#define EPCAN_ID_CAN(node, func)	(EPCAN_ID_NODE(node, func) + EPCAN_ID_OFFSET(256U))
 
-/* Lower IDs is for DATA streaming.
- * */
-#define	EPCAN_ID_NODE_BASE		EPCAN_ID(0U, 0U)
+#define EPCAN_GET_NODE(ID)		((((ID) - EPCAN_ID_OFFSET(256U)) >> 3) & 31U)
+#define EPCAN_GET_FUNC(ID)		(((ID)  - EPCAN_ID_OFFSET(256U)) & 7U)
 
-#define EPCAN_FILTER_MATCH		EPCAN_ID(31U, 31U)
-#define EPCAN_FILTER_NETWORK		EPCAN_ID(31U, 0U)
+#define EPCAN_ID_NET_SURVEY		EPCAN_ID_CAN(31U, 7U)
+#define EPCAN_ID_NET_ASSIGN		EPCAN_ID_CAN(31U, 6U)
 
-/* The maximal number of nodes in the network.
- * */
-#define EPCAN_NODES_MAX			30
+#define EPCAN_MATCH_ID_CAN		(EPCAN_ID_UNMASK | EPCAN_ID_NODE(31U, 7U))
+#define EPCAN_MATCH_NET			(EPCAN_ID_UNMASK | EPCAN_ID_NODE(31U, 0U))
+#define EPCAN_MATCH_FUNC		(EPCAN_ID_UNMASK | EPCAN_ID_NODE(0U,  7U))
+
+#define EPCAN_OFFSET_DEFAULT		1024U
+#define EPCAN_TLM_ID_DEFAULT		192
 
 enum {
 	EPCAN_NODE_REQ			= 0,
 	EPCAN_NODE_ACK,
 	EPCAN_NODE_RX,				/* receive from remote node */
-	EPCAN_NODE_TX,				/* send to remote node */
-	EPCAN_NODE_GET,				/* request to GET register data */
-	EPCAN_NODE_SET,				/* request to SET register data */
-	EPCAN_NODE_DATA				/* reply to the GET request */
+	EPCAN_NODE_TX				/* send to remote node */
 };
 
 enum {
 	EPCAN_REQ_NOTHING		= 0,
-	EPCAN_REQ_FLOW_TX_PAUSE			/* node flow control */
+	EPCAN_REQ_FLOW_TX_PAUSE,		/* node flow control */
+	EPCAN_REQ_REG_GET,			/* request to GET register */
+	EPCAN_REQ_REG_SET			/* request to SET register */
 };
 
 enum {
 	EPCAN_ACK_NOTHING		= 0,
-	EPCAN_ACK_NETWORK_REPLY			/* reply to network survey */
+	EPCAN_ACK_NETWORK_REPLY,		/* reply to network survey */
+	EPCAN_ACK_REG_DATA			/* reply to the GET request */
 };
 
 enum {
@@ -61,14 +60,14 @@ enum {
 };
 
 enum {
-	EPCAN_PIPE_MAX			= 4,
+	EPCAN_EP_MAX			= 4
 };
 
 typedef struct {
 
-	int		MODE;		/* mode of EP */
-	int		ID;		/* CAN ID of the endpoint (EP) */
-	int		clock_ID;	/* CAN ID used as clock */
+	int		MODE;		/* operation mode of endpoint (EP) */
+	int		ID;		/* ID of the endpoint (EP) */
+	int		inject_ID;	/* injected EP ID */
 
 	float		reg_DATA;	/* actual DATA */
 	int		reg_ID;		/* linked register ID */
@@ -87,11 +86,15 @@ epcan_pipe_t;
 
 typedef struct {
 
-	int			node_ID;	/* EPCAN node ID */
-	int			log_MODE;
+	uint32_t		offset_ID;	/* CAN ID network offset */
+	int			node_ID;	/* ID of this node */
+
+	int			log_MSG;
 	int			timeout_EP;
 
-	epcan_pipe_t		ep[EPCAN_PIPE_MAX];
+	int			tlm_ID;		/* EP ID of telemetry */
+
+	epcan_pipe_t		ep[EPCAN_EP_MAX];
 }
 epcan_t;
 
@@ -99,6 +102,7 @@ extern epcan_t			net;
 
 void EPCAN_pipe_REGULAR();
 
+void EPCAN_send_msg(CAN_msg_t *msg);
 void EPCAN_putc(int c);
 
 void EPCAN_startup();

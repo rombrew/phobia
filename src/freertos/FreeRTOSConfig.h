@@ -86,6 +86,9 @@
 #define INCLUDE_vTaskDelay				1
 #define INCLUDE_xTaskGetHandle				1
 
+#define configDEFAULT_STACK_SIZE			190
+#define configHUGE_STACK_SIZE				240
+
 #define configPRIO_BITS			4        /* 15 priority levels */
 
 #define configKERNEL_INTERRUPT_PRIORITY 	(15 << (8 - configPRIO_BITS))

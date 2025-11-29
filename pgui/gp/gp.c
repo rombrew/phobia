@@ -1056,7 +1056,7 @@ gpMakeColumnSelectMenu(gpcon_t *gp, int dN)
 			sN = cN - rd->data[dN].column_N;
 
 			sprintf(gp->sbuf[0], "[%3i] %c ", cN,
-					" TFSEPRAXHDIBLMU?" [gp->pl->data[dN].sub[sN].busy]);
+					" TFSEPRAXNHDIBLMU?" [gp->pl->data[dN].sub[sN].busy]);
 
 			if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_TIME_MEDIAN) {
 
@@ -1096,6 +1096,7 @@ gpMakeColumnSelectMenu(gpcon_t *gp, int dN)
 			else if (gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_SUBTRACTION
 					|| gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_ADDITION
 					|| gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_MULTIPLICATION
+					|| gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_DIVISION
 					|| gp->pl->data[dN].sub[sN].busy == SUBTRACT_BINARY_HYPOTENUSE) {
 
 				sprintf(gp->sbuf[0] + strlen(gp->sbuf[0]), "(%i, %i)",
@@ -2553,8 +2554,6 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 
 					mu->hidden_N[0] = 5;
 					mu->hidden_N[1] = 6;
-					mu->hidden_N[2] = 7;
-					mu->hidden_N[3] = 8;
 				}
 
 				N = plotFigureAnother(pl, gp->fig_N);
@@ -2652,47 +2651,42 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 				break;
 
 			case 6:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_ADDITION);
+				menuRaise(mu, 3026, gp->la->figure_binary_menu,
+						mu->box_X, mu->box_Y);
+
+				gp->stat = GP_MENU;
 				break;
 
 			case 7:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_MULTIPLICATION);
-				break;
-
-			case 8:
-				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_HYPOTENUSE);
-				break;
-
-			case 9:
 				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_DIFFERENCE, 0.);
 				break;
 
-			case 10:
+			case 8:
 				plotFigureSubtractFilter(pl, gp->fig_N, SUBTRACT_FILTER_CUMULATIVE, 0.);
 				break;
 
-			case 11:
+			case 9:
 				editRaise(ed, 8, gp->la->bit_number_edit,
 						"0", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 12:
+			case 10:
 				editRaise(ed, 13, gp->la->low_pass_edit,
 						"0.1", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 13:
+			case 11:
 				editRaise(ed, 19, gp->la->median_unwrap_edit,
 						"15", mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
 				break;
 
-			case 14:
+			case 12:
 				editRaise(ed, 27, gp->la->demultiplex_edit,
 						"0", mu->box_X, mu->box_Y);
 
@@ -2764,6 +2758,27 @@ gpMenuHandle(gpcon_t *gp, int menu_N, int item_N)
 						mu->box_X, mu->box_Y);
 
 				gp->stat = GP_EDIT;
+				break;
+		}
+	}
+	else if (menu_N == 3026) {
+
+		switch (item_N) {
+
+			case 0:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_ADDITION);
+				break;
+
+			case 1:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_MULTIPLICATION);
+				break;
+
+			case 2:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_DIVISION);
+				break;
+
+			case 3:
+				plotFigureSubtractSwitch(pl, SUBTRACT_BINARY_HYPOTENUSE);
 				break;
 		}
 	}

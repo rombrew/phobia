@@ -4,10 +4,11 @@
 #include "libc.h"
 
 #define CAN_BITFREQ_HZ		1000000U
+#define CAN_EXTENID_MIN		2048U
 
 typedef struct {
 
-	uint16_t		ID;
+	uint32_t		ID;
 	uint16_t		len;
 
 	union {
@@ -24,7 +25,7 @@ CAN_msg_t;
 void CAN_startup();
 void CAN_configure();
 
-void CAN_bind_ID(int fs, int mb, int ID, int mask_ID);
+void CAN_bind_ID(int fn, int mb, uint32_t ID, uint32_t mask_ID);
 int CAN_send_msg(const CAN_msg_t *msg);
 
 int CAN_errate();

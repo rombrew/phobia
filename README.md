@@ -78,7 +78,7 @@ There are a few videos about PMC on [YouTube](https://www.youtube.com/@romblv).
 	- Detached voltage monitoring.
 	- Current control PI regulator with feedforward compensation.
 	- Speed control PID regulator with load torque compensation.
-	- Location control with constant acceleration regulator.
+	- Absolute location control with constant acceleration regulator.
 
 - Adjustable constraints:
 	- Phase current (forward and reverse, on HFI current, weakening current).
@@ -87,7 +87,7 @@ There are a few videos about PMC on [YouTube](https://www.youtube.com/@romblv).
 	- DC link current consumption and regeneration.
 	- DC link overvoltage and undervoltage.
 	- Maximal speed and acceleration (forward and reverse).
-	- Absolute location limits in servo operation.
+	- Absolute location limits in case of servo operation.
 
 - Input control interfaces:
 	- Analog input knob and brake signal.
@@ -101,7 +101,7 @@ There are a few videos about PMC on [YouTube](https://www.youtube.com/@romblv).
 	- Up to 30 nodes in peer network.
 	- Network survey on request (no heartbeat messages).
 	- Automated node address assignment.
-	- IO forwarding to log in to the remote node CLI.
+	- IO forwarding for remote node CLI login.
 	- Flexible configurable data transfers.
 
 - Available information:

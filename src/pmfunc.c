@@ -134,10 +134,16 @@ SH_DEF(pm_probe_impedance)
 		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 
 		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SELF_STDI);
 		reg_OUTP(ID_PM_SCALE_IA0);
 		reg_OUTP(ID_PM_SCALE_IB0);
 		reg_OUTP(ID_PM_SCALE_IC0);
-		reg_OUTP(ID_PM_SELF_STDI);
+
+		reg_OUTP(ID_PM_PROBE_CURRENT_HOLD);
+		reg_OUTP(ID_PM_PROBE_CURRENT_SINE);
+		reg_OUTP(ID_PM_PROBE_CURRENT_BIAS);
+		reg_OUTP(ID_PM_PROBE_FREQ_SINE);
+		reg_OUTP(ID_PM_PROBE_LOSS_MAXIMAL);
 
 		if (pm.fsm_errno != PM_OK)
 			break;
@@ -185,6 +191,10 @@ SH_DEF(pm_probe_impedance)
 	tlm_halt(&tlm);
 }
 
+SH_DEF(pm_probe_saturation)
+{
+}
+
 SH_DEF(pm_probe_spinup)
 {
 	int		backup_LU_DRIVE;
@@ -200,6 +210,9 @@ SH_DEF(pm_probe_spinup)
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
@@ -221,6 +234,7 @@ SH_DEF(pm_probe_spinup)
 			if (pm_wait_IDLE() != PM_OK)
 				break;
 
+			reg_OUTP(ID_PM_LU_WS_RPM);
 			reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 		}
 
@@ -254,6 +268,7 @@ SH_DEF(pm_probe_spinup)
 			if (pm_wait_IDLE() != PM_OK)
 				break;
 
+			reg_OUTP(ID_PM_LU_WS_RPM);
 			reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 		}
 
@@ -276,11 +291,15 @@ SH_DEF(pm_probe_spinup)
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
+
 		vTaskDelay((TickType_t) 100);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 400);
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -289,6 +308,7 @@ SH_DEF(pm_probe_spinup)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
 		reg_OUTP(ID_PM_CONST_JA_KGM2);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -335,6 +355,9 @@ SH_DEF(pm_probe_detached)
 	do {
 		pm.fsm_req = PM_STATE_LU_DETACHED;
 
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_RPM);
+
 		if (pm_wait_motion() != PM_OK)
 			break;
 
@@ -345,6 +368,7 @@ SH_DEF(pm_probe_detached)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
 		reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 
 		pm.fsm_req = PM_STATE_LU_SHUTDOWN;
@@ -392,6 +416,7 @@ SH_DEF(pm_probe_const_flux_linkage)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
 		reg_OUTP(ID_PM_CONST_LAMBDA_KV);
 	}
 	while (0);
@@ -422,12 +447,16 @@ SH_DEF(pm_probe_const_inertia)
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_INERTIA;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
+
 		vTaskDelay((TickType_t) 100);
 
 		backup_wSP = reg_GET_F(ID_PM_S_SETPOINT_SPEED);
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 400);
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, backup_wSP);
 
@@ -436,6 +465,7 @@ SH_DEF(pm_probe_const_inertia)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
 		reg_OUTP(ID_PM_CONST_JA_KGM2);
 	}
 	while (0);
@@ -467,6 +497,7 @@ SH_DEF(pm_probe_threshold_tol)
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
 		reg_OUTP(ID_PM_ZONE_TOL_U);
 	}
 	while (0);
@@ -496,6 +527,9 @@ SH_DEF(pm_adjust_sensor_hall)
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
+
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
@@ -510,6 +544,8 @@ SH_DEF(pm_adjust_sensor_hall)
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_OUTP(ID_PM_HALL_ST1);
 		reg_OUTP(ID_PM_HALL_ST2);
@@ -557,6 +593,9 @@ SH_DEF(pm_adjust_sensor_eabi)
 
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
+
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_ZONE_THRESHOLD_RPM);
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
@@ -617,6 +656,9 @@ SH_DEF(pm_adjust_sensor_sincos)
 	do {
 		pm.fsm_req = PM_STATE_LU_STARTUP;
 
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_PROBE_SPEED_HOLD_RPM);
+
 		if (pm_wait_IDLE() != PM_OK)
 			break;
 
@@ -629,19 +671,27 @@ SH_DEF(pm_adjust_sensor_sincos)
 
 		pm.fsm_req = PM_STATE_ADJUST_SENSOR_SINCOS;
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
+
 		vTaskDelay((TickType_t) 400);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 400);
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
 		vTaskDelay((TickType_t) 400);
 
+		reg_OUTP(ID_PM_LU_WS_RPM);
+
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED_PC, 110.f);
 
 		vTaskDelay((TickType_t) 400);
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_SET_F(ID_PM_S_SETPOINT_SPEED, pm.probe_speed_hold);
 
@@ -649,6 +699,8 @@ SH_DEF(pm_adjust_sensor_sincos)
 
 		if (pm_wait_IDLE() != PM_OK)
 			break;
+
+		reg_OUTP(ID_PM_LU_WS_RPM);
 
 		reg_OUTP(ID_PM_SINCOS_CONST0);
 		reg_OUTP(ID_PM_SINCOS_CONST1);

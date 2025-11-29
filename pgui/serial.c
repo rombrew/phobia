@@ -176,7 +176,7 @@ async_fgets(struct async_priv *ap, char *sbuf, int n)
 }
 
 static int
-async_space_available(struct async_priv *ap)
+async_space(struct async_priv *ap)
 {
 	int		rp, wp, nr;
 
@@ -773,7 +773,7 @@ int serial_fputs(struct serial_fd *fd, const char *s)
 {
 	int		av, rc;
 
-	av = async_space_available(fd->txq);
+	av = async_space(fd->txq);
 
 	if (strlen(s) < av) {
 

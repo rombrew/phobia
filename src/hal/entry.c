@@ -172,7 +172,7 @@ init_bss(uint32_t *long_d, const uint32_t *long_e)
 	while (long_d < long_e) { * (long_d++) = 0U; }
 }
 
-void irq_Reset()
+LD_IRQ void irq_Reset()
 {
 	hal_bootload();
 

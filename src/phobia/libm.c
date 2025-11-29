@@ -61,7 +61,7 @@ void m_rotatef(float x[2], float r)
 {
 	float           q, s, c;
 
-	/* Rotate the vector \x by angle \r.
+	/* This function rotates the vector \x by small angle \r.
 	 * */
 
 	q = r * r;
@@ -77,12 +77,18 @@ void m_normalizef(float x[2])
 {
 	float		l;
 
-	/* Approximate normalization of the vector \x.
+	/* This is approximate normalization of the vector \x.
 	 * */
 
 	l = x[0] * x[0] + x[1] * x[1];
 
-	l = likely(l < 2.f) ? (3.f - l) * 0.5f : m_fast_rsqrtf(l);
+	if (likely(l < 2.f)) {
+
+		l = 1.5f - l * 0.5f;
+	}
+	else {
+		l = m_fast_rsqrtf(l);
+	}
 
 	x[0] *= l;
 	x[1] *= l;
@@ -92,8 +98,11 @@ void m_rsumf(float *sum, float *rem, float x)
 {
 	float		y, m;
 
-	/* Kahan compensated summation.
+	/* Kahan compensated summation algorithm.
 	 * */
+
+	/* WARNING: Take care the compilation options do not include
+	 * associative math */
 
 	y = x - *rem;
 	m = *sum + y;

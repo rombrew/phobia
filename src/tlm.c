@@ -4,6 +4,9 @@
 #include "hal/hal.h"
 
 #include "tlm.h"
+#ifdef HW_HAVE_NETWORK_EPCAN
+#include "epcan.h"
+#endif /* HW_HAVE_NETWORK_EPCAN */
 #include "libc.h"
 #include "main.h"
 #include "regfile.h"
@@ -13,7 +16,7 @@ void tlm_reg_default(tlm_t *tlm)
 {
 	tlm->rate_grab = 1;
 	tlm->rate_watch = (int) (hal.PWM_frequency / 1000.f + 0.5f);
-	tlm->rate_live =  (int) (hal.PWM_frequency / 10.f   + 0.5f);
+	tlm->rate_stream = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
 	tlm->reg_ID[1] = ID_PM_FSM_STATE;
@@ -47,7 +50,7 @@ void tlm_reg_grab(tlm_t *tlm)
 
 	if (tlm->skip == 0) {
 
-		rval_t		*rdata = tlm->rdata + tlm->layout_N * tlm->line;
+		rval_t		*rdata = tlm->rdata + tlm->line * tlm->layout_N;
 
 		for (N = 0; N < tlm->layout_N; ++N) {
 
@@ -194,7 +197,7 @@ tlm_reg_label(tlm_t *tlm)
 static void
 tlm_reg_flush_line(tlm_t *tlm, int line)
 {
-	const rval_t		*rdata = tlm->rdata + tlm->layout_N * line;
+	const rval_t		*rdata = tlm->rdata + line * tlm->layout_N;
 	int			N;
 
 	for (N = 0; N < tlm->layout_N; ++N) {
@@ -254,7 +257,7 @@ SH_DEF(tlm_flush_sync)
 	while (line != tlm.line);
 }
 
-SH_DEF(tlm_live_sync)
+SH_DEF(tlm_stream_sync)
 {
 	float			time, dT;
 	int			line, clock, rate, precision;
@@ -262,17 +265,17 @@ SH_DEF(tlm_live_sync)
 	if (tlm.mode != TLM_MODE_DISABLED)
 		return ;
 
-	rate = tlm.rate_live;
+	rate = tlm.rate_stream;
 
 	if (stoi(&rate, s) != NULL) {
 
 		int		rate_minimal = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
 		rate =    (rate < rate_minimal) ? rate_minimal
-			: (rate > tlm.rate_live) ? tlm.rate_live : rate;
+			: (rate > tlm.rate_stream) ? tlm.rate_stream : rate;
 	}
 
-	tlm_startup(&tlm, rate, TLM_MODE_LIVE);
+	tlm_startup(&tlm, rate, TLM_MODE_STREAM);
 
 	line = tlm.line;
 	clock = 0;
@@ -311,4 +314,107 @@ SH_DEF(tlm_live_sync)
 
 	tlm_halt(&tlm);
 }
+
+#ifdef HW_HAVE_NETWORK_EPCAN
+LD_TASK void task_EPCAN_TLM(void *pData)
+{
+	CAN_msg_t		msg;
+
+	float			dTu;
+	int			line, clock;
+
+	line = tlm.line;
+	clock = 0;
+
+	dTu = ((float) tlm.rate / hal.PWM_frequency) * 1000000.f;
+
+	do {
+		vTaskDelay((TickType_t) 1);
+
+		while (tlm.line != line) {
+
+			const rval_t	*rdata = tlm.rdata + line * tlm.layout_N;
+			int		N;
+
+			msg.ID = EPCAN_ID_OFFSET(net.tlm_ID);
+			msg.len = 4U;
+
+			/* To keep the precision of large integers.
+			 * */
+			msg.payload.l[0] = ((uint32_t) ((float) (clock >> 16) * dTu) << 16)
+					  + (uint32_t) ((float) (clock & 0xFFFFU) * dTu);
+
+			for (N = 0; N < tlm.layout_N; ++N) {
+
+				const reg_t	*reg = tlm.layout_reg[N];
+				rval_t		rval = rdata[N];
+
+				if (reg->proc != NULL) {
+
+					reg_t		lreg = { .link = &rval };
+
+					reg->proc(&lreg, &rval, NULL);
+				}
+
+				if (msg.len == 0U) {
+
+					msg.len = 4U;
+
+					msg.payload.f[0] = rval.f;
+				}
+				else {
+					msg.len = 8U;
+
+					msg.payload.f[1] = rval.f;
+
+					EPCAN_send_msg(&msg);
+
+					msg.ID += 1U;
+					msg.len = 0U;
+				}
+			}
+
+			if (msg.len != 0U) {
+
+				EPCAN_send_msg(&msg);
+			}
+
+			line = (line < (tlm.length_MAX - 1)) ? line + 1 : 0;
+
+			clock += 1;
+
+			hal_memory_fence();
+		}
+	}
+	while (tlm.mode == TLM_MODE_STREAM);
+
+	vTaskDelete(NULL);
+}
+#endif /* HW_HAVE_NETWORK_EPCAN */
+
+#ifdef HW_HAVE_NETWORK_EPCAN
+SH_DEF(tlm_stream_net_async)
+{
+	int			rate;
+
+	if (tlm.mode != TLM_MODE_DISABLED)
+		return ;
+
+	rate = tlm.rate_stream;
+
+	if (stoi(&rate, s) != NULL) {
+
+		int		rate_minimal = (int) (hal.PWM_frequency / 10.f + 0.5f);
+
+		rate =    (rate < rate_minimal) ? rate_minimal
+			: (rate > tlm.rate_stream) ? tlm.rate_stream : rate;
+	}
+
+	tlm_startup(&tlm, rate, TLM_MODE_STREAM);
+
+	/* Create task for asynchronous message packaging.
+	 * */
+	xTaskCreate(task_EPCAN_TLM, "EPCAN_TLM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+}
+#endif /* HW_HAVE_NETWORK_EPCAN */
 

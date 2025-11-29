@@ -10,6 +10,8 @@ enum {
 
 enum {
 #include "regdefs.h"
+
+	ID_MAX
 };
 
 typedef union {

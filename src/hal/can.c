@@ -6,7 +6,18 @@ void irq_CAN1_TX() { }
 static void
 irq_CAN1_RX(int mb)
 {
-	hal.CAN_msg.ID = (uint16_t) (CAN1->sFIFOMailBox[mb].RIR >> CAN_RI0R_STID_Pos);
+	uint32_t	xRI0R;
+
+	xRI0R = CAN1->sFIFOMailBox[mb].RIR;
+
+	if (xRI0R & CAN_RI0R_IDE) {
+
+		hal.CAN_msg.ID = (uint32_t) (xRI0R >> CAN_RI0R_EXID_Pos);
+	}
+	else {
+		hal.CAN_msg.ID = (uint32_t) (xRI0R >> CAN_RI0R_STID_Pos);
+	}
+
 	hal.CAN_msg.len = (uint16_t) (CAN1->sFIFOMailBox[mb].RDTR & CAN_RDT0R_DLC_Msk);
 
 	hal.CAN_msg.payload.l[0] = CAN1->sFIFOMailBox[mb].RDLR;
@@ -150,25 +161,35 @@ void CAN_configure()
 	}
 }
 
-void CAN_bind_ID(int fs, int mb, int ID, int mask_ID)
+void CAN_bind_ID(int fn, int mb, uint32_t ID, uint32_t mID)
 {
-	uint32_t		BFS = (1U << fs);
+	uint32_t		xFR1, xFR2, bFN = (1U << fn);
 
 	CAN1->FMR |= CAN_FMR_FINIT;
-	CAN1->FA1R &= ~BFS;
+	CAN1->FA1R &= ~bFN;
 
-	if (ID != 0) {
+	if (ID != 0U) {
 
-		CAN1->FM1R &= ~BFS;
-		CAN1->FS1R |= BFS;
+		CAN1->FM1R &= ~bFN;
+		CAN1->FS1R |= bFN;
 
-		CAN1->FFA1R &= ~BFS;
-		CAN1->FFA1R |= (mb == 1) ? BFS : 0U;
+		CAN1->FFA1R &= ~bFN;
+		CAN1->FFA1R |= (mb == 1) ? bFN : 0U;
 
-		CAN1->sFilterRegister[fs].FR1 = (ID << CAN_F0R1_FB21_Pos);
-		CAN1->sFilterRegister[fs].FR2 = (mask_ID << CAN_F0R2_FB21_Pos) + 6U;
+		if (ID >= CAN_EXTENID_MIN) {
 
-		CAN1->FA1R |= BFS;
+			xFR1 = (ID  << CAN_F0R1_FB3_Pos) | 4U;
+			xFR2 = (mID << CAN_F0R1_FB3_Pos) | 6U;
+		}
+		else {
+			xFR1 = (ID  << CAN_F0R1_FB21_Pos);
+			xFR2 = (mID << CAN_F0R1_FB21_Pos) | 6U;
+		}
+
+		CAN1->sFilterRegister[fn].FR1 = xFR1;
+		CAN1->sFilterRegister[fn].FR2 = xFR2;
+
+		CAN1->FA1R |= bFN;
 	}
 
 	CAN1->FMR &= ~CAN_FMR_FINIT;
@@ -176,7 +197,7 @@ void CAN_bind_ID(int fs, int mb, int ID, int mask_ID)
 
 int CAN_send_msg(const CAN_msg_t *msg)
 {
-	uint32_t		xTSR;
+	uint32_t		xTSR, xTI0R;
 	int			mb, irq;
 
 	irq = hal_lock_irq();
@@ -193,7 +214,17 @@ int CAN_send_msg(const CAN_msg_t *msg)
 		return HAL_FAULT;
 	}
 
-	CAN1->sTxMailBox[mb].TIR = (uint32_t) msg->ID << CAN_TI0R_STID_Pos;
+	if (msg->ID >= CAN_EXTENID_MIN) {
+
+		xTI0R = ((uint32_t) (msg->ID) << CAN_TI0R_EXID_Pos);
+
+		xTI0R |= CAN_TI0R_IDE;
+	}
+	else {
+		xTI0R = ((uint32_t) (msg->ID) << CAN_TI0R_STID_Pos);
+	}
+
+	CAN1->sTxMailBox[mb].TIR = xTI0R;
 	CAN1->sTxMailBox[mb].TDTR = (uint32_t) msg->len;
 
 	CAN1->sTxMailBox[mb].TDLR = msg->payload.l[0];

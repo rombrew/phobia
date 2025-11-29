@@ -7,6 +7,8 @@
 #include "main.h"
 #include "regfile.h"
 
+#include "taskdefs.h"
+
 /* The application allows you to control the speed using push-buttons. This
  * control is convenient for drill machine and other tools.
  *
@@ -17,9 +19,9 @@
 
 #define BUTTON_DEBOUNCE		4
 
-LD_TASK void app_BUTTON(void *pData)
+AP_TASK_DEF(BUTTON)
 {
-	volatile int		*lknob = (volatile int *) pData;
+	AP_KNOB(knob);
 
 	TickType_t		xWake;
 
@@ -43,8 +45,7 @@ LD_TASK void app_BUTTON(void *pData)
 
 		printf("Unable to start application when PPM function is enabled" EOL);
 
-		*lknob = PM_DISABLED;
-		vTaskDelete(NULL);
+		AP_TERMINATE(knob);
 	}
 
 	GPIO_set_mode_INPUT(gpio_A);
@@ -165,8 +166,8 @@ LD_TASK void app_BUTTON(void *pData)
 			event_B = 0;
 		}
 	}
-	while (*lknob == PM_ENABLED);
+	while (AP_CONDITION(knob));
 
-	vTaskDelete(NULL);
+	AP_TERMINATE(knob);
 }
 

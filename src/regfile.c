@@ -16,7 +16,7 @@
 						(rval_t * const) &(l q),	\
 						(void * const) p, (void * const) t }
 
-#define REGFILE_MAX				(sizeof(regfile) / sizeof(reg_t) - 1U)
+#define REG_MAX				(sizeof(regfile) / sizeof(reg_t) - 1U)
 
 static int		null;
 
@@ -113,6 +113,23 @@ reg_proc_CAN_epfreq(const reg_t *reg, rval_t *lval, const rval_t *rval)
 	else if (rval != NULL) {
 
 		reg->link->i = (int) (hal.PWM_frequency / rval->f + 0.5f);
+	}
+}
+
+static void
+reg_proc_CAN_offset(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	if (lval != NULL) {
+
+		lval->i = reg->link->i;
+	}
+	else if (rval != NULL) {
+
+		reg->link->i = (int) ((uint32_t) rval->i & EPCAN_ID_UNMASK);
+
+		hal_memory_fence();
+
+		EPCAN_bind();
 	}
 }
 
@@ -1281,7 +1298,7 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 #endif /* HW_HAVE_ALT_GPIO */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
-		case ID_NET_LOG_MODE:
+		case ID_NET_LOG_MSG:
 
 			switch (msg) {
 
@@ -1633,7 +1650,7 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 				PM_SFI_CASE(TLM_MODE_DISABLED);
 				PM_SFI_CASE(TLM_MODE_GRAB);
 				PM_SFI_CASE(TLM_MODE_WATCH);
-				PM_SFI_CASE(TLM_MODE_LIVE);
+				PM_SFI_CASE(TLM_MODE_STREAM);
 
 				default: blank = 1; break;
 			}
@@ -1698,8 +1715,8 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef HW_HAVE_ALT_GPIO
-	REG_DEF(hal.ALT_current,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(hal.ALT_voltage,,, "",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(hal.ALT_current,,, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(hal.ALT_voltage,,, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 #endif /* HW_HAVE_ALT_GPIO */
 
 	REG_DEF(hal.CNT_diag, 0, [0],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
@@ -1710,13 +1727,15 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.CNT_diag, 2_pc, [2], "%",	"%1f",	REG_READ_ONLY, &reg_proc_CNT_diag_pc, NULL),
 
 #ifdef HW_HAVE_NETWORK_EPCAN
+	REG_DEF(net.offset_ID,,,	"",	"%8x",	REG_CONFIG, &reg_proc_CAN_offset, NULL),
 	REG_DEF(net.node_ID,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.log_MODE,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.log_MSG,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.timeout_EP,,,	"ms",	"%1f",	REG_CONFIG, &reg_proc_CAN_timeout, NULL),
+	REG_DEF(net.tlm_ID,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 
 	REG_DEF(net.ep, 0_MODE, [0].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 0_ID, [0].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 0_clock_ID, [0].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 0_inject_ID, [0].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 0_reg_DATA, [0].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep0),
 	REG_DEF(net.ep, 0_reg_ID, [0].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 0_PAYLOAD, [0].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1727,7 +1746,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(net.ep, 1_MODE, [1].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 1_ID, [1].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 1_clock_ID, [1].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 1_inject_ID, [1].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 1_reg_DATA, [1].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep1),
 	REG_DEF(net.ep, 1_reg_ID, [1].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 1_PAYLOAD, [1].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1738,7 +1757,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(net.ep, 2_MODE, [2].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 2_ID, [2].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 2_clock_ID, [2].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 2_inject_ID, [2].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 2_reg_DATA, [2].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep2),
 	REG_DEF(net.ep, 2_reg_ID, [2].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 2_PAYLOAD, [2].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -1749,7 +1768,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(net.ep, 3_MODE, [3].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.ep, 3_ID, [3].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 3_clock_ID, [3].clock_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 3_inject_ID, [3].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.ep, 3_reg_DATA, [3].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep3),
 	REG_DEF(net.ep, 3_reg_ID, [3].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(net.ep, 3_PAYLOAD, [3].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -2256,7 +2275,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_watch,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
-	REG_DEF(tlm.rate_live,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
+	REG_DEF(tlm.rate_stream,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.mode,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(tlm.length_MAX,,,		"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(tlm.line,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),
@@ -2350,7 +2369,7 @@ void reg_format(const reg_t *reg)
 
 			if (reg->mode & REG_LINKED) {
 
-				if (rval.i >= 0 && rval.i < REGFILE_MAX) {
+				if (rval.i >= 0 && rval.i < REG_MAX) {
 
 					printf(" (%s)", regfile[rval.i].sym);
 				}
@@ -2392,7 +2411,7 @@ const reg_t *reg_search_fuzzy(const char *sym)
 
 	if (stoi(&n, sym) != NULL) {
 
-		if (n >= 0 && n < REGFILE_MAX)
+		if (n >= 0 && n < REG_MAX)
 			found = regfile + n;
 	}
 	else {
@@ -2429,7 +2448,7 @@ const reg_t *reg_search_fuzzy(const char *sym)
 
 void reg_GET(int reg_ID, rval_t *lval)
 {
-	if (reg_ID >= 0 && reg_ID < REGFILE_MAX) {
+	if (reg_ID >= 0 && reg_ID < REG_MAX) {
 
 		reg_getval(regfile + reg_ID, lval);
 	}
@@ -2437,7 +2456,7 @@ void reg_GET(int reg_ID, rval_t *lval)
 
 void reg_SET(int reg_ID, const rval_t *rval)
 {
-	if (reg_ID >= 0 && reg_ID < REGFILE_MAX) {
+	if (reg_ID >= 0 && reg_ID < REG_MAX) {
 
 		reg_setval(regfile + reg_ID, rval);
 	}
@@ -2445,7 +2464,7 @@ void reg_SET(int reg_ID, const rval_t *rval)
 
 void reg_OUTP(int reg_ID)
 {
-	if (reg_ID >= 0 && reg_ID < REGFILE_MAX) {
+	if (reg_ID >= 0 && reg_ID < REG_MAX) {
 
 		reg_format(regfile + reg_ID);
 	}
@@ -2499,8 +2518,7 @@ SH_DEF(reg)
 
 		s = sh_next_arg(s);
 
-		if (		   reg->fmt[2] == 'i'
-				|| reg->fmt[2] == 'x') {
+		if (reg->fmt[2] == 'i') {
 
 			if (reg->mode & REG_LINKED) {
 
@@ -2516,7 +2534,10 @@ SH_DEF(reg)
 
 				reg_setval(reg, &rval);
 			}
-			else if (htoi(&rval.i, s) != NULL) {
+		}
+		else if (reg->fmt[2] == 'x') {
+
+			if (htoi(&rval.i, s) != NULL) {
 
 				reg_setval(reg, &rval);
 			}
@@ -2588,7 +2609,7 @@ SH_DEF(config_reg)
 
 			if (reg->mode & REG_LINKED) {
 
-				if (rval.i >= 0 && rval.i < REGFILE_MAX) {
+				if (rval.i >= 0 && rval.i < REG_MAX) {
 
 					puts(regfile[rval.i].sym);
 				}

@@ -298,7 +298,7 @@ void ADC_startup()
 #ifdef STM32F4
 	if (hal.MCU_ID == MCU_ID_GD32F405) {
 
-		TIM_wait_ns(800);
+		TIM_wait_ns(900);
 
 		ADC1->CR2 |= (1U << 3);	/* RSTCLB */
 		ADC1->CR2 |= (1U << 2);	/* CLB */
@@ -368,27 +368,26 @@ float ADC_analog_sample(int xGPIO)
 		do {
 			taskYIELD();
 
-			if ((DMA2->LISR & (DMA_LISR_TCIF0 | DMA_LISR_TEIF0)) != 0U)
-				break;
+			if ((DMA2->LISR & (DMA_LISR_TCIF0 | DMA_LISR_TEIF0)) != 0U) {
 
-			if (N > 7000)
-				goto ADC_analog_sample_CLEAN;
+				xADC = priv_ADC.dmabuf[0];
+
+				if (xCH == XGPIO_GET_CH(GPIO_ADC_TEMPINT)) {
+
+					analog = (float) (xADC) * hal.const_ADC.TS[1]
+								+ hal.const_ADC.TS[0];
+				}
+				else {
+					analog = (float) (xADC) * hal.const_ADC.GS;
+				}
+
+				break;
+			}
 
 			N++;
 		}
-		while (1);
+		while (N < 7000);
 
-		xADC = priv_ADC.dmabuf[0];
-
-		if (xCH == XGPIO_GET_CH(GPIO_ADC_TEMPINT)) {
-
-			analog = (float) (xADC) * hal.const_ADC.TS[1] + hal.const_ADC.TS[0];
-		}
-		else {
-			analog = (float) (xADC) * hal.const_ADC.GS;
-		}
-
-ADC_analog_sample_CLEAN:
 		xSemaphoreGive(priv_ADC.mutex_sem);
 	}
 

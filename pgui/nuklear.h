@@ -28035,6 +28035,36 @@ nk_do_edit(nk_flags *state, struct nk_command_buffer *out,
     if (prev_state != edit->active)
         ret |= (edit->active) ? NK_EDIT_ACTIVATED: NK_EDIT_DEACTIVATED;
 
+    if (!prev_state && (flags & NK_EDIT_MULTILINE)) {
+
+        const char *text = nk_str_get_const(&edit->string);
+        int len = nk_str_len_char(&edit->string);
+
+        int total_lines = 0;
+        int glyph_len = 0;
+        nk_rune unicode = 0;
+        int text_len = 0;
+
+        glyph_len = nk_utf_decode(text, &unicode, len);
+
+        while ((text_len < len) && glyph_len)
+        {
+            if (unicode == '\n') {
+                total_lines++;
+                text_len++;
+                glyph_len = nk_utf_decode(text + text_len, &unicode, len-text_len);
+                continue;
+            }
+
+            text_len += glyph_len;
+            glyph_len = nk_utf_decode(text + text_len, &unicode, len-text_len);
+        }
+
+        edit->cursor = edit->string.len;
+        edit->scrollbar.x = 0;
+        edit->scrollbar.y = total_lines * row_height - area.h;
+    }
+
     /* handle user input */
     if (edit->active && in)
     {
@@ -28161,7 +28191,6 @@ nk_do_edit(nk_flags *state, struct nk_command_buffer *out,
             nk_stroke_rect(out, bounds, style->rounding, style->border, nk_rgb_factor(style->border_color, style->color_factor));
             break;
     }}
-
 
     area.w = NK_MAX(0, area.w - style->cursor_size);
     if (edit->active)
