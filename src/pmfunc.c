@@ -173,7 +173,7 @@ SH_DEF(pm_probe_impedance)
 
 		reg_OUTP(ID_PM_CONST_IM_LD);
 		reg_OUTP(ID_PM_CONST_IM_LQ);
-		reg_OUTP(ID_PM_CONST_IM_A);
+		reg_OUTP(ID_PM_CONST_IM_AG);
 		reg_OUTP(ID_PM_CONST_IM_RZ);
 
 		pm_auto(&pm, PM_AUTO_MAXIMAL_CURRENT);
@@ -193,6 +193,145 @@ SH_DEF(pm_probe_impedance)
 
 SH_DEF(pm_probe_saturation)
 {
+	TickType_t		xTIME = (TickType_t) 0;
+
+	float			iD, iQ;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	do {
+		pm.fsm_req = PM_STATE_ZERO_DRIFT;
+		pm_wait_IDLE();
+
+		tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
+		reg_OUTP(ID_PM_CONST_FB_U);
+		reg_OUTP(ID_PM_SELF_STDI);
+		reg_OUTP(ID_PM_SCALE_IA0);
+		reg_OUTP(ID_PM_SCALE_IB0);
+		reg_OUTP(ID_PM_SCALE_IC0);
+
+		reg_OUTP(ID_PM_PROBE_CURRENT_HOLD);
+		reg_OUTP(ID_PM_PROBE_CURRENT_SINE);
+		reg_OUTP(ID_PM_PROBE_CURRENT_BIAS);
+		reg_OUTP(ID_PM_PROBE_FREQ_SINE);
+
+		reg_OUTP(ID_PM_I_MAXIMAL);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+			pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+
+			if (pm_wait_IDLE() != PM_OK)
+				break;
+		}
+
+		printf("iD@A  iQ@A  Ld@H   Lq@H   Rz@Ohm Ag@deg" EOL);
+
+		iD = pm.lu_iD;
+		iQ = pm.lu_iQ;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_SATURATION;
+
+		do {
+			vTaskDelay((TickType_t) 10);
+
+			if (pm.fsm_state == PM_STATE_IDLE)
+				break;
+
+			if (pm.lu_iD != iD || pm.lu_iQ != iQ) {
+
+				iD = pm.lu_iD;
+				iQ = pm.lu_iQ;
+
+				printf("%1f %1f %4g %4g %4g %1f" EOL, &pm.lu_iD, &pm.lu_iQ,
+						&pm.const_im_Ld, &pm.const_im_Lq,
+						&pm.const_im_Rz, &pm.const_im_Ag);
+			}
+
+			if (xTIME > (TickType_t) 10000) {
+
+				pm.fsm_errno = PM_ERROR_TIMEOUT;
+				break;
+			}
+
+			xTIME += (TickType_t) 10;
+		}
+		while (1);
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		reg_OUTP(ID_PM_CONST_IM_LD);
+		reg_OUTP(ID_PM_CONST_IM_LQ);
+
+		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
+
+		reg_OUTP(ID_PM_I_GAIN_P);
+		reg_OUTP(ID_PM_I_GAIN_I);
+		reg_OUTP(ID_PM_I_SLEW_RATE);
+	}
+	while (0);
+
+	reg_OUTP(ID_PM_FSM_ERRNO);
+
+	tlm_halt(&tlm);
+}
+
+SH_DEF(pm_probe_fqscan)
+{
+	float		usual_freq, walk_freq, stop_freq;
+
+	if (pm.lu_MODE != PM_LU_DISABLED) {
+
+		printf("Unable when PM is running" EOL);
+		return;
+	}
+
+	pm.fsm_req = PM_STATE_ZERO_DRIFT;
+	pm_wait_IDLE();
+
+	if (PM_CONFIG_TVM(&pm) == PM_ENABLED) {
+
+		pm.fsm_req = PM_STATE_SELF_TEST_POWER_STAGE;
+		pm_wait_IDLE();
+	}
+
+	tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+
+	usual_freq = pm.probe_freq_sine;
+	pm.probe_freq_sine = pm.m_freq / 60.f;
+
+	stop_freq = pm.m_freq / 6.f;
+	walk_freq = (float) (int) ((stop_freq - pm.probe_freq_sine) / 20.f);
+
+	printf("Fq@Hz  Ld@H   Lq@H   Rz@Ohm Ag@deg" EOL);
+
+	while (pm.probe_freq_sine < stop_freq) {
+
+		if (pm.fsm_errno != PM_OK)
+			break;
+
+		pm.fsm_req = PM_STATE_PROBE_CONST_INDUCTANCE;
+		pm_wait_IDLE();
+
+		printf("%4g %4g %4g %4g %1f" EOL, &pm.probe_freq_sine,
+				&pm.const_im_Ld, &pm.const_im_Lq,
+				&pm.const_im_Rz, &pm.const_im_Ag);
+
+		pm.probe_freq_sine += walk_freq;
+	}
+
+	pm.probe_freq_sine = usual_freq;
+
+	tlm_halt(&tlm);
 }
 
 SH_DEF(pm_probe_spinup)

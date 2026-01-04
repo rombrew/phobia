@@ -22,7 +22,7 @@ int m_isfinitef(float x);
 
 float m_fast_recipf(float x);
 float m_fast_rsqrtf(float x);
-float m_rough_rsqrtf(float x);
+float m_approx_rsqrtf(float x);
 
 float m_hypotf(float x, float y);
 
@@ -53,7 +53,6 @@ lfseed_t;
 
 void m_lf_randseed(lfseed_t *lf, int seed);
 float m_lf_urandf(lfseed_t *lf);
-float m_lf_gaussf(lfseed_t *lf);
 
 #endif /* _H_LIB_M_ */
 

@@ -21,6 +21,8 @@ typedef struct {
 	int		rate_watch;
 	int		rate_stream;
 
+	int		watch_AUTO;
+
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
 

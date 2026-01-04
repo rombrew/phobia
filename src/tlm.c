@@ -18,6 +18,8 @@ void tlm_reg_default(tlm_t *tlm)
 	tlm->rate_watch = (int) (hal.PWM_frequency / 1000.f + 0.5f);
 	tlm->rate_stream = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
+	tlm->watch_AUTO = PM_ENABLED;
+
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
 	tlm->reg_ID[1] = ID_PM_FSM_STATE;
 	tlm->reg_ID[2] = ID_AP_TEMP_PCB;

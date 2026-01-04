@@ -345,6 +345,14 @@ LD_TASK void task_TEMP(void *pData)
 				GPIO_set_LOW(GPIO_LED_ALERT);
 			}
 		}
+		else {
+			if (		tlm.watch_AUTO == PM_ENABLED
+					&& tlm.mode == TLM_MODE_DISABLED
+					&& pm.lu_MODE != PM_LU_DISABLED) {
+
+				tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
+			}
+		}
 
 		last_fsm_errno = pm.fsm_errno;
 	}

@@ -41,8 +41,8 @@ static const uint8_t		cdc_acm_descriptor[] = {
 	USB_CONFIG_DESCRIPTOR_INIT((0x09 + CDC_ACM_DESCRIPTOR_LEN), 0x02, 0x01, USB_CONFIG_SELF_POWERED, 100),
 
 	CDC_ACM_DESCRIPTOR_INIT(0x00, CDC_INT_EP, CDC_OUT_EP, CDC_IN_EP, 0x40, 0x02),
-
 	USB_LANGID_INIT(USBD_LANGID_STRING),
+
 	0x26,					/* bLength */
 	USB_DESCRIPTOR_TYPE_STRING,		/* bDescriptorType */
 	'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, 'e', 0, 'l', 0,

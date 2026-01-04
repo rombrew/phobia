@@ -90,11 +90,6 @@ enum {
 };
 
 enum {
-	PM_IRON_NONE				= 0,
-	PM_IRON_SATURATION
-};
-
-enum {
 	PM_MAGNET_NONE				= 0,
 	PM_MAGNET_PERMANENT
 };
@@ -138,6 +133,7 @@ enum {
 	PM_STATE_ADJUST_DCU_VOLTAGE,
 	PM_STATE_PROBE_CONST_RESISTANCE,
 	PM_STATE_PROBE_CONST_INDUCTANCE,
+	PM_STATE_PROBE_CONST_SATURATION,
 	PM_STATE_LU_DETACHED,
 	PM_STATE_LU_STARTUP,
 	PM_STATE_LU_SHUTDOWN,
@@ -264,7 +260,6 @@ typedef struct {
 	int		config_LU_DRIVE;
 	int		config_HFI_WAVETYPE;
 	int		config_HFI_PERMANENT;
-	int		config_SATURATION;
 	int		config_EXCITATION;
 	int		config_SALIENCY;
 	int		config_RELUCTANCE;
@@ -334,6 +329,7 @@ typedef struct {
 	float		probe_HF[2];
 	float		probe_gain_LP;
 	float		probe_HOLD[2];
+	float		probe_DATA[24];
 
 	float		fault_voltage_tol;
 	float		fault_current_tol;
@@ -501,24 +497,26 @@ typedef struct {
 	float		const_Ja;
 	float		const_im_Ld;
 	float		const_im_Lq;
-	float		const_im_A;
+	float		const_im_Ag;
 	float		const_im_Rz;
-	float		const_ld_Sm;
+	float		const_Sm;
 
-	float		quick_iU;
-	float		quick_iWb;
-	float		quick_iWb2;
-	float		quick_iLd;
-	float		quick_iLq;
-	float		quick_Lrel;
-	float		quick_iL4rel;
-	float		quick_TiLd;
-	float		quick_TiLq;
-	float		quick_TiLu[4];
-	float		quick_HFwS;
-	float		quick_HF[2];
-	float		quick_ZiEP;
-	float		quick_ZiSQ;
+	float		lazy_iU;
+	float		lazy_Wb2;
+	float		lazy_iWb;
+	float		lazy_iW2;
+	float		lazy_Lrel;
+	float		lazy_Lreq;
+	float		lazy_iL4rel;
+	float		lazy_iLd;
+	float		lazy_iLq;
+	float		lazy_TiLd;
+	float		lazy_TiLq;
+	float		lazy_TiLu[4];
+	float		lazy_HFwS;
+	float		lazy_HF[2];
+	float		lazy_ZiEP;
+	float		lazy_ZiSQ;
 
 	int		watt_DC_MAX;
 	int		watt_DC_MIN;
@@ -611,10 +609,11 @@ typedef struct {
 }
 pmc_t;
 
-void pm_quick_build(pmc_t *pm);
+void pm_lazy_build(pmc_t *pm);
 void pm_auto(pmc_t *pm, int req);
 
 float pm_torque_equation(pmc_t *pm, float iD, float iQ);
+float pm_torque_MTPA(pmc_t *pm, float iQ);
 float pm_torque_maximal(pmc_t *pm, float iQ);
 
 void pm_clearance(pmc_t *pm, int xA, int xB, int xC);

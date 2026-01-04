@@ -189,7 +189,7 @@ void ts_probe_impedance()
 
 		printf("const_im_Ld = %.4E (H)\n", pm.const_im_Ld);
 		printf("const_im_Lq = %.4E (H)\n", pm.const_im_Lq);
-		printf("const_im_A = %.2f (deg)\n", pm.const_im_A);
+		printf("const_im_Ag = %.2f (deg)\n", pm.const_im_Ag);
 		printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
 
 		TS_assert_relative(pm.const_im_Ld, m.Ld);
@@ -607,7 +607,7 @@ ts_script_hfi()
 {
 	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
 	pm.config_LU_DRIVE = PM_DRIVE_SPEED;
-	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+	pm.config_HFI_WAVETYPE = PM_HFI_SILENT;
 
 	pm.fsm_req = PM_STATE_LU_STARTUP;
 	ts_wait_IDLE();

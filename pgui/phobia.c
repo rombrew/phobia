@@ -208,7 +208,7 @@ pub_primal_reg(struct public *pub, struct link_reg *reg)
 		"pm.hfi_maximal",
 		"pm.eabi_const_Zq",
 		"pm.const_Zp",
-		"pm.const_ld_Sm",
+		"pm.const_Sm",
 		"pm.watt_wP_maximal",
 		"pm.watt_wP_reverse",
 		"pm.watt_wA_maximal",
@@ -3058,21 +3058,6 @@ page_diagnose(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "AC frequency scan ...", NK_TEXT_LEFT)) {
-
-			config_storage_path(pub->fe, pub->lbuf, FILE_TLM_IMPEDANCE);
-
-			strcpy(pub->debug.file_snap, pub->lbuf);
-
-			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
-
-				if (link_command(lp, "pm_scan_impedance") != 0) {
-
-					pub->debug.log_GP = 1;
-				}
-			}
-		}
-
 		nk_menu_end(ctx);
 	}
 
@@ -3150,14 +3135,6 @@ page_diagnose(struct public *pub)
 				fclose(fd);
 			}
 		}
-	}
-
-	if (		pub->debug.log_GP != 0
-			&& lp->grab_N >= 5) {
-
-		pub->debug.log_GP = 0;
-
-		pub_open_GP(pub, pub->debug.file_snap);
 	}
 
 	nk_layout_row_dynamic(ctx, 0, 1);
@@ -3407,6 +3384,29 @@ page_probe(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
+		if (nk_menu_item_label(ctx, "AC saturation probing", NK_TEXT_LEFT)) {
+
+			if (link_command(lp, "pm_probe_saturation") != 0) {
+
+				lp->command_state = LINK_COMMAND_PENDING;
+			}
+		}
+
+		if (nk_menu_item_label(ctx, "AC frequency scan ...", NK_TEXT_LEFT)) {
+
+			config_storage_path(pub->fe, pub->lbuf, FILE_TLM_IMPEDANCE);
+
+			strcpy(pub->debug.file_snap, pub->lbuf);
+
+			if (link_grab_file_open(lp, pub->debug.file_snap) != 0) {
+
+				if (link_command(lp, "pm_probe_fqscan") != 0) {
+
+					pub->debug.log_GP = 1;
+				}
+			}
+		}
+
 		if (nk_menu_item_label(ctx, "KV flux linkage", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "pm_probe_const_flux_linkage") != 0) {
@@ -3465,6 +3465,14 @@ page_probe(struct public *pub)
 	nk_style_pop_vec2(ctx);
 	nk_menubar_end(ctx);
 
+	if (		pub->debug.log_GP != 0
+			&& lp->grab_N >= 5) {
+
+		pub->debug.log_GP = 0;
+
+		pub_open_GP(pub, pub->debug.file_snap);
+	}
+
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
@@ -3515,9 +3523,9 @@ page_probe(struct public *pub)
 	reg_float_um(pub, "pm.const_Ja", "Moment of inertia", 0, 1);
 	reg_float(pub, "pm.const_im_Ld", "Inductance D");
 	reg_float(pub, "pm.const_im_Lq", "Inductance Q");
-	reg_float(pub, "pm.const_im_A", "Principal angle");
+	reg_float(pub, "pm.const_im_Ag", "Principal angle");
 	reg_float(pub, "pm.const_im_Rz", "Active impedance");
-	reg_float(pub, "pm.const_ld_Sm", "Wheel circumference");
+	reg_float(pub, "pm.const_Sm", "Wheel circumference");
 
 	reg = link_reg_lookup(lp, "pm.const_Zp");
 
@@ -4307,7 +4315,7 @@ page_application(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup at the power up");
+	reg_enum_toggle(pub, "ap.task_AUTOSTART", "Startup at the POWER UP");
 
 	reg = link_reg_lookup(lp, "ap.task_AUTOSTART");
 
@@ -4573,7 +4581,6 @@ page_config(struct public *pub)
 		reg_enum_combo(pub, "pm.config_HFI_WAVETYPE", "HFI waveform type", 1);
 		reg_enum_toggle(pub, "pm.config_HFI_PERMANENT", "HFI permanent injection");
 
-		reg_enum_combo(pub, "pm.config_SATURATION", "Iron SATURATION", 0);
 		reg_enum_combo(pub, "pm.config_EXCITATION", "Machine EXCITATION", 0);
 		reg_enum_combo(pub, "pm.config_SALIENCY", "Machine SALIENCY", 0);
 		reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
@@ -5780,7 +5787,7 @@ page_lp_location(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg = link_reg_lookup(lp, "pm.const_ld_Sm");
+	reg = link_reg_lookup(lp, "pm.const_Sm");
 	if (reg != NULL && reg->fval > 0.f) { um_def = 2; }
 
 	reg_float_um(pub, "pm.x_maximal", "Maximal location", 0, um_def);
@@ -5977,7 +5984,7 @@ page_telemetry(struct public *pub)
 	{
 		nk_layout_row_dynamic(ctx, 0, 1);
 
-		if (nk_menu_item_label(ctx, "Burst grab", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "TLM burst grab", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "tlm_grab") != 0) {
 
@@ -5998,7 +6005,7 @@ page_telemetry(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "Watch until halt", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "TLM watch (until halt)", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "tlm_watch") != 0) {
 
@@ -6019,7 +6026,7 @@ page_telemetry(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "Stream grab (CAN)", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "TLM stream grab (CAN)", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "tlm_stream_net_async") != 0) {
 
@@ -6095,6 +6102,7 @@ page_telemetry(struct public *pub)
 		reg_float(pub, "tlm.rate_grab", "Burst grab frequency");
 		reg_float(pub, "tlm.rate_watch", "Watch grab frequency");
 		reg_float(pub, "tlm.rate_stream", "Live stream frequency");
+		reg_enum_toggle(pub, "tlm.watch_AUTO", "Watch auto startup");
 		reg_float(pub, "tlm.length_MAX", "RAM queue length");
 
 		nk_layout_row_dynamic(ctx, 0, 1);

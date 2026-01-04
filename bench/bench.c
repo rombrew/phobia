@@ -402,7 +402,23 @@ void bench_script()
 	ts_script_base();
 	blm_restart(&m);
 
-	ts_adjust_sensor_hall();
+	m.Jm = 5.E+7;
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_SATURATION;
+	ts_wait_IDLE();
+
+	printf("const_im_Ld = %.4E (H)\n", pm.const_im_Ld);
+	printf("const_im_Lq = %.4E (H)\n", pm.const_im_Lq);
+
+	pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
+	ts_wait_IDLE();
+
+	pm.const_Rs = pm.const_im_Rz;
+
+	printf("const_Rs = %.4E (Ohm)\n", pm.const_Rs);
+	printf("self_DTu = %.4f (V)\n", pm.self_DTu);
+
+	/*ts_adjust_sensor_hall();
 	blm_restart(&m);
 
 	pm.config_LU_SENSOR = PM_SENSOR_HALL;
@@ -414,7 +430,7 @@ void bench_script()
 	ts_wait_IDLE();
 
 	pm.s_setpoint_speed = 800.f;
-	sim_runtime(2.0);
+	sim_runtime(2.0);*/
 
 	tlm_PWM_grab();
 }

@@ -39,7 +39,7 @@ float m_fast_rsqrtf(float x)
 	return u.f;
 }
 
-float m_rough_rsqrtf(float x)
+float m_approx_rsqrtf(float x)
 {
 	float		q;
 
@@ -341,7 +341,7 @@ void m_la_eigf(const float a[3], float v[4], int m)
 		b = a[0] - v[3];
 		d = a[1];
 
-		la = m_rough_rsqrtf(b * b + d * d);
+		la = m_approx_rsqrtf(b * b + d * d);
 
 		if (b < 0.f) {
 
@@ -357,7 +357,7 @@ void m_la_eigf(const float a[3], float v[4], int m)
 		b = a[2] - v[3];
 		d = a[1];
 
-		la = m_rough_rsqrtf(b * b + d * d);
+		la = m_approx_rsqrtf(b * b + d * d);
 
 		if (d < 0.f) {
 
@@ -411,17 +411,5 @@ float m_lf_urandf(lfseed_t *lf)
 	lf->nb = k;
 
 	return y;
-}
-
-float m_lf_gaussf(lfseed_t *lf)
-{
-	float		x;
-
-	/* Normal distribution fast approximation.
-	 * */
-
-	x = m_lf_urandf(lf) + m_lf_urandf(lf) + m_lf_urandf(lf);
-
-	return x;
 }
 
