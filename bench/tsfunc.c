@@ -124,9 +124,9 @@ void ts_self_adjust()
 			pm.fsm_req = PM_STATE_ADJUST_ON_PCB_VOLTAGE;
 			ts_wait_IDLE();
 
-			printf("scale_uA = %.4E %.4f (V)\n", pm.scale_uA[1], pm.scale_uA[0]);
-			printf("scale_uB = %.4E %.4f (V)\n", pm.scale_uB[1], pm.scale_uB[0]);
-			printf("scale_uC = %.4E %.4f (V)\n", pm.scale_uC[1], pm.scale_uC[0]);
+			printf("scale_uA = %.4e %.4f (V)\n", pm.scale_uA[1], pm.scale_uA[0]);
+			printf("scale_uB = %.4e %.4f (V)\n", pm.scale_uB[1], pm.scale_uB[0]);
+			printf("scale_uC = %.4e %.4f (V)\n", pm.scale_uC[1], pm.scale_uC[0]);
 
 			printf("self_RMSu = %.4f (V)\n", pm.self_RMSu);
 			printf("self_RMSt = %.4f %.4f %.4f (V)\n", pm.self_RMSt[0],
@@ -139,14 +139,14 @@ void ts_self_adjust()
 		if (pm.config_DCU_VOLTAGE == PM_ENABLED) {
 
 			usual_Mq = m.Mq[3];
-			m.Mq[3] = 5.E-1;
+			m.Mq[3] = 5.e-1;
 
 			pm.fsm_req = PM_STATE_ADJUST_DCU_VOLTAGE;
 			ts_wait_IDLE();
 
 			m.Mq[3] = usual_Mq;
 
-			printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
+			printf("const_im_Rz = %.4e (Ohm)\n", pm.const_im_Rz);
 			printf("dcu_deadband = %.1f (ns)\n", pm.dcu_deadband);
 			printf("self_DTu = %.4f (V)\n", pm.self_DTu);
 		}
@@ -160,7 +160,7 @@ void ts_probe_impedance()
 
 	do {
 		usual_Mq = m.Mq[3];
-		m.Mq[3] = 5.E-1;
+		m.Mq[3] = 5.e-1;
 
 		pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 
@@ -177,7 +177,7 @@ void ts_probe_impedance()
 
 		pm.const_Rs = pm.const_im_Rz;
 
-		printf("const_Rs = %.4E (Ohm)\n", pm.const_Rs);
+		printf("const_Rs = %.4e (Ohm)\n", pm.const_Rs);
 		printf("self_DTu = %.4f (V)\n", pm.self_DTu);
 
 		TS_assert_relative(pm.const_Rs, m.Rs);
@@ -187,10 +187,10 @@ void ts_probe_impedance()
 		if (ts_wait_IDLE() != PM_OK)
 			break;
 
-		printf("const_im_Ld = %.4E (H)\n", pm.const_im_Ld);
-		printf("const_im_Lq = %.4E (H)\n", pm.const_im_Lq);
+		printf("const_im_Ld = %.4e (H)\n", pm.const_im_Ld);
+		printf("const_im_Lq = %.4e (H)\n", pm.const_im_Lq);
 		printf("const_im_Ag = %.2f (deg)\n", pm.const_im_Ag);
-		printf("const_im_Rz = %.4E (Ohm)\n", pm.const_im_Rz);
+		printf("const_im_Rz = %.4e (Ohm)\n", pm.const_im_Rz);
 
 		TS_assert_relative(pm.const_im_Ld, m.Ld);
 		TS_assert_relative(pm.const_im_Lq, m.Lq);
@@ -199,8 +199,8 @@ void ts_probe_impedance()
 		pm_auto(&pm, PM_AUTO_LOOP_CURRENT);
 
 		printf("i_maixmal = %.3f (A) \n", pm.i_maximal);
-		printf("i_gain_P = %.2E \n", pm.i_gain_P);
-		printf("i_gain_I = %.2E \n", pm.i_gain_I);
+		printf("i_gain_P = %.2e \n", pm.i_gain_P);
+		printf("i_gain_I = %.2e \n", pm.i_gain_I);
 		printf("i_slew_rate = %.1f (A/s)\n", pm.i_slew_rate);
 	}
 	while (0);
@@ -240,7 +240,7 @@ void ts_probe_spinup()
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
 			printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
-			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
+			printf("const_lambda = %.4e (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
 		}
 
 		pm_auto(&pm, PM_AUTO_ZONE_THRESHOLD);
@@ -281,7 +281,7 @@ void ts_probe_spinup()
 			Kv = 60. / (2. * M_PI * sqrt(3.)) / (pm.const_lambda * pm.const_Zp);
 
 			printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
-			printf("const_lambda = %.4E (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
+			printf("const_lambda = %.4e (Wb) %.2f (rpm/v)\n", pm.const_lambda, Kv);
 
 			TS_assert_relative(pm.const_lambda, m.lambda);
 		}
@@ -329,7 +329,7 @@ void ts_probe_spinup()
 			break;
 
 		printf("lu_wS = %.2f (rad/s)\n", pm.lu_wS);
-		printf("const_Ja = %.4E (kgm2) \n", pm.const_Ja * pm.const_Zp * pm.const_Zp);
+		printf("const_Ja = %.4e (kgm2) \n", pm.const_Ja * pm.const_Zp * pm.const_Zp);
 
 		TS_assert_relative(pm.const_Ja * pm.const_Zp * pm.const_Zp, m.Jm);
 
@@ -342,9 +342,9 @@ void ts_probe_spinup()
 		pm_auto(&pm, PM_AUTO_LOOP_SPEED);
 
 		printf("forced_accel = %.1f (rad/s2)\n", pm.forced_accel);
-		printf("lu_gain_mq_LP = %.2E\n", pm.lu_gain_mq_LP);
-		printf("s_gain_P = %.2E\n", pm.s_gain_P);
-		printf("s_gain_D = %.2E\n", pm.s_gain_D);
+		printf("lu_gain_mq_LP = %.2e\n", pm.lu_gain_mq_LP);
+		printf("s_gain_P = %.2e\n", pm.s_gain_P);
+		printf("s_gain_D = %.2e\n", pm.s_gain_D);
 	}
 	while (0);
 
@@ -862,14 +862,14 @@ void ts_script_test()
 
 	tlm_restart();
 
-	m.Rs = 8.E-3;
-	m.Ld = 3.E-6;
-	m.Lq = 5.E-6;
+	m.Rs = 8.e-3;
+	m.Ld = 3.e-6;
+	m.Lq = 5.e-6;
 	m.Udc = 48.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
 	m.lambda = blm_Kv_lambda(&m, 525.);
-	m.Jm = 2.E-4;
+	m.Jm = 2.e-4;
 
 	ts_script_default();
 	ts_script_base();
@@ -885,14 +885,14 @@ void ts_script_test()
 
 	tlm_restart();
 
-	m.Rs = 14.E-3;
-	m.Ld = 10.E-6;
-	m.Lq = 15.E-6;
+	m.Rs = 14.e-3;
+	m.Ld = 10.e-6;
+	m.Lq = 15.e-6;
 	m.Udc = 22.;
 	m.Rdc = 0.1;
 	m.Zp = 14;
 	m.lambda = blm_Kv_lambda(&m, 270.);
-	m.Jm = 3.E-4;
+	m.Jm = 3.e-4;
 
 	ts_script_default();
 	ts_script_base();
@@ -915,13 +915,13 @@ void ts_script_test()
 	tlm_restart();
 
 	m.Rs = 0.24;
-	m.Ld = 520.E-6;
-	m.Lq = 650.E-6;
+	m.Ld = 520.e-6;
+	m.Lq = 650.e-6;
 	m.Udc = 48.;
 	m.Rdc = 0.5;
 	m.Zp = 15;
 	m.lambda = blm_Kv_lambda(&m, 15.);
-	m.Jm = 6.E-3;
+	m.Jm = 6.e-3;
 
 	ts_script_default();
 	ts_script_base();
@@ -940,14 +940,14 @@ void ts_script_test()
 
 	tlm_restart();
 
-	m.Rs = 4.E-3;
-	m.Ld = 31.E-6;
-	m.Lq = 44.E-6;
+	m.Rs = 4.e-3;
+	m.Ld = 31.e-6;
+	m.Lq = 44.e-6;
 	m.Udc = 48.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
 	m.lambda = blm_Kv_lambda(&m, 58.);
-	m.Jm = 15.E-3;
+	m.Jm = 15.e-3;
 
 	ts_script_default();
 	ts_script_base();

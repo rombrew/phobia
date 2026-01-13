@@ -326,6 +326,21 @@ reg_proc_task(const reg_t *reg, rval_t *lval, const rval_t *rval)
 }
 
 static void
+reg_proc_dc_threshold(const reg_t *reg, rval_t *lval, const rval_t *rval)
+{
+	if (lval != NULL) {
+
+		lval->f = reg->link->f;
+	}
+	else if (rval != NULL) {
+
+		pm.ts_threshold = (int) (hal.PWM_frequency * rval->f * 0.000001f + 0.5f);
+
+		reg->link->f = (float) pm.ts_threshold * 1000000.f / hal.PWM_frequency;
+	}
+}
+
+static void
 reg_proc_ppm_freq(const reg_t *reg, rval_t *lval, const rval_t *rval)
 {
 	if (lval != NULL) {
@@ -1283,7 +1298,7 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 			break;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 		case ID_HAL_ALT_CURRENT:
 		case ID_HAL_ALT_VOLTAGE:
 
@@ -1295,7 +1310,7 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 				default: blank = 1; break;
 			}
 			break;
-#endif /* HW_HAVE_ALT_GPIO */
+#endif /* HW_HAVE_ALT_FUNCTION */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 		case ID_NET_LOG_MSG:
@@ -1714,10 +1729,10 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.DRV.ocp_level,,,	"",	"%0i",	REG_CONFIG, &reg_proc_DRV_configure, &reg_format_DRV_ocp_level),
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 	REG_DEF(hal.ALT_current,,, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(hal.ALT_voltage,,, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-#endif /* HW_HAVE_ALT_GPIO */
+#endif /* HW_HAVE_ALT_FUNCTION */
 
 	REG_DEF(hal.CNT_diag, 0, [0],	"us",	"%2f",	REG_READ_ONLY, &reg_proc_CNT_diag_us, NULL),
 	REG_DEF(hal.CNT_diag, 0_pc, [0], "%",	"%1f",	REG_READ_ONLY, &reg_proc_CNT_diag_pc, NULL),
@@ -1815,6 +1830,7 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.knob_range_ANG, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_ANG, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_ANG, 2, [2],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.knob_range_ANG, 3, [3],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 #ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_range_BRK, 0, [0],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(ap.knob_range_BRK, 1, [1],	"V",	"%3f",	REG_CONFIG, NULL, NULL),
@@ -1878,6 +1894,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.dc_clearance,,,		"us",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.dc_skip,,,			"us",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.dc_bootstrap,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.dc_threshold,,,		"us",	"%1f",	REG_CONFIG, &reg_proc_dc_threshold, NULL),
 
 	REG_DEF(pm.self_BST,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_self_BST),
 	REG_DEF(pm.self_IST,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_self_IST),
@@ -1928,7 +1945,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.tm_average_outside,,, 	"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_pause_startup,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.tm_pause_forced,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(pm.tm_pause_halt,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
+	REG_DEF(pm.tm_pause_on_halt,,,		"ms",	"%1f",	REG_CONFIG, NULL, NULL),
 
 	REG_DEF(pm.scale_iA, 0, [0],		"A",	"%3f",	REG_CONFIG, NULL, NULL),
 	REG_DEF(pm.scale_iA, 1, [1],		"",	"%4f",	REG_CONFIG, NULL, NULL),
@@ -2505,6 +2522,11 @@ void reg_SET_F(int reg_ID, float x)
 void reg_TOUCH_I(int reg_ID)
 {
 	reg_SET_I(reg_ID, reg_GET_I(reg_ID));
+}
+
+void reg_TOUCH_F(int reg_ID)
+{
+	reg_SET_F(reg_ID, reg_GET_F(reg_ID));
 }
 
 SH_DEF(reg)

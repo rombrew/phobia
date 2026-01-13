@@ -170,14 +170,14 @@ LD_TASK void task_TEMP(void *pData)
 		GPIO_set_mode_ANALOG(ap.ntc_EXT.gpio);
 	}
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 #ifdef GPIO_ALT_CURRENT
 	GPIO_set_mode_OUTPUT(GPIO_ALT_CURRENT);
 #endif /* GPIO_ALT_CURRENT */
 #ifdef GPIO_ALT_VOLTAGE
 	GPIO_set_mode_OUTPUT(GPIO_ALT_VOLTAGE);
 #endif /* GPIO_ALT_VOLTAGE */
-#endif /* HW_HAVE_ALT_GPIO  */
+#endif /* HW_HAVE_ALT_FUNCTION  */
 
 	xWake = xTaskGetTickCount();
 
@@ -299,7 +299,7 @@ LD_TASK void task_TEMP(void *pData)
 		}
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 #ifdef GPIO_ALT_CURRENT
 		if (hal.ALT_current == PM_ENABLED) {
 
@@ -318,7 +318,7 @@ LD_TASK void task_TEMP(void *pData)
 			GPIO_set_LOW(GPIO_ALT_VOLTAGE);
 		}
 #endif /* GPIO_ALT_VOLTAGE */
-#endif /* HW_HAVE_ALT_GPIO  */
+#endif /* HW_HAVE_ALT_FUNCTION  */
 
 #ifdef GPIO_LED_MODE
 		if (pm.lu_MODE != PM_LU_DISABLED) {
@@ -395,9 +395,13 @@ conv_KNOB()
 			range = ap.knob_range_ANG[0] - ap.knob_range_ANG[1];
 			scaled = (ap.knob_range_ANG[1] - ap.knob_in_ANG) / range;
 		}
+		else if (ap.knob_in_ANG < ap.knob_range_ANG[2]) {
+
+			scaled = 0.f;
+		}
 		else {
-			range = ap.knob_range_ANG[2] - ap.knob_range_ANG[1];
-			scaled = (ap.knob_in_ANG - ap.knob_range_ANG[1]) / range;
+			range = ap.knob_range_ANG[3] - ap.knob_range_ANG[2];
+			scaled = (ap.knob_in_ANG - ap.knob_range_ANG[2]) / range;
 		}
 
 		if (scaled < - 1.f) {
@@ -605,10 +609,10 @@ default_flash_load()
 	hal.DRV.ocp_level = HW_DRV_OCP_LEVEL;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 	hal.ALT_current = PM_DISABLED;
 	hal.ALT_voltage = PM_DISABLED;
-#endif /* HW_HAVE_ALT_GPIO */
+#endif /* HW_HAVE_ALT_FUNCTION */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
 	net.offset_ID = EPCAN_OFFSET_DEFAULT;
@@ -660,7 +664,8 @@ default_flash_load()
 	ap.knob_DISARM = PM_ENABLED;
 	ap.knob_range_ANG[0] = 1.0f;	/* (V) */
 	ap.knob_range_ANG[1] = 2.5f;	/* (V) */
-	ap.knob_range_ANG[2] = 4.0f;	/* (V) */
+	ap.knob_range_ANG[2] = 2.5f;	/* (V) */
+	ap.knob_range_ANG[3] = 4.0f;	/* (V) */
 #ifdef HW_HAVE_BRAKE_KNOB
 	ap.knob_range_BRK[0] = 2.0f;	/* (V) */
 	ap.knob_range_BRK[1] = 4.0f;	/* (V) */
@@ -694,7 +699,7 @@ default_flash_load()
 	ap.ntc_EXT.betta = 3380.f;
 #endif /* HW_HAVE_NTC_MACHINE */
 
-	ap.temp_gain_LP = 1.E-1f;
+	ap.temp_gain_LP = 1.e-1f;
 
 	ap.otp_PCB_halt = 110.f;	/* (C) */
 	ap.otp_PCB_derate = 90.f;	/* (C) */
@@ -720,6 +725,8 @@ default_flash_load()
 	pm.dc_clearance = HW_PWM_CLEARANCE_ZONE;
 	pm.dc_skip = HW_PWM_SKIP_ZONE;
 	pm.dc_bootstrap = HW_PWM_BOOTSTRAP_RETENTION;
+
+	reg_TOUCH_F(ID_PM_DC_THRESHOLD);
 
 #if ADC_HAVE_SEQUENCE__ABC(HW_ADC_SAMPLING_SEQUENCE)
 #ifdef HW_HAVE_LOW_SIDE_SHUNT

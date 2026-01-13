@@ -165,10 +165,10 @@ typedef struct {
 	DRV_config_t	DRV;
 #endif /* HW_HAVE_DRV_ON_PCB */
 
-#ifdef HW_HAVE_ALT_GPIO
+#ifdef HW_HAVE_ALT_FUNCTION
 	int		ALT_current;
 	int		ALT_voltage;
-#endif /* HW_HAVE_ALT_GPIO */
+#endif /* HW_HAVE_ALT_FUNCTION */
 
 	uint32_t	CNT_raw[4];
 	float		CNT_diag[3];

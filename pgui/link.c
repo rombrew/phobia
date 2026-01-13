@@ -152,6 +152,27 @@ lk_eol(const char *s)
 }
 
 static const char *
+lk_getl(char *d, int len, const char *s)
+{
+	int		n = 0;
+
+	while (*s != 0 && strchr(LINK_EOL, *s) == 0) {
+
+		if (n < len - 1)
+			*d++ = *s;
+
+		++s;
+		++n;
+	}
+
+	while (*s != 0 && strchr(LINK_EOL, *s) != 0) { ++s; }
+
+	*d = 0;
+
+	return s;
+}
+
+static const char *
 lk_token(char **sp)
 {
 	const char	*tok;
@@ -1212,6 +1233,37 @@ void link_config_read(struct link_pmc *lp, const char *file)
 		}
 
 		fclose(fd);
+	}
+}
+
+void link_config_inline(struct link_pmc *lp, const char *config)
+{
+	struct link_priv	*priv = lp->priv;
+	struct link_reg		*reg;
+	const char		*sym, *val;
+
+	if (lp->linked == 0)
+		return ;
+
+	while (*config != 0) {
+
+		char	*sp = priv->lbuf;
+
+		config = lk_getl(sp, LINK_LINE_MAX, config);
+
+		sym = lk_token(&sp);
+		val = lk_token(&sp);
+
+		reg = link_reg_lookup(lp, sym);
+
+		if (reg != NULL) {
+
+			* (char *) lk_eol(val) = 0;
+
+			sprintf(reg->val, "%.70s", val);
+
+			reg->modified = lp->clock;
+		}
 	}
 }
 

@@ -921,7 +921,7 @@ pm_fsm_state_adjust_on_pcb_current(pmc_t *pm)
 
 			if (pm->tm_value >= pm->tm_end) {
 
-				REF = 1.E-2f;	/* regularization constant */
+				REF = 1.e-2f;	/* regularization constant */
 
 				v[0] = REF;
 				v[1] = 0.f;
@@ -2656,7 +2656,7 @@ pm_fsm_state_adjust_sensor_sincos(pmc_t *pm)
 			break;
 
 		case 2:
-			lse_ridge(ls, 1.E-3);
+			lse_ridge(ls, 1.e-3);
 			lse_solve(ls);
 
 			if (		   m_isfinitef(ls->sol.m[0]) != 0
@@ -2721,7 +2721,7 @@ pm_fsm_state_halt(pmc_t *pm)
 			if (pm->lu_MODE != PM_LU_DISABLED) {
 
 				pm->tm_value = 0;
-				pm->tm_end = PM_TSMS(pm, pm->tm_pause_halt);
+				pm->tm_end = PM_TSMS(pm, pm->tm_pause_on_halt);
 
 				pm->lu_MODE = PM_LU_DISABLED;
 			}

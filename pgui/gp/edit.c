@@ -337,6 +337,18 @@ void editEvent(edit_t *ed, int evno, int ex, int ey)
 				}
 			}
 		}
+
+		min_X = ed->box_X + ed->size_X - ed->layout_height;
+		min_Y = ed->box_Y;
+
+		max_X = ed->box_X + ed->size_X - ed->layout_height / 4;
+		max_Y = ed->box_Y + ed->layout_height;
+
+		if (		ed->cur_X > min_X && ed->cur_X < max_X
+				&& ed->cur_Y > min_Y && ed->cur_Y < max_Y) {
+
+			ed->raised = 0;
+		}
 	}
 	else if (evno == EDIT_EVNO_ARROW_LEFT) {
 
@@ -465,6 +477,9 @@ void editDraw(edit_t *ed, SDL_Surface *surface)
 
 	drawText(ed->dw, surface, ed->font, baseX, baseY, ed->title,
 			TEXT_CENTERED, ed->sch->menu_item_text);
+
+	drawText(ed->dw, surface, ed->font, ed->box_X + ed->size_X - ed->layout_height,
+			baseY, "x", TEXT_CENTERED_ON_Y, ed->sch->menu_item_text);
 
 	baseX = ed->box_X + ed->layout_height;
 	baseY = ed->box_Y + 2 * ed->layout_height;

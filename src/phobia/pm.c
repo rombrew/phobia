@@ -15,13 +15,14 @@ void pm_lazy_build(pmc_t *pm)
 		pm->k_KWAT = 1.f;		/* NOP / 2 */
 	}
 
-	pm->ts_minimal = (int) (pm->dc_minimal * (1.f / 1000000.f)
+	pm->ts_minimal = (int) (pm->dc_minimal * 0.000001f
 			* pm->m_freq * (float) pm->dc_resolution);
-	pm->ts_clearance = (int) (pm->dc_clearance * (1.f / 1000000.f)
+	pm->ts_clearance = (int) (pm->dc_clearance * 0.000001f
 			* pm->m_freq * (float) pm->dc_resolution);
-	pm->ts_skip = (int) (pm->dc_skip * (1.f / 1000000.f)
+	pm->ts_skip = (int) (pm->dc_skip * 0.000001f
 			* pm->m_freq * (float) pm->dc_resolution);
 	pm->ts_bootstrap = PM_TSMS(pm, pm->dc_bootstrap);
+	pm->ts_threshold = (int) (pm->m_freq * pm->dc_threshold * 0.000001f + 0.5f);
 	pm->ts_inverted = 1.f / (float) pm->dc_resolution;
 
 	if (pm->const_lambda > M_EPSILON) {
@@ -43,19 +44,16 @@ void pm_lazy_build(pmc_t *pm)
 		pm->lazy_Lreq = pm->lazy_Lrel * pm->lazy_Lrel;
 		pm->lazy_iL4rel = 0.25f / pm->lazy_Lrel;
 
-		if (pm->config_LU_ESTIMATE == PM_FLUX_KALMAN) {
+		pm->lazy_iLd = 1.f / Ld;
+		pm->lazy_iLq = 1.f / Lq;
 
-			pm->lazy_iLd = 1.f / Ld;
-			pm->lazy_iLq = 1.f / Lq;
+		pm->lazy_TiLd = pm->m_dT * pm->lazy_iLd;
+		pm->lazy_TiLq = pm->m_dT * pm->lazy_iLq;
 
-			pm->lazy_TiLd = pm->m_dT * pm->lazy_iLd;
-			pm->lazy_TiLq = pm->m_dT * pm->lazy_iLq;
-
-			pm->lazy_TiLu[0] = pm->m_dT * (pm->lazy_iLd - pm->lazy_iLq);
-			pm->lazy_TiLu[1] = pm->m_dT * (Ld * pm->lazy_iLq - Lq * pm->lazy_iLd);
-			pm->lazy_TiLu[2] = pm->m_dT * (Ld * pm->lazy_iLq - 1.f);
-			pm->lazy_TiLu[3] = pm->m_dT * (1.f - Lq * pm->lazy_iLd);
-		}
+		pm->lazy_TiLu[0] = pm->m_dT * (pm->lazy_iLd - pm->lazy_iLq);
+		pm->lazy_TiLu[1] = pm->m_dT * (Ld * pm->lazy_iLq - Lq * pm->lazy_iLd);
+		pm->lazy_TiLu[2] = pm->m_dT * (Ld * pm->lazy_iLq - 1.f);
+		pm->lazy_TiLu[3] = pm->m_dT * (1.f - Lq * pm->lazy_iLd);
 	}
 
 	if (pm->config_HFI_WAVETYPE != PM_HFI_NONE) {
@@ -91,6 +89,7 @@ pm_auto_basic_default(pmc_t *pm)
 	pm->dc_clearance = 5.0f;		/* (us) */
 	pm->dc_skip = 2.0f;			/* (us) */
 	pm->dc_bootstrap = 100.f;		/* (ms) */
+	pm->dc_threshold = 200.f;		/* (us) */
 
 	pm->config_NOP = PM_NOP_THREE_PHASE;
 	pm->config_IFB = PM_IFB_ABC_INLINE;
@@ -157,7 +156,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->tm_average_outside = 2000.f;	/* (ms) */
 	pm->tm_pause_startup = 100.f;		/* (ms) */
 	pm->tm_pause_forced = 1000.f;		/* (ms) */
-	pm->tm_pause_halt = 2000.f;		/* (ms) */
+	pm->tm_pause_on_halt = 2000.f;		/* (ms) */
 
 	pm->scale_iA[0] = 0.f;
 	pm->scale_iA[1] = 1.f;
@@ -184,16 +183,16 @@ pm_auto_config_default(pmc_t *pm)
 	pm->probe_speed_tol = 50.f;		/* (rad/s) */
 	pm->probe_location_tol = 0.10f;		/* (rad) */
 	pm->probe_loss_maximal = 500.f;		/* (Watt) */
-	pm->probe_gain_P = 5.E-2f;
-	pm->probe_gain_I = 5.E-4f;
+	pm->probe_gain_P = 5.e-2f;
+	pm->probe_gain_I = 5.e-4f;
 
-	pm->vsi_gain_LP = 5.E-3f;
+	pm->vsi_gain_LP = 5.e-3f;
 
 	pm->dcu_deadband = 100.f;		/* (ns) */
 	pm->dcu_tol = 5.f;			/* (A) */
 
 	pm->lu_transient = 400.f;		/* (rad/s) */
-	pm->lu_gain_mq_LP = 5.E-4f;
+	pm->lu_gain_mq_LP = 5.e-4f;
 
 	pm->forced_hold_D = 20.f;		/* (A) */
 	pm->forced_weak_D = 0.f;		/* (A) */
@@ -207,41 +206,41 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->detach_threshold = 1.f;		/* (V) */
 	pm->detach_trip_tol = 5.f;		/* (V) */
-	pm->detach_gain_SF = 5.E-2f;
+	pm->detach_gain_SF = 5.e-2f;
 
 	pm->flux_uncertain = 0.f;		/* (A) */
 	pm->flux_trip_tol = 5.f;		/* (V) */
-	pm->flux_gain_IN = 5.E-3f;
-	pm->flux_gain_LO = 2.E-6f;
-	pm->flux_gain_HI = 5.E-5f;
-	pm->flux_gain_SF = 5.E-2f;
+	pm->flux_gain_IN = 5.e-3f;
+	pm->flux_gain_LO = 2.e-6f;
+	pm->flux_gain_HI = 5.e-5f;
+	pm->flux_gain_SF = 5.e-2f;
 	pm->flux_gain_IF = 0.1f;
 
-	pm->kalman_gain_Q[0] = 5.E-1f;
-	pm->kalman_gain_Q[1] = 2.E+0f;
-	pm->kalman_gain_Q[2] = 2.E+6f;
-	pm->kalman_gain_Q[3] = 2.E-1f;
-	pm->kalman_gain_R = 5.E-1f;
+	pm->kalman_gain_Q[0] = 5.e-1f;
+	pm->kalman_gain_Q[1] = 2.e+0f;
+	pm->kalman_gain_Q[2] = 2.e+6f;
+	pm->kalman_gain_Q[3] = 2.e-1f;
+	pm->kalman_gain_R = 5.e-1f;
 
 	pm->zone_threshold = 90.f;		/* (rad/s) */
 	pm->zone_tol = 50.f;			/* (rad/s) */
-	pm->zone_gain_LP = 5.E-3f;
+	pm->zone_gain_LP = 5.e-3f;
 
 	pm->hfi_maximal = 20.f;			/* (A) */
 	pm->hfi_freq = 4761.f;			/* (Hz) */
 	pm->hfi_amplitude = 5.f;		/* (A) */
 
 	pm->hall_trip_tol = 200.f;		/* (rad/s) */
-	pm->hall_gain_LO = 5.E-4f;
-	pm->hall_gain_SF = 7.E-3f;
+	pm->hall_gain_LO = 5.e-4f;
+	pm->hall_gain_SF = 7.e-3f;
 	pm->hall_gain_IF = 0.1f;
 
 	pm->eabi_const_EP = 2400;
 	pm->eabi_const_Zs = 1;
 	pm->eabi_const_Zq = 1;
 	pm->eabi_trip_tol = 20.f;		/* (rad/s) */
-	pm->eabi_gain_LO = 5.E-3f;
-	pm->eabi_gain_SF = 5.E-2f;
+	pm->eabi_gain_LO = 5.e-3f;
+	pm->eabi_gain_SF = 5.e-2f;
 	pm->eabi_gain_IF = 0.1f;
 
 	pm->sincos_CONST[0] = 0.f;
@@ -263,8 +262,8 @@ pm_auto_config_default(pmc_t *pm)
 
 	pm->sincos_const_Zs = 1;
 	pm->sincos_const_Zq = 1;
-	pm->sincos_gain_PF = 5.E-1f;
-	pm->sincos_gain_SF = 5.E-3f;
+	pm->sincos_gain_PF = 5.e-1f;
+	pm->sincos_gain_SF = 5.e-3f;
 	pm->sincos_gain_IF = 0.1f;
 
 	pm->const_lambda = 0.f;			/* (Wb) */
@@ -277,21 +276,21 @@ pm_auto_config_default(pmc_t *pm)
 	pm->const_im_Rz = 0.f;			/* (Ohm) */
 
 	pm->watt_uDC_tol = 4.f;			/* (V) */
-	pm->watt_gain_P = 5.E+1f;
-	pm->watt_gain_I = 5.E-1f;
-	pm->watt_gain_LP = 5.E-3f;
-	pm->watt_gain_WF = 5.E-2f;
+	pm->watt_gain_P = 5.e+1f;
+	pm->watt_gain_I = 5.e-1f;
+	pm->watt_gain_LP = 5.e-3f;
+	pm->watt_gain_WF = 5.e-2f;
 
 	pm->i_slew_rate = 10000.f;		/* (A/s) */
 	pm->i_damping = 1.f;
-	pm->i_gain_P = 2.E-1f;
-	pm->i_gain_I = 5.E-3f;
+	pm->i_gain_P = 2.e-1f;
+	pm->i_gain_I = 5.e-3f;
 
 	pm->mtpa_revstep = 50.f;		/* (A) */
-	pm->mtpa_gain_LP = 5.E-2f;
+	pm->mtpa_gain_LP = 5.e-2f;
 
 	pm->weak_maximal = 50.f;		/* (A) */
-	pm->weak_gain_EU = 5.E-3f;
+	pm->weak_gain_EU = 5.e-3f;
 
 	pm->v_maximal = 90.f;			/* (V) */
 	pm->v_reverse = pm->v_maximal;		/* (V) */
@@ -301,12 +300,12 @@ pm_auto_config_default(pmc_t *pm)
 	pm->s_accel_forward = 10000.f;		/* (rad/s2) */
 	pm->s_accel_reverse = pm->s_accel_forward;
 	pm->s_damping = 1.f;
-	pm->s_gain_P = 4.E-2f;
+	pm->s_gain_P = 4.e-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 2.E-4f;
+	pm->s_gain_D = 2.e-4f;
 
 	pm->l_track_tol = 50.f;			/* (rad/s) */
-	pm->l_gain_LP = 5.E-3f;
+	pm->l_gain_LP = 5.e-3f;
 
 	pm->x_maximal = 100.f;			/* (rad) */
 	pm->x_minimal = - pm->x_maximal;	/* (rad) */
@@ -321,7 +320,7 @@ pm_auto_machine_default(pmc_t *pm)
 {
 	pm->probe_speed_hold = 900.f;
 
-	pm->lu_gain_mq_LP = 5.E-4f;
+	pm->lu_gain_mq_LP = 5.e-4f;
 
 	pm->forced_maximal = 280.f;
 	pm->forced_reverse = pm->forced_maximal;
@@ -339,12 +338,12 @@ pm_auto_machine_default(pmc_t *pm)
 	pm->const_im_Rz = 0.f;
 
 	pm->i_slew_rate = 10000.f;
-	pm->i_gain_P = 2.E-1f;
-	pm->i_gain_I = 5.E-3f;
+	pm->i_gain_P = 2.e-1f;
+	pm->i_gain_I = 5.e-3f;
 
-	pm->s_gain_P = 4.E-2f;
+	pm->s_gain_P = 4.e-2f;
 	pm->s_gain_I = 0.f;
-	pm->s_gain_D = 2.E-4f;
+	pm->s_gain_D = 2.e-4f;
 }
 
 static void
@@ -627,8 +626,8 @@ pm_auto_loop_speed(pmc_t *pm)
 		Nf = 1.f / pm->zone_tol;
 
 		mq_LP = 0.02f * Nf * pm->m_dT / pm->const_Ja;
-		mq_LP =   (mq_LP > 5.E-3f) ? 5.E-3f
-			: (mq_LP < 5.E-4f) ? 5.E-4f : mq_LP;
+		mq_LP =   (mq_LP > 5.e-3f) ? 5.e-3f
+			: (mq_LP < 5.e-4f) ? 5.e-4f : mq_LP;
 
 		/* We tune the speed loop based on noise damping.
 		 * */
@@ -3487,8 +3486,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (unlikely(m_fabsf(pm->fb_iA) > pm->fault_current_halt)) {
 
-			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
-			pm->fsm_req = PM_STATE_HALT;
+			pm->fault_AT += 1;
+		}
+		else {
+			pm->fault_AT = 0;
 		}
 	}
 
@@ -3500,8 +3501,10 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (unlikely(m_fabsf(pm->fb_iB) > pm->fault_current_halt)) {
 
-			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
-			pm->fsm_req = PM_STATE_HALT;
+			pm->fault_BT += 1;
+		}
+		else {
+			pm->fault_BT = 0;
 		}
 	}
 
@@ -3513,9 +3516,19 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 
 		if (unlikely(m_fabsf(pm->fb_iC) > pm->fault_current_halt)) {
 
-			pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
-			pm->fsm_req = PM_STATE_HALT;
+			pm->fault_CT += 1;
 		}
+		else {
+			pm->fault_CT = 0;
+		}
+	}
+
+	if (unlikely(		   pm->fault_AT > pm->ts_threshold
+				|| pm->fault_BT > pm->ts_threshold
+				|| pm->fault_CT > pm->ts_threshold)) {
+
+		pm->fsm_errno = PM_ERROR_INSTANT_OVERCURRENT;
+		pm->fsm_req = PM_STATE_HALT;
 	}
 
 	if (PM_CONFIG_NOP(pm) == PM_NOP_THREE_PHASE) {
@@ -3594,9 +3607,17 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 		if (unlikely(		pm->const_fb_U > pm->fault_voltage_halt
 					&& pm->weak_track_D > - M_EPSILON)) {
 
-			pm->fsm_errno = PM_ERROR_DC_LINK_OVERVOLTAGE;
-			pm->fsm_req = PM_STATE_HALT;
+			pm->fault_UT += 1;
 		}
+		else {
+			pm->fault_UT = 0;
+		}
+	}
+
+	if (unlikely(pm->fault_UT > pm->ts_threshold)) {
+
+		pm->fsm_errno = PM_ERROR_DC_LINK_OVERVOLTAGE;
+		pm->fsm_req = PM_STATE_HALT;
 	}
 
 	if (PM_CONFIG_TVM(pm) == PM_ENABLED) {

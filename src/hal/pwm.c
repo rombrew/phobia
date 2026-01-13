@@ -49,9 +49,9 @@ void PWM_startup()
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sample_advance;
 	TIM1->BDTR = TIM_BDTR_MOE
-#ifdef HW_HAVE_PWM_BREAK
+#ifdef HW_HAVE_PWM_STOP
 		| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE
-#endif /* HW_HAVE_PWM_BREAK */
+#endif /* HW_HAVE_PWM_STOP */
 		| TIM_BDTR_OSSR | (DTG << TIM_BDTR_DTG_Pos);
 
 	/* Start TIM1.
@@ -89,9 +89,9 @@ void PWM_startup()
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH2);
 	GPIO_set_mode_SPEED_HIGH(GPIO_TIM1_CH3);
 
-#ifdef HW_HAVE_PWM_BREAK
+#ifdef HW_HAVE_PWM_STOP
 	GPIO_set_mode_FUNCTION(GPIO_TIM1_BKIN);
-#endif /* HW_HAVE_PWM_BREAK */
+#endif /* HW_HAVE_PWM_STOP */
 }
 
 void PWM_configure()
@@ -217,14 +217,14 @@ void PWM_set_Z(int Z)
 
 int PWM_fault()
 {
-#ifdef HW_HAVE_PWM_BREAK
+#ifdef HW_HAVE_PWM_STOP
 	if (TIM1->SR & TIM_SR_BIF) {
 
 		TIM1->SR &= ~TIM_SR_BIF;
 
 		return HAL_FAULT;
 	}
-#endif /* HW_HAVE_PWM_BREAK */
+#endif /* HW_HAVE_PWM_STOP */
 
 	return HAL_OK;
 }

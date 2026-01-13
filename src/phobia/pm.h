@@ -225,6 +225,7 @@ typedef struct {
 	float		dc_clearance;
 	float		dc_skip;
 	float		dc_bootstrap;
+	float		dc_threshold;
 
 	float		k_UMAX;
 	float		k_EMAX;
@@ -234,6 +235,7 @@ typedef struct {
 	int		ts_clearance;
 	int		ts_skip;
 	int		ts_bootstrap;
+	int		ts_threshold;
 	float		ts_inverted;
 
 	float		self_BST[3];
@@ -290,7 +292,7 @@ typedef struct {
 	float		tm_average_outside;
 	float		tm_pause_startup;
 	float		tm_pause_forced;
-	float		tm_pause_halt;
+	float		tm_pause_on_halt;
 
 	float		scale_iA[2];
 	float		scale_iB[2];
@@ -337,6 +339,11 @@ typedef struct {
 	float		fault_terminal_tol;
 	float		fault_current_halt;
 	float		fault_voltage_halt;
+
+	int		fault_AT;
+	int		fault_BT;
+	int		fault_CT;
+	int		fault_UT;
 
 	float		vsi_DC;
 	float		vsi_lpf_DC;

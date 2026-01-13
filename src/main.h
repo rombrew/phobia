@@ -48,7 +48,7 @@ typedef struct {
 	int			knob_ACTIVE;
 	int			knob_DISARM;
 	int			knob_NFAULT;
-	float			knob_range_ANG[3];
+	float			knob_range_ANG[4];
 #ifdef HW_HAVE_BRAKE_KNOB
 	float			knob_range_BRK[2];
 #endif /* HW_HAVE_BRAKE_KNOB */

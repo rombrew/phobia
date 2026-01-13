@@ -34,12 +34,13 @@ these registers to view analog voltages on interface inputs.
 
 If signals do not change when you turn the knobs then check the wiring.
 
-Select the `ANG` signal range in which you want to work. We use three point
+Select the `ANG` signal range in which you want to work. We use four point
 conversion from input voltage to the control value.
 
 	(pmc) reg ap.knob_range_ANG0 <V>
 	(pmc) reg ap.knob_range_ANG1 <V>
 	(pmc) reg ap.knob_range_ANG2 <V>
+	(pmc) reg ap.knob_range_ANG3 <V>
 
 The same for `BRK` signal but we use two point conversion here.
 

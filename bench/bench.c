@@ -222,7 +222,7 @@ tlm_proc_step(double dT)
 {
 	double		iA, iB, iC;
 
-	tlm.y[0] += dT / 1.E-6;
+	tlm.y[0] += dT / 1.e-6;
 
 	/* VSI Output.
 	 * */
@@ -283,14 +283,14 @@ tlm_PWM_grab()
 
 	if (tlm.fd_pwm == NULL) {
 
-		fprintf(stderr, "fopen: %s", strerror(errno));
-		exit(-1);
+		fprintf(stderr, "fopen: %s\n", strerror(errno));
+		abort();
 	}
 
 	tlm.y[0] = 0.f;
 
 	usual_dT = m.sol_dT;
-	m.sol_dT = 10.E-9;
+	m.sol_dT = 10.e-9;
 	m.proc_step = &tlm_proc_step;
 
 	/* Collect telemetry in three PWM cycle.
@@ -313,16 +313,16 @@ void tlm_restart()
 
 		if (tlm.fd_tlm == NULL) {
 
-			fprintf(stderr, "fopen: %s", strerror(errno));
-			exit(-1);
+			fprintf(stderr, "fopen: %s\n", strerror(errno));
+			abort();
 		}
 
 		tlm.fd_gp = fopen(AGP_FILE, "w");
 
 		if (tlm.fd_gp == NULL) {
 
-			fprintf(stderr, "fopen: %s", strerror(errno));
-			exit(-1);
+			fprintf(stderr, "fopen: %s\n", strerror(errno));
+			abort();
 		}
 	}
 	else {
@@ -377,7 +377,7 @@ void sim_runtime(double dT)
 				fclose(tlm.fd_tlm);
 			}
 
-			exit(-1);
+			abort();
 		}
 	}
 }
@@ -389,33 +389,33 @@ void bench_script()
 
 	tlm_restart();
 
-	m.Rs = 20.E-3;
-	m.Ld = 15.E-6;
-	m.Lq = 25.E-6;
+	m.Rs = 20.e-3;
+	m.Ld = 15.e-6;
+	m.Lq = 25.e-6;
 	m.Udc = 49.;
 	m.Rdc = 0.1;
 	m.Zp = 5;
 	m.lambda = blm_Kv_lambda(&m, 58.);
-	m.Jm = 17.E-3;
+	m.Jm = 17.e-3;
 
 	ts_script_default();
 	ts_script_base();
 	blm_restart(&m);
 
-	m.Jm = 5.E+7;
+	m.Jm = 5.e+7;
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_SATURATION;
 	ts_wait_IDLE();
 
-	printf("const_im_Ld = %.4E (H)\n", pm.const_im_Ld);
-	printf("const_im_Lq = %.4E (H)\n", pm.const_im_Lq);
+	printf("const_im_Ld = %.4e (H)\n", pm.const_im_Ld);
+	printf("const_im_Lq = %.4e (H)\n", pm.const_im_Lq);
 
 	pm.fsm_req = PM_STATE_PROBE_CONST_RESISTANCE;
 	ts_wait_IDLE();
 
 	pm.const_Rs = pm.const_im_Rz;
 
-	printf("const_Rs = %.4E (Ohm)\n", pm.const_Rs);
+	printf("const_Rs = %.4e (Ohm)\n", pm.const_Rs);
 	printf("self_DTu = %.4f (V)\n", pm.self_DTu);
 
 	/*ts_adjust_sensor_hall();
@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2) {
 
-		exit(-1);
+		abort();
 	}
 
 	lfg_start((int) time(NULL));

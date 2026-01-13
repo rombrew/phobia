@@ -4567,6 +4567,13 @@ gpEventHandle(gpcon_t *gp, const SDL_Event *ev)
 				gp->cur_Y = ev->button.y;
 
 				editEvent(ed, EDIT_EVNO_CLICK, gp->cur_X, gp->cur_Y);
+
+				if (ed->raised == 0) {
+
+					gp->stat = GP_IDLE;
+
+					SDL_StopTextInput();
+				}
 			}
 		}
 	}

@@ -520,7 +520,7 @@ fmt_fp_normal(io_ops_t *io, float x, int n)
 		io->putc('0' + i);
 	}
 
-	io->putc('E');
+	io->putc('e');
 
 	if (v >= 0) {
 
@@ -628,7 +628,7 @@ fmt_fp_pretty(io_ops_t *io, float x, int n)
 	else if (v == 12) io->putc('T');
 	else if (v != 0) {
 
-		io->putc('E');
+		io->putc('e');
 
 		if (v >= 0) {
 

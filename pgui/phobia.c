@@ -4231,6 +4231,72 @@ page_in_knob(struct public *pub)
 	struct nk_context		*ctx = &nk->ctx;
 	struct link_reg			*reg;
 
+	nk_menubar_begin(ctx);
+
+	nk_style_push_vec2(ctx, &ctx->style.contextual_button.padding,
+			nk_vec2(pub->fe_base * 1.5f, 4.0f));
+
+	nk_layout_row_static(ctx, 0, pub->fe_base * 8, 2);
+
+	if (nk_menu_begin_label(ctx, "Knob", NK_TEXT_CENTERED,
+				nk_vec2(pub->fe_base * 16, 800)))
+	{
+		nk_layout_row_dynamic(ctx, 0, 1);
+
+		if (nk_menu_item_label(ctx, "Default mapping (+5v)", NK_TEXT_LEFT)) {
+
+			link_config_inline(lp,  "ap.knob_range_ANG0 1.0\n"
+						"ap.knob_range_ANG1 2.5\n"
+						"ap.knob_range_ANG2 2.5\n"
+						"ap.knob_range_ANG3 4.0\n"
+						"ap.knob_range_BRK0 2.0\n"
+						"ap.knob_range_BRK1 4.0\n"
+						"ap.knob_range_LOS0 0.2\n"
+						"ap.knob_range_LOS1 4.8\n"
+						"ap.knob_control_ANG0 0\n"
+						"ap.knob_control_ANG1 50\n"
+						"ap.knob_control_ANG2 100\n"
+						"ap.knob_control_BRK -100");
+		}
+
+		if (nk_menu_item_label(ctx, "Default mapping (+3.3v)", NK_TEXT_LEFT)) {
+
+			link_config_inline(lp,  "ap.knob_range_ANG0 0.6\n"
+						"ap.knob_range_ANG1 1.6\n"
+						"ap.knob_range_ANG2 1.6\n"
+						"ap.knob_range_ANG3 2.6\n"
+						"ap.knob_range_BRK0 1.3\n"
+						"ap.knob_range_BRK1 2.6\n"
+						"ap.knob_range_LOS0 0.2\n"
+						"ap.knob_range_LOS1 3.1\n"
+						"ap.knob_control_ANG0 0\n"
+						"ap.knob_control_ANG1 50\n"
+						"ap.knob_control_ANG2 100\n"
+						"ap.knob_control_BRK -100");
+		}
+
+		if (nk_menu_item_label(ctx, "Bidirectional (+5v)", NK_TEXT_LEFT)) {
+
+			link_config_inline(lp,  "ap.knob_range_ANG0 1.0\n"
+						"ap.knob_range_ANG1 2.4\n"
+						"ap.knob_range_ANG2 2.6\n"
+						"ap.knob_range_ANG3 4.0\n"
+						"ap.knob_range_BRK0 2.0\n"
+						"ap.knob_range_BRK1 4.0\n"
+						"ap.knob_range_LOS0 0.2\n"
+						"ap.knob_range_LOS1 4.8\n"
+						"ap.knob_control_ANG0 -100\n"
+						"ap.knob_control_ANG1 0\n"
+						"ap.knob_control_ANG2 100\n"
+						"ap.knob_control_BRK -100");
+		}
+
+		nk_menu_end(ctx);
+	}
+
+	nk_style_pop_vec2(ctx);
+	nk_menubar_end(ctx);
+
 	reg = link_reg_lookup(lp, "ap.knob_in_ANG");
 	if (reg != NULL) { reg->update = 100; }
 
@@ -4260,7 +4326,8 @@ page_in_knob(struct public *pub)
 	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup control");
 	reg_float(pub, "ap.knob_range_ANG0", "ANG range LOW");
 	reg_float(pub, "ap.knob_range_ANG1", "ANG range MID");
-	reg_float(pub, "ap.knob_range_ANG2", "ANG range HIGH");
+	reg_float(pub, "ap.knob_range_ANG2", "ANG range MID");
+	reg_float(pub, "ap.knob_range_ANG3", "ANG range HIGH");
 	reg_float(pub, "ap.knob_range_BRK0", "BRK range LOW");
 	reg_float(pub, "ap.knob_range_BRK1", "BRK range HIGH");
 	reg_float(pub, "ap.knob_range_LOS0", "LOST range LOW");
@@ -4551,7 +4618,8 @@ page_config(struct public *pub)
 		reg_float(pub, "pm.dc_minimal", "Minimal pulse");
 		reg_float(pub, "pm.dc_clearance", "Clearance before ADC sample");
 		reg_float(pub, "pm.dc_skip", "Skip after ADC sample");
-		reg_float(pub, "pm.dc_bootstrap", "Bootstrap retention time");
+		reg_float(pub, "pm.dc_bootstrap", "Bootstrap retention");
+		reg_float(pub, "pm.dc_threshold", "Fault threshold");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -4595,8 +4663,8 @@ page_config(struct public *pub)
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
 
-		reg_float(pub, "pm.tm_transient_slow", "Transient time slow");
-		reg_float(pub, "pm.tm_transient_fast", "Transient time fast");
+		reg_float(pub, "pm.tm_transient_slow", "Transient slow time");
+		reg_float(pub, "pm.tm_transient_fast", "Transient fast time");
 		reg_float(pub, "pm.tm_voltage_hold", "Voltage hold time");
 		reg_float(pub, "pm.tm_current_hold", "Current hold time");
 		reg_float(pub, "pm.tm_current_ramp", "Current ramp time");
@@ -4607,7 +4675,7 @@ page_config(struct public *pub)
 		reg_float(pub, "pm.tm_average_outside", "Average outside time");
 		reg_float(pub, "pm.tm_pause_startup", "Startup pause");
 		reg_float(pub, "pm.tm_pause_forced", "FORCED pause");
-		reg_float(pub, "pm.tm_pause_halt", "Halt pause");
+		reg_float(pub, "pm.tm_pause_on_halt", "Halt (fault) pause");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);

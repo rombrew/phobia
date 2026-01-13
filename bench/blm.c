@@ -48,11 +48,11 @@ void blm_enable(blm_t *m)
 	 */
 
 	m->time = 0.;		/* Simulation TIME (Second) */
-	m->sol_dT = 5.E-6;	/* ODE solver step (Second) */
+	m->sol_dT = 5.e-6;	/* ODE solver step (Second) */
 
-	m->pwm_dT = 35.E-6;		/* PWM cycle (Second)    */
-	m->pwm_deadtime = 90.E-9;	/* PWM deadtime (Second) */
-	m->pwm_minimal = 50.E-9;	/* PWM minimal (Second)  */
+	m->pwm_dT = 35.e-6;		/* PWM cycle (Second)    */
+	m->pwm_deadtime = 90.e-9;	/* PWM deadtime (Second) */
+	m->pwm_minimal = 50.e-9;	/* PWM minimal (Second)  */
 	m->pwm_resolution = 2940;	/* PWM resolution        */
 
 	/* Threshold about deadtime (Ampere).
@@ -65,8 +65,8 @@ void blm_enable(blm_t *m)
 
 	/* Winding inductance (Henry).
          * */
-	m->Ld = 11.E-6;
-	m->Lq = 16.E-6;
+	m->Ld = 11.e-6;
+	m->Lq = 16.e-6;
 
 	/* Number of the rotor pole pairs.
 	 * */
@@ -98,18 +98,18 @@ void blm_enable(blm_t *m)
 
 	/* Decoupling capacitance (Farad).
 	 * */
-	m->Cdc = 940.E-6;
+	m->Cdc = 940.e-6;
 
 	/* Moment of inertia (Kilogram Metre squared).
 	 * */
-	m->Jm = 5.E-3;
+	m->Jm = 5.e-3;
 
 	/* Load torque polynom.
 	 * */
-	m->Mq[0] = 0.E-3;
-	m->Mq[1] = 5.E-4;
-	m->Mq[2] = 5.E-7;
-	m->Mq[3] = 5.E-2;
+	m->Mq[0] = 0.e-3;
+	m->Mq[1] = 5.e-4;
+	m->Mq[2] = 5.e-7;
+	m->Mq[3] = 5.e-2;
 
 	/* ADC conversion time (Second).
 	 * */
