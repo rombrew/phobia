@@ -94,6 +94,11 @@ enum {
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 enum {
+	HAL_DISABLED			= 0,
+	HAL_ENABLED
+};
+
+enum {
 	HAL_OK				= 0,
 	HAL_FAULT
 };
@@ -119,6 +124,9 @@ typedef struct {
 	float		PWM_frequency;
 	int		PWM_resolution;
 	float		PWM_deadtime;
+#ifdef HW_HAVE_PWM_STOP
+	int		PWM_stop;
+#endif /* HW_HAVE_PWM_STOP */
 
 	float		ADC_reference_voltage;
 	float		ADC_shunt_resistance;

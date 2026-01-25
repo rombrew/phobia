@@ -909,7 +909,7 @@ link_reg_all_queued(struct link_pmc *lp)
 {
 	struct link_reg			*reg;
 	int				reg_ID;
-	int				busy_N = 0;
+	int				queued_N = 0;
 
 	for (reg_ID = 0; reg_ID < lp->reg_MAX_N; ++reg_ID) {
 
@@ -918,18 +918,18 @@ link_reg_all_queued(struct link_pmc *lp)
 			reg = &lp->reg[reg_ID];
 
 			if (reg->queued != 0)
-				busy_N++;
+				queued_N++;
 		}
 	}
 
-	return busy_N;
+	return queued_N;
 }
 
 void link_push(struct link_pmc *lp)
 {
 	struct link_priv	*priv = lp->priv;
 	struct link_reg		*reg;
-	int			reg_ID, dofetch, busy_N;
+	int			reg_ID, dofetch, queued_N;
 
 	if (lp->linked == 0)
 		return ;
@@ -940,17 +940,14 @@ void link_push(struct link_pmc *lp)
 	if (priv->link_mode == LINK_MODE_DATA_GRAB)
 		return ;
 
-	busy_N = link_reg_all_queued(lp);
-
-	if (busy_N > 10)
-		return ;
-
+	queued_N = link_reg_all_queued(lp);
 	reg_ID = priv->reg_push_ID;
 
 	do {
 		reg = lp->reg + reg_ID;
 
-		if (reg->queued == 0) {
+		if (		reg->queued == 0
+				&& queued_N < 10) {
 
 			dofetch = 0;
 
@@ -985,7 +982,7 @@ void link_push(struct link_pmc *lp)
 					reg->queued = lp->clock;
 					lp->locked = lp->clock;
 
-					busy_N++;
+					queued_N++;
 				}
 			}
 			else if (dofetch != 0) {
@@ -997,7 +994,7 @@ void link_push(struct link_pmc *lp)
 					reg->queued = lp->clock;
 					lp->locked = lp->clock;
 
-					busy_N++;
+					queued_N++;
 				}
 			}
 
@@ -1014,22 +1011,23 @@ void link_push(struct link_pmc *lp)
 
 					lp->locked = lp->clock;
 
-					busy_N++;
+					queued_N++;
 				}
 			}
 		}
 		else {
-			if (reg->queued + 1000 < lp->clock)
+			if (reg->queued + 1000 < lp->clock) {
+
 				reg->queued = 0;
+
+				queued_N--;
+			}
 		}
 
 		reg_ID++;
 
 		if (reg_ID >= lp->reg_MAX_N)
 			reg_ID = 0;
-
-		if (busy_N > 10)
-			break;
 
 		if (reg_ID == priv->reg_push_ID)
 			break;

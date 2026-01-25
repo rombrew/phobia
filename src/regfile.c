@@ -1221,6 +1221,19 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 			}
 			break;
 
+#ifdef HW_HAVE_PWM_STOP
+		case ID_HAL_PWM_STOP:
+
+			switch (msg) {
+
+				PM_SFI_CASE(HAL_DISABLED);
+				PM_SFI_CASE(HAL_ENABLED);
+
+				default: blank = 1; break;
+			}
+			break;
+#endif /* HW_HAVE_PWM_STOP */
+
 		case ID_HAL_ADC_SAMPLE_TIME:
 
 			switch (msg) {
@@ -1304,8 +1317,8 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 
 			switch (msg) {
 
-				PM_SFI_CASE(PM_DISABLED);
-				PM_SFI_CASE(PM_ENABLED);
+				PM_SFI_CASE(HAL_DISABLED);
+				PM_SFI_CASE(HAL_ENABLED);
 
 				default: blank = 1; break;
 			}
@@ -1456,7 +1469,6 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 		case ID_PM_CONFIG_HFI_PERMANENT:
 		case ID_PM_CONFIG_RELUCTANCE:
 		case ID_PM_CONFIG_WEAKENING:
-		case ID_PM_CONFIG_CC_BRAKE_STOP:
 		case ID_PM_CONFIG_CC_SPEED_TRACK:
 
 			switch (msg) {
@@ -1562,6 +1574,18 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 				PM_SFI_CASE(PM_SALIENCY_NONE);
 				PM_SFI_CASE(PM_SALIENCY_NEGATIVE);
 				PM_SFI_CASE(PM_SALIENCY_POSITIVE);
+
+				default: blank = 1; break;
+			}
+			break;
+
+		case ID_PM_CONFIG_CC_BRAKE_STOP:
+
+			switch (msg) {
+
+				PM_SFI_CASE(PM_BRAKE_NONE);
+				PM_SFI_CASE(PM_BRAKE_ON_REVERSE);
+				PM_SFI_CASE(PM_BRAKE_ON_KNOB);
 
 				default: blank = 1; break;
 			}
@@ -1692,8 +1716,12 @@ const reg_t		regfile[] = {
 	REG_DEF(hal.USART_baudrate,,,		"",	"%0i",	REG_CONFIG, NULL, NULL),
 	REG_DEF(hal.USART_parity,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 
-	REG_DEF(hal.PWM_frequency,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_PWM, NULL),
-	REG_DEF(hal.PWM_deadtime,,,		"ns",	"%1f",	REG_CONFIG, &reg_proc_PWM, NULL),
+	REG_DEF(hal.PWM_frequency,,,	"Hz",	"%1f",	REG_CONFIG, &reg_proc_PWM, NULL),
+	REG_DEF(hal.PWM_deadtime,,,	"ns",	"%1f",	REG_CONFIG, &reg_proc_PWM, NULL),
+#ifdef HW_HAVE_PWM_STOP
+	REG_DEF(hal.PWM_stop,,,		"",	"%0i",	REG_CONFIG, &reg_proc_PWM, &reg_format_enum),
+#endif /* HW_HAVE_PWM_STOP */
+
 	REG_DEF(hal.ADC_reference_voltage,,,	"V",	"%3f",	REG_CONFIG, &reg_proc_ADC, NULL),
 	REG_DEF(hal.ADC_shunt_resistance,,,	"Ohm",	"%4g",	REG_CONFIG, &reg_proc_ADC, NULL),
 	REG_DEF(hal.ADC_amplifier_gain,,,	"",	"%1f",	REG_CONFIG, &reg_proc_ADC, NULL),

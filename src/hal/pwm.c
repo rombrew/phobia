@@ -48,11 +48,16 @@ void PWM_startup()
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
 	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sample_advance;
-	TIM1->BDTR = TIM_BDTR_MOE
+	TIM1->BDTR = TIM_BDTR_MOE | TIM_BDTR_AOE | TIM_BDTR_OSSR
+		| TIM_BDTR_OSSI | (DTG << TIM_BDTR_DTG_Pos);
+
 #ifdef HW_HAVE_PWM_STOP
-		| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE
+	if (hal.PWM_stop == HAL_ENABLED) {
+
+		TIM1->BDTR |= (3U << TIM_BDTR_BKF_Pos)
+			| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE;
+	}
 #endif /* HW_HAVE_PWM_STOP */
-		| TIM_BDTR_OSSR | (DTG << TIM_BDTR_DTG_Pos);
 
 	/* Start TIM1.
 	 * */
@@ -103,7 +108,19 @@ void PWM_configure()
 	TIM1->ARR = hal.PWM_resolution;
 	TIM1->CCR4 = hal.PWM_resolution - hal.ADC_sample_advance;
 
-	MODIFY_REG(TIM1->BDTR, 0xFFU, DTG);
+	MODIFY_REG(TIM1->BDTR, TIM_BDTR_DTG_Msk, DTG << TIM_BDTR_DTG_Pos);
+
+#ifdef HW_HAVE_PWM_STOP
+	if (hal.PWM_stop == HAL_ENABLED) {
+
+		TIM1->BDTR |= (3U << TIM_BDTR_BKF_Pos)
+			| (0U << TIM_BDTR_BKP_Pos) | TIM_BDTR_BKE;
+	}
+	else {
+		TIM1->BDTR &= ~(TIM_BDTR_BKF_Msk | TIM_BDTR_BKP_Msk
+				| TIM_BDTR_BKE);
+	}
+#endif /* HW_HAVE_PWM_STOP */
 }
 
 void PWM_set_DC(int A, int B, int C)
@@ -215,17 +232,17 @@ void PWM_set_Z(int Z)
 	TIM1->EGR |= TIM_EGR_COMG;
 }
 
+#ifdef HW_HAVE_PWM_STOP
 int PWM_fault()
 {
-#ifdef HW_HAVE_PWM_STOP
 	if (TIM1->SR & TIM_SR_BIF) {
 
 		TIM1->SR &= ~TIM_SR_BIF;
 
 		return HAL_FAULT;
 	}
-#endif /* HW_HAVE_PWM_STOP */
 
 	return HAL_OK;
 }
+#endif /* HW_HAVE_PWM_STOP */
 

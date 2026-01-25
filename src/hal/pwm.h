@@ -17,7 +17,9 @@ void PWM_configure();
 void PWM_set_DC(int A, int B, int C);
 void PWM_set_Z(int Z);
 
+#ifdef HW_HAVE_PWM_STOP
 int PWM_fault();
+#endif /* HW_HAVE_PWM_STOP */
 
 #endif /* _H_PWM_ */
 

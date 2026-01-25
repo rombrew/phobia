@@ -13,7 +13,7 @@
 #define HW_CLOCK_CRYSTAL_HZ		12000000U
 
 #define HW_PWM_FREQUENCY_HZ		28571.f
-#define HW_PWM_DEADTIME_NS		370.f		/* IPT017N12N ??? */
+#define HW_PWM_DEADTIME_NS		190.f		/* IPT017N12N */
 
 #define HW_PWM_MINIMAL_PULSE		0.2f
 #define HW_PWM_CLEARANCE_ZONE		5.0f
@@ -36,7 +36,7 @@
 #define HW_NTC_PCB_BALANCE		3000.f
 #define HW_NTC_PCB_NTC0			10000.f
 #define HW_NTC_PCB_TA0			25.f
-#define HW_NTC_PCB_BETTA		3435.f		/* ??? */
+#define HW_NTC_PCB_BETTA		3570.f		/* NTCS0805E3 */
 
 #define HW_NTC_EXT_BALANCE		3000.f
 

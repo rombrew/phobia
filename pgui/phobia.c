@@ -3725,6 +3725,7 @@ page_hal(struct public *pub)
 
 	reg_float(pub, "hal.PWM_frequency", "PWM frequency");
 	reg_float(pub, "hal.PWM_deadtime", "PWM deadtime");
+	reg_enum_toggle(pub, "hal.PWM_stop", "PWM emergency stop");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -4654,7 +4655,7 @@ page_config(struct public *pub)
 		reg_enum_toggle(pub, "pm.config_RELUCTANCE", "Reluctance MTPA control");
 		reg_enum_toggle(pub, "pm.config_WEAKENING", "Flux WEAKENING control");
 
-		reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake (no reverse)");
+		reg_enum_combo(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake function", 1);
 		reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "DRIVE speed tracking");
 
 		reg_enum_combo(pub, "pm.config_EABI_FRONTEND", "EABI frontend", 0);
@@ -5670,7 +5671,7 @@ page_lp_current(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_enum_toggle(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake (no reverse)");
+	reg_enum_combo(pub, "pm.config_CC_BRAKE_STOP", "DRIVE brake function", 1);
 	reg_enum_toggle(pub, "pm.config_CC_SPEED_TRACK", "DRIVE speed tracking");
 
 	nk_layout_row_dynamic(ctx, 0, 1);

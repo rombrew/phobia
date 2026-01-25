@@ -139,7 +139,7 @@ pm_auto_config_default(pmc_t *pm)
 	pm->config_SALIENCY = PM_SALIENCY_NEGATIVE;
 	pm->config_RELUCTANCE = PM_DISABLED;
 	pm->config_WEAKENING = PM_DISABLED;
-	pm->config_CC_BRAKE_STOP = PM_ENABLED;
+	pm->config_CC_BRAKE_STOP = PM_BRAKE_ON_REVERSE;
 	pm->config_CC_SPEED_TRACK = PM_ENABLED;
 	pm->config_EABI_FRONTEND = PM_EABI_INCREMENTAL;
 	pm->config_SINCOS_FRONTEND = PM_SINCOS_ANALOG;
@@ -2099,16 +2099,18 @@ pm_lu_FSM(pmc_t *pm)
 
 				pm->lu_MODE = PM_LU_ON_HFI;
 			}
-			else if (	PM_CONFIG_TVM(pm) == PM_ENABLED
-					&& pm->config_LU_FREEWHEEL == PM_ENABLED
+			else if (	pm->config_LU_FREEWHEEL == PM_ENABLED
 					&& pm->forced_track_D < M_EPSILON) {
 
-				pm->lu_MODE = PM_LU_DETACHED;
+				if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
-				pm->flux_DETACH = PM_DISABLED;
-				pm->flux_TYPE = PM_FLUX_NONE;
+					pm->lu_MODE = PM_LU_DETACHED;
 
-				pm->proc_set_Z(PM_Z_ABC);
+					pm->flux_DETACH = PM_DISABLED;
+					pm->flux_TYPE = PM_FLUX_NONE;
+
+					pm->proc_set_Z(PM_Z_ABC);
+				}
 			}
 		}
 	}
@@ -2159,7 +2161,7 @@ pm_lu_FSM(pmc_t *pm)
 			else if (pm->config_LU_FORCED == PM_ENABLED) {
 
 				if (		pm->config_LU_FREEWHEEL == PM_ENABLED
-						&& pm->forced_track_D < M_EPSILON) {
+						&& m_fabsf(pm->s_setpoint_speed) < M_EPSILON) {
 
 					if (PM_CONFIG_TVM(pm) == PM_ENABLED) {
 
@@ -2948,9 +2950,22 @@ pm_loop_current(pmc_t *pm)
 						&pm->mtpa_setpoint_Q);
 			}
 
-			if (pm->config_CC_BRAKE_STOP == PM_ENABLED) {
+			if (pm->config_CC_BRAKE_STOP == PM_BRAKE_ON_REVERSE) {
 
 				if (track_Q < - M_EPSILON) {
+
+					iMAX = m_fabsf(track_Q);
+
+					/* Replace current setpoint by speed regulation.
+					 * */
+					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
+					track_Q = (track_Q > iMAX) ? iMAX
+						: (track_Q < - iMAX) ? - iMAX : track_Q;
+				}
+			}
+			else if (pm->config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
+
+				if (pm->i_brake_KNOB == PM_ENABLED) {
 
 					iMAX = m_fabsf(track_Q);
 

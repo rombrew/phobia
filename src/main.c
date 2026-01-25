@@ -288,7 +288,7 @@ LD_TASK void task_TEMP(void *pData)
 #ifdef HW_HAVE_DRV_ON_PCB
 		if (		hal.DRV.auto_RESTART == PM_ENABLED
 				&& pm.lu_MODE == PM_LU_DISABLED
-				&& DRV_fault() != 0) {
+				&& DRV_fault() != HAL_OK) {
 
 			DRV_status();
 
@@ -301,7 +301,7 @@ LD_TASK void task_TEMP(void *pData)
 
 #ifdef HW_HAVE_ALT_FUNCTION
 #ifdef GPIO_ALT_CURRENT
-		if (hal.ALT_current == PM_ENABLED) {
+		if (hal.ALT_current == HAL_ENABLED) {
 
 			GPIO_set_HIGH(GPIO_ALT_CURRENT);
 		}
@@ -310,7 +310,7 @@ LD_TASK void task_TEMP(void *pData)
 		}
 #endif /* GPIO_ALT_CURRENT */
 #ifdef GPIO_ALT_VOLTAGE
-		if (hal.ALT_voltage == PM_ENABLED) {
+		if (hal.ALT_voltage == HAL_ENABLED) {
 
 			GPIO_set_HIGH(GPIO_ALT_VOLTAGE);
 		}
@@ -407,26 +407,6 @@ conv_KNOB()
 		if (scaled < - 1.f) {
 
 			scaled = - 1.f;
-
-			if (ap.knob_ACTIVE == PM_ENABLED) {
-
-				if (timeout_IDLE() == PM_ENABLED) {
-
-					if (pm.lu_MODE != PM_LU_DISABLED) {
-
-						pm.fsm_req = PM_STATE_LU_SHUTDOWN;
-					}
-
-					ap.knob_ACTIVE = PM_DISABLED;
-				}
-			}
-			else if (ap.knob_DISARM == PM_ENABLED) {
-
-				if (timeout_DISARM() == PM_ENABLED) {
-
-					ap.knob_DISARM = PM_DISABLED;
-				}
-			}
 		}
 		else {
 			hold_FLAG = PM_ENABLED;
@@ -434,20 +414,6 @@ conv_KNOB()
 			if (scaled > 1.f) {
 
 				scaled = 1.f;
-			}
-
-			if (		ap.knob_STARTUP == PM_ENABLED
-					&& ap.knob_ACTIVE != PM_ENABLED) {
-
-				if (ap.knob_DISARM == PM_ENABLED) {
-
-					/* DISARMED */
-				}
-				else if (pm.lu_MODE == PM_LU_DISABLED) {
-
-					pm.fsm_req = PM_STATE_LU_STARTUP;
-					ap.knob_ACTIVE = PM_ENABLED;
-				}
 			}
 		}
 
@@ -470,6 +436,11 @@ conv_KNOB()
 
 		/* Loss of BRAKE signal.
 		 * */
+
+		if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
+
+			pm.i_brake_KNOB = PM_DISABLED;
+		}
 	}
 	else if (ap.knob_BRAKE == PM_ENABLED) {
 
@@ -478,16 +449,66 @@ conv_KNOB()
 		scaled = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 		scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-		if (scaled > 0.f) {
+		if (scaled < 0.f) {
+
+			if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
+
+				pm.i_brake_KNOB = PM_DISABLED;
+			}
+		}
+		else {
+			if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
+
+				pm.i_brake_KNOB = PM_ENABLED;
+			}
 
 			hold_FLAG = PM_ENABLED;
 
-			control += (ap.knob_control_BRK - control) * scaled;
+			control = (ap.knob_control_BRK - control) * scaled;
 		}
 
 		ap.knob_NFAULT = 0;
 	}
 #endif /* HW_HAVE_BRAKE_KNOB */
+
+	if (m_fabsf(control) < M_EPSILON) {
+
+		if (ap.knob_ACTIVE == PM_ENABLED) {
+
+			if (timeout_IDLE() == PM_ENABLED) {
+
+				if (pm.lu_MODE != PM_LU_DISABLED) {
+
+					pm.fsm_req = PM_STATE_LU_SHUTDOWN;
+				}
+
+				ap.knob_ACTIVE = PM_DISABLED;
+			}
+		}
+		else if (	ap.knob_STARTUP == PM_ENABLED
+				&& ap.knob_DISARM == PM_ENABLED) {
+
+			if (timeout_DISARM() == PM_ENABLED) {
+
+				ap.knob_DISARM = PM_DISABLED;
+			}
+		}
+	}
+	else {
+		if (		ap.knob_STARTUP == PM_ENABLED
+				&& ap.knob_ACTIVE != PM_ENABLED) {
+
+			if (ap.knob_DISARM == PM_ENABLED) {
+
+				/* DISARMED */
+			}
+			else if (pm.lu_MODE == PM_LU_DISABLED) {
+
+				pm.fsm_req = PM_STATE_LU_STARTUP;
+				ap.knob_ACTIVE = PM_ENABLED;
+			}
+		}
+	}
 
 	if (ap.knob_ACTIVE == PM_ENABLED) {
 
@@ -565,6 +586,10 @@ default_flash_load()
 
 	hal.PWM_frequency = HW_PWM_FREQUENCY_HZ;
 	hal.PWM_deadtime = HW_PWM_DEADTIME_NS;
+#ifdef HW_HAVE_PWM_STOP
+	hal.PWM_stop = HAL_DISABLED;
+#endif /* HW_HAVE_PWM_STOP */
+
 	hal.ADC_reference_voltage = HW_ADC_REFERENCE_VOLTAGE;
 	hal.ADC_shunt_resistance = HW_ADC_SHUNT_RESISTANCE;
 	hal.ADC_amplifier_gain = HW_ADC_AMPLIFIER_GAIN;
@@ -610,8 +635,8 @@ default_flash_load()
 #endif /* HW_HAVE_DRV_ON_PCB */
 
 #ifdef HW_HAVE_ALT_FUNCTION
-	hal.ALT_current = PM_DISABLED;
-	hal.ALT_voltage = PM_DISABLED;
+	hal.ALT_current = HAL_DISABLED;
+	hal.ALT_voltage = HAL_DISABLED;
 #endif /* HW_HAVE_ALT_FUNCTION */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
@@ -932,6 +957,27 @@ conv_PULSE_WIDTH()
 	if (scaled < - 1.f) {
 
 		scaled = - 1.f;
+	}
+	else {
+		hold_FLAG = PM_ENABLED;
+
+		if (scaled > 1.f) {
+
+			scaled = 1.f;
+		}
+	}
+
+	if (scaled < 0.f) {
+
+		range = ap.ppm_control[1] - ap.ppm_control[0];
+		control = ap.ppm_control[1] + range * scaled;
+	}
+	else {
+		range = ap.ppm_control[2] - ap.ppm_control[1];
+		control = ap.ppm_control[1] + range * scaled;
+	}
+
+	if (m_fabsf(control) < M_EPSILON) {
 
 		if (ap.ppm_ACTIVE == PM_ENABLED) {
 
@@ -945,7 +991,8 @@ conv_PULSE_WIDTH()
 				ap.ppm_ACTIVE = PM_DISABLED;
 			}
 		}
-		else if (ap.ppm_DISARM == PM_ENABLED) {
+		else if (	ap.ppm_STARTUP == PM_ENABLED
+				&& ap.ppm_DISARM == PM_ENABLED) {
 
 			if (timeout_DISARM() == PM_ENABLED) {
 
@@ -954,13 +1001,6 @@ conv_PULSE_WIDTH()
 		}
 	}
 	else {
-		hold_FLAG = PM_ENABLED;
-
-		if (scaled > 1.f) {
-
-			scaled = 1.f;
-		}
-
 		if (		ap.ppm_STARTUP == PM_ENABLED
 				&& ap.ppm_ACTIVE != PM_ENABLED) {
 
@@ -974,16 +1014,6 @@ conv_PULSE_WIDTH()
 				ap.ppm_ACTIVE = PM_ENABLED;
 			}
 		}
-	}
-
-	if (scaled < 0.f) {
-
-		range = ap.ppm_control[1] - ap.ppm_control[0];
-		control = ap.ppm_control[1] + range * scaled;
-	}
-	else {
-		range = ap.ppm_control[2] - ap.ppm_control[1];
-		control = ap.ppm_control[1] + range * scaled;
 	}
 
 	if (		ap.ppm_reg_DATA != control
@@ -1121,28 +1151,30 @@ void ADC_IRQ()
 	}
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
-	if (pm.lu_MODE != PM_LU_DISABLED) {
+	if (unlikely(		hal.CNT_diag[1] >= pm.m_dT
+				&& pm.lu_MODE != PM_LU_DISABLED)) {
 
-		if (unlikely(hal.CNT_diag[1] >= pm.m_dT)) {
-
-			pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
-			pm.fsm_req = PM_STATE_HALT;
-		}
-
-		if (unlikely(PWM_fault() != HAL_OK)) {
-
-			pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
-			pm.fsm_req = PM_STATE_HALT;
-		}
+		pm.fsm_errno = PM_ERROR_HW_UNMANAGED_IRQ;
+		pm.fsm_req = PM_STATE_HALT;
+	}
 
 #ifdef HW_HAVE_DRV_ON_PCB
-		if (unlikely(DRV_fault() != HAL_OK)) {
+	if (unlikely(		DRV_fault() != HAL_OK
+				&& pm.lu_MODE != PM_LU_DISABLED)) {
 
-			pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
-			pm.fsm_req = PM_STATE_HALT;
-		}
-#endif /* HW_HAVE_DRV_ON_PCB */
+		pm.fsm_errno = PM_ERROR_HW_OVERCURRENT;
+		pm.fsm_req = PM_STATE_HALT;
 	}
+#endif /* HW_HAVE_DRV_ON_PCB */
+
+#ifdef HW_HAVE_PWM_STOP
+	if (unlikely(		PWM_fault() != HAL_OK
+				&& pm.lu_MODE != PM_LU_DISABLED)) {
+
+		pm.fsm_errno = PM_ERROR_HW_EMERGENCY_STOP;
+		pm.fsm_req = PM_STATE_HALT;
+	}
+#endif /* HW_HAVE_PWM_STOP */
 
 	pm_feedback(&pm, &fb);
 

@@ -95,6 +95,12 @@ enum {
 };
 
 enum {
+	PM_BRAKE_NONE				= 0,
+	PM_BRAKE_ON_REVERSE,
+	PM_BRAKE_ON_KNOB
+};
+
+enum {
 	PM_EABI_INCREMENTAL			= 0,
 	PM_EABI_ABSOLUTE
 };
@@ -552,6 +558,8 @@ typedef struct {
 	float		watt_gain_I;
 	float		watt_gain_LP;
 	float		watt_gain_WF;
+
+	int		i_brake_KNOB;
 
 	float		i_setpoint_current;
 	float		i_setpoint_torque;

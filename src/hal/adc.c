@@ -109,7 +109,7 @@ void ADC_const_build()
 	hal.const_ADC.GA = U_reference / R_equivalent;
 	hal.const_ADC.GU = U_reference / hal.ADC_voltage_ratio;
 	hal.const_ADC.GT = U_reference / hal.ADC_terminal_ratio;
-	hal.const_ADC.GS = hal.ADC_reference_voltage / (float) ADC_RESOLUTION;
+	hal.const_ADC.GS = U_reference;
 	hal.const_ADC.TS[1] = 80.f / (float) (*TS_110 - *TS_30);
 	hal.const_ADC.TS[0] = 110.f - hal.const_ADC.TS[1] * (float) (*TS_110);
 
