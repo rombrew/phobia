@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2026 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "draw.h"
 #include "plot.h"
 
-#define READ_PAGE_MAX		1000
+#define READ_PAGE_MAX		4000
 #define READ_COLUMN_MAX		2000
 #define READ_TOKEN_MAX		80
 #define READ_FILE_PATH_MAX	800
@@ -198,7 +198,8 @@ typedef struct {
 	}
 	data[PLOT_DATASET_MAX];
 
-	page_t		page[READ_PAGE_MAX];
+	int		page_MAX;
+	page_t		*page;
 
 	int		keep_N;
 
@@ -237,7 +238,7 @@ void readConfigIN(read_t *rd, const char *config, int fromUI);
 void readConfigGP(read_t *rd, const char *file, int fromUI);
 void readConfigSafe(read_t *rd);
 
-void readMakePages(read_t *rd, int dN, int cX, int fromUI);
+void readMakePage(read_t *rd, int dN, int cX, int fromUI);
 void readDatasetClean(read_t *rd, int dN);
 int readGetTimeColumn(read_t *rd, int dN);
 void readSetTimeColumn(read_t *rd, int dN, int cX);

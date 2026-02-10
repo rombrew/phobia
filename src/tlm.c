@@ -18,7 +18,7 @@ void tlm_reg_default(tlm_t *tlm)
 	tlm->rate_watch = (int) (hal.PWM_frequency / 1000.f + 0.5f);
 	tlm->rate_stream = (int) (hal.PWM_frequency / 10.f + 0.5f);
 
-	tlm->watch_AUTO = PM_ENABLED;
+	tlm->auto_STARTUP = TLM_AUTO_DISABLED;
 
 	tlm->reg_ID[0] = ID_HAL_CNT_DIAG2_PC;
 	tlm->reg_ID[1] = ID_PM_FSM_STATE;
@@ -318,7 +318,7 @@ SH_DEF(tlm_stream_sync)
 }
 
 #ifdef HW_HAVE_NETWORK_EPCAN
-LD_TASK void task_EPCAN_TLM(void *pData)
+LD_TASK void task_TLM_EPCAN(void *pData)
 {
 	CAN_msg_t		msg;
 
@@ -392,10 +392,21 @@ LD_TASK void task_EPCAN_TLM(void *pData)
 
 	vTaskDelete(NULL);
 }
+
+void tlm_epcan_startup(tlm_t *tlm)
+{
+	if (xTaskGetHandle("TLM_EPCAN") == NULL) {
+
+		/* Create helper task for asynchronous message packaging.
+		 * */
+		xTaskCreate(task_TLM_EPCAN, "TLM_EPCAN",
+				configDEFAULT_STACK_SIZE, NULL, 2, NULL);
+	}
+}
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 #ifdef HW_HAVE_NETWORK_EPCAN
-SH_DEF(tlm_stream_net_async)
+SH_DEF(tlm_stream_async)
 {
 	int			rate;
 
@@ -413,10 +424,7 @@ SH_DEF(tlm_stream_net_async)
 	}
 
 	tlm_startup(&tlm, rate, TLM_MODE_STREAM);
-
-	/* Create task for asynchronous message packaging.
-	 * */
-	xTaskCreate(task_EPCAN_TLM, "EPCAN_TLM", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	tlm_epcan_startup(&tlm);
 }
 #endif /* HW_HAVE_NETWORK_EPCAN */
 

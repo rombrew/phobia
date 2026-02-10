@@ -40,6 +40,7 @@ typedef struct {
 	float			knob_in_BRK;
 	float			knob_reg_DATA;
 	int			knob_reg_ID;
+	int			knob_brake_ID;
 	int			knob_ENABLED;
 #ifdef HW_HAVE_BRAKE_KNOB
 	int			knob_BRAKE;

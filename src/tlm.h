@@ -15,13 +15,19 @@ enum {
 	TLM_MODE_STREAM
 };
 
+enum {
+	TLM_AUTO_DISABLED	= 0,
+	TLM_AUTO_WATCH,
+	TLM_AUTO_NET_EPCAN
+};
+
 typedef struct {
 
 	int		rate_grab;
 	int		rate_watch;
 	int		rate_stream;
 
-	int		watch_AUTO;
+	int		auto_STARTUP;
 
 	int		mode;
 	int		reg_ID[TLM_INPUT_MAX];
@@ -46,6 +52,7 @@ void tlm_reg_grab(tlm_t *tlm);
 void tlm_startup(tlm_t *tlm, int rate, int mode);
 void tlm_halt(tlm_t *tlm);
 void tlm_wipe(tlm_t *tlm);
+void tlm_epcan_startup(tlm_t *tlm);
 
 #endif /* _H_TLM_ */
 

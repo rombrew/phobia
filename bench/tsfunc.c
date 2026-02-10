@@ -892,7 +892,7 @@ void ts_script_test()
 	m.Rdc = 0.1;
 	m.Zp = 14;
 	m.lambda = blm_Kv_lambda(&m, 270.);
-	m.Jm = 3.e-4;
+	m.Jm = 4.e-4;
 
 	ts_script_default();
 	ts_script_base();

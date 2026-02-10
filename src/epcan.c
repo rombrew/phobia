@@ -64,67 +64,158 @@ epcan_t				net;
 
 static epcan_local_t		local;
 
-static void
+static int
 EPCAN_pipe_INCOMING(epcan_pipe_t *ep, const CAN_msg_t *msg)
 {
+	int		result = HAL_FAULT;
+
 	switch (ep->PAYLOAD) {
 
 		case EPCAN_PAYLOAD_FLOAT:
 
 			if (msg->len == 4U) {
 
-				ep->reg_DATA = ep->range[1] * msg->payload.f[0] + ep->range[0];
+				ep->reg_DATA[0] = ep->range[0] + msg->payload.f[0] * (ep->range[1] - ep->range[0]);
+
+				if (ep->reg_ID[0] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[0], ep->reg_DATA[0]);
+				}
+
+				result = HAL_OK;
 			}
 			break;
 
-		case EPCAN_PAYLOAD_INT_16:
+		case EPCAN_PAYLOAD_INT16:
 
 			if (msg->len == 2U) {
 
-				ep->reg_DATA = ep->range[0] + (float) msg->payload.s[0]
+				ep->reg_DATA[0] = ep->range[0] + (float) msg->payload.s[0]
 					* (ep->range[1] - ep->range[0]) * (1.f / 65535.f);
+
+				if (ep->reg_ID[0] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[0], ep->reg_DATA[0]);
+				}
+
+				result = HAL_OK;
+			}
+			break;
+
+		case EPCAN_PAYLOAD_TWO_FLOAT:
+
+			if (msg->len == 8U) {
+
+				ep->reg_DATA[0] = ep->range[0] + msg->payload.f[0] * (ep->range[1] - ep->range[0]);
+				ep->reg_DATA[1] = ep->range[0] + msg->payload.f[1] * (ep->range[1] - ep->range[0]);
+
+				if (ep->reg_ID[0] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[0], ep->reg_DATA[0]);
+				}
+
+				if (ep->reg_ID[1] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[1], ep->reg_DATA[1]);
+				}
+
+				result = HAL_OK;
+			}
+			break;
+
+		case EPCAN_PAYLOAD_TWO_INT16:
+
+			if (msg->len == 4U) {
+
+				ep->reg_DATA[0] = ep->range[0] + (float) msg->payload.s[0]
+					* (ep->range[1] - ep->range[0]) * (1.f / 65535.f);
+				ep->reg_DATA[1] = ep->range[0] + (float) msg->payload.s[1]
+					* (ep->range[1] - ep->range[0]) * (1.f / 65535.f);
+
+				if (ep->reg_ID[0] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[0], ep->reg_DATA[0]);
+				}
+
+				if (ep->reg_ID[1] != ID_NULL) {
+
+					reg_SET_F(ep->reg_ID[1], ep->reg_DATA[1]);
+				}
+
+				result = HAL_OK;
 			}
 			break;
 
 		default: break;
 	}
 
-	if (ep->reg_ID != ID_NULL) {
-
-		reg_SET_F(ep->reg_ID, ep->reg_DATA);
-	}
+	return result;
 }
 
 static void
 EPCAN_pipe_OUTGOING(epcan_pipe_t *ep)
 {
 	CAN_msg_t		msg;
+	float			fpay;
 
-	if (ep->reg_ID != ID_NULL) {
+	if (ep->reg_ID[0] != ID_NULL) {
 
-		ep->reg_DATA = reg_GET_F(ep->reg_ID);
+		ep->reg_DATA[0] = reg_GET_F(ep->reg_ID[0]);
 	}
 
 	msg.ID = EPCAN_ID_OFFSET(ep->ID);
 
 	switch (ep->PAYLOAD) {
 
-		float			fval;
-
 		case EPCAN_PAYLOAD_FLOAT:
 
 			msg.len = 4U;
-			msg.payload.f[0] = ep->range[1] * ep->reg_DATA + ep->range[0];
+			msg.payload.f[0] = (ep->reg_DATA[0] - ep->range[0])
+					/ (ep->range[1] - ep->range[0]);
 			break;
 
-		case EPCAN_PAYLOAD_INT_16:
+		case EPCAN_PAYLOAD_INT16:
 
 			msg.len = 2U;
 
-			fval = (ep->reg_DATA - ep->range[0]) / (ep->range[1] - ep->range[0]);
-			fval = (fval < 0.f) ? 0.f : (fval > 1.f) ? 1.f : fval;
+			fpay = (ep->reg_DATA[0] - ep->range[0]) / (ep->range[1] - ep->range[0]);
+			fpay = (fpay < 0.f) ? 0.f : (fpay > 1.f) ? 1.f : fpay;
 
-			msg.payload.s[0] = (uint16_t) (fval * 65535.f);
+			msg.payload.s[0] = (uint16_t) (fpay * 65535.f);
+			break;
+
+		case EPCAN_PAYLOAD_TWO_FLOAT:
+
+			if (ep->reg_ID[1] != ID_NULL) {
+
+				ep->reg_DATA[1] = reg_GET_F(ep->reg_ID[1]);
+			}
+
+			msg.len = 8U;
+			msg.payload.f[0] = (ep->reg_DATA[0] - ep->range[0])
+					/ (ep->range[1] - ep->range[0]);
+			msg.payload.f[1] = (ep->reg_DATA[1] - ep->range[0])
+					/ (ep->range[1] - ep->range[0]);
+			break;
+
+		case EPCAN_PAYLOAD_TWO_INT16:
+
+			if (ep->reg_ID[1] != ID_NULL) {
+
+				ep->reg_DATA[1] = reg_GET_F(ep->reg_ID[1]);
+			}
+
+			msg.len = 4U;
+
+			fpay = (ep->reg_DATA[0] - ep->range[0]) / (ep->range[1] - ep->range[0]);
+			fpay = (fpay < 0.f) ? 0.f : (fpay > 1.f) ? 1.f : fpay;
+
+			msg.payload.s[0] = (uint16_t) (fpay * 65535.f);
+
+			fpay = (ep->reg_DATA[1] - ep->range[0]) / (ep->range[1] - ep->range[0]);
+			fpay = (fpay < 0.f) ? 0.f : (fpay > 1.f) ? 1.f : fpay;
+
+			msg.payload.s[1] = (uint16_t) (fpay * 65535.f);
 			break;
 
 		default: break;
@@ -149,27 +240,28 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 		if (		ep->MODE == EPCAN_PIPE_INCOMING
 				&& EPCAN_ID_OFFSET(ep->ID) == msg->ID) {
 
-			ep->tx_clock = 0;
+			if (EPCAN_pipe_INCOMING(ep, msg) == HAL_OK) {
 
-			if (		ep->ACTIVE == PM_ENABLED
-					&& pm.lu_MODE == PM_LU_DISABLED) {
+				ep->tx_clock = 0;
 
-				ep->ACTIVE = PM_DISABLED;
+				if (		ep->ACTIVE == PM_ENABLED
+						&& pm.lu_MODE == PM_LU_DISABLED) {
+
+					ep->ACTIVE = PM_DISABLED;
+				}
+
+				if (		ep->STARTUP == PM_ENABLED
+						&& ep->ACTIVE != PM_ENABLED
+						&& pm.lu_MODE == PM_LU_DISABLED) {
+
+					pm.fsm_req = PM_STATE_LU_STARTUP;
+
+					ep->ACTIVE = PM_ENABLED;
+				}
 			}
-
-			if (		ep->STARTUP == PM_ENABLED
-					&& ep->ACTIVE != PM_ENABLED
-					&& pm.lu_MODE == PM_LU_DISABLED) {
-
-				pm.fsm_req = PM_STATE_LU_STARTUP;
-
-				ep->ACTIVE = PM_ENABLED;
-			}
-
-			EPCAN_pipe_INCOMING(ep, msg);
 		}
 		else if (	ep->MODE == EPCAN_PIPE_OUTGOING_INJECTED
-				&& EPCAN_ID_OFFSET(ep->inject_ID) == msg->ID) {
+				&& EPCAN_ID_OFFSET(net.inject_ID) == msg->ID) {
 
 			ep->tx_flag = 1;
 
@@ -178,7 +270,7 @@ EPCAN_pipe_message_IN(const CAN_msg_t *msg)
 	}
 }
 
-void EPCAN_pipe_REGULAR()
+void EPCAN_pipe_PERIODIC()
 {
 	epcan_pipe_t		*ep;
 	int			N;
@@ -200,10 +292,9 @@ void EPCAN_pipe_REGULAR()
 				}
 
 				ep->ACTIVE = PM_DISABLED;
-				ep->tx_clock = 0;
 			}
 		}
-		else if (ep->MODE == EPCAN_PIPE_OUTGOING_REGULAR) {
+		else if (ep->MODE == EPCAN_PIPE_OUTGOING_PERIODIC) {
 
 			ep->tx_clock++;
 
@@ -775,7 +866,7 @@ void EPCAN_bind()
 		}
 		else if (net.ep[N].MODE == EPCAN_PIPE_OUTGOING_INJECTED) {
 
-			CAN_bind_ID(10 + N, 1, EPCAN_ID_OFFSET(net.ep[N].inject_ID), EPCAN_MATCH_ID_CAN);
+			CAN_bind_ID(10 + N, 1, EPCAN_ID_OFFSET(net.inject_ID), EPCAN_MATCH_ID_CAN);
 		}
 		else {
 			CAN_bind_ID(10 + N, 1, 0U, 0U);

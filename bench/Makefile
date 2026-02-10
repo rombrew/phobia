@@ -42,6 +42,10 @@ run: $(TARGET)
 	@ echo "  RUN	" $(notdir $<)
 	@ $< bench
 
+data: $(TARGET)
+	@ echo "  DATA	" $(notdir $<)
+	@ $< data
+
 debug: $(TARGET)
 	@ echo "  GDB	" $(notdir $<)
 	@ $(GDB) $<

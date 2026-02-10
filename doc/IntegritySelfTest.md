@@ -58,6 +58,7 @@ settings and depends on transient precess in power stages.
 It may be useful to enable PWM with constant DC when testing and debugging a
 new hardware.
 
+	(pmc) hal_PWM_set_Z 0
 	(pmc) hal_PWM_set_DC <xDC>
 
 ## See also

@@ -1131,25 +1131,61 @@ reg_format_referenced(const reg_t *reg, const rval_t *rval, int reg_ID)
 static void
 reg_format_ref_net_ep0(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, rval, ID_NET_EP0_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP0_REG_ID0);
 }
 
 static void
 reg_format_ref_net_ep1(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, rval, ID_NET_EP1_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP1_REG_ID0);
 }
 
 static void
 reg_format_ref_net_ep2(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, rval, ID_NET_EP2_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP2_REG_ID0);
 }
 
 static void
 reg_format_ref_net_ep3(const reg_t *reg, const rval_t *rval)
 {
-	reg_format_referenced(reg, rval, ID_NET_EP3_REG_ID);
+	reg_format_referenced(reg, rval, ID_NET_EP3_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep4(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP4_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep5(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP5_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep6(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP6_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep7(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP7_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep8(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP8_REG_ID0);
+}
+
+static void
+reg_format_ref_net_ep9(const reg_t *reg, const rval_t *rval)
+{
+	reg_format_referenced(reg, rval, ID_NET_EP9_REG_ID0);
 }
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
@@ -1342,12 +1378,18 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP1_MODE:
 		case ID_NET_EP2_MODE:
 		case ID_NET_EP3_MODE:
+		case ID_NET_EP4_MODE:
+		case ID_NET_EP5_MODE:
+		case ID_NET_EP6_MODE:
+		case ID_NET_EP7_MODE:
+		case ID_NET_EP8_MODE:
+		case ID_NET_EP9_MODE:
 
 			switch (msg) {
 
 				PM_SFI_CASE(EPCAN_PIPE_DISABLED);
 				PM_SFI_CASE(EPCAN_PIPE_INCOMING);
-				PM_SFI_CASE(EPCAN_PIPE_OUTGOING_REGULAR);
+				PM_SFI_CASE(EPCAN_PIPE_OUTGOING_PERIODIC);
 				PM_SFI_CASE(EPCAN_PIPE_OUTGOING_INJECTED);
 
 				default: blank = 1; break;
@@ -1358,6 +1400,12 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP1_STARTUP:
 		case ID_NET_EP2_STARTUP:
 		case ID_NET_EP3_STARTUP:
+		case ID_NET_EP4_STARTUP:
+		case ID_NET_EP5_STARTUP:
+		case ID_NET_EP6_STARTUP:
+		case ID_NET_EP7_STARTUP:
+		case ID_NET_EP8_STARTUP:
+		case ID_NET_EP9_STARTUP:
 
 			switch (msg) {
 
@@ -1372,11 +1420,19 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 		case ID_NET_EP1_PAYLOAD:
 		case ID_NET_EP2_PAYLOAD:
 		case ID_NET_EP3_PAYLOAD:
+		case ID_NET_EP4_PAYLOAD:
+		case ID_NET_EP5_PAYLOAD:
+		case ID_NET_EP6_PAYLOAD:
+		case ID_NET_EP7_PAYLOAD:
+		case ID_NET_EP8_PAYLOAD:
+		case ID_NET_EP9_PAYLOAD:
 
 			switch (msg) {
 
 				PM_SFI_CASE(EPCAN_PAYLOAD_FLOAT);
-				PM_SFI_CASE(EPCAN_PAYLOAD_INT_16);
+				PM_SFI_CASE(EPCAN_PAYLOAD_INT16);
+				PM_SFI_CASE(EPCAN_PAYLOAD_TWO_FLOAT);
+				PM_SFI_CASE(EPCAN_PAYLOAD_TWO_INT16);
 
 				default: blank = 1; break;
 			}
@@ -1671,12 +1727,13 @@ reg_format_textual(const reg_t *reg, const rval_t *rval)
 			}
 			break;
 
-		case ID_TLM_WATCH_AUTO:
+		case ID_TLM_AUTO_STARTUP:
 
 			switch (msg) {
 
-				PM_SFI_CASE(PM_DISABLED);
-				PM_SFI_CASE(PM_ENABLED);
+				PM_SFI_CASE(TLM_AUTO_DISABLED);
+				PM_SFI_CASE(TLM_AUTO_WATCH);
+				PM_SFI_CASE(TLM_AUTO_NET_EPCAN);
 
 				default: blank = 1; break;
 			}
@@ -1774,51 +1831,128 @@ const reg_t		regfile[] = {
 	REG_DEF(net.node_ID,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.log_MSG,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
 	REG_DEF(net.timeout_EP,,,	"ms",	"%1f",	REG_CONFIG, &reg_proc_CAN_timeout, NULL),
+	REG_DEF(net.inject_ID,,,	"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 	REG_DEF(net.tlm_ID,,,		"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
 
-	REG_DEF(net.ep, 0_MODE, [0].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
-	REG_DEF(net.ep, 0_ID, [0].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 0_inject_ID, [0].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 0_reg_DATA, [0].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep0),
-	REG_DEF(net.ep, 0_reg_ID, [0].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 0_PAYLOAD, [0].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 0_STARTUP, [0].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 0_rate, [0].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 0_range0, [0].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
-	REG_DEF(net.ep, 0_range1, [0].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
+	REG_DEF(net.ep, 0_MODE, [0].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 0_ID, [0].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 0_reg_DATA0, [0].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep0),
+	REG_DEF(net.ep, 0_reg_DATA1, [0].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep0),
+	REG_DEF(net.ep, 0_reg_ID0, [0].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 0_reg_ID1, [0].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 0_PAYLOAD, [0].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 0_STARTUP, [0].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 0_rate, [0].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 0_range0, [0].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
+	REG_DEF(net.ep, 0_range1, [0].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep0),
 
-	REG_DEF(net.ep, 1_MODE, [1].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
-	REG_DEF(net.ep, 1_ID, [1].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 1_inject_ID, [1].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 1_reg_DATA, [1].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep1),
-	REG_DEF(net.ep, 1_reg_ID, [1].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 1_PAYLOAD, [1].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 1_STARTUP, [1].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 1_rate, [1].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 1_range0, [1].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
-	REG_DEF(net.ep, 1_range1, [1].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
+	REG_DEF(net.ep, 1_MODE, [1].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 1_ID, [1].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 1_reg_DATA0, [1].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep1),
+	REG_DEF(net.ep, 1_reg_DATA1, [1].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep1),
+	REG_DEF(net.ep, 1_reg_ID0, [1].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 1_reg_ID1, [1].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 1_PAYLOAD, [1].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 1_STARTUP, [1].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 1_rate, [1].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 1_range0, [1].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
+	REG_DEF(net.ep, 1_range1, [1].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep1),
 
-	REG_DEF(net.ep, 2_MODE, [2].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
-	REG_DEF(net.ep, 2_ID, [2].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 2_inject_ID, [2].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 2_reg_DATA, [2].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep2),
-	REG_DEF(net.ep, 2_reg_ID, [2].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 2_PAYLOAD, [2].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 2_STARTUP, [2].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 2_rate, [2].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 2_range0, [2].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
-	REG_DEF(net.ep, 2_range1, [2].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
+	REG_DEF(net.ep, 2_MODE, [2].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 2_ID, [2].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 2_reg_DATA0, [2].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep2),
+	REG_DEF(net.ep, 2_reg_DATA1, [2].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep2),
+	REG_DEF(net.ep, 2_reg_ID0, [2].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 2_reg_ID1, [2].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 2_PAYLOAD, [2].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 2_STARTUP, [2].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 2_rate, [2].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 2_range0, [2].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
+	REG_DEF(net.ep, 2_range1, [2].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep2),
 
-	REG_DEF(net.ep, 3_MODE, [3].MODE,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
-	REG_DEF(net.ep, 3_ID, [3].ID,"",		"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 3_inject_ID, [3].inject_ID,"",	"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
-	REG_DEF(net.ep, 3_reg_DATA, [3].reg_DATA,"",	"%4f",	0, NULL, &reg_format_ref_net_ep3),
-	REG_DEF(net.ep, 3_reg_ID, [3].reg_ID,"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
-	REG_DEF(net.ep, 3_PAYLOAD, [3].PAYLOAD,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 3_STARTUP, [3].STARTUP,"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(net.ep, 3_rate, [3].rate, "Hz",		"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
-	REG_DEF(net.ep, 3_range0, [3].range[0],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
-	REG_DEF(net.ep, 3_range1, [3].range[1],"",	"%4f",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
+	REG_DEF(net.ep, 3_MODE, [3].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 3_ID, [3].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 3_reg_DATA0, [3].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep3),
+	REG_DEF(net.ep, 3_reg_DATA1, [3].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep3),
+	REG_DEF(net.ep, 3_reg_ID0, [3].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 3_reg_ID1, [3].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 3_PAYLOAD, [3].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 3_STARTUP, [3].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 3_rate, [3].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 3_range0, [3].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
+	REG_DEF(net.ep, 3_range1, [3].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep3),
+
+	REG_DEF(net.ep, 4_MODE, [4].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 4_ID, [4].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 4_reg_DATA0, [4].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep4),
+	REG_DEF(net.ep, 4_reg_DATA1, [4].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep4),
+	REG_DEF(net.ep, 4_reg_ID0, [4].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 4_reg_ID1, [4].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 4_PAYLOAD, [4].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 4_STARTUP, [4].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 4_rate, [4].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 4_range0, [4].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep4),
+	REG_DEF(net.ep, 4_range1, [4].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep4),
+
+	REG_DEF(net.ep, 5_MODE, [5].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 5_ID, [5].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 5_reg_DATA0, [5].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep5),
+	REG_DEF(net.ep, 5_reg_DATA1, [5].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep5),
+	REG_DEF(net.ep, 5_reg_ID0, [5].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 5_reg_ID1, [5].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 5_PAYLOAD, [5].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 5_STARTUP, [5].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 5_rate, [5].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 5_range0, [5].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep5),
+	REG_DEF(net.ep, 5_range1, [5].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep5),
+
+	REG_DEF(net.ep, 6_MODE, [6].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 6_ID, [6].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 6_reg_DATA0, [6].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep6),
+	REG_DEF(net.ep, 6_reg_DATA1, [6].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep6),
+	REG_DEF(net.ep, 6_reg_ID0, [6].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 6_reg_ID1, [6].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 6_PAYLOAD, [6].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 6_STARTUP, [6].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 6_rate, [6].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 6_range0, [6].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep6),
+	REG_DEF(net.ep, 6_range1, [6].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep6),
+
+	REG_DEF(net.ep, 7_MODE, [7].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 7_ID, [7].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 7_reg_DATA0, [7].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep7),
+	REG_DEF(net.ep, 7_reg_DATA1, [7].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep7),
+	REG_DEF(net.ep, 7_reg_ID0, [7].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 7_reg_ID1, [7].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 7_PAYLOAD, [7].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 7_STARTUP, [7].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 7_rate, [7].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 7_range0, [7].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep7),
+	REG_DEF(net.ep, 7_range1, [7].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep7),
+
+	REG_DEF(net.ep, 8_MODE, [8].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 8_ID, [8].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 8_reg_DATA0, [8].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep8),
+	REG_DEF(net.ep, 8_reg_DATA1, [8].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep8),
+	REG_DEF(net.ep, 8_reg_ID0, [8].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 8_reg_ID1, [8].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 8_PAYLOAD, [8].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 8_STARTUP, [8].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 8_rate, [8].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 8_range0, [8].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep8),
+	REG_DEF(net.ep, 8_range1, [8].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep8),
+
+	REG_DEF(net.ep, 9_MODE, [9].MODE, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, &reg_format_enum),
+	REG_DEF(net.ep, 9_ID, [9].ID, "",			"%0i",	REG_CONFIG, &reg_proc_CAN_ID, NULL),
+	REG_DEF(net.ep, 9_reg_DATA0, [9].reg_DATA[0], "",	"%2f",	0, NULL, &reg_format_ref_net_ep9),
+	REG_DEF(net.ep, 9_reg_DATA1, [9].reg_DATA[1], "",	"%2f",	0, NULL, &reg_format_ref_net_ep9),
+	REG_DEF(net.ep, 9_reg_ID0, [9].reg_ID[0], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 9_reg_ID1, [9].reg_ID[1], "",		"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(net.ep, 9_PAYLOAD, [9].PAYLOAD, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 9_STARTUP, [9].STARTUP, "",		"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(net.ep, 9_rate, [9].rate, "Hz",			"%1f",	REG_CONFIG, &reg_proc_CAN_epfreq, NULL),
+	REG_DEF(net.ep, 9_range0, [9].range[0], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep9),
+	REG_DEF(net.ep, 9_range1, [9].range[1], "",		"%4g",	REG_CONFIG, NULL, &reg_format_ref_net_ep9),
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	REG_DEF(ap.ppm_PULSE,,,			"ms",	"%4f",	REG_READ_ONLY, NULL, NULL),
@@ -1838,9 +1972,9 @@ const reg_t		regfile[] = {
 	REG_DEF(ap.step_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_step),
 	REG_DEF(ap.step_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.step_STARTUP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
-	REG_DEF(ap.step_const_Sm,,,	"rad/step",	"%4f",	REG_CONFIG, NULL, NULL),
-	REG_DEF(ap.step_const_Sm, _deg,, "deg/step",	"%4f",	0, &reg_proc_location_deg, NULL),
-	REG_DEF(ap.step_const_Sm, _mm,,	"mm/step",	"%4f",	0, &reg_proc_location_mm, NULL),
+	REG_DEF(ap.step_const_Sm,,,	"rad/step",	"%4g",	REG_CONFIG, NULL, NULL),
+	REG_DEF(ap.step_const_Sm, _deg,, "deg/step",	"%4g",	0, &reg_proc_location_deg, NULL),
+	REG_DEF(ap.step_const_Sm, _mm,,	"mm/step",	"%4g",	0, &reg_proc_location_mm, NULL),
 #endif /* HW_HAVE_STEP_DIR_KNOB */
 
 #ifdef HW_HAVE_ANALOG_KNOB
@@ -1850,6 +1984,7 @@ const reg_t		regfile[] = {
 #endif /* HW_HAVE_BRAKE_KNOB */
 	REG_DEF(ap.knob_reg_DATA,,,		"",	"%2f",	0, NULL, &reg_format_ref_knob),
 	REG_DEF(ap.knob_reg_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
+	REG_DEF(ap.knob_brake_ID,,,		"",	"%0i",	REG_CONFIG | REG_LINKED, NULL, NULL),
 	REG_DEF(ap.knob_ENABLED,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 #ifdef HW_HAVE_BRAKE_KNOB
 	REG_DEF(ap.knob_BRAKE,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
@@ -2239,6 +2374,8 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.i_setpoint_current,,,	"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_current, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
+	REG_DEF(pm.i_setpoint_brake,,,		"A",	"%3f",	0, NULL, NULL),
+	REG_DEF(pm.i_setpoint_brake, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
 	REG_DEF(pm.i_setpoint_torque,,,		"Nm",	"%3f",	0, &reg_proc_load_nm, NULL),
 	REG_DEF(pm.i_setpoint_torque, _pc,,	"%",	"%2f",	0, &reg_proc_torque_pc, NULL),
 	REG_DEF(pm.i_maximal,,,			"A",	"%3f",	REG_CONFIG, &reg_proc_auto_maximal_current, NULL),
@@ -2320,7 +2457,7 @@ const reg_t		regfile[] = {
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_watch,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_stream,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
-	REG_DEF(tlm.watch_AUTO,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
+	REG_DEF(tlm.auto_STARTUP,,,		"",	"%0i",	REG_CONFIG, NULL, &reg_format_enum),
 	REG_DEF(tlm.mode,,,			"",	"%0i",	REG_READ_ONLY, NULL, &reg_format_enum),
 	REG_DEF(tlm.length_MAX,,,		"",	"%0i",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(tlm.line,,,			"",	"%0i",	REG_READ_ONLY, NULL, NULL),

@@ -12,6 +12,7 @@
 
 #define TLM_FILE	"/tmp/pm-TLM"
 #define PWM_FILE	"/tmp/pm-PWM"
+#define MLD_FILE	"/tmp/pm-mldata"
 #define AGP_FILE	"/tmp/pm-auto.gp"
 
 #define TLM_SIZE	100
@@ -27,6 +28,7 @@ typedef struct {
 
 	FILE		*fd_tlm;
 	FILE		*fd_pwm;
+	FILE		*fd_mld;
 	FILE		*fd_gp;
 }
 tlm_t;
@@ -215,6 +217,31 @@ tlm_plot_grab()
 	if (tlm.fd_gp != NULL) { fclose(tlm.fd_gp); tlm.fd_gp = NULL; }
 
 	fwrite(tlm.y, sizeof(float), TLM_SIZE, tlm.fd_tlm);
+
+	if (tlm.fd_mld != NULL) {
+
+		D = cos(m.state[3]);
+		Q = sin(m.state[3]);
+
+		C = (m.pwm_A + m.pwm_B + m.pwm_C) / 3.;
+		A = (m.pwm_A - C) * m.state[6] / (double) m.pwm_resolution;
+		B = (m.pwm_B - C) * m.state[6] / (double) m.pwm_resolution;
+
+		B = 0.577350269189626 * A + 1.15470053837925 * B;
+
+		tlm.y[0] = D * m.state[0] + Q * m.state[1];	/* iX */
+		tlm.y[1] = D * m.state[1] - Q * m.state[0];	/* iY */
+		tlm.y[2] = A;					/* uX */
+		tlm.y[3] = B;					/* uY */
+		tlm.y[4] = D;					/* cos(\th) */
+		tlm.y[5] = Q;					/* sin(\th) */
+		tlm.y[6] = m.state[2];				/* \omega */
+		tlm.y[7] = m.state[4];				/* Tc */
+		tlm.y[8] = 0;
+		tlm.y[9] = 0;
+
+		fwrite(tlm.y, sizeof(float), 10, tlm.fd_mld);
+	}
 }
 
 static void
@@ -435,6 +462,61 @@ void bench_script()
 	tlm_PWM_grab();
 }
 
+void mld_script()
+{
+	blm_enable(&m);
+	blm_restart(&m);
+
+	tlm_restart();
+
+	m.Rs = 14.e-3;
+	m.Ld = 10.e-6;
+	m.Lq = 15.e-6;
+	m.Udc = 22.;
+	m.Rdc = 0.1;
+	m.Zp = 14;
+	m.lambda = blm_Kv_lambda(&m, 270.);
+	m.Jm = 4.e-4;
+
+	ts_script_default();
+	ts_script_base();
+	blm_restart(&m);
+
+	pm.config_LU_ESTIMATE = PM_FLUX_KALMAN;
+	pm.config_HFI_WAVETYPE = PM_HFI_SINE;
+
+	pm.fsm_req = PM_STATE_LU_STARTUP;
+	ts_wait_IDLE();
+
+	pm.s_setpoint_speed = 60.f;
+	sim_runtime(1.0);
+
+	tlm.fd_mld = fopen(MLD_FILE, "wb");
+
+	if (tlm.fd_mld == NULL) {
+
+		fprintf(stderr, "fopen: %s\n", strerror(errno));
+		abort();
+	}
+
+	pm.s_setpoint_speed = 60.f;
+	sim_runtime(1.0);
+
+	pm.s_setpoint_speed = 900.f;
+	sim_runtime(1.0);
+
+	pm.s_setpoint_speed = - 60.f;
+	sim_runtime(1.0);
+
+	pm.s_setpoint_speed = - 900.f;
+	sim_runtime(1.0);
+
+	pm.s_setpoint_speed = 5500.f;
+	sim_runtime(2.0);
+
+	fclose(tlm.fd_mld);
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 2) {
@@ -451,6 +533,10 @@ int main(int argc, char *argv[])
 	else if (strcmp(argv[1], "bench") == 0) {
 
 		bench_script();
+	}
+	else if (strcmp(argv[1], "data") == 0) {
+
+		mld_script();
 	}
 
 	if (tlm.fd_tlm != NULL) {

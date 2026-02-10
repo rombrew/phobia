@@ -2965,12 +2965,10 @@ pm_loop_current(pmc_t *pm)
 			}
 			else if (pm->config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
 
-				if (pm->i_brake_KNOB == PM_ENABLED) {
+				if (pm->i_setpoint_brake < - M_EPSILON) {
 
-					iMAX = m_fabsf(track_Q);
+					iMAX = m_fabsf(pm->i_setpoint_brake);
 
-					/* Replace current setpoint by speed regulation.
-					 * */
 					track_Q = pm_form_SP(pm, 0.f - pm->lu_wS);
 					track_Q = (track_Q > iMAX) ? iMAX
 						: (track_Q < - iMAX) ? - iMAX : track_Q;

@@ -1987,9 +1987,8 @@ pm_fsm_state_lu_startup(pmc_t *pm, int in_ZONE)
 				pm->watt_drain_wA = 0.f;
 				pm->watt_integral = 0.f;
 
-				pm->i_brake_KNOB = PM_DISABLED;
-
 				pm->i_setpoint_current = 0.f;
+				pm->i_setpoint_brake = 0.f;
 				pm->i_setpoint_torque = 0.f;
 				pm->i_maximal_on_PCB = PM_MAX_F;
 				pm->i_track_D = 0.f;

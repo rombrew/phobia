@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2026 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -221,6 +221,9 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->timeout = 5000;
 	rd->length_N = 0;
 
+	rd->page_MAX = 125;
+	rd->page = calloc(1, sizeof(page_t) * rd->page_MAX);
+
 	rd->bind_N = -1;
 	rd->page_N = -1;
 	rd->figure_N = -1;
@@ -230,7 +233,31 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 
 void readClean(read_t *rd)
 {
+	free(rd->page);
 	free(rd);
+}
+
+static void
+readGrowPage(read_t *rd)
+{
+	page_t		*pgnew;
+	int		pgMAX;
+
+	if (rd->page_MAX < READ_PAGE_MAX) {
+
+		pgMAX = rd->page_MAX * 2;
+		pgnew = calloc(1, sizeof(page_t) * pgMAX);
+
+		if (pgnew != NULL) {
+
+			memcpy(pgnew, rd->page, sizeof(page_t) * rd->page_MAX);
+
+			free(rd->page);
+
+			rd->page_MAX = pgMAX;
+			rd->page = pgnew;
+		}
+	}
 }
 
 static void
@@ -554,11 +581,16 @@ void legacy_ConfigGRM(read_t *rd, const char *path, const char *confile,
 
 					pN++;
 
-					if (pN >= READ_PAGE_MAX)
-						break;
+					if (pN >= rd->page_MAX) {
+
+						readGrowPage(rd);
+
+						if (pN >= rd->page_MAX)
+							break;
+					}
 				}
 
-				if (pN >= READ_PAGE_MAX)
+				if (pN >= rd->page_MAX)
 					break;
 
 				rd->page[pN].busy = 1;
@@ -2690,6 +2722,8 @@ configParseFSM(read_t *rd, parse_t *pa)
 						}
 						else {
 							sprintf(msg_tbuf, "no dataset has a number %i", argi[0]);
+
+							rd->bind_N = -1;
 						}
 					}
 					else {
@@ -2871,12 +2905,6 @@ configParseFSM(read_t *rd, parse_t *pa)
 				do {
 					rc = configToken(rd, pa);
 
-					if (rd->bind_N < 0) {
-
-						sprintf(msg_tbuf, "no dataset selected");
-						break;
-					}
-
 					if (rc == 0) {
 
 						failed = 0;
@@ -2890,11 +2918,16 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 							rd->page_N++;
 
-							if (rd->page_N >= READ_PAGE_MAX)
-								break;
+							if (rd->page_N >= rd->page_MAX) {
+
+								readGrowPage(rd);
+
+								if (rd->page_N >= rd->page_MAX)
+									break;
+							}
 						}
 
-						if (rd->page_N >= READ_PAGE_MAX) {
+						if (rd->page_N >= rd->page_MAX) {
 
 							sprintf(msg_tbuf, "no free pages to remap");
 							break;
@@ -2946,7 +2979,7 @@ configParseFSM(read_t *rd, parse_t *pa)
 
 						failed = 0;
 
-						readMakePages(rd, rd->bind_N, argi[0], pa->fromUI);
+						readMakePage(rd, rd->bind_N, argi[0], pa->fromUI);
 					}
 					else {
 						sprintf(msg_tbuf, "column number %i is out of range", argi[0]);
@@ -3236,6 +3269,10 @@ configParseFSM(read_t *rd, parse_t *pa)
 						else if (strcmp(tbuf, "mul") == 0) {
 
 							argi[1] = SUBTRACT_BINARY_MULTIPLICATION;
+						}
+						else if (strcmp(tbuf, "div") == 0) {
+
+							argi[1] = SUBTRACT_BINARY_DIVISION;
 						}
 						else if (strcmp(tbuf, "hyp") == 0) {
 
@@ -3776,7 +3813,7 @@ readGetUnit(char *tbuf, const char *label, int allowed)
 	}
 }
 
-void readMakePages(read_t *rd, int dN, int cX, int fromUI)
+void readMakePage(read_t *rd, int dN, int cX, int fromUI)
 {
 	char		tbuf[READ_FILE_PATH_MAX];
 	char		sbuf[READ_FILE_PATH_MAX];
@@ -3808,11 +3845,16 @@ void readMakePages(read_t *rd, int dN, int cX, int fromUI)
 
 			pN++;
 
-			if (pN >= READ_PAGE_MAX)
-				break;
+			if (pN >= rd->page_MAX) {
+
+				readGrowPage(rd);
+
+				if (pN >= rd->page_MAX)
+					break;
+			}
 		}
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 
 		rd->page[pN].busy = 2;
@@ -3895,7 +3937,7 @@ void readDatasetClean(read_t *rd, int dN)
 
 		pN += 1;
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 	}
 	while (1);
@@ -3917,7 +3959,7 @@ void readDatasetClean(read_t *rd, int dN)
 
 		pN += 1;
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 	}
 	while (1);
@@ -3971,7 +4013,7 @@ int readGetTimeColumn(read_t *rd, int dN)
 
 		pN += 1;
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 	}
 	while (1);
@@ -4000,7 +4042,7 @@ int readGetTimeColumn(read_t *rd, int dN)
 
 			pN += 1;
 
-			if (pN >= READ_PAGE_MAX)
+			if (pN >= rd->page_MAX)
 				break;
 		}
 		while (1);
@@ -4062,7 +4104,7 @@ void readSetTimeColumn(read_t *rd, int dN, int cX)
 
 		pN += 1;
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 	}
 	while (1);
@@ -4190,6 +4232,7 @@ readScaleDataMap(plot_t *pl, int dN, int cNT, int cN, subtract_t *sb)
 		else if (	   sb[N].busy == SUBTRACT_BINARY_SUBTRACTION
 				|| sb[N].busy == SUBTRACT_BINARY_ADDITION
 				|| sb[N].busy == SUBTRACT_BINARY_MULTIPLICATION
+				|| sb[N].busy == SUBTRACT_BINARY_DIVISION
 				|| sb[N].busy == SUBTRACT_BINARY_HYPOTENUSE) {
 
 			int		cNY, dNT;
@@ -4351,7 +4394,7 @@ void readSelectPage(read_t *rd, int pN)
 	tuple_t		uN;
 	int		N, cX, cY;
 
-	if (pN < 0 || pN >= READ_PAGE_MAX) {
+	if (pN < 0 || pN >= rd->page_MAX) {
 
 		ERROR("Page number is out of range\n");
 		return ;
@@ -4513,7 +4556,7 @@ void readCombinePage(read_t *rd, int pN, int remap)
 	int		N, fN, bN, cX, cY, aX, aY;
 	int		map[PLOT_AXES_MAX];
 
-	if (pN < 0 || pN >= READ_PAGE_MAX) {
+	if (pN < 0 || pN >= rd->page_MAX) {
 
 		ERROR("Page number is out of range\n");
 		return ;

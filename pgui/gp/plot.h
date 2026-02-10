@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2026 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 #define ERROR(fmt, ...)		fprintf(stderr, "%s:%i: " fmt, __FILE__, __LINE__, ## __VA_ARGS__)
 #define FP_NAN			fp_nan()
 
-#define PLOT_DATASET_MAX			10
+#define PLOT_DATASET_MAX			20
 #define PLOT_CHUNK_SIZE				16777216
 #define PLOT_CHUNK_MAX				2000
 #define PLOT_CHUNK_CACHE			4

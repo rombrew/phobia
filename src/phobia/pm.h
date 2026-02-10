@@ -559,9 +559,8 @@ typedef struct {
 	float		watt_gain_LP;
 	float		watt_gain_WF;
 
-	int		i_brake_KNOB;
-
 	float		i_setpoint_current;
+	float		i_setpoint_brake;
 	float		i_setpoint_torque;
 	float		i_maximal;
 	float		i_maximal_on_PCB;

@@ -151,7 +151,7 @@ timeout_IDLE()
 	return PM_DISABLED;
 }
 
-LD_TASK void task_TEMP(void *pData)
+LD_TASK void task_NTC_TEMP(void *pData)
 {
 	TickType_t		xWake;
 
@@ -345,13 +345,20 @@ LD_TASK void task_TEMP(void *pData)
 				GPIO_set_LOW(GPIO_LED_ALERT);
 			}
 		}
-		else {
-			if (		tlm.watch_AUTO == PM_ENABLED
-					&& tlm.mode == TLM_MODE_DISABLED
+		else if (tlm.mode == TLM_MODE_DISABLED) {
+
+			if (		tlm.auto_STARTUP == TLM_AUTO_WATCH
 					&& pm.lu_MODE != PM_LU_DISABLED) {
 
 				tlm_startup(&tlm, tlm.rate_watch, TLM_MODE_WATCH);
 			}
+#ifdef HW_HAVE_NETWORK_EPCAN
+			else if (tlm.auto_STARTUP == TLM_AUTO_NET_EPCAN) {
+
+				tlm_startup(&tlm, tlm.rate_stream, TLM_MODE_STREAM);
+				tlm_epcan_startup(&tlm);
+			}
+#endif /* HW_HAVE_NETWORK_EPCAN */
 		}
 
 		last_fsm_errno = pm.fsm_errno;
@@ -366,6 +373,7 @@ conv_KNOB()
 	float			control, range, scaled;
 
 	int			hold_FLAG = PM_DISABLED;
+	int			brake_FLAG = PM_DISABLED;
 
 	if (		ap.knob_ACTIVE == PM_ENABLED
 			&& pm.lu_MODE == PM_LU_DISABLED) {
@@ -436,11 +444,6 @@ conv_KNOB()
 
 		/* Loss of BRAKE signal.
 		 * */
-
-		if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
-
-			pm.i_brake_KNOB = PM_DISABLED;
-		}
 	}
 	else if (ap.knob_BRAKE == PM_ENABLED) {
 
@@ -449,22 +452,20 @@ conv_KNOB()
 		scaled = (ap.knob_in_BRK - ap.knob_range_BRK[0]) / range;
 		scaled = (scaled < 0.f) ? 0.f : (scaled > 1.f) ? 1.f : scaled;
 
-		if (scaled < 0.f) {
-
-			if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
-
-				pm.i_brake_KNOB = PM_DISABLED;
-			}
-		}
-		else {
-			if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
-
-				pm.i_brake_KNOB = PM_ENABLED;
-			}
+		if (scaled > 0.f) {
 
 			hold_FLAG = PM_ENABLED;
 
 			control = (ap.knob_control_BRK - control) * scaled;
+
+			if (		pm.config_LU_DRIVE == PM_DRIVE_CURRENT
+					|| pm.config_LU_DRIVE == PM_DRIVE_TORQUE) {
+
+				if (pm.config_CC_BRAKE_STOP == PM_BRAKE_ON_KNOB) {
+
+					brake_FLAG = PM_ENABLED;
+				}
+			}
 		}
 
 		ap.knob_NFAULT = 0;
@@ -530,10 +531,16 @@ conv_KNOB()
 
 			reg_SET_F(ap.knob_reg_ID, ap.knob_reg_DATA);
 		}
+
+		if (		ap.knob_brake_ID != ID_NULL
+				&& brake_FLAG == PM_ENABLED) {
+
+			reg_SET_F(ap.knob_brake_ID, ap.knob_reg_DATA);
+		}
 	}
 }
 
-LD_TASK void task_KNOB(void *pData)
+LD_TASK void task_ANG_KNOB(void *pData)
 {
 	TickType_t		xWake;
 
@@ -644,6 +651,7 @@ default_flash_load()
 	net.node_ID = 0;
 	net.log_MSG = EPCAN_LOG_DISABLED;
 	net.timeout_EP = 100 * HW_PWM_FREQUENCY_HZ / 1000;
+	net.inject_ID = EPCAN_INJECT_ID_DEFAULT;
 	net.tlm_ID = EPCAN_TLM_ID_DEFAULT;
 	net.ep[0].ID = 0;
 	net.ep[0].rate = HW_PWM_FREQUENCY_HZ / 1000;
@@ -661,6 +669,30 @@ default_flash_load()
 	net.ep[3].rate = net.ep[0].rate;
 	net.ep[3].range[0] = 0.f;
 	net.ep[3].range[1] = 1.f;
+	net.ep[4].ID = 0;
+	net.ep[4].rate = net.ep[0].rate;
+	net.ep[4].range[0] = 0.f;
+	net.ep[4].range[1] = 1.f;
+	net.ep[5].ID = 0;
+	net.ep[5].rate = net.ep[0].rate;
+	net.ep[5].range[0] = 0.f;
+	net.ep[5].range[1] = 1.f;
+	net.ep[6].ID = 0;
+	net.ep[6].rate = net.ep[0].rate;
+	net.ep[6].range[0] = 0.f;
+	net.ep[6].range[1] = 1.f;
+	net.ep[7].ID = 0;
+	net.ep[7].rate = net.ep[0].rate;
+	net.ep[7].range[0] = 0.f;
+	net.ep[7].range[1] = 1.f;
+	net.ep[8].ID = 0;
+	net.ep[8].rate = net.ep[0].rate;
+	net.ep[8].range[0] = 0.f;
+	net.ep[8].range[1] = 1.f;
+	net.ep[9].ID = 0;
+	net.ep[9].rate = net.ep[0].rate;
+	net.ep[9].range[0] = 0.f;
+	net.ep[9].range[1] = 1.f;
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	ap.ppm_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
@@ -681,6 +713,7 @@ default_flash_load()
 
 #ifdef HW_HAVE_ANALOG_KNOB
 	ap.knob_reg_ID = ID_PM_S_SETPOINT_SPEED_KNOB;
+	ap.knob_brake_ID = ID_PM_I_SETPOINT_BRAKE_PC;
 	ap.knob_ENABLED = PM_DISABLED;
 #ifdef HW_HAVE_BRAKE_KNOB
 	ap.knob_BRAKE = PM_DISABLED;
@@ -913,13 +946,13 @@ LD_TASK void task_INIT(void *pData)
 	EPCAN_startup();
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
-	xTaskCreate(task_TEMP, "TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(task_NTC_TEMP, "NTC_TEMP", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 #ifdef HW_HAVE_ANALOG_KNOB
-	xTaskCreate(task_KNOB, "KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+	xTaskCreate(task_ANG_KNOB, "ANG_KNOB", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 #endif /* HW_HAVE_ANALOG_KNOB */
 
-	xTaskCreate(task_CMDSH, "CMDSH", configHUGE_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(task_CMD_SH, "CMD_SH", configHUGE_STACK_SIZE, NULL, 1, NULL);
 
 	GPIO_set_LOW(GPIO_LED_ALERT);
 
@@ -1179,7 +1212,7 @@ void ADC_IRQ()
 	pm_feedback(&pm, &fb);
 
 #ifdef HW_HAVE_NETWORK_EPCAN
-	EPCAN_pipe_REGULAR();
+	EPCAN_pipe_PERIODIC();
 #endif /* HW_HAVE_NETWORK_EPCAN */
 
 	tlm_reg_grab(&tlm);
@@ -1195,15 +1228,11 @@ void app_MAIN()
 
 void app_control(const reg_t *reg, void (* pvTask) (void *), const char *pcName)
 {
-	TaskHandle_t		xHandle;
-
 	if (reg->link->i == PM_ENABLED) {
 
-		xHandle = xTaskGetHandle(pcName);
+		if (xTaskGetHandle(pcName) == NULL) {
 
-		if (xHandle == NULL) {
-
-			xTaskCreate(pvTask, pcName, configMINIMAL_STACK_SIZE,
+			xTaskCreate(pvTask, pcName, configDEFAULT_STACK_SIZE,
 					(void *) reg->link, AP_TASK_PRIORITY, NULL);
 
 			vTaskDelay((TickType_t) 10);

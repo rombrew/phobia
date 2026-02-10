@@ -19,7 +19,9 @@
 #define EPCAN_MATCH_FUNC		(EPCAN_ID_UNMASK | EPCAN_ID_NODE(0U,  7U))
 
 #define EPCAN_OFFSET_DEFAULT		1024U
-#define EPCAN_TLM_ID_DEFAULT		192
+
+#define EPCAN_INJECT_ID_DEFAULT		110
+#define EPCAN_TLM_ID_DEFAULT		240
 
 enum {
 	EPCAN_NODE_REQ			= 0,
@@ -50,27 +52,29 @@ enum {
 enum {
 	EPCAN_PIPE_DISABLED		= 0,
 	EPCAN_PIPE_INCOMING,
-	EPCAN_PIPE_OUTGOING_REGULAR,
+	EPCAN_PIPE_OUTGOING_PERIODIC,
 	EPCAN_PIPE_OUTGOING_INJECTED
 };
 
 enum {
 	EPCAN_PAYLOAD_FLOAT		= 0,
-	EPCAN_PAYLOAD_INT_16
+	EPCAN_PAYLOAD_INT16,
+
+	EPCAN_PAYLOAD_TWO_FLOAT,
+	EPCAN_PAYLOAD_TWO_INT16
 };
 
 enum {
-	EPCAN_EP_MAX			= 4
+	EPCAN_EP_MAX			= 10
 };
 
 typedef struct {
 
 	int		MODE;		/* operation mode of endpoint (EP) */
 	int		ID;		/* ID of the endpoint (EP) */
-	int		inject_ID;	/* injected EP ID */
 
-	float		reg_DATA;	/* actual DATA */
-	int		reg_ID;		/* linked register ID */
+	float		reg_DATA[2];	/* actual DATA */
+	int		reg_ID[2];	/* linked register IDs */
 
 	int		PAYLOAD;	/* packet payload type */
 	int		STARTUP;	/* motor startup behaviour */
@@ -92,6 +96,7 @@ typedef struct {
 	int			log_MSG;
 	int			timeout_EP;
 
+	int			inject_ID;	/* EP ID of injection */
 	int			tlm_ID;		/* EP ID of telemetry */
 
 	epcan_pipe_t		ep[EPCAN_EP_MAX];
@@ -100,7 +105,7 @@ epcan_t;
 
 extern epcan_t			net;
 
-void EPCAN_pipe_REGULAR();
+void EPCAN_pipe_PERIODIC();
 
 void EPCAN_send_msg(CAN_msg_t *msg);
 void EPCAN_putc(int c);

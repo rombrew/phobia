@@ -37,7 +37,7 @@ SH_DEF(tlm_clean)
 SH_DEF(tlm_flush_sync)
 SH_DEF(tlm_stream_sync)
 #ifdef HW_HAVE_NETWORK_EPCAN
-SH_DEF(tlm_stream_net_async)
+SH_DEF(tlm_stream_async)
 #endif /* HW_HAVE_NETWORK_EPCAN */
 SH_DEF(help)
 #ifdef HW_HAVE_NETWORK_EPCAN

@@ -1,6 +1,6 @@
 /*
    Graph Plotter is a tool to analyse numerical data.
-   Copyright (C) 2025 Roman Belov <romblv@gmail.com>
+   Copyright (C) 2026 Roman Belov <romblv@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 
 #undef main
 
-#define GP_FILE_ENT_MAX		4000
+#define GP_FILE_ENT_MAX		8000
 
 #define GP_CONFIG_VERSION	19
 #define GP_CONFIG_FILE		"gprc"
@@ -581,7 +581,7 @@ gpMakePageMenu(gpcon_t *gp)
 
 		pN += 1;
 
-		if (pN >= READ_PAGE_MAX)
+		if (pN >= rd->page_MAX)
 			break;
 	}
 	while (1);
@@ -5003,7 +5003,7 @@ int gp_PageSafe(gpcon_t *gp)
 
 	pN = rd->page_N;
 
-	if (pN >= 1 && pN < READ_PAGE_MAX) {
+	if (pN >= 1 && pN < rd->page_MAX) {
 
 		N = plotFigureSelected(pl);
 	}
@@ -5298,8 +5298,8 @@ gpUsageHelp()
 		"  -l[n]          Color scheme number\n"
 		"  -pcn[n]        Select and combine pages\n"
 		"  -z[n] min max  Zoom axis to specified range\n"
-		"  -g    file     Save to PNG/SVG file\n"
-		"  -q             Do not open window\n");
+		"  -g file        Save to PNG/SVG file\n"
+		"  -q             Do not open GUI window\n");
 }
 
 static void
@@ -5487,7 +5487,7 @@ gpGetCMD(gpcon_t *gp, int argn, char *argv[])
 
 				if (stoi(&rd->mk_config, &argi, op) != NULL) {
 
-					if (argi >= 1 && argi < READ_PAGE_MAX) {
+					if (argi >= 1 && argi < rd->page_MAX) {
 
 						failed = 0;
 

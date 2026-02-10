@@ -245,7 +245,7 @@ void config_default(struct config_phobia *fe)
 
 	strcpy(fe->fuzzy, "setpoint");
 
-	fe->regfile = 500;
+	fe->regfile = 600;
 }
 
 void config_storage_path(struct config_phobia *fe, char *lbuf, const char *file)

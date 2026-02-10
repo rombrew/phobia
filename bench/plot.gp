@@ -27,7 +27,7 @@ page "E.Position Error"
 label 1 "(°)"
 figure 0 14 "m.theta - pm.lu_Fg"
 
-page "Motor Temperature"
+page "Machine Temperature"
 label 1 "(C)"
 figure 0 5 "m.Tc"
 

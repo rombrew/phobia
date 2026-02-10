@@ -542,7 +542,7 @@ const char *sh_next_arg(const char *s)
 
 static priv_sh_t		privsh;
 
-LD_TASK void task_CMDSH(void *pData)
+LD_TASK void task_CMD_SH(void *pData)
 {
 	priv_sh_t	*sh = &privsh;
 	int		c;

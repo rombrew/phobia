@@ -3802,8 +3802,6 @@ page_in_network(struct public *pub)
 	reg_float(pub, "net.offset_ID", "CAN ID offset");
 	reg_float(pub, "net.node_ID", "Node network ID");
 	reg_enum_combo(pub, "net.log_MSG", "Messages logging", 1);
-	reg_float(pub, "net.timeout_EP", "EP shutdown timeout");
-	reg_float(pub, "net.tlm_ID", "TLM package ID");
 
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
@@ -3961,6 +3959,13 @@ page_in_network(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
+	reg_float(pub, "net.timeout_EP", "EP shutdown timeout");
+	reg_float(pub, "net.inject_ID", "Injection EP ID");
+	reg_float(pub, "net.tlm_ID", "TLM stream EP ID");
+
+	nk_layout_row_dynamic(ctx, 0, 1);
+	nk_spacer(ctx);
+
 	if (pub->popup_enum != POPUP_LINK_PROGRESS) {
 
 		reg_enum_combo(pub, "net.ep0_MODE", "EP 0 operation mode", 1);
@@ -3969,13 +3974,17 @@ page_in_network(struct public *pub)
 
 		if (reg != NULL && reg->lval != 0) {
 
-			reg = link_reg_lookup(lp, "net.ep0_reg_DATA");
+			reg = link_reg_lookup(lp, "net.ep0_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep0_reg_DATA1");
 			if (reg != NULL) { reg->update = 200; }
 
 			reg_float(pub, "net.ep0_ID", "EP 0 network ID");
-			reg_float(pub, "net.ep0_inject_ID", "EP 0 inject ID");
-			reg_float(pub, "net.ep0_reg_DATA", "EP 0 control DATA");
-			reg_linked(pub, "net.ep0_reg_ID", "EP 0 register ID");
+			reg_float(pub, "net.ep0_reg_DATA0", "EP 0 control DATA 0");
+			reg_float(pub, "net.ep0_reg_DATA1", "EP 0 control DATA 1");
+			reg_linked(pub, "net.ep0_reg_ID0", "EP 0 register ID 0");
+			reg_linked(pub, "net.ep0_reg_ID1", "EP 0 register ID 1");
 			reg_enum_combo(pub, "net.ep0_PAYLOAD", "EP 0 payload type", 0);
 			reg_enum_toggle(pub, "net.ep0_STARTUP", "EP 0 startup control");
 			reg_float(pub, "net.ep0_rate", "EP 0 frequency");
@@ -3992,13 +4001,17 @@ page_in_network(struct public *pub)
 
 		if (reg != NULL && reg->lval != 0) {
 
-			reg = link_reg_lookup(lp, "net.ep1_reg_DATA");
+			reg = link_reg_lookup(lp, "net.ep1_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep1_reg_DATA1");
 			if (reg != NULL) { reg->update = 200; }
 
 			reg_float(pub, "net.ep1_ID", "EP 1 network ID");
-			reg_float(pub, "net.ep1_inject_ID", "EP 1 inject ID");
-			reg_float(pub, "net.ep1_reg_DATA", "EP 1 control DATA");
-			reg_linked(pub, "net.ep1_reg_ID", "EP 1 register ID");
+			reg_float(pub, "net.ep1_reg_DATA0", "EP 1 control DATA 0");
+			reg_float(pub, "net.ep1_reg_DATA1", "EP 1 control DATA 1");
+			reg_linked(pub, "net.ep1_reg_ID0", "EP 1 register ID 0");
+			reg_linked(pub, "net.ep1_reg_ID1", "EP 1 register ID 1");
 			reg_enum_combo(pub, "net.ep1_PAYLOAD", "EP 1 payload type", 0);
 			reg_enum_toggle(pub, "net.ep1_STARTUP", "EP 1 startup control");
 			reg_float(pub, "net.ep1_rate", "EP 1 frequency");
@@ -4015,13 +4028,17 @@ page_in_network(struct public *pub)
 
 		if (reg != NULL && reg->lval != 0) {
 
-			reg = link_reg_lookup(lp, "net.ep2_reg_DATA");
+			reg = link_reg_lookup(lp, "net.ep2_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep2_reg_DATA1");
 			if (reg != NULL) { reg->update = 200; }
 
 			reg_float(pub, "net.ep2_ID", "EP 2 network ID");
-			reg_float(pub, "net.ep2_inject_ID", "EP 2 inject ID");
-			reg_float(pub, "net.ep2_reg_DATA", "EP 2 control DATA");
-			reg_linked(pub, "net.ep2_reg_ID", "EP 2 register ID");
+			reg_float(pub, "net.ep2_reg_DATA0", "EP 2 control DATA 0");
+			reg_float(pub, "net.ep2_reg_DATA1", "EP 2 control DATA 1");
+			reg_linked(pub, "net.ep2_reg_ID0", "EP 2 register ID 0");
+			reg_linked(pub, "net.ep2_reg_ID1", "EP 2 register ID 1");
 			reg_enum_combo(pub, "net.ep2_PAYLOAD", "EP 2 payload type", 0);
 			reg_enum_toggle(pub, "net.ep2_STARTUP", "EP 2 startup control");
 			reg_float(pub, "net.ep2_rate", "EP 2 frequency");
@@ -4038,18 +4055,184 @@ page_in_network(struct public *pub)
 
 		if (reg != NULL && reg->lval != 0) {
 
-			reg = link_reg_lookup(lp, "net.ep3_reg_DATA");
+			reg = link_reg_lookup(lp, "net.ep3_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep3_reg_DATA1");
 			if (reg != NULL) { reg->update = 200; }
 
 			reg_float(pub, "net.ep3_ID", "EP 3 network ID");
-			reg_float(pub, "net.ep3_inject_ID", "EP 3 inject ID");
-			reg_float(pub, "net.ep3_reg_DATA", "EP 3 control DATA");
-			reg_linked(pub, "net.ep3_reg_ID", "EP 3 register ID");
+			reg_float(pub, "net.ep3_reg_DATA0", "EP 3 control DATA 0");
+			reg_float(pub, "net.ep3_reg_DATA1", "EP 3 control DATA 1");
+			reg_linked(pub, "net.ep3_reg_ID0", "EP 3 register ID 0");
+			reg_linked(pub, "net.ep3_reg_ID1", "EP 3 register ID 1");
 			reg_enum_combo(pub, "net.ep3_PAYLOAD", "EP 3 payload type", 0);
 			reg_enum_toggle(pub, "net.ep3_STARTUP", "EP 3 startup control");
 			reg_float(pub, "net.ep3_rate", "EP 3 frequency");
 			reg_float(pub, "net.ep3_range0", "EP 3 range LOW");
 			reg_float(pub, "net.ep3_range1", "EP 3 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep4_MODE", "EP 4 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep4_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep4_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep4_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep4_ID", "EP 4 network ID");
+			reg_float(pub, "net.ep4_reg_DATA0", "EP 4 control DATA 0");
+			reg_float(pub, "net.ep4_reg_DATA1", "EP 4 control DATA 1");
+			reg_linked(pub, "net.ep4_reg_ID0", "EP 4 register ID 0");
+			reg_linked(pub, "net.ep4_reg_ID1", "EP 4 register ID 1");
+			reg_enum_combo(pub, "net.ep4_PAYLOAD", "EP 4 payload type", 0);
+			reg_enum_toggle(pub, "net.ep4_STARTUP", "EP 4 startup control");
+			reg_float(pub, "net.ep4_rate", "EP 4 frequency");
+			reg_float(pub, "net.ep4_range0", "EP 4 range LOW");
+			reg_float(pub, "net.ep4_range1", "EP 4 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep5_MODE", "EP 5 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep5_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep5_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep5_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep5_ID", "EP 5 network ID");
+			reg_float(pub, "net.ep5_reg_DATA0", "EP 5 control DATA 0");
+			reg_float(pub, "net.ep5_reg_DATA1", "EP 5 control DATA 1");
+			reg_linked(pub, "net.ep5_reg_ID0", "EP 5 register ID 0");
+			reg_linked(pub, "net.ep5_reg_ID1", "EP 5 register ID 1");
+			reg_enum_combo(pub, "net.ep5_PAYLOAD", "EP 5 payload type", 0);
+			reg_enum_toggle(pub, "net.ep5_STARTUP", "EP 5 startup control");
+			reg_float(pub, "net.ep5_rate", "EP 5 frequency");
+			reg_float(pub, "net.ep5_range0", "EP 5 range LOW");
+			reg_float(pub, "net.ep5_range1", "EP 5 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep6_MODE", "EP 6 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep6_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep6_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep6_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep6_ID", "EP 6 network ID");
+			reg_float(pub, "net.ep6_reg_DATA0", "EP 6 control DATA 0");
+			reg_float(pub, "net.ep6_reg_DATA1", "EP 6 control DATA 1");
+			reg_linked(pub, "net.ep6_reg_ID0", "EP 6 register ID 0");
+			reg_linked(pub, "net.ep6_reg_ID1", "EP 6 register ID 1");
+			reg_enum_combo(pub, "net.ep6_PAYLOAD", "EP 6 payload type", 0);
+			reg_enum_toggle(pub, "net.ep6_STARTUP", "EP 6 startup control");
+			reg_float(pub, "net.ep6_rate", "EP 6 frequency");
+			reg_float(pub, "net.ep6_range0", "EP 6 range LOW");
+			reg_float(pub, "net.ep6_range1", "EP 6 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep7_MODE", "EP 7 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep7_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep7_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep7_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep7_ID", "EP 7 network ID");
+			reg_float(pub, "net.ep7_reg_DATA0", "EP 7 control DATA 0");
+			reg_float(pub, "net.ep7_reg_DATA1", "EP 7 control DATA 1");
+			reg_linked(pub, "net.ep7_reg_ID0", "EP 7 register ID 0");
+			reg_linked(pub, "net.ep7_reg_ID1", "EP 7 register ID 1");
+			reg_enum_combo(pub, "net.ep7_PAYLOAD", "EP 7 payload type", 0);
+			reg_enum_toggle(pub, "net.ep7_STARTUP", "EP 7 startup control");
+			reg_float(pub, "net.ep7_rate", "EP 7 frequency");
+			reg_float(pub, "net.ep7_range0", "EP 7 range LOW");
+			reg_float(pub, "net.ep7_range1", "EP 7 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep8_MODE", "EP 8 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep8_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep8_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep8_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep8_ID", "EP 8 network ID");
+			reg_float(pub, "net.ep8_reg_DATA0", "EP 8 control DATA 0");
+			reg_float(pub, "net.ep8_reg_DATA1", "EP 8 control DATA 1");
+			reg_linked(pub, "net.ep8_reg_ID0", "EP 8 register ID 0");
+			reg_linked(pub, "net.ep8_reg_ID1", "EP 8 register ID 1");
+			reg_enum_combo(pub, "net.ep8_PAYLOAD", "EP 8 payload type", 0);
+			reg_enum_toggle(pub, "net.ep8_STARTUP", "EP 8 startup control");
+			reg_float(pub, "net.ep8_rate", "EP 8 frequency");
+			reg_float(pub, "net.ep8_range0", "EP 8 range LOW");
+			reg_float(pub, "net.ep8_range1", "EP 8 range HIGH");
+		}
+
+		nk_layout_row_dynamic(ctx, 0, 1);
+		nk_spacer(ctx);
+
+		reg_enum_combo(pub, "net.ep9_MODE", "EP 9 operation mode", 1);
+
+		reg = link_reg_lookup(lp, "net.ep9_MODE");
+
+		if (reg != NULL && reg->lval != 0) {
+
+			reg = link_reg_lookup(lp, "net.ep9_reg_DATA0");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg = link_reg_lookup(lp, "net.ep9_reg_DATA1");
+			if (reg != NULL) { reg->update = 200; }
+
+			reg_float(pub, "net.ep9_ID", "EP 9 network ID");
+			reg_float(pub, "net.ep9_reg_DATA0", "EP 9 control DATA 0");
+			reg_float(pub, "net.ep9_reg_DATA1", "EP 9 control DATA 1");
+			reg_linked(pub, "net.ep9_reg_ID0", "EP 9 register ID 0");
+			reg_linked(pub, "net.ep9_reg_ID1", "EP 9 register ID 1");
+			reg_enum_combo(pub, "net.ep9_PAYLOAD", "EP 9 payload type", 0);
+			reg_enum_toggle(pub, "net.ep9_STARTUP", "EP 9 startup control");
+			reg_float(pub, "net.ep9_rate", "EP 9 frequency");
+			reg_float(pub, "net.ep9_range0", "EP 9 range LOW");
+			reg_float(pub, "net.ep9_range1", "EP 9 range HIGH");
 		}
 	}
 
@@ -4322,6 +4505,7 @@ page_in_knob(struct public *pub)
 	nk_spacer(ctx);
 
 	reg_linked(pub, "ap.knob_reg_ID", "Control register ID");
+	reg_linked(pub, "ap.knob_brake_ID", "Brake register ID");
 	reg_enum_toggle(pub, "ap.knob_ENABLED", "Knob function");
 	reg_enum_toggle(pub, "ap.knob_BRAKE", "Brake function");
 	reg_enum_toggle(pub, "ap.knob_STARTUP", "Startup control");
@@ -6074,7 +6258,7 @@ page_telemetry(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "TLM watch (until halt)", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "TLM watch until halt", NK_TEXT_LEFT)) {
 
 			if (link_command(lp, "tlm_watch") != 0) {
 
@@ -6095,9 +6279,9 @@ page_telemetry(struct public *pub)
 			}
 		}
 
-		if (nk_menu_item_label(ctx, "TLM stream grab (CAN)", NK_TEXT_LEFT)) {
+		if (nk_menu_item_label(ctx, "TLM stream through CAN", NK_TEXT_LEFT)) {
 
-			if (link_command(lp, "tlm_stream_net_async") != 0) {
+			if (link_command(lp, "tlm_stream_async") != 0) {
 
 				reg = link_reg_lookup(lp, "tlm.mode");
 
@@ -6171,7 +6355,7 @@ page_telemetry(struct public *pub)
 		reg_float(pub, "tlm.rate_grab", "Burst grab frequency");
 		reg_float(pub, "tlm.rate_watch", "Watch grab frequency");
 		reg_float(pub, "tlm.rate_stream", "Live stream frequency");
-		reg_enum_toggle(pub, "tlm.watch_AUTO", "Watch auto startup");
+		reg_enum_combo(pub, "tlm.auto_STARTUP", "Auto startup control", 1);
 		reg_float(pub, "tlm.length_MAX", "RAM queue length");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
