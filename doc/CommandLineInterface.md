@@ -93,9 +93,9 @@ Run in endless loop of grabbing until PMC stops with an error.
 
 	(pmc) tlm_watch <rate>
 
-Use a real-time telemetry printout.
+Make a real-time telemetry printout.
 
-	(pmc) tlm_live_sync <rate>
+	(pmc) tlm_stream_sync <rate>
 
 Using CAN data pipes you are able to link register across CAN network. You can
 easily control many machines from single input. Build a traction control by
@@ -163,7 +163,7 @@ Show instant analog knob input voltages.
 	(pmc) reg ap.knob_in_ANG
 	(pmc) reg ap.knob_in_BRK
 
-Enable the HX711 helper application.
+Enable the TLE5012 helper application.
 
-	(pmc) reg ap.task_HX711 1
+	(pmc) reg ap.task_TLE5012 1
 

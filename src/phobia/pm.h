@@ -384,6 +384,7 @@ typedef struct {
 	float		lu_uQ;
 	float		lu_F[3];
 	float		lu_wS;
+	float		lu_rsu_flux;
 	float		lu_location;
 	int		lu_revol;
 	int		lu_revob;
@@ -562,6 +563,7 @@ typedef struct {
 	float		watt_gain_WF;
 
 	float		i_setpoint_current;
+	float		i_setpoint_axis_D;
 	float		i_setpoint_brake;
 	float		i_setpoint_torque;
 	float		i_maximal;
@@ -614,8 +616,6 @@ typedef struct {
 	float		x_track_tol;
 	float		x_gain_P;
 	float		x_gain_D;
-
-	float		dbg_flux_rsu;
 
 	void 		(* proc_set_DC) (int, int, int);
 	void 		(* proc_set_Z) (int);

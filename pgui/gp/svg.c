@@ -28,7 +28,7 @@
 #include "plot.h"
 #include "read.h"
 
-svg_t *svgOpenNew(const char *file, int width, int height)
+svg_t *svgOpenNew(const char *file, int width, int height, int paper)
 {
 	svg_t		*g;
 
@@ -44,7 +44,9 @@ svg_t *svgOpenNew(const char *file, int width, int height)
 	}
 
 	fprintf(g->fd, "<svg xmlns=\"http://www.w3.org/2000/svg\" "
-			"width=\"%dpx\" height=\"%dpx\"><g>\n", width, height);
+			"width=\"%dmm\" height=\"%dmm\" "
+			"viewBox=\"0 0 %d %d\"><g>\n",
+			paper, paper * height / width, width, height);
 
 	g->line_open = 0;
 

@@ -12,9 +12,9 @@ depending on machine type.
 
 	(pmc) reg pm.config_SALIENCY 1
 
-`PM_SALIENCY_NONE`      - Non-salient machine implies               `Ld = Lq`.
-`PM_SALIENCY_NEGATIVE`  - Negative saliency (BLDC) implies          `Ld < Lq`.
-`PM_SALIENCY_POSITIVE`  - Positive saliency (IPM, SynRM) implies    `Ld > Lq`.
+- `PM_SALIENCY_NONE` - Non-salient machine implies `Ld = Lq`.
+- `PM_SALIENCY_NEGATIVE` - Negative saliency (BLDC) implies `Ld < Lq`.
+- `PM_SALIENCY_POSITIVE` - Positive saliency (IPM, SynRM) implies `Ld > Lq`.
 
 You should check the inductance difference along the DQ axes after the machine
 probing procedures. Inductances Ld and Lq should differ by more than ~10% to
@@ -52,10 +52,10 @@ alignment or flux observer estimate.
 
 Consider using one of the advanced waveform types instead of `SINE`.
 
-`PM_HFI_NONE`   - No HF injection.
-`PM_HFI_SINE`   - Sinusoidal wavefore with configurable frequency.
-`PM_HFI_SILENT` - Non audible waveform at maximum frequency.
-`PM_HFI_RANDOM` - Random sequence with configurable frequency.
+- `PM_HFI_NONE` - No HF injection.
+- `PM_HFI_SINE` - Sinusoidal wavefore with configurable frequency.
+- `PM_HFI_SILENT` - Non audible waveform at maximum frequency.
+- `PM_HFI_RANDOM` - Random sequence with configurable frequency.
 
 If you are concerned about acoustic noise and vibration you can select `SILENT`
 waveform and adjust an amplitude. In this case injection frequency is not

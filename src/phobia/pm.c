@@ -3073,6 +3073,11 @@ pm_loop_current(pmc_t *pm)
 				track_D += pm->weak_track_D;
 			}
 		}
+
+		if (PM_CONFIG_DBG(pm) == PM_ENABLED) {
+
+			track_D += pm->i_setpoint_axis_D;
+		}
 	}
 
 	/* Update LPF voltages to use them in WATTAGE constraints.
@@ -3089,7 +3094,7 @@ pm_loop_current(pmc_t *pm)
 	track_Q = (track_Q > iMAX) ? iMAX : (track_Q < iREV) ? iREV : track_Q;
 
 	if (		pm->lu_MODE == PM_LU_ESTIMATE
-			&& pm->flux_ZONE != PM_ZONE_HIGH) {
+			&& pm->flux_ZONE == PM_ZONE_UNCERTAIN) {
 
 		iMAX = pm->flux_uncertain;
 
@@ -3734,7 +3739,7 @@ void pm_feedback(pmc_t *pm, pmfb_t *fb)
 			A = pm->lu_F[0] * pm->flux_F[0] + pm->lu_F[1] * pm->flux_F[1];
 			B = pm->lu_F[1] * pm->flux_F[0] - pm->lu_F[0] * pm->flux_F[1];
 
-			pm->dbg_flux_rsu = m_atan2f(B, A) * (180.f / M_PI_F);
+			pm->lu_rsu_flux = m_atan2f(B, A) * (180.f / M_PI_F);
 		}
 	}
 

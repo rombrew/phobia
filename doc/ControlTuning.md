@@ -55,13 +55,11 @@ Weakening current constraint is applicable if `WEAKENING` is enabled.
 
 We have several types of zero sequence modulation in `VSI_ZERO` option.
 
-`PM_VSI_GND` - Clamp to GND. Provides switching loss minimisation as one
+- `PM_VSI_GND` - Clamp to GND. Provides switching loss minimisation as one
 terminal in always clamped to GND.
-
-`PM_VSI_CENTER` - Clamp to middle. Provides minimal noise in current loop by
+- `PM_VSI_CENTER` - Clamp to middle. Provides minimal noise in current loop by
 operating mostly in linear region.
-
-`PM_VSI_EXTREME` - Clamp to GND or VCC depending on phase currents. Provides
+- `PM_VSI_EXTREME` - Clamp to GND or VCC depending on phase currents. Provides
 even more switching loss minimisation as one terminal that conduct the largest
 absolute current in always clamped to GND or VCC.
 
@@ -101,9 +99,9 @@ overload.
 
 We have two sensorless estimation algorithms in `ESTIMATE` option.
 
-`PM_FLUX_NONE`   - No sensorless estimation.
-`PM_FLUX_ORTEGA` - Robust `ORTEGA` observer with gain scheduling against speed.
-`PM_FLUX_KALMAN` - Accurate `KALMAN` observer having convergence at HF injection.
+- `PM_FLUX_NONE`   - No sensorless estimation.
+- `PM_FLUX_ORTEGA` - Robust `ORTEGA` observer with gain scheduling against speed.
+- `PM_FLUX_KALMAN` - Accurate `KALMAN` observer having convergence at HF injection.
 
 `ORTEGA` nonlinear observer almost does not need to be configured manually. You
 can carefully change speed loop gain to find tradeoff between transient rate

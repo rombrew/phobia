@@ -28,7 +28,7 @@ you will need to decrease probing currents for a small machine.
 - `pm.probe_speed_hold` - Speed setpoint for the initial spinup. At this speed
   flux linkage and noise threshold will be estimated.
 - `pm.probe_loss_maximal` - Maximal heating losses on stator winding. This
-  allows us to assume maximal machine current.
+  allows us to assume maximal machine current knowing the winding resistance.
 - `pm.forced_hold_D` - Forced current setpoint which should be enough to hold
   rotor in aligned position and force it turn.
 

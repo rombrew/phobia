@@ -39,7 +39,7 @@ typedef struct {
 }
 svg_t;
 
-svg_t *svgOpenNew(const char *file, int width, int height);
+svg_t *svgOpenNew(const char *file, int width, int height, int paper);
 void svgClose(svg_t *g);
 
 void svgDrawLine(svg_t *g, double xs, double ys, double xe, double ye, svgCol_t col, int h, int d, int s);

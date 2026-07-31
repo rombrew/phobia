@@ -3055,7 +3055,7 @@ page_diagnose(struct public *pub)
 
 		if (nk_menu_item_label(ctx, "Set PWM to 25%", NK_TEXT_LEFT)) {
 
-			int			dc_resolution = 2940;
+			int			dc_resolution = 3360;
 
 			reg = link_reg_lookup(lp, "pm.dc_resolution");
 			if (reg != NULL) { dc_resolution = reg->lval; }
@@ -4806,7 +4806,7 @@ page_config(struct public *pub)
 		reg_enum_combo(pub, "pm.config_NOP", "Number of machine phases", 0);
 		reg_enum_combo(pub, "pm.config_IFB", "Current measurement scheme", 0);
 		reg_enum_toggle(pub, "pm.config_TVM", "Terminal voltage measurement");
-		reg_enum_toggle(pub, "pm.config_DBG", "DEBUG information gather");
+		reg_enum_toggle(pub, "pm.config_DBG", "Debug and analysis features");
 
 		nk_layout_row_dynamic(ctx, 0, 1);
 		nk_spacer(ctx);
@@ -5046,7 +5046,7 @@ page_lu_flux(struct public *pub)
 	nk_layout_row_dynamic(ctx, 0, 1);
 	nk_spacer(ctx);
 
-	reg_float(pub, "pm.flux_uncertain", "Maximal on UNCERTAIN");
+	reg_float(pub, "pm.flux_uncertain", "Maximal current on UNCERTAIN");
 	reg_float(pub, "pm.flux_trip_tol", "ORTEGA trip tolerance");
 	reg_float(pub, "pm.flux_gain_IN", "ORTEGA initial gain");
 	reg_float(pub, "pm.flux_gain_LO", "ORTEGA flux gain LO");

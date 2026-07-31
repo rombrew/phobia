@@ -202,6 +202,7 @@ read_t *readAlloc(draw_t *dw, plot_t *pl)
 	rd->timecol = -1;
 	rd->shortfilename = 1;
 	rd->fastdraw = 200;
+	rd->papersize = 120;
 
 	rd->mk_config.delim = '.';
 	strcpy(rd->mk_config.space, " \t");
@@ -1732,9 +1733,7 @@ configFuzzyLabel(read_t *rd, int dN, const char *fu)
 
 		label = rd->data[dN].label[N];
 
-		rs = strstr(label, fu);
-
-		if (rs == NULL) {
+		if (strcmp(label, fu) != 0) {
 
 			rs = fu;
 			Npe = 0;
@@ -2310,6 +2309,28 @@ configParseFSM(read_t *rd, parse_t *pa)
 					}
 					else {
 						sprintf(msg_tbuf, "invalid fastdraw %i", argi[0]);
+					}
+				}
+				while (0);
+			}
+			else if (strcmp(tbuf, "papersize") == 0) {
+
+				failed = 1;
+
+				do {
+					rc = configToken(rd, pa);
+
+					if (rc == 0 && stoi(&rd->mk_config, &argi[0], tbuf) != NULL) ;
+					else break;
+
+					if (argi[0] >= 0) {
+
+						failed = 0;
+
+						rd->papersize = argi[0];
+					}
+					else {
+						sprintf(msg_tbuf, "invalid papersize %i", argi[0]);
 					}
 				}
 				while (0);

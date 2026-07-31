@@ -21,7 +21,7 @@
 #include "lse.h"
 
 #if LSE_FAST_GIVENS != 0
-/* Define the maixmal allowed scale of the fast transformation. The input data
+/* Define the maximal allowed scale of the fast transformation. The input data
  * range is reduced by this number. Large number allows us to do scaling rarely.
  * */
 #define LSE_DMAX 		((lse_float_t) 1048576)

@@ -2184,6 +2184,7 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.lu_wS, _rpm,,		"rpm",	"%2f",	REG_READ_ONLY, &reg_proc_rpm, NULL),
 	REG_DEF(pm.lu_wS, _mmps,,		"mm/s",	"%2f",	REG_READ_ONLY, &reg_proc_mmps, NULL),
 	REG_DEF(pm.lu_wS, _kmh,,		"km/h",	"%1f",	REG_READ_ONLY, &reg_proc_kmh, NULL),
+	REG_DEF(pm.lu_rsu_flux,,,		"deg",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_location,,,		"rad",	"%3f",	REG_READ_ONLY, NULL, NULL),
 	REG_DEF(pm.lu_location, _deg,,		"deg",	"%2f",	REG_READ_ONLY, &reg_proc_location_deg, NULL),
 	REG_DEF(pm.lu_location, _mm,,		"mm",	"%3f",	REG_READ_ONLY, &reg_proc_location_mm, NULL),
@@ -2365,6 +2366,7 @@ const reg_t		regfile[] = {
 
 	REG_DEF(pm.i_setpoint_current,,,	"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_current, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
+	REG_DEF(pm.i_setpoint_axis_D,,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_brake,,,		"A",	"%3f",	0, NULL, NULL),
 	REG_DEF(pm.i_setpoint_brake, _pc,,	"%",	"%2f",	0, &reg_proc_current_pc, NULL),
 	REG_DEF(pm.i_setpoint_torque,,,		"Nm",	"%3f",	0, &reg_proc_load_nm, NULL),
@@ -2442,8 +2444,6 @@ const reg_t		regfile[] = {
 	REG_DEF(pm.x_gain_P, _radps,,	"rad/s2",	"%1f",	0, &reg_proc_x_accel, NULL),
 	REG_DEF(pm.x_gain_P, _mmps,,	"mm/s2",	"%1f",	0, &reg_proc_x_accel_mm, NULL),
 	REG_DEF(pm.x_gain_D,,,			"",	"%1f",	REG_CONFIG, NULL, NULL),
-
-	REG_DEF(pm.dbg_flux_rsu,,,		"deg",	"%3f",	REG_READ_ONLY, NULL, NULL),
 
 	REG_DEF(tlm.rate_grab,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),
 	REG_DEF(tlm.rate_watch,,,		"Hz",	"%1f",	REG_CONFIG, &reg_proc_tlm_rate, NULL),

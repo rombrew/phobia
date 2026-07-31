@@ -46,7 +46,7 @@
 
 #define GP_FILE_ENT_MAX		8000
 
-#define GP_CONFIG_VERSION	19
+#define GP_CONFIG_VERSION	20
 #define GP_CONFIG_FILE		"gprc"
 
 enum {
@@ -301,6 +301,7 @@ gpDefaultFile(gpcon_t *gp)
 				"timecol -1\n"
 				"shortfilename 1\n"
 				"fastdraw 200\n"
+				"papersize 120\n"
 				"interpolation 1\n"
 				"defungap 10\n"
 				"lz4_compress 1\n");
@@ -367,6 +368,7 @@ gpWriteFile(gpcon_t *gp)
 		fprintf(fd, "timecol %i\n", rd->timecol);
 		fprintf(fd, "shortfilename %i\n", rd->shortfilename);
 		fprintf(fd, "fastdraw %i\n", rd->fastdraw);
+		fprintf(fd, "papersize %i\n", rd->papersize);
 		fprintf(fd, "interpolation %i\n", pl->interpolation);
 		fprintf(fd, "defungap %.5g\n", pl->defungap);
 		fprintf(fd, "lz4_compress %i\n", pl->lz4_compress);
@@ -1572,13 +1574,15 @@ gpTakeScreen(gpcon_t *gp)
 
 #ifdef _WINDOWS
 static void
-legacy_SetClipboard(SDL_Surface *surface)
+legacy_SetClipboard(SDL_Surface *surface, read_t *rd)
 {
 	long		length;
 	void		*mBMP;
 
 	SDL_RWops	*rwops;
-	HGLOBAL		hDIB;
+
+	BITMAPINFOHEADER	*pInfo;
+	HGLOBAL			hDIB;
 
 	length = surface->pitch * surface->h + 1048576UL;
 	mBMP = malloc(length);
@@ -1597,24 +1601,32 @@ legacy_SetClipboard(SDL_Surface *surface)
 
 	SDL_RWclose(rwops);
 
+	pInfo = (BITMAPINFOHEADER *) ((char *) mBMP + sizeof(BITMAPFILEHEADER));
+
+	pInfo->biXPelsPerMeter = (LONG) (surface->w * 1000 / rd->papersize);
+	pInfo->biYPelsPerMeter = (LONG) (surface->w * 1000 / rd->papersize);
+	pInfo->biSize = sizeof(BITMAPINFOHEADER);
+
 	length -= sizeof(BITMAPFILEHEADER);
 	hDIB = GlobalAlloc(GMEM_MOVEABLE, length);
 
-	memcpy(GlobalLock(hDIB), (const char *) mBMP
-			+ sizeof(BITMAPFILEHEADER), length);
-	GlobalUnlock(hDIB);
+	if (hDIB != NULL) {
+
+		memcpy(GlobalLock(hDIB), (const char *) pInfo, length);
+		GlobalUnlock(hDIB);
+
+		if (OpenClipboard(NULL) != 0) {
+
+			EmptyClipboard();
+			SetClipboardData(CF_DIB, hDIB);
+			CloseClipboard();
+		}
+		else {
+			GlobalFree(hDIB);
+		}
+	}
 
 	free(mBMP);
-
-	if (OpenClipboard(NULL) != 0) {
-
-		EmptyClipboard();
-		SetClipboardData(CF_DIB, hDIB);
-		CloseClipboard();
-	}
-	else {
-		GlobalFree(hDIB);
-	}
 }
 #endif /* _WINDOWS */
 
@@ -1624,7 +1636,7 @@ gpYankScreen(gpcon_t *gp)
 	if (gp->screen_yank != 0) {
 
 #ifdef _WINDOWS
-		legacy_SetClipboard(gp->surface);
+		legacy_SetClipboard(gp->surface, gp->rd);
 #endif /* _WINDOWS */
 	}
 
@@ -3205,7 +3217,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 
 		ft = gp->tempfile;
 
-		len = strlen(ft);
+		len = (int) strlen(ft);
 		ft += (len > 4) ? len - 4 : 0;
 
 		if (strcmp(ft, ".png") == 0) {
@@ -3214,7 +3226,7 @@ gpEditHandle(gpcon_t *gp, int edit_N, const char *text)
 		}
 		else if (strcmp(ft, ".svg") == 0) {
 
-			g = svgOpenNew(gp->tempfile, gp->surface->w, gp->surface->h);
+			g = svgOpenNew(gp->tempfile, gp->surface->w, gp->surface->h, rd->papersize);
 
 			g->font_family = "monospace";
 			g->font_pt = pl->layout_font_pt;
@@ -5271,7 +5283,7 @@ void gp_SaveSVG(gpcon_t *gp, const char *file)
 
 	if (gp->surface != NULL) {
 
-		g = svgOpenNew(gp->tempfile, gp->surface->w, gp->surface->h);
+		g = svgOpenNew(gp->tempfile, gp->surface->w, gp->surface->h, rd->papersize);
 
 		g->font_family = "monospace";
 		g->font_pt = pl->layout_font_pt;
@@ -5567,7 +5579,7 @@ gpGetCMD(gpcon_t *gp, int argn, char *argv[])
 
 					op = argv[++n];
 
-					len = strlen(op);
+					len = (int) strlen(op);
 					op += (len > 4) ? len - 4 : 0;
 
 					if (strlen(argv[n]) >= READ_FILE_PATH_MAX) {

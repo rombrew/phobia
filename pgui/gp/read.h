@@ -162,6 +162,7 @@ typedef struct {
 	int		timecol;
 	int		shortfilename;
 	int		fastdraw;
+	int		papersize;
 
 	markup_t	mk_config;
 	markup_t	mk_text;
